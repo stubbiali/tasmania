@@ -1,0 +1,49 @@
+def _compute_fluxes(self, i, j, k, dt, s, u, v, mtg, U, V, Qv, Qc, Qr):
+	"""
+	Compute MacCormack fluxes for all prognostic variables.
+	"""
+	# Shortcuts
+	dx, dy = self._grid.dx, self._grid.dy
+
+	# Diagnose unstaggered velocities
+	u_unstg = gt.Equation()
+	u_unstg[i, j, k] = 0.5 * (u[i, j, k] + u[i+1, j, k])
+	v_unstg = gt.Equation()
+	v_unstg[i, j, k] = 0.5 * (v[i, j, k] + v[i, j+1, k])
+
+	# Compute predicted values, without taking the Montgomery potential into account
+	s_pred = self._get_maccormack_predicted_value_density(i, j, k, dx, dy, dt, U, V, s)
+	U_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, U)
+	V_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, V)
+	if self._imoist:
+		Qv_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, Qv)
+		Qc_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, Qc)
+		Qr_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, Qr)
+	
+	# Compute predicted values for the momentums, taking the Montgomery potential into account
+	U_pred_mtg = gt.Equation()
+	U_pred_mtg[i, j, k] = U_pred[i, j, k] - dt * s[i, j, k] * (mtg[i+1, j, k] - mtg[i, j, k]) / dx
+	V_pred_mtg = gt.Equation()
+	V_pred_mtg[i, j, k] = V_pred[i, j, k] - dt * s[i, j, k] * (mtg[i, j+1, k] - mtg[i, j, k]) / dy
+
+	# Diagnose predicted values for the velocities
+	u_unstg_pred = self._get_velocity(i, j, k, s_pred, U_pred)
+	u_unstg_pred_mtg = self._get_velocity(i, j, k, s_pred, U_pred_mtg)
+	v_unstg_pred = self._get_velocity(i, j, k, s_pred, V_pred)
+	v_unstg_pred_mtg = self._get_velocity(i, j, k, s_pred, V_pred_mtg)
+
+	# Get the fluxes
+	self._flux_s_x = self._get_maccormack_flux_x(i, j, k, U, U_pred_mtg)
+	self._flux_s_y = self._get_maccormack_flux_y(i, j, k, V, V_pred_mtg)
+	self._flux_U_x = self._get_maccormack_flux_x(i, j, k, u_unstg, U, u_unstg_pred, U_pred)
+	self._flux_U_y = self._get_maccormack_flux_y(i, j, k, v_unstg, U, v_unstg_pred, U_pred)
+	self._flux_V_x = self._get_maccormack_flux_x(i, j, k, u_unstg, V, u_unstg_pred, V_pred)
+	self._flux_V_y = self._get_maccormack_flux_y(i, j, k, v_unstg, V, v_unstg_pred, V_pred)
+	
+	if self._imoist:
+		self._flux_Qv_x = self._get_maccormack_flux_x(i, j, k, u_unstg, Qv, u_unstg_pred_mtg, Qv_pred)
+		self._flux_Qv_y = self._get_maccormack_flux_y(i, j, k, v_unstg, Qv, v_unstg_pred_mtg, Qv_pred)
+		self._flux_Qc_x = self._get_maccormack_flux_x(i, j, k, u_unstg, Qc, u_unstg_pred_mtg, Qc_pred)
+		self._flux_Qc_y = self._get_maccormack_flux_y(i, j, k, v_unstg, Qc, v_unstg_pred_mtg, Qc_pred)
+		self._flux_Qr_x = self._get_maccormack_flux_x(i, j, k, u_unstg, Qr, u_unstg_pred_mtg, Qr_pred)
+		self._flux_Qr_y = self._get_maccormack_flux_y(i, j, k, v_unstg, Qr, v_unstg_pred_mtg, Qr_pred)
