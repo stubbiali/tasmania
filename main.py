@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-Script for building up and running a three-dimensional moist isentropic model, according 
+Script for building and simulating a three-dimensional moist isentropic model, according 
 to the model, physical and numerical settings specified in the :mod:`namelist` module.
 
 Warning
@@ -40,7 +40,7 @@ user_namelist = None if len(sys.argv) == 1 else sys.argv[1]
 utils.set_namelist(user_namelist)
 
 from grids.xyz_grid import XYZGrid as Grid
-from dycore.isentropic_dycore import IsentropicDynamicalCore
+from dycore.dycore import DynamicalCoreIsentropic
 from model import Model
 import namelist as nl
 
