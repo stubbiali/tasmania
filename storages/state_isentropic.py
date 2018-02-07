@@ -31,7 +31,7 @@ from storages.grid_data import GridData
 from utils import smaller_than as lt
 from utils import reverse_colormap
 
-class IsentropicState(GridData):
+class StateIsentropic(GridData):
 	"""
 	This class inherits :class:`~storages.grid_data.GridData` to represent the state of the three-dimensional 
 	(moist) isentropic model.

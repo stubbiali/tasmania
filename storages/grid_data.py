@@ -29,16 +29,15 @@ import utils
 class GridData:
 	"""
 	Class storing and handling time-dependent variables defined on a grid. Ideally, this class should be used to 
-	represent the state, or a sequence of states, of a *generic* climate or meteorological model. The model variables, 
-	in the shape of :class:`numpy.ndarray`s, are passed to the constructor as keyword arguments. After conversion to 
-	:class:`xarray.DataArray`s, the variables are packed in a dictionary whose keys are the input keywords. The 
-	class attribute :data:`units` lists, for any admissible keyword, the units in which the associated field should 
-	be expressed. Any variable can be accessed in read-only mode via the accessor operator by specifying the 
-	corresponding keyword. Other methods are provided to update the state, or to create a sequence of states 
-	(useful for animation purposes). 
-	This class is designed be as general as possible. Hence, it is not endowed with any method whose
-	implementation depends on the variables actually stored by the class. This kind of methods will be 
-	provided by the derived classes, each one representing the state of a *specific* model.
+	represent the state, or a sequence of states at different time levels, of a *generic* climate or meteorological model. 
+	The model variables, in the shape of :class:`numpy.ndarray`s, are passed to the constructor as keyword arguments. 
+	After conversion to :class:`xarray.DataArray`s, the variables are packed in a dictionary whose keys are the input keywords. 
+	The class attribute :data:`units` lists, for any admissible keyword, the units in which the associated field should 
+	be expressed. Any variable can be accessed in read-only mode via the accessor operator by specifying the corresponding 
+	keyword. Other methods are provided to update the state, or to create a sequence of states (useful for animation purposes). 
+	This class is designed to be as general as possible. Hence, it is not endowed with any method whose
+	implementation depends on the variables actually stored by the class. This kind of methods might be provided by some 
+	derived classes, each one representing the state of a *specific* model.
 	"""
 	# Specify the units in which variables should be expressed
 	units = {
