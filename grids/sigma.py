@@ -9,72 +9,88 @@ import xarray as xr
 
 import namelist as nl 
 from grids.axis import Axis
-from grids.xy_grid import XYGrid
-from grids.xyz_grid import XYZGrid
-from grids.xz_grid import XZGrid
+from grids.grid_xy import GridXY
+from grids.grid_xyz import GridXYZ
+from grids.grid_xz import GridXZ
 from utils import equal_to as eq
 from utils import smaller_than as lt
 from utils import smaller_or_equal_than as le
 
-class Sigma2d(XZGrid):
+class Sigma2d(GridXZ):
 	"""
-	This class inherits :class:`~grids.xz_grid.XZGrid` to represent a rectangular and regular
+	This class inherits :class:`~grids.grid_xz.GridXZ` to represent a rectangular and regular
 	two-dimensional grid embedded in a reference system whose coordinates are
-		* the horizontal coordinate :math:`x`, and 
+		* the horizontal coordinate :math:`x`; 
 		* the pressure-based terrain-following coordinate :math:`\sigma = p / p_{SL}`, \
-			where :math:`p` is the pressure and :math:`p_{SL}` the pressure at the \
-			sea level. 	
-	The vertical coordinate :math:`\sigma` may be formulated to define a hybrid terrain-
-	following coordinate system with terrain-following coordinate lines between the 
-	surface terrain-height and :math:`\sigma = \sigma_F`, where :math:`\sigma`-coordinate 
-	lines change back to flat horizontal lines. 
+			where :math:`p` is the pressure and :math:`p_{SL}` the pressure at the sea level. 	
+	The vertical coordinate :math:`\sigma` may be formulated to define a hybrid terrain-following coordinate system 
+	with terrain-following coordinate lines between the surface terrain-height and :math:`\sigma = \sigma_F`, where 
+	:math:`\sigma`-coordinate lines change back to flat horizontal lines. 
 
-	Attributes:
-		x (obj): :class:`~grids.axis.Axis` object representing the :math:`x`-axis.
-		nx (int): Number of grid points along :math:`x`.
-		dx (float): The :math:`x`-spacing.
-		z (obj): :class:`~grids.axis.Axis` object storing the :math:`\sigma`-main levels.
-		z_half_levels (obj): :class:`~grids.axis.Axis` object storing the :math:`\sigma`-half levels.
-		nz (int): Number of vertical main levels.
-		dz (float): The :math:`\sigma`-spacing.
-		z_interface (float): The interface coordinate :math:`\sigma_F`.
-		height (obj): :class:`xarray.DataArray` storing the geometrical height at
-			the main levels.
-		height_half_levels (obj): :class:`xarray.DataArray` storing the geometrical height at
-			the half levels.
-		height_interface (float): geometrical height corresponding to :math:`\sigma = \sigma_F`.
-		reference_pressure (obj): :class:`xarray.DataArray` storing the geometrical height at
-			the main levels.
-		reference_pressure_half_levels (obj): :class:`xarray.DataArray` storing the geometrical 
-			height at the half levels.
+	Attributes
+	----------
+	x : obj
+		:class:`~grids.axis.Axis` representing the :math:`x`-axis.
+	nx : int
+		Number of grid points along :math:`x`.
+	dx : float
+		The :math:`x`-spacing.
+	z : obj
+		:class:`~grids.axis.Axis` representing the :math:`\sigma`-main levels.
+	z_half_levels : obj
+		:class:`~grids.axis.Axis` representing the :math:`\sigma`-half levels.
+	nz : int
+		Number of vertical main levels.
+	dz : float
+		The :math:`\sigma`-spacing.
+	z_interface : float
+		The interface coordinate :math:`\sigma_F`.
+	height : obj 
+		:class:`xarray.DataArray` representing the geometric height of the main levels.
+	height_half_levels : obj 
+		:class:`xarray.DataArray` representing the geometric height of the half levels.
+	height_interface : float
+		Geometric height corresponding to :math:`\sigma = \sigma_F`.
+	reference_pressure : obj
+		:class:`xarray.DataArray` representing the reference pressure at the main levels.
+	reference_pressure_half_levels : obj
+		:class:`xarray.DataArray` representing the reference pressure at the half levels.
 	"""
-	def __init__(self, domain_x, nx, domain_z, nz, 
-				 units_x = 'm', dims_x = 'x',
-				 z_interface = None,
-				 topo_type = 'terrain_flat', topo_time = timedelta(), **kwargs):
+	def __init__(self, domain_x, nx, domain_z, nz, units_x = 'm', dims_x = 'x', z_interface = None,
+				 topo_type = 'flat_terrain', topo_time = timedelta(), **kwargs):
 		""" 
 		Constructor.
 
-		Args:
-			domain_x (tuple): Tuple in the form :math:`(x_{left}, ~ x_{right})`.
-			nx (int): Number of grid points in the :math:`x`-direction.
-			domain_z (tuple): Tuple in the form :math:`(\sigma_{top}, ~ \sigma_{surface})`.
-			nz (int): Number of vertical main levels.
-			units_x (`str`, optional): Units for the :math:`x`-coordinate. Must be compliant
-				with the `CF Conventions <http://cfconventions.org>`_ (see also
-				:meth:`grids.axis.Axis.__init__`).
-			dims_x (`str`, optional): Label for the :math:`x`-coordinate.
-			z_interface (`float`, optional): Interface value :math:`\sigma_F`. If not specified,
-				it is assumed that :math:`\sigma_F = \sigma_T`, with :math:`\sigma_T` the value 
-				of :math:`\sigma` at the top of the domain. In other words, a fully terrain-following 
-				coordinate system is supposed.
-			topo_type (`str`, optional): Topography type. See :mod:`grids.topography`
-				for further details.
-			topo_time (`obj`, optional): :class:`datetime.timedelta` representing the simulation time after 
-				which the topography should stop increasing. Default is 0, corresponding to a time-invariant 
-				terrain surface-height. See :mod:`grids.topography` for further details.
-			**kwargs: keyword arguments to be forwarded to the constructor of 
-				:class:`~grids.topography.Topography1d`.
+		Parameters
+		----------
+		domain_x : tuple
+			Tuple in the form :math:`(x_{left}, ~ x_{right})`.
+		nx : int
+			Number of grid points in the :math:`x`-direction.
+		domain_z : tuple
+			Tuple in the form :math:`(\sigma_{top}, ~ \sigma_{surface})`.
+		nz : int 
+			Number of vertical main levels.
+		units_x : `str`, optional
+			Units for the :math:`x`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
+			(see also :meth:`grids.axis.Axis.__init__`).
+		dims_x : `str`, optional
+			Label for the :math:`x`-coordinate.
+		z_interface : `float`, optional
+			Interface value :math:`\sigma_F`. If not specified, it is assumed that :math:`\sigma_F = \sigma_T`, 
+			with :math:`\sigma_T` the value of :math:`\sigma` at the top of the domain. In other words, a fully 
+			terrain-following coordinate system is supposed.
+		topo_type : `str`, optional
+			Topography type. Default is 'flat_terrain'. See :mod:`grids.topography` for further details.
+		topo_time : `obj`, optional
+			:class:`datetime.timedelta` representing the simulation time after which the topography should stop 
+			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. See :mod:`grids.topography` 
+			for further details.
+
+		Keyword arguments
+		-----------------
+		**kwargs : 
+			Keyword arguments to be forwarded to the constructor of :class:`~grids.topography.Topography1d`.
 		"""
 		# Preliminary checks
 		if not (le(0., domain_z[0]) or eq(domain_z[1], 1.)):
@@ -90,15 +106,17 @@ class Sigma2d(XZGrid):
 		self.height_interface = nl.Rd / nl.g * np.log(1 / self.z_interface) * \
 				  				(nl.T_sl - 0.5 * nl.beta * np.log(1 / self.z_interface))
 
-		# Compute geometrical height and refence pressure
+		# Compute geometric height and refence pressure
 		self._update_metric_terms()
 
 	def update_topography(self, time):
 		"""
 		Update the (time-dependent) topography. In turn, the metric terms are re-computed.
 
-		Args:
-			time (obj): :class:`datetime.timedelta` representing the elapsed simulation time.
+		Parameters
+		----------
+		time : obj
+			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
 		self.topography.update(time)
 		self._update_metric_terms()
@@ -107,12 +125,15 @@ class Sigma2d(XZGrid):
 		"""
 		Plot the grid half levels using :mod:`matplotlib.pyplot`'s utilities.
 
-		Note:
-			For the sake of compliancy with the notation employed by `COSMO <http://www.cosmo-model.org>`_,
-			the vertical geometrical height is denoted by :math:`z`. 
+		Keyword arguments
+		-----------------
+		**kwargs : 
+			Keyword arguments to be forwarded to :func:`matplotlib.pyplot.subplots`.
 
-		Args:
-			**kwargs: Keyword arguments to be forwarded to :func:`matplotlib.pyplot.subplots`.
+		Note
+		----
+		For the sake of compliancy with the notation employed by `COSMO <http://www.cosmo-model.org>`_,
+		the vertical geometric height is denoted by :math:`z`. 
 		"""
 		if not kwargs:
 			kwargs = {'figsize': [11,8]}
@@ -140,10 +161,9 @@ class Sigma2d(XZGrid):
 
 	def _update_metric_terms(self):
 		"""
-		Update the class by computing the metric terms, i.e., the geometrical height and the 
-		reference pressure, at both half and main levels. In doing this, a logarithmic vertical 
-		profile of reference pressure is assumed. This method should be called every time
-		the topography is updated or changed.
+		Update the class by computing the metric terms, i.e., the geometric height and the reference pressure, 
+		at both half and main levels. In doing this, a logarithmic vertical profile of reference pressure is assumed. 
+		This method should be called every time the topography is updated or changed.
 		"""
 		# Shortcuts
 		hs = self.topography.topo.values
@@ -170,7 +190,7 @@ class Sigma2d(XZGrid):
 			(p0_hl, coords = [self.x.values, self.z_half_levels.values],
 			 dims = [self.x.dims, self.z_half_levels.dims], attrs = {'units': 'Pa'})
 
-		# Half levels geometrical height
+		# Half levels geometric height
 		if eq(nl.beta, 0.):
 			z_hl = nl.Rd * nl.T_sl / nl.g * np.log(nl.p_sl / p0_hl)
 		else:
@@ -184,82 +204,93 @@ class Sigma2d(XZGrid):
 		self.reference_pressure = xr.DataArray(0.5 * (p0_hl[:,:-1] + p0_hl[:,1:]), 
 											   coords = [self.x.values, self.z.values],
 											   dims = [self.x.dims, self.z.dims], attrs = {'units': 'Pa'})
-		# Main levels geometrical height
+		# Main levels geometric height
 		self.height = xr.DataArray(0.5 * (z_hl[:,:-1] + z_hl[:,1:]),
 								   coords = [self.x.values, self.z.values],
 								   dims = [self.x.dims, self.z.dims], attrs = {'units': 'm'})
 
-class Sigma3d(XYZGrid):
+class Sigma3d(GridXYZ):
 	"""
-	This class inherits :class:`~grids.xyz_grid.XYZGrid` to represent a rectangular and regular
-	computational grid embedded in a three-dimensional terrain-following reference system, whose 
-	coordinates are:
+	This class inherits :class:`~grids.grid_xyz.GridXYZ` to represent a rectangular and regular computational grid 
+	embedded in a three-dimensional terrain-following reference system, whose coordinates are:
 		* first horizontal coordinate :math:`x`, e.g., the longitude;
 		* second horizontal coordinate :math:`y`, e.g., the latitude;
 		* the pressure-based terrain-following coordinate :math:`\sigma = p / p_{SL}`, \
-			where :math:`p` is the pressure and :math:`p_{SL}` the pressure at the \
-			sea level. 	
-	The vertical coordinate :math:`\sigma` may be formulated to define a hybrid terrain-
-	following coordinate system with terrain-following coordinate lines between the 
-	surface terrain-height and :math:`\sigma = \sigma_F`, where :math:`\sigma`-coordinate 
-	lines change back to flat horizontal lines. 
+			where :math:`p` is the pressure and :math:`p_{SL}` the pressure at the sea level. 	
+	The vertical coordinate :math:`\sigma` may be formulated to define a hybrid terrain-following coordinate system 
+	with terrain-following coordinate lines between the surface terrain-height and :math:`\sigma = \sigma_F`, where 
+	:math:`\sigma`-coordinate lines change back to flat horizontal lines. 
 
-	Attributes:
-		x (obj): :class:`~grids.axis.Axis` object representing the :math:`x`-axis.
-		nx (int): Number of grid points along :math:`x`.
-		dx (float): The :math:`x`-spacing.
-		y (obj): :class:`~grids.axis.Axis` object representing the :math:`y`-axis.
-		ny (int): Number of grid points along :math:`y`.
-		dy (float): The :math:`y`-spacing.
-		z (obj): :class:`~grids.axis.Axis` object storing the :math:`\sigma`-main levels.
-		z_half_levels (obj): :class:`~grids.axis.Axis` object storing the :math:`\sigma`-half levels.
-		nz (int): Number of vertical main levels.
-		dz (float): The :math:`\sigma`-spacing.
-		z_interface (float): The interface coordinate :math:`\sigma_F`.
-		height (obj): :class:`xarray.DataArray` storing the geometrical height at
-			the main levels.
-		height_half_levels (obj): :class:`xarray.DataArray` storing the geometrical height at
-			the half levels.
-		height_interface (float): geometrical height corresponding to :math:`\sigma = \sigma_F`.
-		reference_pressure (obj): :class:`xarray.DataArray` storing the geometrical height at
-			the main levels.
-		reference_pressure_half_levels (obj): :class:`xarray.DataArray` storing the geometrical 
-			height at the half levels.
+	Attributes
+	----------
+	xy_grid : obj
+		:class:`~grids.grid_xy.GridXY` representing the horizontal grid.
+	z : obj
+		:class:`~grids.axis.Axis` representing the :math:`\sigma`-main levels.
+	z_half_levels : obj
+		:class:`~grids.axis.Axis` representing the :math:`\sigma`-half levels.
+	nz : int
+		Number of vertical main levels.
+	dz : float
+		The :math:`\sigma`-spacing.
+	z_interface : float
+		The interface coordinate :math:`\sigma_F`.
+	height : obj
+		:class:`xarray.DataArray` representing the geometric height of the main levels.
+	height_half_levels : obj
+		:class:`xarray.DataArray` representing the geometric height of the half levels.
+	height_interface : float
+		Geometric height corresponding to :math:`\sigma = \sigma_F`.
+	reference_pressure : obj
+		:class:`xarray.DataArray` storing the reference pressure at the main levels.
+	reference_pressure_half_levels : obj
+		:class:`xarray.DataArray` storing the reference pressure at the half levels.
 	"""
 	def __init__(self, domain_x, nx, domain_y, ny, domain_z, nz, 
-				 units_x = 'degrees_east', dims_x = 'longitude', 
-				 units_y = 'degrees_north', dims_y = 'latitude', 
-				 z_interface = None,
-				 topo_type = 'terrain_flat', topo_time = timedelta(), **kwargs):
+				 units_x = 'degrees_east', dims_x = 'longitude', units_y = 'degrees_north', dims_y = 'latitude', 
+				 z_interface = None, topo_type = 'flat_terrain', topo_time = timedelta(), **kwargs):
 		""" 
 		Constructor.
 
-		Args:
-			domain_x (tuple): Tuple in the form :math:`(x_{left}, ~ x_{right})`.
-			nx (int): Number of grid points in the :math:`x`-direction.
-			domain_y (tuple): Tuple in the form :math:`(y_{left}, ~ y_{right})`.
-			ny (int): Number of grid points in the :math:`y`-direction.
-			domain_z (tuple): Tuple in the form :math:`(\sigma_{top}, ~ \sigma_{surface})`.
-			nz (int): Number of vertical main levels.
-			units_x (`str`, optional): Units for the :math:`x`-coordinate. Must be compliant
-				with the `CF Conventions <http://cfconventions.org>`_ (see also
-				:meth:`grids.axis.Axis.__init__`).
-			dims_x (`str`, optional): Label for the :math:`x`-coordinate.
-			units_y (`str`, optional): Units for the :math:`y`-coordinate. Must be compliant
-				with the `CF Conventions <http://cfconventions.org>`_ (see also
-				:meth:`grids.axis.Axis.__init__`).
-			dims_y (`str`, optional): Label for the :math:`y`-coordinate.
-			z_interface (`float`, optional): Interface value :math:`\sigma_F`. If not specified,
-				it is assumed that :math:`\sigma_F = \sigma_T`, with :math:`\sigma_T` the value of 
-				:math:`\sigma` at the top of the domain. In other words, a fully terrain-following 
-				coordinate system is supposed.
-			topo_type (`str`, optional): Topography type. See :mod:`grids.topography`
-				for further details.
-			topo_time (`obj`, optional): :class:`datetime.timedelta` representing the simulation time after 
-				which the topography should stop increasing. Default is 0, corresponding to a time-invariant 
-				terrain surface-height. See :mod:`grids.topography` for further details.
-			**kwargs: keyword arguments to be forwarded to the constructor of 
-				:class:`~grids.topography.Topography2d`.
+		Parameters
+		----------
+		domain_x : tuple
+			Tuple in the form :math:`(x_{left}, ~ x_{right})`.
+		nx : int
+			Number of grid points in the :math:`x`-direction.
+		domain_y : tuple
+			Tuple in the form :math:`(y_{left}, ~ y_{right})`.
+		ny : int
+			Number of grid points in the :math:`y`-direction.
+		domain_z : tuple
+			Tuple in the form :math:`(\sigma_{top}, ~ \sigma_{surface})`.
+		nz : int
+			Number of vertical main levels.
+		units_x : `str`, optional
+			Units for the :math:`x`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
+			(see also :meth:`grids.axis.Axis.__init__`).
+		dims_x : `str`, optional
+			Label for the :math:`x`-coordinate.
+		units_y : `str`, optional
+			Units for the :math:`y`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
+			(see also :meth:`grids.axis.Axis.__init__`).
+		dims_y : `str`, optional
+			Label for the :math:`y`-coordinate.
+		z_interface : `float`, optional
+			Interface value :math:`\sigma_F`. If not specified, it is assumed that :math:`\sigma_F = \sigma_T`, 
+			with :math:`\sigma_T` the value of  :math:`\sigma` at the top of the domain. In other words, a fully 
+			terrain-following coordinate system is supposed.
+		topo_type : `str`, optional
+			Topography type. Default is 'flat_terrain'. See :mod:`grids.topography` for further details.
+		topo_time : `obj`, optional
+			:class:`datetime.timedelta` representing the simulation time after which the topography should stop 
+			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. 
+			See :mod:`grids.topography` for further details.
+
+		Keyword arguments
+		-----------------
+		**kwargs : 
+			Keyword arguments to be forwarded to the constructor of :class:`~grids.topography.Topography2d`.
 		"""
 		# Preliminary checks
 		if not (le(0., domain_z[0]) or eq(domain_z[1], 1.)):
@@ -276,25 +307,26 @@ class Sigma3d(XYZGrid):
 		self.height_interface = nl.Rd / nl.g * np.log(1 / self.z_interface) * \
 				  				(nl.T_sl - 0.5 * nl.beta * np.log(1 / self.z_interface))
 
-		# Compute geometrical height and refence pressure
+		# Compute geometric height and refence pressure
 		self._update_metric_terms()
 
 	def update_topography(self, time):
 		"""
 		Update the (time-dependent) topography. In turn, the metric terms are re-computed.
 
-		Args:
-			time (obj): :class:`datetime.timedelta` representing the elapsed simulation time.
+		Parameters
+		----------
+		time : obj
+			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
 		self.topography.update(time)
 		self._update_metric_terms()
 
 	def _update_metric_terms(self):
 		"""
-		Update the class by computing the metric terms, i.e., the geometrical height and the 
-		reference pressure, at both half and main levels. In doing this, a logarithmic vertical 
-		profile of reference pressure is assumed. This method should be called every time
-		the topography is updated or changed.
+		Update the class by computing the metric terms, i.e., the geometric height and the reference pressure, 
+		at both half and main levels. In doing this, a logarithmic vertical profile of reference pressure is assumed. 
+		This method should be called every time the topography is updated or changed.
 		"""
 		# Shortcuts
 		hs = np.repeat(self.topography.topo.values[:,:,np.newaxis], self.nz+1, axis = 2)
@@ -320,7 +352,7 @@ class Sigma3d(XYZGrid):
 			coords = [self.x.values, self.y.values, self.z_half_levels.values],
 			dims = [self.x.dims, self.y.dims, self.z_half_levels.dims], attrs = {'units': 'Pa'})
 
-		# Half levels geometrical height
+		# Half levels geometric height
 		if eq(nl.beta, 0.):
 			z_hl = nl.Rd * nl.T_sl / nl.g * np.log(nl.p_sl / p0_hl)
 		else:
@@ -335,7 +367,7 @@ class Sigma3d(XYZGrid):
 			coords = [self.x.values, self.y.values, self.z.values],
 			dims = [self.x.dims, self.y.dims, self.z.dims], attrs = {'units': 'Pa'})
 
-		# Main levels geometrical height
+		# Main levels geometric height
 		self.height = xr.DataArray(0.5 * (z_hl[:,:,:-1] + z_hl[:,:,1:]),
 			coords = [self.x.values, self.y.values, self.z.values],
 			dims = [self.x.dims, self.y.dims, self.z.dims], attrs = {'units': 'm'})

@@ -12,36 +12,36 @@ class Model:
 
 		Parameters
 		----------
-			dynamical_core : obj 
-				An instance of :class:`~dycore.dycore.DynamicalCore` or one of its derived classes, implementing a dynamical core.
-			diagnostics : `list`, optional 
-				List of diagnostics. Default is empty.
+		dynamical_core : obj 
+			An instance of :class:`~dycore.dycore.DynamicalCore` or one of its derived classes, implementing a dynamical core.
+		diagnostics : `list`, optional 
+			List of diagnostics. Default is empty.
 		"""
 		self._dycore = dynamical_core
 		self._diagnostics = diagnostics
 
-	def __call__(self, dt, simulation_time, state, save_freq = 0):
+	def __call__(self, dt, simulation_time, state, save_iterations = []):
 		"""
 		Call operator integrating the model forward in time.
 
 		Parameters
 		----------
-			dt : obj
-				:class:`datetime.timedelta` representing the time step.
-			simulation_time : obj
-				:class:`datetime.timedelta` representing the simulation time.
-			state : obj
-				The initial state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
-			save_freq : `int`, optional
-				The number of iterations between two consecutive saved states. Default is 0, meaning that only the
-				initial and final states are saved.
+		dt : obj
+			:class:`datetime.timedelta` representing the time step.
+		simulation_time : obj
+			:class:`datetime.timedelta` representing the simulation time.
+		state : obj
+			The initial state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+		save_freq : `tuple`, optional
+			The iterations at which the state should be saved. Default is empty, meaning that only the initial and 
+			final states are saved.
 
 		Returns
 		-------
-			state_out : obj
-				The final state, of the same class of :data:`state`.
-			state_save : obj
-				The sequence of saved states, of the same class of :data:`state`.
+		state_out : obj
+			The final state, of the same class of :data:`state`.
+		state_save : obj
+			The sequence of saved states, of the same class of :data:`state`.
 		"""
 		# Initialize the control variables and copy the timestep
 		steps = 0
@@ -80,8 +80,10 @@ class Model:
 				  % (steps, cfl, u_max, u_min, v_max, v_min))
 
 			# Save, if needed
-			if (save_freq > 0 and steps % save_freq == 0) or elapsed_time == simulation_time:
+			if (steps in save_iterations) or (elapsed_time == simulation_time):
+				state_save.grid.update_topography(elapsed_time)
 				state_save.append(state_out)
+				print('Step %6.i saved' % (steps))
 
 		return state_out, state_save
 

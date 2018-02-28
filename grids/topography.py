@@ -50,33 +50,54 @@ from utils import smaller_than as lt
 
 class Topography1d:
 	"""
-	One-dimensional topography.
+	Class representing a one-dimensional topography.
 	
-	Attributes:
-		topo (array_like): A :class:`xarray.DataArray` storing the topography (in meters).
-		topo_type (str): Topography type. Either 'flat_terrain', 'gaussian' or 'user_defined'.
-		topo_time (obj): :class:`datetime.timedelta` object representing the elapsed simulation time
-			after which the topography should stop increasing.
-		topo_fact (float): Topography factor. It runs in between 0 (at the beginning of the 
-			simulation) and 1 (once the simulation has been run for :attr:`topo_time` seconds).
+	Attributes
+	----------
+	topo : array_like
+		:class:`xarray.DataArray` representing the topography (in meters).
+	topo_type : str
+		Topography type. Either:
+
+			* 'flat_terrain'; 
+			* 'gaussian';
+			* 'user_defined'.
+
+	topo_time : obj
+		:class:`datetime.timedelta` object representing the elapsed simulation time after which the topography 
+		should stop increasing.
+	topo_fact : float
+		Topography factor. It runs in between 0 (at the beginning of the simulation) and 1 (once the simulation 
+		has been run for :attr:`topo_time`).
 	"""
 	def __init__(self, x, topo_type = 'flat_terrain', topo_time = timedelta(), **kwargs):
 		"""
 		Constructor.
 
-		Args:
-			x (obj): :class:`~grids.axis.Axis` object representing the underlying horizontal axis.
-			topo_type (`str`, optional): Topography type. Either 'flat_terrain' (default), 'gaussian'
-				or 'user_defined'.
-			topo_time (obj): :class:`datetime.timedelta` object representing the elapsed simulation time
-				after which the topography should stop increasing. Default is 0, corresponding to a 
-				time-invariant terrain surface-height.
-			**topo_max_height (float): When :data:`topo_type` is 'gaussian', maximum mountain 
-				height (in meters). Default is 500.
-			**topo_width_x (float): When :data:`topo_type` is 'gaussian', mountain half-width 
-				(in meters). Default is 10000.
-			**topo_str (str): When :data:`topo_type` is 'user_defined', terrain profile expression
-				in the independent variable :math:`x`. Must be fully C++-compliant.
+		Parameters
+		----------
+		x : obj
+			:class:`~grids.axis.Axis` representing the underlying horizontal axis.
+		topo_type : `str`, optional
+			Topography type. Either: 
+			
+				* 'flat_terrain' (default); 
+				* 'gaussian';
+				* 'user_defined'.
+
+		topo_time : obj
+			class:`datetime.timedelta` representing the elapsed simulation time after which the topography 
+			should stop increasing. Default is 0, corresponding to a time-invariant terrain surface-height.
+
+		Keyword arguments
+		-----------------
+		topo_max_height : float
+			When :data:`topo_type` is 'gaussian', maximum mountain height (in meters). Default is 500.
+		topo_width_x : float
+			When :data:`topo_type` is 'gaussian', mountain half-width (in meters). Default is 10000.
+		topo_str : str
+			When :data:`topo_type` is 'user_defined', terrain profile expression in the independent variable :math:`x`. 
+			Must be fully C++-compliant.
 		"""
 		if topo_type not in ['flat_terrain', 'gaussian', 'user_defined']:
 			raise ValueError("""Unknown topography type. Supported types are:
@@ -114,8 +135,10 @@ class Topography1d:
 		"""
 		Update topography at current simulation time.
 
-		Args:
-			time (obj): :class:`datetime.timedelta` object, representing the elapsed simulation time.
+		Parameters
+		----------
+		time : obj
+			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
 		if lt(self.topo_fact, 1.):
 			self.topo_fact = min(time / self.topo_time, 1.)
@@ -124,35 +147,61 @@ class Topography1d:
 
 class Topography2d:
 	"""
-	Two-dimensional topography.
+	Class representing a two-dimensional topography.
 
-	Attributes:
-		topo (array_like): A :class:`xarray.DataArray` storing the topography (in meters).
-		topo_type (str): Topography type. Either 'flat_terrain', 'gaussian', 'schaer' or 'user_defined'.
-		topo_time (obj): :class:`datetime.timedelta` object representing the elapsed simulation time
-			after which the topography should stop increasing.
-		topo_fact (float): Topography factor. It runs in between 0 (at the beginning of the 
-			simulation) and 1 (once the simulation has been run for :attr:`topo_time` seconds).
+	Attributes
+	----------
+	topo : array_like
+		:class:`xarray.DataArray` representing the topography (in meters).
+	topo_type : str
+		Topography type. Either: 
+		
+			* 'flat_terrain';
+			* 'gaussian'; 
+			* 'schaer';
+			* 'user_defined'.
+
+	topo_time : obj
+		:class:`datetime.timedelta` representing the elapsed simulation time after which the topography 
+		should stop increasing.
+	topo_fact : float
+		Topography factor. It runs in between 0 (at the beginning of the simulation) and 1 (once the simulation 
+		has been run for :attr:`topo_time`).
 	"""
 	def __init__(self, grid, topo_type = 'flat_terrain', topo_time = timedelta(), **kwargs):
 		"""
 		Constructor.
 
-		Args:
-			grid (obj): :class:`~grids.xy_grid.XYGrid` object representing the underlying grid.
-			topo_type (`str`, optional): Topography type. Either 'flat_terrain' (default), 'gaussian',
-				'schaer' or 'user_defined'.
-			topo_time (obj): :class:`datetime.timedelta` object representing the elapsed simulation time
-				after which the topography should stop increasing. Default is 0, corresponding to a 
-				time-invariant terrain surface-height.
-			**topo_max_height (float): When :data:`topo_type` is 'gaussian', maximum mountain 
-				height (in meters). Default is 500.
-			**topo_width_x (float): When :data:`topo_type` is 'gaussian', mountain half-width in
-				:math:`x`-direction (in meters). Default is 10000.
-			**topo_width_y (float): When :data:`topo_type` is 'gaussian', mountain half-width in
-				:math:`y`-direction (in meters). Default is 10000.
-			**topo_str (str): When :data:`topo_type` is 'user_defined', terrain profile expression
-				in the independent variables :math:`x` and :math:`y`. Must be fully C++-compliant.
+		Parameters
+		----------
+		grid : obj
+			:class:`~grids.grid_xy.GridXY` representing the underlying grid.
+		topo_type : `str`, optional
+			Topography type. Either:
+			
+				* 'flat_terrain' (default);
+				* 'gaussian';
+				* 'schaer'; 
+				* 'user_defined'.
+
+		topo_time : obj
+			:class:`datetime.timedelta` representing the elapsed simulation time after which the topography 
+			should stop increasing. Default is 0, corresponding to a time-invariant terrain surface-height.
+
+		Keyword arguments
+		-----------------
+		topo_max_height : float
+			When :data:`topo_type` is either 'gaussian' or 'schaer', maximum mountain height (in meters). 
+			Default is 500.
+		topo_width_x : float
+			When :data:`topo_type` is either 'gaussian' or 'schaer', mountain half-width in :math:`x`-direction 
+			(in meters). Default is 10000.
+		topo_width_y : float
+			When :data:`topo_type` is either 'gaussian' or 'schaer', mountain half-width in	:math:`y`-direction 
+			(in meters). Default is 10000.
+		topo_str : str
+			When :data:`topo_type` is 'user_defined', terrain profile expression in the independent variables 
+			:math:`x` and :math:`y`. Must be fully C++-compliant.
 		"""
 		if topo_type not in ['flat_terrain', 'gaussian', 'schaer', 'user_defined']:
 			raise ValueError("""Unknown topography type. Supported types are: ' 
@@ -208,8 +257,10 @@ class Topography2d:
 		"""
 		Update topography at current simulation time.
 
-		Args:
-			time (obj): :class:`datetime.timedelta` object, representing the elapsed simulation time.
+		Parameters
+		----------
+		time : obj
+			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
 		if lt(self.topo_fact, 1.):
 			self.topo_fact = min(time / self.topo_time, 1.)
@@ -219,9 +270,15 @@ class Topography2d:
 		"""
 		Plot the topography using the `mplot3d toolkit <https://matplotlib.org/tutorials/toolkits/mplot3d.html>`_.
 
-		Args:
-			grid (obj): :class:`~grids.xy_grid.XYGrid` object representing the underlying grid.
-			**kwargs: Keyword arguments to be forwarded to :func:`matplotlib.pyplot.figure`.
+		Parameters
+		----------
+		grid : obj
+			:class:`~grids.grid_xy.GridXY` representing the underlying grid.
+
+		Keyword arguments
+		-----------------
+		**kwargs :
+			Keyword arguments to be forwarded to :func:`matplotlib.pyplot.figure`.
 		"""
 		nx, ny = grid.nx, grid.ny
 		xv, yv = grid.x.values, grid.y.values

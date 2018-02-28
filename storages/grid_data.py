@@ -8,34 +8,50 @@ class GridData:
 	"""
 	Class storing and handling time-dependent variables defined on a grid. Ideally, this class should be used to 
 	represent the state, or a sequence of states at different time levels, of a *generic* climate or meteorological model. 
-	The model variables, in the shape of :class:`numpy.ndarray`s, are passed to the constructor as keyword arguments. 
-	After conversion to :class:`xarray.DataArray`s, the variables are packed in a dictionary whose keys are the input keywords. 
+	The model variables, in the shape of :class:`numpy.ndarray`\s, are passed to the constructor as keyword arguments. 
+	After conversion to :class:`xarray.DataArray`\s, the variables are packed in a dictionary whose keys are the input keywords. 
 	The class attribute :data:`units` lists, for any admissible keyword, the units in which the associated field should 
 	be expressed. Any variable can be accessed in read-only mode via the accessor operator by specifying the corresponding 
 	keyword. Other methods are provided to update the state, or to create a sequence of states (useful for animation purposes). 
 	This class is designed to be as general as possible. Hence, it is not endowed with any method whose
 	implementation depends on the variables actually stored by the class. This kind of methods might be provided by some 
 	derived classes, each one representing the state of a *specific* model.
+
+	Attributes
+	----------
+	grid : obj
+		The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 	"""
 	# Specify the units in which variables should be expressed
 	units = {
-		'isentropic_density'  : 'kg m-2 K-1',
-		'x_velocity'          : 'm s-1'     ,
-		'y_velocity'          : 'm s-1'     ,
-		'pressure'            : 'Pa'        ,
-		'exner_function'      : 'm2 s-2 K-2',
-		'montgomery_potential': 'm2 s-2'    ,
-		'height'              : 'm'         ,
-		'water_vapour'        : 'kg kg-1'   ,
-		'cloud_water'         : 'kg kg-1'   ,
-		'precipitation_water' : 'kg kg-1'   ,
+		'isentropic_density'   : 'kg m-2 K-1'    ,
+		'x_velocity'           : 'm s-1'         ,
+		'y_velocity'           : 'm s-1'         ,
+		'x_momentum_isentropic': 'kg m-1 s-1 K-1',
+		'y_momentum_isentropic': 'kg m-1 s-1 K-1',
+		'pressure'             : 'Pa'            ,
+		'exner_function'       : 'm2 s-2 K-2'    ,
+		'montgomery_potential' : 'm2 s-2'        ,
+		'height'               : 'm'             ,
+		'water_vapour'         : 'kg kg-1'       ,
+		'cloud_water'          : 'kg kg-1'       ,
+		'precipitation_water'  : 'kg kg-1'       ,
 	}
 
 	def __init__(self, time, grid, **kwargs):
 		"""
 		Constructor.
+
+		Parameters
+		----------
+		time : obj
+			:class:`datetime.datetime` representing the time instant at which the variables are defined.
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		**kwargs : array_like
+			:class:`numpy.ndarray` representing a gridded variable.
 		"""
-		self._grid = grid
+		self.grid = grid
 
 		self._vars = dict()
 		for key in kwargs:
@@ -53,55 +69,103 @@ class GridData:
 
 	def __getitem__(self, key):
 		"""
-		Access a gridded variable in read-only mode.
+		Get a deep copy of a gridded variable.
+
+		Parameters
+		----------
+		key : str
+			The key corresponding to the variable to access.
+
+		Return
+		------
+		obj :
+			Deep copy of the :class:`xarray.DataArray` representing the variable.
 		"""
-		return self._vars[key]
+		return copy.deepcopy(self._vars[key])
 
 	@property
 	def time(self):
 		"""
-		Return the time at which the state corresponds.
+		Return the time at which the data are defined.
 
-		Return:
-			A :class:`datetime.datetime` object representing the current time.
+		Return
+		------
+		obj :
+			:class:`datetime.datetime` representing the time at which the data are defined.
 		"""
 		akey = list(self._vars.keys())[0]
 		return utils.convert_datetime64_to_datetime(self._vars[akey].coords['time'].values[-1])
 
-	def update(self, state_new):
+	def update(self, other):
 		"""
-		Update (some of) the gridded variables. 
+		Update (some of) the stored variables by syncing the current object with another :class:`~storages.grid_data.GridData` 
+		(or a derived class). 
 
-		Args:
-			state_new (obj): A :class:`~storages.grid_data.GridData` carrying the updated model variables.
+		Parameters
+		----------
+		other : obj 
+			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
 
-		Note:
-			:data:`state_new` is not required to carry *all* the model variables.
+		Note
+		----
+		:data:`other` is not required to contain *all* the variables stored by the current object, yet it cannot contain 
+		variables not included in the current object.
 		"""
-		for key in state_new._vars:
-			self._vars[key] = copy.deepcopy(state_new._vars[key])
+		for key in other._vars:
+			self._vars[key] = copy.deepcopy(other._vars[key])
 	
-	def append(self, state_new):
+	def append(self, other):
 		"""
 		Append a new state to the sequence of states.
 
-		Args:
-			state_new (obj): The new :class:`~storages.grid_data.GridData` to append.
+		Parameters
+		----------
+		other : obj 
+			Another :class:`~storages.grid_data.GridData` (or a derived class), whose :class:`xarray.DataArray`\s 
+			will be concatenated along the temporal axis to the corresponding ones in the current object.
+
+		Note
+		----
+		:data:`other` is supposed to contain exactly the same variables stored by the current object.
 		"""
 		for key in self._vars:
-			self._vars[key] = xr.concat([self._vars[key], copy.deepcopy(state_new[key])], 'time')
+			self._vars[key] = xr.concat([self._vars[key], copy.deepcopy(other[key])], 'time')
 
-	def get_max(self, field):
+	def get_max(self, key):
 		"""
-		Get maximum value of a field.
-		"""
-		if field in GridData.units.keys():
-			return np.amax(self._vars[field].values[:,:,:,-1])
+		Get the maximum value of a variable.
 
-	def get_min(self, field):
+		Parameters
+		----------
+		key : str
+			Key identifying the variable of interest.
+
+		Return
+		------
+		float :
+			The maximum value of the variable of interest.
 		"""
-		Get minimum value of a field.
+		if key in GridData.units.keys():
+			return np.amax(self._vars[key].values[:,:,:,-1])
+		else:
+			raise KeyError('The variable {} is not stored within the current object'.format(key))
+
+	def get_min(self, key):
 		"""
-		if field in GridData.units.keys():
-			return np.amin(self._vars[field].values[:,:,:,-1])
+		Get the minimum value of a variable.
+
+		Parameters
+		----------
+		key : str
+			Key identifying the variable of interest.
+
+		Return
+		------
+		float :
+			The minimum value of the variable of interest.
+		"""
+		if key in GridData.units.keys():
+			return np.amin(self._vars[key].values[:,:,:,-1])
+		else:
+			raise KeyError('The variable {} is not stored within the current object'.format(key))
 

@@ -35,7 +35,9 @@ extensions = ['sphinx.ext.mathjax',
     		  'sphinx.ext.githubpages',
 			  'sphinx.ext.autodoc',
 			  'sphinx.ext.intersphinx',
-			  'sphinxcontrib.napoleon']
+			  'sphinxcontrib.napoleon',
+			  'sphinx_pyreverse',
+			 ]
 
 # Intersphinx mapping.
 intersphinx_mapping = {'xarray': ('http://xarray.pydata.org/en/stable', None),
@@ -48,6 +50,7 @@ intersphinx_mapping = {'xarray': ('http://xarray.pydata.org/en/stable', None),
 napoleon_use_ivar = True
 napoleon_include_init_with_doc = True
 napoleon_include_special_with_doc = True
+napoleon_include_private_with_doc = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
