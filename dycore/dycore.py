@@ -38,8 +38,8 @@ class DynamicalCore(Prognostic):
 
 		Parameters
 		----------
-			grid : obj 
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
+		grid : obj 
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		"""
 		self._grid = grid
 
@@ -51,15 +51,15 @@ class DynamicalCore(Prognostic):
 
 		Parameters
 		----------
-			dt : obj
-				:class:`datetime.timedelta` object representing the time step.
-			state : obj 
-				The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+		dt : obj
+			:class:`datetime.timedelta` object representing the time step.
+		state : obj 
+			The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
 
 		Return
 		------
-			obj :
-				The state at the next time level. This is of the same class of :data:`state`.
+		obj :
+			The state at the next time level. This is of the same class of :data:`state`.
 		"""
 
 	@abc.abstractmethod
@@ -70,13 +70,13 @@ class DynamicalCore(Prognostic):
 
 		Parameters
 		----------
-			*args 
-				The arguments depend on the specific dynamical core which the derived class implements.
+		*args :
+			The arguments depend on the specific dynamical core which the derived class implements.
 
 		Return
 		------
-			obj :
-				The initial state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+		obj :
+			The initial state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
 		"""
 
 	def update_topography(self, time):
@@ -85,7 +85,7 @@ class DynamicalCore(Prognostic):
 
 		Parameters
 		----------
-			time : obj
-				:class:`datetime.timedelta` representing the elapsed simulation time.
+		time : obj
+			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
 		self._grid.update_topography(time)

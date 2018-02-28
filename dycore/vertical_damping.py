@@ -44,14 +44,14 @@ class VerticalDamping:
 
 		Parameters
 		----------
-			grid : obj
-				The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
-			damp_depth : int
-				Number of vertical layers in the damping region.
-			damp_max : float
-				Maximum value for the damping coefficient.
-			backend : obj
-				:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		damp_depth : int
+			Number of vertical layers in the damping region.
+		damp_max : float
+			Maximum value for the damping coefficient.
+		backend : obj
+			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
 		"""
 		# Store arguments
 		self._grid       = grid
@@ -74,20 +74,20 @@ class VerticalDamping:
 
 		Parameters
 		----------
-			dt : obj
-				:class:`datetime.timedelta` representing the time step.
-			phi_now : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the next time level, on
-				which the absorber will be applied.
-			phi_ref : array_like
-				:class:`numpy.ndarray` representing a reference value for :math:`\phi`.
+		dt : obj
+			:class:`datetime.timedelta` representing the time step.
+		phi_now : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the next time level, on
+			which the absorber will be applied.
+		phi_ref : array_like
+			:class:`numpy.ndarray` representing a reference value for :math:`\phi`.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the damped field :math:`\phi`.
+		array_like :
+			:class:`numpy.ndarray` representing the damped field :math:`\phi`.
 		"""
 	
 	@staticmethod
@@ -98,30 +98,32 @@ class VerticalDamping:
 
 		Parameters
 		----------
-			damp_type : str
-				String specifying the damper to implement. Either:
-					* 'rayleigh', for a Rayleigh damper.
-			grid : obj
-				The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
-			damp_depth : int
-				Number of vertical layers in the damping region. Default is 15.
-			damp_max : float
-				Maximum value for the damping coefficient. Default is 0.0002.
-			backend : obj
-				:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+		damp_type : str
+			String specifying the damper to implement. Either:
+
+				* 'rayleigh', for a Rayleigh damper.
+
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		damp_depth : int
+			Number of vertical layers in the damping region. Default is 15.
+		damp_max : float
+			Maximum value for the damping coefficient. Default is 0.0002.
+		backend : obj
+			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
 
 		Return
 		------
-			obj :
-				An instance of the derived class implementing the damping method specified by :data:`damp_type`.
+		obj :
+			An instance of the derived class implementing the damping method specified by :data:`damp_type`.
 		"""
 		if damp_type == 'rayleigh':
-			return Rayleigh(grid, damp_depth, damp_max, backend)
+			return VerticalDampingRayleigh(grid, damp_depth, damp_max, backend)
 		else:
 			raise ValueError('Unknown damping scheme. Available options: ''rayleigh''.')
 
 
-class Rayleigh(VerticalDamping):
+class VerticalDampingRayleigh(VerticalDamping):
 	"""
 	This class inherits :class:`VerticalDamping` to implement a Rayleigh absorber.
 	"""
@@ -131,15 +133,15 @@ class Rayleigh(VerticalDamping):
 
 		Parameters
 		----------
-			grid : obj
-				The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
-			damp_depth : int
-				Number of vertical layers in the damping region.
-			damp_max : float
-				Maximum value for the damping coefficient.
-			backend : obj
-				:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
-		"""
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		damp_depth : int
+			Number of vertical layers in the damping region.
+		damp_max : float
+			Maximum value for the damping coefficient.
+		backend : obj
+			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+	"""
 		super().__init__(grid, damp_depth, damp_max, backend)
 
 	def apply(self, dt, phi_now, phi_new, phi_ref):
@@ -148,20 +150,20 @@ class Rayleigh(VerticalDamping):
 
 		Parameters
 		----------
-			dt : obj
-				:class:`datetime.timedelta` representing the time step.
-			phi_now : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the next time level, on
-				which the absorber will be applied.
-			phi_ref : array_like
-				:class:`numpy.ndarray` representing a reference value for :math:`\phi`.
+		dt : obj
+			:class:`datetime.timedelta` representing the time step.
+		phi_now : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the next time level, on
+			which the absorber will be applied.
+		phi_ref : array_like
+			:class:`numpy.ndarray` representing a reference value for :math:`\phi`.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the damped field :math:`\phi`.
+		array_like :
+			:class:`numpy.ndarray` representing the damped field :math:`\phi`.
 		"""
 		# The first time this method is invoked, initialize the stencil
 		if self._stencil is None:
@@ -184,8 +186,8 @@ class Rayleigh(VerticalDamping):
 
 		Parameters
 		----------
-			phi_now : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
+		phi_now : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -232,17 +234,17 @@ class Rayleigh(VerticalDamping):
 
 		Parameters
 		----------
-			dt : obj
-				:class:`datetime.timedelta` representing the time step.
-			phi_now : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field :math:`\phi` at the next time level, on
-				which the absorber will be applied.
-			phi_ref : array_like
-				:class:`numpy.ndarray` representing a reference value for :math:`\phi`.
+		dt : obj
+			:class:`datetime.timedelta` representing the time step.
+		phi_now : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the current time level.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field :math:`\phi` at the next time level, on
+			which the absorber will be applied.
+		phi_ref : array_like
+			:class:`numpy.ndarray` representing a reference value for :math:`\phi`.
 		"""
-		self._dt.value = dt.seconds
+		self._dt.value = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 		self._phi_now[:,:,:] = phi_now[:,:,:]
 		self._phi_new[:,:,:] = phi_new[:,:,:]
 		self._phi_ref[:,:,:] = phi_ref[:,:,:]
@@ -253,20 +255,20 @@ class Rayleigh(VerticalDamping):
 
 		Parameters
 		----------
-			dt : obj
-				:class:`gridtools.Global` representing the time step.
-			phi_now : ibj
-				:class:`gridtools.Equation` representing the field :math:`\phi` at the current time level.
-			phi_new : obj
-				:class:`gridtools.Equation` representing the field :math:`\phi` at the next time level, on
-				which the absorber will be applied.
-			phi_ref : obj
-				:class:`gridtools.Equation` representing a reference value for :math:`\phi`.
+		dt : obj
+			:class:`gridtools.Global` representing the time step.
+		phi_now : ibj
+			:class:`gridtools.Equation` representing the field :math:`\phi` at the current time level.
+		phi_new : obj
+			:class:`gridtools.Equation` representing the field :math:`\phi` at the next time level, on
+			which the absorber will be applied.
+		phi_ref : obj
+			:class:`gridtools.Equation` representing a reference value for :math:`\phi`.
 
 		Return
 		------
-			obj :
-				:class:`gridtools.Equation` representing the damped field :math:`\phi`.
+		obj :
+			:class:`gridtools.Equation` representing the damped field :math:`\phi`.
 		"""
 		# Indeces
 		i = gt.Index()

@@ -14,7 +14,7 @@ Dynamics
 Diagnostics
 ^^^^^^^^^^^
 
-.. autoclass:: dycore.isentropic_diagnostic.IsentropicDiagnostic
+.. autoclass:: dycore.diagnostic_isentropic.DiagnosticIsentropic
    :members:
 
 Dynamical cores
@@ -23,7 +23,7 @@ Dynamical cores
 .. autoclass:: dycore.dycore.DynamicalCore
    :members:
 
-.. autoclass:: dycore.dycore.IsentropicDynamicalCore
+.. autoclass:: dycore.dycore_isentropic.DynamicalCoreIsentropic
    :members:
 
 Lateral boundary conditions
@@ -35,6 +35,12 @@ Lateral boundary conditions
 .. autoclass:: dycore.horizontal_boundary.Periodic
    :members:
 
+.. autoclass:: dycore.horizontal_boundary.PeriodicXZ
+   :members:
+
+.. autoclass:: dycore.horizontal_boundary.PeriodicYZ
+   :members:
+
 .. autoclass:: dycore.horizontal_boundary.Relaxed
    :members:
 
@@ -44,37 +50,55 @@ Lateral boundary conditions
 .. autoclass:: dycore.horizontal_boundary.RelaxedSymmetricYZ
    :members:
 
-Numerical diffusion
+Horizontal smoothing
 ^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: dycore.diffusion.Diffusion
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothing
+   :members:
+
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderXYZ
+   :members:
+
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderXZ
+   :members:
+
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderYZ
+   :members:
+
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderXYZ
+   :members:
+
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderXZ
+   :members:
+
+.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderYZ
    :members:
 
 Numerical fluxes
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: dycore.isentropic_flux.IsentropicFlux
+.. autoclass:: dycore.flux_isentropic.FluxIsentropic
    :members:
 
-.. autoclass:: dycore.isentropic_flux.UpwindIsentropicFlux
+.. autoclass:: dycore.flux_isentropic.FluxIsentropicUpwind
    :members:
 
-.. autoclass:: dycore.isentropic_flux.LeapfrogIsentropicFlux
+.. autoclass:: dycore.flux_isentropic.FluxIsentropicCentered
    :members:
 
-.. autoclass:: dycore.isentropic_flux.MacCormackIsentropicFlux
+.. autoclass:: dycore.flux_isentropic.FluxIsentropicMacCormack
    :members:
 
 Prognostics
 ^^^^^^^^^^^
 
-.. autoclass:: dycore.isentropic_prognostic.IsentropicPrognostic
+.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropic
    :members:
 
-.. autoclass:: dycore.isentropic_prognostic.OneTimeLevelIsentropicPrognostic
+.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicForwardEuler
    :members:
 
-.. autoclass:: dycore.isentropic_prognostic.TwoTimeLevelsIsentropicPrognostic
+.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog
    :members:
 
 Wave absorber
@@ -83,7 +107,7 @@ Wave absorber
 .. autoclass:: dycore.vertical_damping.VerticalDamping
    :members:
 
-.. autoclass:: dycore.vertical_damping.Rayleigh
+.. autoclass:: dycore.vertical_damping.VerticalDampingRayleigh
    :members:
 
 
@@ -93,10 +117,10 @@ Grids
 Two-dimensional grids
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: grids.xy_grid.XYGrid
+.. autoclass:: grids.grid_xy.GridXY
    :members:
 
-.. autoclass:: grids.xz_grid.XZGrid
+.. autoclass:: grids.grid_xz.GridXZ
    :members:
 
 .. autoclass:: grids.sigma.Sigma2d
@@ -111,7 +135,7 @@ Two-dimensional grids
 Three-dimensional grids
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: grids.xyz_grid.XYZGrid
+.. autoclass:: grids.grid_xyz.GridXYZ
    :members:
 
 .. autoclass:: grids.sigma.Sigma3d
@@ -144,7 +168,7 @@ Storages
 .. autoclass:: storages.grid_data.GridData
    :members:
 
-.. autoclass:: storages.isentropic_state.IsentropicState
+.. autoclass:: storages.state_isentropic.StateIsentropic
    :members:
 
 

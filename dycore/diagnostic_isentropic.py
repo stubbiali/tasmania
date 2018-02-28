@@ -36,22 +36,23 @@ class DiagnosticIsentropic:
 
 		Parameters
 		----------
-			grid : obj
-				:class:`~grids.xyz_grid.XYZGrid` representing the underlying grid.
-			imoist : bool 
-				:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-			backend : obj 
-				:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
+		grid : obj
+			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+		imoist : bool 
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+		backend : obj 
+			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
 		"""
 		self._grid, self._imoist, self._backend = grid, imoist, backend
 
 		# The pointers to the stencil's compute function.
 		# They will be initialized the first time the entry-point methods are invoked.
-		self._stencil_diagnosing_conservative_variables = None
+		self._stencil_diagnosing_momentums = None
 		self._stencil_diagnosing_velocity_x = None
 		self._stencil_diagnosing_velocity_y = None
 		if self._imoist:
-			self._stencil_diagnosing_water_constituents = None
+			self._stencil_diagnosing_water_constituents_mass = None
+			self._stencil_diagnosing_water_constituents_mass_fraction = None
 		self._stencil_diagnosing_pressure = None
 		self._stencil_diagnosing_montgomery = None
 		self._stencil_diagnosing_height = None
@@ -67,110 +68,148 @@ class DiagnosticIsentropic:
 		theta_1d = np.reshape(grid.z_half_levels.values[:, np.newaxis, np.newaxis], (1, 1, grid.nz + 1))
 		self._theta = np.tile(theta_1d, (grid.nx, grid.ny, 1))
 
-	def get_conservative_variables(self, s, u, v, qv = None, qc = None, qr = None):
+	def get_momentums(self, s, u, v):
 		"""
-		Diagnosis of the conservative model variables, i.e., the momentums - :math:`U` and :math:`V` -
-		and, optionally, the mass of water constituents - :math:`Q_v`, :math:`Q_c` and :math:`Q_r`.
+		Diagnosis of the momentums :math:`U` and :math:`V`.
 
 		Parameters
 		----------
-			s : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-			u : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
-			v : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the :math:`y`-velocity.
-			qv : `array_like`, optional 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of \
-					water vapour.
-			qc : `array_like`, optional 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of \
-					cloud water.
-			qr : `array_like`, optional 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of \
-					precipitation water.
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		u : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
+		v : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the :math:`y`-velocity.
 
 		Returns
 		-------
-			U : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`U`.
-			V : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`V`.
-			Qv : `array_like`, optional 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_v`.
-			Qc : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_c`.
-			Qr : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_r`.
+		U : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`U`.
+		V : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`V`.
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_conservative_variables is None:
-			self._initialize_stencil_diagnosing_conservative_variables()
+			self._initialize_stencil_diagnosing_momentums()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_conservative_variables(s, u, v, qv, qc, qr)
+		self._set_inputs_to_stencil_diagnosing_momentums(s, u, v)
 
 		# Run the stencil's compute function
-		self._stencil_diagnosing_conservative_variables.compute()
+		self._stencil_diagnosing_momentums.compute()
 
-		if self._imoist:
-			return self._out_U, self._out_V, self._out_Qv, self._out_Qc, self._out_Qr
 		return self._out_U, self._out_V
 
-	def get_nonconservative_variables(self, s, U, V, Qv = None, Qc = None, Qr = None):
+	def get_water_constituents_mass(self, s, qv, qc, qr):
 		"""
-		Diagnosis of the non-conservative model variables, i.e., the velocity components - :math:`u` and :math:`v` - 
-		and, optionally, the mass fraction of the water constituents - :math:`q_v`, :math:`q_c` and :math:`q_r`.
+		Diagnosis of the mass of each water constituent, i.e., :math:`Q_v`, :math:`Q_c` and :math:`Q_v`.
 
 		Parameters
 		----------
-			s : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-			U : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
-			V : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`y`-velocity.
-			Qv : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of water vapour.
-			Qc : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of cloud water.
-			Qr : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of precipitation water.
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		qv : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
+			water vapour.
+		qc : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
+			cloud water.
+		qr : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
+			precipitation water.
 
 		Returns
 		-------
-			u : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`u`.
-			v : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the diagnosed :math:`v`.
-			qv : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_v`.
-			qc : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_c`.
-			qr : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_r`.
+		Qv : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_v`.
+		Qc : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_c`.
+		Qr : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_r`.
+		"""
+		# The first time this method is invoked, initialize the GT4Py's stencils
+		if self._stencil_diagnosing_water_constituents_mass is None:
+			self._initialize_stencil_diagnosing_water_constituents_mass()
+
+		# Update the attributes which serve as inputs to the GT4Py's stencils
+		self._set_inputs_to_stencil_diagnosing_water_constituents_mass(s, qv, qc, qr)
+
+		# Run the stencil's compute function
+		self._stencil_diagnosing_water_constituents_mass.compute()
+
+		return self._out_Qv, self._out_Qc, self._out_Qr
+
+	def get_velocity_components(self, s, U, V):
+		"""
+		Diagnosis of the velocity components :math:`u` and :math:`v`.
+
+		Parameters
+		----------
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		U : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
+		V : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`y`-velocity.
+
+		Returns
+		-------
+		u : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`u`.
+		v : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the diagnosed :math:`v`.
 
 		Note
 		----
-			The first and last rows (respectively, columns) of :data:`u` (resp., :data:`v`) are not set by the method.
+		The first and last rows (respectively, columns) of :data:`u` (resp., :data:`v`) are not set by the method.
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_velocity_x is None:
 			self._initialize_stencil_diagnosing_velocity_x()
 			self._initialize_stencil_diagnosing_velocity_y()
-			if self._imoist:
-				self._initialize_stencil_diagnosing_water_constituents()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencils_diagnosing_nonconservative_variables(s, U, V, Qv, Qc, Qr)
+		self._set_inputs_to_stencils_diagnosing_velocity(s, U, V)
 
 		# Run the stencils' compute functions
 		self._stencil_diagnosing_velocity_x.compute()
 		self._stencil_diagnosing_velocity_y.compute()
-		if self._imoist:
-			self._stencil_diagnosing_water_constituents.compute()
-			return self._out_u, self._out_v, self._out_qv, self._out_qc, self._out_qr
+
 		return self._out_u, self._out_v
+
+	def get_water_constituents_mass_fraction(self, s, Qv, Qc, Qr):
+		"""
+		Diagnosis of the mass of each water constituents, i.e., :math:`q_v`, :math:`q_c` and :math:`q_r`.
+
+		Parameters
+		----------
+		Qv : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of water vapour.
+		Qc : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of cloud water.
+		Qr : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of precipitation water.
+
+		Returns
+		-------
+		qv : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_v`.
+		qc : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_c`.
+		qr : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_r`.
+		"""	
+		# The first time this method is invoked, initialize the GT4Py's stencil
+		if self._stencil_diagnosing_water_constituents_mass_fraction is None:
+			self._initialize_stencil_diagnosing_water_constituents_mass_fraction()
+
+		# Update the attributes which serve as inputs to the GT4Py's stencils
+		self._set_inputs_to_stencil_diagnosing_water_constituents_mass_fraction(s, Qv, Qc, Qr)
+
+		# Run the stencils' compute functions
+		self._stencil_diagnosing_water_constituents_mass_fraction.compute()
+
+		return self._out_Qv, self._out_Qc, self._out_Qr
 
 	def get_diagnostic_variables(self, s, pt):
 		"""
@@ -179,25 +218,25 @@ class DiagnosticIsentropic:
 
 		Parameters
 		----------
-			s : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-			pt : float 
-				Boundary value for the pressure at the top of the domain.
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		pt : float 
+			Boundary value for the pressure at the top of the domain.
 
 		Returns
 		-------
-			p : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed \
-					pressure.
-			exn : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed \
-					Exner function.
-			mtg : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed \
-					Montgomery potential.
-			h : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed \
-					geometric height of the potential temperature surfaces.
+		p : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed 
+			pressure.
+		exn : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed 
+			Exner function.
+		mtg : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed 
+			Montgomery potential.
+		h : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed 
+			geometric height of the potential temperature surfaces.
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_pressure is None:
@@ -233,9 +272,9 @@ class DiagnosticIsentropic:
 		return self._out_p, self._out_exn, self._out_mtg, self._out_h
 
 
-	def _initialize_stencil_diagnosing_conservative_variables(self):
+	def _initialize_stencil_diagnosing_momentums(self):
 		"""
-		Initialize the GT4Py's stencil in charge of diagnosing the conservative model variables.
+		Initialize the GT4Py's stencil in charge of diagnosing the momentums.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -245,105 +284,55 @@ class DiagnosticIsentropic:
 			self._in_s = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_u = np.zeros((nx + 1, ny, nz), dtype = datatype)
 		self._in_v = np.zeros((nx, ny + 1, nz), dtype = datatype)
-		if self._imoist:
-			self._in_qv = np.zeros((nx, ny, nz), dtype = datatype)
-			self._in_qc = np.zeros((nx, ny, nz), dtype = datatype)
-			self._in_qr = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Allocate the Numpy arrays which will carry the output fields
 		self._out_U = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_V = np.zeros((nx, ny, nz), dtype = datatype)
-		if self._imoist:
-			self._out_Qv = np.zeros((nx, ny, nz), dtype = datatype)
-			self._out_Qc = np.zeros((nx, ny, nz), dtype = datatype)
-			self._out_Qr = np.zeros((nx, ny, nz), dtype = datatype)
-
-		# Set the computational domain and the domain
-		_domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1))
-		_mode = self._backend
 
 		# Instantiate the stencil
-		if not self._imoist:
-			self._stencil_diagnosing_conservative_variables = gt.NGStencil( 
-				definitions_func = self._defs_stencil_diagnosing_conservative_variables,
-				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v},
-				outputs = {'out_U': self._out_U, 'out_V': self._out_V},
-				domain = _domain, 
-				mode = _mode)
-		else:
-			self._stencil_diagnosing_conservative_variables = gt.NGStencil( 
-				definitions_func = self._defs_stencil_diagnosing_conservative_variables,
-				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
-						  'in_qv': self._in_qv, 'in_qc': self._in_qc, 'in_qr': self._in_qr},
-				outputs = {'out_U': self._out_U, 'out_V': self._out_V,
-						   'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr},
-				domain = _domain, 
-				mode = _mode)
+		self._stencil_diagnosing_momentums = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_conservative_variables,
+			inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v},
+			outputs = {'out_U': self._out_U, 'out_V': self._out_V},
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
+			mode = self._backend)
 
-	def _set_inputs_to_stencil_diagnosing_conservative_variables(self, s, u, v, qv, qc, qr):	
+	def _set_inputs_to_stencil_diagnosing_momentums(self, s, u, v):	
 		"""
-		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses 
-		the conservative variables.
+		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the momentums.
 
 		Parameters
 		----------
-			s : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-			u : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
-			v : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the :math:`y`-velocity.
-			qv : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of \
-					water vapour.
-			qc : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of \
-					cloud water.
-			qr : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of \
-					precipitation water.
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		u : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
+		v : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the :math:`y`-velocity.
 		"""
 		self._in_s[:,:,:] = s[:,:,:]
 		self._in_u[:,:,:] = u[:,:,:]
 		self._in_v[:,:,:] = v[:,:,:]
-		if self._imoist:
-			self._in_qv[:,:,:] = qv[:,:,:]
-			self._in_qc[:,:,:] = qc[:,:,:]
-			self._in_qr[:,:,:] = qr[:,:,:]
 
-	def _defs_stencil_diagnosing_conservative_variables(self, in_s, in_u, in_v, 
-														in_qv = None, in_qc = None, in_qr = None):
+	def _defs_stencil_diagnosing_momentums(self, in_s, in_u, in_v): 
 		"""
-		GT4Py's stencil diagnosing the conservative model variables, i.e., the momentums - :math:`U` and :math:`V` -
-		and, optionally, the mass of water constituents - :math:`Q_v`, :math:`Q_c` and :math:`Q_r`.
+		GT4Py's stencil diagnosing the momentums :math:`U` and :math:`V`.
 
 		Parameters
 		----------
-			in_s : obj 
-				:class:`gridtools.Equation` representing the isentropic density.
-			in_u : obj
-				:class:`gridtools.Equation` representing the :math:`x`-velocity.
-			in_v : obj 
-				:class:`gridtools.Equation` representing the :math:`y`-velocity.
-			in_qv : `obj`, optional
-				:class:`gridtools.Equation` representing the mass fraction of water vapour.
-			in_qc : `obj`, optional 
-				:class:`gridtools.Equation` representing the mass fraction of cloud water.
-			in_qr : `obj`, optional
-				:class:`gridtools.Equation` representing the mass fraction of precipitation water.
+		in_s : obj 
+			:class:`gridtools.Equation` representing the isentropic density.
+		in_u : obj
+			:class:`gridtools.Equation` representing the :math:`x`-velocity.
+		in_v : obj 
+			:class:`gridtools.Equation` representing the :math:`y`-velocity.
 
 		Returns
 		-------
-			out_U : obj
-				:class:`gridtools.Equation` representing the diagnosed :math:`U`.
-			out_V : obj
-				:class:`gridtools.Equation` representing the diagnosed :math:`V`.
-			out_Qv : `obj`, optional
-				:class:`gridtools.Equation` representing the diagnosed :math:`Qv`.
-			out_Qc : `obj`, optional
-				:class:`gridtools.Equation` representing the diagnosed :math:`Qc`.
-			out_Qr : `obj`, optional
-				:class:`gridtools.Equation` representing the diagnosed :math:`Qr`.
+		out_U : obj
+			:class:`gridtools.Equation` representing the diagnosed :math:`U`.
+		out_V : obj
+			:class:`gridtools.Equation` representing the diagnosed :math:`V`.
 		"""
 		# Indeces
 		i = gt.Index()
@@ -353,22 +342,105 @@ class DiagnosticIsentropic:
 		# Output fields
 		out_U = gt.Equation()
 		out_V = gt.Equation()
-		if self._imoist:
-			out_Qv = gt.Equation()
-			out_Qc = gt.Equation()
-			out_Qr = gt.Equation()
 
 		# Computations
 		out_U[i, j, k] = 0.5 * in_s[i, j, k] * (in_u[i, j, k] + in_u[i+1, j, k])
 		out_V[i, j, k] = 0.5 * in_s[i, j, k] * (in_v[i, j, k] + in_v[i, j+1, k])
-		if self._imoist:
-			out_Qv[i, j, k] = in_s[i, j, k] * in_qv[i, j, k]
-			out_Qc[i, j, k] = in_s[i, j, k] * in_qc[i, j, k]
-			out_Qr[i, j, k] = in_s[i, j, k] * in_qr[i, j, k]
 
-			return out_U, out_V, out_Qv, out_Qc, out_Qr
-		else:
-			return out_U, out_V
+		return out_U, out_V
+
+
+	def _initialize_stencil_diagnosing_water_constituents_mass(self):
+		"""
+		Initialize the GT4Py's stencil in charge of diagnosing the mass of each water constituent.
+		"""
+		# Shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+
+		# Allocate the Numpy arrays which will carry the input fields
+		if not hasattr(self, '_in_s'):
+			self._in_s = np.zeros((nx, ny, nz), dtype = datatype)
+		self._in_qv = np.zeros((nx, ny, nz), dtype = datatype)
+		self._in_qc = np.zeros((nx, ny, nz), dtype = datatype)
+		self._in_qr = np.zeros((nx, ny, nz), dtype = datatype)
+
+		# Allocate the Numpy arrays which will carry the output fields
+		self._out_Qv = np.zeros((nx, ny, nz), dtype = datatype)
+		self._out_Qc = np.zeros((nx, ny, nz), dtype = datatype)
+		self._out_Qr = np.zeros((nx, ny, nz), dtype = datatype)
+
+		# Instantiate the stencil
+		self._stencil_diagnosing_water_constituents_mass = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_water_constituents_mass,
+			inputs = {'in_s': self._in_s, 'in_qv': self._in_qv, 'in_qc': self._in_qc, 'in_qr': self._in_qr},
+			outputs = {'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr},
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
+			mode = self._backend)
+
+	def _set_inputs_to_stencil_diagnosing_water_constituents_mass(self, s, qv, qc, qr):	
+		"""
+		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses 
+		the mass of each water constituent.
+
+		Parameters
+		----------
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		qv : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
+			water vapour.
+		qc : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of
+			cloud water.
+		qr : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of
+			precipitation water.
+		"""
+		self._in_s[:,:,:]  = s[:,:,:]
+		self._in_qv[:,:,:] = qv[:,:,:]
+		self._in_qc[:,:,:] = qc[:,:,:]
+		self._in_qr[:,:,:] = qr[:,:,:]
+
+	def _defs_stencil_diagnosing_water_constituents_mass(self, in_s, in_qv, in_qc, in_qr):
+		"""
+		GT4Py's stencil diagnosing the mass of each water constituent, i.e., :math:`Q_v`, :math:`Q_c` and :math:`Q_r`.
+
+		Parameters
+		----------
+		in_s : obj 
+			:class:`gridtools.Equation` representing the isentropic density.
+		in_qv : obj
+			:class:`gridtools.Equation` representing the mass fraction of water vapour.
+		in_qc : obj 
+			:class:`gridtools.Equation` representing the mass fraction of cloud water.
+		in_qr : obj
+			:class:`gridtools.Equation` representing the mass fraction of precipitation water.
+
+		Returns
+		-------
+		out_Qv : obj
+			:class:`gridtools.Equation` representing the diagnosed :math:`Qv`.
+		out_Qc : obj
+			:class:`gridtools.Equation` representing the diagnosed :math:`Qc`.
+		out_Qr : obj
+			:class:`gridtools.Equation` representing the diagnosed :math:`Qr`.
+		"""
+		# Indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Output fields
+		out_Qv = gt.Equation()
+		out_Qc = gt.Equation()
+		out_Qr = gt.Equation()
+
+		# Computations
+		out_Qv[i, j, k] = in_s[i, j, k] * in_qv[i, j, k]
+		out_Qc[i, j, k] = in_s[i, j, k] * in_qc[i, j, k]
+		out_Qr[i, j, k] = in_s[i, j, k] * in_qr[i, j, k]
+
+		return out_Qv, out_Qc, out_Qr
 
 
 	def _initialize_stencil_diagnosing_velocity_x(self):
@@ -386,15 +458,12 @@ class DiagnosticIsentropic:
 		# Allocate the Numpy array which will carry the output field
 		self._out_u = np.zeros((nx + 1, ny, nz), dtype = datatype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((1, 0, 0), (nx - 1, ny - 1, nz - 1))
-
 		# Instantiate the stencil
 		self._stencil_diagnosing_velocity_x = gt.NGStencil( 
 			definitions_func = self._defs_stencil_diagnosing_velocity_x,
 			inputs = {'in_s': self._in_s, 'in_U': self._in_U},
 			outputs = {'out_u': self._out_u},
-			domain = _domain, 
+			domain = gt.domain.Rectangle((1, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
 	def _initialize_stencil_diagnosing_velocity_y(self):
@@ -412,20 +481,93 @@ class DiagnosticIsentropic:
 		# Allocate the Numpy array which will carry the output field
 		self._out_v = np.zeros((nx, ny + 1, nz), dtype = datatype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 1, 0), (nx - 1, ny - 1, nz - 1))
-
 		# Instantiate the stencil
 		self._stencil_diagnosing_velocity_y = gt.NGStencil( 
 			definitions_func = self._defs_stencil_diagnosing_velocity_y,
 			inputs = {'in_s': self._in_s, 'in_V': self._in_V},
 			outputs = {'out_v': self._out_v},
-			domain = _domain, 
+			domain = gt.domain.Rectangle((0, 1, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _initialize_stencil_diagnosing_water_constituents(self):
+	def _set_inputs_to_stencils_diagnosing_velocity(self, s, U, V):
 		"""
-		Initialize the GT4Py's stencil in charge of diagnosing the water constituents.
+		Update the private instance attributes which serve as inputs to the GT4Py's stencils which diagnose the velocity components.
+
+		Parameters
+		----------
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		U : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
+		V : array_like 
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`y`-velocity.
+		"""
+		self._in_s[:,:,:] = s[:,:,:]
+		self._in_U[:,:,:] = U[:,:,:]
+		self._in_V[:,:,:] = V[:,:,:]
+
+	def _defs_stencil_diagnosing_velocity_x(self, in_s, in_U):
+		"""
+		GT4Py's stencil diagnosing the :math:`x`-component of the velocity.
+
+		Parameters
+		----------
+		in_s : obj
+			:class:`gridtools.Equation` representing the isentropic density.
+		in_U : obj
+			:class:`gridtools.Equation` representing the :math:`x`-momentum.
+
+		Returns
+		-------
+		obj :
+			:class:`gridtools.Equation` representing the diagnosed :math:`x`-velocity.
+		"""
+		# Indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Output field
+		out_u = gt.Equation()
+
+		# Computations
+		out_u[i, j, k] = (in_U[i-1, j, k] + in_U[i, j, k]) / (in_s[i-1, j, k] + in_s[i, j, k])
+
+		return out_u
+
+	def _defs_stencil_diagnosing_velocity_y(self, in_s, in_V):
+		"""
+		GT4Py's stencil diagnosing the :math:`y`-component of the velocity.
+
+		Parameters
+		----------
+		in_s : obj
+			:class:`gridtools.Equation` representing the isentropic density.
+		in_V : obj
+			:class:`gridtools.Equation` representing the :math:`y`-momentum.
+
+		Returns
+		-------
+		obj :
+			:class:`gridtools.Equation` representing the diagnosed :math:`y`-velocity.
+		"""
+		# Indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Output field
+		out_v = gt.Equation()
+
+		# Computations
+		out_v[i, j, k] = (in_V[i, j-1, k] + in_V[i, j, k]) / (in_s[i, j-1, k] + in_s[i, j, k])
+			
+		return out_v
+
+
+	def _initialize_stencil_diagnosing_water_constituents_mass_fraction(self):
+		"""
+		Initialize the GT4Py's stencil in charge of diagnosing the mass fraction of each water constituent.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -442,130 +584,63 @@ class DiagnosticIsentropic:
 		self._out_qc = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qr = np.zeros((nx, ny, nz), dtype = datatype)
 
-		# Set the computational time
-		_domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1))
-
 		# Instantiate the stencil
-		self._stencil_diagnosing_water_constituents = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_water_constituents,
+		self._stencil_diagnosing_water_constituents_mass_fraction = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_water_constituents_mass_fraction,
 			inputs = {'in_s': self._in_s, 'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
 			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr},
-			domain = _domain, 
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _set_inputs_to_stencils_diagnosing_nonconservative_variables(self, s, U, V, Qv, Qc, Qr):
+	def _set_inputs_to_stencil_diagnosing_water_constituents_mass_fraction(self, s, Qv, Qc, Qr):
 		"""
-		Update the private instance attributes which serve as inputs to the GT4Py's stencils which diagnose 
-		the nonconservative variables.
+		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnose 
+		the mass fraction of each water constituent.
 
 		Parameters
 		----------
-			s : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-			U : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
-			V : array_like 
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`y`-velocity.
-			Qv : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of water vapour.
-			Qc : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of cloud water.
-			Qr : `array_like`, optional
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of precipitation water.
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		Qv : obj
+			:class:`gridtools.Equation` representing the mass of water vapour.
+		Qc : obj 
+			:class:`gridtools.Equation` representing the mass of cloud water.
+		Qr : obj
+			:class:`gridtools.Equation` representing the mass of precipitation water.
 		"""
-		self._in_s[:,:,:] = s[:,:,:]
-		self._in_U[:,:,:] = U[:,:,:]
-		self._in_V[:,:,:] = V[:,:,:]
-		if self._imoist:
-			self._in_Qv[:,:,:] = Qv[:,:,:]	
-			self._in_Qc[:,:,:] = Qc[:,:,:]	
-			self._in_Qr[:,:,:] = Qr[:,:,:]	
+		self._in_s[:,:,:]  = s[:,:,:]
+		self._in_Qv[:,:,:] = Qv[:,:,:]
+		self._in_Qc[:,:,:] = Qc[:,:,:]
+		self._in_Qr[:,:,:] = Qr[:,:,:]
 
-	def _defs_stencil_diagnosing_velocity_x(self, in_s, in_U):
+
+	def _defs_stencil_diagnosing_water_constituents_mass_fraction(self, in_s, in_Qv, in_Qc, in_Qr):
 		"""
-		GT4Py's stencil diagnosing the :math:`x`-component of the velocity.
+		GT4Py's stencil diagnosing the mass fraction of each water constituent.
 
 		Parameters
 		----------
-			in_s : obj
-				:class:`gridtools.Equation` representing the isentropic density.
-			in_U : obj
-				:class:`gridtools.Equation` representing the :math:`x`-momentum.
+		in_s : obj
+			:class:`gridtools.Equation` representing the isentropic density.
+		in_U : obj
+			:class:`gridtools.Equation` representing the :math:`x`-momentum.
+		in_V : obj
+			:class:`gridtools.Equation` representing the :math:`y`-momentum.
+		in_Qv : obj
+			:class:`gridtools.Equation` representing the mass of water vapour.
+		in_Qc : obj
+			:class:`gridtools.Equation` representing the mass of cloud water.
+		in_Qr : obj
+			:class:`gridtools.Equation` representing the mass of precipitation water.
 
 		Returns
 		-------
-			obj :
-				:class:`gridtools.Equation` representing the diagnosed :math:`x`-velocity.
-		"""
-		# Indeces
-		i = gt.Index()
-		j = gt.Index()
-		k = gt.Index()
-
-		# Output field
-		out_u = gt.Equation()
-
-		# Computations
-		out_u[i, j, k] = (in_U[i-1, j, k] + in_U[i, j, k]) / (in_s[i-1, j, k] + in_s[i, j, k])
-			
-		return out_u
-
-	def _defs_stencil_diagnosing_velocity_y(self, in_s, in_V):
-		"""
-		GT4Py's stencil diagnosing the :math:`y`-component of the velocity.
-
-		Parameters
-		----------
-			in_s : obj
-				:class:`gridtools.Equation` representing the isentropic density.
-			in_V : obj
-				:class:`gridtools.Equation` representing the :math:`y`-momentum.
-
-		Returns
-		-------
-			obj :
-				:class:`gridtools.Equation` representing the diagnosed :math:`y`-velocity.
-		"""
-		# Indeces
-		i = gt.Index()
-		j = gt.Index()
-		k = gt.Index()
-
-		# Output field
-		out_v = gt.Equation()
-
-		# Computations
-		out_v[i, j, k] = (in_V[i, j-1, k] + in_V[i, j, k]) / (in_s[i, j-1, k] + in_s[i, j, k])
-			
-		return out_v
-
-	def _defs_stencil_diagnosing_water_constituents(self, in_s, in_U, in_V, in_Qv, in_Qc, in_Qr):
-		"""
-		GT4Py's stencil diagnosing the water constituents.
-
-		Parameters
-		----------
-			in_s : obj
-				:class:`gridtools.Equation` representing the isentropic density.
-			in_U : obj
-				:class:`gridtools.Equation` representing the :math:`x`-momentum.
-			in_V : obj
-				:class:`gridtools.Equation` representing the :math:`y`-momentum.
-			in_Qv : obj
-				:class:`gridtools.Equation` representing the mass of water vapour.
-			in_Qc : obj
-				:class:`gridtools.Equation` representing the mass of cloud water.
-			in_Qr : obj
-				:class:`gridtools.Equation` representing the mass of precipitation water.
-
-		Returns
-		-------
-			out_qv : obj
-				:class:`gridtools.Equation` representing the diagnosed mass fraction of water vapour.
-			out_qc : obj
-				:class:`gridtools.Equation` representing the diagnosed mass fraction of cloud water.
-			out_qr : obj
-				:class:`gridtools.Equation` representing the diagnosed mass fraction of precipitation water.
+		out_qv : obj
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of water vapour.
+		out_qc : obj
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of cloud water.
+		out_qr : obj
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of precipitation water.
 		"""
 		# Indeces
 		i = gt.Index()
@@ -592,19 +667,20 @@ class DiagnosticIsentropic:
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
+		# Allocate the Numpy array which will carry the input field
+		if not hasattr(self, '_in_s'):
+			self._in_s = np.zeros((nx, ny, nz), dtype = datatype)
+
 		# Allocate the Numpy array which will carry the output field
 		self._out_p = np.zeros((nx, ny, nz + 1), dtype = datatype)
 		self._in_p = self._out_p
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 0, 1), (nx - 1, ny - 1, nz))
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_pressure = gt.NGStencil( 
 			definitions_func = self._defs_stencil_diagnosing_pressure,
 			inputs = {'in_s': self._in_s, 'in_p': self._in_p},
 			outputs = {'out_p': self._out_p},
-			domain = _domain,
+			domain = gt.domain.Rectangle((0, 0, 1), (nx - 1, ny - 1, nz)),
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.FORWARD)
 
@@ -619,14 +695,12 @@ class DiagnosticIsentropic:
 		self._out_mtg = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_mtg = self._out_mtg
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 2))
-
+		# Instantiate the stencil
 		self._stencil_diagnosing_montgomery = gt.NGStencil( 
 			definitions_func = self._defs_stencil_diagnosing_montgomery,
 			inputs = {'in_exn': self._out_exn, 'in_mtg': self._in_mtg},
 			outputs = {'out_mtg': self._out_mtg},
-			domain = _domain,
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 2)),
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.BACKWARD)
 	
@@ -641,15 +715,12 @@ class DiagnosticIsentropic:
 		self._out_h = np.zeros((nx, ny, nz + 1), dtype = datatype)
 		self._in_h = self._out_h
 
-		# Set computational domain
-		_domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1))
-
 		# Instantiate the stencil
 		self._stencil_diagnosing_height = gt.NGStencil( 
 			definitions_func = self._defs_stencil_diagnosing_height,
 			inputs = {'in_theta': self._theta, 'in_exn': self._out_exn, 'in_p': self._out_p, 'in_h': self._in_h},
 			outputs = {'out_h': self._out_h},
-			domain = _domain,
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.BACKWARD)
 	
@@ -659,8 +730,8 @@ class DiagnosticIsentropic:
 
 		Parameters
 		----------
-			s : array_like
-				:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
 		"""
 		self._in_s[:,:,:] = s[:,:,:]
 	
@@ -670,15 +741,15 @@ class DiagnosticIsentropic:
 
 		Parameters
 		----------
-			in_s : obj
-				:class:`gridtools.Equation` representing the isentropic density.
-			in_p : obj
-				:class:`gridtools.Equation` representing the pressure.
+		in_s : obj
+			:class:`gridtools.Equation` representing the isentropic density.
+		in_p : obj
+			:class:`gridtools.Equation` representing the pressure.
 
 		Returns
 		-------
-			obj :
-				:class:`gridtools.Equation` representing the diagnosed pressure.
+		obj :
+			:class:`gridtools.Equation` representing the diagnosed pressure.
 		"""
 		# Indeces
 		i = gt.Index()
@@ -699,15 +770,15 @@ class DiagnosticIsentropic:
 
 		Parameters
 		----------
-			in_exn : obj
-				:class:`gridtools.Equation` representing the Exner function.
-			in_mtg : obj
-				:class:`gridtools.Equation` representing the Montgomery potential.
+		in_exn : obj
+			:class:`gridtools.Equation` representing the Exner function.
+		in_mtg : obj
+			:class:`gridtools.Equation` representing the Montgomery potential.
 
 		Return
 		-------
-			obj :
-				:class:`gridtools.Equation` representing the diagnosed Montgomery potential.
+		obj :
+			:class:`gridtools.Equation` representing the diagnosed Montgomery potential.
 		"""
 		# Indeces
 		i = gt.Index()
@@ -728,19 +799,19 @@ class DiagnosticIsentropic:
 
 		Parameters
 		----------
-			in_theta : obj
-				:class:`gridtools.Equation` representing the vertical half levels.
-			in_exn : obj
-				:class:`gridtools.Equation` representing the Exner function.
-			in_p : obj
-				:class:`gridtools.Equation` representing the pressure.
-			in_h : obj
-				:class:`gridtools.Equation` representing the geometric height of the isentropes.
+		in_theta : obj
+			:class:`gridtools.Equation` representing the vertical half levels.
+		in_exn : obj
+			:class:`gridtools.Equation` representing the Exner function.
+		in_p : obj
+			:class:`gridtools.Equation` representing the pressure.
+		in_h : obj
+			:class:`gridtools.Equation` representing the geometric height of the isentropes.
 
 		Return
 		-------
-			obj :
-				:class:`gridtools.Equation` representing the diagnosed geometric height of the isentropes.
+		obj :
+			:class:`gridtools.Equation` representing the diagnosed geometric height of the isentropes.
 		"""
 		# Indeces
 		i = gt.Index()

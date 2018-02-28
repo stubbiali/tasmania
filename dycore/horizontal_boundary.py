@@ -34,8 +34,8 @@ class HorizontalBoundary:
 
 	Attributes
 	----------
-		nb : int
-			Number of boundary layers.
+	nb : int
+		Number of boundary layers.
 	"""
 	# Make the class abstract (credits: C. Zeman)
 	__metaclass__ = abc.ABCMeta
@@ -46,15 +46,15 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			grid : obj
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
-			nb : int 
-				Number of boundary layers.
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
 		"""
 		self._grid = grid
 		self.nb = nb
 
-	@abc.abstractmethod
+	#@abc.abstractmethod
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		Given a :class:`numpy.ndarray` representing a physical field, return the associated stencils' computational
@@ -65,20 +65,20 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			phi : array_like
-				:class:`numpy.ndarray` representing the physical field.
+		phi : array_like
+			:class:`numpy.ndarray` representing the physical field.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the stencils' computational domain.
+		array_like :
+			:class:`numpy.ndarray` representing the stencils' computational domain.
 
 		Note
 		----
-			The implementation should be designed to work with both staggered and unstaggared fields.
+		The implementation should be designed to work with both staggered and unstaggared fields.
 		"""
 
-	@abc.abstractmethod
+	#@abc.abstractmethod
 	def from_computational_to_physical_domain(self, phi_, out_dims, change_sign):
 		"""
 		Given a :class:`numpy.ndarray` representing the computational domain of a stencil, return the 
@@ -87,20 +87,20 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			phi_ : array_like 
-				:class:`numpy.ndarray` representing the computational domain of a stencil.
-			out_dims : tuple 
-				Tuple of the output array dimensions.
-			change_sign : bool 
-				:obj:`True` if the field should change sign through the symmetry plane (if any), :obj:`False` otherwise.
+		phi_ : array_like 
+			:class:`numpy.ndarray` representing the computational domain of a stencil.
+		out_dims : tuple 
+			Tuple of the output array dimensions.
+		change_sign : bool 
+			:obj:`True` if the field should change sign through the symmetry plane (if any), :obj:`False` otherwise.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the field defined over the physical domain.
+		array_like :
+			:class:`numpy.ndarray` representing the field defined over the physical domain.
 		"""
 
-	@abc.abstractmethod
+	#@abc.abstractmethod
 	def apply(self, phi_new, phi_now):
 		"""
 		Apply the boundary conditions on the field :attr:`phi_new`, possibly relying upon the solution 
@@ -109,13 +109,13 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : array_like 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
 		"""
 
-	@abc.abstractmethod
+	#@abc.abstractmethod
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
 		Set the outermost layers of :obj:`phi_new` in the :math:`x`- (i.e., :obj:`i`-) direction so to satisfy 
@@ -124,13 +124,13 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : array_like 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
 		"""
 
-	@abc.abstractmethod
+	#@abc.abstractmethod
 	def set_outermost_layers_y(self, phi_new, phi_now):
 		"""
 		Set the outermost layers of :obj:`phi_new` in the :math:`y`- (i.e., :obj:`j`-) direction so to satisfy 
@@ -139,10 +139,10 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : array_like
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like
+			:class:`numpy.ndarray` representing the field at the current time.
 		"""
 
 	@staticmethod
@@ -153,27 +153,39 @@ class HorizontalBoundary:
 
 		Parameters
 		----------
-			horizontal_boundary_type : str
-				String specifying the type of boundary conditions to apply. Either:
-					* 'periodic', for periodic boundary conditions;
-					* 'relaxed', for relaxed boundary conditions;
-					* 'relaxed-symmetric-xz', for relaxed boundary conditions for a :math:`xz`-symmetric field.
-					* 'relaxed-symmetric-yz', for relaxed boundary conditions for a :math:`yz`-symmetric field.
-			grid : obj
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
-			nb : int 
-				Number of boundary layers.
+		horizontal_boundary_type : str
+			String specifying the type of boundary conditions to apply. Either:
+
+				* 'periodic', for periodic boundary conditions;
+				* 'relaxed', for relaxed boundary conditions;
+				* 'relaxed-symmetric-xz', for relaxed boundary conditions for a :math:`xz`-symmetric field.
+				* 'relaxed-symmetric-yz', for relaxed boundary conditions for a :math:`yz`-symmetric field.
+
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
 
 		Return
 		------
-			obj :
-				An instance of the derived class implementing the boundary conditions specified by 
-					:data:`horizontal_boundary_type`.
+		obj :
+			An instance of the derived class implementing the boundary conditions specified by 
+			:data:`horizontal_boundary_type`.
 		"""
 		if horizontal_boundary_type == 'periodic':
-			return Periodic(grid, nb)
+			if grid.ny == 1:
+				return PeriodicXZ(grid, nb)
+			elif grid.nx == 1:
+				return PeriodicYZ(grid, nb)
+			else:
+				return Periodic(grid, nb)
 		elif horizontal_boundary_type == 'relaxed':
-			return Relaxed(grid, nb)
+			if grid.ny == 1:
+				return RelaxedXZ(grid, nb)
+			elif grid.nx == 1:
+				return RelaxedYZ(grid, nb)
+			else:
+				return Relaxed(grid, nb)
 		elif horizontal_boundary_type == 'relaxed-symmetric-xz':
 			return RelaxedSymmetricXZ(grid, nb)
 		elif horizontal_boundary_type == 'relaxed-symmetric-yz':
@@ -188,8 +200,8 @@ class Periodic(HorizontalBoundary):
 
 	Attributes
 	----------
-		nb : int
-			Number of boundary layers.
+	nb : int
+		Number of boundary layers.
 	"""
 	def __init__(self, grid, nb):
 		"""
@@ -197,10 +209,10 @@ class Periodic(HorizontalBoundary):
 
 		Parameters
 		----------
-			grid : obj
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
-			nb : int 
-				Number of boundary layers.
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
 		"""
 		super().__init__(grid, nb)
 
@@ -210,13 +222,13 @@ class Periodic(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi : array_like
-				The :class:`numpy.ndarray` to extend.
+		phi : array_like
+			The :class:`numpy.ndarray` to extend.
 
 		Return
 		------
-			array_like :
-				The extended :class:`numpy.ndarray`.
+		array_like :
+			The extended :class:`numpy.ndarray`.
 		"""
 		# Shortcuts
 		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
@@ -242,22 +254,22 @@ class Periodic(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_ : array_like 
-				The :class:`numpy.ndarray` to shrink.
-			out_dims : tuple 
-				Tuple of the output array dimensions.
-			change_sign : bool 
-				:obj:`True` if the field should change sign through the symmetry plane (if any), :obj:`False` otherwise.
+		phi_ : array_like 
+			The :class:`numpy.ndarray` to shrink.
+		out_dims : tuple 
+			Tuple of the output array dimensions.
+		change_sign : bool 
+			:obj:`True` if the field should change sign through the symmetry plane (if any), :obj:`False` otherwise.
 
 		Return
 		------
-			array_like :
-				The shrunk :class:`numpy.ndarray`.
+		array_like :
+			The shrunk :class:`numpy.ndarray`.
 
 		Note
 		----
-			The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
-			yet they are retained as optional arguments for compliancy with the class hierarchy interface.
+		The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
+		yet they are retained as optional arguments for compliancy with the class hierarchy interface.
 		"""
 		# Shortcuts
 		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
@@ -277,15 +289,15 @@ class Periodic(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : `array_like`, optional 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
 
 		Note
 		----
-			The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
-			argument for compliancy with the class hierarchy interface.
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
 		"""
 		# Shortcuts
 		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
@@ -311,15 +323,15 @@ class Periodic(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : `array_like`, optional 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
 
 		Note
 		----
-			The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
-			argument for compliancy with the class hierarchy interface.
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
 		"""
 		nx = self._grid.nx
 		phi_new[0, :, :], phi_new[-1, :, :] = phi_new[nx-1, :, :], phi_new[-nx-1, :, :]
@@ -332,18 +344,276 @@ class Periodic(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : `array_like`, optional 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
 
 		Note
 		----
-			The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
-			argument for compliancy with the class hierarchy interface.
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
 		"""
 		nx = self._grid.nx
 		phi_new[:, 0, :], phi_new[:, -1, :] = phi_new[:, nx-1, :], phi_new[:, -nx-1, :]
+
+
+class PeriodicXZ(HorizontalBoundary):
+	"""
+	This class inherits :class:`HorizontalBoundary` to implement horizontally periodic boundary conditions for fields defined
+	on a computational domain consisting of only one grid point in the :math:`y`-direction.
+
+	Attributes
+	----------
+	nb : int
+		Number of boundary layers.
+	"""
+	def __init__(self, grid, nb):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
+		"""
+		super().__init__(grid, nb)
+
+	def from_physical_to_computational_domain(self, phi):
+		"""
+		Periodically extend the field :obj:`phi` with :attr:`nb` extra layers in the :obj:`j`-direction,
+		then repeat it :data:`2 * nb + 1` times along the :obj:`i`-direction.
+
+		Parameters
+		----------
+		phi : array_like
+			The :class:`numpy.ndarray` to extend.
+
+		Return
+		------
+		array_like :
+			The extended :class:`numpy.ndarray`.
+		"""
+		# Shortcuts
+		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
+		ni, nj, nk = phi.shape
+
+		# Decorate the input field
+		phi_ = np.zeros((ni + 2 * nb, nj, nk), dtype = datatype)
+		phi_[nb:-nb, :, :] = phi
+
+		# Extend in the x-direction, then repeat in the y-direction
+		phi_[0:nb, :, :] = phi_[nx:nx+nb  , :, :]
+		phi_[-nb:, :, :] = phi_[-nx-nb:-nx, :, :]
+
+		return np.concatenate((np.repeat(phi_[:, 0:1, :], nb, axis = 1),
+							   phi_,
+							   np.repeat(phi_[:, 0:1, :], nb, axis = 1)), axis = 1)
+
+	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):
+		"""
+		Return the central :data:`i-k`-slice of the input field :data:`phi_`, removing the :attr:`nb` outermost 
+		layers in :data:`i`-direction.
+
+		Parameters
+		----------
+		phi_ : array_like 
+			The :class:`numpy.ndarray` to shrink.
+		out_dims : tuple 
+			Tuple of the output array dimensions.
+		change_sign : bool 
+			:obj:`True` if the field should change sign through the symmetry plane (if any), :obj:`False` otherwise.
+
+		Return
+		------
+		array_like :
+			The shrunk :class:`numpy.ndarray`.
+
+		Note
+		----
+		The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
+		yet they are retained as optional arguments for compliancy with the class hierarchy interface.
+		"""
+		nb, nj = self.nb, out_dims[1]
+		return phi_[nb:-nb, nb:nb+nj, :]
+
+	def apply(self, phi_new, phi_now = None):
+		"""
+		Apply horizontally periodic boundary conditions on :attr:`phi_new`.
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
+		"""
+		# Shortcuts
+		nx, ni = self._grid.nx, phi_now.shape[0]
+
+		# Apply the periodic boundary conditions only if the field is staggered
+		# If the field is unstaggered, then it should be automatically periodic 
+		# once the computations are over, due to the periodic extension performed 
+		# before the computations started
+		if ni == nx + 1:
+			phi_new[ 0, :, :] = phi_new[-2, :, :]
+			phi_new[-1, :, :] = phi_new[ 1, :, :]
+
+	def set_outermost_layers_x(self, phi_new, phi_now = None):
+		"""
+		Set the outermost layers of :obj:`phi_new` in the :obj:`x`-direction so to satisfy the periodic 
+		boundary conditions. For this, the field :obj:`phi_now` at the current time is not required. Yet,
+		it appears as (default) argument for compliancy with the general API.
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
+		"""
+		nx = self._grid.nx
+		phi_new[0, :, :], phi_new[-1, :, :] = phi_new[nx-1, :, :], phi_new[-nx-1, :, :]
+
+
+class PeriodicYZ(HorizontalBoundary):
+	"""
+	This class inherits :class:`HorizontalBoundary` to implement horizontally periodic boundary conditions for fields 
+	defined on a computational domain consisting of only one grid point in the :math:`x`-direction.
+
+	Attributes
+	----------
+	nb : int
+		Number of boundary layers.
+	"""
+	def __init__(self, grid, nb):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
+		"""
+		super().__init__(grid, nb)
+
+	def from_physical_to_computational_domain(self, phi):
+		"""
+		Periodically extend the field :obj:`phi` with :attr:`nb` extra layers in the :obj:`j`-direction,
+		then repeat it :data:`2 * nb + 1` times along the :obj:`i`-direction.
+
+		Parameters
+		----------
+		phi : array_like
+			The :class:`numpy.ndarray` to extend.
+
+		Return
+		------
+		array_like :
+			The extended :class:`numpy.ndarray`.
+		"""
+		# Shortcuts
+		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
+		ni, nj, nk = phi.shape
+
+		# Decorate the input field
+		phi_ = np.zeros((1, nj + 2 * nb, nk), dtype = datatype)
+		phi_[:, nb:-nb, :] = phi
+
+		# Extend in the x-direction, then repeat in the y-direction
+		phi_[:, 0:nb, :] = phi_[:, nx:nx+nb  , :]
+		phi_[:, -nb:, :] = phi_[:, -nx-nb:-nx, :]
+
+		return np.repeat(phi_, 2 * nb + 1, axis = 0)
+
+	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):
+		"""
+		Return the central :data:`j-k`-slice of the input field :data:`phi_`, removing the :attr:`nb` outermost 
+		layers in :data:`j`-direction.
+
+		Parameters
+		----------
+		phi_ : array_like 
+			The :class:`numpy.ndarray` to shrink.
+		out_dims : tuple 
+			Tuple of the output array dimensions.
+		change_sign : bool 
+			:obj:`True` if the field should change sign through the symmetry plane (if any), :obj:`False` otherwise.
+
+		Return
+		------
+		array_like :
+			The shrunk :class:`numpy.ndarray`.
+
+		Note
+		----
+		The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
+		yet they are retained as optional arguments for compliancy with the class hierarchy interface.
+		"""
+		nb = self.nb
+		return phi_[nb:nb+1, nb:-nb :]
+
+	def apply(self, phi_new, phi_now = None):
+		"""
+		Apply horizontally periodic boundary conditions on :attr:`phi_new`.
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
+		"""
+		# Shortcuts
+		ny, nj = self._grid.ny, phi_now.shape[1]
+
+		# Apply the periodic boundary conditions only if the field is staggered
+		# If the field is unstaggered, then it should be automatically periodic 
+		# once the computations are over, due to the periodic extension performed 
+		# before the computations started
+		if nj == ny + 1:
+			phi_new[:,  0, :] = phi_new[:, -2, :]
+			phi_new[:, -1, :] = phi_new[:,  1, :]
+
+	def set_outermost_layers_y(self, phi_new, phi_now = None):
+		"""
+		Set the outermost layers of :obj:`phi_new` in the :obj:`y`-direction so to satisfy the periodic 
+		boundary conditions. For this, the field :obj:`phi_now` at the current time is not required. Yet,
+		it appears as (default) argument for compliancy with the general API.
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : `array_like`, optional 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
+		argument for compliancy with the class hierarchy interface.
+		"""
+		ny = self._grid.ny
+		phi_new[:, 0, :], phi_new[:, -1, :] = phi_new[:, ny-1, :], phi_new[:, -ny-1, :]
 
 
 class Relaxed(HorizontalBoundary):
@@ -352,10 +622,10 @@ class Relaxed(HorizontalBoundary):
 
 	Attributes
 	----------
-		nb : int
-			Number of boundary layers.
-		nr : int
-			Number of layers which will be affected by relaxation.
+	nb : int
+		Number of boundary layers.
+	nr : int
+		Number of layers which will be affected by relaxation.
 	"""
 	def __init__(self, grid, nb):
 		"""
@@ -363,10 +633,10 @@ class Relaxed(HorizontalBoundary):
 
 		Parameters
 		----------
-			grid : obj 
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
-			nb : int 
-				Number of boundary layers.
+		grid : obj 
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
 		"""
 		super().__init__(grid, nb)
 
@@ -393,16 +663,16 @@ class Relaxed(HorizontalBoundary):
 		csw = np.transpose(cne)
 
 		# Append the corner relaxation matrices to their neighbours
-		self._stgx_s  = np.concatenate((cnw, self._stgx_s, cne), axis = 0)
-		self._stgx_n  = np.concatenate((csw, self._stgx_n, cse), axis = 0)
-		self._stgy_w  = np.concatenate((cnw, self._stgy_w, cne), axis = 1)
-		self._stgy_e  = np.concatenate((csw, self._stgy_e, cse), axis = 1)
+		self._stgx_s = np.concatenate((cnw, self._stgx_s, cne), axis = 0)
+		self._stgx_n = np.concatenate((csw, self._stgx_n, cse), axis = 0)
+		self._stgy_w = np.concatenate((cnw, self._stgy_w, cne), axis = 1)
+		self._stgy_e = np.concatenate((csw, self._stgy_e, cse), axis = 1)
 
 		# Repeat all relaxation matrices along the z-axis
-		self._stgx_s  = np.repeat(self._stgx_s[:, :, np.newaxis], grid.nz, axis = 2)
-		self._stgx_n  = np.repeat(self._stgx_n[:, :, np.newaxis], grid.nz, axis = 2)
-		self._stgy_w  = np.repeat(self._stgy_w[:, :, np.newaxis], grid.nz, axis = 2)
-		self._stgy_e  = np.repeat(self._stgy_e[:, :, np.newaxis], grid.nz, axis = 2)
+		self._stgx_s = np.repeat(self._stgx_s[:, :, np.newaxis], grid.nz + 1, axis = 2)
+		self._stgx_n = np.repeat(self._stgx_n[:, :, np.newaxis], grid.nz + 1, axis = 2)
+		self._stgy_w = np.repeat(self._stgy_w[:, :, np.newaxis], grid.nz + 1, axis = 2)
+		self._stgy_e = np.repeat(self._stgy_e[:, :, np.newaxis], grid.nz + 1, axis = 2)
 
 	def from_physical_to_computational_domain(self, phi):
 		"""
@@ -411,13 +681,13 @@ class Relaxed(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi : array_like 
-				A :class:`numpy.ndarray`.
+		phi : array_like 
+			A :class:`numpy.ndarray`.
 
 		Return
 		------
-			array_like :
-				A deep copy of :obj:`phi`.
+		array_like :
+			A deep copy of :obj:`phi`.
 		"""
 		return np.copy(phi)
 
@@ -427,23 +697,23 @@ class Relaxed(HorizontalBoundary):
 		input field :obj:`phi_`.
 
 		Parameters
-		---------9
-			phi_ : array_like 
-				A :class:`numpy.ndarray`.
-			out_dims : `tuple`, optional
-				Tuple of the output array dimensions.
-			change_sign : `bool`, optional
-				:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
+		----------
+		phi_ : array_like 
+			A :class:`numpy.ndarray`.
+		out_dims : `tuple`, optional
+			Tuple of the output array dimensions.
+		change_sign : `bool`, optional
+			:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
 
 		Return
 		------
-			array_like :
-				A deep copy of :obj:`phi_`.
+		array_like :
+			A deep copy of :obj:`phi_`.
 
 		Note
 		----
-			The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
-			yet they are retained as optional arguments for compliancy with the class hierarchy interface.
+		The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
+		yet they are retained as optional arguments for compliancy with the class hierarchy interface.
 		"""
 		return np.copy(phi_)
 	
@@ -453,19 +723,19 @@ class Relaxed(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : array_like 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
 
 		Note
 		----
-			The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
-			can be inferred from the solution at current time.
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
 		"""
 		# Shortcuts
 		nx, ny, nz, nb, nr = self._grid.nx, self._grid.ny, self._grid.nz, self.nb, self.nr
-		ni, nj, _ = phi_now.shape
+		ni, nj, nk = phi_now.shape
 
 		# The boundary values
 		west  = np.repeat(phi_now[0:1,   :, :], nr, axis = 0)
@@ -475,19 +745,19 @@ class Relaxed(HorizontalBoundary):
 
 		# Apply the relaxed boundary conditions in the x-direction
 		if nj == ny: # unstaggered
-			phi_new[ :nr, :, :] = self._stgy_w[:, :-1, :] * west + (1 - self._stgy_w[:, :-1, :]) * phi_now[ :nr, :, :]
-			phi_new[-nr:, :, :] = self._stgy_e[:, :-1, :] * east + (1 - self._stgy_e[:, :-1, :]) * phi_now[-nr:, :, :]
+			phi_new[ :nr, :, :] = self._stgy_w[:, :-1, :nk] * west + (1 - self._stgy_w[:, :-1, :nk]) * phi_now[ :nr, :, :]
+			phi_new[-nr:, :, :] = self._stgy_e[:, :-1, :nk] * east + (1 - self._stgy_e[:, :-1, :nk]) * phi_now[-nr:, :, :]
 		else:		 # y-staggered
-			phi_new[ :nr, :, :] = self._stgy_w * west + (1 - self._stgy_w) * phi_now[ :nr, :, :]
-			phi_new[-nr:, :, :] = self._stgy_e * east + (1 - self._stgy_e) * phi_now[-nr:, :, :]
+			phi_new[ :nr, :, :] = self._stgy_w[:, :, nk] * west + (1 - self._stgy_w[:, :, :nk]) * phi_now[ :nr, :, :]
+			phi_new[-nr:, :, :] = self._stgy_e[:, :, nk] * east + (1 - self._stgy_e[:, :, :nk]) * phi_now[-nr:, :, :]
 
 		# Apply the relaxed boundary conditions in the y-direction
 		if ni == nx: # unstaggered
-			phi_new[:,  :nr, :] = self._stgx_s[:-1, :, :] * south + (1 - self._stgx_s[:-1, :, :]) * phi_now[:,  :nr, :]
-			phi_new[:, -nr:, :] = self._stgx_n[:-1, :, :] * north + (1 - self._stgx_n[:-1, :, :]) * phi_now[:, -nr:, :]
+			phi_new[:,  :nr, :] = self._stgx_s[:-1, :, :nk] * south + (1 - self._stgx_s[:-1, :, :nk]) * phi_now[:,  :nr, :]
+			phi_new[:, -nr:, :] = self._stgx_n[:-1, :, :nk] * north + (1 - self._stgx_n[:-1, :, :nk]) * phi_now[:, -nr:, :]
 		else:		 # x-staggered
-			phi_new[:,  :nr, :] = self._stgx_s * south + (1 - self._stgx_s) * phi_now[:,  :nr, :]
-			phi_new[:, -nr:, :] = self._stgx_n * north + (1 - self._stgx_n) * phi_now[:, -nr:, :]
+			phi_new[:,  :nr, :] = self._stgx_s[:, :, nk] * south + (1 - self._stgx_s[:, :, nk]) * phi_now[:,  :nr, :]
+			phi_new[:, -nr:, :] = self._stgx_n[:, :, nk] * north + (1 - self._stgx_n[:, :, nk]) * phi_now[:, -nr:, :]
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
@@ -496,15 +766,15 @@ class Relaxed(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : array_like 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
 
 		Note
 		----
-			The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
-			can be inferred from the solution at current time.
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
 		"""
 		phi_new[0, :, :], phi_new[-1, :, :] = phi_now[0, :, :], phi_now[-1, :, :]
 
@@ -515,15 +785,268 @@ class Relaxed(HorizontalBoundary):
 
 		Parameters
 		----------
-			phi_new : array_like
-				:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
-			phi_now : array_like 
-				:class:`numpy.ndarray` representing the field at the current time.
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
 
 		Note
 		----
-			The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
-			can be inferred from the solution at current time.
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
+		"""
+		phi_new[:, 0, :], phi_new[:, -1, :] = phi_now[:, 0, :], phi_now[:, -1, :]
+
+
+class RelaxedXZ(HorizontalBoundary):
+	"""
+	This class inherits :class:`HorizontalBoundary` to implement horizontally relaxed boundary conditions for fields defined
+	on a computational domain consisting of only one grid point in the :math:`y`-direction.
+
+	Attributes
+	----------
+	nb : int
+		Number of boundary layers.
+	nr : int
+		Number of layers which will be affected by relaxation.
+	"""
+	def __init__(self, grid, nb):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : obj 
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
+		"""
+		super().__init__(grid, nb)
+
+		# The relaxation coefficients
+		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype = datatype)
+		self._rrel = self._rel[::-1]
+		self.nr = self._rel.size
+
+		# The relaxation matrices
+		self._stg_w = np.repeat(self._rel[:, np.newaxis, np.newaxis] , grid.nz + 1, axis = 2)
+		self._stg_e = np.repeat(self._rrel[:, np.newaxis, np.newaxis], grid.nz + 1, axis = 2)
+
+	def from_physical_to_computational_domain(self, phi):
+		"""
+		While no extension is required to apply relaxed boundary conditions along the :math:`x`-direction, 
+		the field gets repeated :data:`2 * nb` times along the :math:`y`-direction, i.e., the second array axis.
+
+		Parameters
+		----------
+		phi : array_like 
+			A :class:`numpy.ndarray`.
+
+		Return
+		------
+		array_like :
+			A deep copy of :obj:`phi`, repeated :data:`2 * nb + 1` times along the second array axis.
+		"""
+		nb = self.nb
+		phi_ = np.copy(phi)
+		return np.concatenate((np.repeat(phi_[:, 0:1, :], nb, axis = 1),
+							   phi_,
+							   np.repeat(phi_[:, 0:1, :], nb, axis = 1)), axis = 1)
+
+	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):
+		"""
+		Remove the :data:`2 * nb` outermost :data:`i-k`-slices from the input field :obj:`phi_`.
+
+		Parameters
+		----------
+		phi_ : array_like 
+			A :class:`numpy.ndarray`.
+		out_dims : `tuple`, optional
+			Tuple of the output array dimensions.
+		change_sign : `bool`, optional
+			:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
+
+		Return
+		------
+		array_like :
+			A deep copy of the central :data:`i-k`-slice(s) of :obj:`phi_`.
+
+		Note
+		----
+		The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
+		yet they are retained as optional arguments for compliancy with the class hierarchy interface.
+		"""
+		nb = self.nb
+		return np.copy(phi_[:, nb:-nb, :])
+	
+	def apply(self, phi_new, phi_now):
+		"""
+		Apply relaxed lateral boundary conditions along the :math:`x`-axis. 
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
+		"""
+		# Shortcuts
+		nx, nz, nb, nr = self._grid.nx, self._grid.nz, self.nb, self.nr
+		ni, _, nk = phi_now.shape
+
+		# The boundary values
+		west  = np.repeat(phi_now[0:1, :, :], nr, axis = 0)
+		east  = np.repeat(phi_now[-1:, :, :], nr, axis = 0)
+
+		# Apply the relaxed boundary conditions in the x-direction
+		phi_new[ :nr, :, :] = self._stg_w[:, :, :nk] * west + (1 - self._stg_w[:, :, :nk]) * phi_now[ :nr, :, :]
+		phi_new[-nr:, :, :] = self._stg_e[:, :, :nk] * east + (1 - self._stg_e[:, :, :nk]) * phi_now[-nr:, :, :]
+
+	def set_outermost_layers_x(self, phi_new, phi_now):
+		"""
+		Set the outermost layers of :obj:`phi_new` in the :obj:`x`-direction equal to the corresponding 
+		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :obj:`x`-direction.
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
+		"""
+		phi_new[0, :, :], phi_new[-1, :, :] = phi_now[0, :, :], phi_now[-1, :, :]
+
+
+class RelaxedYZ(HorizontalBoundary):
+	"""
+	This class inherits :class:`HorizontalBoundary` to implement horizontally relaxed boundary conditions for fields defined
+	on a computational domain consisting of only one grid point in the :math:`x`-direction.
+
+	Attributes
+	----------
+	nb : int
+		Number of boundary layers.
+	nr : int
+		Number of layers which will be affected by relaxation.
+	"""
+	def __init__(self, grid, nb):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : obj 
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
+		"""
+		super().__init__(grid, nb)
+
+		# The relaxation coefficients
+		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype = datatype)
+		self._rrel = self._rel[::-1]
+		self.nr = self._rel.size
+
+		# The relaxation matrices
+		self._stg_s = np.repeat(self._rel[np.newaxis, :, np.newaxis] , grid.nz, axis = 2)
+		self._stg_n = np.repeat(self._rrel[np.newaxis, :, np.newaxis], grid.nz, axis = 2)
+
+	def from_physical_to_computational_domain(self, phi):
+		"""
+		While no extension is required to apply relaxed boundary conditions along the :math:`y`-direction, 
+		the field gets repeated :data:`2 * nb + 1` times along the :math:`x`-direction, i.e., the first array axis.
+
+		Parameters
+		----------
+		phi : array_like 
+			A :class:`numpy.ndarray`.
+
+		Return
+		------
+		array_like :
+			A deep copy of :obj:`phi`, repeated :data:`2 * nb + 1` times along the first array axis.
+		"""
+		return np.repeat(phi, 2 * self.nb + 1, axis = 0)
+
+	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):
+		"""
+		Return a deep copy of the central :data:`j-k`-slice of the input field :obj:`phi_`.
+
+		Parameters
+		----------
+		phi_ : array_like 
+			A :class:`numpy.ndarray`.
+		out_dims : `tuple`, optional
+			Tuple of the output array dimensions.
+		change_sign : `bool`, optional
+			:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
+
+		Return
+		------
+		array_like :
+			A deep copy of the central :data:`j-k`-slice of :obj:`phi_`.
+
+		Note
+		----
+		The arguments :data:`out_dims` and :data:`change_sign` are not required by the implementation, 
+		yet they are retained as optional arguments for compliancy with the class hierarchy interface.
+		"""
+		return np.copy(phi_[self.nb:self.nb + 1, :, :])
+	
+	def apply(self, phi_new, phi_now):
+		"""
+		Apply relaxed lateral boundary conditions along the :math:`x`-axis. 
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
+		"""
+		# Shortcuts
+		ny, nz, nb, nr = self._grid.ny, self._grid.nz, self.nb, self.nr
+		_, nj, _ = phi_now.shape
+
+		# The boundary values
+		south = np.repeat(phi_now[:, 0:1, :], nr, axis = 1)
+		north = np.repeat(phi_now[:, -1:, :], nr, axis = 1)
+
+		# Apply the relaxed boundary conditions in the x-direction
+		phi_new[:,  :nr, :] = self._stg_s * south + (1 - self._stg_s) * phi_now[:,  :nr, :]
+		phi_new[:, -nr:, :] = self._stg_n * north + (1 - self._stg_n) * phi_now[:, -nr:, :]
+
+	def set_outermost_layers_y(self, phi_new, phi_now):
+		"""
+		Set the outermost layers of :obj:`phi_new` in the :obj:`y`-direction equal to the corresponding 
+		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :obj:`y`-direction.
+
+		Parameters
+		----------
+		phi_new : array_like
+			:class:`numpy.ndarray` representing the field on which applying the boundary conditions.
+		phi_now : array_like 
+			:class:`numpy.ndarray` representing the field at the current time.
+
+		Note
+		----
+		The Dirichlet conditions at the boundaries are assumed to be time-independent, so that they 
+		can be inferred from the solution at current time.
 		"""
 		phi_new[:, 0, :], phi_new[:, -1, :] = phi_now[:, 0, :], phi_now[:, -1, :]
 
@@ -536,10 +1059,10 @@ class RelaxedSymmetricXZ(Relaxed):
 
 	Attributes
 	----------
-		nb : int
-			Number of boundary layers.
-		nr : int 
-			Number of layers which will be affected by relaxation.
+	nb : int
+		Number of boundary layers.
+	nr : int 
+		Number of layers which will be affected by relaxation.
 	"""
 	def __init__(self, grid, nb):
 		"""
@@ -547,10 +1070,10 @@ class RelaxedSymmetricXZ(Relaxed):
 
 		Parameters
 		----------
-			grid : obj 
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
-			nb : int 
-				Number of boundary layers.
+		grid : obj 
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
 		"""
 		super().__init__(grid, nb)
 
@@ -561,13 +1084,13 @@ class RelaxedSymmetricXZ(Relaxed):
 
 		Parameters
 		----------
-			phi : array_like 
-				:class:`numpy.ndarray` representing the physical field.
+		phi : array_like 
+			:class:`numpy.ndarray` representing the physical field.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the stencils' computational domain.
+		array_like :
+			:class:`numpy.ndarray` representing the stencils' computational domain.
 		"""
 		ny, nj, nb = self._grid.ny, phi.shape[1], self.nb
 		half = int((nj + 1) / 2)
@@ -582,18 +1105,18 @@ class RelaxedSymmetricXZ(Relaxed):
 
 		Parameters
 		----------
-			phi_ : array_like 
-				:class:`numpy.ndarray` representing the computational domain of a stencil.
-			out_dims : tuple 
-				Tuple of the output array dimensions.
-			change_sign : `bool`, optional 
-				:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
-				Default is false.
+		phi_ : array_like 
+			:class:`numpy.ndarray` representing the computational domain of a stencil.
+		out_dims : tuple 
+			Tuple of the output array dimensions.
+		change_sign : `bool`, optional 
+			:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
+			Default is false.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the field defined over the physical domain.
+		array_like :
+			:class:`numpy.ndarray` representing the field defined over the physical domain.
 		"""
 		nb = self.nb
 		half = phi_.shape[1] - nb
@@ -617,10 +1140,10 @@ class RelaxedSymmetricYZ(Relaxed):
 
 	Attributes
 	----------
-		nb : int 
-			Number of boundary layers.
-		nr : int 
-			Number of layers which will be affected by relaxation.
+	nb : int 
+		Number of boundary layers.
+	nr : int 
+		Number of layers which will be affected by relaxation.
 	"""
 	def __init__(self, grid, nb):
 		"""
@@ -628,10 +1151,10 @@ class RelaxedSymmetricYZ(Relaxed):
 
 		Parameters
 		----------
-			grid : obj 
-				The underlying grid, as an instance of :class:`~grids.xyz_grid.XYZGrid` or one of its derived classes.
-			nb : int 
-				Number of boundary layers.
+		grid : obj 
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		nb : int 
+			Number of boundary layers.
 		"""
 		super().__init__(grid, nb)
 
@@ -642,13 +1165,13 @@ class RelaxedSymmetricYZ(Relaxed):
 
 		Parameters
 		----------
-			phi : array_like
-				:class:`numpy.ndarray` representing the physical field.
+		phi : array_like
+			:class:`numpy.ndarray` representing the physical field.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the stencils' computational domain.
+		array_like :
+			:class:`numpy.ndarray` representing the stencils' computational domain.
 		"""
 		nx, ni, nb = self._grid.nx, phi.shape[0], self.nb
 		half = int((ni + 1) / 2)
@@ -663,18 +1186,18 @@ class RelaxedSymmetricYZ(Relaxed):
 
 		Parameters
 		----------
-			phi_ : array_like 
-				:class:`numpy.ndarray` representing the computational domain of a stencil.
-			out_dims : tuple 
-				Tuple of the output array dimensions.
-			change_sign : `bool`, optional 
-				:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
-				Default is false.
+		phi_ : array_like 
+			:class:`numpy.ndarray` representing the computational domain of a stencil.
+		out_dims : tuple 
+			Tuple of the output array dimensions.
+		change_sign : `bool`, optional 
+			:obj:`True` if the field should change sign through the symmetry plane, :obj:`False` otherwise.
+			Default is false.
 
 		Return
 		------
-			array_like :
-				:class:`numpy.ndarray` representing the field defined over the physical domain.
+		array_like :
+			:class:`numpy.ndarray` representing the field defined over the physical domain.
 		"""
 		nb = self.nb
 		half = phi_.shape[0] - nb
