@@ -25,13 +25,13 @@ Test Topography2d class.
 """
 import numpy as np
 
-from grids.xy_grid import XYGrid
+from grids.grid_xy import GridXY
 from grids.topography import Topography2d
 
 domain_x, nx = [0.,10.], 1e2+1
 domain_y, ny = [0.,10.], 1e2+1
 
-grid = XYGrid(domain_x, nx, domain_y, ny)
+grid = GridXY(domain_x, nx, domain_y, ny)
 
 topo_str = '3000. * exp(- (x-3.)*(x-3.) - (y-5.)(y-5.))'
 

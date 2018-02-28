@@ -36,17 +36,17 @@ def equal_to(a, b, tol = None):
 
 	Parameters
 	----------
-		a : `float` or `array_like` 
-			Left-hand side.
-		b : `float` or `array_like` 
-			Right-hand side.
-		tol : `float`, optional 
-			Tolerance.
+	a : `float` or `array_like` 
+		Left-hand side.
+	b : `float` or `array_like` 
+		Right-hand side.
+	tol : `float`, optional 
+		Tolerance.
 
 	Return
 	------
-		bool :  
-			:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
+	bool : 
+		:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
 		from namelist import tol as _tol
@@ -59,17 +59,17 @@ def smaller_than(a, b, tol = None):
 
 	Parameters
 	----------
-		a : `float` or `array_like` 
-			Left-hand side.
-		b : `float` or `array_like` 
-			Right-hand side.
-		tol : `float`, optional 
-			Tolerance.
+	a : `float` or `array_like` 
+		Left-hand side.
+	b : `float` or `array_like` 
+		Right-hand side.
+	tol : `float`, optional 
+		Tolerance.
 
 	Return
 	------
-		bool : 
-			:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`, :obj:`False` otherwise.
+	bool : 
+		:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
 		from namelist import tol as _tol
@@ -82,17 +82,17 @@ def smaller_or_equal_than(a, b, tol = None):
 
 	Parameters
 	----------
-		a : `float` or `array_like` 
-			Left-hand side.
-		b : `float` or `array_like` 
-			Right-hand side.
-		tol : `float`, optional 
-			Tolerance.
+	a : `float` or `array_like` 
+		Left-hand side.
+	b : `float` or `array_like` 
+		Right-hand side.
+	tol : `float`, optional 
+		Tolerance.
 
 	Return
 	------
-		bool : 
-			:obj:`True` if :data:`a` is smaller than or equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
+	bool : 
+		:obj:`True` if :data:`a` is smaller than or equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
 		from namelist import tol as _tol
@@ -105,17 +105,17 @@ def greater_than(a, b, tol = None):
 
 	Parameters
 	----------
-		a : `float` or `array_like` 
-			Left-hand side.
-		b : `float` or `array_like` 
-			Right-hand side.
-		tol : `float`, optional 
-			Tolerance.
+	a : `float` or `array_like` 
+		Left-hand side.
+	b : `float` or `array_like` 
+		Right-hand side.
+	tol : `float`, optional 
+		Tolerance.
 
 	Return
 	------
-		bool :  
-			:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`, :obj:`False` otherwise.
+	bool :  
+		:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
 		from namelist import tol as _tol
@@ -128,17 +128,17 @@ def greater_or_equal_than(a, b, tol = None):
 
 	Parameters
 	----------
-		a : `float` or `array_like` 
-			Left-hand side.
-		b : `float` or `array_like` 
-			Right-hand side.
-		tol : `float`, optional 
-			Tolerance.
+	a : `float` or `array_like` 
+		Left-hand side.
+	b : `float` or `array_like` 
+		Right-hand side.
+	tol : `float`, optional 
+		Tolerance.
 
 	Return
 	------
-		bool : 
-			:obj:`True` if :data:`a` is greater than or equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
+	bool : 
+		:obj:`True` if :data:`a` is greater than or equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
 		from namelist import tol as _tol
@@ -152,13 +152,13 @@ def get_factor(units):
 
 	Parameters
 	----------
-		units : str 
-			The units.
+	units : str 
+		The units.
 
 	Return
 	------
-		float : 
-			The factor.
+	float : 
+		The factor.
 	"""
 	if units == "m":
 		return 1.
@@ -192,13 +192,13 @@ def _get_prefix(units):
 
 	Parameters
 	----------
-		units : str 
-			The units.
+	units : str 
+		The units.
 
 	Return
 	------
-		str : 
-			The prefix.
+	str : 
+		The prefix.
 	"""
 	if units[:2] == "da":
 		prefix = units[:2]
@@ -209,27 +209,27 @@ def _get_prefix(units):
 def set_namelist(user_namelist = None):
 	"""
 	Place the user-defined namelist module in the Python search path.
-	This is achieved by physically copying the content of the user-provided module into GT4ESS_ROOT/namelist.py.
+	This is achieved by physically copying the content of the user-provided module into TASMANIA_ROOT/namelist.py.
 
 	Parameters
 	----------
-		user_namelist : str 
-			Path to the user-defined namelist. If not specified, the default namelist GT4ESS_ROOT/_namelist.py is used.
+	user_namelist : str 
+		Path to the user-defined namelist. If not specified, the default namelist TASMANIA_ROOT/_namelist.py is used.
 	"""
 	try:
-		gt4ess_root = os.environ['GT4ESS_ROOT']
+		tasmania_root = os.environ['TASMANIA_ROOT']
 	except RuntimeError:
-		print('Hint: has the environmental variable GT4ESS_ROOT been set?')
+		print('Hint: has the environmental variable TASMANIA_ROOT been set?')
 		raise
 
 	if user_namelist is None: # Default case
-		src_file = os.path.join(gt4ess_root, '_namelist.py')
-		dst_file = os.path.join(gt4ess_root, 'namelist.py')
+		src_file = os.path.join(tasmania_root, '_namelist.py')
+		dst_file = os.path.join(tasmania_root, 'namelist.py')
 		shutil.copy(src_file, dst_file)
 	else:
 		src_dir = os.curdir
 		src_file = os.path.join(src_dir, user_namelist)
-		dst_file = os.path.join(gt4ess_root, 'namelist.py')
+		dst_file = os.path.join(tasmania_root, 'namelist.py')
 		shutil.copy(src_file, dst_file)
 										
 def convert_datetime64_to_datetime(time):
@@ -238,17 +238,17 @@ def convert_datetime64_to_datetime(time):
 
 	Parameters
 	----------
-		time : obj 
-			The :class:`numpy.datetime64` object to convert.
+	time : obj 
+		The :class:`numpy.datetime64` object to convert.
 
 	Return
 	------
-		obj :
-			The converted :class:`datetime.datetime` object.
+	obj :
+		The converted :class:`datetime.datetime` object.
 
 	References
 	----------
-		https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
+	https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
 	"""
 	# Safeguard check
 	if type(time) == datetime:
@@ -263,19 +263,19 @@ def reverse_colormap(cmap, name = None):
 
 	Parameters
 	----------
-		cmap : obj 
-			The :class:`matplotlib.colors.LinearSegmentedColormap` to invert.
-		name : `str`, optional 
-			The name of the reversed colormap. By default, this is obtained by appending '_r' to the name of the input colormap.
+	cmap : obj 
+		The :class:`matplotlib.colors.LinearSegmentedColormap` to invert.
+	name : `str`, optional 
+		The name of the reversed colormap. By default, this is obtained by appending '_r' to the name of the input colormap.
 
 	Return
 	------
-		obj :
-			The reversed :class:`matplotlib.colors.LinearSegmentedColormap`.
+	obj :
+		The reversed :class:`matplotlib.colors.LinearSegmentedColormap`.
 
 	References
 	----------
-		https://stackoverflow.com/questions/3279560/invert-colormap-in-matplotlib.
+	https://stackoverflow.com/questions/3279560/invert-colormap-in-matplotlib.
 	"""
 	keys = []
 	reverse = []
