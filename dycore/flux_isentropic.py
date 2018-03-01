@@ -370,30 +370,24 @@ class FluxIsentropicCentered(FluxIsentropic):
 		Qr : obj
 			:class:`gridtools.Equation` representing the mass of precipitation water.
 		"""
-		# Compute unstaggered velocity components
-		u_unstg = gt.Equation()
-		u_unstg[i, j, k] = 0.5 * (u[i, j, k] + u[i+1, j, k]) #U[i, j, k] / s[i, j, k]
-		v_unstg = gt.Equation()
-		v_unstg[i, j, k] = 0.5 * (v[i, j, k] + v[i, j+1, k]) #V[i, j, k] / s[i, j, k]
-
 		# Compute flux for the isentropic density and the momentums
-		self._flux_s_x = self._get_centered_flux_x(i, j, k, u_unstg, s)
-		self._flux_s_y = self._get_centered_flux_y(i, j, k, v_unstg, s)
-		self._flux_U_x = self._get_centered_flux_x(i, j, k, u_unstg, U)
-		self._flux_U_y = self._get_centered_flux_y(i, j, k, v_unstg, U)
-		self._flux_V_x = self._get_centered_flux_x(i, j, k, u_unstg, V)
-		self._flux_V_y = self._get_centered_flux_y(i, j, k, v_unstg, V)
+		self._flux_s_x = self._get_centered_flux_x(i, j, k, u, s)
+		self._flux_s_y = self._get_centered_flux_y(i, j, k, v, s)
+		self._flux_U_x = self._get_centered_flux_x(i, j, k, u, U)
+		self._flux_U_y = self._get_centered_flux_y(i, j, k, v, U)
+		self._flux_V_x = self._get_centered_flux_x(i, j, k, u, V)
+		self._flux_V_y = self._get_centered_flux_y(i, j, k, v, V)
 		
 		# Compute flux for the water constituents
 		if self._imoist:
-			self._flux_Qv_x = self._get_centered_flux_x(i, j, k, u_unstg, Qv)
-			self._flux_Qv_y = self._get_centered_flux_y(i, j, k, v_unstg, Qv)
-			self._flux_Qc_x = self._get_centered_flux_x(i, j, k, u_unstg, Qc)
-			self._flux_Qc_y = self._get_centered_flux_y(i, j, k, v_unstg, Qc)
-			self._flux_Qr_x = self._get_centered_flux_x(i, j, k, u_unstg, Qr)
-			self._flux_Qr_y = self._get_centered_flux_y(i, j, k, v_unstg, Qr)
+			self._flux_Qv_x = self._get_centered_flux_x(i, j, k, u, Qv)
+			self._flux_Qv_y = self._get_centered_flux_y(i, j, k, v, Qv)
+			self._flux_Qc_x = self._get_centered_flux_x(i, j, k, u, Qc)
+			self._flux_Qc_y = self._get_centered_flux_y(i, j, k, v, Qc)
+			self._flux_Qr_x = self._get_centered_flux_x(i, j, k, u, Qr)
+			self._flux_Qr_y = self._get_centered_flux_y(i, j, k, v, Qr)
 
-	def _get_centered_flux_x(self, i, j, k, u_unstg, phi):
+	def _get_centered_flux_x(self, i, j, k, u, phi):
 		"""
 		Get the :class:`gridtools.Equation` representing the centered flux in :math:`x`-direction for a generic 
 		prognostic variable :math:`\phi`.
@@ -406,8 +400,8 @@ class FluxIsentropicCentered(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
 		k : obj
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
-		u_unstg : obj
-			:class:`gridtools.Equation` representing the unstaggered :math:`x`-velocity.
+		u : obj
+			:class:`gridtools.Equation` representing the :math:`x`-velocity.
 		phi : obj
 			:class:`gridtools.Equation` representing the field :math:`\phi`.
 
@@ -419,10 +413,10 @@ class FluxIsentropicCentered(FluxIsentropic):
 		phi_name = phi.get_name()
 		flux_name = 'flux_' + phi_name + '_x'
 		flux = gt.Equation(name = flux_name)
-		flux[i, j, k] = 0.5 * (u_unstg[i-1, j, k] * phi[i-1, j, k] + u_unstg[i, j, k] * phi[i, j, k])
+		flux[i, j, k] = u[i, j, k] * 0.5 * (phi[i-1, j, k] + phi[i, j, k])
 		return flux
 
-	def _get_centered_flux_y(self, i, j, k, v_unstg, phi):
+	def _get_centered_flux_y(self, i, j, k, v, phi):
 		"""
 		Get the :class:`gridtools.Equation` representing the centered flux in :math:`y`-direction for a generic 
 		prognostic variable :math:`\phi`.
@@ -435,8 +429,8 @@ class FluxIsentropicCentered(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
 		k : obj
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
-		v_unstg : obj
-			:class:`gridtools.Equation` representing the unstaggered :math:`y`-velocity.
+		v : obj
+			:class:`gridtools.Equation` representing the :math:`y`-velocity.
 		phi : obj
 			:class:`gridtools.Equation` representing the field :math:`\phi`.
 
@@ -448,7 +442,7 @@ class FluxIsentropicCentered(FluxIsentropic):
 		phi_name = phi.get_name()
 		flux_name = 'flux_' + phi_name + '_y'
 		flux = gt.Equation(name = flux_name)
-		flux[i, j, k] = 0.5 * (v_unstg[i, j-1, k] * phi[i, j-1, k] + v_unstg[i, j, k] * phi[i, j, k])
+		flux[i, j, k] = v[i, j, k] * 0.5 * (phi[i, j-1, k] + phi[i, j, k])
 		return flux
 
 

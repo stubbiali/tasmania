@@ -92,8 +92,8 @@ class HorizontalSmoothing:
 		smooth_type : string
 			String specifying the smoothing technique to implement. Either:
 
-			* 'first-order', for first-order numerical smoothing;
-			* 'second-order', for second-order numerical smoothing.
+			* 'first_order', for first-order numerical smoothing;
+			* 'second_order', for second-order numerical smoothing.
 
 		dims : tuple
 			Tuple of the dimension of the arrays on which to apply numerical smoothing.
@@ -114,14 +114,14 @@ class HorizontalSmoothing:
 		obj :
 			Instance of the suitable derived class.
 		"""
-		if smooth_type == 'first-order':
+		if smooth_type == 'first_order':
 			if dims[1] == 1:
 				return HorizontalSmoothingFirstOrderXZ(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 			elif dims[0] == 1:
 				return HorizontalSmoothingFirstOrderYZ(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 			else:
 				return HorizontalSmoothingFirstOrderXYZ(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
-		elif smooth_type == 'second-order':
+		elif smooth_type == 'second_order':
 			if dims[1] == 1:
 				return HorizontalSmoothingSecondOrderXZ(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 			elif dims[0] == 1:
@@ -310,8 +310,8 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		self._stencil.compute()
 
 		# Set the outermost lateral layers of the output field, not affected by the stencil
-		self._out_phi[ 0, :, :]    = self._in_phi[ 0, :, :]
-		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
+		self._out_phi[ 0, :, :] = self._in_phi[ 0, :, :]
+		self._out_phi[-1, :, :] = self._in_phi[-1, :, :]
 		
 		return self._out_phi
 

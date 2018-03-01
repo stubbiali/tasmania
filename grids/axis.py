@@ -1,6 +1,6 @@
 import numpy as np
 
-import utils
+import utils.utils as utils
 
 class Axis:
 	"""

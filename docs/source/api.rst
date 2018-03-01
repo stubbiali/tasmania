@@ -9,7 +9,7 @@ Axis
 
 
 Dynamics
---------------
+--------
 
 Diagnostics
 ^^^^^^^^^^^
@@ -98,7 +98,7 @@ Prognostics
 .. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicForwardEuler
    :members:
 
-.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog
+.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicCentered
    :members:
 
 Wave absorber
@@ -194,3 +194,8 @@ Utilities
 .. automodule:: utils
    :members:
 
+Meteo utilities
+^^^^^^^^^^^^^^^
+
+.. automodule:: utils_meteo
+   :members:

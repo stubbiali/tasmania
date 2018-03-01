@@ -45,8 +45,8 @@ import numpy as np
 import xarray as xr
 
 from namelist import datatype
-from utils import equal_to as eq
-from utils import smaller_than as lt
+from utils.utils import equal_to as eq
+from utils.utils import smaller_than as lt
 
 class Topography1d:
 	"""
@@ -204,8 +204,8 @@ class Topography2d:
 			:math:`x` and :math:`y`. Must be fully C++-compliant.
 		"""
 		if topo_type not in ['flat_terrain', 'gaussian', 'schaer', 'user_defined']:
-			raise ValueError("""Unknown topography type. Supported types are: ' 
-							 ''flat_terrain'', ''gaussian'', ''schaer'', or ''user_defined''.""")
+			raise ValueError("""Unknown topography type. Supported types are: \n"""
+							 """''flat_terrain'', ''gaussian'', ''schaer'', or ''user_defined''.""")
 
 		self.topo_type = topo_type
 		self.topo_time = topo_time

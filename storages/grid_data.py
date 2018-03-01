@@ -2,7 +2,7 @@ import copy
 import numpy as np
 import xarray as xr
 
-import utils
+import utils.utils as utils
 
 class GridData:
 	"""
@@ -33,7 +33,7 @@ class GridData:
 		'exner_function'       : 'm2 s-2 K-2'    ,
 		'montgomery_potential' : 'm2 s-2'        ,
 		'height'               : 'm'             ,
-		'water_vapour'         : 'kg kg-1'       ,
+		'water_vapor'          : 'kg kg-1'       ,
 		'cloud_water'          : 'kg kg-1'       ,
 		'precipitation_water'  : 'kg kg-1'       ,
 	}
@@ -81,7 +81,7 @@ class GridData:
 		obj :
 			Deep copy of the :class:`xarray.DataArray` representing the variable.
 		"""
-		return copy.deepcopy(self._vars[key])
+		return copy.deepcopy(self._vars.get(key, None))
 
 	@property
 	def time(self):

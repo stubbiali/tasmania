@@ -4,11 +4,11 @@ import numpy as np
 from scipy.interpolate import RectBivariateSpline
 import xarray as xr
 
-import utils_meteo
 from namelist import cp, datatype, g, p_ref, Rd
 from storages.grid_data import GridData
-from utils import smaller_than as lt
-from utils import convert_datetime64_to_datetime, reverse_colormap
+from utils.utils import smaller_than as lt
+from utils.utils import convert_datetime64_to_datetime
+import utils.utils_plot as utils_plot
 
 class StateIsentropic(GridData):
 	"""
@@ -22,7 +22,7 @@ class StateIsentropic(GridData):
 	"""
 	def __init__(self, time, grid, isentropic_density, x_velocity, x_momentum, y_velocity, y_momentum,
 				 pressure, exner_function, montgomery_potential, height,
-				 water_vapour = None, cloud_water = None, precipitation_water = None):
+				 water_vapor = None, cloud_water = None, precipitation_water = None):
 		"""
 		Constructor.
 
@@ -50,8 +50,8 @@ class StateIsentropic(GridData):
 			:class:`numpy.ndarray` representing the Montgomery potential.
 		height : array_like
 			:class:`numpy.ndarray` representing the height of the potential temperature surfaces.
-		water_vapour : `array_like`, optional
-			:class:`numpy.ndarray` representing the mass fraction of water vapour.
+		water_vapor : `array_like`, optional
+			:class:`numpy.ndarray` representing the mass fraction of water vapor.
 		cloud_water : `array_like`, optional
 			:class:`numpy.ndarray` representing the mass fraction of cloud water.
 		precipitation_water : `array_like`, optional
@@ -66,8 +66,8 @@ class StateIsentropic(GridData):
 				  'exner_function'       : exner_function,
 				  'montgomery_potential' : montgomery_potential,
 				  'height'               : height}
-		if water_vapour is not None:
-			kwargs['water_vapour'] = water_vapour
+		if water_vapor is not None:
+			kwargs['water_vapor'] = water_vapor
 		if cloud_water is not None:
 			kwargs['cloud_water'] = cloud_water
 		if precipitation_water is not None:
@@ -106,6 +106,91 @@ class StateIsentropic(GridData):
 			raise RuntimeWarning('NaN values.')
 
 		return cfl
+
+	def contour_xz(self, field_to_plot, y_level, time_level, **kwargs):
+		"""
+		Produce the contour plot of a field in the cross-section :math:`y = \\bar{y}`.
+
+		Parameters
+		----------
+		field_to_plot : str 
+			String specifying the field to plot. This might be:
+
+				* the name of a variable stored in the current object;
+				* 'vertical_velocity', for the vertical velocity.
+				* 'temperature', for the temperature.
+
+		y_level : int 
+			Index corresponding to the :math:`y`-level identifying the cross-section to plot.
+		time_level : int 
+			The index corresponding to the time level to plot.
+
+		Keyword arguments
+		-----------------
+		figsize : tuple
+			Figure size. Default is [8,8].
+		title : str
+			The title for the plot. By default, it coincides with :data:`field_to_plot`.
+		x_label : str
+			The label for the :obj:`x`-axis of the plot.
+		x_factor : float
+			Factor for the :obj:`x`-axis of the plot. Default is 1.
+		z_label : str
+			The label for the :obj:`y`-axis of the plot, i.e., the :math:`z`-axis.
+		z_factor : float
+			Factor for the :obj:`y`-axis of the plot. Default is 1.
+		cmap_name : str
+			Name of the Matplotlib's colormap to use. Default is 'RdYlBu'.
+		cmap_levels : int
+			Number of levels for the colormap. Default is 31.
+		cmap_center : float
+			The central value for the colormap. If not specified, the colormap ranges from the minimum to the maximum
+			of the field to plot.
+		cmap_half_width : float
+			Half width of the colormap range. If not specified, the colormap ranges from the minimum to the maximum
+			of the field to plot.
+		"""
+		# Shortcuts
+		nx, nz = self.grid.nx, self.grid.nz
+		dx = self.grid.dx
+
+		# Extract, compute, or interpolate the field to plot
+		if field_to_plot in self._vars:
+			var = self._vars[field_to_plot].values[:, y_level, :, time_level] 
+		elif field_to_plot == 'x_velocity_unstaggered':
+			var = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				  self._vars['isentropic_density'].values[:, y_level, :, time_level] 
+		elif field_to_plot == 'x_velocity_perturbation':
+			u_start = self._vars['x_momentum_isentropic'].values[:, y_level, :, 0] / \
+				  	  self._vars['isentropic_density'].values[:, y_level, :, 0]
+			u_final = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				  	  self._vars['isentropic_density'].values[:, y_level, :, time_level]
+			var = u_final - u_start
+		elif field_to_plot == 'vertical_velocity':
+			assert self.grid.ny == 1
+
+			u = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				self._vars['isentropic_density'].values[:, y_level, :, time_level]
+			h = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
+					   self._vars['height'].values[:, y_level, 1:, time_level])
+			h = 0.5 * (h[:-1, :] + h[1:, :])
+			height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
+
+			var = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
+		elif field_to_plot == 'temperature':
+			z = self.grid.z_half_levels.values
+			p = self._vars['pressure'].values[:, y_level, :, time_level]
+			exn = self._vars['exner_function'].values[:, y_level, :, time_level]
+
+			var = np.zeros((nx, nz + 1), dtype = datatype)
+			for k in range(nz + 1):
+				var[:, k] = exn[:, k] * z[k] / cp 
+		else:
+			raise RuntimeError('Unknown field to plot.')
+
+		# Plot
+		utils_plot.contour_xz(self.grid, self.grid.topography_height[:, y_level], 
+							  self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
 	
 	def contourf_xz(self, field_to_plot, y_level, time_level, **kwargs):
 		"""
@@ -189,8 +274,8 @@ class StateIsentropic(GridData):
 			raise RuntimeError('Unknown field to plot.')
 
 		# Plot
-		utils_meteo.contourf_xz(self.grid, self.grid.topography_height[:, y_level], 
-								self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
+		utils_plot.contourf_xz(self.grid, self.grid.topography_height[:, y_level], 
+							   self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
 
 	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
 		"""
@@ -246,7 +331,7 @@ class StateIsentropic(GridData):
 			raise RuntimeError('Unknown field to plot.')
 
 		# Plot
-		utils_meteo.contourf_xy(self.grid, var, **kwargs)
+		utils_plot.contourf_xy(self.grid, var, **kwargs)
 
 	def quiver_xy(self, field_to_plot, z_level, time_level, **kwargs):
 		"""
@@ -300,5 +385,5 @@ class StateIsentropic(GridData):
 			raise RuntimeError('Unknown field to plot.')
 
 		# Plot
-		utils_meteo.quiver_xy(self.grid, vx, vy, scalar, **kwargs)
+		utils_plot.quiver_xy(self.grid, vx, vy, scalar, **kwargs)
 
