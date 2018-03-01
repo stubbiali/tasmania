@@ -21,20 +21,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-A script to generate xz-contourfs.
+A script to generate a xz-contourf of a field.
 """
 import os
 import pickle
 
-import utils_meteo
+import utils.utils_meteo as utils_meteo
 
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_2_maccormack.pickle')
-field = 'x_velocity'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_advection_upwind.pickle')
+field = 'water_vapor'
 y_level = 0
-time_level = -1
+time_level = 4
 
 #
 # Optional settings
@@ -42,24 +42,26 @@ time_level = -1
 ishow			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
 fontsize         = 16
-figsize          = [7,8]
+figsize          = [9,7]
 title            = ''
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
-x_lim			 = None
+x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
-z_lim            = [0,28]
-field_factor     = 1.
-cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
-cbar_levels      = 14
-cbar_ticks_step  = 2
-cbar_center      = 15.
-cbar_half_width  = 6.5
-cbar_x_label     = '$x$-velocity [m s$^{-1}$]'
-cbar_y_label     = ''
+z_lim            = [0,20]
+field_factor     = 1.e3
+cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cbar_levels      = 18
+cbar_ticks_step  = 4
+cbar_center      = 0.5 * 23
+cbar_half_width  = 0.5 * 23
+cbar_x_label     = ''
+cbar_y_label     = 'Water vapor [g kg$^{-1}$]'
 cbar_title       = ''
-cbar_orientation = 'horizontal'
+cbar_orientation = 'vertical'
+text			 = '$t = \dfrac{L}{\overline{u}}$'
+text_loc		 = 'upper right'
 
 #
 # Plot
@@ -91,6 +93,8 @@ with open(filename, 'rb') as data:
 							   cbar_y_label     = cbar_y_label,
 							   cbar_title       = cbar_title,
 							   cbar_orientation = cbar_orientation,
+							   text				= text,
+							   text_loc			= text_loc,
 							  )
 
 	# Plot the analytical isothermal and isentropic flow over an isolated "Switch of Agnesi" mountain

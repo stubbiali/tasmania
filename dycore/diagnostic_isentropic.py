@@ -110,7 +110,7 @@ class DiagnosticIsentropic:
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
 		qv : array_like 
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
-			water vapour.
+			water vapor.
 		qc : array_like 
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
 			cloud water.
@@ -184,7 +184,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		Qv : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of water vapour.
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of water vapor.
 		Qc : array_like
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass of cloud water.
 		Qr : array_like
@@ -209,7 +209,7 @@ class DiagnosticIsentropic:
 		# Run the stencils' compute functions
 		self._stencil_diagnosing_water_constituents_mass_fraction.compute()
 
-		return self._out_Qv, self._out_Qc, self._out_Qr
+		return self._out_qv, self._out_qc, self._out_qr
 
 	def get_diagnostic_variables(self, s, pt):
 		"""
@@ -388,7 +388,7 @@ class DiagnosticIsentropic:
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
 		qv : array_like 
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
-			water vapour.
+			water vapor.
 		qc : array_like 
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of
 			cloud water.
@@ -410,7 +410,7 @@ class DiagnosticIsentropic:
 		in_s : obj 
 			:class:`gridtools.Equation` representing the isentropic density.
 		in_qv : obj
-			:class:`gridtools.Equation` representing the mass fraction of water vapour.
+			:class:`gridtools.Equation` representing the mass fraction of water vapor.
 		in_qc : obj 
 			:class:`gridtools.Equation` representing the mass fraction of cloud water.
 		in_qr : obj
@@ -602,7 +602,7 @@ class DiagnosticIsentropic:
 		s : array_like
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
 		Qv : obj
-			:class:`gridtools.Equation` representing the mass of water vapour.
+			:class:`gridtools.Equation` representing the mass of water vapor.
 		Qc : obj 
 			:class:`gridtools.Equation` representing the mass of cloud water.
 		Qr : obj
@@ -627,7 +627,7 @@ class DiagnosticIsentropic:
 		in_V : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum.
 		in_Qv : obj
-			:class:`gridtools.Equation` representing the mass of water vapour.
+			:class:`gridtools.Equation` representing the mass of water vapor.
 		in_Qc : obj
 			:class:`gridtools.Equation` representing the mass of cloud water.
 		in_Qr : obj
@@ -636,7 +636,7 @@ class DiagnosticIsentropic:
 		Returns
 		-------
 		out_qv : obj
-			:class:`gridtools.Equation` representing the diagnosed mass fraction of water vapour.
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of water vapor.
 		out_qc : obj
 			:class:`gridtools.Equation` representing the diagnosed mass fraction of cloud water.
 		out_qr : obj

@@ -29,8 +29,8 @@ import pickle
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_maccormack.pickle')
-field = 'horizontal_velocity'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_leapfrog.pickle')
+field = 'pressure'
 z_level = -1
 time_level = -1
 
@@ -48,15 +48,17 @@ x_lim			 = None
 y_factor         = 1.e-3
 y_label			 = '$y$ [km]'
 y_lim            = None
-cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 14
 cbar_ticks_step  = 2
-cbar_center      = 15.
-cbar_half_width  = 6.5
-cbar_x_label     = '$x$-velocity [m s$^{-1}$]'
+cbar_center      = None #15.
+cbar_half_width  = None #6.5
+cbar_x_label     = 'Pressure [Pa]'
 cbar_y_label     = ''
 cbar_title       = ''
 cbar_orientation = 'horizontal'
+text			 = 'LF'
+text_loc		 = 'upper right'
 
 #
 # Plot
@@ -85,4 +87,6 @@ with open(filename, 'rb') as data:
 						   cbar_y_label     = cbar_y_label,
 						   cbar_title       = cbar_title,
 						   cbar_orientation = cbar_orientation,
+						   text				= text,
+						   text_loc			= text_loc,
 						  )
