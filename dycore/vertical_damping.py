@@ -29,7 +29,7 @@ import numpy as np
 
 import gridtools as gt
 from namelist import datatype
-from utils import greater_or_equal_than as ge
+from utils.utils import greater_or_equal_than as ge
 
 class VerticalDamping:
 	"""

@@ -35,10 +35,10 @@ from grids.axis import Axis
 from grids.grid_xy import GridXY
 from grids.grid_xyz import GridXYZ
 from grids.grid_xz import GridXZ
-from utils import equal_to as eq
-from utils import smaller_than as lt
-from utils import smaller_or_equal_than as le
-from utils import greater_than as gt
+from utils.utils import equal_to as eq
+from utils.utils import smaller_than as lt
+from utils.utils import smaller_or_equal_than as le
+from utils.utils import greater_than as gt
 
 class GalChen2d(GridXZ):
 	"""

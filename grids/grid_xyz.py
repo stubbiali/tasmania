@@ -29,8 +29,8 @@ from grids.axis import Axis
 from grids.topography import Topography2d
 from grids.grid_xy import GridXY
 from namelist import datatype
-from utils import smaller_than as lt
-from utils import smaller_or_equal_than as le
+from utils.utils import smaller_than as lt
+from utils.utils import smaller_or_equal_than as le
 
 class GridXYZ():
 	"""

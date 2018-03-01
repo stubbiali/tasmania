@@ -115,7 +115,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#parsers">Parsers</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#module-utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-utils">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-utils_meteo">Meteo utilities</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -189,7 +192,7 @@
 <dt id="grids.axis.Axis">
 <em class="property">class </em><code class="descclassname">grids.axis.</code><code class="descname">Axis</code><span class="sig-paren">(</span><em>coords</em>, <em>dims</em>, <em>attrs=None</em><span class="sig-paren">)</span><a class="headerlink" href="#grids.axis.Axis" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class representing a one-dimensional axis. The class API is designed to be similar to
-that provided by <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>.</p>
+that provided by <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -197,7 +200,7 @@ that provided by <a class="reference external" href="http://xarray.pydata.org/en
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
 <li><strong>coords</strong> (<em>list</em>) – One-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> storing axis coordinates, wrapped within a list.</li>
 <li><strong>values</strong> (<em>array_like</em>) – One-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> storing axis coordinates. This attrribute is semantically identical
-to <code class="xref py py-attr docutils literal"><span class="pre">coords</span></code> and it is introduced only for the sake of compliancy with <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>’s API.</li>
+to <code class="xref py py-attr docutils literal"><span class="pre">coords</span></code> and it is introduced only for the sake of compliancy with <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>’s API.</li>
 <li><strong>dims</strong> (<em>str</em>) – Axis dimension, i.e., label.</li>
 <li><strong>attrs</strong> (<em>dict</em>) – Axis attributes, e.g., the units.</li>
 </ul>
@@ -2988,32 +2991,6 @@ prognostic variable <span class="math">\(\phi\)</span>.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dycore.flux_isentropic.FluxIsentropicCentered._get_centered_flux_x_density">
-<code class="descname">_get_centered_flux_x_density</code><span class="sig-paren">(</span><em>i</em>, <em>j</em>, <em>k</em>, <em>U</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.flux_isentropic.FluxIsentropicCentered._get_centered_flux_x_density" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the centered flux in <span class="math">\(x\)</span>-direction for the isentropic density.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>i</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running along the <span class="math">\(x\)</span>-axis.</li>
-<li><strong>j</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running along the <span class="math">\(y\)</span>-axis.</li>
-<li><strong>k</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running along the <span class="math">\(\theta\)</span>-axis.</li>
-<li><strong>U</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-momentum.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the centered flux in <span class="math">\(x\)</span>-direction for the isentropic density.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="dycore.flux_isentropic.FluxIsentropicCentered._get_centered_flux_y">
 <code class="descname">_get_centered_flux_y</code><span class="sig-paren">(</span><em>i</em>, <em>j</em>, <em>k</em>, <em>v_unstg</em>, <em>phi</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.flux_isentropic.FluxIsentropicCentered._get_centered_flux_y" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the centered flux in <span class="math">\(y\)</span>-direction for a generic
@@ -3032,32 +3009,6 @@ prognostic variable <span class="math">\(\phi\)</span>.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the centered flux in <span class="math">\(y\)</span>-direction for <span class="math">\(\phi\)</span>.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="dycore.flux_isentropic.FluxIsentropicCentered._get_centered_flux_y_density">
-<code class="descname">_get_centered_flux_y_density</code><span class="sig-paren">(</span><em>i</em>, <em>j</em>, <em>k</em>, <em>V</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.flux_isentropic.FluxIsentropicCentered._get_centered_flux_y_density" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the centered flux in <span class="math">\(y\)</span>-direction for the isentropic density.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>i</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running along the <span class="math">\(x\)</span>-axis.</li>
-<li><strong>j</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running along the <span class="math">\(y\)</span>-axis.</li>
-<li><strong>k</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running along the <span class="math">\(\theta\)</span>-axis.</li>
-<li><strong>V</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-momentum.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the centered flux in <span class="math">\(y\)</span>-direction for the isentropic density.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
@@ -3556,7 +3507,7 @@ by <code class="xref py py-data docutils literal"><span class="pre">time_scheme<
 <li><strong>time_scheme</strong> (<em>str</em>) – <p>String specifying the time stepping method to implement. Either:</p>
 <ul>
 <li>’forward-euler’, for the forward Euler scheme;</li>
-<li>’leapfrog’, for the leapfrog scheme.</li>
+<li>’centered’, for a centered scheme.</li>
 </ul>
 </li>
 <li><strong>flux_scheme</strong> (<em>str</em>) – <p>String specifying the scheme to use. Either:</p>
@@ -3886,10 +3837,11 @@ at the next time level.</li>
 </dd></dl>
 
 <dl class="class">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog">
-<em class="property">class </em><code class="descclassname">dycore.prognostic_isentropic.</code><code class="descname">PrognosticIsentropicLeapfrog</code><span class="sig-paren">(</span><em>flux_scheme</em>, <em>grid</em>, <em>imoist</em>, <em>backend</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog" title="Permalink to this definition">¶</a></dt>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered">
+<em class="property">class </em><code class="descclassname">dycore.prognostic_isentropic.</code><code class="descname">PrognosticIsentropicCentered</code><span class="sig-paren">(</span><em>flux_scheme</em>, <em>grid</em>, <em>imoist</em>, <em>backend</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered" title="Permalink to this definition">¶</a></dt>
 <dd><p>This class inherits <a class="reference internal" href="#dycore.prognostic_isentropic.PrognosticIsentropic" title="dycore.prognostic_isentropic.PrognosticIsentropic"><code class="xref py py-class docutils literal"><span class="pre">PrognosticIsentropic</span></code></a> to implement
-the leapfrog scheme carrying out the prognostic step of the three-dimensional moist isentropic dynamical core.</p>
+a centered time-integration scheme to carry out the prognostic step of the three-dimensional
+moist isentropic dynamical core.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -3903,8 +3855,8 @@ the leapfrog scheme carrying out the prognostic step of the three-dimensional mo
 </tbody>
 </table>
 <dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>flux_scheme</em>, <em>grid</em>, <em>imoist</em>, <em>backend</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog.__init__" title="Permalink to this definition">¶</a></dt>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>flux_scheme</em>, <em>grid</em>, <em>imoist</em>, <em>backend</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructor.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -3935,8 +3887,8 @@ the leapfrog scheme carrying out the prognostic step of the three-dimensional mo
 </dd></dl>
 
 <dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._allocate_inputs">
-<code class="descname">_allocate_inputs</code><span class="sig-paren">(</span><em>s</em>, <em>u</em>, <em>v</em>, <em>diagnostics</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._allocate_inputs" title="Permalink to this definition">¶</a></dt>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered._allocate_inputs">
+<code class="descname">_allocate_inputs</code><span class="sig-paren">(</span><em>s</em>, <em>u</em>, <em>v</em>, <em>diagnostics</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered._allocate_inputs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate the attributes which will serve as inputs to the GT4Py’s stencil.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -3954,10 +3906,9 @@ the leapfrog scheme carrying out the prognostic step of the three-dimensional mo
 </dd></dl>
 
 <dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._defs_stencil_isentropic_density_and_water_constituents">
-<code class="descname">_defs_stencil_isentropic_density_and_water_constituents</code><span class="sig-paren">(</span><em>dt</em>, <em>in_s</em>, <em>in_u</em>, <em>in_v</em>, <em>in_mtg</em>, <em>in_U</em>, <em>in_V</em>, <em>in_Qv=None</em>, <em>in_Qc=None</em>, <em>in_Qr=None</em>, <em>old_s=None</em>, <em>old_U=None</em>, <em>old_V=None</em>, <em>old_Qv=None</em>, <em>old_Qc=None</em>, <em>old_Qr=None</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._defs_stencil_isentropic_density_and_water_constituents" title="Permalink to this definition">¶</a></dt>
-<dd><p>GT4Py’s stencil stepping the isentropic density and the water constituents via the leapfrog scheme.
-Further, it computes the provisional values for the momentums.</p>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered._defs_stencil">
+<code class="descname">_defs_stencil</code><span class="sig-paren">(</span><em>dt</em>, <em>in_s</em>, <em>in_u</em>, <em>in_v</em>, <em>in_mtg</em>, <em>in_U</em>, <em>in_V</em>, <em>in_Qv=None</em>, <em>in_Qc=None</em>, <em>in_Qr=None</em>, <em>old_s=None</em>, <em>old_U=None</em>, <em>old_V=None</em>, <em>old_Qv=None</em>, <em>old_Qc=None</em>, <em>old_Qr=None</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered._defs_stencil" title="Permalink to this definition">¶</a></dt>
+<dd><p>GT4Py’s stencil implementing the centered time-integration scheme.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -3984,8 +3935,8 @@ Further, it computes the provisional values for the momentums.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
 <li><strong>out_s</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped isentropic density.</li>
-<li><strong>out_U</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional <span class="math">\(x\)</span>-momentum.</li>
-<li><strong>out_V</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional <span class="math">\(y\)</span>-momentum.</li>
+<li><strong>out_U</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped <span class="math">\(x\)</span>-momentum.</li>
+<li><strong>out_V</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped <span class="math">\(y\)</span>-momentum.</li>
 <li><strong>out_Qv</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped mass of water vapour.</li>
 <li><strong>out_Qc</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped mass of cloud water.</li>
 <li><strong>out_Qr</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped mass of precipitation water.</li>
@@ -3998,37 +3949,9 @@ Further, it computes the provisional values for the momentums.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._defs_stencil_momentums">
-<code class="descname">_defs_stencil_momentums</code><span class="sig-paren">(</span><em>dt</em>, <em>in_s</em>, <em>in_mtg</em>, <em>in_U</em>, <em>in_V</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._defs_stencil_momentums" title="Permalink to this definition">¶</a></dt>
-<dd><p>GT4Py’s stencil stepping the momentums via a one-time-level scheme.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dt</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Global</span></code> representing the time step.</li>
-<li><strong>in_s</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped isentropic density.</li>
-<li><strong>in_mtg</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the Montgomery potential diagnosed from the stepped isentropic density.</li>
-<li><strong>in_U</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional <span class="math">\(x\)</span>-momentum.</li>
-<li><strong>in_V</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional <span class="math">\(y\)</span>-momentum.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
-<li><strong>out_U</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped <span class="math">\(x\)</span>-momentum.</li>
-<li><strong>out_V</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the stepped <span class="math">\(y\)</span>-momentum.</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._initialize_stencil">
-<code class="descname">_initialize_stencil</code><span class="sig-paren">(</span><em>s</em>, <em>u</em>, <em>v</em>, <em>diagnostics</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._initialize_stencil" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the GT4Py’s stencil implementing the two-time-levels scheme.</p>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered._initialize_stencil">
+<code class="descname">_initialize_stencil</code><span class="sig-paren">(</span><em>s</em>, <em>u</em>, <em>v</em>, <em>diagnostics</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered._initialize_stencil" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the GT4Py’s stencil implementing the centered time-integration scheme.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -4045,8 +3968,8 @@ Further, it computes the provisional values for the momentums.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._set_inputs">
-<code class="descname">_set_inputs</code><span class="sig-paren">(</span><em>dt</em>, <em>s</em>, <em>u</em>, <em>v</em>, <em>mtg</em>, <em>U</em>, <em>V</em>, <em>Qv</em>, <em>Qc</em>, <em>Qr</em>, <em>old_s</em>, <em>old_U</em>, <em>old_V</em>, <em>old_Qv</em>, <em>old_Qc</em>, <em>old_Qr</em>, <em>diagnostics</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog._set_inputs" title="Permalink to this definition">¶</a></dt>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered._set_inputs">
+<code class="descname">_set_inputs</code><span class="sig-paren">(</span><em>dt</em>, <em>s</em>, <em>u</em>, <em>v</em>, <em>mtg</em>, <em>U</em>, <em>V</em>, <em>Qv</em>, <em>Qc</em>, <em>Qr</em>, <em>old_s</em>, <em>old_U</em>, <em>old_V</em>, <em>old_Qv</em>, <em>old_Qc</em>, <em>old_Qr</em>, <em>diagnostics</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered._set_inputs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the attributes which serve as inputs to the GT4Py’s stencil.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -4093,9 +4016,9 @@ at the previous time level.</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog.step_forward">
-<code class="descname">step_forward</code><span class="sig-paren">(</span><em>dt</em>, <em>s</em>, <em>u</em>, <em>v</em>, <em>p</em>, <em>mtg</em>, <em>U</em>, <em>V</em>, <em>Qv=None</em>, <em>Qc=None</em>, <em>Qr=None</em>, <em>old_s=None</em>, <em>old_U=None</em>, <em>old_V=None</em>, <em>old_Qv=None</em>, <em>old_Qc=None</em>, <em>old_Qr=None</em>, <em>diagnostics=None</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicLeapfrog.step_forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Method advancing the conservative model variables one time step forward via the leapfrog scheme.</p>
+<dt id="dycore.prognostic_isentropic.PrognosticIsentropicCentered.step_forward">
+<code class="descname">step_forward</code><span class="sig-paren">(</span><em>dt</em>, <em>s</em>, <em>u</em>, <em>v</em>, <em>p</em>, <em>mtg</em>, <em>U</em>, <em>V</em>, <em>Qv=None</em>, <em>Qc=None</em>, <em>Qr=None</em>, <em>old_s=None</em>, <em>old_U=None</em>, <em>old_V=None</em>, <em>old_Qv=None</em>, <em>old_Qc=None</em>, <em>old_Qr=None</em>, <em>diagnostics=None</em><span class="sig-paren">)</span><a class="headerlink" href="#dycore.prognostic_isentropic.PrognosticIsentropicCentered.step_forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method advancing the conservative model variables one time step forward via a centered time-integration scheme.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -4561,11 +4484,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\sigma\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\sigma_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\sigma = \sigma_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -4677,11 +4600,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\mu\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\mu_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -4793,11 +4716,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\mu\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\mu_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -5153,11 +5076,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\sigma\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\sigma_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\sigma = \sigma_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -5254,11 +5177,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(z\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(z_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -5355,11 +5278,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(z\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(z_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -5570,7 +5493,7 @@ final states are saved.</li>
 <blockquote>
 <div><ul class="simple">
 <li>‘forward-euler’, for the forward Euler scheme;</li>
-<li>‘leapfrog’, for the leapfrog scheme.</li>
+<li>‘centered’, for a centered time-integration scheme.</li>
 </ul>
 </div></blockquote>
 <ul>
@@ -5650,7 +5573,7 @@ final states are saved.</li>
 <dd><p>Class storing and handling time-dependent variables defined on a grid. Ideally, this class should be used to
 represent the state, or a sequence of states at different time levels, of a <em>generic</em> climate or meteorological model.
 The model variables, in the shape of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s, are passed to the constructor as keyword arguments.
-After conversion to <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s, the variables are packed in a dictionary whose keys are the input keywords.
+After conversion to <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s, the variables are packed in a dictionary whose keys are the input keywords.
 The class attribute <code class="xref py py-data docutils literal"><span class="pre">units</span></code> lists, for any admissible keyword, the units in which the associated field should
 be expressed. Any variable can be accessed in read-only mode via the accessor operator by specifying the corresponding
 keyword. Other methods are provided to update the state, or to create a sequence of states (useful for animation purposes).
@@ -5675,7 +5598,7 @@ derived classes, each one representing the state of a <em>specific</em> model.</
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>str</em>) – The key corresponding to the variable to access.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Deep copy of the <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the variable.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Deep copy of the <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the variable.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">obj</td>
 </tr>
@@ -5710,7 +5633,7 @@ derived classes, each one representing the state of a <em>specific</em> model.</
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<em>obj</em>) – Another <a class="reference internal" href="#storages.grid_data.GridData" title="storages.grid_data.GridData"><code class="xref py py-class docutils literal"><span class="pre">GridData</span></code></a> (or a derived class), whose <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<em>obj</em>) – Another <a class="reference internal" href="#storages.grid_data.GridData" title="storages.grid_data.GridData"><code class="xref py py-class docutils literal"><span class="pre">GridData</span></code></a> (or a derived class), whose <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s
 will be concatenated along the temporal axis to the corresponding ones in the current object.</td>
 </tr>
 </tbody>
@@ -6049,7 +5972,7 @@ fully C++-compliant.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
+<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
 <li><strong>topo_type</strong> (<em>str</em>) – <p>Topography type. Either:</p>
 <ul>
 <li>’flat_terrain’;</li>
@@ -6128,7 +6051,7 @@ Must be fully C++-compliant.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.0)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
+<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.1)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
 <li><strong>topo_type</strong> (<em>str</em>) – <p>Topography type. Either:</p>
 <ul>
 <li>’flat_terrain’;</li>
@@ -6446,12 +6369,12 @@ For the conversion, the <a class="reference external" href="http://cfconventions
 <dt id="utils.set_namelist">
 <code class="descclassname">utils.</code><code class="descname">set_namelist</code><span class="sig-paren">(</span><em>user_namelist=None</em><span class="sig-paren">)</span><a class="headerlink" href="#utils.set_namelist" title="Permalink to this definition">¶</a></dt>
 <dd><p>Place the user-defined namelist module in the Python search path.
-This is achieved by physically copying the content of the user-provided module into GT4ESS_ROOT/namelist.py.</p>
+This is achieved by physically copying the content of the user-provided module into TASMANIA_ROOT/namelist.py.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>user_namelist</strong> (<em>str</em>) – Path to the user-defined namelist. If not specified, the default namelist GT4ESS_ROOT/_namelist.py is used.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>user_namelist</strong> (<em>str</em>) – Path to the user-defined namelist. If not specified, the default namelist TASMANIA_ROOT/_namelist.py is used.</td>
 </tr>
 </tbody>
 </table>
@@ -6507,6 +6430,57 @@ This is achieved by physically copying the content of the user-provided module i
 </table>
 </dd></dl>
 
+<div class="section" id="module-utils_meteo">
+<span id="meteo-utilities"></span><h3>Meteo utilities<a class="headerlink" href="#module-utils_meteo" title="Permalink to this headline">¶</a></h3>
+<p>Meteo-oriented utilities.</p>
+<dl class="function">
+<dt id="utils_meteo.convert_relative_humidity_to_water_vapor">
+<code class="descclassname">utils_meteo.</code><code class="descname">convert_relative_humidity_to_water_vapor</code><span class="sig-paren">(</span><em>p</em>, <em>T</em>, <em>rh</em><span class="sig-paren">)</span><a class="headerlink" href="#utils_meteo.convert_relative_humidity_to_water_vapor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert relative humidity to water vapor mixing ratio.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>p</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the pressure ([<span class="math">\(Pa\)</span>]).</li>
+<li><strong>T</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the temperature ([<span class="math">\(K\)</span>]).</li>
+<li><strong>rh</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the relative humidity ([<span class="math">\(-\)</span>]).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the fraction of water vapor ([<span class="math">\(g \, g^{-1}\)</span>]).</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array_like</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<p>Vaisala, O. (2013). <cite>Humidity conversion formulas: Calculation formulas for humidity</cite>. Retrieved from           <a class="reference external" href="https://www.vaisala.com">https://www.vaisala.com</a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="utils_meteo.get_saturation_water_vapor_pressure">
+<code class="descclassname">utils_meteo.</code><code class="descname">get_saturation_water_vapor_pressure</code><span class="sig-paren">(</span><em>T</em><span class="sig-paren">)</span><a class="headerlink" href="#utils_meteo.get_saturation_water_vapor_pressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the saturation vapor pressure over water at a given temperature. The Goff-Gratch formula is used.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>T</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the temperature ([<span class="math">\(K\)</span>]).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the saturation water vapor pressure ([<span class="math">\(Pa\)</span>]).</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">array_like</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<p>Goff, J. A., and S. Gratch. (1946). <cite>Low-pressure properties of water from -160 to 212 F</cite>.              Transactions of the American Society of Heating and Ventilating Engineers, 95-122.</p>
+</dd></dl>
+
+</div>
 </div>
 </div>
 

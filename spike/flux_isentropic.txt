@@ -1,0 +1,188 @@
+def _compute_fluxes(self, i, j, k, dt, s, u, v, mtg, U, V, Qv, Qc, Qr):
+	"""
+	Compute MacCormack fluxes for all prognostic variables.
+	"""
+	# Shortcuts
+	dx, dy = self._grid.dx, self._grid.dy
+
+	# Diagnose unstaggered velocities
+	u_unstg = gt.Equation()
+	u_unstg[i, j, k] = 0.5 * (u[i, j, k] + u[i+1, j, k])
+	v_unstg = gt.Equation()
+	v_unstg[i, j, k] = 0.5 * (v[i, j, k] + v[i, j+1, k])
+
+	# Compute predicted values, without taking the Montgomery potential into account
+	s_pred = self._get_maccormack_predicted_value_density(i, j, k, dx, dy, dt, U, V, s)
+	U_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, U)
+	V_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, V)
+	if self._imoist:
+		Qv_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, Qv)
+		Qc_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, Qc)
+		Qr_pred = self._get_maccormack_predicted_value(i, j, k, dx, dy, dt, u_unstg, v_unstg, Qr)
+	
+	# Compute predicted values for the momentums, taking the Montgomery potential into account
+	U_pred_mtg = gt.Equation()
+	U_pred_mtg[i, j, k] = U_pred[i, j, k] - dt * s[i, j, k] * (mtg[i+1, j, k] - mtg[i, j, k]) / dx
+	V_pred_mtg = gt.Equation()
+	V_pred_mtg[i, j, k] = V_pred[i, j, k] - dt * s[i, j, k] * (mtg[i, j+1, k] - mtg[i, j, k]) / dy
+
+	# Diagnose predicted values for the velocities
+	u_unstg_pred = self._get_velocity(i, j, k, s_pred, U_pred)
+	u_unstg_pred_mtg = self._get_velocity(i, j, k, s_pred, U_pred_mtg)
+	v_unstg_pred = self._get_velocity(i, j, k, s_pred, V_pred)
+	v_unstg_pred_mtg = self._get_velocity(i, j, k, s_pred, V_pred_mtg)
+
+	# Get the fluxes
+	self._flux_s_x = self._get_maccormack_flux_x(i, j, k, U, U_pred_mtg)
+	self._flux_s_y = self._get_maccormack_flux_y(i, j, k, V, V_pred_mtg)
+	self._flux_U_x = self._get_maccormack_flux_x(i, j, k, u_unstg, U, u_unstg_pred, U_pred)
+	self._flux_U_y = self._get_maccormack_flux_y(i, j, k, v_unstg, U, v_unstg_pred, U_pred)
+	self._flux_V_x = self._get_maccormack_flux_x(i, j, k, u_unstg, V, u_unstg_pred, V_pred)
+	self._flux_V_y = self._get_maccormack_flux_y(i, j, k, v_unstg, V, v_unstg_pred, V_pred)
+	
+	if self._imoist:
+		self._flux_Qv_x = self._get_maccormack_flux_x(i, j, k, u_unstg, Qv, u_unstg_pred_mtg, Qv_pred)
+		self._flux_Qv_y = self._get_maccormack_flux_y(i, j, k, v_unstg, Qv, v_unstg_pred_mtg, Qv_pred)
+		self._flux_Qc_x = self._get_maccormack_flux_x(i, j, k, u_unstg, Qc, u_unstg_pred_mtg, Qc_pred)
+		self._flux_Qc_y = self._get_maccormack_flux_y(i, j, k, v_unstg, Qc, v_unstg_pred_mtg, Qc_pred)
+		self._flux_Qr_x = self._get_maccormack_flux_x(i, j, k, u_unstg, Qr, u_unstg_pred_mtg, Qr_pred)
+		self._flux_Qr_y = self._get_maccormack_flux_y(i, j, k, v_unstg, Qr, v_unstg_pred_mtg, Qr_pred)
+
+class FluxIsentropicCentered(FluxIsentropic):
+	"""
+	Class which inherits :class:`FluxIsentropic` to implement the centered scheme applied to the governing equations
+	in conservative form.
+
+	Attributes
+	----------
+	nb : int
+		Number of boundary layers.
+	"""
+	def __init__(self, grid, imoist):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : obj
+			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+		imoist : bool
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+		"""
+		super().__init__(grid, imoist)
+		self.nb = 1
+
+	def _compute_fluxes(self, i, j, k, dt, s, u, v, mtg, U, V, Qv, Qc, Qr):
+		"""
+		Method computing the centered :class:`gridtools.Equation`\s representing the :math:`x`- and :math:`y`-fluxes for all 
+		the conservative prognostic variables. The :class:`gridtools.Equation`s are then set as instance attributes.
+
+		Parameters
+		----------
+		i : obj
+			:class:`gridtools.Index` representing the index running along the :math:`x`-axis.
+		j : obj
+			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
+		k : obj
+			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
+		dt : obj
+			:class:`gridtools.Global` representing the time step.
+		s : obj
+			:class:`gridtools.Equation` representing the isentropic density.
+		u : obj
+			:class:`gridtools.Equation` representing the :math:`x`-velocity.
+		v : obj
+			:class:`gridtools.Equation` representing the :math:`y`-velocity.
+		mtg : obj
+			:class:`gridtools.Equation` representing the Montgomery potential.
+		U : obj
+			:class:`gridtools.Equation` representing the :math:`x`-momentum.
+		V : obj
+			:class:`gridtools.Equation` representing the :math:`y`-momentum.
+		Qv : obj
+			:class:`gridtools.Equation` representing the mass of water vapour.
+		Qc : obj
+			:class:`gridtools.Equation` representing the mass of cloud water.
+		Qr : obj
+			:class:`gridtools.Equation` representing the mass of precipitation water.
+		"""
+		# Compute unstaggered velocity components
+		u_unstg = gt.Equation()
+		u_unstg[i, j, k] = 0.5 * (u[i, j, k] + u[i+1, j, k])
+		v_unstg = gt.Equation()
+		v_unstg[i, j, k] = 0.5 * (v[i, j, k] + v[i, j+1, k]) 
+
+		# Compute flux for the isentropic density and the momentums
+		self._flux_s_x = self._get_centered_flux_x(i, j, k, u_unstg, s)
+		self._flux_s_y = self._get_centered_flux_y(i, j, k, v_unstg, s)
+		self._flux_U_x = self._get_centered_flux_x(i, j, k, u_unstg, U)
+		self._flux_U_y = self._get_centered_flux_y(i, j, k, v_unstg, U)
+		self._flux_V_x = self._get_centered_flux_x(i, j, k, u_unstg, V)
+		self._flux_V_y = self._get_centered_flux_y(i, j, k, v_unstg, V)
+		
+		# Compute flux for the water constituents
+		if self._imoist:
+			self._flux_Qv_x = self._get_centered_flux_x(i, j, k, u_unstg, Qv)
+			self._flux_Qv_y = self._get_centered_flux_y(i, j, k, v_unstg, Qv)
+			self._flux_Qc_x = self._get_centered_flux_x(i, j, k, u_unstg, Qc)
+			self._flux_Qc_y = self._get_centered_flux_y(i, j, k, v_unstg, Qc)
+			self._flux_Qr_x = self._get_centered_flux_x(i, j, k, u_unstg, Qr)
+			self._flux_Qr_y = self._get_centered_flux_y(i, j, k, v_unstg, Qr)
+
+	def _get_centered_flux_x(self, i, j, k, u_unstg, phi):
+		"""
+		Get the :class:`gridtools.Equation` representing the centered flux in :math:`x`-direction for a generic 
+		prognostic variable :math:`\phi`.
+
+		Parameters
+		----------
+		i : obj
+			:class:`gridtools.Index` representing the index running along the :math:`x`-axis.
+		j : obj
+			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
+		k : obj
+			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
+		u_unstg : obj
+			:class:`gridtools.Equation` representing the unstaggered :math:`x`-velocity.
+		phi : obj
+			:class:`gridtools.Equation` representing the field :math:`\phi`.
+
+		Return
+		------
+		obj :
+			:class:`gridtools.Equation` representing the centered flux in :math:`x`-direction for :math:`\phi`.
+		"""
+		phi_name = phi.get_name()
+		flux_name = 'flux_' + phi_name + '_x'
+		flux = gt.Equation(name = flux_name)
+		flux[i, j, k] = 0.5 * (u_unstg[i-1, j, k] * phi[i-1, j, k] + u_unstg[i, j, k] * phi[i, j, k])
+		return flux
+
+	def _get_centered_flux_y(self, i, j, k, v_unstg, phi):
+		"""
+		Get the :class:`gridtools.Equation` representing the centered flux in :math:`y`-direction for a generic 
+		prognostic variable :math:`\phi`.
+
+		Parameters
+		----------
+		i : obj
+			:class:`gridtools.Index` representing the index running along the :math:`x`-axis.
+		j : obj
+			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
+		k : obj
+			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
+		v_unstg : obj
+			:class:`gridtools.Equation` representing the unstaggered :math:`y`-velocity.
+		phi : obj
+			:class:`gridtools.Equation` representing the field :math:`\phi`.
+
+		Return
+		------
+		obj :
+			:class:`gridtools.Equation` representing the centered flux in :math:`y`-direction for :math:`\phi`.
+		"""
+		phi_name = phi.get_name()
+		flux_name = 'flux_' + phi_name + '_y'
+		flux = gt.Equation(name = flux_name)
+		flux[i, j, k] = 0.5 * (v_unstg[i, j-1, k] * phi[i, j-1, k] + v_unstg[i, j, k] * phi[i, j, k])
+		return flux

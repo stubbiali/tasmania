@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import math
 import numpy as np
 
 from dycore.diagnostic_isentropic import DiagnosticIsentropic
@@ -31,6 +32,7 @@ from dycore.vertical_damping import VerticalDamping
 import gridtools as gt
 from namelist import cp, datatype, g, p_ref, Rd
 from storages.state_isentropic import StateIsentropic
+import utils.utils_meteo as utils_meteo
 
 class DynamicalCoreIsentropic(DynamicalCore):
 	"""
@@ -41,8 +43,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 	"""
 	def __init__(self, time_scheme, flux_scheme, horizontal_boundary_type, grid, imoist, backend,
 				 idamp = True, damp_type = 'rayleigh', damp_depth = 15, damp_max = 0.0002, 
-				 ismooth = True, smooth_type = 'first-order', smooth_damp_depth = 10, 
-				 smooth_coeff = .03, smooth_coeff_max = .24, smooth_coeff_moist = .03, smooth_coeff_moist_max = .24):
+				 ismooth = True, smooth_type = 'first_order', smooth_damp_depth = 10, 
+				 smooth_coeff = .03, smooth_coeff_max = .24, 
+				 ismooth_moist = False, smooth_moist_type = 'first_order', smooth_moist_damp_depth = 10,
+				 smooth_coeff_moist = .03, smooth_coeff_moist_max = .24):
 		"""
 		Constructor.
 
@@ -84,6 +88,13 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		smooth_coeff_max : `float`, optional
 			Maximum value for the smoothing coefficient. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
+		ismooth_moist : `bool`, optional
+			:obj:`True` if numerical smoothing on water constituents is enabled, :obj:`False` otherwise. Default is :obj:`True`.
+		smooth_moist_type: `str`, optional
+			String specifying the smoothing technique to apply to the water constituents. Default is 'first-order'.
+			See :class:`dycore.horizontal_smoothing.HorizontalSmoothing` for the available options.
+		smooth_moist_damp_depth : `int`, optional
+			Number of vertical layers in the smoothing damping region for the water constituents. Default is 10.
 		smooth_coeff_moist : `float`, optional
 			Smoothing coefficient for the water constituents. Default is 0.03.
 		smooth_coeff_moist_max : `float`, optional
@@ -91,7 +102,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
 		"""
 		# Keep track of the input parameters
-		self._grid, self._imoist, self._idamp, self._ismooth = grid, imoist, idamp, ismooth
+		self._grid, self._imoist, self._idamp, self._ismooth, self._ismooth_moist = grid, imoist, idamp, ismooth, ismooth_moist
 
 		# Instantiate the class implementing the prognostic part of the dycore
 		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, imoist, backend)
@@ -114,8 +125,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		if ismooth:
 			self._smoother = HorizontalSmoothing.factory(smooth_type, (nx, ny, nz), grid, smooth_damp_depth, 
 														 smooth_coeff, smooth_coeff_max, backend)
-			if imoist:
-				self._smoother_moist = HorizontalSmoothing.factory(smooth_type, (nx, ny, nz), grid, smooth_damp_depth, 
+			if imoist and ismooth_moist:
+				self._smoother_moist = HorizontalSmoothing.factory(smooth_moist_type, (nx, ny, nz), grid, smooth_moist_damp_depth, 
 														 		   smooth_coeff_moist, smooth_coeff_moist_max, backend)
 
 		# Set the pointer to the entry-point method, distinguishing between dry and moist model
@@ -148,10 +159,22 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		* if :data:`initial_state_type == 0`:
 
 			- :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
-			- all the other model variables (Exner function, pressure, Montgomery potential, height of the \
-				isentropes, isentropic density) are derived from the Brunt-Vaisala frequency :math:`N`.
+			- the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
+				and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
+			- the mass fraction of water vapor is derived from the relative humidity, which is horizontally uniform \
+				and different from zero only in a band close to the surface;
+			- the mass fraction of cloud water and precipitation water is zero;
 
 		* if :data:`initial_state_type == 1`:
+
+			- :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
+			- the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
+				and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
+			- the mass fraction of water vapor is derived from the relative humidity, which is sinusoidal in the :math:`x`-direction \
+				and uniform in the :math:`y`-direction, and different from zero only in a band close to the surface;
+			- the mass fraction of cloud water and precipitation water is zero.
+
+		* if :data:`initial_state_type == 2`:
 
 			- :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
 			- :math:`T(x, \, y, \, \\theta, \, 0) = T_0`.
@@ -215,7 +238,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			h = np.zeros((nx, ny, nz + 1), dtype = datatype)
 			h[:, :, -1] = self._grid.topography_height
 			for k in range(0, nz):
-				h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * 2. * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
+				h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
 
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
@@ -226,7 +249,25 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 			# The initial water constituents
 			if self._imoist:
-				qv = np.zeros((nx, ny, nz), dtype = datatype)
+				# Set the initial relative humidity
+				rhmax   = 0.98
+				kw      = 10
+				kc      = 11
+				k       = np.arange(kc - kw + 1, kc + kw)
+				rh1d    = np.zeros(nz, dtype = datatype)
+				rh1d[k] = rhmax * np.cos(np.abs(k - kc) * math.pi / (2. * kw)) ** 2
+				rh1d    = rh1d[::-1]
+				rh      = np.tile(rh1d[np.newaxis, np.newaxis, :], (nx, ny, 1))
+
+				# Compute the pressure and the temperature at the main levels
+				p_ml  = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
+				theta = np.tile(self._grid.z.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
+				T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
+
+				# Convert relative humidity to water vapor
+				qv = utils_meteo.convert_relative_humidity_to_water_vapor(p_ml, T_ml, rh)
+				
+				# Set the initial cloud water and precipitation water to zero
 				qc = np.zeros((nx, ny, nz), dtype = datatype)
 				qr = np.zeros((nx, ny, nz), dtype = datatype)
 
@@ -234,6 +275,75 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		# Case 1
 		#
 		if initial_state_type == 1:
+			# The initial velocity
+			u = kwargs.get('x_velocity_initial', 10.) * np.ones((nx + 1, ny, nz), dtype = datatype)
+			v = kwargs.get('y_velocity_initial', 0.) * np.ones((nx, ny + 1, nz), dtype = datatype)
+
+			# The initial Exner function
+			brunt_vaisala_initial = kwargs.get('brunt_vaisala_initial', .01)
+			exn_col = np.zeros(nz + 1, dtype = datatype)
+			exn_col[-1] = cp
+			for k in range(0, nz):
+				exn_col[nz - k - 1] = exn_col[nz - k] - dz * g**2 / \
+									  (brunt_vaisala_initial**2 * z[nz - k - 1]**2)
+			exn = np.tile(exn_col[np.newaxis, np.newaxis, :], (nx, ny, 1))
+
+			# The initial pressure
+			p = p_ref * (exn / cp) ** (cp / Rd)
+
+			# The initial Montgomery potential
+			mtg_s = z_hl[-1] * exn[:, :, -1] + g * topo
+			mtg = np.zeros((nx, ny, nz), dtype = datatype)
+			mtg[:, :, -1] = mtg_s + 0.5 * dz * exn[:, :, -1]
+			for k in range(1, nz):
+				mtg[:, :, nz - k - 1] = mtg[:, :, nz - k] + dz * exn[:, :, nz - k]
+
+			# The initial geometric height of the isentropes
+			h = np.zeros((nx, ny, nz + 1), dtype = datatype)
+			h[:, :, -1] = self._grid.topography_height
+			for k in range(0, nz):
+				h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
+
+			# The initial isentropic density
+			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
+
+			# The initial momentums
+			U = s * kwargs.get('x_velocity_initial', 10.)
+			V = s * kwargs.get('y_velocity_initial', 0.)
+
+			# The initial water constituents
+			if self._imoist:
+				# Set the initial relative humidity
+				rhmax   = 0.98
+				kw      = 10
+				kc      = 11
+				k       = np.arange(kc - kw + 1, kc + kw)
+				rh1d    = np.zeros(nz, dtype = datatype)
+				rh1d[k] = rhmax * np.cos(np.abs(k - kc) * math.pi / (2. * kw)) ** 2
+				rh1d    = rh1d[::-1]
+				rh      = np.tile(rh1d[np.newaxis, np.newaxis, :], (nx, ny, 1))
+
+				# Compute the pressure and the temperature at the main levels
+				p_ml  = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
+				theta = np.tile(self._grid.z.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
+				T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
+
+				# Convert relative humidity to water vapor
+				qv = utils_meteo.convert_relative_humidity_to_water_vapor(p_ml, T_ml, rh)
+
+				# Make the distribution of water vapor x-periodic
+				x		= np.tile(self._grid.x.values[:, np.newaxis, np.newaxis], (1, ny, nz))
+				xl, xr  = x[0, 0, 0], x[-1, 0, 0]
+				qv      = qv * (2. + np.sin(2. * math.pi * (x - xl) / (xr - xl)))
+				
+				# Set the initial cloud water and precipitation water to zero
+				qc = np.zeros((nx, ny, nz), dtype = datatype)
+				qr = np.zeros((nx, ny, nz), dtype = datatype)
+
+		#
+		# Case 2
+		#
+		if initial_state_type == 2:
 			# The initial velocity
 			u = kwargs.get('x_velocity_initial', 10.) * np.ones((nx + 1, ny, nz), dtype = datatype)
 			v = kwargs.get('y_velocity_initial', 0.) * np.ones((nx, ny + 1, nz), dtype = datatype)
@@ -419,7 +529,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		exn_now = state['exner_function'].values[:,:,:,0]
 		mtg_now = state['montgomery_potential'].values[:,:,:,0]
 		h_now   = state['height'].values[:,:,:,0]
-		qv_now  = state['water_vapour'].values[:,:,:,0]
+		qv_now  = state['water_vapor'].values[:,:,:,0]
 		qc_now  = state['cloud_water'].values[:,:,:,0]
 		qr_now  = state['precipitation_water'].values[:,:,:,0]
 
@@ -488,25 +598,28 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				self._Qc_ref = Qc_now
 				self._Qr_ref = Qr_now
 
-			s_new[:,:,:]  = self._damper.apply(self._prognostic.time_levels * dt, s_now , s_new , self._s_ref )
-			U_new[:,:,:]  = self._damper.apply(self._prognostic.time_levels * dt, U_now , U_new , self._U_ref )
-			V_new[:,:,:]  = self._damper.apply(self._prognostic.time_levels * dt, V_now , V_new , self._V_ref )
-			Qv_new[:,:,:] = self._damper.apply(self._prognostic.time_levels * dt, Qv_now, Qv_new, self._Qv_ref)
-			Qc_new[:,:,:] = self._damper.apply(self._prognostic.time_levels * dt, Qc_now, Qc_new, self._Qc_ref)
-			Qr_new[:,:,:] = self._damper.apply(self._prognostic.time_levels * dt, Qr_now, Qr_new, self._Qr_ref)
+			s_new[:,:,:]  = self._damper.apply(dt, s_now , s_new , self._s_ref )
+			U_new[:,:,:]  = self._damper.apply(dt, U_now , U_new , self._U_ref )
+			V_new[:,:,:]  = self._damper.apply(dt, V_now , V_new , self._V_ref )
+			Qv_new[:,:,:] = self._damper.apply(dt, Qv_now, Qv_new, self._Qv_ref)
+			Qc_new[:,:,:] = self._damper.apply(dt, Qc_now, Qc_new, self._Qc_ref)
+			Qr_new[:,:,:] = self._damper.apply(dt, Qr_now, Qr_new, self._Qr_ref)
 
 		# Apply numerical smoothing
 		if self._ismooth:
-			s_new[:,:,:]  = self._smoother.apply(s_new)
-			U_new[:,:,:]  = self._smoother.apply(U_new)
-			V_new[:,:,:]  = self._smoother.apply(V_new)
-			Qv_new[:,:,:] = self._smoother_moist.apply(Qv_new)
-			Qc_new[:,:,:] = self._smoother_moist.apply(Qc_new)
-			Qr_new[:,:,:] = self._smoother_moist.apply(Qr_new)
+			s_new[:,:,:] = self._smoother.apply(s_new)
+			U_new[:,:,:] = self._smoother.apply(U_new)
+			V_new[:,:,:] = self._smoother.apply(V_new)
 
 			self._boundary.apply(s_new , s_now )
 			self._boundary.apply(U_new , U_now )
 			self._boundary.apply(V_new , V_now )
+
+		if self._ismooth_moist:
+			Qv_new[:,:,:] = self._smoother_moist.apply(Qv_new)
+			Qc_new[:,:,:] = self._smoother_moist.apply(Qc_new)
+			Qr_new[:,:,:] = self._smoother_moist.apply(Qr_new)
+
 			self._boundary.apply(Qv_new, Qv_now)
 			self._boundary.apply(Qc_new, Qc_now)
 			self._boundary.apply(Qr_new, Qr_now)

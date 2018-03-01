@@ -240,7 +240,7 @@ class PrognosticIsentropic:
 		time_scheme : str
 			String specifying the time stepping method to implement. Either:
 
-			* 'forward-euler', for the forward Euler scheme;
+			* 'forward_euler', for the forward Euler scheme;
 			* 'centered', for a centered scheme.
 
 		flux_scheme : str 
@@ -262,7 +262,7 @@ class PrognosticIsentropic:
 		obj :
 			An instace of the derived class implementing the scheme specified by :data:`scheme`.
 		"""
-		if time_scheme == 'forward-euler':
+		if time_scheme == 'forward_euler':
 			return PrognosticIsentropicForwardEuler(flux_scheme, grid, imoist, backend)
 		elif time_scheme == 'centered':
 			return PrognosticIsentropicCentered(flux_scheme, grid, imoist, backend)
@@ -1104,7 +1104,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y = \
 				self._flux.get_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
 		else:
-			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y,
+			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y, \
 			flux_Qv_x, flux_Qv_y, flux_Qc_x, flux_Qc_y, flux_Qr_x, flux_Qr_y = \
 				self._flux.get_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
 
