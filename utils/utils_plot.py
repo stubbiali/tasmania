@@ -71,18 +71,64 @@ def reverse_colormap(cmap, name = None):
 
 	return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
 
+def contour_xz(grid, height, field, **kwargs):
+	"""
+	Generate a :math:`xz`-contour of a gridded field.
 
-def contour_xz(grid, topography, height, field, **kwargs):
+	Parameters
+	----------
+	grid : obj
+		The underlying grid, as an instance of :math:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+	height : array_like
+		Two-dimensional :class:`numpy.ndarray` representing the height of the vertical coordinate isolines.
+	field : array_like
+		Two-dimensional :class:`numpy.ndarray` representing the field to plot.
+		
+	Keyword arguments
+	-----------------
+	show : bool
+		:obj:`True` if the plot should be showed, :obj:`False` otherwise. Default is :obj:`True`.
+	destination : str
+		String specify the path to the location where the plot will be saved. Default is :obj:`None`, meaning that the plot
+		will not be saved. Note that the plot may be saved only if :data:`show` is set to :obj:`False`.
+	fontsize : int
+		The fontsize to be used. Default is 12.
+	figsize : sequence
+		Sequence representing the figure size. Default is [8,8].
+	title : str
+		The figure title. Default is an empty string.
+	x_label : str
+		Label for the :math:`x`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	x_factor : float
+		Scaling factor for the :math:`x`-axis. Default is 1.
+	x_lim : sequence
+		Sequence representing the interval of the :math:`x`-axis to visualize. By default, the entire domain is shown.
+	z_label : str
+		Label for the :math:`z`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	z_factor : float
+		Scaling factor for the :math:`z`-axis. Default is 1.
+	z_lim : sequence
+		Sequence representing the interval of the :math:`z`-axis to visualize. By default, the entire domain is shown.
+	field_factor : float
+		Scaling factor for the field. Default is 1.
+	plot_height: bool
+		:obj:`True` to plot the height of the vertical coordinate isolines, :obj:`False` otherwise. Default is :obj:`True`.
+	text : str
+		Text to be added to the figure as anchored text. By default, no extra text is shown.
+	text_loc : str
+		String specifying the location where the text box should be placed. Default is 'upper right'; 
+		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
+	"""
 	# Shortcuts
 	nx, nz = grid.nx, grid.nz
 	ni, nk = field.shape
 
 	# Get keyword arguments
-	ishow            = kwargs.get('ishow', True)
+	show             = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
 	fontsize         = kwargs.get('fontsize', 12)
 	figsize			 = kwargs.get('figsize', [8,8])
-	title            = kwargs.get('title', '$xz$-contourf')
+	title            = kwargs.get('title', '')
 	x_label          = kwargs.get('x_label', '{} [${}$]'.format(grid.x.dims, grid.x.attrs.get('units', '')))
 	x_factor         = kwargs.get('x_factor', 1.)
 	x_lim			 = kwargs.get('x_lim', None)
@@ -90,6 +136,7 @@ def contour_xz(grid, topography, height, field, **kwargs):
 	z_factor         = kwargs.get('z_factor', 1.)
 	z_lim			 = kwargs.get('z_lim', None)
 	field_factor     = kwargs.get('field_factor', 1.)
+	plot_height		 = kwargs.get('plot_height', True)
 	text			 = kwargs.get('text', None)
 	text_loc		 = kwargs.get('text_loc', 'upper right')
 
@@ -120,8 +167,9 @@ def contour_xz(grid, topography, height, field, **kwargs):
 	fig, ax = plt.subplots(figsize = figsize)
 
 	# Plot the isentropes
-	for k in range(0, nk):
-		ax.plot(x1[:, 0], z1[:, k], color = 'gray', linewidth = 1)
+	if plot_height:
+		for k in range(0, nk):
+			ax.plot(x1[:, 0], z1[:, k], color = 'gray', linewidth = 1)
 	ax.plot(x1[:, 0], z[:, -1], color = 'black', linewidth = 1)
 
 	# Plot the field
@@ -142,19 +190,87 @@ def contour_xz(grid, topography, height, field, **kwargs):
 
 	# Show
 	fig.tight_layout()
-	if ishow or (destination is None):
+	if show or (destination is None):
 		plt.show()
 	else:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
 
-
 def contourf_xz(grid, topography, height, field, **kwargs):
+	"""
+	Generate a :math:`xz`-contourf of a gridded field.
+
+	Parameters
+	----------
+	grid : obj
+		The underlying grid, as an instance of :math:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+	topography : array_like
+		One-dimensional :class:`numpy.ndarray` representing the underlying topography.
+	height : array_like
+		Two-dimensional :class:`numpy.ndarray` representing the height of the vertical coordinate isolines.
+	field : array_like
+		Two-dimensional :class:`numpy.ndarray` representing the field to plot.
+		
+	Keyword arguments
+	-----------------
+	show : bool
+		:obj:`True` if the plot should be showed, :obj:`False` otherwise. Default is :obj:`True`.
+	destination : str
+		String specify the path to the location where the plot will be saved. Default is :obj:`None`, meaning that the plot
+		will not be saved. Note that the plot may be saved only if :data:`show` is set to :obj:`False`.
+	fontsize : int
+		The fontsize to be used. Default is 12.
+	figsize : sequence
+		Sequence representing the figure size. Default is [8,8].
+	title : str
+		The figure title. Default is an empty string.
+	x_label : str
+		Label for the :math:`x`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	x_factor : float
+		Scaling factor for the :math:`x`-axis. Default is 1.
+	x_lim : sequence
+		Sequence representing the interval of the :math:`x`-axis to visualize. By default, the entire domain is shown.
+	z_label : str
+		Label for the :math:`z`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	z_factor : float
+		Scaling factor for the :math:`z`-axis. Default is 1.
+	z_lim : sequence
+		Sequence representing the interval of the :math:`z`-axis to visualize. By default, the entire domain is shown.
+	field_factor : float
+		Scaling factor for the field. Default is 1.
+	plot_height: bool
+		:obj:`True` to plot the height of the vertical coordinate isolines, :obj:`False` otherwise. Default is :obj:`True`.
+	cmap_name : str
+		Name of the Matplotlib's color map to be used. All the color maps provided by Matplotlib, as well as the corresponding inverted
+		versions, are available.
+	cbar_levels : int
+		Number of levels for the color bar. Default is 14.
+	cbar_ticks_step : int
+		Distance between two consecutive labelled ticks of the color bar. Default is 1, i.e., all ticks are displayed with the
+		corresponding label.
+	cbar_center : float
+		Center of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field.
+	cbar_half-width : float
+		Half-width of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field.
+	cbar_x_label : str
+		Label for the horizontal axis of the color bar. Default is an empty string.
+	cbar_y_label : str
+		Label for the vertical axis of the color bar. Default is an empty string.
+	cbar_orientation : str 
+		Orientation of the color bar. Either 'vertical' (default) or 'horizontal'.
+	text : str
+		Text to be added to the figure as anchored text. By default, no extra text is shown.
+	text_loc : str
+		String specifying the location where the text box should be placed. Default is 'upper right'; 
+		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
+	"""
 	# Shortcuts
 	nx, nz = grid.nx, grid.nz
 	ni, nk = field.shape
 
 	# Get keyword arguments
-	ishow            = kwargs.get('ishow', True)
+	show            = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
 	fontsize         = kwargs.get('fontsize', 12)
 	figsize			 = kwargs.get('figsize', [8,8])
@@ -166,6 +282,7 @@ def contourf_xz(grid, topography, height, field, **kwargs):
 	z_factor         = kwargs.get('z_factor', 1.)
 	z_lim			 = kwargs.get('z_lim', None)
 	field_factor     = kwargs.get('field_factor', 1.)
+	plot_height		 = kwargs.get('plot_height', True)
 	cmap_name        = kwargs.get('cmap_name', 'RdYlBu')
 	cbar_levels      = kwargs.get('cbar_levels', 14)
 	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
@@ -205,8 +322,9 @@ def contourf_xz(grid, topography, height, field, **kwargs):
 	fig, ax = plt.subplots(figsize = figsize)
 
 	# Plot the isentropes
-	for k in range(0, nk):
-		ax.plot(x1[:, 0], z1[:, k], color = 'gray', linewidth = 1)
+	if plot_height:
+		for k in range(0, nk):
+			ax.plot(x1[:, 0], z1[:, k], color = 'gray', linewidth = 1)
 	ax.plot(x1[:, 0], z[:, -1], color = 'black', linewidth = 1)
 
 	# Create colormap
@@ -248,19 +366,85 @@ def contourf_xz(grid, topography, height, field, **kwargs):
 
 	# Show
 	fig.tight_layout()
-	if ishow or (destination is None):
+	if show or (destination is None):
 		plt.show()
 	else:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
 
-
 def contourf_xy(grid, field, **kwargs):
+	"""
+	Generate a :math:`xy`-contourf of a gridded field.
+
+	Parameters
+	----------
+	grid : obj
+		The underlying grid, as an instance of :math:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+	topography : array_like
+		One-dimensional :class:`numpy.ndarray` representing the underlying topography.
+	height : array_like
+		Two-dimensional :class:`numpy.ndarray` representing the height of the vertical coordinate isolines.
+	field : array_like
+		Two-dimensional :class:`numpy.ndarray` representing the field to plot.
+		
+	Keyword arguments
+	-----------------
+	show : bool
+		:obj:`True` if the plot should be showed, :obj:`False` otherwise. Default is :obj:`True`.
+	destination : str
+		String specify the path to the location where the plot will be saved. Default is :obj:`None`, meaning that the plot
+		will not be saved. Note that the plot may be saved only if :data:`show` is set to :obj:`False`.
+	fontsize : int
+		The fontsize to be used. Default is 12.
+	figsize : sequence
+		Sequence representing the figure size. Default is [8,8].
+	title : str
+		The figure title. Default is an empty string.
+	x_label : str
+		Label for the :math:`x`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	x_factor : float
+		Scaling factor for the :math:`x`-axis. Default is 1.
+	x_lim : sequence
+		Sequence representing the interval of the :math:`x`-axis to visualize. By default, the entire domain is shown.
+	y_label : str
+		Label for the :math:`y`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	y_factor : float
+		Scaling factor for the :math:`y`-axis. Default is 1.
+	y_lim : sequence
+		Sequence representing the interval of the :math:`y`-axis to visualize. By default, the entire domain is shown.
+	field_factor : float
+		Scaling factor for the field. Default is 1.
+	cmap_name : str
+		Name of the Matplotlib's color map to be used. All the color maps provided by Matplotlib, as well as the corresponding inverted
+		versions, are available.
+	cbar_levels : int
+		Number of levels for the color bar. Default is 14.
+	cbar_ticks_step : int
+		Distance between two consecutive labelled ticks of the color bar. Default is 1, i.e., all ticks are displayed with the
+		corresponding label.
+	cbar_center : float
+		Center of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field.
+	cbar_half-width : float
+		Half-width of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field.
+	cbar_x_label : str
+		Label for the horizontal axis of the color bar. Default is an empty string.
+	cbar_y_label : str
+		Label for the vertical axis of the color bar. Default is an empty string.
+	cbar_orientation : str 
+		Orientation of the color bar. Either 'vertical' (default) or 'horizontal'.
+	text : str
+		Text to be added to the figure as anchored text. By default, no extra text is shown.
+	text_loc : str
+		String specifying the location where the text box should be placed. Default is 'upper right'; 
+		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
+	"""
 	# Shortcuts
 	nx, ny = grid.nx, grid.ny
 	ni, nj = field.shape
 
 	# Get keyword arguments
-	ishow            = kwargs.get('ishow', True)
+	show            = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
 	fontsize         = kwargs.get('fontsize', 12)
 	figsize			 = kwargs.get('figsize', [8,8])
@@ -338,19 +522,93 @@ def contourf_xy(grid, field, **kwargs):
 
 	# Show
 	fig.tight_layout()
-	if ishow or (destination is None):
+	if show or (destination is None):
 		plt.show()
 	else:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
 
+def quiver_xy(grid, vx, vy, scalar = None, **kwargs):
+	"""
+	Generate a :math:`xy`-quiver plot of a gridded vectorial field.
 
-def quiver_xy(grid, vx, vy, scalar, **kwargs):
+	Parameters
+	----------
+	grid : obj
+		The underlying grid, as an instance of :math:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+	vx : array_like
+		:class:`numpy.ndarray` representing the :math:`x`-component of the field to plot.
+	vy : array_like
+		:class:`numpy.ndarray` representing the :math:`y`-component of the field to plot.
+	scalar : `array_like`, optional
+		:class:`numpy.ndarray` representing a scalar field associated with the vectorial field.
+		The arrows will be colored based on the corresponding scalar value. If not specified, the arrows will be colored
+		based on their magnitude.
+		
+	Keyword arguments
+	-----------------
+	show : bool
+		:obj:`True` if the plot should be showed, :obj:`False` otherwise. Default is :obj:`True`.
+	destination : str
+		String specify the path to the location where the plot will be saved. Default is :obj:`None`, meaning that the plot
+		will not be saved. Note that the plot may be saved only if :data:`show` is set to :obj:`False`.
+	fontsize : int
+		The fontsize to be used. Default is 12.
+	figsize : sequence
+		Sequence representing the figure size. Default is [8,8].
+	title : str
+		The figure title. Default is an empty string.
+	x_label : str
+		Label for the :math:`x`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	x_factor : float
+		Scaling factor for the :math:`x`-axis. Default is 1.
+	x_lim : sequence
+		Sequence representing the interval of the :math:`x`-axis to visualize. By default, the entire domain is shown.
+	x_step : int
+		Distance between the :math:`x`-indeces of any pair of plotted points consecutive in the :math:`x`-direction. 
+		Default is 2, i.e., only half of the points will be drawn.
+	y_label : str
+		Label for the :math:`y`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	y_factor : float
+		Scaling factor for the :math:`y`-axis. Default is 1.
+	y_lim : sequence
+		Sequence representing the interval of the :math:`y`-axis to visualize. By default, the entire domain is shown.
+	y_step : int
+		Distance between the :math:`y`-indeces of any pair of plotted points consecutive along the :math:`y`-direction. 
+		Default is 2, i.e., only half of the points will be drawn.
+	field_factor : float
+		Scaling factor for the field. Default is 1.
+	cmap_name : str
+		Name of the Matplotlib's color map to be used. All the color maps provided by Matplotlib, as well as the corresponding inverted
+		versions, are available. If not specified, no color map will be used, and the arrows will draw black.
+	cbar_levels : int
+		Number of levels for the color bar. Default is 14.
+	cbar_ticks_step : int
+		Distance between two consecutive labelled ticks of the color bar. Default is 1, i.e., all ticks are displayed with the
+		corresponding label.
+	cbar_center : float
+		Center of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field.
+	cbar_half-width : float
+		Half-width of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field.
+	cbar_x_label : str
+		Label for the horizontal axis of the color bar. Default is an empty string.
+	cbar_y_label : str
+		Label for the vertical axis of the color bar. Default is an empty string.
+	cbar_orientation : str 
+		Orientation of the color bar. Either 'vertical' (default) or 'horizontal'.
+	text : str
+		Text to be added to the figure as anchored text. By default, no extra text is shown.
+	text_loc : str
+		String specifying the location where the text box should be placed. Default is 'upper right'; 
+		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
+	"""
 	# Shortcuts
 	nx, ny = grid.nx, grid.ny
 	ni, nj = scalar.shape
 
 	# Get keyword arguments
-	ishow            = kwargs.get('ishow', True)
+	show            = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
 	fontsize         = kwargs.get('fontsize', 12)
 	figsize			 = kwargs.get('figsize', [8,8])
@@ -364,7 +622,7 @@ def quiver_xy(grid, vx, vy, scalar, **kwargs):
 	y_lim			 = kwargs.get('y_lim', None)
 	y_step           = kwargs.get('y_step', 2)
 	field_factor     = kwargs.get('field_factor', 1.)
-	cmap_name        = kwargs.get('cmap_name', 'RdYlBu')
+	cmap_name        = kwargs.get('cmap_name', None)
 	cbar_levels      = kwargs.get('cbar_levels', 14)
 	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
 	cbar_center      = kwargs.get('cbar_center', None)
@@ -389,22 +647,28 @@ def quiver_xy(grid, vx, vy, scalar, **kwargs):
 	plt.contour(x, y, grid._topography._topo_final, colors = 'gray')
 
 	# Create colormap
-	scalar_min, scalar_max = np.amin(scalar), np.amax(scalar)
-	if cbar_center is None or not (lt(scalar_min, cbar_center) and lt(cbar_center, scalar_max)):
-		cbar_lb, cbar_ub = scalar_min, scalar_max
-	else:
-		half_width = max(cbar_center - scalar_min, scalar_max - cbar_center) if cbar_half_width is None else cbar_half_width
-		cbar_lb, cbar_ub = cbar_center - half_width, cbar_center + half_width 
-	color_scale = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint = True)
+	if cmap_name is not None:
+		if scalar is None:
+			scalar = np.sqrt(vx ** 2 + vy ** 2)
+		scalar_min, scalar_max = np.amin(scalar), np.amax(scalar)
+		if cbar_center is None or not (lt(scalar_min, cbar_center) and lt(cbar_center, scalar_max)):
+			cbar_lb, cbar_ub = scalar_min, scalar_max
+		else:
+			half_width = max(cbar_center - scalar_min, scalar_max - cbar_center) if cbar_half_width is None else cbar_half_width
+			cbar_lb, cbar_ub = cbar_center - half_width, cbar_center + half_width 
+		color_scale = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint = True)
 
-	if cmap_name == 'BuRd':
-		cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
-	else:
-		cm = plt.get_cmap(cmap_name)
+		if cmap_name == 'BuRd':
+			cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
+		else:
+			cm = plt.get_cmap(cmap_name)
 
 	# Generate quiver-plot
-	q = plt.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step], vx[::x_step, ::y_step], vy[::x_step, ::y_step]) 
-				   #scalar[::x_step, ::y_step], cmap = cm, units = 'width')
+	if cmap_name is None:
+		q = plt.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step], vx[::x_step, ::y_step], vy[::x_step, ::y_step]) 
+	else:	
+		q = plt.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step], vx[::x_step, ::y_step], vy[::x_step, ::y_step], 
+				   	   scalar[::x_step, ::y_step], cmap = cm)
 
 	# Set plot settings
 	ax.set(xlabel = x_label, ylabel = y_label, title = title)
@@ -414,15 +678,16 @@ def quiver_xy(grid, vx, vy, scalar, **kwargs):
 		ax.set_ylim(y_lim)
 	
 	# Set colorbar
-	#cb = plt.colorbar(orientation = cbar_orientation)
-	#cb.set_ticks(0.5 * (color_scale[:-1] + color_scale[1:])[::cbar_ticks_step])
-	#cb.ax.set_title(cbar_title)
-	#cb.ax.set_xlabel(cbar_x_label)
-	#cb.ax.set_ylabel(cbar_y_label)
+	if cmap_name is not None:
+		cb = plt.colorbar(orientation = cbar_orientation)
+		cb.set_ticks(0.5 * (color_scale[:-1] + color_scale[1:])[::cbar_ticks_step])
+		cb.ax.set_title(cbar_title)
+		cb.ax.set_xlabel(cbar_x_label)
+		cb.ax.set_ylabel(cbar_y_label)
 
 	# Show
 	fig.tight_layout()
-	if ishow or (destination is None):
+	if show or (destination is None):
 		plt.show()
 	else:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)

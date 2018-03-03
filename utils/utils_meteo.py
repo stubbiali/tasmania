@@ -28,8 +28,43 @@ import numpy as np
 from namelist import cp, datatype, g, p_ref, Rd
 from utils.utils import smaller_than as lt
 
-def get_isothermal_solution(grid, x_velocity_initial, temperature, mountain_height, mountain_width,
-							x_staggered = True, z_staggered = False):
+def get_isentropic_isothermal_analytical_solution(grid, x_velocity_initial, temperature, mountain_height, mountain_width,
+									   			  x_staggered = True, z_staggered = False):
+	"""
+	Get the analytical expression of a two-dimensional, hydrostatic, isentropic and isothermal flow over an isolated
+	`Switch of Agnesi` mountain.
+
+	Parameters
+	----------
+	grid : obj
+		:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid. It must consist of only one points in :math:`y`-direction.
+	x_velocity_initial : float
+		The initial :math:`x`-velocity, in units of [:math:`m \, s^{-1}`].
+	temperature : float
+		The temperature, in units of [:math:`K`].
+	mountain_height : float
+		The maximum mountain height, in units of [:math:`m`].
+	mountain_width : float
+		The mountain half-width at half-height, in units of [:math:`m`].
+	x_staggered : `bool`, optional
+		:obj:`True` if the solution should be staggered in the :math:`x`-direction, :obj:`False` otherwise.
+		Default is :obj:`True`.
+	z_staggered : `bool`, optional
+		:obj:`True` if the solution should be staggered in the vertical direction, :obj:`False` otherwise.
+		Default is :obj:`False`.
+
+	Returns
+	-------
+	u : array_like
+		:class:`numpy.ndarray` representing the :math:`x`-velocity.
+	w : array_like
+		:class:`numpy.ndarray` representing the vertical velocity.
+
+	References
+	----------
+	Durran, D. R. (1981). `The effects of moisture on mountain lee waves`. \
+		Doctoral dissertation, Massachussets Institute of Technology.
+	"""
 	# Ensure the computational domain consists of only one grid-point in y-direction
 	assert grid.ny == 1
 
@@ -79,12 +114,18 @@ def get_isothermal_solution(grid, x_velocity_initial, temperature, mountain_heig
 
 	return u, w
 
-def convert_relative_humidity_to_water_vapor(p, T, rh):
+def convert_relative_humidity_to_water_vapor(method, p, T, rh):
 	"""
 	Convert relative humidity to water vapor mixing ratio.
 
 	Parameters
 	----------
+	method : str
+		String specifying the formula to be used to compute the saturation water vapor pressure. Either:
+
+		* 'teten', for the Teten's formula;
+		* 'goff_gratch', for the Goff-Gratch formula.
+
 	p : array_like
 		:class:`numpy.ndarray` representing the pressure ([:math:`Pa`]).
 	T : array_like
@@ -103,7 +144,13 @@ def convert_relative_humidity_to_water_vapor(p, T, rh):
 		`<https://www.vaisala.com>`_.
 	"""
 	# Get the saturation water vapor pressure
-	p_sat = get_saturation_water_vapor_pressure(T)
+	if method == 'teten':
+		p_sat = apply_teten_formula(T)
+	elif method == 'goff_gratch':
+		p_sat = apply_goff_gratch_formula(T)
+	else:
+		raise ValueError("""Unknown formula to compute the saturation water vapor pressure.\n"""
+						 """Available options are: ''teten'', ''goff_gratch''.""")
 
 	# Compute the water vapor presure
 	pw = rh * p_sat
@@ -114,9 +161,34 @@ def convert_relative_humidity_to_water_vapor(p, T, rh):
 
 	return qv
 
-def get_saturation_water_vapor_pressure(T):
+def apply_teten_formula(T):
 	"""
-	Compute the saturation vapor pressure over water at a given temperature. The Goff-Gratch formula is used.
+	Compute the saturation vapor pressure over water at a given temperature, relying upon the Teten's formula.
+
+	Parameters
+	----------
+	T : array_like
+		:class:`numpy.ndarray` representing the temperature ([:math:`K`]).
+
+	Return
+	------
+	array_like :
+		:class:`numpy.ndarray` representing the saturation water vapor pressure ([:math:`Pa`]).
+	"""
+	# Constants occurring in the Teten's formula
+	pw = 610.78
+	aw = 17.27
+	Tr = 273.16
+	bw = 35.86
+
+	# Apply the Teten's formula to compute the saturation water vapor pressure
+	e = pw * np.exp(aw * (T - Tr) / (T - bw))
+
+	return e
+
+def apply_goff_gratch_formula(T):
+	"""
+	Compute the saturation vapor pressure over water at a given temperature, relying upon the Goff-Gratch formula.
 
 	Parameters
 	----------

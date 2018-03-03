@@ -131,46 +131,24 @@ class StateIsentropic(GridData):
 
 	def contour_xz(self, field_to_plot, y_level, time_level, **kwargs):
 		"""
-		Produce the contour plot of a field in the cross-section :math:`y = \\bar{y}`.
+		Generate a contour plot of a field at the cross-section :math:`y = \\bar{y}`.
 
 		Parameters
 		----------
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-				* the name of a variable stored in the current object;
-				* 'vertical_velocity', for the vertical velocity.
-				* 'temperature', for the temperature.
+			* the name of a variable stored in the current object;
+			* 'x_velocity_perturbation', for the discrepancy of the :math:`x`-velocity with respect to the initial condition;
+			* 'vertical_velocity', for the vertical velocity; only for steady-state flows;
+			* 'temperature', for the temperature.
 
 		y_level : int 
 			Index corresponding to the :math:`y`-level identifying the cross-section to plot.
 		time_level : int 
 			The index corresponding to the time level to plot.
-
-		Keyword arguments
-		-----------------
-		figsize : tuple
-			Figure size. Default is [8,8].
-		title : str
-			The title for the plot. By default, it coincides with :data:`field_to_plot`.
-		x_label : str
-			The label for the :obj:`x`-axis of the plot.
-		x_factor : float
-			Factor for the :obj:`x`-axis of the plot. Default is 1.
-		z_label : str
-			The label for the :obj:`y`-axis of the plot, i.e., the :math:`z`-axis.
-		z_factor : float
-			Factor for the :obj:`y`-axis of the plot. Default is 1.
-		cmap_name : str
-			Name of the Matplotlib's colormap to use. Default is 'RdYlBu'.
-		cmap_levels : int
-			Number of levels for the colormap. Default is 31.
-		cmap_center : float
-			The central value for the colormap. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
-		cmap_half_width : float
-			Half width of the colormap range. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. See :func:`utils.utils_plot.contour_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz
@@ -179,9 +157,6 @@ class StateIsentropic(GridData):
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, y_level, :, time_level] 
-		elif field_to_plot == 'x_velocity_unstaggered':
-			var = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				  self._vars['isentropic_density'].values[:, y_level, :, time_level] 
 		elif field_to_plot == 'x_velocity_perturbation':
 			u_start = self._vars['x_momentum_isentropic'].values[:, y_level, :, 0] / \
 				  	  self._vars['isentropic_density'].values[:, y_level, :, 0]
@@ -211,51 +186,28 @@ class StateIsentropic(GridData):
 			raise RuntimeError('Unknown field to plot.')
 
 		# Plot
-		utils_plot.contour_xz(self.grid, self.grid.topography_height[:, y_level], 
-							  self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
+		utils_plot.contour_xz(self.grid, self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
 	
 	def contourf_xz(self, field_to_plot, y_level, time_level, **kwargs):
 		"""
-		Plot a field in the cross-section :math:`y = \\bar{y}`.
+		Generate a contourf plot of a field at the cross-section :math:`y = \\bar{y}`.
 
 		Parameters
 		----------
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-				* the name of a variable stored in the current object;
-				* 'vertical_velocity', for the vertical velocity.
-				* 'temperature', for the temperature.
+			* the name of a variable stored in the current object;
+			* 'x_velocity_perturbation', for the discrepancy of the :math:`x`-velocity with respect to the initial condition;
+			* 'vertical_velocity', for the vertical velocity; only for steady-state flows;
+			* 'temperature', for the temperature.
 
 		y_level : int 
 			Index corresponding to the :math:`y`-level identifying the cross-section to plot.
 		time_level : int 
 			The index corresponding to the time level to plot.
-
-		Keyword arguments
-		-----------------
-		figsize : tuple
-			Figure size. Default is [8,8].
-		title : str
-			The title for the plot. By default, it coincides with :data:`field_to_plot`.
-		x_label : str
-			The label for the :obj:`x`-axis of the plot.
-		x_factor : float
-			Factor for the :obj:`x`-axis of the plot. Default is 1.
-		z_label : str
-			The label for the :obj:`y`-axis of the plot, i.e., the :math:`z`-axis.
-		z_factor : float
-			Factor for the :obj:`y`-axis of the plot. Default is 1.
-		cmap_name : str
-			Name of the Matplotlib's colormap to use. Default is 'RdYlBu'.
-		cmap_levels : int
-			Number of levels for the colormap. Default is 31.
-		cmap_center : float
-			The central value for the colormap. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
-		cmap_half_width : float
-			Half width of the colormap range. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. See :func:`utils.utils_plot.contour_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz
@@ -264,9 +216,6 @@ class StateIsentropic(GridData):
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, y_level, :, time_level] 
-		elif field_to_plot == 'x_velocity_unstaggered':
-			var = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				  self._vars['isentropic_density'].values[:, y_level, :, time_level] 
 		elif field_to_plot == 'x_velocity_perturbation':
 			u_start = self._vars['x_momentum_isentropic'].values[:, y_level, :, 0] / \
 				  	  self._vars['isentropic_density'].values[:, y_level, :, 0]
@@ -301,45 +250,22 @@ class StateIsentropic(GridData):
 
 	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
 		"""
-		Plot a field at the level :math:`\\theta = \\bar{\\theta}`.
+		Generate a contourf plot of a field at the level :math:`\\theta = \\bar{\\theta}`.
 
 		Parameters
 		----------
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-				* the name of a variable stored in the current object.
-				* 'horizontal_velocity', for the horizontal velocity.
+			* the name of a variable stored in the current object.
+			* 'horizontal_velocity', for the horizontal velocity.
 
 		z_level : int 
 			Index corresponding to the :math:`\\theta`-level identifying the cross-section to plot.
 		time_level : int 
 			The index corresponding to the time level to plot.
-
-		Keyword arguments
-		-----------------
-		figsize : tuple
-			Figure size. Default is [8,8].
-		title : str
-			The title for the plot. By default, it coincides with :data:`field_to_plot`.
-		x_label : str
-			The label for the :obj:`x`-axis of the plot.
-		x_factor : float
-			Factor for the :obj:`x`-axis of the plot. Default is 1.
-		y_label : str
-			The label for the :obj:`y`-axis of the plot.
-		y_factor : float
-			Factor for the :obj:`y`-axis of the plot. Default is 1.
-		cmap_name : str
-			Name of the Matplotlib's colormap to use. Default is 'RdYlBu'.
-		cmap_levels : int
-			Number of levels for the colormap. Default is 31.
-		cmap_center : float
-			The central value for the colormap. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
-		cmap_half_width : float
-			Half width of the colormap range. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. See :func:`utils.utils_plot.contourf_xy` for the complete list.
 		"""
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
@@ -357,44 +283,21 @@ class StateIsentropic(GridData):
 
 	def quiver_xy(self, field_to_plot, z_level, time_level, **kwargs):
 		"""
-		Generate the quiver-plot for a vector field at the level :math:`\\theta = \\bar{\\theta}`.
+		Generate a quiver plot of a vector field at the level :math:`\\theta = \\bar{\\theta}`.
 
 		Parameters
 		----------
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-				* 'horizontal_velocity', for the horizontal velocity.
+			* 'horizontal_velocity', for the horizontal velocity.
 
 		z_level : int 
 			Index corresponding to the :math:`\\theta`-level identifying the cross-section to plot.
 		time_level : int 
 			The index corresponding to the time level to plot.
-
-		Keyword arguments
-		-----------------
-		figsize : tuple
-			Figure size. Default is [8,8].
-		title : str
-			The title for the plot. By default, it coincides with :data:`field_to_plot`.
-		x_label : str
-			The label for the :obj:`x`-axis of the plot.
-		x_factor : float
-			Factor for the :obj:`x`-axis of the plot. Default is 1.
-		y_label : str
-			The label for the :obj:`y`-axis of the plot.
-		y_factor : float
-			Factor for the :obj:`y`-axis of the plot. Default is 1.
-		cmap_name : str
-			Name of the Matplotlib's colormap to use. Default is 'RdYlBu'.
-		cmap_levels : int
-			Number of levels for the colormap. Default is 31.
-		cmap_center : float
-			The central value for the colormap. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
-		cmap_half_width : float
-			Half width of the colormap range. If not specified, the colormap ranges from the minimum to the maximum
-			of the field to plot.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. See :func:`utils.utils_plot.quiver_xy` for the complete list.
 		"""
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot == 'horizontal_velocity':

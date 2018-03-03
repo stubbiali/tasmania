@@ -39,7 +39,7 @@ time_level = -1
 #
 # Optional settings
 #
-ishow			 = True
+show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
 fontsize         = 16
 figsize          = [7,8]
@@ -51,6 +51,7 @@ z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = None #[0,10]
 field_factor     = 1.
+plot_height		 = True
 text			 = None
 text_loc		 = 'upper right'
 
@@ -60,21 +61,20 @@ text_loc		 = 'upper right'
 with open(filename, 'rb') as data:
 	state_save = pickle.load(data)
 
-	# Plot the specified field
-	if True:
-		state_save.contour_xz(field, y_level, time_level, 
-							  ishow            = ishow,
-							  destination      = destination,
-							  fontsize         = fontsize,
-							  figsize          = figsize,
-							  title            = title, 
-							  x_label          = x_label,
-							  x_factor         = x_factor,
-							  x_lim            = x_lim,
-							  z_label          = z_label,
-							  z_factor         = z_factor,
-							  z_lim            = z_lim,
-							  field_factor     = field_factor,
-							  text			   = text,
-							  text_loc		   = text_loc,
-							 )
+	state_save.contour_xz(field, y_level, time_level, 
+						  show             = show,
+						  destination      = destination,
+						  fontsize         = fontsize,
+						  figsize          = figsize,
+						  title            = title, 
+						  x_label          = x_label,
+						  x_factor         = x_factor,
+						  x_lim            = x_lim,
+						  z_label          = z_label,
+						  z_factor         = z_factor,
+						  z_lim            = z_lim,
+						  field_factor     = field_factor,
+						  plot_height	   = plot_height,
+						  text			   = text,
+						  text_loc		   = text_loc,
+						 )
