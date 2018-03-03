@@ -5,6 +5,7 @@ import os
 import pickle
 
 import utils.utils_meteo as utils_meteo
+import utils.utils_plot as utils_plot
 
 #
 # Mandatory settings
@@ -17,7 +18,7 @@ time_level = 4
 #
 # Optional settings
 #
-ishow			 = True
+show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
 fontsize         = 16
 figsize          = [9,7]
@@ -29,6 +30,7 @@ z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,20]
 field_factor     = 1.e3
+plot_height		 = True
 cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 18
 cbar_ticks_step  = 4
@@ -50,7 +52,7 @@ with open(filename, 'rb') as data:
 	# Plot the specified field
 	if True:
 		state_save.contourf_xz(field, y_level, time_level, 
-							   ishow            = ishow,
+							   show            = show,
 							   destination      = destination,
 							   fontsize         = fontsize,
 							   figsize          = figsize,
@@ -62,6 +64,7 @@ with open(filename, 'rb') as data:
 							   z_factor         = z_factor,
 							   z_lim            = z_lim,
 							   field_factor     = field_factor,
+							   plot_height		= plot_height,
 							   cmap_name        = cmap_name, 
 							   cbar_levels      = cbar_levels,
 							   cbar_ticks_step  = cbar_ticks_step,
@@ -81,29 +84,33 @@ with open(filename, 'rb') as data:
 		topography = grid.topography_height[:, 0]
 		height = state_save['height'].values[:, 0, :, time_level]
 
-		uex, wex = utils_meteo.get_isothermal_solution(state_save.grid, 10., 250., 1., 1.e4,
-												 	   x_staggered = False, z_staggered = False)
+		uex, wex = utils_meteo.get_isentropic_isothermal_analytical_solution(state_save.grid, 10., 250., 1., 1.e4,
+												 	   						 x_staggered = False, z_staggered = False)
 
-		utils_meteo.contourf_xz(grid, topography, height, 1.e4 * (uex - 10.), 
-								show			 = show,
-								destination		 = destination,
-							    fontsize         = fontsize,
-							   	figsize          = figsize,
-								title            = title, 
-								x_label          = x_label,
-								x_factor         = x_factor,
-								x_lim            = x_lim,
-								z_label          = z_label,
-								z_factor         = z_factor,
-								z_lim            = z_lim,
-								cmap_name        = cmap_name, 
-								cbar_levels      = cbar_levels,
-								cbar_ticks_step  = cbar_ticks_step,
-								cbar_center      = cbar_center, 
-								cbar_half_width  = cbar_half_width,
-								cbar_x_label     = cbar_x_label,
-								cbar_y_label     = cbar_y_label,
-								cbar_title       = cbar_title,
-								cbar_orientation = cbar_orientation,
+		utils_plot.contourf_xz(grid, topography, height, uex - 10., 
+							   show			    = show,
+							   destination		= destination,
+							   fontsize         = fontsize,
+							   figsize          = figsize,
+							   title            = title, 
+							   x_label          = x_label,
+							   x_factor         = x_factor,
+						       x_lim            = x_lim,
+							   z_label          = z_label,
+							   z_factor         = z_factor,
+							   z_lim            = z_lim,
+							   field_factor     = 1.e-4,
+							   plot_height		= plot_height,
+							   cmap_name        = cmap_name, 
+							   cbar_levels      = cbar_levels,
+							   cbar_ticks_step  = cbar_ticks_step,
+							   cbar_center      = cbar_center, 
+							   cbar_half_width  = cbar_half_width,
+							   cbar_x_label     = cbar_x_label,
+							   cbar_y_label     = cbar_y_label,
+							   cbar_title       = cbar_title,
+							   cbar_orientation = cbar_orientation,
+							   text				= text,
+							   text_loc			= text_loc,
 							   )
 
