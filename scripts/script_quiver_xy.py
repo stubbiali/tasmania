@@ -37,7 +37,7 @@ time_level = -1
 #
 # Optional settings
 #
-ishow			 = True
+show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/verification_1_upwind_pressure_xy')
 fontsize         = 16
 figsize          = [8,8]
@@ -67,7 +67,7 @@ with open(filename, 'rb') as data:
 	state_save = pickle.load(data)
 
 	state_save.quiver_xy(field, z_level, time_level, 
-						 ishow            = ishow,
+						 show             = show,
 						 destination      = destination,
 						 fontsize         = fontsize,
 						 figsize          = figsize,
