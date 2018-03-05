@@ -43,7 +43,7 @@ class StateIsentropic(GridData):
 		:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
 	"""
 	def __init__(self, time, grid, isentropic_density, x_velocity, x_momentum, y_velocity, y_momentum,
-				 pressure, exner_function, montgomery_potential, height,
+				 pressure, exner_function, montgomery_potential, height, density,
 				 water_vapor = None, cloud_water = None, precipitation_water = None):
 		"""
 		Constructor.
@@ -72,6 +72,8 @@ class StateIsentropic(GridData):
 			:class:`numpy.ndarray` representing the Montgomery potential.
 		height : array_like
 			:class:`numpy.ndarray` representing the height of the potential temperature surfaces.
+		density : array_like
+			:class:`numpy.ndarray` representing the density.
 		water_vapor : `array_like`, optional
 			:class:`numpy.ndarray` representing the mass fraction of water vapor.
 		cloud_water : `array_like`, optional
@@ -87,7 +89,8 @@ class StateIsentropic(GridData):
 				  'pressure'             : pressure,
 				  'exner_function'       : exner_function,
 				  'montgomery_potential' : montgomery_potential,
-				  'height'               : height}
+				  'height'               : height,
+				  'density'              : density}
 		if water_vapor is not None:
 			kwargs['water_vapor'] = water_vapor
 		if cloud_water is not None:

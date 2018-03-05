@@ -59,8 +59,8 @@ Grid settings:
 		([:math:`m`]).
 	* :data:`namelist.topo_width_y`: When :data:`~namelist.topo_type` is 'gaussian', mountain half-width in :math:`y`-direction \
 		([:math:`m`]).
-	* :data:`namelist.topo_str`: When :data:`~namelist.topo_type` is 'user_defined', terrain profile expression in the independent \
-		variables :math:`x` and :math:`y`. Must be fully C++-compliant.
+	* :data:`namelist.topo_str`: When :data:`~namelist.topo_type` is 'user_defined', terrain profile expression in the \
+		independent variables :math:`x` and :math:`y`. Must be fully C++-compliant.
 	* :data:`namelist.topo_kwargs`: Dictionary storing :data:`~namelist.topo_max_height`, :data:`~namelist.topo_width_x`, \
 		:data:`~namelist.topo_width_y` and :data:`~namelist.topo_str`.
 
@@ -123,7 +123,8 @@ Simulation settings:
 	* :data:`namelist.initial_time`: :class:`datetime.datetime` representing the initial simulation time.
 	* :data:`namelist.simulation_time`: :class:`datetime.timedelta` object representing the simulation time.
 	* :data:`namelist.initial_state_type`: Integer identifying the initial state. See the documentation for the method \
-		:meth:`~dycore.dycore_isentropic.DycoreIsentropic.get_initial_state()` of :class:`~dycore.dycore_isentropic.DycoreIsentropic`.
+		:meth:`~dycore.dycore_isentropic.DycoreIsentropic.get_initial_state()` of \
+		:class:`~dycore.dycore_isentropic.DycoreIsentropic`.
 	* :data:`namelist.x_velocity_initial`: The initial, uniform :math:`x`-velocity ([:math:`m s^{-1}`]).
 	* :data:`namelist.y_velocity_initial`: The initial, uniform :math:`y`-velocity ([:math:`m s^{-1}`]).
 	* :data:`namelist.brunt_vaisala_initial`: The initial, uniform Brunt-Vaisala frequency.

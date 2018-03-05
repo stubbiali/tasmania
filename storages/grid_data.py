@@ -55,6 +55,7 @@ class GridData:
 		'exner_function'       : 'm2 s-2 K-2'    ,
 		'montgomery_potential' : 'm2 s-2'        ,
 		'height'               : 'm'             ,
+		'density'			   : 'kg m-3'		 ,
 		'water_vapor'          : 'kg kg-1'       ,
 		'cloud_water'          : 'kg kg-1'       ,
 		'precipitation_water'  : 'kg kg-1'       ,
