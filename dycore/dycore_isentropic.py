@@ -148,8 +148,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			- :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
 			- the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
 				and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
-			- the mass fraction of water vapor is derived from the relative humidity, which is sinusoidal in the :math:`x`-direction \
-				and uniform in the :math:`y`-direction, and different from zero only in a band close to the surface;
+			- the mass fraction of water vapor is derived from the relative humidity, which is sinusoidal in the \
+				:math:`x`-direction and uniform in the :math:`y`-direction, and different from zero only in a band \
+				close to the surface;
 			- the mass fraction of cloud water and precipitation water is zero.
 
 		* if :data:`initial_state_type == 2`:
@@ -221,6 +222,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
+			# The initial density
+			rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
+
 			# The initial momentums
 			U = s * kwargs.get('x_velocity_initial', 10.)
 			V = s * kwargs.get('y_velocity_initial', 0.)
@@ -243,7 +247,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
 
 				# Convert relative humidity to water vapor
-				qv = utils_meteo.convert_relative_humidity_to_water_vapor(p_ml, T_ml, rh)
+				qv = utils_meteo.convert_relative_humidity_to_water_vapor('goff_gratch', p_ml, T_ml, rh)
 				
 				# Set the initial cloud water and precipitation water to zero
 				qc = np.zeros((nx, ny, nz), dtype = datatype)
@@ -285,6 +289,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
+			# The initial density
+			rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
+
 			# The initial momentums
 			U = s * kwargs.get('x_velocity_initial', 10.)
 			V = s * kwargs.get('y_velocity_initial', 0.)
@@ -307,7 +314,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
 
 				# Convert relative humidity to water vapor
-				qv = utils_meteo.convert_relative_humidity_to_water_vapor(p_ml, T_ml, rh)
+				qv = utils_meteo.convert_relative_humidity_to_water_vapor('goff_gratch', p_ml, T_ml, rh)
 
 				# Make the distribution of water vapor x-periodic
 				x		= np.tile(self._grid.x.values[:, np.newaxis, np.newaxis], (1, ny, nz))
@@ -350,6 +357,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
+			# The initial density
+			rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
+
 			# The initial momentums
 			U = s * kwargs.get('x_velocity_initial', 10.)
 			V = s * kwargs.get('y_velocity_initial', 0.)
@@ -362,9 +372,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		# Assemble the initial state
 		if self._imoist:
-			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, qv, qc, qr)
+			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, rho, qv, qc, qr)
 		else:
-			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h)
+			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, rho)
 
 		return state
 
@@ -393,9 +403,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		v_now   = state['y_velocity'].values[:,:,:,0]
 		V_now   = state['y_momentum_isentropic'].values[:,:,:,0]
 		p_now   = state['pressure'].values[:,:,:,0]
-		exn_now = state['exner_function'].values[:,:,:,0]
 		mtg_now = state['montgomery_potential'].values[:,:,:,0]
-		h_now   = state['height'].values[:,:,:,0]
 
 		# Extend the arrays to accommodate the horizontal boundary conditions
 		s_now_   = self._boundary.from_physical_to_computational_domain(s_now)
@@ -464,8 +472,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._boundary.set_outermost_layers_x(u_new, u_now) 
 		self._boundary.set_outermost_layers_y(v_new, v_now) 
 
-		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height at the half levels
-		p_new, exn_new, mtg_new, h_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
+		# Diagnose the pressure, the Exner function, the Montgomery potential, the geometric height at the half levels,
+		# and the density
+		p_new, exn_new, mtg_new, h_new, rho_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
 
 		# Update the old time step
 		if self._prognostic.time_levels == 2:
@@ -475,7 +484,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		# Build up the new state, and return
 		state_new = StateIsentropic(state.time + dt, self._grid,
-									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new)
+									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new, rho_new)
 
 		return state_new
 
@@ -504,15 +513,13 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		v_now   = state['y_velocity'].values[:,:,:,0]
 		V_now   = state['y_momentum_isentropic'].values[:,:,:,0]
 		p_now   = state['pressure'].values[:,:,:,0]
-		exn_now = state['exner_function'].values[:,:,:,0]
 		mtg_now = state['montgomery_potential'].values[:,:,:,0]
-		h_now   = state['height'].values[:,:,:,0]
 		qv_now  = state['water_vapor'].values[:,:,:,0]
 		qc_now  = state['cloud_water'].values[:,:,:,0]
 		qr_now  = state['precipitation_water'].values[:,:,:,0]
 
-		# Diagnosis the mass of each water constituent
-		Qv_now, Qc_now, Qr_now = self._diagnostic.get_water_constituents_mass(s_now, qv_now, qc_now, qr_now)
+		# Diagnosis the isentropic density of each water constituent
+		Qv_now, Qc_now, Qr_now = self._diagnostic.get_water_constituents_isentropic_density(s_now, qv_now, qc_now, qr_now)
 
 		# Extend the arrays to accommodate the horizontal boundary conditions
 		s_now_   = self._boundary.from_physical_to_computational_domain(s_now)
@@ -610,8 +617,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._boundary.set_outermost_layers_x(u_new, u_now) 
 		self._boundary.set_outermost_layers_y(v_new, v_now) 
 
-		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height at the half levels
-		p_new, exn_new, mtg_new, h_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
+		# Diagnose the pressure, the Exner function, the Montgomery potential, the geometric height at the half levels,
+		# and the density
+		p_new, exn_new, mtg_new, h_new, rho_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
 
 		# Update the old time step
 		if self._prognostic.time_levels == 2:
@@ -624,7 +632,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		# Build up the new state, and return
 		state_new = StateIsentropic(state.time + dt, self._grid,
-									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new, qv_new, qc_new, qr_new)
+									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new, rho_new,
+									qv_new, qc_new, qr_new)
 
 		return state_new
 		
