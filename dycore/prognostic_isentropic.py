@@ -446,9 +446,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 					   precipitation_water_isentropic_density = Qr_new)
 		state_new.update(upd)
 
-		# Diagnose the Montgomery potential from the updated state, then get the associated stencils' computational domain
-		gd = self.diagnostic.get_diagnostic_variables(state)
-		self._new_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,-1])
+		# Diagnose the Montgomery potential from the updated state
+		gd = self.diagnostic.get_diagnostic_variables(state_new)
+
+		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
+		self._new_s[:,:,:]   = self.boundary.from_physical_to_computational_domain(s_new)
+		self._new_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,0])
 
 		# Run the compute function of the stencil stepping the momentums
 		self._stencil_stepping_momentums.compute()
@@ -463,6 +466,10 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		else:
 			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz))
 			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz)) 
+
+		# Apply the boundary conditions on the momentums
+		self.boundary.apply(U_new, U)
+		self.boundary.apply(V_new, V)
 
 		# Update the output state, then return
 		upd = GridData(time_now + dt, self._grid, x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
@@ -836,6 +843,15 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Qv_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
 		Qc_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
 		Qr_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
+
+		# Apply the boundary conditions
+		self.boundary.apply(s_new, s)
+		self.boundary.apply(U_new, U)
+		self.boundary.apply(V_new, V)
+		if self._imoist:
+			self.boundary.apply(Qv_new, Qv)
+			self.boundary.apply(Qc_new, Qc)
+			self.boundary.apply(Qr_new, Qr)
 
 		# Update the output state
 		upd = GridData(time_now + dt, self._grid, 

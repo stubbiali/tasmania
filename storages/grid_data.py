@@ -12,7 +12,7 @@ class GridData:
 	The model variables, in the shape of :class:`numpy.ndarray`\s, are passed to the constructor as keyword arguments. 
 	After conversion to :class:`xarray.DataArray`\s, the variables are packed in a dictionary whose keys are the input keywords. 
 	The class attribute :data:`units` lists, for any admissible keyword, the units in which the associated field should 
-	be expressed. Any variable can be accessed in read-only mode via the accessor operator by specifying the corresponding 
+	be expressed. Any variable can be accessed via the accessor operator by specifying the corresponding 
 	keyword. Other methods are provided to update the state, or to create a sequence of states (useful for animation purposes). 
 	This class is designed to be as general as possible. Hence, it is not endowed with any method whose
 	implementation depends on the variables actually stored by the class. This kind of methods might be provided by some 
@@ -78,7 +78,7 @@ class GridData:
 				elif var.shape[2] == grid.nz + 1:
 					z = grid.z_half_levels
 
-				_var = xr.DataArray(np.copy(var[:, :, :, np.newaxis]), 
+				_var = xr.DataArray(var[:, :, :, np.newaxis], 
 									coords = [x.values, y.values, z.values, [time]],
 									dims = [x.dims, y.dims, z.dims, 'time'],
 									attrs = {'units': GridData.units[key]})
@@ -86,7 +86,7 @@ class GridData:
 
 	def __getitem__(self, key):
 		"""
-		Get a deep copy of a gridded variable.
+		Get a shallow copy of a gridded variable.
 
 		Parameters
 		----------
@@ -98,7 +98,7 @@ class GridData:
 		obj :
 			Deep copy of the :class:`xarray.DataArray` representing the variable.
 		"""
-		return copy.deepcopy(self._vars.get(key, None))
+		return self._vars.get(key, None)
 
 	def get_time(self, key = None):
 		"""
@@ -134,7 +134,7 @@ class GridData:
 			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
 		"""
 		for key in other._vars:
-			self._vars[key] = copy.deepcopy(other._vars[key])
+			self._vars[key] = other._vars[key]
 	
 	def append(self, other):
 		"""
