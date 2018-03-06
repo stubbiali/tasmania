@@ -208,7 +208,7 @@ smooth_moist_coeff_max  = .49
 #
 dt                    = timedelta(seconds = 24)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = 1000 * dt #timedelta(hours = 6)
+simulation_time       = timedelta(hours = 12)
 initial_state_type    = 0
 initial_state_kwargs  = {
 						 'x_velocity_initial': 15.,
