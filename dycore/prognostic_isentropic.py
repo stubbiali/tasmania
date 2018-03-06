@@ -512,7 +512,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		# Diagnose the Montgomery potential from the updated isentropic density, 
 		# then get the associated stencils' computational domain
-		_, _, new_mtg, _, _ = self.diagnostic.get_diagnostic_variables(new_s, p[0,0,0])
+		_, _, new_mtg, _ = self.diagnostic.get_diagnostic_variables(new_s, p[0,0,0])
 		self._new_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(new_mtg)
 
 		# Run the compute function of the stencil stepping the momentums

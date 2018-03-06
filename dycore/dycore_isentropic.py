@@ -222,9 +222,6 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
-			# The initial density
-			rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
-
 			# The initial momentums
 			U = s * kwargs.get('x_velocity_initial', 10.)
 			V = s * kwargs.get('y_velocity_initial', 0.)
@@ -288,9 +285,6 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
-
-			# The initial density
-			rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
 
 			# The initial momentums
 			U = s * kwargs.get('x_velocity_initial', 10.)
@@ -356,9 +350,6 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 			# The initial isentropic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
-
-			# The initial density
-			rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
 
 			# The initial momentums
 			U = s * kwargs.get('x_velocity_initial', 10.)
@@ -472,9 +463,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._boundary.set_outermost_layers_x(u_new, u_now) 
 		self._boundary.set_outermost_layers_y(v_new, v_now) 
 
-		# Diagnose the pressure, the Exner function, the Montgomery potential, the geometric height at the half levels,
-		# and the density
-		p_new, exn_new, mtg_new, h_new, rho_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
+		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height at the half levels
+		p_new, exn_new, mtg_new, h_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
 
 		# Update the old time step
 		if self._prognostic.time_levels == 2:
@@ -484,7 +474,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		# Build up the new state, and return
 		state_new = StateIsentropic(state.time + dt, self._grid,
-									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new, rho_new)
+									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new)
 
 		return state_new
 
@@ -617,9 +607,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._boundary.set_outermost_layers_x(u_new, u_now) 
 		self._boundary.set_outermost_layers_y(v_new, v_now) 
 
-		# Diagnose the pressure, the Exner function, the Montgomery potential, the geometric height at the half levels,
-		# and the density
-		p_new, exn_new, mtg_new, h_new, rho_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
+		# Diagnose the pressure, the Exner function, the Montgomery potential, and the geometric height at the half levels
+		p_new, exn_new, mtg_new, h_new = self._diagnostic.get_diagnostic_variables(s_new, p_now[0,0,0])
 
 		# Update the old time step
 		if self._prognostic.time_levels == 2:
@@ -632,7 +621,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		# Build up the new state, and return
 		state_new = StateIsentropic(state.time + dt, self._grid,
-									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new, rho_new,
+									s_new, u_new, U_new, v_new, V_new, p_new, exn_new, mtg_new, h_new,
 									qv_new, qc_new, qr_new)
 
 		return state_new

@@ -195,8 +195,8 @@ class DiagnosticIsentropic:
 
 	def get_diagnostic_variables(self, s, pt):
 		"""
-		Diagnosis of the pressure, the Exner function, the Montgomery potential, the geometric height of the 
-		potential temperature surfaces, and the density.
+		Diagnosis of the pressure, the Exner function, the Montgomery potential, and the geometric height of the 
+		potential temperature surfaces.
 
 		Parameters
 		----------
@@ -216,15 +216,12 @@ class DiagnosticIsentropic:
 		h : array_like
 			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed 
 			geometric height of the potential temperature surfaces.
-		rho : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed density.
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_pressure is None:
 			self._initialize_stencil_diagnosing_pressure()
 			self._initialize_stencil_diagnosing_montgomery()
 			self._initialize_stencil_diagnosing_height()
-			self._initialize_stencil_diagnosing_density()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
 		self._set_inputs_to_stencil_diagnosing_pressure(s)
@@ -251,10 +248,58 @@ class DiagnosticIsentropic:
 		self._out_h[:, :, -1] = self._grid.topography_height
 		self._stencil_diagnosing_height.compute()
 
-		# Compute the density
-		self._stencil_diagnosing_density.compute()
+		return self._out_p, self._out_exn, self._out_mtg, self._out_h
 
-		return self._out_p, self._out_exn, self._out_mtg, self._out_h, self._out_rho
+	def get_density(self, state):
+		"""
+		Diagnosis of the density.
+
+		Parameters
+		----------
+		state : obj
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+
+		Return
+		------
+		array_like :
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed density.
+		"""
+		# Extract the isentropic density and the height of the model half-levels
+		s = state['isentropic_density'].values[:, :, :, -1]
+		h = state['height'].values[:, :, :, -1]
+
+		# If it is the first time this method is invoked, initialize the GT4Py's stencil
+		self._initialize_stencil_diagnosing_density()
+
+		# Update the attributes which serve as inputs to the stencil
+		self._set_inputs_to_stencil_diagnosing_density(s, h)
+
+		# Run the stencil's compute function
+		self._stencil_diagnosing_pressure.compute()
+
+		return self._out_rho
+
+	def get_temperature(self, state):
+		"""
+		Diagnosis of the temperature.
+
+		Parameters
+		----------
+		state : obj
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+
+		Return
+		------
+		array_like :
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed temperature.
+		"""
+		# Extract the Exner function
+		exn = state['exner_function'].values[:, :, :, -1]
+
+		# Diagnose the temperature at the mass grid points
+		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:])
+
+		return T
 
 
 	def _initialize_stencil_diagnosing_momentums(self):
@@ -711,24 +756,6 @@ class DiagnosticIsentropic:
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.BACKWARD)
 
-	def _initialize_stencil_diagnosing_density(self):
-		"""
-		Initialize the GT4Py's stencil in charge of diagnosing the density.
-		"""
-		# Shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-
-		# Allocate the Numpy array which will carry the output field
-		self._out_rho = np.zeros((nx, ny, nz), dtype = datatype)
-
-		# Instantiate the stencil
-		self._stencil_diagnosing_density = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_density,
-			inputs = {'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._out_h},
-			outputs = {'out_rho': self._out_rho},
-			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
-			mode = self._backend)
-	
 	def _set_inputs_to_stencil_diagnosing_pressure(self, s):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the pressure.
@@ -834,6 +861,44 @@ class DiagnosticIsentropic:
 
 		return out_h
 
+
+	def _initialize_stencil_diagnosing_density(self):
+		"""
+		Initialize the GT4Py's stencil in charge of diagnosing the density.
+		"""
+		# Shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+
+		# Allocate the Numpy arrays which will carry the input fields
+		if not hasattr(self, '_in_s'):
+			self._in_s = np.zeros((nx, ny, nz), dtype = datatype)
+		self._in_h = np.zeros((nx, ny, nz + 1), dtype = datatype)
+
+		# Allocate the Numpy array which will carry the output field
+		self._out_rho = np.zeros((nx, ny, nz), dtype = datatype)
+
+		# Instantiate the stencil
+		self._stencil_diagnosing_density = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_density,
+			inputs = {'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._in_h},
+			outputs = {'out_rho': self._out_rho},
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
+			mode = self._backend)
+
+	def _set_inputs_to_stencil_diagnosing_density(self, s, h):
+		"""
+		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the density.
+
+		Parameters
+		----------
+		s : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
+		h : array_like
+			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the height of the half-levels.
+		"""
+		self._in_s[:,:,:] = s[:,:,:]
+		self._in_h[:,:,:] = h[:,:,:]
+	
 	def _defs_stencil_diagnosing_density(self, in_theta, in_s, in_h):
 		"""
 		GT4Py's stencil diagnosing the density.

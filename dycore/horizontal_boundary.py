@@ -32,7 +32,7 @@ class HorizontalBoundary:
 		self._grid = grid
 		self.nb = nb
 
-	#@abc.abstractmethod
+	@abc.abstractmethod
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		Given a :class:`numpy.ndarray` representing a physical field, return the associated stencils' computational
@@ -56,7 +56,7 @@ class HorizontalBoundary:
 		The implementation should be designed to work with both staggered and unstaggared fields.
 		"""
 
-	#@abc.abstractmethod
+	@abc.abstractmethod
 	def from_computational_to_physical_domain(self, phi_, out_dims, change_sign):
 		"""
 		Given a :class:`numpy.ndarray` representing the computational domain of a stencil, return the 
@@ -78,7 +78,7 @@ class HorizontalBoundary:
 			:class:`numpy.ndarray` representing the field defined over the physical domain.
 		"""
 
-	#@abc.abstractmethod
+	@abc.abstractmethod
 	def apply(self, phi_new, phi_now):
 		"""
 		Apply the boundary conditions on the field :attr:`phi_new`, possibly relying upon the solution 
@@ -93,7 +93,7 @@ class HorizontalBoundary:
 			:class:`numpy.ndarray` representing the field at the current time.
 		"""
 
-	#@abc.abstractmethod
+	@abc.abstractmethod
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
 		Set the outermost layers of :obj:`phi_new` in the :math:`x`- (i.e., :obj:`i`-) direction so to satisfy 
@@ -108,7 +108,7 @@ class HorizontalBoundary:
 			:class:`numpy.ndarray` representing the field at the current time.
 		"""
 
-	#@abc.abstractmethod
+	@abc.abstractmethod
 	def set_outermost_layers_y(self, phi_new, phi_now):
 		"""
 		Set the outermost layers of :obj:`phi_new` in the :math:`y`- (i.e., :obj:`j`-) direction so to satisfy 
