@@ -24,7 +24,7 @@ import copy
 import numpy as np
 import xarray as xr
 
-import grids.axis.Axis as Axis
+from grids.axis import Axis
 import utils.utils as utils
 
 class GridData:
@@ -88,7 +88,7 @@ class GridData:
 			# A notable example of a two-dimensional field is the accumulated precipitation
 			if var.shape == 1:
 				z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
-			elif var.shape == grid.nz:
+			elif var.shape[2] == grid.nz:
 				z = grid.z 
 			elif var.shape[2] == grid.nz + 1:
 				z = grid.z_half_levels
