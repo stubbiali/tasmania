@@ -22,12 +22,12 @@
 #
 import abc
 import numpy as np
-from sympl import Prognostic
+from sympl import TimeStepper
 
-class DynamicalCore(Prognostic):
+class DynamicalCore(TimeStepper):
 	"""
 	Abstract base class whose derived classes implement different dynamical cores.
-	The class inherits :class:`sympl.Prognostic`.
+	The class inherits :class:`sympl.TimeStepper`.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -89,3 +89,33 @@ class DynamicalCore(Prognostic):
 			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
 		self._grid.update_topography(time)
+
+	@staticmethod
+	def factory(model, *args, **kwargs):
+		"""
+		Static method returning an instance of the derived class implementing the dynamical core specified by :obj:`model`.
+
+		Parameters
+		----------
+		model : str
+			String specifying the dynamical core to implement. Either:
+
+			* 'isentropic', for the hydrostatic, isentropic dynamical core;
+			* 'isentropic_isothermal', for the hydrostatic, isentropic, isothermal dynamical core.
+
+		*args :
+			Positional arguments to forward to the derived class.
+		**kwargs :
+			Keyword arguments to forward to the derived class.
+			
+		Return
+		------
+		obj :
+			Instance of the derived class implementing the specified model.
+		"""
+		if model == 'isentropic':
+			from dycore.dycore_isentropic import DynamicalCoreIsentropic
+			return DynamicalCoreIsentropic(*args, **kwargs)
+		elif model == 'isentropic_isothermal':
+			from dycore.dycore_isentropic_isothermal import DynamicalCoreIsentropicIsothermal
+			return DynamicalCoreIsentropicIsothermal(*args, **kwargs)

@@ -24,6 +24,7 @@ import copy
 import numpy as np
 import xarray as xr
 
+import grids.axis.Axis as Axis
 import utils.utils as utils
 
 class GridData:
@@ -78,11 +79,19 @@ class GridData:
 
 		self._vars = dict()
 		for key in kwargs:
-			# Distinguish between staggered and unstaggered fields
+			# Distinguish between horizontally staggered and unstaggered fields
 			var = kwargs[key]
 			x = grid.x if var.shape[0] == grid.nx else grid.x_half_levels
 			y = grid.y if var.shape[1] == grid.ny else grid.y_half_levels
-			z = grid.z if var.shape[2] == grid.nz else grid.z_half_levels
+
+			# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
+			# A notable example of a two-dimensional field is the accumulated precipitation
+			if var.shape == 1:
+				z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
+			elif var.shape == grid.nz:
+				z = grid.z 
+			elif var.shape[2] == grid.nz + 1:
+				z = grid.z_half_levels
 
 			_var = xr.DataArray(np.copy(var[:, :, :, np.newaxis]), 
 							    coords = [x.values, y.values, z.values, [time]],
@@ -121,18 +130,16 @@ class GridData:
 
 	def update(self, other):
 		"""
-		Update (some of) the stored variables by syncing the current object with another :class:`~storages.grid_data.GridData` 
-		(or a derived class). 
+		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
+		This implies that, for each variable stored in the input object:
+
+		* if the current object contains a variable with the same name, the field of that variable is updated;
+		* if the current object does not contain any variable with the same name, the variable is added to the current object.
 
 		Parameters
 		----------
 		other : obj 
 			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
-
-		Note
-		----
-		:data:`other` is not required to contain *all* the variables stored by the current object, yet it cannot contain 
-		variables not included in the current object.
 		"""
 		for key in other._vars:
 			self._vars[key] = copy.deepcopy(other._vars[key])

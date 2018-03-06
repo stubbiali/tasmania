@@ -40,7 +40,7 @@ user_namelist = None if len(sys.argv) == 1 else sys.argv[1]
 utils.set_namelist(user_namelist)
 
 from grids.grid_xyz import GridXYZ as Grid
-from dycore.dycore_isentropic import DynamicalCoreIsentropic
+from dycore.dycore import DynamicalCore
 from model import Model
 import namelist as nl
 
@@ -64,13 +64,12 @@ print('Grid created in {} ms.\n'.format((stop-start) * 1000.))
 print('Instantiate dycore ...')
 start = time.time()
 
-if nl.model == 'isentropic':
-	dycore = DynamicalCoreIsentropic(nl.time_scheme, nl.flux_scheme, nl.horizontal_boundary_type, grid, nl.imoist, nl.backend,
-				 		  		 	 nl.idamp, nl.damp_type, nl.damp_depth, nl.damp_max, 
-				 		  		 	 nl.ismooth, nl.smooth_type, nl.smooth_damp_depth, 
-									 nl.smooth_coeff, nl.smooth_coeff_max, 
-				 		  		 	 nl.ismooth_moist, nl.smooth_moist_type, nl.smooth_moist_damp_depth, 
-									 nl.smooth_moist_coeff, nl.smooth_moist_coeff_max)
+dycore = DynamicalCore.factory(nl.model, nl.time_scheme, nl.flux_scheme, nl.horizontal_boundary_type, grid, 
+							   nl.imoist, nl.backend, nl.idamp, nl.damp_type, nl.damp_depth, nl.damp_max, 
+				 		  	   nl.ismooth, nl.smooth_type, nl.smooth_damp_depth, 
+							   nl.smooth_coeff, nl.smooth_coeff_max, 
+				 		  	   nl.ismooth_moist, nl.smooth_moist_type, nl.smooth_moist_damp_depth, 
+							   nl.smooth_moist_coeff, nl.smooth_moist_coeff_max)
 
 stop = time.time()
 print('Dycore instantiated in {} ms.\n'.format((stop-start) * 1000.))
