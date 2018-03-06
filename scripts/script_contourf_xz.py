@@ -32,10 +32,10 @@ import utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_advection_upwind.pickle')
-field = 'water_vapor'
-y_level = 0
-time_level = 4
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_maccormack_newinterface.pickle')
+field = 'x_velocity'
+y_level = 25
+time_level = -1
 
 #
 # Optional settings
@@ -43,25 +43,25 @@ time_level = 4
 show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
 fontsize         = 16
-figsize          = [9,7]
+figsize          = [7,8]
 title            = ''
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
-z_lim            = [0,20]
-field_factor     = 1.e3
+z_lim            = [0,28]
+field_factor     = 1.
 plot_height		 = True
-cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
-cbar_levels      = 18
-cbar_ticks_step  = 4
-cbar_center      = 0.5 * 23
-cbar_half_width  = 0.5 * 23
-cbar_x_label     = ''
-cbar_y_label     = 'Water vapor [g kg$^{-1}$]'
+cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cbar_levels      = 14
+cbar_ticks_step  = 2
+cbar_center      = 15.
+cbar_half_width  = 6.5
+cbar_x_label     = 'Water vapor [g kg$^{-1}$]'
+cbar_y_label     = ''
 cbar_title       = ''
-cbar_orientation = 'vertical'
+cbar_orientation = 'horizontal'
 text			 = '$t = \dfrac{L}{\overline{u}}$'
 text_loc		 = 'upper right'
 
