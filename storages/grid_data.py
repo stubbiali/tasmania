@@ -24,7 +24,7 @@ import copy
 import numpy as np
 import xarray as xr
 
-import grids.axis.Axis as Axis
+from grids.axis import Axis
 import utils.utils as utils
 
 class GridData:
@@ -47,19 +47,25 @@ class GridData:
 	"""
 	# Specify the units in which variables should be expressed
 	units = {
-		'isentropic_density'   : 'kg m-2 K-1'    ,
-		'x_velocity'           : 'm s-1'         ,
-		'y_velocity'           : 'm s-1'         ,
-		'x_momentum_isentropic': 'kg m-1 s-1 K-1',
-		'y_momentum_isentropic': 'kg m-1 s-1 K-1',
-		'pressure'             : 'Pa'            ,
-		'exner_function'       : 'm2 s-2 K-2'    ,
-		'montgomery_potential' : 'm2 s-2'        ,
-		'height'               : 'm'             ,
-		'density'			   : 'kg m-3'		 ,
-		'water_vapor'          : 'kg kg-1'       ,
-		'cloud_water'          : 'kg kg-1'       ,
-		'precipitation_water'  : 'kg kg-1'       ,
+		'density'			   					: 'kg m-3'		  ,
+		'isentropic_density'   					: 'kg m-2 K-1'    ,
+		'x_velocity'           					: 'm s-1'         ,
+		'x_velocity_unstaggered'				: 'm s-1'         ,
+		'y_velocity'           					: 'm s-1'         ,
+		'y_velocity_unstaggered'				: 'm s-1'         ,
+		'x_momentum_isentropic'					: 'kg m-1 s-1 K-1',
+		'y_momentum_isentropic'					: 'kg m-1 s-1 K-1',
+		'pressure'             					: 'Pa'            ,
+		'exner_function'       					: 'm2 s-2 K-2'    ,
+		'montgomery_potential' 					: 'm2 s-2'        ,
+		'height'               					: 'm'             ,
+		'temperature'							: 'K'             ,
+		'water_vapor_mass_fraction'             : 'kg kg-1'       ,
+		'water_vapor_isentropic_density'        : 'kg m-2 K-1'    ,
+		'cloud_water_mass_fraction'             : 'kg kg-1'       ,
+		'cloud_water_isentropic_density'        : 'kg m-2 K-1'    ,
+		'precipitation_water_mass_fraction'     : 'kg kg-1'       ,
+		'precipitation_water_isentropic_density': 'kg m-2 K-1'    ,
 	}
 
 	def __init__(self, time, grid, **kwargs):
@@ -79,25 +85,26 @@ class GridData:
 
 		self._vars = dict()
 		for key in kwargs:
-			# Distinguish between horizontally staggered and unstaggered fields
 			var = kwargs[key]
-			x = grid.x if var.shape[0] == grid.nx else grid.x_half_levels
-			y = grid.y if var.shape[1] == grid.ny else grid.y_half_levels
+			if var is not None:
+				# Distinguish between horizontally staggered and unstaggered fields
+				x = grid.x if var.shape[0] == grid.nx else grid.x_half_levels
+				y = grid.y if var.shape[1] == grid.ny else grid.y_half_levels
 
-			# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
-			# A notable example of a two-dimensional field is the accumulated precipitation
-			if var.shape == 1:
-				z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
-			elif var.shape == grid.nz:
-				z = grid.z 
-			elif var.shape[2] == grid.nz + 1:
-				z = grid.z_half_levels
+				# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
+				# A notable example of a two-dimensional field is the accumulated precipitation
+				if var.shape == 1:
+					z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
+				elif var.shape[2] == grid.nz:
+					z = grid.z 
+				elif var.shape[2] == grid.nz + 1:
+					z = grid.z_half_levels
 
-			_var = xr.DataArray(np.copy(var[:, :, :, np.newaxis]), 
-							    coords = [x.values, y.values, z.values, [time]],
-			 				    dims = [x.dims, y.dims, z.dims, 'time'],
-								attrs = {'units': GridData.units[key]})
-			self._vars[key] = _var
+				_var = xr.DataArray(np.copy(var[:, :, :, np.newaxis]), 
+									coords = [x.values, y.values, z.values, [time]],
+									dims = [x.dims, y.dims, z.dims, 'time'],
+									attrs = {'units': GridData.units[key]})
+				self._vars[key] = _var
 
 	def __getitem__(self, key):
 		"""
@@ -115,17 +122,22 @@ class GridData:
 		"""
 		return copy.deepcopy(self._vars.get(key, None))
 
-	@property
-	def time(self):
+	def get_time(self, key = None):
 		"""
-		Return the time at which the data are defined.
+		Return the time at which a variable is defined. If no variable is specified, it is supposed that all data are defined
+		at the same time level.
+
+		Parameters
+		----------
+		key : `str`, optional
+			The name of the variable.
 
 		Return
 		------
 		obj :
-			:class:`datetime.datetime` representing the time at which the data are defined.
+			:class:`datetime.datetime` representing the time at which the variable is defined.
 		"""
-		akey = list(self._vars.keys())[0]
+		akey = list(self._vars.keys())[0] if key is None else key
 		return utils.convert_datetime64_to_datetime(self._vars[akey].coords['time'].values[-1])
 
 	def update(self, other):
@@ -134,7 +146,9 @@ class GridData:
 		This implies that, for each variable stored in the input object:
 
 		* if the current object contains a variable with the same name, the field of that variable is updated;
-		* if the current object does not contain any variable with the same name, the variable is added to the current object.
+		* if the current object does not contain any variable with the same name, nothing is done.
+
+		Note that after the update, the stored variables might not be defined at the same time level.
 
 		Parameters
 		----------

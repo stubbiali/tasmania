@@ -20,8 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from matplotlib.colors import LinearSegmentedColormap
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
 import xarray as xr
@@ -32,9 +30,9 @@ from utils.utils import smaller_than as lt
 from utils.utils import convert_datetime64_to_datetime
 import utils.utils_plot as utils_plot
 
-class StateIsentropic(GridData):
+class StateIsentropicConservative(GridData):
 	"""
-	This class inherits :class:`~storages.grid_data.GridData` to represent the state of the three-dimensional 
+	This class inherits :class:`~storages.grid_data.GridData` to represent the conservative state of the three-dimensional 
 	(moist) isentropic model. The stored variables are:
 
 	* isentropic_density (unstaggered);
@@ -46,9 +44,9 @@ class StateIsentropic(GridData):
 	* exner_function (:math:`z`-staggered);
 	* montgomery_potential (unstaggered);
 	* height (:math:`z`-staggered).
-	* water_vapor_mass_fraction (unstaggered, optional);
-	* cloud_water_mass_fraction (unstaggered, optional);
-	* precipitation_water_mass_fraction (unstaggered, optional).
+	* water_vapor_isentropic_density (unstaggered, optional);
+	* cloud_water_isentropic_density (unstaggered, optional);
+	* precipitation_water_isentropic_density (unstaggered, optional).
 
 	Attributes
 	----------
@@ -57,7 +55,8 @@ class StateIsentropic(GridData):
 	"""
 	def __init__(self, time, grid, isentropic_density, x_velocity, x_momentum_isentropic, y_velocity, y_momentum_isentropic,
 				 pressure, exner_function, montgomery_potential, height,
-				 water_vapor_mass_fraction = None, cloud_water_mass_fraction = None, precipitation_water_mass_fraction = None):
+				 water_vapor_isentropic_density = None, cloud_water_isentropic_density = None, 
+				 precipitation_water_isentropic_density = None):
 		"""
 		Constructor.
 
@@ -85,12 +84,12 @@ class StateIsentropic(GridData):
 			:class:`numpy.ndarray` representing the Montgomery potential.
 		height : array_like
 			:class:`numpy.ndarray` representing the geometrical height of the half-levels.
-		water_vapor_mass_fraction : `array_like`, optional
-			:class:`numpy.ndarray` representing the mass fraction of water vapor.
-		cloud_water_mass_fraction : `array_like`, optional
-			:class:`numpy.ndarray` representing the mass fraction of cloud water.
-		precipitation_water_mass_fraction : `array_like`, optional
-			:class:`numpy.ndarray` representing the mass fraction of precipitation water.
+		water_vapor_isentropic_density : `array_like`, optional
+			:class:`numpy.ndarray` representing the isentropic density of water vapor.
+		cloud_water_isentropic_density : `array_like`, optional
+			:class:`numpy.ndarray` representing the isentropic density of cloud water.
+		precipitation_water_isentropic_density : `array_like`, optional
+			:class:`numpy.ndarray` representing the isentropic density of precipitation water.
 		"""
 		kwargs = {'isentropic_density'   : isentropic_density,
 				  'x_velocity'           : x_velocity,
@@ -101,12 +100,12 @@ class StateIsentropic(GridData):
 				  'exner_function'       : exner_function,
 				  'montgomery_potential' : montgomery_potential,
 				  'height'               : height}
-		if water_vapor_mass_fraction is not None:
-			kwargs['water_vapor_mass_fraction'] = water_vapor_mass_fraction
-		if cloud_water_mass_fraction is not None:
-			kwargs['cloud_water_mass_fraction'] = cloud_water_mass_fraction
-		if precipitation_water_mass_fraction is not None:
-			kwargs['precipitation_water_mass_fraction'] = precipitation_water_mass_fraction
+		if water_vapor_isentropic_density is not None:
+			kwargs['water_vapor_isentropic_density'] = water_vapor_isentropic_density
+		if cloud_water_isentropic_density is not None:
+			kwargs['cloud_water_isentropic_density'] = cloud_water_isentropic_density
+		if precipitation_water_isentropic_density is not None:
+			kwargs['precipitation_water_isentropic_density'] = precipitation_water_isentropic_density
 
 		super().__init__(time, grid, **kwargs)
 
