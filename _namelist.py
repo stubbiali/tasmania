@@ -139,17 +139,17 @@ g     = 9.81
 # Grid settings
 #
 domain_x        = [0, 500.e3]
-nx              = 101
+nx              = 51
 domain_y        = [-250.e3, 250.e3]
-ny              = 1
-domain_z        = [280. + 60., 280.]
-nz              = 60
+ny              = 51
+domain_z        = [300. + 100., 300.]
+nz              = 50
 z_interface     = None
 topo_type       = 'gaussian'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
 				   'topo_max_height': 1000.,
-				   'topo_width_x': 25.e3,
+				   'topo_width_x': 50.e3,
 				   'topo_width_y': 50.e3,
 				   'topo_str': '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
 				  }
@@ -158,7 +158,7 @@ topo_kwargs     = {
 # Model settings
 #
 model                    = 'isentropic' 
-imoist					 = True
+imoist					 = False
 horizontal_boundary_type = 'relaxed'
 
 #
@@ -166,14 +166,14 @@ horizontal_boundary_type = 'relaxed'
 #
 time_scheme             = 'forward_euler'
 flux_scheme             = 'maccormack'
-idamp	                = False
+idamp	                = True
 damp_type               = 'rayleigh'
-damp_depth              = 30
-damp_max                = .1
+damp_depth              = 15
+damp_max                = .0002
 ismooth                 = True
 smooth_type             = 'first_order'
-smooth_damp_depth       = 30
-smooth_coeff            = .05
+smooth_damp_depth       = 0
+smooth_coeff            = .03
 smooth_coeff_max        = .25
 ismooth_moist		    = False
 smooth_moist_type       = 'first_order'
@@ -184,9 +184,9 @@ smooth_moist_coeff_max  = .49
 #
 # Simulation settings
 #
-dt                    = timedelta(seconds = 10)
+dt                    = timedelta(seconds = 24)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = timedelta(hours = 6)
+simulation_time       = 1000 * dt #timedelta(hours = 6)
 initial_state_type    = 0
 initial_state_kwargs  = {
 						 'x_velocity_initial': 15.,
@@ -196,6 +196,6 @@ initial_state_kwargs  = {
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = []
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_maccormack.pickle')
+save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_maccormack.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float32

@@ -93,6 +93,9 @@ print('\nSimulation completed in {} s.\n'.format(stop-start))
 #
 # Save to output
 #
-with open(nl.save_dest, 'wb') as output:
-	pickle.dump(state_save, output)
-
+try:
+	with open(nl.save_dest, 'wb') as output:
+		pickle.dump(state_save, output)
+except EnvironmentError, TypeError:
+	pass
+	pass

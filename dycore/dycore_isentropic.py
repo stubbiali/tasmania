@@ -363,9 +363,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		# Assemble the initial state
 		if self._imoist:
-			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, rho, qv, qc, qr)
+			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, qv, qc, qr)
 		else:
-			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, rho)
+			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h)
 
 		return state
 
