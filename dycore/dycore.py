@@ -22,7 +22,7 @@ class DynamicalCore(TimeStepper):
 		self._grid = grid
 
 	@abc.abstractmethod
-	def __call__(self, dt, state):
+	def __call__(self, dt, state, diagnostics = None):
 		"""
 		Call operator advancing the input state one step forward. 
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
@@ -33,6 +33,8 @@ class DynamicalCore(TimeStepper):
 			:class:`datetime.timedelta` object representing the time step.
 		state : obj 
 			The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+		diagnostics : `obj`, optional 
+			:class:`~storages.grid_data.GridData` storing the possibly required diagnostics. Default is :obj:`None`.
 
 		Return
 		------

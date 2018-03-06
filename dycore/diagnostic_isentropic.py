@@ -1,7 +1,9 @@
+import copy
 import numpy as np
 
 import gridtools as gt
 from namelist import cp, datatype, g, p_ref, Rd
+from storages.grid_data import GridData
 
 class DiagnosticIsentropic:
 	"""
@@ -25,7 +27,6 @@ class DiagnosticIsentropic:
 
 		# The pointers to the stencil's compute function.
 		# They will be initialized the first time the entry-point methods are invoked.
-		self._stencil_diagnosing_momentums = None
 		self._stencil_diagnosing_velocity_x = None
 		self._stencil_diagnosing_velocity_y = None
 		if self._imoist:
@@ -34,78 +35,76 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_pressure = None
 		self._stencil_diagnosing_montgomery = None
 		self._stencil_diagnosing_height = None
-		self._stenilc_diagnosing_density = None
-
-		# Allocate the Numpy array which will store the Exner function
-		# Conversely to all other Numpy arrays carrying the output fields, this array is allocated
-		# here as the Exner function, being a nonlinear function of the pressure,  can not be diagnosed 
-		# via a GT4Py's stencil
-		self._out_exn = np.zeros((grid.nx, grid.ny, grid.nz + 1), dtype = datatype)
+		self._stencil_diagnosing_density = None
+		self._stencil_diagnosing_temperature = None
 
 		# Assign the corresponding z-level to each z-staggered grid point
 		# This is required to diagnose the geometrical height at the half levels
 		theta_1d = np.reshape(grid.z_half_levels.values[:, np.newaxis, np.newaxis], (1, 1, grid.nz + 1))
 		self._theta = np.tile(theta_1d, (grid.nx, grid.ny, 1))
-
-	def get_momentums(self, s, u, v):
+	
+	@property
+	def diagnostic(self):
 		"""
-		Diagnosis of the momentums :math:`U` and :math:`V`.
-
-		Parameters
-		----------
-		s : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-		u : array_like 
-			:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
-		v : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the :math:`y`-velocity.
-
-		Returns
-		-------
-		U : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`U`.
-		V : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`V`.
+		Get the attribute implementing the diagnostic step of the three-dimensional moist isentropic dynamical core.
+		If this is set to :obj:`None`, a :class:`ValueError` is thrown.
+		
+		Return
+		------
+		obj :
+			:class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
+			three-dimensional moist isentropic dynamical core.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencils
-		if self._stencil_diagnosing_conservative_variables is None:
-			self._initialize_stencil_diagnosing_momentums()
+		if self._diagnostic is None:
+			raise ValueError('''The attribute which is supposed to implement the diagnostic step of the moist isentroic ''' \
+							 '''dynamical core is actually :obj:`None`. Please set it correctly.''')
+		return self._diagnostic
 
-		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_momentums(s, u, v)
+	@diagnostic.setter
+	def diagnostic(self, value):
+		"""
+		Set the attribute implementing the diagnostic step of the three-dimensional moist isentropic dynamical core.
 
-		# Run the stencil's compute function
-		self._stencil_diagnosing_momentums.compute()
+		Parameter
+		---------
+		value : obj
+			:class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
+			three-dimensional moist isentropic dynamical core.
+		"""
+		self._diagnostic = value
 
-		return self._out_U, self._out_V
-
-	def get_water_constituents_isentropic_density(self, s, qv, qc, qr):
+	def get_water_constituents_isentropic_density(self, state):
 		"""
 		Diagnosis of the isentropic density of each water constituent, i.e., :math:`Q_v`, :math:`Q_c` and :math:`Q_v`.
 
 		Parameters
 		----------
-		s : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-		qv : array_like 
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
-			water vapor.
-		qc : array_like 
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
-			cloud water.
-		qr : array_like 
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the mass fraction of 
-			precipitation water.
+		state : obj
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-		Returns
-		-------
-		Qv : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_v`.
-		Qc : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_c`.
-		Qr : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`Q_r`.
+			* isentropic_density (unstaggered);
+			* water_vapor_mass_fraction (unstaggered);
+			* cloud_water_mass_fraction (unstaggered);
+			* precipitation_water_mass_fraction (unstaggered).
+
+		Return
+		------
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* water_vapor_isentropic_density (unstaggered);
+			* cloud_water_isentropic_density (unstaggered);
+			* precipitation_water_isentropic_density (unstaggered).
 		"""
+		# Extract the current time
+		time_now = state.get_time('isentropic_density')
+
+		# Extract the required variables
+		s  = state['isentropic_density'].values[:,:,:,0]
+		qv = state['water_vapor_mass_fraction'].values[:,:,:,0]
+		qc = state['cloud_water_mass_fraction'].values[:,:,:,0]
+		qr = state['precipitation_water_mass_fraction'].values[:,:,:,0]
+
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_water_constituents_isentropic_density is None:
 			self._initialize_stencil_diagnosing_water_constituents_isentropic_density()
@@ -116,32 +115,48 @@ class DiagnosticIsentropic:
 		# Run the stencil's compute function
 		self._stencil_diagnosing_water_constituents_isentropic_density.compute()
 
-		return self._out_Qv, self._out_Qc, self._out_Qr
+		# Set the output
+		out = GridData(time_now, self._grid, water_vapor_isentropic_density = self._out_Qv,
+					   cloud_water_isentropic_density = self._out_Qc, precipitation_water_isentropic_density = self._out_Qr)
 
-	def get_velocity_components(self, s, U, V):
+		return out
+
+	def get_velocity_components(self, state):
 		"""
 		Diagnosis of the velocity components :math:`u` and :math:`v`.
 
 		Parameters
 		----------
-		s : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-		U : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`x`-velocity.
-		V : array_like 
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the :math:`y`-velocity.
+		state : obj
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-		Returns
-		-------
-		u : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx+1`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`u`.
-		v : array_like 
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny+1`, :obj:`nz`) representing the diagnosed :math:`v`.
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered).
+
+		Return
+		------
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* x_velocity (:math:`x`-staggered);
+			* y_velocity (:math:`y`-staggered);
 
 		Note
 		----
-		The first and last rows (respectively, columns) of :data:`u` (resp., :data:`v`) are not set by the method.
+		The first and last rows (respectively, columns) of the staggered :math:`x`-velocity (resp., :math:`y`-velocity) 
+		are set only if the input state contain the :math:`x`-velocity (resp., :math:`y`-velocity) at the previous time level.
 		"""
+		# Extract the current time
+		time_now = state.get_time('isentropic_density')
+
+		# Extract the required variables
+		s = state['isentropic_density'].values[:,:,:,0]
+		u = state['x_velocity'].values[:,:,:,0]
+		U = state['x_momentum_isentropic'].values[:,:,:,0]
+		v = state['y_velocity'].values[:,:,:,0]
+		V = state['y_momentum_isentropic'].values[:,:,:,0]
+
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_velocity_x is None:
 			self._initialize_stencil_diagnosing_velocity_x()
@@ -154,33 +169,49 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_velocity_x.compute()
 		self._stencil_diagnosing_velocity_y.compute()
 
-		return self._out_u, self._out_v
+		# Possibly set the outermost layers
+		if u is not None:	
+			self.boundary.set_outermost_layers_x(self._out_u, u) 
+		if v is not None:	
+			self.boundary.set_outermost_layers_y(self._out_v, v) 
 
-	def get_water_constituents_mass_fraction(self, s, Qv, Qc, Qr):
+		# Set the output
+		out = GridData(time_now, self._grid, x_velocity = self._out_u, y_velocity = self._out_v)
+
+		return out
+
+	def get_water_constituents_mass_fraction(self, state):
 		"""
-		Diagnosis of the mass of each water constituents, i.e., :math:`q_v`, :math:`q_c` and :math:`q_r`.
+		Diagnosis of the mass fraction of each water constituents, i.e., :math:`q_v`, :math:`q_c` and :math:`q_r`.
 
 		Parameters
 		----------
-		Qv : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density \
-			of water vapor.
-		Qc : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density \
-			of cloud water.
-		Qr : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density \
-			of precipitation water.
+		state : obj
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-		Returns
-		-------
-		qv : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_v`.
-		qc : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_c`.
-		qr : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed :math:`q_r`.
+			* isentropic_density (unstaggered);
+			* water_vapor_isentropic_density (unstaggered);
+			* cloud_water_isentropic_density (unstaggered);
+			* precipitation_water_isentropic_density (unstaggered).
+
+		Return
+		------
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* water_vapor_mass_fraction (unstaggered);
+			* cloud_water_mass_fraction (unstaggered);
+			* precipitation_water_mass_fraction (unstaggered).
 		"""	
+		# Extract the current time
+		time_now = state.get_time('isentropic_density')
+
+		# Extract the required variables
+		s  = state['isentropic_density'].values[:,:,:,0]
+		Qv = state['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc = state['cloud_water_isentropic_density'].values[:,:,:,0]
+		Qr = state['precipitation_water_isentropic_density'].values[:,:,:,0]
+
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil_diagnosing_water_constituents_mass_fraction is None:
 			self._initialize_stencil_diagnosing_water_constituents_mass_fraction()
@@ -191,32 +222,41 @@ class DiagnosticIsentropic:
 		# Run the stencils' compute functions
 		self._stencil_diagnosing_water_constituents_mass_fraction.compute()
 
-		return self._out_qv, self._out_qc, self._out_qr
+		# Set the output
+		out = GridData(time_now, self._grid, water_vapor_mass_fraction = self._out_qv,
+					   cloud_water_mass_fraction = self._out_qc, precipitation_water_mass_fraction = self._out_qr)
 
-	def get_diagnostic_variables(self, s, pt):
+		return out
+
+	def get_diagnostic_variables(self, state):
 		"""
-		Diagnosis of the pressure, the Exner function, the Montgomery potential, and the geometric height of the 
-		potential temperature surfaces.
+		Diagnosis of the pressure, the Exner function, the Montgomery potential, and the geometric height of the half-levels.
 
 		Parameters
 		----------
-		s : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the isentropic density.
-		pt : float 
-			Boundary value for the pressure at the top of the domain.
+		state : obj
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-		Returns
-		-------
-		p : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed pressure.
-		exn : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed Exner function.
-		mtg : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed Montgomery potential.
-		h : array_like
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz+1`) representing the diagnosed 
-			geometric height of the potential temperature surfaces.
+			* isentropic_density (unstaggered) at the current time level;
+			* pressure (:math:`z`-staggered) at the previous time level.
+
+		Return
+		------
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* pressure (:math:`z`-staggered);
+			* exner_function (:math:`z`-staggered);
+			* montgomery_potential (unstaggered);
+			* height (:math:`z`-staggered).
 		"""
+		# Extract the current time
+		time_now = state.get_time('isentropic_density')
+
+		# Extract the required variables
+		s  = state['isentropic_density'].values[:,:,:,0]
+		pt = state['pressure'].values[0,0,0,0]
+
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_pressure is None:
 			self._initialize_stencil_diagnosing_pressure()
@@ -232,9 +272,7 @@ class DiagnosticIsentropic:
 		# Compute pressure at all other locations
 		self._stencil_diagnosing_pressure.compute()
 	
-		# Compute the Exner function
-		# Note: the Exner function can not be computed via a GT4Py's stencils as it is a
-		# nonlinear function of the pressure distribution
+		# Compute the Exner function (not via a GT4Py's stencils)
 		self._out_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp) 
 
 		# Compute Montgomery potential at the lower main level
@@ -248,7 +286,11 @@ class DiagnosticIsentropic:
 		self._out_h[:, :, -1] = self._grid.topography_height
 		self._stencil_diagnosing_height.compute()
 
-		return self._out_p, self._out_exn, self._out_mtg, self._out_h
+		# Set the output
+		out = GridData(time_now, self._grid, pressure = self._out_p, exner_function = self._out_exn,
+					   montgomery_potential = self._out_mtg, height = self._out_h)
+
+		return out
 
 	def get_density(self, state):
 		"""
@@ -257,19 +299,28 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+
+			* isentropic_density (unstaggered);
+			* height (:math:`z`-staggered).
 
 		Return
 		------
-		array_like :
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed density.
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* density (unstaggered).
 		"""
-		# Extract the isentropic density and the height of the model half-levels
-		s = state['isentropic_density'].values[:, :, :, -1]
-		h = state['height'].values[:, :, :, -1]
+		# Extract the current time
+		time_now = state.get_time('isentropic_density')
+
+		# Extract the required variables
+		s = state['isentropic_density'].values[:,:,:,0]
+		h = state['height'].values[:,:,:,0]
 
 		# If it is the first time this method is invoked, initialize the GT4Py's stencil
-		self._initialize_stencil_diagnosing_density()
+		if self._stencil_diagnosing_density is None:
+			self._initialize_stencil_diagnosing_density()
 
 		# Update the attributes which serve as inputs to the stencil
 		self._set_inputs_to_stencil_diagnosing_density(s, h)
@@ -277,7 +328,10 @@ class DiagnosticIsentropic:
 		# Run the stencil's compute function
 		self._stencil_diagnosing_pressure.compute()
 
-		return self._out_rho
+		# Set the output
+		out = GridData(time_now, self._grid, density = self._out_rho)
+
+		return out
 
 	def get_temperature(self, state):
 		"""
@@ -286,20 +340,30 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+
+			* exner_function (:math:`z`-staggered).
 
 		Return
 		------
-		array_like :
-			:class:`numpy.ndarray` with shape (:obj:`nx`, :obj:`ny`, :obj:`nz`) representing the diagnosed temperature.
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* temperature (unstaggered).
 		"""
+		# Extract the current time
+		time_now = state.get_time('isentropic_density')
+
 		# Extract the Exner function
 		exn = state['exner_function'].values[:, :, :, -1]
 
-		# Diagnose the temperature at the mass grid points
+		# Diagnose the temperature at the mass grid points (not via a GT4Py's stencil)
 		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:])
 
-		return T
+		# Set the output
+		out = GridData(time_now, self._grid, temperature = T)
+
+		return out
 
 
 	def _initialize_stencil_diagnosing_momentums(self):
@@ -723,7 +787,8 @@ class DiagnosticIsentropic:
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
-		# Allocate the Numpy array which will carry the output field
+		# Allocate the Numpy array which will carry the input and output field
+		self._out_exn = np.zeros((nx, ny, nz + 1), dtype = datatype)
 		self._out_mtg = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_mtg = self._out_mtg
 

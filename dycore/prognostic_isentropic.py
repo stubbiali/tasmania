@@ -1,24 +1,30 @@
 """
-Classes implementing different schemes to carry out the prognostic step of the three-dimensional 
+Classes implementing different schemes to carry out the prognostic steps of the three-dimensional 
 moist isentropic dynamical core.
 """
 import abc
+import copy
 import numpy as np
 
 from dycore.flux_isentropic import FluxIsentropic
+from dycore.horizontal_boundary import RelaxedSymmetricXZ, RelaxedSymmetricYZ
 import gridtools as gt
 from namelist import datatype
+from storages.grid_data import GridData
 
 class PrognosticIsentropic:
 	"""
-	Abstract base class whose derived classes implement different schemes to carry out the prognostic step of 
+	Abstract base class whose derived classes implement different schemes to carry out the prognostic steps of 
 	the three-dimensional moist isentropic dynamical core. The conservative form of the governing equations is used.
 
 	Attributes
 	----------
-	boundary : obj
-		Instance of a derived class of :class:`~dycore.horizontal_boundary.HorizontalBoundary` implementing the 
-		lateral boundary conditions.	
+	ni : int
+		Extent of the computational domain in the :math:`x`-direction.
+	nj : int
+		Extent of the computational domain in the :math:`y`-direction.
+	nk : int
+		Extent of the computational domain in the :math:`z`-direction.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -126,85 +132,30 @@ class PrognosticIsentropic:
 		return self._flux.nb
 
 	@abc.abstractmethod
-	def step_forward(self, dt, s, u, v, p, mtg, U, V, Qv = None, Qc = None, Qr = None,
-			   	     old_s = None, old_U = None, old_V = None, old_Qv = None, old_Qc = None, old_Qr = None,
-					 diagnostics = None):
+	def __call__(self, dt, state, state_old = None, diagnostics = None):
 		"""
-		Method advancing the conservative model variables one time step forward.
+		Call operator advancing the conservative, prognostic model variables one time step forward.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
 		----------
 		dt : obj 
-			A :class:`datetime.timedelta` representing the time step.
-		s : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
-			at current time.
-		u : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
-			at current time.
-		v : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
-			at current time.
-		p : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the pressure	at current time.
-		mtg : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the Montgomery potential 
-			at current time.
-		U : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum 
-			at current time.
-		V : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
-			at current time.
-		Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at current time.
-		Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at current time.
-		Qr : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at current time.
-		old_s : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
-			at the previous time level.
-		old_U : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
-			at the previous time level.
-		old_V : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
-			at the previous time level.
-		old_Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at the previous time level.
-		old_Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at the previous time level.
-		old_Qr : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water 
-			at the previous time level.
+			:class:`datetime.timedelta` representing the time step.
+		state : obj
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the current
+			conservative state.
+		state_old : `obj`, optional
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the old
+			conservative state.
+		diagnostics : `obj`, optional
+			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
 
-		Returns
-		-------
-		out_s : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
-			at the next time level.
-		out_U : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
-			at the next time level.
-		out_V : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum
-			at the next time level.
-		out_Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour
-			at the next time level.
-		out_Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water
-			at the next time level.
-		out_Qr : `array_like`, optional
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at the next time level.
+		Return
+		------
+		obj :
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` whose prognostic variables
+			have been advanced to the next time level, while the diagnostic variables are still defined at the
+			current timestep.
 		"""
 
 	@staticmethod
@@ -247,114 +198,113 @@ class PrognosticIsentropic:
 		else:
 			raise ValueError('Unknown time integration scheme.')
 
-	def _allocate_inputs(self, s, u, v, diagnostics):
+	def _allocate_inputs(self, s_, u_, v_):
 		"""
-		Allocate (some of) the private instance attributes which will serve as inputs to the GT4Py's stencils.
+		Allocate the attributes which will serve as inputs to the GT4Py's stencils.
 
 		Parameters
 		----------
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density at current time.
-		u : array_like 
+		u_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity at current time.
-		v : array_like 
+		v_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity at current time.
 		"""
+		# Determine the extent of the computational domain based on the input Numpy arrays 
+		# Note that, compared to the DataArrays carrying the state fields, these arrays may be larger, 
+		# as they might have been decorated with some extra layers to accommodate the horizontal boundary conditions
+		self.ni = s_.shape[0] - 2 * self.nb
+		self.nj = s_.shape[1] - 2 * self.nb
+		self.nk = s_.shape[2]
+
 		# Instantiate a GT4Py's Global representing the timestep
 		self._dt = gt.Global()
 
 		# Allocate the Numpy arrays which will carry the input fields
-		self._in_s   = np.zeros_like(s)
-		self._in_u   = np.zeros_like(u)
-		self._in_v   = np.zeros_like(v)
-		self._in_mtg = np.zeros_like(s)
-		self._in_U   = np.zeros_like(s)
-		self._in_V   = np.zeros_like(s)
+		self._in_s   = np.zeros_like(s_)
+		self._in_u   = np.zeros_like(u_)
+		self._in_v   = np.zeros_like(v_)
+		self._in_mtg = np.zeros_like(s_)
+		self._in_U   = np.zeros_like(s_)
+		self._in_V   = np.zeros_like(s_)
 		if self._imoist:
-			self._in_Qv = np.zeros_like(s)
-			self._in_Qc = np.zeros_like(s)
-			self._in_Qr = np.zeros_like(s)
+			self._in_Qv = np.zeros_like(s_)
+			self._in_Qc = np.zeros_like(s_)
+			self._in_Qr = np.zeros_like(s_)
 
-	def _allocate_outputs(self, s):
+	def _allocate_outputs(self, s_):
 		"""
 		Allocate the Numpy arrays which will store the updated solution.
 
 		Parameters
 		----------
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density.
 		"""
-		# Determine the extent of the computational domain based on the input Numpy arrays. 
-		# Note that, compared to the DataArrays carrying the state fields, these arrays may be larger, 
-		# as they might have been decorated with some extra layers to accommodate the 
-		# horizontal boundary conditions.
-		self.ni = s.shape[0] - 2 * self.nb
-		self.nj = s.shape[1] - 2 * self.nb
-		self.nk = s.shape[2]
-
-		# Allocate the Numpy arrays which will carry the output fields
+		# Allocate the Numpy arrays which will store the output fields
 		# Note: allocation is performed here, i.e., the first time the entry-point method is invoked,
 		# so to make this step independent of the boundary conditions type
-		self._out_s = np.zeros_like(s)
-		self._out_U = np.zeros_like(s)
-		self._out_V = np.zeros_like(s)
+		self._out_s = np.zeros_like(s_)
+		self._out_U = np.zeros_like(s_)
+		self._out_V = np.zeros_like(s_)
 		if self._imoist:
-			self._out_Qv = np.zeros_like(s)
-			self._out_Qc = np.zeros_like(s)
-			self._out_Qr = np.zeros_like(s)
+			self._out_Qv = np.zeros_like(s_)
+			self._out_Qc = np.zeros_like(s_)
+			self._out_Qr = np.zeros_like(s_)
 
-	def _set_inputs(self, dt, s, u, v, mtg, U, V, Qv, Qc, Qr, diagnostics):
+	def _set_inputs(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_):
 		"""
-		Update (some of) the attributes which serve as inputs to the GT4Py's stencils.
+		Update the attributes which serve as inputs to the GT4Py's stencils.
 
 		Parameters
 		----------
 		dt : obj 
 			A :class:`datetime.timedelta` representing the time step.
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
 			at current time.
-		u : array_like 
+		u_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
 			at current time.
-		v : array_like 
+		v_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
 			at current time.
-		p : array_like 
+		p_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the pressure	at current time.
-		mtg : array_like 
+		mtg_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the Montgomery potential 
 			at current time.
-		U : array_like 
+		U_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum 
 			at current time.
-		V : array_like 
+		V_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
 			at current time.
-		Qv : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at current time.
-		Qc : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at current time.
-		Qr : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at current time.
+		Qv_ : array_like 
+			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
+			of water vapour at current time.
+		Qc_ : array_like 
+			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
+			of cloud water at current time.
+		Qr_ : array_like 
+			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
+			of precipitation water at current time.
 		"""
 		# Time step
 		self._dt.value = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 		
 		# Current state
-		self._in_s[:,:,:]   = s[:,:,:]
-		self._in_u[:,:,:]   = u[:,:,:]
-		self._in_v[:,:,:]   = v[:,:,:]
-		self._in_mtg[:,:,:] = mtg[:,:,:]
-		self._in_U[:,:,:]   = U[:,:,:]
-		self._in_V[:,:,:]   = V[:,:,:]
+		self._in_s[:,:,:]   = s_[:,:,:]
+		self._in_u[:,:,:]   = u_[:,:,:]
+		self._in_v[:,:,:]   = v_[:,:,:]
+		self._in_mtg[:,:,:] = mtg_[:,:,:]
+		self._in_U[:,:,:]   = U_[:,:,:]
+		self._in_V[:,:,:]   = V_[:,:,:]
 		if self._imoist:
-			self._in_Qv[:,:,:] = Qv[:,:,:]
-			self._in_Qc[:,:,:] = Qc[:,:,:]
-			self._in_Qr[:,:,:] = Qr[:,:,:]
+			self._in_Qv[:,:,:] = Qv_[:,:,:]
+			self._in_Qc[:,:,:] = Qc_[:,:,:]
+			self._in_Qr[:,:,:] = Qr_[:,:,:]
 		
 
 class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
@@ -364,6 +314,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 	Attributes
 	----------
+	ni : int
+		Extent of the computational domain in the :math:`x`-direction.
+	nj : int
+		Extent of the computational domain in the :math:`y`-direction.
+	nk : int
+		Extent of the computational domain in the :math:`z`-direction.
 	time_levels : int
 		Number of time levels the scheme relies on.
 	steps : int
@@ -403,149 +359,141 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		# The pointers to the stencils' compute function
 		# They will be re-directed when the forward method is invoked for the first time
-		self._stencil_isentropic_density_and_water_constituents = None
-		self._stencil_momentums = None
+		self._stencil_stepping_isentropic_density_and_water_constituents = None
+		self._stencil_stepping_momentums = None
 
-	def step_forward(self, dt, s, u, v, p, mtg, U, V, Qv = None, Qc = None, Qr = None,
-			   	     old_s = None, old_U = None, old_V = None, old_Qv = None, old_Qc = None, old_Qr = None,
-					 diagnostics = None):
+	def __call__(self, dt, state, state_old = None, diagnostics = None):
 		"""
-		Method advancing the conservative model variables one time step forward via the forward Euler scheme.
+		Call operator advancing the conservative model variables one time step forward via the forward Euler scheme.
 
 		Parameters
 		----------
 		dt : obj 
-			A :class:`datetime.timedelta` representing the time step.
-		s : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
-			at current time.
-		u : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
-			at current time.
-		v : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
-			at current time.
-		p : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the pressure	at current time.
-		mtg : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the Montgomery potential 
-			at current time.
-		U : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum 
-			at current time.
-		V : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
-			at current time.
-		Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at current time.
-		Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at current time.
-		Qr : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at current time.
-		old_s : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
-			at the previous time level.
-		old_U : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
-			at the previous time level.
-		old_V : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
-			at the previous time level.
-		old_Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at the previous time level.
-		old_Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at the previous time level.
-		old_Qr : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water 
-			at the previous time level.
+			:class:`datetime.timedelta` representing the time step.
+		state : obj
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the current
+			conservative state.
+		state_old : `obj`, optional
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the old
+			conservative state.
+		diagnostics : `obj`, optional
+			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
 
-		Returns
-		-------
-		out_s : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
-			at the next time level.
-		out_U : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
-			at the next time level.
-		out_V : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum
-			at the next time level.
-		out_Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour
-			at the next time level.
-		out_Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water
-			at the next time level.
-		out_Qr : `array_like`, optional
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at the next time level.
+		Return
+		------
+		obj :
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` whose prognostic variables 
+			have been advanced to the next time level, while the diagnostic variables are still defined at the
+			current timestep.
 		"""
+		# Extract the current time
+		time_now = state.get_time()
+
+		# Initialize the output state
+		state_new = copy.deepcopy(state)
+
+		# Extract the model variables which are needed
+		s   = state['isentropic_density'].values[:,:,:,0]
+		u   = state['x_velocity'].values[:,:,:,0]
+		U   = state['x_momentum_isentropic'].values[:,:,:,0]
+		v   = state['y_velocity'].values[:,:,:,0]
+		V   = state['y_momentum_isentropic'].values[:,:,:,0]
+		p   = state['pressure'].values[:,:,:,0]
+		mtg = state['montgomery_potential'].values[:,:,:,0]
+		Qv	= None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc	= None if not self._imoist else state['cloud_water_isentropic_density'].values[:,:,:,0]
+		Qr	= None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
+
+		# Extend the arrays to accommodate the horizontal boundary conditions
+		s_   = self.boundary.from_physical_to_computational_domain(s)
+		u_   = self.boundary.from_physical_to_computational_domain(u)
+		v_   = self.boundary.from_physical_to_computational_domain(v)
+		mtg_ = self.boundary.from_physical_to_computational_domain(mtg)
+		U_   = self.boundary.from_physical_to_computational_domain(U)
+		V_   = self.boundary.from_physical_to_computational_domain(V)
+		Qv_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv)
+		Qc_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc)
+		Qr_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr)
+
 		# The first time this method is invoked, initialize the GT4Py's stencils
-		if self._stencil_isentropic_density_and_water_constituents is None:
-			self._initialize_stencils(s, u, v, diagnostics)
+		if self._stencil_stepping_isentropic_density_and_water_constituents is None:
+			self._initialize_stencils(s_, u_, v_)
 
 		# Update the attributes which serve as inputs to the first GT4Py's stencil
-		self._set_inputs(dt, s, u, v, mtg, U, V, Qv, Qc, Qr, diagnostics)
+		self._set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
 		
 		# Run the compute function of the stencil stepping the isentropic density and the water constituents,
 		# and providing provisional values for the momentums
-		self._stencil_isentropic_density_and_water_constituents.compute()
+		self._stencil_stepping_isentropic_density_and_water_constituents.compute()
 
-		# Apply the boundary conditions on the current and updated isentropic density
+		# Bring the updated density and water constituents back to the original dimensions
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		now_s = self.boundary.from_computational_to_physical_domain(s, (nx, ny, nz))
-		new_s = self.boundary.from_computational_to_physical_domain(self._out_s, (nx, ny, nz))
-		self.boundary.apply(new_s, now_s)
+		s_new  = self.boundary.from_computational_to_physical_domain(self._out_s, (nx, ny, nz))
+		Qv_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
+		Qc_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
+		Qr_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
 
-		if self._flux_scheme in ['upwind']:
-			pass
-		elif self._flux_scheme in ['maccormack']:
-			new_s = 0.5 * (now_s + new_s)
+		# Apply the boundary conditions on the updated isentropic density and water constituents
+		self.boundary.apply(s_new, s)
+		if self._imoist:
+			self.boundary.apply(Qv_new, Qv)
+			self.boundary.apply(Qc_new, Qc)
+			self.boundary.apply(Qr_new, Qr)
 
-		# Get the computational domain for the updated isentropic density
-		self._new_s[:,:,:] = self.boundary.from_physical_to_computational_domain(new_s)
+		# Update the state
+		upd = GridData(time_now + dt, self._grid, isentropic_density = s_new, 
+					   water_vapor_isentropic_density = Qv_new, cloud_water_isentropic_density = Qc_new,
+					   precipitation_water_isentropic_density = Qr_new)
+		state_new.update(upd)
 
-		# Diagnose the Montgomery potential from the updated isentropic density, 
-		# then get the associated stencils' computational domain
-		_, _, new_mtg, _ = self.diagnostic.get_diagnostic_variables(new_s, p[0,0,0])
-		self._new_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(new_mtg)
+		# Diagnose the Montgomery potential from the updated state, then get the associated stencils' computational domain
+		gd = self.diagnostic.get_diagnostic_variables(state)
+		self._new_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,-1])
 
 		# Run the compute function of the stencil stepping the momentums
-		self._stencil_momentums.compute()
+		self._stencil_stepping_momentums.compute()
 
-		if not self._imoist:
-			return self._out_s, self._out_U, self._out_V
-		return self._out_s, self._out_U, self._out_V, self._out_Qv, self._out_Qc, self._out_Qr
+		# Bring the momentums back to the original dimensions
+		if type(self.boundary) == RelaxedSymmetricXZ:
+			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz), change_sign = False)
+			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz), change_sign = True) 
+		elif type(self.boundary) == RelaxedSymmetricYZ:
+			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz), change_sign = True)
+			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz), change_sign = False) 
+		else:
+			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz))
+			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz)) 
 
-	def _initialize_stencils(self, s, u, v, diagnostics):
+		# Update the output state, then return
+		upd = GridData(time_now + dt, self._grid, x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
+		state_new.update(upd)
+
+		return state_new
+
+	def _initialize_stencils(self, s_, u_, v_):
 		"""
 		Initialize the GT4Py's stencils implementing the forward Euler scheme.
 
 		Parameters
 		----------
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
 			at current time.
-		u : array_like 
+		u_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
 			at current time.
-		v : array_like 
+		v_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
 			at current time.
 		"""
 		# Allocate the Numpy arrays which will serve as inputs to the first stencil
-		self._allocate_inputs(s, u, v, diagnostics)
+		self._allocate_inputs(s_, u_, v_)
 
 		# Allocate the Numpy arrays which will store temporary fields
-		self._allocate_temporaries(s)
+		self._allocate_temporaries(s_)
 
-		# Allocate the Numpy arrays which will carry the output fields
-		self._allocate_outputs(s)
+		# Allocate the Numpy arrays which will store the output fields
+		self._allocate_outputs(s_)
 
 		# Set the computational domain and the backend
 		_domain = gt.domain.Rectangle((self.nb, self.nb, 0), 
@@ -554,8 +502,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		# Instantiate the first stencil
 		if not self._imoist:
-			self._stencil_isentropic_density_and_water_constituents = gt.NGStencil( 
-				definitions_func = self._defs_stencil_isentropic_density_and_water_constituents,
+			self._stencil_stepping_isentropic_density_and_water_constituents = gt.NGStencil( 
+				definitions_func = self._defs_stencil_stepping_isentropic_density_and_water_constituents,
 				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
 						  'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V},
 				global_inputs = {'dt': self._dt},
@@ -563,8 +511,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 				domain = _domain, 
 				mode = _mode)
 		else:
-			self._stencil_isentropic_density_and_water_constituents = gt.NGStencil( 
-				definitions_func = self._defs_stencil_isentropic_density_and_water_constituents,
+			self._stencil_stepping_isentropic_density_and_water_constituents = gt.NGStencil( 
+				definitions_func = self._defs_stencil_stepping_isentropic_density_and_water_constituents,
 				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
 						  'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V,  
 						  'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
@@ -575,31 +523,31 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 				mode = _mode)
 
 		# Instantiate the second stencil
-		self._stencil_momentums = gt.NGStencil( 
-			definitions_func = self._defs_stencil_momentums,
+		self._stencil_stepping_momentums = gt.NGStencil( 
+			definitions_func = self._defs_stencil_stepping_momentums,
 			inputs = {'in_s': self._new_s, 'in_mtg': self._new_mtg, 'in_U': self._tmp_U, 'in_V': self._tmp_V},
 			global_inputs = {'dt': self._dt},
 			outputs = {'out_U': self._out_U, 'out_V': self._out_V},
 			domain = _domain, 
 			mode = _mode)
 
-	def _allocate_temporaries(self, s):
+	def _allocate_temporaries(self, s_):
 		"""
 		Allocate the Numpy arrays which will store temporary fields.
 
 		Parameters
 		----------
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
 			at current time.
 		"""
-		self._tmp_U   = np.zeros_like(s)
-		self._tmp_V   = np.zeros_like(s)
-		self._new_s   = np.zeros_like(s)
-		self._new_mtg = np.zeros_like(s)
+		self._tmp_U   = np.zeros_like(s_)
+		self._tmp_V   = np.zeros_like(s_)
+		self._new_s   = np.zeros_like(s_)
+		self._new_mtg = np.zeros_like(s_)
 
-	def _defs_stencil_isentropic_density_and_water_constituents(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
-					  											in_Qv = None, in_Qc = None, in_Qr = None):
+	def _defs_stencil_stepping_isentropic_density_and_water_constituents(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
+					  													 in_Qv = None, in_Qc = None, in_Qr = None):
 		"""
 		GT4Py's stencil stepping the isentropic density and the water constituents via the forward Euler scheme.
 		Further, it computes the provisional values for the momentums.
@@ -683,7 +631,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		else:
 			return out_s, out_U, out_V
 
-	def _defs_stencil_momentums(self, dt, in_s, in_mtg, in_U, in_V):
+	def _defs_stencil_stepping_momentums(self, dt, in_s, in_mtg, in_U, in_V):
 		"""
 		GT4Py's stencil stepping the momentums via a one-time-level scheme.
 
@@ -731,6 +679,12 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 	Attributes
 	----------
+	ni : int
+		Extent of the computational domain in the :math:`x`-direction.
+	nj : int
+		Extent of the computational domain in the :math:`y`-direction.
+	nk : int
+		Extent of the computational domain in the :math:`z`-direction.
 	time_levels : int
 		Number of time levels the scheme relies on.
 	steps : int
@@ -772,117 +726,147 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# This will be re-directed when the forward method is invoked for the first time
 		self._stencil = None
 
-	def step_forward(self, dt, s, u, v, p, mtg, U, V, Qv = None, Qc = None, Qr = None,
-			   	     old_s = None, old_U = None, old_V = None, old_Qv = None, old_Qc = None, old_Qr = None,
-					 diagnostics = None):
+		# The old state
+		self._state_old = None
+
+	def __call__(self, dt, state, state_old = None, diagnostics = None):
 		"""
-		Method advancing the conservative model variables one time step forward via a centered time-integration scheme.
+		Call operator advancing the conservative model variables one time step forward via a centered time-integration scheme.
 
 		Parameters
 		----------
 		dt : obj 
-			A :class:`datetime.timedelta` representing the time step.
-		s : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
-			at current time.
-		u : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
-			at current time.
-		v : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
-			at current time.
-		p : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the pressure	at current time.
-		mtg : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the Montgomery potential 
-			at current time.
-		U : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum 
-			at current time.
-		V : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
-			at current time.
-		Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at current time.
-		Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at current time.
-		Qr : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at current time.
-		old_s : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
-			at the previous time level.
-		old_U : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
-			at the previous time level.
-		old_V : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
-			at the previous time level.
-		old_Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
-			at the previous time level.
-		old_Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
-			at the previous time level.
-		old_Qr : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water 
-			at the previous time level.
+			:class:`datetime.timedelta` representing the time step.
+		state : obj
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the current
+			conservative state.
+		state_old : `obj`, optional
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the old
+			conservative state. If this is not specified:
+			
+			* if it is the first time this method is invoked, the old state is assumed to coincide with the current state;
+			* otherwise, the old state is assumed to coincide with the state passed at the previous call.
 
-		Returns
-		-------
-		out_s : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
-			at the next time level.
-		out_U : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
-			at the next time level.
-		out_V : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum
-			at the next time level.
-		out_Qv : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour
-			at the next time level.
-		out_Qc : `array_like`, optional 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water
-			at the next time level.
-		out_Qr : `array_like`, optional
-			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
-			at the next time level.
+		diagnostics : `obj`, optional
+			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
+
+		Return
+		------
+		obj :
+			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` whose prognostic variables 
+			have been advanced to the next time level, while the diagnostic variables are still defined at the
+			current timestep.
 		"""
+		# Extract the current time
+		time_now = state.get_time()
+
+		# Initialize the output state
+		state_now = copy.deepcopy(state)
+		state_new = copy.deepcopy(state)
+
+		# Extract the needed model variables at the current time level
+		s   = state['isentropic_density'].values[:,:,:,0]
+		u   = state['x_velocity'].values[:,:,:,0]
+		U   = state['x_momentum_isentropic'].values[:,:,:,0]
+		v   = state['y_velocity'].values[:,:,:,0]
+		V   = state['y_momentum_isentropic'].values[:,:,:,0]
+		p   = state['pressure'].values[:,:,:,0]
+		mtg = state['montgomery_potential'].values[:,:,:,0]
+		Qv	= state['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc	= state['cloud_water_isentropic_density'].values[:,:,:,0]
+		Qr	= state['precipitation_water_isentropic_density'].values[:,:,:,0]
+
+		# Extend the arrays to accommodate the horizontal boundary conditions
+		s_   = self.boundary.from_physical_to_computational_domain(s)
+		u_   = self.boundary.from_physical_to_computational_domain(u)
+		v_   = self.boundary.from_physical_to_computational_domain(v)
+		mtg_ = self.boundary.from_physical_to_computational_domain(mtg)
+		U_   = self.boundary.from_physical_to_computational_domain(U)
+		V_   = self.boundary.from_physical_to_computational_domain(V)
+		Qv_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv)
+		Qc_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc)
+		Qr_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr)
+
+		# Set the old state, if required
+		if state_old is not None:
+			self._state_old = state_old
+		elif self._state_old is None:
+			self._state_old = state_now
+			
+		# Extract the needed model variables at the previous time level
+		s_old  = state_old['isentropic_density'].values[:,:,:,0]
+		U_old  = state_old['x_momentum_isentropic'].values[:,:,:,0]
+		V_old  = state_old['y_momentum_isentropic'].values[:,:,:,0]
+		Qv_old = state_old['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc_old = state_old['cloud_water_isentropic_density'].values[:,:,:,0]
+		Qr_old = state_old['precipitation_water_isentropic_density'].values[:,:,:,0]
+		
+		# Extend the arrays to accommodate the horizontal boundary conditions
+		s_old_  = self.boundary.from_physical_to_computational_domain(s_old)
+		U_old_  = self.boundary.from_physical_to_computational_domain(U_old)
+		V_old_  = self.boundary.from_physical_to_computational_domain(V_old)
+		Qv_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv_old)
+		Qc_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc_old)
+		Qr_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr_old)
+
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil is None:
-			self._initialize_stencil(s, u, v, diagnostics)
+			self._initialize_stencil(s_, u_, v_)
 
 		# Update the attributes which serve as inputs to the first GT4Py's stencil
-		self._set_inputs(dt, s, u, v, mtg, U, V, Qv, Qc, Qr, old_s, old_U, old_V, old_Qv, old_Qc, old_Qr, diagnostics)
+		self._set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
+						 s_old_, U_old_, V_old_, Qv_old_, Qc_old_, Qr_old_)
 		
 		# Run the stencil's compute function
 		self._stencil.compute()
+		
+		# Bring the updated prognostic variables back to the original dimensions
+		s_new = self.boundary.from_computational_to_physical_domain(self._out_s, (nx, ny, nz))
 
-		if not self._imoist:
-			return self._out_s, self._out_U, self._out_V
-		return self._out_s, self._out_U, self._out_V, self._out_Qv, self._out_Qc, self._out_Qr
+		if type(self.boundary) == RelaxedSymmetricXZ:
+			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz), change_sign = False)
+			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz), change_sign = True) 
+		elif type(self.boundary) == RelaxedSymmetricYZ:
+			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz), change_sign = True)
+			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz), change_sign = False) 
+		else:
+			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz))
+			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz)) 
 
-	def _initialize_stencil(self, s, u, v, diagnostics):
+		Qv_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
+		Qc_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
+		Qr_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
+
+		# Update the output state
+		upd = GridData(time_now + dt, self._grid, 
+					   isentropic_density = s_new, x_momentum_isentropic = U_new, y_momentum_isentropic = V_new, 
+					   water_vapor_isentropic_density = Qv_new, cloud_water_isentropic_density = Qc_new,
+					   precipitation_water_isentropic_density = Qr_new)
+		state_new.update(upd)
+
+		# Keep track of the current state for the next timestep
+		self._state_old = state_now
+
+		return state_new
+
+	def _initialize_stencil(self, s_, u_, v_):
 		"""
 		Initialize the GT4Py's stencil implementing the centered time-integration scheme.
 
 		Parameters
 		----------
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density at current time.
-		u : array_like 
+		u_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity at current time.
-		v : array_like 
+		v_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity at current time.
 		"""
 		# Allocate the attributes which will serve as inputs to the stencil
-		self._allocate_inputs(s, u, v, diagnostics)
+		self._allocate_inputs(s_, u_, v_)
 
-		# Allocate the Numpy arrays which will carry the output fields
-		self._allocate_outputs(s)
+		# Allocate the Numpy arrays which will store the output fields
+		self._allocate_outputs(s_)
 
 		# Set the computational domain and the backend
 		_domain = gt.domain.Rectangle((self.nb, self.nb, 0), 
@@ -914,33 +898,34 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 				domain = _domain, 
 				mode = _mode)
 
-	def _allocate_inputs(self, s, u, v, diagnostics):
+	def _allocate_inputs(self, s_, u_, v_):
 		"""
 		Allocate the attributes which will serve as inputs to the GT4Py's stencil.
 
 		Parameters
 		----------
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density at current time.
-		u : array_like 
+		u_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity at current time.
-		v : array_like 
+		v_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity at current time.
 		"""
 		# Instantiate a GT4Py's Global representing the timestep and the Numpy arrays
 		# which will carry the solution at the current time step
-		super()._allocate_inputs(s, u, v, diagnostics)
+		super()._allocate_inputs(s_, u_, v_)
 
 		# Allocate the Numpy arrays which will carry the solution at the previous time step
-		self._old_s = np.zeros_like(s)
-		self._old_U = np.zeros_like(s)
-		self._old_V = np.zeros_like(s)
+		self._old_s = np.zeros_like(s_)
+		self._old_U = np.zeros_like(s_)
+		self._old_V = np.zeros_like(s_)
 		if self._imoist:
-			self._old_Qv = np.zeros_like(s)
-			self._old_Qc = np.zeros_like(s)
-			self._old_Qr = np.zeros_like(s)
+			self._old_Qv = np.zeros_like(s_)
+			self._old_Qc = np.zeros_like(s_)
+			self._old_Qr = np.zeros_like(s_)
 
-	def _set_inputs(self, dt, s, u, v, mtg, U, V, Qv, Qc, Qr, old_s, old_U, old_V, old_Qv, old_Qc, old_Qr, diagnostics):
+	def _set_inputs(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
+					s_old_, U_old_, V_old_, Qv_old_, Qc_old_, Qr_old_):
 		"""
 		Update the attributes which serve as inputs to the GT4Py's stencil.
 
@@ -948,68 +933,66 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		----------
 		dt : obj 
 			A :class:`datetime.timedelta` representing the time step.
-		s : array_like 
+		s_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
 			at current time.
-		u : array_like 
+		u_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
 			at current time.
-		v : array_like 
+		v_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
 			at current time.
-		p : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the pressure	at current time.
-		mtg : array_like 
+		mtg_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the Montgomery potential 
 			at current time.
-		U : array_like 
+		U_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum 
 			at current time.
-		V : array_like 
+		V_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
 			at current time.
-		Qv : array_like 
+		Qv_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
 			at current time.
-		Qc : array_like 
+		Qc_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
 			at current time.
-		Qr : array_like 
+		Qr_ : array_like 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water
 			at current time.
-		old_s : `array_like`, optional 
+		s_old_ : `array_like`, optional 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density
 			at the previous time level.
-		old_U : `array_like`, optional 
+		U_old_ : `array_like`, optional 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-momentum
 			at the previous time level.
-		old_V : `array_like`, optional 
+		V_old_ : `array_like`, optional 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-momentum 
 			at the previous time level.
-		old_Qv : `array_like`, optional 
+		Qv_old_ : `array_like`, optional 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of water vapour 
 			at the previous time level.
-		old_Qc : `array_like`, optional 
+		Qc_old_ : `array_like`, optional 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of cloud water 
 			at the previous time level.
-		old_Qr : `array_like`, optional 
+		Qr_old_ : `array_like`, optional 
 			:class:`numpy.ndarray` representing the stencils' computational domain for the mass of precipitation water 
 			at the previous time level.
 		"""
 		# Update the time step and the Numpy arrays carrying the current solution
-		super()._set_inputs(dt, s, u, v, mtg, U, V, Qv, Qc, Qr, diagnostics)
+		super()._set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
 		
 		# Update the Numpy arrays carrying the solution at the previous time step
-		self._old_s[:,:,:] = old_s[:,:,:]
-		self._old_U[:,:,:] = old_U[:,:,:]
-		self._old_V[:,:,:] = old_V[:,:,:]
+		self._old_s[:,:,:] = s_old_[:,:,:]
+		self._old_U[:,:,:] = U_old_[:,:,:]
+		self._old_V[:,:,:] = V_old_[:,:,:]
 		if self._imoist:
-			self._old_Qv[:,:,:] = old_Qv[:,:,:]
-			self._old_Qc[:,:,:] = old_Qc[:,:,:]
-			self._old_Qr[:,:,:] = old_Qr[:,:,:]
+			self._old_Qv[:,:,:] = Qv_old_[:,:,:]
+			self._old_Qc[:,:,:] = Qc_old_[:,:,:]
+			self._old_Qr[:,:,:] = Qr_old_[:,:,:]
 
-	def _defs_stencil(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv = None, in_Qc = None, in_Qr = None,
-					  old_s = None, old_U = None, old_V = None,	old_Qv = None, old_Qc = None, old_Qr = None):
+	def _defs_stencil(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, old_s, old_U, old_V,
+					  in_Qv = None, in_Qc = None, in_Qr = None, old_Qv = None, old_Qc = None, old_Qr = None):
 		"""
 		GT4Py's stencil implementing the centered time-integration scheme.
 
@@ -1029,18 +1012,18 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`gridtools.Equation` representing the :math:`x`-momentum at the current time.
 		in_V : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum at the current time.
+		old_s : obj
+			:class:`gridtools.Equation` representing the isentropic density at the previous time level.
+		old_U : obj
+			:class:`gridtools.Equation` representing the :math:`x`-momentum at the previous time level.
+		old_V : obj
+			:class:`gridtools.Equation` representing the :math:`y`-momentum at the previous time level.
 		in_Qv : `obj`, optional
 			:class:`gridtools.Equation` representing the mass of water vapour at the current time.
 		in_Qc : `obj`, optional
 			:class:`gridtools.Equation` representing the mass of cloud water at the current time.
 		in_Qr : `obj`, optional
 			:class:`gridtools.Equation` representing the mass of precipitation water at the current time.
-		old_s : `obj`, optional
-			:class:`gridtools.Equation` representing the isentropic density at the previous time level.
-		old_U : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`x`-momentum at the previous time level.
-		old_V : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`y`-momentum at the previous time level.
 		old_Qv : `obj`, optional
 			:class:`gridtools.Equation` representing the mass of water vapour at the previous time level.
 		old_Qc : `obj`, optional
