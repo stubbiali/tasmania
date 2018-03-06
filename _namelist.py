@@ -188,7 +188,7 @@ horizontal_boundary_type = 'relaxed'
 #
 time_scheme             = 'forward_euler'
 flux_scheme             = 'maccormack'
-idamp	                = False
+idamp	                = True
 damp_type               = 'rayleigh'
 damp_depth              = 15
 damp_max                = .0002
@@ -208,7 +208,7 @@ smooth_moist_coeff_max  = .49
 #
 dt                    = timedelta(seconds = 24)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = 100*dt #timedelta(hours = 12)
+simulation_time       = timedelta(hours = 12)
 initial_state_type    = 0
 initial_state_kwargs  = {
 						 'x_velocity_initial': 15.,
@@ -218,6 +218,6 @@ initial_state_kwargs  = {
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = []
-save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_maccormack_newinterface.pickle')
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_maccormack_newinterface.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float32

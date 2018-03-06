@@ -415,22 +415,25 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		# Extract the current time
 		time_now = state.get_time()
 
+		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
+		if self._idamp or self._ismooth:
+			s_now = np.copy(state['isentropic_density'].values[:,:,:,0])
+			U_now = np.copy(state['x_momentum_isentropic'].values[:,:,:,0])
+			V_now = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
+
 		# Perform the prognostic step
 		state_new = self._prognostic(dt, state, diagnostics)
 
 		if self._idamp:
 			# If this is the first call to the entry-point method: set the reference state
-			if not hasattr(self, '_state_ref'):
-				self._s_ref = state['isentropic_density'].values[:,:,:,0]
-				self._U_ref = state['x_momentum_isentropic'].values[:,:,:,0]
-				self._V_ref = state['y_momentum_isentropic'].values[:,:,:,0]
+			if not hasattr(self, '_s_ref'):
+				self._s_ref = s_now
+				self._U_ref = U_now
+				self._V_ref = V_now
 
 			# Extract the prognostic model variables
-			s_now = state['isentropic_density'].values[:,:,:,0]
 			s_new = state_new['isentropic_density'].values[:,:,:,0]
-			U_now = state['x_momentum_isentropic'].values[:,:,:,0]
 			U_new = state_new['x_momentum_isentropic'].values[:,:,:,0]
-			V_now = state['y_momentum_isentropic'].values[:,:,:,0]
 			V_new = state_new['y_momentum_isentropic'].values[:,:,:,0]
 
 			# Apply vertical damping
@@ -439,20 +442,17 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V_new[:,:,:] = self._damper.apply(dt, V_now, V_new, self._V_ref)
 
 			# Update the state
-			upd = GridData(time_now + dt, self._grid, isentropic_density = s_new,
-						   x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
-			state_new.update(upd)
+			#upd = GridData(time_now + dt, self._grid, isentropic_density = s_new,
+			#			   x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
+			#state_new.update(upd)
 
 		if self._ismooth:
 			if not self._idamp:
 				# Extract the prognostic model variables
-				s_now = state['isentropic_density'].values[:,:,:,0]
 				s_new = state_new['isentropic_density'].values[:,:,:,0]
-				U_now = state['x_momentum_isentropic'].values[:,:,:,0]
 				U_new = state_new['x_momentum_isentropic'].values[:,:,:,0]
-				V_now = state['y_momentum_isentropic'].values[:,:,:,0]
 				V_new = state_new['y_momentum_isentropic'].values[:,:,:,0]
-			
+
 			# Apply horizontal smoothing
 			s_new[:,:,:] = self._smoother.apply(s_new)
 			U_new[:,:,:] = self._smoother.apply(U_new)
@@ -464,9 +464,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(V_new, V_now)
 
 			# Update the state
-			upd = GridData(time_now + dt, self._grid, isentropic_density = s_new,
-						   x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
-			state_new.update(upd)
+			#upd = GridData(time_now + dt, self._grid, isentropic_density = s_new,
+			#			   x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
+			#state_new.update(upd)
 
 		# Diagnose the velocity components
 		state_new.update(self._diagnostic.get_velocity_components(state_new))
