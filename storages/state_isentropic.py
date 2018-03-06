@@ -87,7 +87,7 @@ class StateIsentropic(GridData):
 				  'pressure'             : pressure,
 				  'exner_function'       : exner_function,
 				  'montgomery_potential' : montgomery_potential,
-				  'height'               : height)
+				  'height'               : height}
 		if water_vapor is not None:
 			kwargs['water_vapor'] = water_vapor
 		if cloud_water is not None:
