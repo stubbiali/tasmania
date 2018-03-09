@@ -365,10 +365,20 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				qr = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Assemble the initial state
+		state = StateIsentropic(initial_time, self._grid, 
+								isentropic_density = s, 
+								x_velocity = u, 
+								x_momentum_isentropic = U, 
+								y_velocity = v, 
+								y_momentum_isentropic = V, 
+								pressure = p, 
+								exner_function = exn, 
+								montgomery_potential = mtg, 
+								height = h)
 		if self._imoist:
-			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h, qv, qc, qr)
-		else:
-			state = StateIsentropic(initial_time, self._grid, s, u, U, v, V, p, exn, mtg, h)
+			state.add(water_vapor_mass_fraction = qv, 
+					  cloud_water_mass_fraction = qc,
+					  precipitation_water_mass_fraction = qr)
 
 		return state
 
@@ -390,9 +400,6 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		obj :
 			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 		"""
-		# Extract the current time
-		time_now = state.get_time()
-
 		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
 		if self._idamp or self._ismooth:
 			s_now = np.copy(state['isentropic_density'].values[:,:,:,0])
@@ -437,10 +444,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(V_new, V_now)
 
 		# Diagnose the velocity components
-		state_new.update(self._diagnostic.get_velocity_components(state_new))
+		state_new.update(self._diagnostic.get_velocity_components(state_new, state))
 
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
-		state_new.update(self._diagnostic.get_diagnostic_variables(state_new))
+		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['pressure'].values[0,0,0,0]))
 
 		return state_new
 
@@ -462,36 +469,20 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		obj :
 			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 		"""
-		# Extract the current time
-		time_now = state.get_time()
-
 		# Diagnose the isentropic density for each water constituent to build the conservative state
-		wcs_is = self._diagnostic.get_water_constituents_isentropic_density(state)
-		state_cons = StateIsentropicConservative(time_now, self._grid, 
-			isentropic_density = state['isentropic_density'].values[:,:,:,0], 
-			x_velocity = state['x_velocity'].values[:,:,:,0], 
-			x_momentum_isentropic = state['x_momentum_isentropic'].values[:,:,:,0], 
-			y_velocity = state['y_velocity'].values[:,:,:,0], 
-			y_momentum_isentropic = state['y_momentum_isentropic'].values[:,:,:,0], 
-			pressure = state['pressure'].values[:,:,:,0], 
-			exner_function = state['exner_function'].values[:,:,:,0], 
-			montgomery_potential = state['montgomery_potential'].values[:,:,:,0], 
-			height = state['height'].values[:,:,:,0],
-			water_vapor_isentropic_density = wcs_is['water_vapor_isentropic_density'].values[:,:,:,0], 
-			cloud_water_isentropic_density = wcs_is['cloud_water_isentropic_density'].values[:,:,:,0], 
-			precipitation_water_isentropic_density = wcs_is['precipitation_water_isentropic_density'].values[:,:,:,0])
+		state.update(self._diagnostic.get_water_constituents_isentropic_density(state))
 
 		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
 		if self._idamp or self._ismooth:
 			s_now  = np.copy(state['isentropic_density'].values[:,:,:,0])
 			U_now  = np.copy(state['x_momentum_isentropic'].values[:,:,:,0])
 			V_now  = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
-			Qv_now = np.copy(wcs_is['water_vapor_isentropic_density'].values[:,:,:,0])
-			Qc_now = np.copy(wcs_is['cloud_water_isentropic_density'].values[:,:,:,0])
-			Qr_now = np.copy(wcs_is['precipitation_water_isentropic_density'].values[:,:,:,0])
+			Qv_now = np.copy(state['water_vapor_isentropic_density'].values[:,:,:,0])
+			Qc_now = np.copy(state['cloud_water_isentropic_density'].values[:,:,:,0])
+			Qr_now = np.copy(state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		state_cons_new = self._prognostic(dt, state_cons, diagnostics)
+		state_new = self._prognostic(dt, state, diagnostics)
 
 		if self._idamp:
 			# If this is the first call to the entry-point method: set the reference state
@@ -504,12 +495,12 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				self._Qr_ref = Qr_now
 
 			# Extract the prognostic model variables
-			s_new  = state_cons_new['isentropic_density'].values[:,:,:,0]
-			U_new  = state_cons_new['x_momentum_isentropic'].values[:,:,:,0]
-			V_new  = state_cons_new['y_momentum_isentropic'].values[:,:,:,0]
-			Qv_new = state_cons_new['water_vapor_isentropic_density'].values[:,:,:,0]
-			Qc_new = state_cons_new['cloud_water_isentropic_density'].values[:,:,:,0]
-			Qr_new = state_cons_new['precipitation_water_isentropic_density'].values[:,:,:,0]
+			s_new  = state_new['isentropic_density'].values[:,:,:,0]
+			U_new  = state_new['x_momentum_isentropic'].values[:,:,:,0]
+			V_new  = state_new['y_momentum_isentropic'].values[:,:,:,0]
+			Qv_new = state_new['water_vapor_isentropic_density'].values[:,:,:,0]
+			Qc_new = state_new['cloud_water_isentropic_density'].values[:,:,:,0]
+			Qr_new = state_new['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 			# Apply vertical damping
 			s_new[:,:,:]  = self._damper.apply(dt, s_now, s_new, self._s_ref)
@@ -522,9 +513,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		if self._ismooth:
 			if not self._idamp:
 				# Extract the dry prognostic model variables
-				s_new = state_cons_new['isentropic_density'].values[:,:,:,0]
-				U_new = state_cons_new['x_momentum_isentropic'].values[:,:,:,0]
-				V_new = state_cons_new['y_momentum_isentropic'].values[:,:,:,0]
+				s_new = state_new['isentropic_density'].values[:,:,:,0]
+				U_new = state_new['x_momentum_isentropic'].values[:,:,:,0]
+				V_new = state_new['y_momentum_isentropic'].values[:,:,:,0]
 
 			# Apply horizontal smoothing
 			s_new[:,:,:] = self._smoother.apply(s_new)
@@ -539,9 +530,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		if self._ismooth_moist:
 			if not self._idamp:
 				# Extract the moist prognostic model variables
-				Qv_new = state_cons_new['water_vapor_isentropic_density'].values[:,:,:,0]
-				Qc_new = state_cons_new['cloud_water_isentropic_density'].values[:,:,:,0]
-				Qr_new = state_cons_new['precipitation_water_isentropic_density'].values[:,:,:,0]
+				Qv_new = state_new['water_vapor_isentropic_density'].values[:,:,:,0]
+				Qc_new = state_new['cloud_water_isentropic_density'].values[:,:,:,0]
+				Qr_new = state_new['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 			# Apply horizontal smoothing
 			Qv_new[:,:,:] = self._smoother_moist.apply(Qv_new)
@@ -553,27 +544,14 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(Qc_new, Qc_now)
 			self._boundary.apply(Qr_new, Qr_now)
 
-		# Diagnose the mass fraction of each water constituent to build the non-conservative state
-		wcs_mf = self._diagnostic.get_water_constituents_mass_fraction(state_cons_new) 
-		state_new = StateIsentropic(time_now + dt, self._grid, 
-			isentropic_density = state_cons_new['isentropic_density'].values[:,:,:,0], 
-			x_velocity = state_cons_new['x_velocity'].values[:,:,:,0], 
-			x_momentum_isentropic = state_cons_new['x_momentum_isentropic'].values[:,:,:,0], 
-			y_velocity = state_cons_new['y_velocity'].values[:,:,:,0], 
-			y_momentum_isentropic = state_cons_new['y_momentum_isentropic'].values[:,:,:,0], 
-			pressure = state_cons_new['pressure'].values[:,:,:,0], 
-			exner_function = state_cons_new['exner_function'].values[:,:,:,0], 
-			montgomery_potential = state_cons_new['montgomery_potential'].values[:,:,:,0], 
-			height = state_cons_new['height'].values[:,:,:,0],
-			water_vapor_mass_fraction = wcs_mf['water_vapor_mass_fraction'].values[:,:,:,0], 
-			cloud_water_mass_fraction = wcs_mf['cloud_water_mass_fraction'].values[:,:,:,0], 
-			precipitation_water_mass_fraction = wcs_mf['precipitation_water_mass_fraction'].values[:,:,:,0])
+		# Diagnose the mass fraction of each water constituent
+		state_new.update(self._diagnostic.get_water_constituents_mass_fraction(state_new)) 
 
 		# Diagnose the velocity components
-		state_new.update(self._diagnostic.get_velocity_components(state_new))
+		state_new.update(self._diagnostic.get_velocity_components(state_new, state))
 
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
-		state_new.update(self._diagnostic.get_diagnostic_variables(state_new))
+		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['pressure'].values[0,0,0,0]))
 
 		# Diagnose the density
 		#state_new.update(self._diagnostic.get_density(state_new))

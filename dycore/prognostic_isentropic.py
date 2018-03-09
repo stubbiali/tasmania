@@ -11,6 +11,7 @@ from dycore.horizontal_boundary import RelaxedSymmetricXZ, RelaxedSymmetricYZ
 import gridtools as gt
 from namelist import datatype
 from storages.grid_data import GridData
+from storages.state_isentropic import StateIsentropic
 
 class PrognosticIsentropic:
 	"""
@@ -142,20 +143,45 @@ class PrognosticIsentropic:
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the current
-			conservative state.
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
+			the following variables:
+
+			* isentropic_density (unstaggered);
+			* x_velocity (:math:`x`-staggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_velocity (:math:`y`-staggered);
+			* y_momentum_isentropic (unstaggered);
+			* pressure (:math:`z`-staggered);
+			* montgomery_potential (isentropic);
+			* water_vapor_mass_fraction (unstaggered, optional);
+			* cloud_water_mass_fraction (unstaggered, optional);
+			* precipitation_water_mass_fraction (unstaggered, optional).
+
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the old
-			conservative state.
+			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
+			the following variables:
+
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_mass_fraction (unstaggered, optional);
+			* cloud_water_mass_fraction (unstaggered, optional);
+			* precipitation_water_mass_fraction (unstaggered, optional).
+
 		diagnostics : `obj`, optional
 			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
 
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` whose prognostic variables
-			have been advanced to the next time level, while the diagnostic variables are still defined at the
-			current timestep.
+			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
+
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_isentropic_density (unstaggered, optional);
+			* cloud_water_isentropic_density (unstaggered, optional);
+			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 
 	@staticmethod
@@ -371,26 +397,48 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the current
-			conservative state.
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
+			the following variables:
+
+			* isentropic_density (unstaggered);
+			* x_velocity (:math:`x`-staggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_velocity (:math:`y`-staggered);
+			* y_momentum_isentropic (unstaggered);
+			* pressure (:math:`z`-staggered);
+			* montgomery_potential (isentropic);
+			* water_vapor_mass_fraction (unstaggered, optional);
+			* cloud_water_mass_fraction (unstaggered, optional);
+			* precipitation_water_mass_fraction (unstaggered, optional).
+
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the old
-			conservative state.
+			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
+			the following variables:
+
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_mass_fraction (unstaggered, optional);
+			* cloud_water_mass_fraction (unstaggered, optional);
+			* precipitation_water_mass_fraction (unstaggered, optional).
+
 		diagnostics : `obj`, optional
 			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
 
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` whose prognostic variables 
-			have been advanced to the next time level, while the diagnostic variables are still defined at the
-			current timestep.
-		"""
-		# Extract the current time
-		time_now = state.get_time()
+			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_isentropic_density (unstaggered, optional);
+			* cloud_water_isentropic_density (unstaggered, optional);
+			* precipitation_water_isentropic_density (unstaggered, optional).
+		"""
 		# Initialize the output state
-		state_new = copy.deepcopy(state)
+		state_new = StateIsentropic(state.time + dt, self._grid)
 
 		# Extract the model variables which are needed
 		s   = state['isentropic_density'].values[:,:,:,0]
@@ -398,7 +446,6 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		U   = state['x_momentum_isentropic'].values[:,:,:,0]
 		v   = state['y_velocity'].values[:,:,:,0]
 		V   = state['y_momentum_isentropic'].values[:,:,:,0]
-		p   = state['pressure'].values[:,:,:,0]
 		mtg = state['montgomery_potential'].values[:,:,:,0]
 		Qv	= None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
 		Qc	= None if not self._imoist else state['cloud_water_isentropic_density'].values[:,:,:,0]
@@ -446,12 +493,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		elif self._flux_scheme in ['maccormack']:
 			s_prov = .5 * (s + s_new)
 
-		# Update the state with the provisional isentropic density
-		upd = GridData(time_now + .5 * dt, self._grid, isentropic_density = s_prov) 
-		state_new.update(upd)
-
-		# Diagnose the Montgomery potential from the updated state
-		gd = self.diagnostic.get_diagnostic_variables(state_new)
+		# Diagnose the Montgomery potential from the provisional isentropic density
+		state_prov = StateIsentropic(state.time + .5 * dt, self._grid, isentropic_density = s_prov) 
+		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['pressure'].values[0,0,0,0])
 
 		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
 		self._prov_s[:,:,:]   = self.boundary.from_physical_to_computational_domain(s_prov)
@@ -475,12 +519,13 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self.boundary.apply(U_new, U)
 		self.boundary.apply(V_new, V)
 
-		# Update the output state, then return
-		upd = GridData(time_now + dt, self._grid, isentropic_density = s_new,
-					   x_momentum_isentropic = U_new, y_momentum_isentropic = V_new,
-					   water_vapor_isentropic_density = Qv_new, cloud_water_isentropic_density = Qc_new,
-					   precipitation_water_isentropic_density = Qr_new)
-		state_new.update(upd)
+		# Update the output state
+		state_new.add(isentropic_density = s_new, 
+					  x_momentum_isentropic = U_new, 
+					  y_momentum_isentropic = V_new,
+					  water_vapor_isentropic_density = Qv_new, 
+					  cloud_water_isentropic_density = Qc_new,
+					  precipitation_water_isentropic_density = Qr_new)
 
 		return state_new
 
@@ -752,14 +797,30 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the current
-			conservative state.
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
+			the following variables:
+
+			* isentropic_density (unstaggered);
+			* x_velocity (:math:`x`-staggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_velocity (:math:`y`-staggered);
+			* y_momentum_isentropic (unstaggered);
+			* pressure (:math:`z`-staggered);
+			* montgomery_potential (isentropic);
+			* water_vapor_mass_fraction (unstaggered, optional);
+			* cloud_water_mass_fraction (unstaggered, optional);
+			* precipitation_water_mass_fraction (unstaggered, optional).
+
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` representing the old
-			conservative state. If this is not specified:
-			
-			* if it is the first time this method is invoked, the old state is assumed to coincide with the current state;
-			* otherwise, the old state is assumed to coincide with the state passed at the previous call.
+			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
+			the following variables:
+
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_mass_fraction (unstaggered, optional);
+			* cloud_water_mass_fraction (unstaggered, optional);
+			* precipitation_water_mass_fraction (unstaggered, optional).
 
 		diagnostics : `obj`, optional
 			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
@@ -767,16 +828,17 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic_conservative.StateIsentropicConservative` whose prognostic variables 
-			have been advanced to the next time level, while the diagnostic variables are still defined at the
-			current timestep.
-		"""
-		# Extract the current time
-		time_now = state.get_time()
+			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
+			* isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_isentropic_density (unstaggered, optional);
+			* cloud_water_isentropic_density (unstaggered, optional);
+			* precipitation_water_isentropic_density (unstaggered, optional).
+		"""
 		# Initialize the output state
-		state_now = copy.deepcopy(state)
-		state_new = copy.deepcopy(state)
+		state_new = StateIsentropic(state.time + dt, self._grid)
 
 		# Extract the needed model variables at the current time level
 		s   = state['isentropic_density'].values[:,:,:,0]
@@ -805,7 +867,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		if state_old is not None:
 			self._state_old = state_old
 		elif self._state_old is None:
-			self._state_old = state_now
+			self._state_old = copy.deepcopy(state_now)
 			
 		# Extract the needed model variables at the previous time level
 		s_old  = state_old['isentropic_density'].values[:,:,:,0]
@@ -861,11 +923,12 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self.boundary.apply(Qr_new, Qr)
 
 		# Update the output state
-		upd = GridData(time_now + dt, self._grid, 
-					   isentropic_density = s_new, x_momentum_isentropic = U_new, y_momentum_isentropic = V_new, 
-					   water_vapor_isentropic_density = Qv_new, cloud_water_isentropic_density = Qc_new,
-					   precipitation_water_isentropic_density = Qr_new)
-		state_new.update(upd)
+		state_new.add(isentropic_density = s_new, 
+					  x_momentum_isentropic = U_new, 
+					  y_momentum_isentropic = V_new, 
+					  water_vapor_isentropic_density = Qv_new, 
+					  cloud_water_isentropic_density = Qc_new,
+					  precipitation_water_isentropic_density = Qr_new)
 
 		# Keep track of the current state for the next timestep
 		self._state_old = state_now
