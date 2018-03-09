@@ -35,7 +35,7 @@ import utils.utils_plot as utils_plot
 class StateIsentropic(GridData):
 	"""
 	This class inherits :class:`~storages.grid_data.GridData` to represent the state of the three-dimensional 
-	(moist) isentropic model. The stored variables are:
+	(moist) isentropic model. The stored variables might be:
 
 	* isentropic_density (unstaggered);
 	* x_velocity (:math:`x`-staggered);
@@ -45,19 +45,27 @@ class StateIsentropic(GridData):
 	* pressure (:math:`z`-staggered);
 	* exner_function (:math:`z`-staggered);
 	* montgomery_potential (unstaggered);
-	* height (:math:`z`-staggered).
-	* water_vapor_mass_fraction (unstaggered, optional);
-	* cloud_water_mass_fraction (unstaggered, optional);
-	* precipitation_water_mass_fraction (unstaggered, optional).
+	* height (:math:`z`-staggered);
+	* water_vapor_mass_fraction (unstaggered);
+	* water_vapor_isentropic_density (unstaggered);
+	* cloud_water_mass_fraction (unstaggered);
+	* cloud_water_isentropic_density (unstaggered);
+	* precipitation_water_mass_fraction (unstaggered);
+	* precipitation_water_isentropic_density (unstaggered);
+	* density (unstaggered);
+	* temperature (unstaggered).
+
+	Note
+	----
+	At any point, an instance of this class may or may not contain all the listed model variables. Indeed, variables
+	might be added gradually, according to user's needs.
 
 	Attributes
 	----------
 	grid : obj
 		:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
 	"""
-	def __init__(self, time, grid, isentropic_density, x_velocity, x_momentum_isentropic, y_velocity, y_momentum_isentropic,
-				 pressure, exner_function, montgomery_potential, height,
-				 water_vapor_mass_fraction = None, cloud_water_mass_fraction = None, precipitation_water_mass_fraction = None):
+	def __init__(self, time, grid, **kwargs):
 		"""
 		Constructor.
 
@@ -67,6 +75,9 @@ class StateIsentropic(GridData):
 			:class:`datetime.timedelta` representing the time instant at which the state is defined.
 		grid : obj
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+
+		Keyword arguments
+		-----------------
 		isentropic_density : array_like
 			:class:`numpy.ndarray` representing the isentropic density.
 		x_velocity : array_like
@@ -85,29 +96,23 @@ class StateIsentropic(GridData):
 			:class:`numpy.ndarray` representing the Montgomery potential.
 		height : array_like
 			:class:`numpy.ndarray` representing the geometrical height of the half-levels.
-		water_vapor_mass_fraction : `array_like`, optional
+		water_vapor_mass_fraction : array_like
 			:class:`numpy.ndarray` representing the mass fraction of water vapor.
-		cloud_water_mass_fraction : `array_like`, optional
+		water_vapor_isentropic_density : array_like
+			:class:`numpy.ndarray` representing the isentropic density of water vapor.
+		cloud_water_mass_fraction : array_like
 			:class:`numpy.ndarray` representing the mass fraction of cloud water.
-		precipitation_water_mass_fraction : `array_like`, optional
+		cloud_water_isentropic_density : array_like
+			:class:`numpy.ndarray` representing the isentropic density of cloud water.
+		precipitation_water_mass_fraction : array_like
 			:class:`numpy.ndarray` representing the mass fraction of precipitation water.
+		precipitation_water_isentropic_density : array_like
+			:class:`numpy.ndarray` representing the isentropic density of precipitation water.
+		density : array_like
+			:class:`numpy.ndarray` representing the density.
+		temperature : array_like
+			:class:`numpy.ndarray` representing the temperature.
 		"""
-		kwargs = {'isentropic_density'   : isentropic_density,
-				  'x_velocity'           : x_velocity,
-				  'x_momentum_isentropic': x_momentum_isentropic,
-				  'y_velocity'           : y_velocity,
-				  'y_momentum_isentropic': y_momentum_isentropic,
-				  'pressure'             : pressure,
-				  'exner_function'       : exner_function,
-				  'montgomery_potential' : montgomery_potential,
-				  'height'               : height}
-		if water_vapor_mass_fraction is not None:
-			kwargs['water_vapor_mass_fraction'] = water_vapor_mass_fraction
-		if cloud_water_mass_fraction is not None:
-			kwargs['cloud_water_mass_fraction'] = cloud_water_mass_fraction
-		if precipitation_water_mass_fraction is not None:
-			kwargs['precipitation_water_mass_fraction'] = precipitation_water_mass_fraction
-
 		super().__init__(time, grid, **kwargs)
 
 	def get_cfl(self, dt):
@@ -152,9 +157,18 @@ class StateIsentropic(GridData):
 			String specifying the field to plot. This might be:
 
 			* the name of a variable stored in the current object;
-			* 'x_velocity_perturbation', for the discrepancy of the :math:`x`-velocity with respect to the initial condition;
-			* 'vertical_velocity', for the vertical velocity; only for steady-state flows;
-			* 'temperature', for the temperature.
+			* 'x_velocity_unstaggered_perturbation', for the discrepancy of the :math:`x`-velocity with respect to 
+				the initial condition; the current object must contain the following variables:
+
+				- isentropic_density;
+				- x_momentum_isentropic;
+
+			* 'vertical_velocity', for the vertical velocity; only for steady-state flows; the current object must contain
+				the following variables:
+
+				- isentropic_density;
+				- x_momentum_isentropic;
+				- height.
 
 		y_level : int 
 			Index corresponding to the :math:`y`-level identifying the cross-section to plot.
@@ -170,7 +184,7 @@ class StateIsentropic(GridData):
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, y_level, :, time_level] 
-		elif field_to_plot == 'x_velocity_perturbation':
+		elif field_to_plot == 'x_velocity_unstaggered_perturbation':
 			u_start = self._vars['x_momentum_isentropic'].values[:, y_level, :, 0] / \
 					  self._vars['isentropic_density'].values[:, y_level, :, 0] 
 			u_final = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
@@ -188,7 +202,7 @@ class StateIsentropic(GridData):
 			height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
 
 			var = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
-		elif field_to_plot == 'temperature':
+		elif field_to_plot == 'temperature': # temperature is not a stored variable
 			z = self.grid.z_half_levels.values
 			p = self._vars['pressure'].values[:, y_level, :, time_level]
 			exn = self._vars['exner_function'].values[:, y_level, :, time_level]
@@ -212,9 +226,18 @@ class StateIsentropic(GridData):
 			String specifying the field to plot. This might be:
 
 			* the name of a variable stored in the current object;
-			* 'x_velocity_perturbation', for the discrepancy of the :math:`x`-velocity with respect to the initial condition;
-			* 'vertical_velocity', for the vertical velocity; only for steady-state flows;
-			* 'temperature', for the temperature.
+			* 'x_velocity_unstaggered_perturbation', for the discrepancy of the :math:`x`-velocity with respect to 
+				the initial condition; the current object must contain the following variables:
+
+				- isentropic_density;
+				- x_momentum_isentropic;
+
+			* 'vertical_velocity', for the vertical velocity; only for steady-state flows; the current object must contain
+				the following variables:
+
+				- isentropic_density;
+				- x_momentum_isentropic;
+				- height.
 
 		y_level : int 
 			Index corresponding to the :math:`y`-level identifying the cross-section to plot.
@@ -230,7 +253,7 @@ class StateIsentropic(GridData):
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, y_level, :, time_level] 
-		elif field_to_plot == 'x_velocity_perturbation':
+		elif field_to_plot == 'x_velocity_unstaggered_perturbation':
 			u_start = self._vars['x_momentum_isentropic'].values[:, y_level, :, 0] / \
 					  self._vars['isentropic_density'].values[:, y_level, :, 0] 
 			u_final = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
@@ -272,8 +295,12 @@ class StateIsentropic(GridData):
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-			* the name of a variable stored in the current object.
-			* 'horizontal_velocity', for the horizontal velocity.
+			* the name of a variable stored in the current object;
+			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the following variables:
+			
+				- isentropic_density;
+				- x_momentum_isentropic;
+				- y_momentum_isentropic.
 
 		z_level : int 
 			Index corresponding to the :math:`\\theta`-level identifying the cross-section to plot.
@@ -307,7 +334,11 @@ class StateIsentropic(GridData):
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-			* 'horizontal_velocity', for the horizontal velocity.
+			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the following variables:
+
+				- isentropic_density;
+				- x_momentum_isentropic;
+				- y_momentum_isentropic.
 
 		z_level : int 
 			Index corresponding to the :math:`\\theta`-level identifying the cross-section to plot.
