@@ -161,13 +161,13 @@ g     = 9.81
 # Grid settings
 #
 domain_x        = [0, 500.e3]
-nx              = 51
+nx              = 101
 domain_y        = [-250.e3, 250.e3]
-ny              = 51
+ny              = 1
 domain_z        = [300. + 100., 300.]
-nz              = 50
+nz              = 100
 z_interface     = None
-topo_type       = 'gaussian'
+topo_type       = 'flat_terrain'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
 				   'topo_max_height': 1000.,
@@ -180,19 +180,19 @@ topo_kwargs     = {
 # Model settings
 #
 model                    = 'isentropic' 
-imoist					 = False
-horizontal_boundary_type = 'relaxed'
+imoist					 = True
+horizontal_boundary_type = 'periodic'
 
 #
 # Numerical settings
 #
 time_scheme             = 'forward_euler'
-flux_scheme             = 'maccormack'
-idamp	                = True
+flux_scheme             = 'upwind'
+idamp	                = False
 damp_type               = 'rayleigh'
 damp_depth              = 15
 damp_max                = .0002
-ismooth                 = True
+ismooth                 = False
 smooth_type             = 'first_order'
 smooth_damp_depth       = 0
 smooth_coeff            = .03
@@ -206,18 +206,18 @@ smooth_moist_coeff_max  = .49
 #
 # Simulation settings
 #
-dt                    = timedelta(seconds = 24)
+dt                    = timedelta(seconds = 10)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = timedelta(hours = 12)
-initial_state_type    = 0
+simulation_time       = timedelta(seconds = 5000)
+initial_state_type    = 1
 initial_state_kwargs  = {
-						 'x_velocity_initial': 15.,
+						 'x_velocity_initial': 10.,
 						 'y_velocity_initial': 0.,
 						 'brunt_vaisala_initial': .01,
 						 'temperature': 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = []
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_maccormack_newinterface.pickle')
+save_iterations		  = [1250, 2500, 3750, 5000]
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_advection_upwind_newinterface.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float32

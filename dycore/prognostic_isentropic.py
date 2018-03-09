@@ -462,18 +462,22 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			self.boundary.apply(Qc_new, Qc)
 			self.boundary.apply(Qr_new, Qr)
 
-		# Update the state
-		upd = GridData(time_now + dt, self._grid, isentropic_density = s_new, 
-					   water_vapor_isentropic_density = Qv_new, cloud_water_isentropic_density = Qc_new,
-					   precipitation_water_isentropic_density = Qr_new)
+		# Compute the provisional isentropic density; this may be scheme-dependent
+		if self._flux_scheme in ['upwind']:
+			s_prov = s_new
+		elif self._flux_scheme in ['maccormack']:
+			s_prov = .5 * (s + s_new)
+
+		# Update the state with the provisional isentropic density
+		upd = GridData(time_now + .5 * dt, self._grid, isentropic_density = s_prov) 
 		state_new.update(upd)
 
 		# Diagnose the Montgomery potential from the updated state
 		gd = self.diagnostic.get_diagnostic_variables(state_new)
 
 		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
-		self._new_s[:,:,:]   = self.boundary.from_physical_to_computational_domain(s_new)
-		self._new_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,0])
+		self._prov_s[:,:,:]   = self.boundary.from_physical_to_computational_domain(s_prov)
+		self._prov_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,0])
 
 		# Run the compute function of the stencil stepping the momentums
 		self._stencil_stepping_momentums.compute()
@@ -494,7 +498,10 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self.boundary.apply(V_new, V)
 
 		# Update the output state, then return
-		upd = GridData(time_now + dt, self._grid, x_momentum_isentropic = U_new, y_momentum_isentropic = V_new)
+		upd = GridData(time_now + dt, self._grid, isentropic_density = s_new,
+					   x_momentum_isentropic = U_new, y_momentum_isentropic = V_new,
+					   water_vapor_isentropic_density = Qv_new, cloud_water_isentropic_density = Qc_new,
+					   precipitation_water_isentropic_density = Qr_new)
 		state_new.update(upd)
 
 		return state_new
@@ -554,7 +561,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		# Instantiate the second stencil
 		self._stencil_stepping_momentums = gt.NGStencil( 
 			definitions_func = self._defs_stencil_stepping_momentums,
-			inputs = {'in_s': self._new_s, 'in_mtg': self._new_mtg, 'in_U': self._tmp_U, 'in_V': self._tmp_V},
+			inputs = {'in_s': self._prov_s, 'in_mtg': self._prov_mtg, 'in_U': self._tmp_U, 'in_V': self._tmp_V},
 			global_inputs = {'dt': self._dt},
 			outputs = {'out_U': self._out_U, 'out_V': self._out_V},
 			domain = _domain, 
@@ -572,8 +579,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		"""
 		self._tmp_U   = np.zeros_like(s_)
 		self._tmp_V   = np.zeros_like(s_)
-		self._new_s   = np.zeros_like(s_)
-		self._new_mtg = np.zeros_like(s_)
+		self._prov_s   = np.zeros_like(s_)
+		self._prov_mtg = np.zeros_like(s_)
 
 	def _defs_stencil_stepping_isentropic_density_and_water_constituents(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
 					  													 in_Qv = None, in_Qc = None, in_Qr = None):
