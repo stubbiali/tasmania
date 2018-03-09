@@ -142,14 +142,14 @@ domain_x        = [0, 500.e3]
 nx              = 101
 domain_y        = [-250.e3, 250.e3]
 ny              = 1
-domain_z        = [300. + 100., 300.]
-nz              = 100
+domain_z        = [280. + 60., 280.]
+nz              = 60
 z_interface     = None
-topo_type       = 'flat_terrain'
+topo_type       = 'gaussian'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
 				   'topo_max_height': 1000.,
-				   'topo_width_x': 50.e3,
+				   'topo_width_x': 25.e3,
 				   'topo_width_y': 50.e3,
 				   'topo_str': '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
 				  }
@@ -170,32 +170,32 @@ idamp	                = False
 damp_type               = 'rayleigh'
 damp_depth              = 15
 damp_max                = .0002
-ismooth                 = False
+ismooth                 = True
 smooth_type             = 'first_order'
-smooth_damp_depth       = 0
-smooth_coeff            = .03
+smooth_damp_depth       = 30
+smooth_coeff            = .05
 smooth_coeff_max        = .25
-ismooth_moist		    = False
+ismooth_moist		    = True
 smooth_moist_type       = 'first_order'
-smooth_moist_damp_depth = 0
-smooth_moist_coeff      = .2
-smooth_moist_coeff_max  = .49
+smooth_moist_damp_depth = 30
+smooth_moist_coeff      = .05
+smooth_moist_coeff_max  = .25
 
 #
 # Simulation settings
 #
 dt                    = timedelta(seconds = 10)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = timedelta(seconds = 5000)
-initial_state_type    = 1
+simulation_time       = timedelta(hours = 6)
+initial_state_type    = 0
 initial_state_kwargs  = {
-						 'x_velocity_initial': 10.,
+						 'x_velocity_initial': 15.,
 						 'y_velocity_initial': 0.,
 						 'brunt_vaisala_initial': .01,
 						 'temperature': 250.,
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = []
-save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_maccormack.pickle')
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_upwind.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float32
