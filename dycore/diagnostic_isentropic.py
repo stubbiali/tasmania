@@ -118,9 +118,6 @@ class DiagnosticIsentropic:
 			* cloud_water_isentropic_density (unstaggered);
 			* precipitation_water_isentropic_density (unstaggered).
 		"""
-		# Extract the current time
-		time_now = state.get_time('isentropic_density')
-
 		# Extract the required variables
 		s  = state['isentropic_density'].values[:,:,:,0]
 		qv = state['water_vapor_mass_fraction'].values[:,:,:,0]
@@ -138,12 +135,14 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_water_constituents_isentropic_density.compute()
 
 		# Set the output
-		out = GridData(time_now, self._grid, water_vapor_isentropic_density = self._out_Qv,
-					   cloud_water_isentropic_density = self._out_Qc, precipitation_water_isentropic_density = self._out_Qr)
+		out = GridData(state.time, self._grid, 
+					   water_vapor_isentropic_density = self._out_Qv,
+					   cloud_water_isentropic_density = self._out_Qc, 
+					   precipitation_water_isentropic_density = self._out_Qr)
 
 		return out
 
-	def get_velocity_components(self, state):
+	def get_velocity_components(self, state, state_old = None):
 		"""
 		Diagnosis of the velocity components :math:`u` and :math:`v`.
 
@@ -156,28 +155,34 @@ class DiagnosticIsentropic:
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered).
 
+		state_old : obj
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables,
+			defined at the previous time level:
+
+			* x_velocity (:math:`x`-staggered);
+			* y_velocity (:math:`y`-staggered).
+
 		Return
 		------
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* x_velocity (:math:`x`-staggered);
-			* y_velocity (:math:`y`-staggered);
+			* y_velocity (:math:`y`-staggered).
 
 		Note
 		----
 		The first and last rows (respectively, columns) of the staggered :math:`x`-velocity (resp., :math:`y`-velocity) 
-		are set only if the input state contain the :math:`x`-velocity (resp., :math:`y`-velocity) at the previous time level.
+		are set only if the state at the previous time level is provided.
 		"""
-		# Extract the current time
-		time_now = state.get_time('isentropic_density')
-
-		# Extract the required variables
+		# Extract the required variables at the current time level
 		s = state['isentropic_density'].values[:,:,:,0]
-		u = state['x_velocity'].values[:,:,:,0]
 		U = state['x_momentum_isentropic'].values[:,:,:,0]
-		v = state['y_velocity'].values[:,:,:,0]
 		V = state['y_momentum_isentropic'].values[:,:,:,0]
+
+		# Extract the required variables at the previous time level
+		u_old = None if state_old['x_velocity'] is None else state_old['x_velocity'].values[:,:,:,0]
+		v_old = None if state_old['y_velocity'] is None else state_old['y_velocity'].values[:,:,:,0]
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_velocity_x is None:
@@ -192,13 +197,15 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_velocity_y.compute()
 
 		# Possibly set the outermost layers
-		if u is not None:	
-			self.boundary.set_outermost_layers_x(self._out_u, u) 
-		if v is not None:	
-			self.boundary.set_outermost_layers_y(self._out_v, v) 
+		if u_old is not None:	
+			self.boundary.set_outermost_layers_x(self._out_u, u_old) 
+		if v_old is not None:	
+			self.boundary.set_outermost_layers_y(self._out_v, v_old) 
 
 		# Set the output
-		out = GridData(time_now, self._grid, x_velocity = self._out_u, y_velocity = self._out_v)
+		out = GridData(state.time, self._grid, 
+					   x_velocity = self._out_u, 
+					   y_velocity = self._out_v)
 
 		return out
 
@@ -225,9 +232,6 @@ class DiagnosticIsentropic:
 			* cloud_water_mass_fraction (unstaggered);
 			* precipitation_water_mass_fraction (unstaggered).
 		"""	
-		# Extract the current time
-		time_now = state.get_time('isentropic_density')
-
 		# Extract the required variables
 		s  = state['isentropic_density'].values[:,:,:,0]
 		Qv = state['water_vapor_isentropic_density'].values[:,:,:,0]
@@ -245,12 +249,14 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_water_constituents_mass_fraction.compute()
 
 		# Set the output
-		out = GridData(time_now, self._grid, water_vapor_mass_fraction = self._out_qv,
-					   cloud_water_mass_fraction = self._out_qc, precipitation_water_mass_fraction = self._out_qr)
+		out = GridData(state.time, self._grid, 
+					   water_vapor_mass_fraction = self._out_qv,
+					   cloud_water_mass_fraction = self._out_qc, 
+					   precipitation_water_mass_fraction = self._out_qr)
 
 		return out
 
-	def get_diagnostic_variables(self, state):
+	def get_diagnostic_variables(self, state, pt):
 		"""
 		Diagnosis of the pressure, the Exner function, the Montgomery potential, and the geometric height of the half-levels.
 
@@ -259,8 +265,10 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* isentropic_density (unstaggered) at the current time level;
-			* pressure (:math:`z`-staggered) at the previous time level.
+			* isentropic_density (unstaggered).
+
+		pt : float
+			Pressure value at the top of the domain.
 
 		Return
 		------
@@ -272,12 +280,8 @@ class DiagnosticIsentropic:
 			* montgomery_potential (unstaggered);
 			* height (:math:`z`-staggered).
 		"""
-		# Extract the current time
-		time_now = state.get_time('isentropic_density')
-
 		# Extract the required variables
 		s  = state['isentropic_density'].values[:,:,:,0]
-		pt = state['pressure'].values[0,0,0,0]
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_pressure is None:
@@ -288,7 +292,7 @@ class DiagnosticIsentropic:
 		# Update the attributes which serve as inputs to the GT4Py's stencils
 		self._set_inputs_to_stencil_diagnosing_pressure(s)
 
-		# Apply upper boundary condition for pressure
+		# Apply upper boundary condition on pressure
 		self._out_p[:, :, 0] = pt
 
 		# Compute pressure at all other locations
@@ -309,8 +313,11 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_height.compute()
 
 		# Set the output
-		out = GridData(time_now, self._grid, pressure = self._out_p, exner_function = self._out_exn,
-					   montgomery_potential = self._out_mtg, height = self._out_h)
+		out = GridData(state.time, self._grid, 
+					   pressure = self._out_p, 
+					   exner_function = self._out_exn,
+					   montgomery_potential = self._out_mtg, 
+					   height = self._out_h)
 
 		return out
 
@@ -333,9 +340,6 @@ class DiagnosticIsentropic:
 
 			* density (unstaggered).
 		"""
-		# Extract the current time
-		time_now = state.get_time('isentropic_density')
-
 		# Extract the required variables
 		s = state['isentropic_density'].values[:,:,:,0]
 		h = state['height'].values[:,:,:,0]
@@ -351,7 +355,7 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_pressure.compute()
 
 		# Set the output
-		out = GridData(time_now, self._grid, density = self._out_rho)
+		out = GridData(state.time, self._grid, density = self._out_rho)
 
 		return out
 
@@ -373,9 +377,6 @@ class DiagnosticIsentropic:
 
 			* temperature (unstaggered).
 		"""
-		# Extract the current time
-		time_now = state.get_time('isentropic_density')
-
 		# Extract the Exner function
 		exn = state['exner_function'].values[:, :, :, -1]
 
@@ -383,7 +384,7 @@ class DiagnosticIsentropic:
 		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:])
 
 		# Set the output
-		out = GridData(time_now, self._grid, temperature = T)
+		out = GridData(state.time, self._grid, temperature = T)
 
 		return out
 

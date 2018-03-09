@@ -42,6 +42,8 @@ class GridData:
 
 	Attributes
 	----------
+	time : obj
+		:class:`datetime.datetime` representing the time instant at which the variables are defined.
 	grid : obj
 		The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 	"""
@@ -81,7 +83,7 @@ class GridData:
 		**kwargs : array_like
 			:class:`numpy.ndarray` representing a gridded variable.
 		"""
-		self.grid = grid
+		self.time, self.grid = time, grid
 
 		self._vars = dict()
 		for key in kwargs:
@@ -113,40 +115,76 @@ class GridData:
 		Parameters
 		----------
 		key : str
-			The key corresponding to the variable to access.
+			The name of the variable to return.
 
 		Return
 		------
 		obj :
-			Deep copy of the :class:`xarray.DataArray` representing the variable.
+			Shallow copy of the :class:`xarray.DataArray` representing the variable, or :obj:`None` if the variable is not found.
 		"""
 		return self._vars.get(key, None)
 
-	def get_time(self, key = None):
+	def add(self, **kwargs):
 		"""
-		Return the time at which a variable is defined. If no variable is specified, it is supposed that all data are defined
-		at the same time level.
+		Add a list of variables, passed as keyword arguments.
 
 		Parameters
 		----------
-		key : `str`, optional
-			The name of the variable.
+		time : obj
+			:class:`datetime.datetime` representing the time instant at which the variables are defined.
+		grid : obj
+			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		**kwargs : array_like
+			:class:`numpy.ndarray` representing a gridded variable.
+		"""
+		for key in kwargs:
+			var = kwargs[key]
+			if var is not None:
+				# Distinguish between horizontally staggered and unstaggered fields
+				x = self.grid.x if var.shape[0] == self.grid.nx else self.grid.x_half_levels
+				y = self.grid.y if var.shape[1] == self.grid.ny else self.grid.y_half_levels
+
+				# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
+				# A notable example of a two-dimensional field is the accumulated precipitation
+				if var.shape == 1:
+					z = Axis(np.array([self.grid.z_half_levels[-1]]), self.grid.z.dims, attrs = self.grid.z.attrs)
+				elif var.shape[2] == self.grid.nz:
+					z = self.grid.z 
+				elif var.shape[2] == self.grid.nz + 1:
+					z = self.grid.z_half_levels
+
+				_var = xr.DataArray(var[:, :, :, np.newaxis], 
+									coords = [x.values, y.values, z.values, [self.time]],
+									dims = [x.dims, y.dims, z.dims, 'time'],
+									attrs = {'units': GridData.units[key]})
+				self._vars[key] = _var
+	
+	def pop(self, key):
+		"""
+		Get a shallow copy of a gridded variable, then remove it from the dictionary.
+
+		Parameters
+		----------
+		key : str
+			The name of the variable to return and remove.
 
 		Return
 		------
 		obj :
-			:class:`datetime.datetime` representing the time at which the variable is defined.
+			Shallow copy of the :class:`xarray.DataArray` representing the variable, or :obj:`None` if the variable is not found.
 		"""
-		akey = list(self._vars.keys())[0] if key is None else key
-		return utils.convert_datetime64_to_datetime(self._vars[akey].coords['time'].values[-1])
+		try:
+			return self._vars.pop(key, None)
+		except KeyError:
+			return None
 
 	def update(self, other):
 		"""
 		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
 		This implies that, for each variable stored in the input object:
 
-		* if the current object contains a variable with the same name, the field of that variable is updated;
-		* if the current object does not contain any variable with the same name, nothing is done.
+		* if the current object contains a variable with the same name, that variable is updated;
+		* if the current object does not contain any variable with the same name, a new variable is added to the current object.
 
 		Note that after the update, the stored variables might not be defined at the same time level.
 
@@ -182,7 +220,7 @@ class GridData:
 		Parameters
 		----------
 		key : str
-			Key identifying the variable of interest.
+			The name of the variable.
 
 		Return
 		------
@@ -201,7 +239,7 @@ class GridData:
 		Parameters
 		----------
 		key : str
-			Key identifying the variable of interest.
+			The name of the variable.
 
 		Return
 		------
