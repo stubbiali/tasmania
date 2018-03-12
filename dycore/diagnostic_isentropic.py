@@ -53,12 +53,12 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_velocity_y = None
 		if self._imoist:
 			self._stencil_diagnosing_water_constituents_isentropic_density = None
-			self._stencil_diagnosing_water_constituents_mass_fraction = None
-		self._stencil_diagnosing_pressure = None
+			self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air = None
+		self._stencil_diagnosing_air_pressure = None
 		self._stencil_diagnosing_montgomery = None
 		self._stencil_diagnosing_height = None
-		self._stencil_diagnosing_density = None
-		self._stencil_diagnosing_temperature = None
+		self._stencil_diagnosing_air_density = None
+		self._stencil_diagnosing_air_temperature = None
 
 		# Assign the corresponding z-level to each z-staggered grid point
 		# This is required to diagnose the geometrical height at the half levels
@@ -104,10 +104,10 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* isentropic_density (unstaggered);
-			* water_vapor_mass_fraction (unstaggered);
-			* cloud_water_mass_fraction (unstaggered);
-			* precipitation_water_mass_fraction (unstaggered).
+			* air_isentropic_density (unstaggered);
+			* mass_fraction_of_water_vapor_in_air (unstaggered);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 
 		Return
 		------
@@ -115,14 +115,14 @@ class DiagnosticIsentropic:
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* water_vapor_isentropic_density (unstaggered);
-			* cloud_water_isentropic_density (unstaggered);
+			* cloud_liquid_water_isentropic_density (unstaggered);
 			* precipitation_water_isentropic_density (unstaggered).
 		"""
 		# Extract the required variables
-		s  = state['isentropic_density'].values[:,:,:,0]
-		qv = state['water_vapor_mass_fraction'].values[:,:,:,0]
-		qc = state['cloud_water_mass_fraction'].values[:,:,:,0]
-		qr = state['precipitation_water_mass_fraction'].values[:,:,:,0]
+		s  = state['air_isentropic_density'].values[:,:,:,0]
+		qv = state['mass_fraction_of_water_vapor_in_air'].values[:,:,:,0]
+		qc = state['mass_fraction_of_cloud_liquid_water_in_air'].values[:,:,:,0]
+		qr = state['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_water_constituents_isentropic_density is None:
@@ -137,7 +137,7 @@ class DiagnosticIsentropic:
 		# Set the output
 		out = GridData(state.time, self._grid, 
 					   water_vapor_isentropic_density = self._out_Qv,
-					   cloud_water_isentropic_density = self._out_Qc, 
+					   cloud_liquid_water_isentropic_density = self._out_Qc, 
 					   precipitation_water_isentropic_density = self._out_Qr)
 
 		return out
@@ -151,7 +151,7 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered).
 
@@ -176,7 +176,7 @@ class DiagnosticIsentropic:
 		are set only if the state at the previous time level is provided.
 		"""
 		# Extract the required variables at the current time level
-		s = state['isentropic_density'].values[:,:,:,0]
+		s = state['air_isentropic_density'].values[:,:,:,0]
 		U = state['x_momentum_isentropic'].values[:,:,:,0]
 		V = state['y_momentum_isentropic'].values[:,:,:,0]
 
@@ -209,7 +209,7 @@ class DiagnosticIsentropic:
 
 		return out
 
-	def get_water_constituents_mass_fraction(self, state):
+	def get_mass_fraction_of_water_constituents_in_air(self, state):
 		"""
 		Diagnosis of the mass fraction of each water constituents, i.e., :math:`q_v`, :math:`q_c` and :math:`q_r`.
 
@@ -218,9 +218,9 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* water_vapor_isentropic_density (unstaggered);
-			* cloud_water_isentropic_density (unstaggered);
+			* cloud_liquid_water_isentropic_density (unstaggered);
 			* precipitation_water_isentropic_density (unstaggered).
 
 		Return
@@ -228,31 +228,31 @@ class DiagnosticIsentropic:
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
-			* water_vapor_mass_fraction (unstaggered);
-			* cloud_water_mass_fraction (unstaggered);
-			* precipitation_water_mass_fraction (unstaggered).
+			* mass_fraction_of_water_vapor_in_air (unstaggered);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 		"""	
 		# Extract the required variables
-		s  = state['isentropic_density'].values[:,:,:,0]
+		s  = state['air_isentropic_density'].values[:,:,:,0]
 		Qv = state['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc = state['cloud_water_isentropic_density'].values[:,:,:,0]
+		Qc = state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
 		Qr = state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 		# The first time this method is invoked, initialize the GT4Py's stencil
-		if self._stencil_diagnosing_water_constituents_mass_fraction is None:
-			self._initialize_stencil_diagnosing_water_constituents_mass_fraction()
+		if self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air is None:
+			self._initialize_stencil_diagnosing_mass_fraction_of_water_constituents_in_air()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_water_constituents_mass_fraction(s, Qv, Qc, Qr)
+		self._set_inputs_to_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(s, Qv, Qc, Qr)
 
 		# Run the stencils' compute functions
-		self._stencil_diagnosing_water_constituents_mass_fraction.compute()
+		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air.compute()
 
 		# Set the output
 		out = GridData(state.time, self._grid, 
-					   water_vapor_mass_fraction = self._out_qv,
-					   cloud_water_mass_fraction = self._out_qc, 
-					   precipitation_water_mass_fraction = self._out_qr)
+					   mass_fraction_of_water_vapor_in_air = self._out_qv,
+					   mass_fraction_of_cloud_liquid_water_in_air = self._out_qc, 
+					   mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
 		return out
 
@@ -265,7 +265,7 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* isentropic_density (unstaggered).
+			* air_isentropic_density (unstaggered).
 
 		pt : float
 			Pressure value at the top of the domain.
@@ -275,28 +275,28 @@ class DiagnosticIsentropic:
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
-			* pressure (:math:`z`-staggered);
+			* air_pressure (:math:`z`-staggered);
 			* exner_function (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
 			* height (:math:`z`-staggered).
 		"""
 		# Extract the required variables
-		s  = state['isentropic_density'].values[:,:,:,0]
+		s  = state['air_isentropic_density'].values[:,:,:,0]
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
-		if self._stencil_diagnosing_pressure is None:
-			self._initialize_stencil_diagnosing_pressure()
+		if self._stencil_diagnosing_air_pressure is None:
+			self._initialize_stencil_diagnosing_air_pressure()
 			self._initialize_stencil_diagnosing_montgomery()
 			self._initialize_stencil_diagnosing_height()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_pressure(s)
+		self._set_inputs_to_stencil_diagnosing_air_pressure(s)
 
 		# Apply upper boundary condition on pressure
 		self._out_p[:, :, 0] = pt
 
 		# Compute pressure at all other locations
-		self._stencil_diagnosing_pressure.compute()
+		self._stencil_diagnosing_air_pressure.compute()
 	
 		# Compute the Exner function (not via a GT4Py's stencils)
 		self._out_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp) 
@@ -314,14 +314,14 @@ class DiagnosticIsentropic:
 
 		# Set the output
 		out = GridData(state.time, self._grid, 
-					   pressure = self._out_p, 
+					   air_pressure = self._out_p, 
 					   exner_function = self._out_exn,
 					   montgomery_potential = self._out_mtg, 
 					   height = self._out_h)
 
 		return out
 
-	def get_density(self, state):
+	def get_air_density(self, state):
 		"""
 		Diagnosis of the density.
 
@@ -330,7 +330,7 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* height (:math:`z`-staggered).
 
 		Return
@@ -338,28 +338,28 @@ class DiagnosticIsentropic:
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
-			* density (unstaggered).
+			* air_density (unstaggered).
 		"""
 		# Extract the required variables
-		s = state['isentropic_density'].values[:,:,:,0]
+		s = state['air_isentropic_density'].values[:,:,:,0]
 		h = state['height'].values[:,:,:,0]
 
 		# If it is the first time this method is invoked, initialize the GT4Py's stencil
-		if self._stencil_diagnosing_density is None:
-			self._initialize_stencil_diagnosing_density()
+		if self._stencil_diagnosing_air_density is None:
+			self._initialize_stencil_diagnosing_air_density()
 
 		# Update the attributes which serve as inputs to the stencil
-		self._set_inputs_to_stencil_diagnosing_density(s, h)
+		self._set_inputs_to_stencil_diagnosing_air_density(s, h)
 
 		# Run the stencil's compute function
-		self._stencil_diagnosing_pressure.compute()
+		self._stencil_diagnosing_air_density.compute()
 
 		# Set the output
-		out = GridData(state.time, self._grid, density = self._out_rho)
+		out = GridData(state.time, self._grid, air_density = self._out_rho)
 
 		return out
 
-	def get_temperature(self, state):
+	def get_air_temperature(self, state):
 		"""
 		Diagnosis of the temperature.
 
@@ -375,16 +375,16 @@ class DiagnosticIsentropic:
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
-			* temperature (unstaggered).
+			* air_temperature (unstaggered).
 		"""
 		# Extract the Exner function
 		exn = state['exner_function'].values[:, :, :, -1]
 
 		# Diagnose the temperature at the mass grid points (not via a GT4Py's stencil)
-		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:])
+		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:]) / cp
 
 		# Set the output
-		out = GridData(state.time, self._grid, temperature = T)
+		out = GridData(state.time, self._grid, air_temperature = T)
 
 		return out
 
@@ -606,7 +606,7 @@ class DiagnosticIsentropic:
 		return out_v
 
 
-	def _initialize_stencil_diagnosing_water_constituents_mass_fraction(self):
+	def _initialize_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the mass fraction of each water constituent.
 		"""
@@ -626,14 +626,14 @@ class DiagnosticIsentropic:
 		self._out_qr = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Instantiate the stencil
-		self._stencil_diagnosing_water_constituents_mass_fraction = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_water_constituents_mass_fraction,
+		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_mass_fraction_of_water_constituents_in_air,
 			inputs = {'in_s': self._in_s, 'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
 			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _set_inputs_to_stencil_diagnosing_water_constituents_mass_fraction(self, s, Qv, Qc, Qr):
+	def _set_inputs_to_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(self, s, Qv, Qc, Qr):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnose 
 		the mass fraction of each water constituent.
@@ -655,7 +655,7 @@ class DiagnosticIsentropic:
 		self._in_Qr[:,:,:] = Qr[:,:,:]
 
 
-	def _defs_stencil_diagnosing_water_constituents_mass_fraction(self, in_s, in_Qv, in_Qc, in_Qr):
+	def _defs_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(self, in_s, in_Qv, in_Qc, in_Qr):
 		"""
 		GT4Py's stencil diagnosing the mass fraction of each water constituent.
 
@@ -701,7 +701,7 @@ class DiagnosticIsentropic:
 		return out_qv, out_qc, out_qr
 
 
-	def _initialize_stencil_diagnosing_pressure(self):
+	def _initialize_stencil_diagnosing_air_pressure(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the pressure.
 		"""
@@ -717,8 +717,8 @@ class DiagnosticIsentropic:
 		self._in_p = self._out_p
 
 		# Instantiate the stencil
-		self._stencil_diagnosing_pressure = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_pressure,
+		self._stencil_diagnosing_air_pressure = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_air_pressure,
 			inputs = {'in_s': self._in_s, 'in_p': self._in_p},
 			outputs = {'out_p': self._out_p},
 			domain = gt.domain.Rectangle((0, 0, 1), (nx - 1, ny - 1, nz)),
@@ -766,7 +766,7 @@ class DiagnosticIsentropic:
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.BACKWARD)
 
-	def _set_inputs_to_stencil_diagnosing_pressure(self, s):
+	def _set_inputs_to_stencil_diagnosing_air_pressure(self, s):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the pressure.
 
@@ -777,7 +777,7 @@ class DiagnosticIsentropic:
 		"""
 		self._in_s[:,:,:] = s[:,:,:]
 	
-	def _defs_stencil_diagnosing_pressure(self, in_s, in_p):
+	def _defs_stencil_diagnosing_air_pressure(self, in_s, in_p):
 		"""
 		GT4Py's stencil diagnosing the pressure.
 
@@ -872,7 +872,7 @@ class DiagnosticIsentropic:
 		return out_h
 
 
-	def _initialize_stencil_diagnosing_density(self):
+	def _initialize_stencil_diagnosing_air_density(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the density.
 		"""
@@ -888,14 +888,14 @@ class DiagnosticIsentropic:
 		self._out_rho = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Instantiate the stencil
-		self._stencil_diagnosing_density = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_density,
+		self._stencil_diagnosing_air_density = gt.NGStencil( 
+			definitions_func = self._defs_stencil_diagnosing_air_density,
 			inputs = {'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._in_h},
 			outputs = {'out_rho': self._out_rho},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode = self._backend)
 
-	def _set_inputs_to_stencil_diagnosing_density(self, s, h):
+	def _set_inputs_to_stencil_diagnosing_air_density(self, s, h):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the density.
 
@@ -909,7 +909,7 @@ class DiagnosticIsentropic:
 		self._in_s[:,:,:] = s[:,:,:]
 		self._in_h[:,:,:] = h[:,:,:]
 	
-	def _defs_stencil_diagnosing_density(self, in_theta, in_s, in_h):
+	def _defs_stencil_diagnosing_air_density(self, in_theta, in_s, in_h):
 		"""
 		GT4Py's stencil diagnosing the density.
 

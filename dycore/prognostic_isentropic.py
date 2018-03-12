@@ -168,41 +168,44 @@ class PrognosticIsentropic:
 			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
 			the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
-			* x_momentum_isentropic (unstaggered);
 			* y_velocity (:math:`y`-staggered);
+			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
-			* pressure (:math:`z`-staggered);
+			* air_pressure (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
-			* water_vapor_mass_fraction (unstaggered, optional);
-			* cloud_water_mass_fraction (unstaggered, optional);
-			* precipitation_water_mass_fraction (unstaggered, optional).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
 			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
 			the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
-			* water_vapor_mass_fraction (unstaggered, optional);
-			* cloud_water_mass_fraction (unstaggered, optional);
-			* precipitation_water_mass_fraction (unstaggered, optional).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
+			:class:`~storages.grid_data.GridData` collecting useful diagnostics, namely:
+			
+			* change_over_time_in_air_potential_temperature (unstaggered);
+			* raindrop_fall_velocity (unstaggered).
 
 		Return
 		------
 		obj :
 			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
 			* water_vapor_isentropic_density (unstaggered, optional);
-			* cloud_water_isentropic_density (unstaggered, optional);
+			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 
@@ -422,55 +425,58 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
 			the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
-			* x_momentum_isentropic (unstaggered);
 			* y_velocity (:math:`y`-staggered);
+			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
-			* pressure (:math:`z`-staggered);
+			* air_pressure (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
-			* water_vapor_mass_fraction (unstaggered, optional);
-			* cloud_water_mass_fraction (unstaggered, optional);
-			* precipitation_water_mass_fraction (unstaggered, optional).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
 			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
 			the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
-			* water_vapor_mass_fraction (unstaggered, optional);
-			* cloud_water_mass_fraction (unstaggered, optional);
-			* precipitation_water_mass_fraction (unstaggered, optional).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
+			:class:`~storages.grid_data.GridData` collecting useful diagnostics, namely:
+			
+			* change_over_time_in_air_potential_temperature (unstaggered);
+			* raindrop_fall_velocity (unstaggered).
 
 		Return
 		------
 		obj :
 			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
 			* water_vapor_isentropic_density (unstaggered, optional);
-			* cloud_water_isentropic_density (unstaggered, optional);
+			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 		# Initialize the output state
 		state_new = StateIsentropic(state.time + dt, self._grid)
 
 		# Extract the model variables which are needed
-		s   = state['isentropic_density'].values[:,:,:,0]
+		s   = state['air_isentropic_density'].values[:,:,:,0]
 		u   = state['x_velocity'].values[:,:,:,0]
-		U   = state['x_momentum_isentropic'].values[:,:,:,0]
 		v   = state['y_velocity'].values[:,:,:,0]
+		U   = state['x_momentum_isentropic'].values[:,:,:,0]
 		V   = state['y_momentum_isentropic'].values[:,:,:,0]
 		mtg = state['montgomery_potential'].values[:,:,:,0]
 		Qv	= None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc	= None if not self._imoist else state['cloud_water_isentropic_density'].values[:,:,:,0]
+		Qc	= None if not self._imoist else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
 		Qr	= None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 		# Extend the arrays to accommodate the horizontal boundary conditions
@@ -510,14 +516,14 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			self.boundary.apply(Qr_new, Qr)
 
 		# Compute the provisional isentropic density; this may be scheme-dependent
-		if self._flux_scheme in ['upwind']:
+		if self._flux_scheme in ['upwind', 'centered']:
 			s_prov = s_new
 		elif self._flux_scheme in ['maccormack']:
 			s_prov = .5 * (s + s_new)
 
 		# Diagnose the Montgomery potential from the provisional isentropic density
-		state_prov = StateIsentropic(state.time + .5 * dt, self._grid, isentropic_density = s_prov) 
-		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['pressure'].values[0,0,0,0])
+		state_prov = StateIsentropic(state.time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
+		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['air_pressure'].values[0,0,0,0])
 
 		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
 		self._prov_s[:,:,:]   = self.boundary.from_physical_to_computational_domain(s_prov)
@@ -542,11 +548,11 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self.boundary.apply(V_new, V)
 
 		# Update the output state
-		state_new.add(isentropic_density = s_new, 
+		state_new.add(air_isentropic_density = s_new, 
 					  x_momentum_isentropic = U_new, 
 					  y_momentum_isentropic = V_new,
 					  water_vapor_isentropic_density = Qv_new, 
-					  cloud_water_isentropic_density = Qc_new,
+					  cloud_liquid_water_isentropic_density = Qc_new,
 					  precipitation_water_isentropic_density = Qr_new)
 
 		return state_new
@@ -807,9 +813,6 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# This will be re-directed when the forward method is invoked for the first time
 		self._stencil = None
 
-		# The old state
-		self._state_old = None
-
 	def __call__(self, dt, state, state_old = None, diagnostics = None):
 		"""
 		Call operator advancing the conservative model variables one time step forward via a centered time-integration scheme.
@@ -822,57 +825,60 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
 			the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_velocity (:math:`y`-staggered);
 			* y_momentum_isentropic (unstaggered);
-			* pressure (:math:`z`-staggered);
+			* air_pressure (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
-			* water_vapor_mass_fraction (unstaggered, optional);
-			* cloud_water_mass_fraction (unstaggered, optional);
-			* precipitation_water_mass_fraction (unstaggered, optional).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
 			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
 			the following variables:
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
-			* water_vapor_mass_fraction (unstaggered, optional);
-			* cloud_water_mass_fraction (unstaggered, optional);
-			* precipitation_water_mass_fraction (unstaggered, optional).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` collecting useful diagnostics.
+			:class:`~storages.grid_data.GridData` collecting useful diagnostics, namely:
+			
+			* change_over_time_in_air_potential_temperature (unstaggered);
+			* raindrop_fall_velocity (unstaggered).
 
 		Return
 		------
 		obj :
 			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
-			* isentropic_density (unstaggered);
+			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
 			* water_vapor_isentropic_density (unstaggered, optional);
-			* cloud_water_isentropic_density (unstaggered, optional);
+			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 		# Initialize the output state
 		state_new = StateIsentropic(state.time + dt, self._grid)
 
 		# Extract the needed model variables at the current time level
-		s   = state['isentropic_density'].values[:,:,:,0]
+		s   = state['air_isentropic_density'].values[:,:,:,0]
 		u   = state['x_velocity'].values[:,:,:,0]
-		U   = state['x_momentum_isentropic'].values[:,:,:,0]
 		v   = state['y_velocity'].values[:,:,:,0]
+		U   = state['x_momentum_isentropic'].values[:,:,:,0]
 		V   = state['y_momentum_isentropic'].values[:,:,:,0]
-		p   = state['pressure'].values[:,:,:,0]
+		p   = state['air_pressure'].values[:,:,:,0]
 		mtg = state['montgomery_potential'].values[:,:,:,0]
-		Qv	= state['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc	= state['cloud_water_isentropic_density'].values[:,:,:,0]
-		Qr	= state['precipitation_water_isentropic_density'].values[:,:,:,0]
+		Qv	= None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc	= None if not self._imoist else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+		Qr	= None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 		# Extend the arrays to accommodate the horizontal boundary conditions
 		s_   = self.boundary.from_physical_to_computational_domain(s)
@@ -885,27 +891,38 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Qc_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc)
 		Qr_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr)
 
-		# Set the old state, if required
 		if state_old is not None:
-			self._state_old = state_old
-		elif self._state_old is None:
-			self._state_old = copy.deepcopy(state_now)
-			
-		# Extract the needed model variables at the previous time level
-		s_old  = state_old['isentropic_density'].values[:,:,:,0]
-		U_old  = state_old['x_momentum_isentropic'].values[:,:,:,0]
-		V_old  = state_old['y_momentum_isentropic'].values[:,:,:,0]
-		Qv_old = state_old['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc_old = state_old['cloud_water_isentropic_density'].values[:,:,:,0]
-		Qr_old = state_old['precipitation_water_isentropic_density'].values[:,:,:,0]
-		
-		# Extend the arrays to accommodate the horizontal boundary conditions
-		s_old_  = self.boundary.from_physical_to_computational_domain(s_old)
-		U_old_  = self.boundary.from_physical_to_computational_domain(U_old)
-		V_old_  = self.boundary.from_physical_to_computational_domain(V_old)
-		Qv_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv_old)
-		Qc_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc_old)
-		Qr_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr_old)
+			# Extract the needed model variables at the previous time level
+			s_old  = state_old['air_isentropic_density'].values[:,:,:,0]
+			U_old  = state_old['x_momentum_isentropic'].values[:,:,:,0]
+			V_old  = state_old['y_momentum_isentropic'].values[:,:,:,0]
+			Qv_old = None if not self._imoist else state_old['water_vapor_isentropic_density'].values[:,:,:,0]
+			Qc_old = None if not self._imoist else state_old['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+			Qr_old = None if not self._imoist else state_old['precipitation_water_isentropic_density'].values[:,:,:,0]
+
+			# Extend the arrays to accommodate the horizontal boundary conditions
+			self._s_old_  = self.boundary.from_physical_to_computational_domain(s_old)
+			self._U_old_  = self.boundary.from_physical_to_computational_domain(U_old)
+			self._V_old_  = self.boundary.from_physical_to_computational_domain(V_old)
+			self._Qv_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv_old)
+			self._Qc_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc_old)
+			self._Qr_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr_old)
+		elif not hasattr(self, '_s_old_'):
+			# Extract the needed model variables at the previous time level
+			s_old  = state['air_isentropic_density'].values[:,:,:,0]
+			U_old  = state['x_momentum_isentropic'].values[:,:,:,0]
+			V_old  = state['y_momentum_isentropic'].values[:,:,:,0]
+			Qv_old = None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
+			Qc_old = None if not self._imoist else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+			Qr_old = None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
+
+			# Extend the arrays to accommodate the horizontal boundary conditions
+			self._s_old_  = self.boundary.from_physical_to_computational_domain(s_old)
+			self._U_old_  = self.boundary.from_physical_to_computational_domain(U_old)
+			self._V_old_  = self.boundary.from_physical_to_computational_domain(V_old)
+			self._Qv_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv_old)
+			self._Qc_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc_old)
+			self._Qr_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr_old)
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil is None:
@@ -913,12 +930,13 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		# Update the attributes which serve as inputs to the first GT4Py's stencil
 		self._set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
-						 s_old_, U_old_, V_old_, Qv_old_, Qc_old_, Qr_old_)
+						 self._s_old_, self._U_old_, self._V_old_, self._Qv_old_, self._Qc_old_, self._Qr_old_)
 		
 		# Run the stencil's compute function
 		self._stencil.compute()
 		
 		# Bring the updated prognostic variables back to the original dimensions
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		s_new = self.boundary.from_computational_to_physical_domain(self._out_s, (nx, ny, nz))
 
 		if type(self.boundary) == RelaxedSymmetricXZ:
@@ -945,15 +963,20 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self.boundary.apply(Qr_new, Qr)
 
 		# Update the output state
-		state_new.add(isentropic_density = s_new, 
+		state_new.add(air_isentropic_density = s_new, 
 					  x_momentum_isentropic = U_new, 
 					  y_momentum_isentropic = V_new, 
 					  water_vapor_isentropic_density = Qv_new, 
-					  cloud_water_isentropic_density = Qc_new,
+					  cloud_liquid_water_isentropic_density = Qc_new,
 					  precipitation_water_isentropic_density = Qr_new)
 
 		# Keep track of the current state for the next timestep
-		self._state_old = state_now
+		self._s_old  = s_
+		self._U_old  = U_
+		self._V_old  = V_
+		self._Qv_old = Qv_
+		self._Qc_old = Qc_
+		self._Qr_old = Qr_
 
 		return state_new
 
