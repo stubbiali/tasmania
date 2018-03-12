@@ -29,13 +29,13 @@ import numpy as np
 import os
 import pickle
 
-import utils_meteo as utils
+import utils.utils_meteo as utils
 
 #
 # Mandatory settings
 #
 ihorizontal = True
-ishow = False
+ishow = True
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
 						   '../meetings/20180308_phd_meeting/img/isentropic_convergence_upwind_horizontal_velocity_error_1')
 
@@ -51,10 +51,10 @@ filenames = \
 	{
 	 keys[0]: [os.path.join(os.environ['TASMANIA_ROOT'], 
 							'data/isentropic_convergence_upwind_u10_lx400_nz300_ray05_') + suffix \
-			   for suffix in ['8km_relaxed.pickle']],
+			   for suffix in ['8km_relaxed.pickle', '4km_relaxed.pickle', '2km_relaxed.pickle', '1km_relaxed.pickle', '05km_relaxed.pickle']],
 	 keys[1]: [os.path.join(os.environ['TASMANIA_ROOT'], 
 							'data/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_') + suffix \
-			   for suffix in ['8km_relaxed.pickle']],
+			   for suffix in ['8km_relaxed.pickle', '4km_relaxed.pickle', '2km_relaxed.pickle', '1km_relaxed.pickle']],
 	}
 sampling_steps = \
 	{
@@ -123,7 +123,7 @@ x_lim           = [8./13.*0.5, 13]
 x_ticks         = np.arange(1,9)
 y_factor        = 1.e-3
 y_label			= 'RMSE [m s$^{-1}$]'
-y_lim           = [7e-5, 1e-2]
+y_lim           = None #[7e-5, 1e-2]
 
 #
 # Run
@@ -132,7 +132,7 @@ mpl.rcParams['font.size'] = 16
 
 fig, ax = plt.subplots(figsize = figsize)
 
-for key in keys[:1]:
+for key in keys[:2]:
 	reference			 = references[key]
 	filenames_list       = filenames[key]
 	step				 = sampling_steps[key]
@@ -163,6 +163,11 @@ for key in keys[:1]:
 		h_ref = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
 		w_ref = u_ref * (h_ref[1:, :] - h_ref[:-1, :]) / state_save.grid.dx
 
+		uex, wex = utils.get_isentropic_isothermal_analytical_solution(state_save.grid, x_velocity_initial_, temperature_initial_, 
+																	   mountain_height_, mountain_width_,
+																	   x_staggered = False, z_staggered = False)
+		u_ref, w_ref = uex[320:481, :], wex[320:481, :]
+
 	for i in range(len(filenames_list)):
 		with open(filenames_list[i], 'rb') as data:
 			state_save = pickle.load(data)
@@ -171,28 +176,17 @@ for key in keys[:1]:
 			dx[i] = x_factor * grid.dx
 
 			height = state_save['height'].values[:, 0, :, -1]
-			ni_start = grid.nx - np.sum(grid.x.values >= -40.e3) 
-			ni_stop = np.sum(grid.x.values <= 40.e3)
+			ni_start = grid.nx - np.sum(grid.x.values >= -40e3) 
+			ni_stop = np.sum(grid.x.values <= 40e3)
 			nk = np.sum(height[int(0.5 * (ni_start + ni_stop)), :] <= 7500.)
 
 			if ihorizontal:
-				topography = grid.topography_height[:, 0]
-				uex, wex = utils.get_isothermal_solution(grid, x_velocity_initial_, temperature_initial_, 
-													 mountain_height_, mountain_width_,
-												 	 x_staggered = False, z_staggered = False)
-
 				u = state_save['x_momentum_isentropic'].values[ni_start:ni_stop, 0, nk:, -1] / \
 					state_save['isentropic_density'].values[ni_start:ni_stop:, 0, nk:, -1]
 	
-				#e[i] = np.sqrt(1. / ((ni_stop - ni_start) * nk) * np.linalg.norm(u - uex[ni_start:ni_stop, -nk:]) ** 2)
 				e[i] = np.sqrt(1. / ((ni_stop - ni_start) * (grid.nz - nk)) * \
 							   np.sum((u[:, -nk:] - u_ref[::step[i], -nk:]) * (u[:, -nk:] - u_ref[::step[i], -nk:])))
 			else:
-				topography = grid.topography_height[:, 0]
-				uex, wex = utils.get_isothermal_solution(grid, x_velocity_initial_, temperature_initial_, 
-													 mountain_height_, mountain_width_,
-												 	 x_staggered = True, z_staggered = False)
-
 				u = state_save['x_momentum_isentropic'].values[ni_start:ni_stop, 0, :, -1] / \
 					state_save['isentropic_density'].values[ni_start:ni_stop, 0, :, -1]
 
@@ -209,9 +203,9 @@ for key in keys[:1]:
 					 markerfacecolor = 'None', markeredgecolor = color_, markeredgewidth = linewidth_,
 	                 linestyle = linestyle_, linewidth = linewidth_, basex = 2, label = label_)
 
-ax.loglog([], [], color = 'blue', marker = 'o', markersize = 8, 
-				 markerfacecolor = 'None', markeredgecolor = 'blue', markeredgewidth = 1.5,
-				 linestyle = '-', linewidth = 1.5, basex = 2, label = 'MacCormack')
+#ax.loglog([], [], color = 'blue', marker = 'o', markersize = 8, 
+#				 markerfacecolor = 'None', markeredgecolor = 'blue', markeredgewidth = 1.5,
+#				 linestyle = '-', linewidth = 1.5, basex = 2, label = 'MacCormack')
 
 ax.set(title = title)
 plt.grid(True)

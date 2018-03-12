@@ -28,6 +28,11 @@ class DynamicalCore(TimeStepper):
 	"""
 	Abstract base class whose derived classes implement different dynamical cores.
 	The class inherits :class:`sympl.TimeStepper`.
+
+	Attributes
+	----------
+	microphysics : obj
+		Derived class of :class:`~parameterizations.microphysics.Microphysics` taking care of the cloud microphysics.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -41,7 +46,11 @@ class DynamicalCore(TimeStepper):
 		grid : obj 
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		"""
+		# Set the underlying grid
 		self._grid = grid
+
+		# Initialize pointer to the object taking care of the microphysics
+		self.microphysics = None
 
 	@abc.abstractmethod
 	def __call__(self, dt, state, diagnostics = None):
