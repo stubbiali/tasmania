@@ -21,12 +21,13 @@ class DynamicalCoreIsentropic(DynamicalCore):
 	schemes to carry out the prognostic step of the dynamical core, and supports different types of 
 	lateral boundary conditions.
 	"""
-	def __init__(self, time_scheme, flux_scheme, horizontal_boundary_type, grid, imoist, backend,
-				 idamp = True, damp_type = 'rayleigh', damp_depth = 15, damp_max = 0.0002, 
-				 ismooth = True, smooth_type = 'first_order', smooth_damp_depth = 10, 
+	def __init__(self, time_scheme, flux_scheme, horizontal_boundary_type, grid, moist_on, backend,
+				 damp_on = True, damp_type = 'rayleigh', damp_depth = 15, damp_max = 0.0002, 
+				 smooth_on = True, smooth_type = 'first_order', smooth_damp_depth = 10, 
 				 smooth_coeff = .03, smooth_coeff_max = .24, 
-				 ismooth_moist = False, smooth_moist_type = 'first_order', smooth_moist_damp_depth = 10,
-				 smooth_coeff_moist = .03, smooth_coeff_moist_max = .24):
+				 smooth_moist_on = False, smooth_moist_type = 'first_order', smooth_moist_damp_depth = 10,
+				 smooth_coeff_moist = .03, smooth_coeff_moist_max = .24,
+				 coupling_physics_dynamics_on = False, sedimentation_on = False):
 		"""
 		Constructor.
 
@@ -43,11 +44,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			See :class:`~dycore.horizontal_boundary.HorizontalBoundary` for the available options.
 		grid : obj
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool
+		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
 			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
-		idamp : `bool`, optional
+		damp_on : `bool`, optional
 			:obj:`True` if vertical damping is enabled, :obj:`False` otherwise. Default is :obj:`True`.
 		damp_type : `str`, optional
 			String specifying the type of vertical damping to apply. Default is 'rayleigh'.
@@ -56,7 +57,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Number of vertical layers in the damping region. Default is 15.
 		damp_max : `float`, optional
 			Maximum value for the damping coefficient. Default is 0.0002.
-		ismooth : `bool`, optional
+		smooth_on : `bool`, optional
 			:obj:`True` if numerical smoothing is enabled, :obj:`False` otherwise. Default is :obj:`True`.
 		smooth_type: `str`, optional
 			String specifying the smoothing technique to implement. Default is 'first-order'.
@@ -68,7 +69,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		smooth_coeff_max : `float`, optional
 			Maximum value for the smoothing coefficient. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
-		ismooth_moist : `bool`, optional
+		smooth_moist_on : `bool`, optional
 			:obj:`True` if numerical smoothing on water constituents is enabled, :obj:`False` otherwise. Default is :obj:`True`.
 		smooth_moist_type: `str`, optional
 			String specifying the smoothing technique to apply to the water constituents. Default is 'first-order'.
@@ -80,15 +81,19 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		smooth_coeff_moist_max : `float`, optional
 			Maximum value for the smoothing coefficient for the water constituents. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
+		if_couple_physics_dynamics : `bool`, optional
+			:bool:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
+			:bool:`False` otherwise.
+		if_sedimentation
 		"""
 		# Call parent constructor
 		super().__init__(grid)
 
 		# Keep track of the input parameters
-		self._imoist, self._idamp, self._ismooth, self._ismooth_moist = imoist, idamp, ismooth, ismooth_moist
+		self._moist_on, self._damp_on, self._smooth_on, self._smooth_moist_on = moist_on, damp_on, smooth_on, smooth_moist_on
 
 		# Instantiate the class implementing the prognostic part of the dycore
-		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, imoist, backend)
+		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, moist_on, backend)
 		nb = self._prognostic.nb
 
 		# Instantiate the class taking care of the boundary conditions
@@ -96,26 +101,26 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._prognostic.boundary = self._boundary
 
 		# Instantiate the class implementing the diagnostic part of the dycore
-		self._diagnostic = DiagnosticIsentropic(grid, imoist, backend)
+		self._diagnostic = DiagnosticIsentropic(grid, moist_on, backend)
 		self._diagnostic.boundary = self._boundary
 		self._prognostic.diagnostic = self._diagnostic
 
 		# Instantiate the class in charge of applying vertical damping
-		if idamp: 
+		if damp_on: 
 			self._damper = VerticalDamping.factory(damp_type, grid, damp_depth, damp_max, backend)
 
 		# Instantiate the classes in charge of applying numerical smoothing
 		nx, ny, nz = grid.nx, grid.ny, grid.nz
-		if ismooth:
+		if smooth_on:
 			self._smoother = HorizontalSmoothing.factory(smooth_type, (nx, ny, nz), grid, smooth_damp_depth, 
 														 smooth_coeff, smooth_coeff_max, backend)
-			if imoist and ismooth_moist:
+			if moist_on and smooth_moist_on:
 				self._smoother_moist = HorizontalSmoothing.factory(smooth_moist_type, (nx, ny, nz), grid, 
 																   smooth_moist_damp_depth, 
 														 		   smooth_coeff_moist, smooth_coeff_moist_max, backend)
 
 		# Set the pointer to the entry-point method, distinguishing between dry and moist model
-		self._carry_out_large_timestep = self._carry_out_large_timestep_dry if not imoist else \
+		self._carry_out_large_timestep = self._carry_out_large_timestep_dry if not moist_on else \
 										 self._carry_out_large_timestep_moist
 
 	def __call__(self, dt, state, diagnostics = None):
@@ -285,7 +290,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V = s * kwargs.get('y_velocity_initial', 0.)
 
 			# The initial water constituents
-			if self._imoist:
+			if self._moist_on:
 				# Set the initial relative humidity
 				rhmax   = 0.98
 				kw      = 10
@@ -349,7 +354,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V = s * kwargs.get('y_velocity_initial', 0.)
 
 			# The initial water constituents
-			if self._imoist:
+			if self._moist_on:
 				# Set the initial relative humidity
 				rhmax   = 0.98
 				kw      = 10
@@ -414,7 +419,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V = s * kwargs.get('y_velocity_initial', 0.)
 
 			# The initial water constituents
-			if self._imoist:
+			if self._moist_on:
 				qv = np.zeros((nx, ny, nz), dtype = datatype)
 				qc = np.zeros((nx, ny, nz), dtype = datatype)
 				qr = np.zeros((nx, ny, nz), dtype = datatype)
@@ -435,7 +440,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		state.update(self._diagnostic.get_air_density(state)),
 		state.update(self._diagnostic.get_air_temperature(state))
 
-		if self._imoist:
+		if self._moist_on:
 			# Add the mass fraction of each water component
 			state.add(mass_fraction_of_water_vapor_in_air = qv, 
 					  mass_fraction_of_cloud_liquid_water_in_air = qc,
@@ -484,15 +489,15 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* height (:math:`z`-staggered).
 		"""
 		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
-		if self._idamp or self._ismooth:
+		if self._damp_on or self._smooth_on:
 			s_now = np.copy(state['air_isentropic_density'].values[:,:,:,0])
 			U_now = np.copy(state['x_momentum_isentropic'].values[:,:,:,0])
 			V_now = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		state_new = self._prognostic(dt, state, diagnostics)
+		state_new = self._prognostic.step_without_vertical_advection(dt, state, diagnostics)
 
-		if self._idamp:
+		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state
 			if not hasattr(self, '_s_ref'):
 				self._s_ref = s_now
@@ -509,8 +514,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			U_new[:,:,:] = self._damper.apply(dt, U_now, U_new, self._U_ref)
 			V_new[:,:,:] = self._damper.apply(dt, V_now, V_new, self._V_ref)
 
-		if self._ismooth:
-			if not self._idamp:
+		if self._smooth_on:
+			if not self._damp_on:
 				# Extract the prognostic model variables
 				s_new = state_new['air_isentropic_density'].values[:,:,:,0]
 				U_new = state_new['x_momentum_isentropic'].values[:,:,:,0]
@@ -587,7 +592,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		state.update(self._diagnostic.get_water_constituents_isentropic_density(state))
 
 		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
-		if self._idamp or self._ismooth:
+		if self._damp_on or self._smooth_on:
 			s_now  = np.copy(state['air_isentropic_density'].values[:,:,:,0])
 			U_now  = np.copy(state['x_momentum_isentropic'].values[:,:,:,0])
 			V_now  = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
@@ -596,9 +601,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Qr_now = np.copy(state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		state_new = self._prognostic(dt, state, diagnostics)
+		state_new = self._prognostic.step_without_vertical_advection(dt, state, diagnostics)
 
-		if self._idamp:
+		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state
 			if not hasattr(self, '_s_ref'):
 				self._s_ref  = s_now
@@ -624,8 +629,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Qc_new[:,:,:] = self._damper.apply(dt, Qc_now, Qc_new, self._Qc_ref)
 			Qr_new[:,:,:] = self._damper.apply(dt, Qr_now, Qr_new, self._Qr_ref)
 
-		if self._ismooth:
-			if not self._idamp:
+		if self._smooth_on:
+			if not self._damp_on:
 				# Extract the dry prognostic model variables
 				s_new = state_new['air_isentropic_density'].values[:,:,:,0]
 				U_new = state_new['x_momentum_isentropic'].values[:,:,:,0]
@@ -641,8 +646,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(U_new, U_now)
 			self._boundary.apply(V_new, V_now)
 
-		if self._ismooth_moist:
-			if not self._idamp:
+		if self._smooth_moist_on:
+			if not self._damp_on:
 				# Extract the moist prognostic model variables
 				Qv_new = state_new['water_vapor_isentropic_density'].values[:,:,:,0]
 				Qc_new = state_new['cloud_liquid_water_isentropic_density'].values[:,:,:,0]

@@ -30,7 +30,7 @@ class PrognosticIsentropic:
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, flux_scheme, grid, imoist, backend):
+	def __init__(self, flux_scheme, grid, moist_on, backend):
 		"""
 		Constructor.
 
@@ -45,16 +45,16 @@ class PrognosticIsentropic:
 
 		grid : obj 
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool 
+		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
 			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
 		"""
 		# Keep track of the input parameters
-		self._flux_scheme, self._grid, self._imoist, self._backend = flux_scheme, grid, imoist, backend
+		self._flux_scheme, self._grid, self._moist_on, self._backend = flux_scheme, grid, moist_on, backend
 
 		# Instantiate the class computing the numerical fluxes
-		self._flux = FluxIsentropic.factory(flux_scheme, grid, imoist)
+		self._flux = FluxIsentropic.factory(flux_scheme, grid, moist_on)
 
 		# Initialize the attributes representing the diagnostic step and the lateral boundary conditions
 		# Remark: these should be suitably set before calling the stepping method for the first time
@@ -133,9 +133,10 @@ class PrognosticIsentropic:
 		return self._flux.nb
 
 	@abc.abstractmethod
-	def __call__(self, dt, state, state_old = None, diagnostics = None):
+	def step_without_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
 		"""
-		Call operator advancing the conservative, prognostic model variables one time step forward.
+		Method advancing the conservative, prognostic model variables one time step forward.
+		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
@@ -143,8 +144,8 @@ class PrognosticIsentropic:
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
-			the following variables:
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
@@ -158,8 +159,8 @@ class PrognosticIsentropic:
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
-			the following variables:
+			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
+			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
@@ -169,10 +170,59 @@ class PrognosticIsentropic:
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` collecting useful diagnostics, namely:
+			:class:`~storages.grid_data.GridData` possibly collecting useful diagnostics.
+
+		Return
+		------
+		obj :
+			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
+
+			* air_isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_isentropic_density (unstaggered, optional);
+			* cloud_liquid_water_isentropic_density (unstaggered, optional);
+			* precipitation_water_isentropic_density (unstaggered, optional).
+		"""
+
+	@abc.abstractmethod
+	def step_with_vertical_advection(self, dt, state_now, state_prv, state_old = None, diagnostics = None):
+		"""
+		Method advancing the conservative, prognostic model variables one time step forward by resolving the vertical advection.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Parameters
+		----------
+		dt : obj 
+			:class:`datetime.timedelta` representing the time step.
+		state_now : obj
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			It should contain the following variables:
+
+			* air_isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_isentropic_density (unstaggered, optional);
+			* cloud_liquid_water_isentropic_density (unstaggered, optional);
+			* precipitation_water_isentropic_density (unstaggered, optional).
+
+		state_prv : obj
+			:class:`~storages.state_isentropic.StateIsentropic` representing the provisional state, i.e.,
+			the state stepped taking only the horizontal derivatives into account. 
+			It should contain the following variables:
+
+			* air_isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* y_momentum_isentropic (unstaggered);
+			* water_vapor_isentropic_density (unstaggered, optional);
+			* cloud_liquid_water_isentropic_density (unstaggered, optional);
+			* precipitation_water_isentropic_density (unstaggered, optional).
+
+			This may be the output of :meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_without_vertical_advection`.
+		diagnostics : `obj`, optional
+			:class:`~storages.grid_data.GridData` collecting the following variables:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered);
-			* raindrop_fall_velocity (unstaggered).
+			* change_over_time_in_air_potential_temperature (unstaggered).
 
 		Return
 		------
@@ -188,7 +238,7 @@ class PrognosticIsentropic:
 		"""
 
 	@staticmethod
-	def factory(time_scheme, flux_scheme, grid, imoist, backend):
+	def factory(time_scheme, flux_scheme, grid, moist_on, backend):
 		"""
 		Static method returning an instace of the derived class implementing the time stepping scheme specified 
 		by :data:`time_scheme`, using the flux scheme specified by :data:`flux_scheme`.
@@ -210,7 +260,7 @@ class PrognosticIsentropic:
 
 		grid : obj 
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool 
+		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
 			:class:`gridtools.Mode` specifying the backend for the GT4Py's stencils.
@@ -221,9 +271,9 @@ class PrognosticIsentropic:
 			An instace of the derived class implementing the scheme specified by :data:`scheme`.
 		"""
 		if time_scheme == 'forward_euler':
-			return PrognosticIsentropicForwardEuler(flux_scheme, grid, imoist, backend)
+			return PrognosticIsentropicForwardEuler(flux_scheme, grid, moist_on, backend)
 		elif time_scheme == 'centered':
-			return PrognosticIsentropicCentered(flux_scheme, grid, imoist, backend)
+			return PrognosticIsentropicCentered(flux_scheme, grid, moist_on, backend)
 		else:
 			raise ValueError('Unknown time integration scheme.')
 
@@ -257,7 +307,7 @@ class PrognosticIsentropic:
 		self._in_mtg = np.zeros_like(s_)
 		self._in_U   = np.zeros_like(s_)
 		self._in_V   = np.zeros_like(s_)
-		if self._imoist:
+		if self._moist_on:
 			self._in_Qv = np.zeros_like(s_)
 			self._in_Qc = np.zeros_like(s_)
 			self._in_Qr = np.zeros_like(s_)
@@ -277,7 +327,7 @@ class PrognosticIsentropic:
 		self._out_s = np.zeros_like(s_)
 		self._out_U = np.zeros_like(s_)
 		self._out_V = np.zeros_like(s_)
-		if self._imoist:
+		if self._moist_on:
 			self._out_Qv = np.zeros_like(s_)
 			self._out_Qc = np.zeros_like(s_)
 			self._out_Qr = np.zeros_like(s_)
@@ -330,7 +380,7 @@ class PrognosticIsentropic:
 		self._in_mtg[:,:,:] = mtg_[:,:,:]
 		self._in_U[:,:,:]   = U_[:,:,:]
 		self._in_V[:,:,:]   = V_[:,:,:]
-		if self._imoist:
+		if self._moist_on:
 			self._in_Qv[:,:,:] = Qv_[:,:,:]
 			self._in_Qc[:,:,:] = Qc_[:,:,:]
 			self._in_Qr[:,:,:] = Qr_[:,:,:]
@@ -354,7 +404,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	steps : int
 		Number of steps the scheme entails.
 	"""
-	def __init__(self, flux_scheme, grid, imoist, backend):
+	def __init__(self, flux_scheme, grid, moist_on, backend):
 		"""
 		Constructor.
 		
@@ -369,7 +419,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		grid : obj
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool 
+		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
 			:class:`gridtools.mode` specifying the backend for the GT$Py's stencils.
@@ -380,7 +430,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.factory` of 
 		:class:`~dycore.prognostic_isentropic.PrognosticIsentropic`.
 		"""
-		super().__init__(flux_scheme, grid, imoist, backend)
+		super().__init__(flux_scheme, grid, moist_on, backend)
 
 		# Number of time levels and steps entailed
 		self.time_levels = 1
@@ -391,17 +441,18 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._stencil_stepping_isentropic_density_and_water_constituents = None
 		self._stencil_stepping_momentums = None
 
-	def __call__(self, dt, state, state_old = None, diagnostics = None):
+	def step_without_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
 		"""
-		Call operator advancing the conservative model variables one time step forward via the forward Euler scheme.
+		Method advancing the conservative, prognostic model variables one time step forward via the forward Euler method.
+		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
 
 		Parameters
 		----------
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
-			the following variables:
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state. 
+			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
@@ -415,8 +466,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
-			the following variables:
+			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
+			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
@@ -426,10 +477,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` collecting useful diagnostics, namely:
-			
-			* change_over_time_in_air_potential_temperature (unstaggered);
-			* raindrop_fall_velocity (unstaggered).
+			:class:`~storages.grid_data.GridData` possibly collecting useful diagnostics.
 
 		Return
 		------
@@ -453,9 +501,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		U   = state['x_momentum_isentropic'].values[:,:,:,0]
 		V   = state['y_momentum_isentropic'].values[:,:,:,0]
 		mtg = state['montgomery_potential'].values[:,:,:,0]
-		Qv	= None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc	= None if not self._imoist else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
-		Qr	= None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
+		Qv	= None if not self._moist_on else state['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc	= None if not self._moist_on else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+		Qr	= None if not self._moist_on else state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 		# Extend the arrays to accommodate the horizontal boundary conditions
 		s_   = self.boundary.from_physical_to_computational_domain(s)
@@ -464,9 +512,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		mtg_ = self.boundary.from_physical_to_computational_domain(mtg)
 		U_   = self.boundary.from_physical_to_computational_domain(U)
 		V_   = self.boundary.from_physical_to_computational_domain(V)
-		Qv_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv)
-		Qc_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc)
-		Qr_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr)
+		Qv_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qv)
+		Qc_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qc)
+		Qr_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr)
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_stepping_isentropic_density_and_water_constituents is None:
@@ -482,13 +530,13 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		# Bring the updated density and water constituents back to the original dimensions
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		s_new  = self.boundary.from_computational_to_physical_domain(self._out_s, (nx, ny, nz))
-		Qv_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
-		Qc_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
-		Qr_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
+		Qv_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
+		Qc_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
+		Qr_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
 
 		# Apply the boundary conditions on the updated isentropic density and water constituents
 		self.boundary.apply(s_new, s)
-		if self._imoist:
+		if self._moist_on:
 			self.boundary.apply(Qv_new, Qv)
 			self.boundary.apply(Qc_new, Qc)
 			self.boundary.apply(Qr_new, Qr)
@@ -566,7 +614,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		_mode = self._backend
 
 		# Instantiate the first stencil
-		if not self._imoist:
+		if not self._moist_on:
 			self._stencil_stepping_isentropic_density_and_water_constituents = gt.NGStencil( 
 				definitions_func = self._defs_stencil_stepping_isentropic_density_and_water_constituents,
 				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
@@ -664,27 +712,27 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		out_s = gt.Equation()
 		out_U = gt.Equation()
 		out_V = gt.Equation()
-		if self._imoist:
+		if self._moist_on:
 			out_Qv = gt.Equation()
 			out_Qc = gt.Equation()
 			out_Qr = gt.Equation()
 
 		# Computations
-		if not self._imoist:
+		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y = \
-				self._flux.get_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
 		else:
 			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y, \
 			flux_Qv_x, flux_Qv_y, flux_Qc_x, flux_Qc_y, flux_Qr_x, flux_Qr_y = \
-				self._flux.get_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
 
-		out_s[i, j, k] = in_s[i, j, k] - dt * ((flux_s_x[i+1, j, k] - flux_s_x[i, j, k]) / self._grid.dx +
-						 					   (flux_s_y[i, j+1, k] - flux_s_y[i, j, k]) / self._grid.dy)
-		out_U[i, j, k] = in_U[i, j, k] - dt * ((flux_U_x[i+1, j, k] - flux_U_x[i, j, k]) / self._grid.dx +
-						 					   (flux_U_y[i, j+1, k] - flux_U_y[i, j, k]) / self._grid.dy)
-		out_V[i, j, k] = in_V[i, j, k] - dt * ((flux_V_x[i+1, j, k] - flux_V_x[i, j, k]) / self._grid.dx +
-						 					   (flux_V_y[i, j+1, k] - flux_V_y[i, j, k]) / self._grid.dy)
-		if self._imoist:
+		out_s[i, j, k] = in_s[i, j, k] - dt * ((flux_s_x[i, j, k] - flux_s_x[i-1, j, k]) / self._grid.dx +
+						 					   (flux_s_y[i, j, k] - flux_s_y[i, j-1, k]) / self._grid.dy)
+		out_U[i, j, k] = in_U[i, j, k] - dt * ((flux_U_x[i, j, k] - flux_U_x[i-1, j, k]) / self._grid.dx +
+						 					   (flux_U_y[i, j, k] - flux_U_y[i, j-1, k]) / self._grid.dy)
+		out_V[i, j, k] = in_V[i, j, k] - dt * ((flux_V_x[i, j, k] - flux_V_x[i-1, j, k]) / self._grid.dx +
+						 					   (flux_V_y[i, j, k] - flux_V_y[i, j-1, k]) / self._grid.dy)
+		if self._moist_on:
 			out_Qv[i, j, k] = in_Qv[i, j, k] - dt * ((flux_Qv_x[i+1, j, k] - flux_Qv_x[i, j, k]) / self._grid.dx +
 						 						  	 (flux_Qv_y[i, j+1, k] - flux_Qv_y[i, j, k]) / self._grid.dy)
 			out_Qc[i, j, k] = in_Qc[i, j, k] - dt * ((flux_Qc_x[i+1, j, k] - flux_Qc_x[i, j, k]) / self._grid.dx +
@@ -755,7 +803,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 	steps : int
 		Number of steps the scheme entails.
 	"""
-	def __init__(self, flux_scheme, grid, imoist, backend):
+	def __init__(self, flux_scheme, grid, moist_on, backend):
 		"""
 		Constructor.
 		
@@ -770,7 +818,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		grid : obj
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool 
+		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
 			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
@@ -781,7 +829,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.factory` of
 		:class:`~dycore.prognostic_isentropic.PrognosticIsentropic`.
 		"""
-		super().__init__(flux_scheme, grid, imoist, backend)
+		super().__init__(flux_scheme, grid, moist_on, backend)
 
 		# Number of time levels and steps entailed
 		self.time_levels = 2
@@ -791,17 +839,18 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# This will be re-directed when the forward method is invoked for the first time
 		self._stencil = None
 
-	def __call__(self, dt, state, state_old = None, diagnostics = None):
+	def step_without_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
 		"""
-		Call operator advancing the conservative model variables one time step forward via a centered time-integration scheme.
+		Method advancing the conservative, prognostic model variables one time step forward via a centered time-integration scheme.
+		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
 
 		Parameters
 		----------
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state and containing 
-			the following variables:
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state. 
+			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
@@ -815,8 +864,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic.StateIsentropic` representing the old state and containing
-			the following variables:
+			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
+			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
@@ -826,10 +875,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` collecting useful diagnostics, namely:
-			
-			* change_over_time_in_air_potential_temperature (unstaggered);
-			* raindrop_fall_velocity (unstaggered).
+			:class:`~storages.grid_data.GridData` possibly collecting useful diagnostics.
 
 		Return
 		------
@@ -854,9 +900,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		V   = state['y_momentum_isentropic'].values[:,:,:,0]
 		p   = state['air_pressure'].values[:,:,:,0]
 		mtg = state['montgomery_potential'].values[:,:,:,0]
-		Qv	= None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc	= None if not self._imoist else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
-		Qr	= None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
+		Qv	= None if not self._moist_on else state['water_vapor_isentropic_density'].values[:,:,:,0]
+		Qc	= None if not self._moist_on else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+		Qr	= None if not self._moist_on else state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 		# Extend the arrays to accommodate the horizontal boundary conditions
 		s_   = self.boundary.from_physical_to_computational_domain(s)
@@ -865,42 +911,42 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		mtg_ = self.boundary.from_physical_to_computational_domain(mtg)
 		U_   = self.boundary.from_physical_to_computational_domain(U)
 		V_   = self.boundary.from_physical_to_computational_domain(V)
-		Qv_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv)
-		Qc_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc)
-		Qr_  = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr)
+		Qv_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qv)
+		Qc_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qc)
+		Qr_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr)
 
 		if state_old is not None:
 			# Extract the needed model variables at the previous time level
 			s_old  = state_old['air_isentropic_density'].values[:,:,:,0]
 			U_old  = state_old['x_momentum_isentropic'].values[:,:,:,0]
 			V_old  = state_old['y_momentum_isentropic'].values[:,:,:,0]
-			Qv_old = None if not self._imoist else state_old['water_vapor_isentropic_density'].values[:,:,:,0]
-			Qc_old = None if not self._imoist else state_old['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
-			Qr_old = None if not self._imoist else state_old['precipitation_water_isentropic_density'].values[:,:,:,0]
+			Qv_old = None if not self._moist_on else state_old['water_vapor_isentropic_density'].values[:,:,:,0]
+			Qc_old = None if not self._moist_on else state_old['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+			Qr_old = None if not self._moist_on else state_old['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 			# Extend the arrays to accommodate the horizontal boundary conditions
 			self._s_old_  = self.boundary.from_physical_to_computational_domain(s_old)
 			self._U_old_  = self.boundary.from_physical_to_computational_domain(U_old)
 			self._V_old_  = self.boundary.from_physical_to_computational_domain(V_old)
-			self._Qv_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv_old)
-			self._Qc_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc_old)
-			self._Qr_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr_old)
+			self._Qv_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qv_old)
+			self._Qc_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qc_old)
+			self._Qr_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr_old)
 		elif not hasattr(self, '_s_old_'):
 			# Extract the needed model variables at the previous time level
 			s_old  = state['air_isentropic_density'].values[:,:,:,0]
 			U_old  = state['x_momentum_isentropic'].values[:,:,:,0]
 			V_old  = state['y_momentum_isentropic'].values[:,:,:,0]
-			Qv_old = None if not self._imoist else state['water_vapor_isentropic_density'].values[:,:,:,0]
-			Qc_old = None if not self._imoist else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
-			Qr_old = None if not self._imoist else state['precipitation_water_isentropic_density'].values[:,:,:,0]
+			Qv_old = None if not self._moist_on else state['water_vapor_isentropic_density'].values[:,:,:,0]
+			Qc_old = None if not self._moist_on else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
+			Qr_old = None if not self._moist_on else state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 			# Extend the arrays to accommodate the horizontal boundary conditions
 			self._s_old_  = self.boundary.from_physical_to_computational_domain(s_old)
 			self._U_old_  = self.boundary.from_physical_to_computational_domain(U_old)
 			self._V_old_  = self.boundary.from_physical_to_computational_domain(V_old)
-			self._Qv_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qv_old)
-			self._Qc_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qc_old)
-			self._Qr_old_ = None if not self._imoist else self.boundary.from_physical_to_computational_domain(Qr_old)
+			self._Qv_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qv_old)
+			self._Qc_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qc_old)
+			self._Qr_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr_old)
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil is None:
@@ -927,15 +973,15 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			U_new = self.boundary.from_computational_to_physical_domain(self._out_U, (nx, ny, nz))
 			V_new = self.boundary.from_computational_to_physical_domain(self._out_V, (nx, ny, nz)) 
 
-		Qv_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
-		Qc_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
-		Qr_new = None if not self._imoist else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
+		Qv_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qv, (nx, ny, nz))
+		Qc_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qc, (nx, ny, nz))
+		Qr_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qr, (nx, ny, nz))
 
 		# Apply the boundary conditions
 		self.boundary.apply(s_new, s)
 		self.boundary.apply(U_new, U)
 		self.boundary.apply(V_new, V)
-		if self._imoist:
+		if self._moist_on:
 			self.boundary.apply(Qv_new, Qv)
 			self.boundary.apply(Qc_new, Qc)
 			self.boundary.apply(Qr_new, Qr)
@@ -949,12 +995,13 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 					  precipitation_water_isentropic_density = Qr_new)
 
 		# Keep track of the current state for the next timestep
-		self._s_old  = s_
-		self._U_old  = U_
-		self._V_old  = V_
-		self._Qv_old = Qv_
-		self._Qc_old = Qc_
-		self._Qr_old = Qr_
+		self._s_old_[:,:,:]  = s_[:,:,:]
+		self._U_old_[:,:,:]  = U_[:,:,:]
+		self._V_old_[:,:,:]  = V_[:,:,:]
+		if self._moist_on:
+			self._Qv_old_[:,:,:] = Qv_[:,:,:]
+			self._Qc_old_[:,:,:] = Qc_[:,:,:]
+			self._Qr_old_[:,:,:] = Qr_[:,:,:]
 
 		return state_new
 
@@ -983,7 +1030,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		_mode = self._backend
 
 		# Instantiate the stencil
-		if not self._imoist:
+		if not self._moist_on:
 			self._stencil = gt.NGStencil( 
 				definitions_func = self._defs_stencil,
 				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
@@ -1028,7 +1075,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		self._old_s = np.zeros_like(s_)
 		self._old_U = np.zeros_like(s_)
 		self._old_V = np.zeros_like(s_)
-		if self._imoist:
+		if self._moist_on:
 			self._old_Qv = np.zeros_like(s_)
 			self._old_Qc = np.zeros_like(s_)
 			self._old_Qr = np.zeros_like(s_)
@@ -1095,7 +1142,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		self._old_s[:,:,:] = s_old_[:,:,:]
 		self._old_U[:,:,:] = U_old_[:,:,:]
 		self._old_V[:,:,:] = V_old_[:,:,:]
-		if self._imoist:
+		if self._moist_on:
 			self._old_Qv[:,:,:] = Qv_old_[:,:,:]
 			self._old_Qc[:,:,:] = Qc_old_[:,:,:]
 			self._old_Qr[:,:,:] = Qr_old_[:,:,:]
@@ -1164,19 +1211,19 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		out_s = gt.Equation()
 		out_U = gt.Equation()
 		out_V = gt.Equation()
-		if self._imoist:
+		if self._moist_on:
 			out_Qv = gt.Equation()
 			out_Qc = gt.Equation()
 			out_Qr = gt.Equation()
 
 		# Computations
-		if not self._imoist:
+		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y = \
-				self._flux.get_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
 		else:
 			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y, \
 			flux_Qv_x, flux_Qv_y, flux_Qc_x, flux_Qc_y, flux_Qr_x, flux_Qr_y = \
-				self._flux.get_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
 
 		out_s[i, j, k] = old_s[i, j, k] - 2. * dt * ((flux_s_x[i+1, j, k] - flux_s_x[i, j, k]) / self._grid.dx +
 						 					         (flux_s_y[i, j+1, k] - flux_s_y[i, j, k]) / self._grid.dy)
@@ -1186,7 +1233,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		out_V[i, j, k] = old_V[i, j, k] - 2. * dt * ((flux_V_x[i+1, j, k] - flux_V_x[i, j, k]) / self._grid.dx +
 						 					         (flux_V_y[i, j+1, k] - flux_V_y[i, j, k]) / self._grid.dy) \
 										- dt * in_s[i, j, k] * (in_mtg[i, j+1, k] - in_mtg[i, j-1, k]) / self._grid.dy
-		if self._imoist:
+		if self._moist_on:
 			out_Qv[i, j, k] = old_Qv[i, j, k] - 2. * dt * ((flux_Qv_x[i+1, j, k] - flux_Qv_x[i, j, k]) / self._grid.dx +
 						 						  	 	   (flux_Qv_y[i, j+1, k] - flux_Qv_y[i, j, k]) / self._grid.dy)
 			out_Qc[i, j, k] = old_Qc[i, j, k] - 2. * dt * ((flux_Qc_x[i+1, j, k] - flux_Qc_x[i, j, k]) / self._grid.dx +

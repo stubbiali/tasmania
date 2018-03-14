@@ -47,7 +47,7 @@ Model settings:
 
 			- 'isentropic', for the isentropic model.
 
-	* :data:`namelist.imoist`: :data:`True` if water constituents should be taken into account, :data:`False` otherwise.
+	* :data:`namelist.moist_on`: :data:`True` if water constituents should be taken into account, :data:`False` otherwise.
 	* :data:`namelist.horizontal_boundary_type`: Horizontal boundary conditions. Available options are:
 
 			- 'periodic', for periodic boundary conditions;
@@ -65,7 +65,7 @@ Numerical settings:
 			- 'centered', for a second-order centered scheme;
 			- 'maccormack', for the MacCormack scheme.
 
-	* :data:`namelist.idamp`: :data:`True` if (explicit) vertical damping should be applied, :data:`False` otherwise. \
+	* :data:`namelist.damp_on`: :data:`True` if (explicit) vertical damping should be applied, :data:`False` otherwise. \
 		Note that when vertical damping is switched off, the numerical diffusion is monotonically increased towards \
 		the top of the model, so to act as a diffusive wave absorber.
 	* :data:`namelist.damp_type`: Type of vertical damping to apply. Available options are:
@@ -74,7 +74,7 @@ Numerical settings:
 
 	* :data:`namelist.damp_depth`: Number of levels (either main levels or half levels) in the absorbing region.
 	* :data:`namelist.damp_max`: Maximum value which should be assumed by the damping coefficient.
-	* :data:`namelist.ismooth`: :data:`True` to enable numerical horizontal smoothing, :data:`False` otherwise.
+	* :data:`namelist.smooth_on`: :data:`True` to enable numerical horizontal smoothing, :data:`False` otherwise.
 	* :data:`namelist.smooth_type`: Type of smoothing technique to implement. Available options are:
 
 			- 'first_order', for first-order smoothing;
@@ -83,7 +83,7 @@ Numerical settings:
 	* :data:`namelist.smooth_depth`: Number of levels (either main levels or half levels) in the smoothing absorbing region.
 	* :data:`namelist.smooth_coeff`: The smoothing coefficient.
 	* :data:`namelist.smooth_coeff_max`: Maximum value for the smoothing coefficient when smoothing vertical damping is enabled.
-	* :data:`namelist.ismooth_moist`: :data:`True` to enable numerical horizontal smoothing on the moisture constituents, \
+	* :data:`namelist.smooth_moist_on`: :data:`True` to enable numerical horizontal smoothing on the moisture constituents, \
 		:data:`False` otherwise.
 	* :data:`namelist.smooth_moist_type`: Type of smoothing technique to apply on the moisture constituents. Available options are:
 
@@ -158,7 +158,7 @@ topo_kwargs     = {
 # Model settings
 #
 model                    = 'isentropic' 
-imoist					 = False
+moist_on					 = False
 horizontal_boundary_type = 'relaxed'
 
 #
@@ -166,16 +166,16 @@ horizontal_boundary_type = 'relaxed'
 #
 time_scheme             = 'forward_euler'
 flux_scheme             = 'upwind'
-idamp	                = True
+damp_on	                = True
 damp_type               = 'rayleigh'
 damp_depth              = 15
 damp_max                = .0002
-ismooth                 = True
+smooth_on                 = True
 smooth_type             = 'first_order'
 smooth_damp_depth       = 0
 smooth_coeff            = .03
 smooth_coeff_max        = .25
-ismooth_moist		    = False
+smooth_moist_on		    = False
 smooth_moist_type       = 'first_order'
 smooth_moist_damp_depth = 30
 smooth_moist_coeff      = .05

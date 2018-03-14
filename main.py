@@ -30,7 +30,7 @@ start = time.time()
 
 grid = Grid(nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,
 			units_x = 'm', dims_x = 'x', units_y = 'm', dims_y = 'y', 
-			units_z = 'K', dims_z = 'potential_temperature', z_interface = None,
+			units_z = 'K', dims_z = 'air_potential_temperature', z_interface = None,
 			topo_type = nl.topo_type, topo_time = nl.topo_time, **nl.topo_kwargs)
 
 stop = time.time()
@@ -43,10 +43,10 @@ print('Instantiate dycore ...')
 start = time.time()
 
 dycore = DynamicalCore.factory(nl.model, nl.time_scheme, nl.flux_scheme, nl.horizontal_boundary_type, grid, 
-							   nl.imoist, nl.backend, nl.idamp, nl.damp_type, nl.damp_depth, nl.damp_max, 
-				 		  	   nl.ismooth, nl.smooth_type, nl.smooth_damp_depth, 
+							   nl.moist_on, nl.backend, nl.damp_on, nl.damp_type, nl.damp_depth, nl.damp_max, 
+				 		  	   nl.smooth_on, nl.smooth_type, nl.smooth_damp_depth, 
 							   nl.smooth_coeff, nl.smooth_coeff_max, 
-				 		  	   nl.ismooth_moist, nl.smooth_moist_type, nl.smooth_moist_damp_depth, 
+				 		  	   nl.smooth_moist_on, nl.smooth_moist_type, nl.smooth_moist_damp_depth, 
 							   nl.smooth_moist_coeff, nl.smooth_moist_coeff_max)
 
 stop = time.time()

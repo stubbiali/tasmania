@@ -15,7 +15,7 @@ class DynamicalCoreIsentropicIsothermal(DynamicalCoreIsentropic):
 	(moist) isentropic and isothermal dynamical core using GT4Py's stencils. The class offers different numerical
 	schemes to carry out the prognostic step of the dynamical core, and supports different types of lateral boundary conditions.
 	"""
-	def __init__(self, grid, imoist, horizontal_boundary_type, scheme, backend,
+	def __init__(self, grid, moist_on, horizontal_boundary_type, scheme, backend,
 				 idamp = True, damp_type = 'rayleigh', damp_depth = 15, damp_max = 0.0002, 
 				 idiff = True, diff_coeff = .03, diff_coeff_moist = .03, diff_max = .24):
 		"""
@@ -25,7 +25,7 @@ class DynamicalCoreIsentropicIsothermal(DynamicalCoreIsentropic):
 		----------
 		grid : obj
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool
+		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions. 
@@ -55,14 +55,14 @@ class DynamicalCoreIsentropicIsothermal(DynamicalCoreIsentropic):
 			for further details.
 		"""
 		# Set parameters as attributes
-		self._grid, self._imoist, self._idamp, self._idiff = grid, imoist, idamp, idiff
+		self._grid, self._moist_on, self._idamp, self._idiff = grid, moist_on, idamp, idiff
 
 		# Instantiate the class implementing the prognostic part of the dycore
-		self._prognostic = PrognosticIsentropic.factory(grid, imoist, scheme, backend)
+		self._prognostic = PrognosticIsentropic.factory(grid, moist_on, scheme, backend)
 		nb, self._tls = self._prognostic.nb, self._prognostic.time_levels
 
 		# Instantiate the class implementing the diagnostic part of the dycore
-		self._diagnostic = DiagnosticIsentropicIsothermal(grid, imoist, backend)
+		self._diagnostic = DiagnosticIsentropicIsothermal(grid, moist_on, backend)
 
 		# Instantiate the class taking care of the boundary conditions
 		self._boundary = HorizontalBoundary.factory(horizontal_boundary_type, grid, nb)
@@ -75,12 +75,12 @@ class DynamicalCoreIsentropicIsothermal(DynamicalCoreIsentropic):
 		nx, ny, nz = grid.nx, grid.ny, grid.nz
 		if idiff:
 			self._diffuser = Diffusion.factory((nx, ny, nz), grid, idamp, damp_depth, diff_coeff, diff_max, backend)
-			if imoist:
+			if moist_on:
 				self._diffuser_moist = Diffusion.factory((nx, ny, nz), grid, idamp, damp_depth, 
 														 diff_coeff_moist, diff_max, backend)
 
 		# Set pointer to the entry-point method, distinguishing between dry and moist model
-		self._integrate = self._integrate_moist if imoist else self._integrate_dry
+		self._integrate = self._integrate_moist if moist_on else self._integrate_dry
 
 	def get_initial_state(self, initial_time, initial_state_type = 0, **kwargs):
 		"""
@@ -111,7 +111,7 @@ class DynamicalCoreIsentropicIsothermal(DynamicalCoreIsentropic):
 		obj :
 			:class:`~storages.state_isentropic.StateIsentropic` representing the initial state.
 		"""
-		if self._imoist:
+		if self._moist_on:
 			raise NotImplementedError()
 
 		# Shortcuts
