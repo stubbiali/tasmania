@@ -416,7 +416,7 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		"""
 		# Interpolate the vertical velocity at the model half-levels
 		w_mid = gt.Equation()
-		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k+1])
+		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k-1])
 
 		# Compute flux for the isentropic density and the momentums
 		self._flux_s_z = self._get_upwind_flux_z(i, j, k, w_mid, s_now)
@@ -534,8 +534,8 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		flux_name = 'flux_' + phi_name + '_z'
 		flux = gt.Equation(name = flux_name)
 
-		flux[i, j, k] = w_mid[i, j, k] * ((w_mid[i, j, k] > 0.) * phi[i, j,   k] +
-										  (w_mid[i, j, k] < 0.) * phi[i, j, k+1])
+		flux[i, j, k] = w_mid[i, j, k] * ((w_mid[i, j, k] > 0.) * phi[i, j, k] +
+										  (w_mid[i, j, k] < 0.) * phi[i, j, k-1])
 
 		return flux
 
@@ -666,7 +666,7 @@ class FluxIsentropicCentered(FluxIsentropic):
 		"""
 		# Interpolate the vertical velocity at the model half-levels
 		w_mid = gt.Equation()
-		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k+1])
+		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k-1])
 
 		# Compute flux for the isentropic density and the momentums
 		self._flux_s_z = self._get_upwind_flux_z(i, j, k, w_mid, s_now)
@@ -764,7 +764,7 @@ class FluxIsentropicCentered(FluxIsentropic):
 		phi_name = phi.get_name()
 		flux_name = 'flux_' + phi_name + '_z'
 		flux = gt.Equation(name = flux_name)
-		flux[i, j, k] = w_mid[i, j, k] * 0.5 * (phi[i, j, k] + phi[i, j, k+1])
+		flux[i, j, k] = w_mid[i, j, k] * 0.5 * (phi[i, j, k] + phi[i, j, k-1])
 		return flux
 
 
@@ -1085,8 +1085,8 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 
 	def _get_maccormack_vertical_predicted_value(self, i, j, k, dt, w, phi_now, phi_prv):
 		"""
-		Get the :class:`gridtools.Equation` representing the predicted value for a generic conservative prognostic variable :math:`\phi`,
-		computed taking only the vertical advection into account.
+		Get the :class:`gridtools.Equation` representing the predicted value for a generic conservative prognostic 
+		variable :math:`\phi`, computed taking only the vertical advection into account.
 		
 		Parameters
 		----------
@@ -1103,8 +1103,8 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		phi_now : obj
 			:class:`gridtools.Equation` representing the field :math:`\phi` at current time.
 		phi_prv : obj
-			:class:`gridtools.Equation` representing the provisional value for :math:`\phi`, i.e., :math:`\phi` stepped disregarding 
-			the vertical advection.
+			:class:`gridtools.Equation` representing the provisional value for :math:`\phi`, i.e., :math:`\phi` stepped 
+			disregarding the vertical advection.
 
 		Return
 		------
@@ -1114,7 +1114,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		phi_name = phi_now.get_name()
 		phi_prd_name = phi_name + '_prd'
 		phi_prd = gt.Equation(name = phi_prd_name)
-		phi_prd[i, j, k] = phi_prv[i, j, k] - dt * (w[i, j, k+1] * phi_now[i, j, k+1] -
+		phi_prd[i, j, k] = phi_prv[i, j, k] - dt * (w[i, j, k-1] * phi_now[i, j, k-1] -
 											  	 	w[i, j,   k] * phi_now[i, j,   k]) / self._grid.dz
 		return phi_prd	
 
@@ -1296,5 +1296,5 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		phi_name = phi_now.get_name()
 		flux_name = 'flux_' + phi_name + '_z'
 		flux = gt.Equation(name = flux_name)
-		flux[i, j, k] = 0.5 * (w[i, j, k+1] * phi_now[i, j, k+1] + w[i, j, k] * phi_prd[i, j, k])
+		flux[i, j, k] = 0.5 * (w[i, j, k-1] * phi_now[i, j, k-1] + w[i, j, k] * phi_prd[i, j, k])
 		return flux

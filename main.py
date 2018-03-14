@@ -47,7 +47,8 @@ dycore = DynamicalCore.factory(nl.model, nl.time_scheme, nl.flux_scheme, nl.hori
 				 		  	   nl.smooth_on, nl.smooth_type, nl.smooth_damp_depth, 
 							   nl.smooth_coeff, nl.smooth_coeff_max, 
 				 		  	   nl.smooth_moist_on, nl.smooth_moist_type, nl.smooth_moist_damp_depth, 
-							   nl.smooth_moist_coeff, nl.smooth_moist_coeff_max)
+							   nl.smooth_moist_coeff, nl.smooth_moist_coeff_max,
+							   nl.coupling_physics_dynamics_on, nl.sedimentation_on)
 
 stop = time.time()
 print('Dycore instantiated in {} ms.\n'.format((stop-start) * 1000.))

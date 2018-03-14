@@ -96,6 +96,11 @@ Numerical settings:
 	* :data:`namelist.smooth_coeff_moist_max`: Maximum value for the smoothing coefficient for the moisture components when \
 		smoothing vertical damping is enabled.
 
+Microphysics settings:
+	* :data:`namelist.coupling_physics_dynamics_on`: :obj:`True` to couple physics with dynamics, i.e., to take the change over \
+		time in potential temperature, :obj:`False` otherwise.
+	* :data:`namelist.sedimentation_on`: :obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
+
 Simulation settings:
 	* :data:`namelist.dt`: :class:`datetime.timedelta` object representing the timestep.
 	* :data:`namelist.initial_time`: :class:`datetime.datetime` representing the initial simulation time.
@@ -180,6 +185,12 @@ smooth_moist_type       = 'first_order'
 smooth_moist_damp_depth = 30
 smooth_moist_coeff      = .05
 smooth_moist_coeff_max  = .25
+
+#
+# Microphysics settings
+#
+coupling_physics_dynamics_on = True
+sedimentation_on	         = False
 
 #
 # Simulation settings

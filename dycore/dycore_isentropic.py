@@ -27,7 +27,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				 smooth_coeff = .03, smooth_coeff_max = .24, 
 				 smooth_moist_on = False, smooth_moist_type = 'first_order', smooth_moist_damp_depth = 10,
 				 smooth_coeff_moist = .03, smooth_coeff_moist_max = .24,
-				 coupling_physics_dynamics_on = False, sedimentation_on = False):
+				 physics_dynamics_coupling_on = False, sedimentation_on = False):
 		"""
 		Constructor.
 
@@ -81,16 +81,19 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		smooth_coeff_moist_max : `float`, optional
 			Maximum value for the smoothing coefficient for the water constituents. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
-		if_couple_physics_dynamics : `bool`, optional
-			:bool:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
-			:bool:`False` otherwise.
-		if_sedimentation
+		physics_dynamics_coupling_on : `bool`, optional
+			:obj:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
+			:obj:`False` otherwise. Default is :obj:`False`.
+		sedimentation_on : `bool`, optional
+			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise. Default is :obj:`False`.
 		"""
 		# Call parent constructor
-		super().__init__(grid)
+		super().__init__(grid, moist_on)
 
 		# Keep track of the input parameters
-		self._moist_on, self._damp_on, self._smooth_on, self._smooth_moist_on = moist_on, damp_on, smooth_on, smooth_moist_on
+		self._damp_on, self._smooth_on, self._smooth_moist_on = damp_on, smooth_on, smooth_moist_on
+		self._physics_dynamics_coupling_on = physics_dynamics_coupling_on
+		self._sedimentation_on = sedimentation_on
 
 		# Instantiate the class implementing the prognostic part of the dycore
 		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, moist_on, backend)
@@ -495,7 +498,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V_now = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		state_new = self._prognostic.step_without_vertical_advection(dt, state, diagnostics)
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics)
 
 		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state
@@ -600,8 +603,13 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Qc_now = np.copy(state['cloud_liquid_water_isentropic_density'].values[:,:,:,0])
 			Qr_now = np.copy(state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
-		# Perform the prognostic step
-		state_new = self._prognostic.step_without_vertical_advection(dt, state, diagnostics)
+		# Perform the prognostic step, neglecting the vertical advection
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics)
+
+		# Couple physics with dynamics
+		if self._coupling_physics_dynamics_on:
+			diagnostics = GridData(change_over_time_in_air_potential_temperature = np.zeros_like(s_now))
+			state_new = self._prognostic.step_coupling_physics_with_dynamics(dt, state_now, state_new, diagnostics)
 
 		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state

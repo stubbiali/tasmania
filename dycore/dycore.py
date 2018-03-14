@@ -15,7 +15,7 @@ class DynamicalCore(TimeStepper):
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, grid):
+	def __init__(self, grid, moist_on):
 		"""
 		Constructor.
 
@@ -23,9 +23,10 @@ class DynamicalCore(TimeStepper):
 		----------
 		grid : obj 
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		moist_on : bool
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		"""
-		# Set the underlying grid
-		self._grid = grid
+		self._grid, self._moist_on = grid, moist_on
 
 		# Initialize pointer to the object taking care of the microphysics
 		self.microphysics = None
