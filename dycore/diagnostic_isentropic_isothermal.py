@@ -30,7 +30,7 @@ class DiagnosticIsentropicIsothermal(DiagnosticIsentropic):
 	This class inherits :class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` to implement the 
 	diagnostic steps of the three-dimensional moist isentropic and isothernal dynamical core using GT4Py's stencils.
 	"""
-	def __init__(self, grid, imoist, backend):
+	def __init__(self, grid, moist_on, backend):
 		"""
 		Constructor.
 
@@ -40,19 +40,19 @@ class DiagnosticIsentropicIsothermal(DiagnosticIsentropic):
 			The temperature ([:math:`K`]).
 		grid : obj
 			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
-		imoist : bool 
+		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
 			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
 		"""
-		self._grid, self._imoist, self._backend = grid, imoist, backend
+		self._grid, self._moist_on, self._backend = grid, moist_on, backend
 
 		# The pointers to the stencil's compute function.
 		# They will be initialized the first time the entry-point methods are invoked.
 		self._stencil_diagnosing_conservative_variables = None
 		self._stencil_diagnosing_velocity_x = None
 		self._stencil_diagnosing_velocity_y = None
-		if self._imoist:
+		if self._moist_on:
 			self._stencil_diagnosing_water_constituents = None
 
 		# Assign the corresponding z-level to each grid point
