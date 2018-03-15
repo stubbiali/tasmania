@@ -25,8 +25,8 @@ Meteo-oriented utilities.
 """
 import numpy as np
 
-from namelist import cp, datatype, g, p_ref, Rd
-from utils.utils import smaller_than as lt
+from tasmania.namelist import cp, datatype, g, p_ref, Rd
+from tasmania.utils.utils import smaller_than as lt
 
 def get_isentropic_isothermal_analytical_solution(grid, x_velocity_initial, temperature, mountain_height, mountain_width,
 									   			  x_staggered = True, z_staggered = False):

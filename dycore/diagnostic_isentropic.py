@@ -24,8 +24,8 @@ import copy
 import numpy as np
 
 import gridtools as gt
-from namelist import cp, datatype, g, p_ref, Rd
-from storages.grid_data import GridData
+from tasmania.namelist import cp, datatype, g, p_ref, Rd
+from tasmania.storages.grid_data import GridData
 
 class DiagnosticIsentropic:
 	"""

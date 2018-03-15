@@ -28,7 +28,7 @@ import math
 import numpy as np
 
 import gridtools as gt
-from namelist import datatype
+from tasmania.namelist import datatype
 
 class HorizontalSmoothing:
 	"""

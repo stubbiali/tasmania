@@ -24,8 +24,8 @@ import copy
 import numpy as np
 import xarray as xr
 
-from grids.axis import Axis
-import utils.utils as utils
+from tasmania.grids.axis import Axis
+import tasmania.utils.utils as utils
 
 class GridData:
 	"""
