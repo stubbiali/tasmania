@@ -128,6 +128,3 @@ class DynamicalCore(TimeStepper):
 		if model == 'isentropic':
 			from tasmania.dycore.dycore_isentropic import DynamicalCoreIsentropic
 			return DynamicalCoreIsentropic(*args, **kwargs)
-		elif model == 'isentropic_isothermal':
-			from tasmania.dycore.dycore_isentropic_isothermal import DynamicalCoreIsentropicIsothermal
-			return DynamicalCoreIsentropicIsothermal(*args, **kwargs)
