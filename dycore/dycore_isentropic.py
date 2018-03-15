@@ -1,18 +1,17 @@
 import math
 import numpy as np
 
-from dycore.diagnostic_isentropic import DiagnosticIsentropic
-from dycore.dycore import DynamicalCore
-from dycore.horizontal_boundary import HorizontalBoundary, RelaxedSymmetricXZ, RelaxedSymmetricYZ
-from dycore.horizontal_smoothing import HorizontalSmoothing
-from dycore.prognostic_isentropic import PrognosticIsentropic
-from dycore.vertical_damping import VerticalDamping
+from tasmania.dycore.diagnostic_isentropic import DiagnosticIsentropic
+from tasmania.dycore.dycore import DynamicalCore
+from tasmania.dycore.horizontal_boundary import HorizontalBoundary, RelaxedSymmetricXZ, RelaxedSymmetricYZ
+from tasmania.dycore.horizontal_smoothing import HorizontalSmoothing
+from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
+from tasmania.dycore.vertical_damping import VerticalDamping
 import gridtools as gt
-from namelist import cp, datatype, g, p_ref, Rd
-from storages.grid_data import GridData
-from storages.state_isentropic import StateIsentropic
-from storages.state_isentropic_conservative import StateIsentropicConservative
-import utils.utils_meteo as utils_meteo
+from tasmania.namelist import cp, datatype, g, p_ref, Rd
+from tasmania.storages.grid_data import GridData
+from tasmania.storages.state_isentropic import StateIsentropic
+import tasmania.utils.utils_meteo as utils_meteo
 
 class DynamicalCoreIsentropic(DynamicalCore):
 	"""

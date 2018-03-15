@@ -4,11 +4,11 @@ import numpy as np
 from scipy.interpolate import RectBivariateSpline
 import xarray as xr
 
-from namelist import cp, datatype, g, p_ref, Rd
-from storages.grid_data import GridData
-from utils.utils import smaller_than as lt
-from utils.utils import convert_datetime64_to_datetime
-import utils.utils_plot as utils_plot
+from tasmania.namelist import cp, datatype, g, p_ref, Rd
+from tasmania.storages.grid_data import GridData
+from tasmania.utils.utils import smaller_than as lt
+from tasmania.utils.utils import convert_datetime64_to_datetime
+import tasmania.utils.utils_plot as utils_plot
 
 class StateIsentropic(GridData):
 	"""
@@ -294,10 +294,10 @@ class StateIsentropic(GridData):
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, :, z_level, time_level]
 		elif field_to_plot == 'horizontal_velocity':
-			u = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
-			v = self._vars['y_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
+			u = self._vars['x_momentum_isentropic'].values[:, :, z_level, time_level] / \
+				self._vars['air_isentropic_density'].values[:, :, z_level, time_level] 
+			v = self._vars['y_momentum_isentropic'].values[:, :, z_level, time_level] / \
+				self._vars['air_isentropic_density'].values[:, :, z_level, time_level] 
 			var = np.sqrt(u ** 2 + v ** 2)
 		else:
 			raise RuntimeError('Unknown field to plot.')

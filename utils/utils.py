@@ -7,6 +7,8 @@ import numpy as np
 import os
 import shutil
 
+from tasmania.namelist import tol as _tol
+
 def equal_to(a, b, tol = None):
 	"""
 	Compare floating point numbers (or arrays of floating point numbers), properly accounting for round-off errors.
@@ -26,7 +28,6 @@ def equal_to(a, b, tol = None):
 		:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
-		from namelist import tol as _tol
 		tol = _tol
 	return math.fabs(a - b) <= tol
 
@@ -49,7 +50,6 @@ def smaller_than(a, b, tol = None):
 		:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
-		from namelist import tol as _tol
 		tol = _tol
 	return a < (b - tol)
 
@@ -72,7 +72,6 @@ def smaller_or_equal_than(a, b, tol = None):
 		:obj:`True` if :data:`a` is smaller than or equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
-		from namelist import tol as _tol
 		tol = _tol
 	return a <= (b + tol)
 
@@ -95,7 +94,6 @@ def greater_than(a, b, tol = None):
 		:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
-		from namelist import tol as _tol
 		tol = _tol
 	return a > (b + tol)
 
@@ -118,7 +116,6 @@ def greater_or_equal_than(a, b, tol = None):
 		:obj:`True` if :data:`a` is greater than or equal to :data:`b` up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	if tol is None:
-		from namelist import tol as _tol
 		tol = _tol
 	return a >= (b - tol)
 

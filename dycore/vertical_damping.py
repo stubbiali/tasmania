@@ -6,8 +6,8 @@ import math
 import numpy as np
 
 import gridtools as gt
-from namelist import datatype
-from utils.utils import greater_or_equal_than as ge
+from tasmania.namelist import datatype
+from tasmania.utils.utils import greater_or_equal_than as ge
 
 class VerticalDamping:
 	"""

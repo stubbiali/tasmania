@@ -4,7 +4,7 @@ Classes implementing horizontal boundary conditions.
 import abc
 import numpy as np
 
-from namelist import datatype
+from tasmania.namelist import datatype
 
 class HorizontalBoundary:
 	"""

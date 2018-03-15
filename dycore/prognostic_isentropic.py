@@ -6,12 +6,12 @@ import abc
 import copy
 import numpy as np
 
-from dycore.flux_isentropic import FluxIsentropic
-from dycore.horizontal_boundary import RelaxedSymmetricXZ, RelaxedSymmetricYZ
+from tasmania.dycore.flux_isentropic import FluxIsentropic
+from tasmania.dycore.horizontal_boundary import RelaxedSymmetricXZ, RelaxedSymmetricYZ
 import gridtools as gt
-from namelist import datatype
-from storages.grid_data import GridData
-from storages.state_isentropic import StateIsentropic
+from tasmania.namelist import datatype
+from tasmania.storages.grid_data import GridData
+from tasmania.storages.state_isentropic import StateIsentropic
 
 class PrognosticIsentropic:
 	"""
@@ -596,10 +596,10 @@ class PrognosticIsentropic:
 			self._in_Qr_prv[:,:,:] = Qr_prv[:,:,:]
 
 	@abc.abstractmethod
-	def defs_stencil_stepping_coupling_physics_with_dynamics(dt, w, s_now, s_prv, U_now, U_prv, V_now, V_prv,
-															 Qv_now = None, Qv_prv = None, 
-															 Qc_now = None, Qc_prv = None,
-															 Qr_now = None, Qr_prv = None):
+	def _defs_stencil_stepping_coupling_physics_with_dynamics(dt, w, s_now, s_prv, U_now, U_prv, V_now, V_prv,
+															  Qv_now = None, Qv_prv = None, 
+															  Qc_now = None, Qc_prv = None,
+															  Qr_now = None, Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.
@@ -1046,9 +1046,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		return out_U, out_V
 
-	def defs_stencil_stepping_coupling_physics_with_dynamics(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
-															 Qv_now = None, Qc_now = None, Qr_now = None,
-															 Qv_prv = None, Qc_prv = None, Qr_prv = None):
+	def _defs_stencil_stepping_coupling_physics_with_dynamics(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
+															  Qv_now = None, Qc_now = None, Qr_now = None,
+															  Qv_prv = None, Qc_prv = None, Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.
@@ -1598,9 +1598,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		else:
 			return out_s, out_U, out_V
 
-	def defs_stencil_stepping_coupling_physics_with_dynamics(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
-															 Qv_now = None, Qc_now = None, Qr_now = None,
-															 Qv_prv = None, Qc_prv = None, Qr_prv = None):
+	def _defs_stencil_stepping_coupling_physics_with_dynamics(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
+															  Qv_now = None, Qc_now = None, Qr_now = None,
+															  Qv_prv = None, Qc_prv = None, Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.

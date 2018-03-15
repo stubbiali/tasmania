@@ -104,8 +104,8 @@ class DynamicalCore(TimeStepper):
 			Instance of the derived class implementing the specified model.
 		"""
 		if model == 'isentropic':
-			from dycore.dycore_isentropic import DynamicalCoreIsentropic
+			from tasmania.dycore.dycore_isentropic import DynamicalCoreIsentropic
 			return DynamicalCoreIsentropic(*args, **kwargs)
 		elif model == 'isentropic_isothermal':
-			from dycore.dycore_isentropic_isothermal import DynamicalCoreIsentropicIsothermal
+			from tasmania.dycore.dycore_isentropic_isothermal import DynamicalCoreIsentropicIsothermal
 			return DynamicalCoreIsentropicIsothermal(*args, **kwargs)
