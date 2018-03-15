@@ -22,7 +22,7 @@
 #
 import numpy as np
 
-import utils.utils as utils
+import tasmania.utils.utils as utils
 
 class Axis:
 	"""

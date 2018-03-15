@@ -25,12 +25,12 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-from grids.axis import Axis
-from grids.topography import Topography2d
-from grids.grid_xy import GridXY
-from namelist import datatype
-from utils.utils import smaller_than as lt
-from utils.utils import smaller_or_equal_than as le
+from tasmania.grids.axis import Axis
+from tasmania.grids.topography import Topography2d
+from tasmania.grids.grid_xy import GridXY
+from tasmania.namelist import datatype
+from tasmania.utils.utils import smaller_than as lt
+from tasmania.utils.utils import smaller_or_equal_than as le
 
 class GridXYZ():
 	"""

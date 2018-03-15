@@ -29,7 +29,7 @@ from matplotlib.offsetbox import AnchoredText
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils.utils import smaller_than as lt
+from tasmania.utils.utils import smaller_than as lt
 
 def reverse_colormap(cmap, name = None):
 	"""

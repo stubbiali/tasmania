@@ -24,8 +24,8 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-from grids.axis import Axis
-from namelist import datatype
+from tasmania.grids.axis import Axis
+from tasmania.namelist import datatype
 
 class GridXY():
 	"""

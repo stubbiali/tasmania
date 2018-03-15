@@ -35,14 +35,14 @@ import sys
 import time
 
 # Set namelist
-import utils.utils as utils
+import tasmania.utils.utils as utils
 user_namelist = None if len(sys.argv) == 1 else sys.argv[1]
 utils.set_namelist(user_namelist)
 
-from grids.grid_xyz import GridXYZ as Grid
-from dycore.dycore import DynamicalCore
-from model import Model
-import namelist as nl
+from tasmania.grids.grid_xyz import GridXYZ as Grid
+from tasmania.dycore.dycore import DynamicalCore
+from tasmania.model import Model
+import tasmania.namelist as nl
 
 #
 # Instantiate the grid

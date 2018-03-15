@@ -30,15 +30,15 @@ import numpy as np
 import sys
 import xarray as xr
 
-import namelist as nl 
-from grids.axis import Axis
-from grids.grid_xy import GridXY
-from grids.grid_xyz import GridXYZ
-from grids.grid_xz import GridXZ
-from utils.utils import equal_to as eq
-from utils.utils import smaller_than as lt
-from utils.utils import smaller_or_equal_than as le
-from utils.utils import greater_than as gt
+import tasmania.namelist as nl 
+from tasmania.grids.axis import Axis
+from tasmania.grids.grid_xy import GridXY
+from tasmania.grids.grid_xyz import GridXYZ
+from tasmania.grids.grid_xz import GridXZ
+from tasmania.utils.utils import equal_to as eq
+from tasmania.utils.utils import smaller_than as lt
+from tasmania.utils.utils import smaller_or_equal_than as le
+from tasmania.utils.utils import greater_than as gt
 
 class GalChen2d(GridXZ):
 	"""

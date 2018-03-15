@@ -66,9 +66,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import xarray as xr
 
-from namelist import datatype
-from utils.utils import equal_to as eq
-from utils.utils import smaller_than as lt
+from tasmania.namelist import datatype
+from tasmania.utils.utils import equal_to as eq
+from tasmania.utils.utils import smaller_than as lt
 
 class Topography1d:
 	"""

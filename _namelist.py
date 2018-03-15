@@ -211,7 +211,7 @@ smooth_moist_coeff_max  = .25
 #
 # Microphysics settings
 #
-coupling_physics_dynamics_on = True
+coupling_physics_dynamics_on = False
 sedimentation_on	         = False
 
 #
