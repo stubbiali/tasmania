@@ -1,0 +1,4 @@
+*.py	text
+*.pyx	text
+
+grids/parser/*
