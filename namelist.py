@@ -211,7 +211,7 @@ smooth_moist_coeff_max  = .25
 #
 # Microphysics settings
 #
-coupling_physics_dynamics_on = False
+coupling_physics_dynamics_on = True
 sedimentation_on	         = False
 
 #
@@ -227,7 +227,7 @@ initial_state_kwargs  = {
 						 'brunt_vaisala_initial': .01,
 						 'temperature': 250.,
 						}
-backend  		      = gt.mode.ALPHA
+backend  		      = gt.mode.NUMPY
 save_iterations		  = []
 save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_leapfrog_newinterface.pickle')
 tol      		      = 1.e-8		
