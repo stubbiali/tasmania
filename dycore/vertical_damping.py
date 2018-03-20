@@ -167,10 +167,10 @@ class VerticalDampingRayleigh(VerticalDamping):
 		"""
 		# The first time this method is invoked, initialize the stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi_now)
+			self._stencil_initialize(phi_now)
 
 		# Update the attributes which will carry the stencil's input field
-		self._set_inputs(dt, phi_now, phi_new, phi_ref)
+		self._stencil_set_inputs(dt, phi_now, phi_new, phi_ref)
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -180,7 +180,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 
 		return self._phi_out
 
-	def _initialize_stencil(self, phi_now):
+	def _stencil_initialize(self, phi_now):
 		"""
 		Initialize the GT4Py's stencil applying Rayleigh vertical damping.
 
@@ -221,14 +221,14 @@ class VerticalDampingRayleigh(VerticalDamping):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'phi_now': self._phi_now, 'phi_new': self._phi_new, 'phi_ref': self._phi_ref, 'R': self._rmat},
 			global_inputs = {'dt': self._dt},
 			outputs = {'phi_out': self._phi_out},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _set_inputs(self, dt, phi_now, phi_new, phi_ref):
+	def _stencil_set_inputs(self, dt, phi_now, phi_new, phi_ref):
 		"""
 		Update the attributes which stores the stencil's input fields.
 
@@ -249,7 +249,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 		self._phi_new[:,:,:] = phi_new[:,:,:]
 		self._phi_ref[:,:,:] = phi_ref[:,:,:]
 
-	def _defs_stencil(self, dt, phi_now, phi_new, phi_ref, R):
+	def _stencil_defs(self, dt, phi_now, phi_new, phi_ref, R):
 		"""
 		The GT4Py's stencil applying Rayleigh vertical damping.
 
@@ -264,6 +264,8 @@ class VerticalDampingRayleigh(VerticalDamping):
 			which the absorber will be applied.
 		phi_ref : obj
 			:class:`gridtools.Equation` representing a reference value for :math:`\phi`.
+		R : obj
+			:class:`gridtools.Equation` representing the damping coefficient.
 
 		Return
 		------

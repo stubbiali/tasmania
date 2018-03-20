@@ -29,7 +29,8 @@ Physical constants:
 	* :data:`namelist.T_sl`: Reference temperature at sea level ([:math:`K`]).
 	* :data:`namelist.beta`: Rate of increase in reference temperature with the logarithm \
 		of reference pressure ([:math:`K ~ Pa^{-1}`]).
-	* :data:`namelist.Rd`: Gas constant for dry airi ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
+	* :data:`namelist.Rd`: Gas constant for dry air ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
+	* :data:`namelist.Rv`: Gas constant for water vapor ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
 	* :data:`namelist.cp`: Specific heat of dry air at constant pressure ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
 	* :data:`namelist.g`: Mean gravitational acceleration ([:math:`m ~ s^{-2}`]). 
 
@@ -158,7 +159,8 @@ p_ref = 1.e5
 p_sl  = 1.e5
 T_sl  = 288.15
 beta  = 42.
-Rd    = 287.
+Rd    = 287.05
+Rv	  = 461.52
 cp    = 1004.
 g     = 9.81
 
