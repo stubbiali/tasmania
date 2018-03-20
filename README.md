@@ -12,12 +12,12 @@ In order to setup a suitable virtual environment where to run any `Tasmania`-rel
 1. Install `VirtualBox`, available at https://www.virtualbox.org/.
 2. Install `vagrant` from terminal by
 
-	apt-get install vagrant
+		apt-get install vagrant
 
    Admin privileges may be required.
 3. From the repo root directory, type
 
-	vagrant up --provision
+		vagrant up --provision
 		 
    This command will create a virtual machine (VM) in your system, so it may take some time (even in the order of hours).
    
