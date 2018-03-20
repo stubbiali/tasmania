@@ -280,16 +280,16 @@ class PrognosticIsentropic:
 		w = diagnostics['change_over_time_in_air_potential_temperature'].values[:,:,:,0]
 
 		# The first time this method is invoked, initialize the GT4Py's stencil
-		if self._stencil_stepping_coupling_physics_with_dynamics is None:
-			self._initialize_stencil_stepping_coupling_physics_with_dynamics(s_now)
+		if self._stencil_stepping_by_coupling_physics_with_dynamics is None:
+			self._stencil_stepping_by_coupling_physics_with_dynamics_initialize(s_now)
 
 		# Set stencil's inputs
-		self._set_inputs_of_stencil_stepping_coupling_physics_with_dynamics(dt, w,
-																			s_now, U_now, V_now, Qv_now, Qc_now, Qr_now,
-																			s_prv, U_prv, V_prv, Qv_prv, Qc_prv, Qr_prv)
+		self._stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(dt, w,
+																		 	s_now, U_now, V_now, Qv_now, Qc_now, Qr_now,
+																		 	s_prv, U_prv, V_prv, Qv_prv, Qc_prv, Qr_prv)
 
 		# Run the stencil
-		self._stencil_stepping_coupling_physics_with_dynamics.compute()
+		self._stencil_stepping_by_coupling_physics_with_dynamics.compute()
 
 		# Set the lowest and highest layers
 		self._out_s_new[:,:,:self.nb], self._out_s_new[:,:,-self.nb:] = s_prv[:,:,:self.nb], s_prv[:,:,-self.nb:]
@@ -353,7 +353,7 @@ class PrognosticIsentropic:
 		else:
 			raise ValueError('Unknown time integration scheme.')
 
-	def _allocate_inputs_of_stencils_stepping_neglecting_vertical_advection(self, s_, u_, v_):
+	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self, s_, u_, v_):
 		"""
 		Allocate the attributes which serve as inputs to the GT4Py's stencils which step the solution
 		disregarding the vertical advection.
@@ -382,7 +382,7 @@ class PrognosticIsentropic:
 			self._in_Qc_ = np.zeros_like(s_)
 			self._in_Qr_ = np.zeros_like(s_)
 
-	def _allocate_outputs_of_stencils_stepping_neglecting_vertical_advection(self, s_):
+	def _stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(self, s_):
 		"""
 		Allocate the Numpy arrays which will store the solution updated by neglecting the vertical advection.
 
@@ -402,7 +402,7 @@ class PrognosticIsentropic:
 			self._out_Qc_ = np.zeros_like(s_)
 			self._out_Qr_ = np.zeros_like(s_)
 
-	def _set_inputs_of_stencils_stepping_neglecting_vertical_advection(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_):
+	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_):
 		"""
 		Update the attributes which serve as inputs to the GT4Py's stencils which step the solution
 		disregarding the vertical advection.
@@ -456,7 +456,7 @@ class PrognosticIsentropic:
 			self._in_Qc_[:,:,:] = Qc_[:,:,:]
 			self._in_Qr_[:,:,:] = Qr_[:,:,:]
 
-	def _initialize_stencil_stepping_coupling_physics_with_dynamics(self, s):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_initialize(self, s):
 		"""
 		Initialize the GT4Py's stencil in charge of stepping the solution by coupling physics with dynamics,
 		i.e., by accounting for the change over time in potential temperature.
@@ -467,10 +467,10 @@ class PrognosticIsentropic:
 			:class:`numpy.ndarray` representing the isentropic density.
 		"""
 		# Allocate stencil's inputs
-		self._allocate_inputs_of_stencil_stepping_coupling_physics_with_dynamics(s)
+		self._stencil_stepping_by_coupling_physics_with_dynamics_allocate_inputs(s)
 
 		# Allocate stencil's outputs
-		self._allocate_outputs_of_stencil_stepping_coupling_physics_with_dynamics(s)
+		self._stencil_stepping_by_coupling_physics_with_dynamics_allocate_outputs(s)
 
 		# Instantiate stencil
 		ni, nj, nk = s.shape[0], s.shape[1], s.shape[2] - 2 * self.nb
@@ -480,8 +480,8 @@ class PrognosticIsentropic:
 
 		# Instantiate the first stencil
 		if not self._moist_on:
-			self._stencil_stepping_coupling_physics_with_dynamics = gt.NGStencil( 
-				definitions_func = self._defs_stencil_stepping_coupling_physics_with_dynamics,
+			self._stencil_stepping_by_coupling_physics_with_dynamics = gt.NGStencil( 
+				definitions_func = self._stencil_stepping_by_coupling_physics_with_dynamics_defs,
 				inputs = {'in_w': self._in_w, 'now_s': self._in_s_now, 'prv_s': self._in_s_prv, 
 						  'now_U': self._in_U_now, 'prv_U': self._in_U_prv, 
 						  'now_V': self._in_V_now, 'prv_V': self._in_V_prv},
@@ -490,8 +490,8 @@ class PrognosticIsentropic:
 				domain = _domain, 
 				mode = _mode)
 		else:
-			self._stencil_stepping_coupling_physics_with_dynamics = gt.NGStencil( 
-				definitions_func = self._defs_stencil_stepping_coupling_physics_with_dynamics,
+			self._stencil_stepping_by_coupling_physics_with_dynamics = gt.NGStencil( 
+				definitions_func = self._stencil_stepping_by_coupling_physics_with_dynamics_defs,
 				inputs = {'in_w': self._in_w, 'now_s': self._in_s_now, 'prv_s': self._in_s_prv, 
 						  'now_U': self._in_U_now, 'prv_U': self._in_U_prv, 
 						  'now_V': self._in_V_now, 'prv_V': self._in_V_prv,
@@ -504,7 +504,7 @@ class PrognosticIsentropic:
 				domain = _domain, 
 				mode = _mode)
 
-	def _allocate_inputs_of_stencil_stepping_coupling_physics_with_dynamics(self, s):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_allocate_inputs(self, s):
 		"""
 		Allocate the attributes which serve as inputs to the GT4Py's stencil which step the solution
 		by coupling physics with dynamics, i.e., accounting for the change over time in potential temperature.
@@ -538,7 +538,7 @@ class PrognosticIsentropic:
 			self._in_Qc_prv = np.zeros_like(s)
 			self._in_Qr_prv = np.zeros_like(s)
 
-	def _allocate_outputs_of_stencil_stepping_coupling_physics_with_dynamics(self, s):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_allocate_outputs(self, s):
 		"""
 		Allocate the Numpy arrays which will store the solution updated by coupling physics with dynamics.
 
@@ -555,7 +555,7 @@ class PrognosticIsentropic:
 			self._out_Qc_new = np.zeros_like(s)
 			self._out_Qr_new = np.zeros_like(s)
 
-	def _set_inputs_of_stencil_stepping_coupling_physics_with_dynamics(self, dt, w,
+	def _stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(self, dt, w,
 																	   s_now, s_prv, U_now, U_prv, V_now, V_prv,
 																	   Qv_now = None, Qv_prv = None, 
 																	   Qc_now = None, Qc_prv = None, 
@@ -620,10 +620,10 @@ class PrognosticIsentropic:
 			self._in_Qr_prv[:,:,:] = Qr_prv[:,:,:]
 
 	@abc.abstractmethod
-	def _defs_stencil_stepping_coupling_physics_with_dynamics(dt, w, s_now, s_prv, U_now, U_prv, V_now, V_prv,
-															  Qv_now = None, Qv_prv = None, 
-															  Qc_now = None, Qc_prv = None,
-															  Qr_now = None, Qr_prv = None):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_defs(dt, w, s_now, s_prv, U_now, U_prv, V_now, V_prv,
+															  	 Qv_now = None, Qv_prv = None, 
+															  	 Qc_now = None, Qc_prv = None,
+															  	 Qr_now = None, Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.

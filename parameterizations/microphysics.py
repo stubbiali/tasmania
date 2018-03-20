@@ -24,7 +24,6 @@ import abc
 import numpy as np
 
 import gridtools as gt
-from sympl import Diagnostic
 
 class Microphysics(Diagnostic):
 	"""

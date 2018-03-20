@@ -1,0 +1,1 @@
+{"rsync":{"/vagrant":{"type":"rsync","guestpath":"/vagrant","hostpath":"/home/stefano/Desktop/phd/tasmania","disabled":false,"__vagrantfile":true,"owner":"vagrant","group":"vagrant"}},"virtualbox":{"/home/vagrant/tasmania":{"guestpath":"/home/vagrant/tasmania","hostpath":"/home/stefano/Desktop/phd/tasmania","disabled":false,"__vagrantfile":true}}}

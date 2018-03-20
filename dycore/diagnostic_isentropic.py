@@ -126,10 +126,10 @@ class DiagnosticIsentropic:
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_water_constituents_isentropic_density is None:
-			self._initialize_stencil_diagnosing_water_constituents_isentropic_density()
+			self._stencil_diagnosing_water_constituents_isentropic_density_initialize()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_water_constituents_isentropic_density(s, qv, qc, qr)
+		self._stencil_diagnosing_water_constituents_isentropic_density_set_inputs(s, qv, qc, qr)
 
 		# Run the stencil's compute function
 		self._stencil_diagnosing_water_constituents_isentropic_density.compute()
@@ -186,11 +186,11 @@ class DiagnosticIsentropic:
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_velocity_x is None:
-			self._initialize_stencil_diagnosing_velocity_x()
-			self._initialize_stencil_diagnosing_velocity_y()
+			self._stencil_diagnosing_velocity_x_initialize()
+			self._stencil_diagnosing_velocity_y_initialize()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencils_diagnosing_velocity(s, U, V)
+		self._stencils_diagnosing_velocity_set_inputs(s, U, V)
 
 		# Run the stencils' compute functions
 		self._stencil_diagnosing_velocity_x.compute()
@@ -240,10 +240,10 @@ class DiagnosticIsentropic:
 
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air is None:
-			self._initialize_stencil_diagnosing_mass_fraction_of_water_constituents_in_air()
+			self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air_initialize()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(s, Qv, Qc, Qr)
+		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air_set_inputs(s, Qv, Qc, Qr)
 
 		# Run the stencils' compute functions
 		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air.compute()
@@ -285,12 +285,12 @@ class DiagnosticIsentropic:
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_air_pressure is None:
-			self._initialize_stencil_diagnosing_air_pressure()
-			self._initialize_stencil_diagnosing_montgomery()
-			self._initialize_stencil_diagnosing_height()
+			self._stencil_diagnosing_air_pressure_initialize()
+			self._stencil_diagnosing_montgomery_initialize()
+			self._stencil_diagnosing_height_initialize()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
-		self._set_inputs_to_stencil_diagnosing_air_pressure(s)
+		self._stencil_diagnosing_air_pressure_set_inputs(s)
 
 		# Apply upper boundary condition on pressure
 		self._out_p[:, :, 0] = pt
@@ -346,10 +346,10 @@ class DiagnosticIsentropic:
 
 		# If it is the first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil_diagnosing_air_density is None:
-			self._initialize_stencil_diagnosing_air_density()
+			self._stencil_diagnosing_air_density_initialize()
 
 		# Update the attributes which serve as inputs to the stencil
-		self._set_inputs_to_stencil_diagnosing_air_density(s, h)
+		self._stencil_diagnosing_air_density_set_inputs(s, h)
 
 		# Run the stencil's compute function
 		self._stencil_diagnosing_air_density.compute()
@@ -389,7 +389,7 @@ class DiagnosticIsentropic:
 		return out
 
 
-	def _initialize_stencil_diagnosing_water_constituents_isentropic_density(self):
+	def _stencil_diagnosing_water_constituents_isentropic_density_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the isentropic density of each water constituent.
 		"""
@@ -410,13 +410,13 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_water_constituents_isentropic_density = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_water_constituents_isentropic_density,
+			definitions_func = self._stencil_diagnosing_water_constituents_isentropic_density_defs,
 			inputs = {'in_s': self._in_s, 'in_qv': self._in_qv, 'in_qc': self._in_qc, 'in_qr': self._in_qr},
 			outputs = {'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _set_inputs_to_stencil_diagnosing_water_constituents_isentropic_density(self, s, qv, qc, qr):	
+	def _stencil_diagnosing_water_constituents_isentropic_density_set_inputs(self, s, qv, qc, qr):	
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses 
 		the isentropic density of each water constituent.
@@ -440,7 +440,7 @@ class DiagnosticIsentropic:
 		self._in_qc[:,:,:] = qc[:,:,:]
 		self._in_qr[:,:,:] = qr[:,:,:]
 
-	def _defs_stencil_diagnosing_water_constituents_isentropic_density(self, in_s, in_qv, in_qc, in_qr):
+	def _stencil_diagnosing_water_constituents_isentropic_density_defs(self, in_s, in_qv, in_qc, in_qr):
 		"""
 		GT4Py's stencil diagnosing the isentropic density of each water constituent, i.e., 
 		:math:`Q_v`, :math:`Q_c` and :math:`Q_r`.
@@ -483,7 +483,7 @@ class DiagnosticIsentropic:
 		return out_Qv, out_Qc, out_Qr
 
 
-	def _initialize_stencil_diagnosing_velocity_x(self):
+	def _stencil_diagnosing_velocity_x_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the :math:`x`-component of the velocity.
 		"""
@@ -500,13 +500,13 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_velocity_x = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_velocity_x,
+			definitions_func = self._stencil_diagnosing_velocity_x_defs,
 			inputs = {'in_s': self._in_s, 'in_U': self._in_U},
 			outputs = {'out_u': self._out_u},
 			domain = gt.domain.Rectangle((1, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _initialize_stencil_diagnosing_velocity_y(self):
+	def _stencil_diagnosing_velocity_y_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the :math:`y`-component of the velocity.
 		"""
@@ -523,13 +523,13 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_velocity_y = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_velocity_y,
+			definitions_func = self._stencil_diagnosing_velocity_y_defs,
 			inputs = {'in_s': self._in_s, 'in_V': self._in_V},
 			outputs = {'out_v': self._out_v},
 			domain = gt.domain.Rectangle((0, 1, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _set_inputs_to_stencils_diagnosing_velocity(self, s, U, V):
+	def _stencils_diagnosing_velocity_set_inputs(self, s, U, V):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencils which diagnose 
 		the velocity components.
@@ -547,7 +547,7 @@ class DiagnosticIsentropic:
 		self._in_U[:,:,:] = U[:,:,:]
 		self._in_V[:,:,:] = V[:,:,:]
 
-	def _defs_stencil_diagnosing_velocity_x(self, in_s, in_U):
+	def _stencil_diagnosing_velocity_x_defs(self, in_s, in_U):
 		"""
 		GT4Py's stencil diagnosing the :math:`x`-component of the velocity.
 
@@ -576,7 +576,7 @@ class DiagnosticIsentropic:
 
 		return out_u
 
-	def _defs_stencil_diagnosing_velocity_y(self, in_s, in_V):
+	def _stencil_diagnosing_velocity_y_defs(self, in_s, in_V):
 		"""
 		GT4Py's stencil diagnosing the :math:`y`-component of the velocity.
 
@@ -606,7 +606,7 @@ class DiagnosticIsentropic:
 		return out_v
 
 
-	def _initialize_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(self):
+	def _stencil_diagnosing_mass_fraction_of_water_constituents_in_air_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the mass fraction of each water constituent.
 		"""
@@ -627,13 +627,13 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_mass_fraction_of_water_constituents_in_air,
+			definitions_func = self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air_defs,
 			inputs = {'in_s': self._in_s, 'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
 			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
 
-	def _set_inputs_to_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(self, s, Qv, Qc, Qr):
+	def _stencil_diagnosing_mass_fraction_of_water_constituents_in_air_set_inputs(self, s, Qv, Qc, Qr):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnose 
 		the mass fraction of each water constituent.
@@ -655,7 +655,7 @@ class DiagnosticIsentropic:
 		self._in_Qr[:,:,:] = Qr[:,:,:]
 
 
-	def _defs_stencil_diagnosing_mass_fraction_of_water_constituents_in_air(self, in_s, in_Qv, in_Qc, in_Qr):
+	def _stencil_diagnosing_mass_fraction_of_water_constituents_in_air_defs(self, in_s, in_Qv, in_Qc, in_Qr):
 		"""
 		GT4Py's stencil diagnosing the mass fraction of each water constituent.
 
@@ -701,7 +701,7 @@ class DiagnosticIsentropic:
 		return out_qv, out_qc, out_qr
 
 
-	def _initialize_stencil_diagnosing_air_pressure(self):
+	def _stencil_diagnosing_air_pressure_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the pressure.
 		"""
@@ -718,14 +718,14 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_air_pressure = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_air_pressure,
+			definitions_func = self._stencil_diagnosing_air_pressure_defs,
 			inputs = {'in_s': self._in_s, 'in_p': self._in_p},
 			outputs = {'out_p': self._out_p},
 			domain = gt.domain.Rectangle((0, 0, 1), (nx - 1, ny - 1, nz)),
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.FORWARD)
 
-	def _initialize_stencil_diagnosing_montgomery(self):
+	def _stencil_diagnosing_montgomery_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the Montgomery potential.
 		"""
@@ -739,14 +739,14 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_montgomery = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_montgomery,
+			definitions_func = self._stencil_diagnosing_montgomery_defs,
 			inputs = {'in_exn': self._out_exn, 'in_mtg': self._in_mtg},
 			outputs = {'out_mtg': self._out_mtg},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 2)),
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.BACKWARD)
 	
-	def _initialize_stencil_diagnosing_height(self):
+	def _stencil_diagnosing_height_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the geometric height of the half-level isentropes.
 		"""
@@ -759,14 +759,14 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_height = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_height,
+			definitions_func = self._stencil_diagnosing_height_defs,
 			inputs = {'in_theta': self._theta, 'in_exn': self._out_exn, 'in_p': self._out_p, 'in_h': self._in_h},
 			outputs = {'out_h': self._out_h},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode = self._backend,
 			vertical_direction = gt.vertical_direction.BACKWARD)
 
-	def _set_inputs_to_stencil_diagnosing_air_pressure(self, s):
+	def _stencil_diagnosing_air_pressure_set_inputs(self, s):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the pressure.
 
@@ -777,7 +777,7 @@ class DiagnosticIsentropic:
 		"""
 		self._in_s[:,:,:] = s[:,:,:]
 	
-	def _defs_stencil_diagnosing_air_pressure(self, in_s, in_p):
+	def _stencil_diagnosing_air_pressure_defs(self, in_s, in_p):
 		"""
 		GT4Py's stencil diagnosing the pressure.
 
@@ -806,7 +806,7 @@ class DiagnosticIsentropic:
 
 		return out_p
 
-	def _defs_stencil_diagnosing_montgomery(self, in_exn, in_mtg):
+	def _stencil_diagnosing_montgomery_defs(self, in_exn, in_mtg):
 		"""
 		GT4Py's stencil diagnosing the Exner function.
 
@@ -835,7 +835,7 @@ class DiagnosticIsentropic:
 
 		return out_mtg
 
-	def _defs_stencil_diagnosing_height(self, in_theta, in_exn, in_p, in_h):
+	def _stencil_diagnosing_height_defs(self, in_theta, in_exn, in_p, in_h):
 		"""
 		GT4Py's stencil diagnosing the geometric height of the isentropes.
 
@@ -872,7 +872,7 @@ class DiagnosticIsentropic:
 		return out_h
 
 
-	def _initialize_stencil_diagnosing_air_density(self):
+	def _stencil_diagnosing_air_density_initialize(self):
 		"""
 		Initialize the GT4Py's stencil in charge of diagnosing the density.
 		"""
@@ -889,13 +889,13 @@ class DiagnosticIsentropic:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_air_density = gt.NGStencil( 
-			definitions_func = self._defs_stencil_diagnosing_air_density,
+			definitions_func = self._stencil_diagnosing_air_density_defs,
 			inputs = {'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._in_h},
 			outputs = {'out_rho': self._out_rho},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode = self._backend)
 
-	def _set_inputs_to_stencil_diagnosing_air_density(self, s, h):
+	def _stencil_diagnosing_air_density_set_inputs(self, s, h):
 		"""
 		Update the private instance attributes which serve as inputs to the GT4Py's stencil which diagnoses the density.
 
@@ -909,7 +909,7 @@ class DiagnosticIsentropic:
 		self._in_s[:,:,:] = s[:,:,:]
 		self._in_h[:,:,:] = h[:,:,:]
 	
-	def _defs_stencil_diagnosing_air_density(self, in_theta, in_s, in_h):
+	def _stencil_diagnosing_air_density_defs(self, in_theta, in_s, in_h):
 		"""
 		GT4Py's stencil diagnosing the density.
 

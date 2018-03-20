@@ -84,7 +84,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		# The pointers to the stencil's compute function
 		# This will be re-directed when the forward method is invoked for the first time
-		self._stencil_stepping_neglecting_vertical_advection = None
+		self._stencil_stepping_by_neglecting_vertical_advection = None
 
 	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
 		"""
@@ -196,15 +196,15 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._Qr_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr_old)
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
-		if self._stencil_stepping_neglecting_vertical_advection is None:
-			self._initialize_stencil_stepping_neglecting_vertical_advection(s_, u_, v_)
+		if self._stencil_stepping_by_neglecting_vertical_advection is None:
+			self._stencil_stepping_by_neglecting_vertical_advection_initialize(s_, u_, v_)
 
 		# Update the attributes which serve as inputs to the first GT4Py's stencil
-		self._set_inputs_of_stencils_stepping_neglecting_vertical_advection(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
+		self._set_stencils_stepping_by_neglecting_vertical_advection_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
 			self._s_old_, self._U_old_, self._V_old_, self._Qv_old_, self._Qc_old_, self._Qr_old_)
 		
 		# Run the stencil's compute function
-		self._stencil_stepping_neglecting_vertical_advection.compute()
+		self._stencil_stepping_by_neglecting_vertical_advection.compute()
 		
 		# Bring the updated prognostic variables back to the original dimensions
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -252,7 +252,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		return state_new
 
-	def _initialize_stencil_stepping_neglecting_vertical_advection(self, s_, u_, v_):
+	def _stencil_stepping_by_neglecting_vertical_advection_initialize(self, s_, u_, v_):
 		"""
 		Initialize the GT4Py's stencil implementing the centered time-integration scheme.
 
@@ -266,10 +266,10 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity at current time.
 		"""
 		# Allocate the attributes which will serve as inputs to the stencil
-		self._allocate_inputs_of_stencils_stepping_neglecting_vertical_advection(s_, u_, v_)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(s_, u_, v_)
 
 		# Allocate the Numpy arrays which will store the output fields
-		self._allocate_outputs_of_stencils_stepping_neglecting_vertical_advection(s_)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(s_)
 
 		# Set the computational domain and the backend
 		ni, nj, nk = s_.shape[0] - 2 * self.nb, s_.shape[1] - 2 * self.nb, s_.shape[2]
@@ -279,8 +279,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		# Instantiate the stencil
 		if not self._moist_on:
-			self._stencil_stepping_neglecting_vertical_advection = gt.NGStencil( 
-				definitions_func = self._defs_stencil_stepping_neglecting_vertical_advection,
+			self._stencil_stepping_by_neglecting_vertical_advection = gt.NGStencil( 
+				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_defs,
 				inputs = {'in_s': self._in_s_, 'in_u': self._in_u_, 'in_v': self._in_v_, 
 						  'in_mtg': self._in_mtg_, 'in_U': self._in_U_, 'in_V': self._in_V_,
 						  'old_s': self._old_s_, 'old_U': self._old_U_, 'old_V': self._old_V_},
@@ -289,8 +289,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 				domain = _domain, 
 				mode = _mode)
 		else:
-			self._stencil_stepping_neglecting_vertical_advection = gt.NGStencil( 
-				definitions_func = self._defs_stencil_stepping_neglecting_vertical_advection,
+			self._stencil_stepping_by_neglecting_vertical_advection = gt.NGStencil( 
+				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_defs,
 				inputs = {'in_s': self._in_s_, 'in_u': self._in_u_, 'in_v': self._in_v_, 
 						  'in_mtg': self._in_mtg_, 'in_U': self._in_U_, 'in_V': self._in_V_,
 						  'in_Qv': self._in_Qv_, 'in_Qc': self._in_Qc_, 'in_Qr': self._in_Qr_,
@@ -302,7 +302,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 				domain = _domain, 
 				mode = _mode)
 
-	def _allocate_inputs_of_stencils_stepping_neglecting_vertical_advection(self, s_, u_, v_):
+	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self, s_, u_, v_):
 		"""
 		Allocate the attributes which will serve as inputs to the GT4Py's stencil.
 
@@ -317,7 +317,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		"""
 		# Instantiate a GT4Py's Global representing the timestep and the Numpy arrays
 		# which will carry the solution at the current time step
-		super()._allocate_inputs_of_stencils_stepping_neglecting_vertical_advection(s_, u_, v_)
+		super()._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(s_, u_, v_)
 
 		# Allocate the Numpy arrays which will carry the solution at the previous time step
 		self._old_s_ = np.zeros_like(s_)
@@ -328,8 +328,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._old_Qc_ = np.zeros_like(s_)
 			self._old_Qr_ = np.zeros_like(s_)
 
-	def _set_inputs_of_stencils_stepping_neglecting_vertical_advection(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
-																		s_old_, U_old_, V_old_, Qv_old_, Qc_old_, Qr_old_):
+	def _set_stencils_stepping_by_neglecting_vertical_advection_inputs(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
+																	   s_old_, U_old_, V_old_, Qv_old_, Qc_old_, Qr_old_):
 		"""
 		Update the attributes which serve as inputs to the GT4Py's stencil.
 
@@ -384,7 +384,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			at the previous time level.
 		"""
 		# Update the time step and the Numpy arrays carrying the current solution
-		super()._set_inputs_of_stencils_stepping_neglecting_vertical_advection(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
+		super()._set_stencils_stepping_by_neglecting_vertical_advection_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
 		
 		# Update the Numpy arrays carrying the solution at the previous time step
 		self._old_s_[:,:,:] = s_old_[:,:,:]
@@ -395,10 +395,10 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._old_Qc_[:,:,:] = Qc_old_[:,:,:]
 			self._old_Qr_[:,:,:] = Qr_old_[:,:,:]
 
-	def _defs_stencil_stepping_neglecting_vertical_advection(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
-															 old_s, old_U, old_V,
-					  										 in_Qv = None, in_Qc = None, in_Qr = None, 
-															 old_Qv = None, old_Qc = None, old_Qr = None):
+	def _stencil_stepping_by_neglecting_vertical_advection_defs(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
+															 	old_s, old_U, old_V,
+					  										 	in_Qv = None, in_Qc = None, in_Qr = None, 
+															 	old_Qv = None, old_Qc = None, old_Qr = None):
 		"""
 		GT4Py's stencil implementing the centered time-integration scheme.
 
@@ -495,9 +495,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		else:
 			return out_s, out_U, out_V
 
-	def _defs_stencil_stepping_coupling_physics_with_dynamics(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
-															  Qv_now = None, Qc_now = None, Qr_now = None,
-															  Qv_prv = None, Qc_prv = None, Qr_prv = None):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_defs(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
+															  	 Qv_now = None, Qc_now = None, Qr_now = None,
+															  	 Qv_prv = None, Qc_prv = None, Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.
