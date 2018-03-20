@@ -55,8 +55,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		# The pointers to the stencils' compute function
 		# They will be re-directed when the forward method is invoked for the first time
-		self._stencil_stepping_neglecting_vertical_advection_first = None
-		self._stencil_stepping_neglecting_vertical_advection_second = None
+		self._stencil_stepping_by_neglecting_vertical_advection_first = None
+		self._stencil_stepping_by_neglecting_vertical_advection_second = None
 
 	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
 		"""
@@ -134,15 +134,15 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		Qr_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr)
 
 		# The first time this method is invoked, initialize the GT4Py's stencils
-		if self._stencil_stepping_neglecting_vertical_advection_first is None:
-			self._initialize_stencils_stepping_neglecting_vertical_advection(s_, u_, v_)
+		if self._stencil_stepping_by_neglecting_vertical_advection_first is None:
+			self._stencils_stepping_by_neglecting_vertical_advection_initialize(s_, u_, v_)
 
 		# Update the attributes which serve as inputs to the first GT4Py's stencil
-		self._set_inputs_of_stencils_stepping_neglecting_vertical_advection(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
+		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
 		
 		# Run the compute function of the stencil stepping the isentropic density and the water constituents,
 		# and providing provisional values for the momentums
-		self._stencil_stepping_neglecting_vertical_advection_first.compute()
+		self._stencil_stepping_by_neglecting_vertical_advection_first.compute()
 
 		# Bring the updated density and water constituents back to the original dimensions
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -173,7 +173,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._prv_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,0])
 
 		# Run the compute function of the stencil stepping the momentums
-		self._stencil_stepping_neglecting_vertical_advection_second.compute()
+		self._stencil_stepping_by_neglecting_vertical_advection_second.compute()
 
 		# Bring the momentums back to the original dimensions
 		if type(self.boundary) == RelaxedSymmetricXZ:
@@ -200,7 +200,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		return state_new
 
-	def _initialize_stencils_stepping_neglecting_vertical_advection(self, s_, u_, v_):
+	def _stencils_stepping_by_neglecting_vertical_advection_initialize(self, s_, u_, v_):
 		"""
 		Initialize the GT4Py's stencils implementing the forward Euler scheme.
 
@@ -217,13 +217,13 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			at current time.
 		"""
 		# Allocate the Numpy arrays which will serve as inputs to the first stencil
-		self._allocate_inputs_of_stencils_stepping_neglecting_vertical_advection(s_, u_, v_)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(s_, u_, v_)
 
 		# Allocate the Numpy arrays which will store temporary fields
-		self._allocate_temporaries_of_stencils_stepping_neglecting_vertical_advection(s_)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(s_)
 
 		# Allocate the Numpy arrays which will store the output fields
-		self._allocate_outputs_of_stencils_stepping_neglecting_vertical_advection(s_)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(s_)
 
 		# Set the computational domain and the backend
 		ni, nj, nk = s_.shape[0] - 2 * self.nb, s_.shape[1] - 2 * self.nb, s_.shape[2]
@@ -233,8 +233,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		# Instantiate the first stencil
 		if not self._moist_on:
-			self._stencil_stepping_neglecting_vertical_advection_first = gt.NGStencil( 
-				definitions_func = self._defs_stencil_stepping_neglecting_vertical_advection_first,
+			self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
+				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
 				inputs = {'in_s': self._in_s_, 'in_u': self._in_u_, 'in_v': self._in_v_, 
 						  'in_mtg': self._in_mtg_, 'in_U': self._in_U_, 'in_V': self._in_V_},
 				global_inputs = {'dt': self._dt},
@@ -242,8 +242,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 				domain = _domain, 
 				mode = _mode)
 		else:
-			self._stencil_stepping_neglecting_vertical_advection_first = gt.NGStencil( 
-				definitions_func = self._defs_stencil_stepping_neglecting_vertical_advection_first,
+			self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
+				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
 				inputs = {'in_s': self._in_s_, 'in_u': self._in_u_, 'in_v': self._in_v_, 
 						  'in_mtg': self._in_mtg_, 'in_U': self._in_U_, 'in_V': self._in_V_,  
 						  'in_Qv': self._in_Qv_, 'in_Qc': self._in_Qc_, 'in_Qr': self._in_Qr_},
@@ -254,15 +254,15 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 				mode = _mode)
 
 		# Instantiate the second stencil
-		self._stencil_stepping_neglecting_vertical_advection_second = gt.NGStencil( 
-			definitions_func = self._defs_stencil_stepping_neglecting_vertical_advection_second,
+		self._stencil_stepping_by_neglecting_vertical_advection_second = gt.NGStencil( 
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_second_defs,
 			inputs = {'in_s': self._prv_s, 'in_mtg': self._prv_mtg, 'in_U': self._prv_U, 'in_V': self._prv_V},
 			global_inputs = {'dt': self._dt},
 			outputs = {'out_U': self._out_U_, 'out_V': self._out_V_},
 			domain = _domain, 
 			mode = _mode)
 
-	def _allocate_temporaries_of_stencils_stepping_neglecting_vertical_advection(self, s_):
+	def _stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(self, s_):
 		"""
 		Allocate the Numpy arrays which will store temporary fields.
 
@@ -277,8 +277,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._prv_s   = np.zeros_like(s_)
 		self._prv_mtg = np.zeros_like(s_)
 
-	def _defs_stencil_stepping_neglecting_vertical_advection_first(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
-					  											   in_Qv = None, in_Qc = None, in_Qr = None):
+	def _stencil_stepping_by_neglecting_vertical_advection_first_defs(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
+					  											   	  in_Qv = None, in_Qc = None, in_Qr = None):
 		"""
 		GT4Py's stencil stepping the isentropic density and the water constituents via the forward Euler scheme.
 		Further, it computes provisional values for the momentums, i.e., it updates the momentums disregarding
@@ -363,7 +363,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		else:
 			return out_s, out_U, out_V
 
-	def _defs_stencil_stepping_neglecting_vertical_advection_second(self, dt, in_s, in_mtg, in_U, in_V):
+	def _stencil_stepping_by_neglecting_vertical_advection_second_defs(self, dt, in_s, in_mtg, in_U, in_V):
 		"""
 		GT4Py's stencil stepping the momentums via a one-time-level scheme.
 
@@ -402,9 +402,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		return out_U, out_V
 
-	def _defs_stencil_stepping_coupling_physics_with_dynamics(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
-															  Qv_now = None, Qc_now = None, Qr_now = None,
-															  Qv_prv = None, Qc_prv = None, Qr_prv = None):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_defs(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
+															  	 Qv_now = None, Qc_now = None, Qr_now = None,
+															  	 Qv_prv = None, Qc_prv = None, Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.

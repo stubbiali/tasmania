@@ -80,13 +80,13 @@ Numerical fluxes
 .. autoclass:: dycore.flux_isentropic.FluxIsentropic
    :members:
 
-.. autoclass:: dycore.flux_isentropic.FluxIsentropicUpwind
+.. autoclass:: dycore.flux_isentropic_upwind.FluxIsentropicUpwind
    :members:
 
-.. autoclass:: dycore.flux_isentropic.FluxIsentropicCentered
+.. autoclass:: dycore.flux_isentropic_centered.FluxIsentropicCentered
    :members:
 
-.. autoclass:: dycore.flux_isentropic.FluxIsentropicMacCormack
+.. autoclass:: dycore.flux_isentropic_maccormack.FluxIsentropicMacCormack
    :members:
 
 Prognostics
@@ -95,10 +95,10 @@ Prognostics
 .. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropic
    :members:
 
-.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicForwardEuler
+.. autoclass:: dycore.prognostic_isentropic_forward_euler.PrognosticIsentropicForwardEuler
    :members:
 
-.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropicCentered
+.. autoclass:: dycore.prognostic_isentropic_centered.PrognosticIsentropicCentered
    :members:
 
 Wave absorber
@@ -162,6 +162,25 @@ Namelist
    :members:
 
 
+Parameterizations
+-----------------
+
+.. autoclass:: parameterizations.adjustment.Adjustment
+   :members:
+
+.. autoclass:: parameterizations.tendency.Tendency
+   :members:
+
+Microphysics
+^^^^^^^^^^^^
+
+.. autoclass:: parameterizations.adjustment_microphysics.AdjustmentMicrophysics
+   :members:
+
+.. autoclass:: parameterizations.adjustment_microphysics.AdjustmentMicrophysicsKessler
+   :members:
+
+
 Storages
 --------
 
@@ -191,11 +210,17 @@ Parsers
 Utilities
 ---------
 
-.. automodule:: utils
+.. automodule:: utils.utils
    :members:
 
 Meteo utilities
 ^^^^^^^^^^^^^^^
 
-.. automodule:: utils_meteo
+.. automodule:: utils.utils_meteo
+   :members:
+
+Plotting utilities
+^^^^^^^^^^^^^^^^^^
+
+.. automodule:: utils.utils_plot
    :members:

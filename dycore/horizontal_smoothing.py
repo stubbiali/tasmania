@@ -60,7 +60,7 @@ class HorizontalSmoothing:
 		# Allocate memory for the stencil's output field
 		self._out_phi = np.zeros(dims, dtype = datatype)
 
-		# Initialize pointer to stencil; this will be correctly re-directed the first time 
+		# Initialize pointer to stencil; this will be properly re-directed the first time 
 		# the entry-point method apply is invoked
 		self._stencil = None
 
@@ -184,7 +184,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi)
+			self._stencil_initialize(phi)
 
 		# Update the Numpy array representing the stencil's input field
 		self._in_phi[:,:,:] = phi[:,:,:]
@@ -200,7 +200,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 		
 		return self._out_phi
 
-	def _initialize_stencil(self, phi):
+	def _stencil_initialize(self, phi):
 		"""
 		Initialize the GT4Py's stencil applying horizontal smoothing.
 
@@ -215,13 +215,13 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs = {'out_phi': self._out_phi},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _defs_stencil(self, in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma):
 		"""
 		The GT4Py's stencil applying first-order horizontal smoothing. A centered 5-points formula is used.
 
@@ -301,7 +301,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi)
+			self._stencil_initialize(phi)
 
 		# Update the Numpy array representing the stencil's input field
 		self._in_phi[:,:,:] = phi[:,:,:]
@@ -315,7 +315,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		
 		return self._out_phi
 
-	def _initialize_stencil(self, phi):
+	def _stencil_initialize(self, phi):
 		"""
 		Initialize the GT4Py's stencil applying horizontal smoothing.
 
@@ -330,13 +330,13 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs = {'out_phi': self._out_phi},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _defs_stencil(self, in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma):
 		"""
 		The GT4Py's stencil applying horizontal smoothing. A standard centered 3-points formula is used.
 
@@ -416,7 +416,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi)
+			self._stencil_initialize(phi)
 
 		# Update the Numpy array representing the stencil's input field
 		self._in_phi[:,:,:] = phi[:,:,:]
@@ -430,7 +430,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 		
 		return self._out_phi
 
-	def _initialize_stencil(self, phi):
+	def _stencil_initialize(self, phi):
 		"""
 		Initialize the GT4Py's stencil applying horizontal smoothing.
 
@@ -445,13 +445,13 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs = {'out_phi': self._out_phi},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _defs_stencil(self, in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma):
 		"""
 		The GT4Py's stencil applying horizontal smoothing. A standard centered 3-points formula is used.
 
@@ -531,7 +531,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi)
+			self._stencil_initialize(phi)
 
 		# Update the Numpy array representing the stencil's input field
 		self._in_phi[:,:,:] = phi[:,:,:]
@@ -551,7 +551,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		
 		return self._out_phi
 
-	def _initialize_stencil(self, phi):
+	def _stencil_initialize(self, phi):
 		"""
 		Initialize the GT4Py's stencil applying horizontal smoothing.
 
@@ -566,13 +566,13 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs = {'out_phi': self._out_phi},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _defs_stencil(self, in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma):
 		"""
 		The GT4Py's stencil applying horizontal smoothing. A standard centered 5-points formula is used.
 
@@ -655,7 +655,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi)
+			self._stencil_initialize(phi)
 
 		# Update the Numpy array representing the stencil's input field
 		self._in_phi[:,:,:] = phi[:,:,:]
@@ -671,7 +671,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 		
 		return self._out_phi
 
-	def _initialize_stencil(self, phi):
+	def _stencil_initialize(self, phi):
 		"""
 		Initialize the GT4Py's stencil applying horizontal smoothing.
 
@@ -686,13 +686,13 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs = {'out_phi': self._out_phi},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _defs_stencil(self, in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma):
 		"""
 		The GT4Py's stencil applying horizontal smoothing. A standard centered 5-points formula is used.
 
@@ -773,7 +773,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 		"""
 		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil is None:
-			self._initialize_stencil(phi)
+			self._stencil_initialize(phi)
 
 		# Update the Numpy array representing the stencil's input field
 		self._in_phi[:,:,:] = phi[:,:,:]
@@ -789,7 +789,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 		
 		return self._out_phi
 
-	def _initialize_stencil(self, phi):
+	def _stencil_initialize(self, phi):
 		"""
 		Initialize the GT4Py's stencil applying horizontal smoothing.
 
@@ -804,13 +804,13 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._defs_stencil,
+			definitions_func = self._stencil_defs,
 			inputs = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs = {'out_phi': self._out_phi},
 			domain = _domain, 
 			mode = self._backend)
 
-	def _defs_stencil(self, in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma):
 		"""
 		The GT4Py's stencil applying horizontal smoothing. A standard centered 5-points formula is used.
 

@@ -1,4 +1,1 @@
-*.py	text
-*.pyx	text
-
-grids/parser/*
+grids/parser/* linguist-vendored

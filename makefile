@@ -30,5 +30,5 @@ uml:
 	@pyreverse -p interface -o eps .
 	@mv classes_*.eps $(UMLDIR)
 	@mv packages_*.eps $(UMLDIR)
-	@cp $(UMLDIR)/classes_*.eps ../meetings/20180208_phd_meeting/uml
-	@cp $(UMLDIR)/packages_*.eps ../meetings/20180208_phd_meeting/uml
+	#@cp $(UMLDIR)/classes_*.eps ../meetings/20180208_phd_meeting/uml
+	#@cp $(UMLDIR)/packages_*.eps ../meetings/20180208_phd_meeting/uml
