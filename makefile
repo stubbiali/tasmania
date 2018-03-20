@@ -8,27 +8,29 @@ UMLDIR := $(DOCDIR)/uml
 all: clean parser html latex uml
 
 parser:
-	@cd $(PARSERDIR) && $(MAKE) 
+	@cd $(PARSERDIR) && $(MAKE)
+	#@cd $(PARSERDIR)/tests && $(MAKE) > /dev/null
 
 .PHONY: clean html latex uml
 
 clean:
-	@$(RM) $(PYTMP)
-	@cd $(PARSERDIR) && $(MAKE) clean
+	@$(RM) $(PYTMP) > /dev/null
+	@cd $(PARSERDIR) && $(MAKE) clean > /dev/null
+	@cd $(PARSERDIR)/tests && $(MAKE) clean > /dev/null
 
 html:
-	@cd $(DOCDIR) && $(MAKE) html
-	@cp -r $(DOCDIR)/build/html ../meetings/20180208_phd_meeting
+	@echo "Building HTML documentation ..."
+	@cd $(DOCDIR) && $(MAKE) html > /dev/null
 
 latex:
-	@cd $(DOCDIR) && $(MAKE) latex
+	@echo "Building LaTeX documentation ..."
+	@cd $(DOCDIR) && $(MAKE) latex > /dev/null
 
 uml:
-	@pyreverse -p grids -o eps grids/
-	@pyreverse -p dycore -f OTHER -o eps dycore/
-	@pyreverse -p storages -o eps storages/
-	@pyreverse -p interface -o eps .
-	@mv classes_*.eps $(UMLDIR)
-	@mv packages_*.eps $(UMLDIR)
-	#@cp $(UMLDIR)/classes_*.eps ../meetings/20180208_phd_meeting/uml
-	#@cp $(UMLDIR)/packages_*.eps ../meetings/20180208_phd_meeting/uml
+	@echo "Building UML diagrams ..."
+	@pyreverse -p grids -o eps grids/ > /dev/null
+	@pyreverse -p dycore -f OTHER -o eps dycore/ > /dev/null
+	@pyreverse -p storages -o eps storages/ > /dev/null
+	@pyreverse -p interface -o eps . > /dev/null
+	@mv classes_*.eps $(UMLDIR) > /dev/null
+	@mv packages_*.eps $(UMLDIR) > /dev/null
