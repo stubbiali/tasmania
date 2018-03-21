@@ -1,7 +1,7 @@
 <img align="right" src="taz.jpeg">
 
-A Python library for Earth system science
-=========================================
+A Python library for Earth science
+==================================
 
 `Tasmania` aims to be a high-level, highly-modular and flexible framework to compose, simulate and evaluate finite difference numerical schemes for Earth system science. Relevant examples are climate and weather forecasting models. The library leverages `GridTools4Py`, a complete set of Python bindings for the C++ template library `GridTools`, developed at ETH/CSCS. `GridTools` furnishes a wide gamma of tools to implement stencil-based operations. Thus, it finds a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a specific architecture, e.g., Xeon Phi or GPU. In addition to these, `GridTools4Py` supplies some Pythonic backends suitable for debugging and research purposes. 
 
