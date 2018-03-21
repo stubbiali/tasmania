@@ -1,0 +1,12 @@
+set nocompatible
+set number
+set incsearch
+set autowrite
+set autoindent
+set ignorecase
+
+set shiftwidth=4
+set tabstop=4
+
+:filetype on
+:autocmd FileType c,cpp,py :set cindent

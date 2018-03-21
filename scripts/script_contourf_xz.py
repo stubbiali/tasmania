@@ -26,8 +26,8 @@ A script to generate a xz-contourf of a field.
 import os
 import pickle
 
-import utils.utils_meteo as utils_meteo
-import utils.utils_plot as utils_plot
+import tasmania.utils.utils_meteo as utils_meteo
+import tasmania.utils.utils_plot as utils_plot
 
 #
 # Mandatory settings

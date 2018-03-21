@@ -33,6 +33,7 @@ Physical constants:
 	* :data:`namelist.Rv`: Gas constant for water vapor ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
 	* :data:`namelist.cp`: Specific heat of dry air at constant pressure ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
 	* :data:`namelist.g`: Mean gravitational acceleration ([:math:`m ~ s^{-2}`]). 
+	* :data:`namelist.L`: Specific latent heat of condensation of water ([:math:`J ~ kg^{-1}`]).
 
 Grid settings:
 	* :data:`namelist.domain_x`: Tuple storing the boundaries of the domain in the :math:`x`-direction \
@@ -163,6 +164,7 @@ Rd    = 287.05
 Rv	  = 461.52
 cp    = 1004.
 g     = 9.81
+L	  = 2.5e6
 
 #
 # Grid settings

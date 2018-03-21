@@ -1,44 +1,29 @@
+![](https://federicsblog.wordpress.com/2015/02/21/taz-taz-tasmania-esiste-davvero-e-rischia-lestinzione/)
+
 A Python library for Earth system science
-===================================================
+=========================================
 
-`Tasmania` aims to provide domain scientists with a high-level, highly-modular and flexible framework to define, simulate and assess finite difference Earth system science models, e.g., models for climate and weather forecasting. The library leverages `GridTools4Py`, a Python binding to the C++ template library `GridTools`, developed at ETH/CSCS. `GridTools` furnishes a wide gamma of tools to implement stencil-based operations, hence it finds a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a particular architecture, e.g., Xeon Phi or GPU. In addition to these, `GridTools4Py` supplies some Pythonic backends suitable for debugging and research purposes. Nevertheless, `GridTools`'s frontend, hence `GridTools4Py`'s interface, is hardware-agnostic, implying that user's code does not need to be changed when porting it to a new architecture. This enables a complete separation of concerns between domain scientists and computer scientists: the former work in a familiar development environment like Python, while the latter oversee the translation and compilation stage. 
+`Tasmania` aims to be a high-level, highly-modular and flexible framework to compose, simulate and evaluate finite difference numerical schemes for Earth system science. Relevant examples are climate and weather forecasting models. The library leverages `GridTools4Py`, a complete set of Python bindings for the C++ template library `GridTools`, developed at ETH/CSCS. `GridTools` furnishes a wide gamma of tools to implement stencil-based operations. Thus, it finds a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a specific architecture, e.g., Xeon Phi or GPU. In addition to these, `GridTools4Py` supplies some Pythonic backends suitable for debugging and research purposes. 
 
-Creating the virtual environment
---------------------------------
+On the other hand, `GridTools`'s frontend, hence `GridTools4Py`'s interface, is hardware-agnostic, implying that user's codebase does not need to be changed when ported to a different architecture. This enables a complete separation of concerns between domain scientists - who can work in a familiar development environment like Python - and computer scientists - who oversee the translation, compilation and execution stage. 
 
-In order to setup a suitable virtual environment where to run any `Tasmania`-related code, please pursue the following steps:
+Set up a Docker container for `Tasmania`
+----------------------------------------
 
-1. Install `VirtualBox`, available at https://www.virtualbox.org/.
-2. Install `vagrant` from terminal via
+A *container* is a runtime instance of an *image*, which in turn is an executable package that includes everything needed to run an application. As opposed to a *virtual machine* (VM), a container runs natively on Linux and shares the kernel of the host machine with other containers, thus resulting in a lightweight process. This motivates the large interest containers have gained in the last years.  
 
-		apt-get install vagrant
+[Docker](https://www.docker.com/) is a platform for developers and sysadmins to develop, deploy, and run applications with containers. To create a local instance of the Docker image from which the container for `Tasmania` will be spawn, from the repo root directory issue:
 
-   Note that admin privileges may be required.
-3. From the repo root directory, type
+	docker build -t tasmania docker
 
-		vagrant up --provision
-		 
-   This command will create a virtual machine (VM) in your system, so it may take some time (even in the order of hours).
-   
-Thereafter:
+Later, type
 
-1. To boot and login to the VM, from the repo root directory type:
+	docker run -dit -v $PWD:/tasmania tasmania
 
-		vagrant up
-		vagrant ssh
+to run the container in detached mode. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*. In this way, the folder `/tasmania` within the container will be in sync with the repo root directory.
 
-2. Within the VM, you can switch the virtual environment on by
+When successful, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:
 
-		source venv/bin/activate
+	docker exec -it CONTAINER_ID bash
 
-   This command should be invoked at the beginning of each session, so you may want to add it to `~/.bashrc`. 
-3. The first time you login to the VM, move to the folder `tasmania`, then write
-
-		make
-
-   This will compile some auxiliary C++ code and create the documentation (later available at `docs/build/`).
-4. Finally, `CTRL + D` to logout, then
-
-		vagrant halt
-
-   to shut down the VM.
+Here, `CONTAINER_ID` is the container identifier.
