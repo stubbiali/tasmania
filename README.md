@@ -18,9 +18,9 @@ A *container* is a runtime instance of an *image*, which in turn is an executabl
 
 Later, type
 
-	docker run -dit -v $PWD:/tasmania tasmania
+	docker run -dit -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD:/tasmania tasmania
 
-to run the container in detached mode. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*. In this way, the folder `/tasmania` within the container will be in sync with the repo root directory.
+to run the container in detached mode. The flags `-e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix` are required only if ones want to generate plots via [Matplotlib](https://matplotlib.org/). If this is not the case, they can be omitted. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*. In this way, the folder `/tasmania` within the container will be in sync with the repo root directory.
 
 When successful, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:
 
