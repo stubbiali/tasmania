@@ -9,4 +9,6 @@ set shiftwidth=4
 set tabstop=4
 
 :filetype on
+:filetype plugin on
+:syntax on
 :autocmd FileType c,cpp,py :set cindent

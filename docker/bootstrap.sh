@@ -27,31 +27,31 @@ rm -rf boost_1_58_0 boost_1_58_0.tar.gz
 #
 # Install SIP-4.19.8
 #
-wget -q -O sip-4.19.8.tar.gz 'https://sourceforge.net/projects/pyqt/files/sip/sip-4.19.8/sip-4.19.8.tar.gz/download'
-tar xvzf sip-4.19.8.tar.gz
-cd sip-4.19.8
-python configure.py
-make
-make install
-cd ..
-rm -rf sip-4.19.8 sip-4.19.8.tar.gz
+#wget -q -O sip-4.19.8.tar.gz 'https://sourceforge.net/projects/pyqt/files/sip/sip-4.19.8/sip-4.19.8.tar.gz/download'
+#tar xvzf sip-4.19.8.tar.gz
+#cd sip-4.19.8
+#python configure.py
+#make
+#make install
+#cd ..
+#rm -rf sip-4.19.8 sip-4.19.8.tar.gz
 
 #
 # Download PyQt4-4.12.1
 #
-wget -q -O PyQt4_gpl_x11-4.12.1.tar.gz 'https://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.12.1/PyQt4_gpl_x11-4.12.1.tar.gz/download'
-tar xvzf PyQt4_gpl_x11-4.12.1.tar.gz
-cd PyQt4_gpl_x11-4.12.1
-python configure-ng.py --confirm-license
-make
-make install
-cd ..
-rm -rf PyQt4_gpl_x11-4.12.1 PyQt4_gpl_x11-4.12.1.tar.gz
+#wget -q -O PyQt4_gpl_x11-4.12.1.tar.gz 'https://sourceforge.net/projects/pyqt/files/PyQt4/PyQt-4.12.1/PyQt4_gpl_x11-4.12.1.tar.gz/download'
+#tar xvzf PyQt4_gpl_x11-4.12.1.tar.gz
+#cd PyQt4_gpl_x11-4.12.1
+#python configure-ng.py --confirm-license
+#make
+#make install
+#cd ..
+#rm -rf PyQt4_gpl_x11-4.12.1 PyQt4_gpl_x11-4.12.1.tar.gz
 
 #
-# Set the backend for matplotlib to Qt4
+# Set the backend for matplotlib to Qt5
 #
-cat /usr/local/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | sed -e 's/^backend.*: TkAgg/backend : Qt4Agg/g' | sed -e 's/^#backend.qt4.*/backend.qt4 : PyQt4/g' > /tmp/.matplotlibrc
+cat /usr/local/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' #| sed -e 's/^#backend.qt4.*/backend.qt4 : PyQt4/g' > /tmp/.matplotlibrc
 cp /tmp/.matplotlibrc /usr/local/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc
 
 #
