@@ -1,4 +1,4 @@
-![](https://federicsblog.wordpress.com/2015/02/21/taz-taz-tasmania-esiste-davvero-e-rischia-lestinzione/)
+![](taz.jpeg)
 
 A Python library for Earth system science
 =========================================
