@@ -1,4 +1,4 @@
-<img align="right" src="taz.jpeg">
+![](taz.jpeg){:style="float: right;margin-right: 7px;margin-top: 7px;"}
 
 A Python library for Earth science
 ==================================
