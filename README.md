@@ -1,4 +1,4 @@
-![](taz.jpeg)
+<img align="right" src="taz.jpeg">
 
 A Python library for Earth system science
 =========================================
