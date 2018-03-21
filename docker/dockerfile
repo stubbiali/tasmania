@@ -16,6 +16,7 @@ RUN /tasmania/docker/bootstrap.sh
 
 # Set useful environmental variables
 ENV TERM xterm-256color
+ENV QT_X11_NO_MITSHM 1
 ENV CXX /usr/bin/g++                                					
 ENV BOOST_ROOT /usr/local                           					
 ENV TASMANIA_ROOT /tasmania            		 					
