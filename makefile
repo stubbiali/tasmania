@@ -5,11 +5,10 @@ DOCSRC := $(DOCDIR)/source/conf.py $(DOCDIR)/source/api.rst
 PARSERDIR := grids/parser
 UMLDIR := $(DOCDIR)/uml
 
-all: clean parser html latex uml
+all: clean parser html latex
 
 parser:
 	@cd $(PARSERDIR) && $(MAKE)
-	#@cd $(PARSERDIR)/tests && $(MAKE) > /dev/null
 
 .PHONY: clean html latex uml
 
@@ -31,6 +30,5 @@ uml:
 	@pyreverse -p grids -o eps grids/ > /dev/null
 	@pyreverse -p dycore -f OTHER -o eps dycore/ > /dev/null
 	@pyreverse -p storages -o eps storages/ > /dev/null
-	@pyreverse -p interface -o eps . > /dev/null
 	@mv classes_*.eps $(UMLDIR) > /dev/null
 	@mv packages_*.eps $(UMLDIR) > /dev/null

@@ -51,7 +51,7 @@ Lateral boundary conditions
    :members:
 
 Horizontal smoothing
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothing
    :members:
@@ -210,17 +210,17 @@ Parsers
 Utilities
 ---------
 
-.. automodule:: utils.utils
+.. automodule:: tasmania.utils.utils
    :members:
 
 Meteo utilities
 ^^^^^^^^^^^^^^^
 
-.. automodule:: utils.utils_meteo
+.. automodule:: tasmania.utils.utils_meteo
    :members:
 
 Plotting utilities
 ^^^^^^^^^^^^^^^^^^
 
-.. automodule:: utils.utils_plot
+.. automodule:: tasmania.utils.utils_plot
    :members:

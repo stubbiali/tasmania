@@ -1,0 +1,26 @@
+# Use Python3.6 runtime as parent image
+FROM python:3.6.4-jessie
+
+# Set the working directory to /tasmania
+WORKDIR /tasmania
+
+# Add docker folder to /tasmania
+ADD . /tasmania/docker
+
+# Install required Python packages specified in requirements.txt
+RUN pip install -r /tasmania/docker/requirements.txt
+
+# Run the bootstrap
+RUN chmod +x /tasmania/docker/bootstrap.sh 
+RUN /tasmania/docker/bootstrap.sh
+
+# Set useful environmental variables
+ENV TERM xterm-256color
+ENV CXX /usr/bin/g++                                					
+ENV BOOST_ROOT /usr/local                           					
+ENV TASMANIA_ROOT /tasmania            		 					
+ENV GRIDTOOLS_ROOT /tasmania/gridtools 							
+ENV LD_LIBRARY_PATH /usr/local/lib                  					
+ENV PYTHONPATH ${PYTHONPATH}:/:/tasmania:/tasmania/gridtools
+#ENV CUDATOOLKIT_HOME /usr/local/cuda-7.0            					
+#ENV PATH $PATH:${CUDATOOLKIT_HOME}/bin            						
