@@ -641,7 +641,7 @@ class Relaxed(HorizontalBoundary):
 		super().__init__(grid, nb)
 
 		# The relaxation coefficients
-		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype = datatype)
+		self._rel = np.array([.99, .95, .8, .5, .2, .05, .01], dtype = datatype)
 		self._rrel = self._rel[::-1]
 		self.nr = self._rel.size
 
@@ -824,7 +824,7 @@ class RelaxedXZ(HorizontalBoundary):
 		super().__init__(grid, nb)
 
 		# The relaxation coefficients
-		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype = datatype)
+		self._rel = np.array([.99, .95, .8, .5, .2, .05, .01], dtype = datatype)
 		self._rrel = self._rel[::-1]
 		self.nr = self._rel.size
 
@@ -953,7 +953,7 @@ class RelaxedYZ(HorizontalBoundary):
 		super().__init__(grid, nb)
 
 		# The relaxation coefficients
-		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype = datatype)
+		self._rel = np.array([.99, .95, .8, .5, .2, .05, .01], dtype = datatype)
 		self._rrel = self._rel[::-1]
 		self.nr = self._rel.size
 
