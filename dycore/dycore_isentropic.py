@@ -724,11 +724,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
 		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
 
-		if self.microphysics is not None:
-			# Diagnose the density
-			state_new.update(self._diagnostic.get_air_density(state_new))
+		#if self.microphysics is not None:
+		# Diagnose the density
+		state_new.update(self._diagnostic.get_air_density(state_new))
 
-			# Diagnose the temperature
-			state_new.update(self._diagnostic.get_air_temperature(state_new))
+		# Diagnose the temperature
+		state_new.update(self._diagnostic.get_air_temperature(state_new))
 
 		return state_new
