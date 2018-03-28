@@ -20,8 +20,6 @@ class GridData:
 
 	Attributes
 	----------
-	time : obj
-		:class:`datetime.datetime` representing the time instant at which the variables are defined.
 	grid : obj
 		The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 	"""
@@ -63,7 +61,7 @@ class GridData:
 		**kwargs : array_like
 			:class:`numpy.ndarray` representing a gridded variable.
 		"""
-		self.time, self.grid = time, grid
+		self._time, self.grid = time, grid
 
 		self._vars = dict()
 		for key in kwargs:
@@ -104,16 +102,24 @@ class GridData:
 		"""
 		return self._vars.get(key, None)
 
+	@property
+	def variable_names(self):
+		"""
+		Get the names of the stored variables.
+
+		Return
+		------
+		list :
+			List of the names of the stored variables.
+		"""
+		return list(self._vars.keys())
+
 	def add(self, **kwargs):
 		"""
 		Add a list of variables, passed as keyword arguments.
 
 		Parameters
 		----------
-		time : obj
-			:class:`datetime.datetime` representing the time instant at which the variables are defined.
-		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		**kwargs : array_like
 			:class:`numpy.ndarray` representing a gridded variable.
 		"""
@@ -134,7 +140,7 @@ class GridData:
 					z = self.grid.z_half_levels
 
 				_var = xr.DataArray(var[:, :, :, np.newaxis], 
-									coords = [x.values, y.values, z.values, [self.time]],
+									coords = [x.values, y.values, z.values, [self._time]],
 									dims = [x.dims, y.dims, z.dims, 'time'],
 									attrs = {'units': GridData.units[key]})
 				self._vars[key] = _var
