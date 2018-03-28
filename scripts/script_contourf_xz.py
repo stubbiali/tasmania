@@ -32,8 +32,8 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_upwind_newinterface.pickle')
-field = 'water_vapor_mass_fraction'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_leapfrog.pickle')
+field = 'air_temperature'
 y_level = 0
 time_level = -1
 
@@ -50,19 +50,19 @@ x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
-z_lim            = [0,20]
+z_lim            = [0,10]
 field_factor     = 1.e3
 plot_height		 = True
 cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 18
 cbar_ticks_step  = 4
-cbar_center      = 0.85
-cbar_half_width  = 0.85
+cbar_center      = None #15.
+cbar_half_width  = None #0.85
 cbar_x_label     = 'Water vapor [g kg$^{-1}$]'
 cbar_y_label     = ''
 cbar_title       = ''
 cbar_orientation = 'horizontal'
-text			 = '$t = \dfrac{L}{\overline{u}}$'
+text			 = None #'$t = \dfrac{L}{\overline{u}}$'
 text_loc		 = 'upper right'
 
 #
