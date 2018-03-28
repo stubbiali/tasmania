@@ -121,9 +121,16 @@ Numerical settings:
 		smoothing vertical damping is enabled.
 
 Microphysics settings:
-	* :data:`namelist.coupling_physics_dynamics_on`: :obj:`True` to couple physics with dynamics, i.e., to take the change over \
-		time in potential temperature, :obj:`False` otherwise.
+	* :data:`namelist.physics_dynamics_coupling_on`: :obj:`True` to couple physics with dynamics, i.e., to take the change over \
+		time in potential temperature into account, :obj:`False` otherwise.
 	* :data:`namelist.sedimentation_on`: :obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
+	* :data:`namelist.rain_evaporation_on`:
+	* :data:`namelist.tendency_microphysics_on`:
+	* :data:`namelist.tendency_microphysics_type`:
+	* :data:`namelist.tendency_microphysics_kwargs`:
+	* :data:`namelist.adjustment_microphysics_on`:
+	* :data:`namelist.adjustment_microphysics_type`:
+	* :data:`namelist.adjustment_microphysics_kwargs`:
 
 Simulation settings:
 	* :data:`namelist.dt`: :class:`datetime.timedelta` object representing the timestep.
@@ -170,41 +177,41 @@ L	  = 2.5e6
 # Grid settings
 #
 domain_x        = [0, 500.e3]
-nx              = 51
-domain_y        = [-250.e3, 250.e3]
-ny              = 51
-domain_z        = [300. + 100., 300.]
-nz              = 50
+nx              = 101
+domain_y        = [-1., 1.]
+ny              = 1
+domain_z        = [280. + 60., 280.]
+nz              = 60
 z_interface     = None
 topo_type       = 'gaussian'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
 				   'topo_max_height': 1000.,
-				   'topo_width_x': 50.e3,
-				   'topo_width_y': 50.e3,
-				   'topo_str': '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
+				   'topo_width_x'   : 25.e3,
+				   'topo_width_y'   : 50.e3,
+				   'topo_str'       : '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
 				  }
 
 #
 # Model settings
 #
 model                    = 'isentropic' 
-moist_on				 = False
-horizontal_boundary_type = 'relaxed'
+moist_on				 = True
+horizontal_boundary_type = 'periodic'
 
 #
 # Numerical settings
 #
 time_scheme             = 'forward_euler'
-flux_scheme             = 'upwind'
-damp_on	                = True
+flux_scheme             = 'maccormack'
+damp_on	                = False
 damp_type               = 'rayleigh'
-damp_depth              = 15
+damp_depth              = 30
 damp_max                = .0002
 smooth_on               = True
 smooth_type             = 'first_order'
-smooth_damp_depth       = 0
-smooth_coeff            = .03
+smooth_damp_depth       = 30
+smooth_coeff            = .05
 smooth_coeff_max        = .25
 smooth_moist_on		    = False
 smooth_moist_type       = 'first_order'
@@ -215,24 +222,35 @@ smooth_moist_coeff_max  = .25
 #
 # Microphysics settings
 #
-coupling_physics_dynamics_on = True
-sedimentation_on	         = False
+physics_dynamics_coupling_on   = False
+sedimentation_on	           = False
+rain_evaporation_on			   = False
+tendency_microphysics_on       = False
+tendency_microphysics_type     = ''
+tendency_microphysics_kwargs   = {}
+adjustment_microphysics_on     = True
+adjustment_microphysics_type   = 'kessler_wrf'
+adjustment_microphysics_kwargs = {
+								  'a' : .001,
+								  'k1': .001,
+								  'k2': 2.2,
+								 }
 
 #
 # Simulation settings
 #
-dt                    = timedelta(seconds = 24)
+dt                    = timedelta(seconds = 10)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = timedelta(hours = 12)
+simulation_time       = timedelta(hours = 6)
 initial_state_type    = 0
 initial_state_kwargs  = {
-						 'x_velocity_initial': 15.,
-						 'y_velocity_initial': 0.,
+						 'x_velocity_initial'   : 15.,
+						 'y_velocity_initial'   : 0.,
 						 'brunt_vaisala_initial': .01,
-						 'temperature': 250.,
+						 'temperature'          : 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = []
-save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_moist_leapfrog_newinterface.pickle')
+save_iterations		  = np.arange(30, 2161, 30)
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_periodic_maccormack_animation.pickle')
 tol      		      = 1.e-8		
-datatype 		      = np.float32
+datatype 		      = np.float64

@@ -53,8 +53,21 @@ class DynamicalCore(TimeStepper):
 		# Initialize pointer to the object taking care of the microphysics
 		self.microphysics = None
 
+	@property
+	def time_levels(self):
+		"""
+		Get the number of time leves the dynamical core relies on.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Return
+		------
+		int :
+			The number of time levels needed by the dynamical core.
+		"""
+		return self
+
 	@abc.abstractmethod
-	def __call__(self, dt, state, diagnostics = None):
+	def __call__(self, dt, state, diagnostics = None, tendencies = None):
 		"""
 		Call operator advancing the input state one step forward. 
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
@@ -66,7 +79,9 @@ class DynamicalCore(TimeStepper):
 		state : obj 
 			The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing the possibly required diagnostics. Default is :obj:`None`.
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics. Default is :obj:`None`.
+		tendencies : `obj`, optional 
+			:class:`~storages.grid_data.GridData` possibly storing tendencies. Default is :obj:`None`.
 
 		Return
 		------

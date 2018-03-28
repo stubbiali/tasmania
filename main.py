@@ -35,86 +35,145 @@ import sys
 import time
 
 # Set namelist
-import tasmania.utils.utils as utils
+from set_namelist import set_namelist
 user_namelist = None if len(sys.argv) == 1 else sys.argv[1]
-utils.set_namelist(user_namelist)
+set_namelist(user_namelist)
 
 from tasmania.grids.grid_xyz import GridXYZ as Grid
 from tasmania.dycore.dycore import DynamicalCore
 from tasmania.model import Model
 import tasmania.namelist as nl
+from tasmania.parameterizations.adjustment_microphysics import AdjustmentMicrophysics
 
 #
 # Instantiate the grid
 #
-print('\nCreate grid ...')
+print('\nCreate the grid ...')
 start = time.time()
 
-grid = Grid(nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,
-			units_x = 'm', dims_x = 'x', units_y = 'm', dims_y = 'y', 
-			units_z = 'K', dims_z = 'air_potential_temperature', z_interface = None,
-			topo_type = nl.topo_type, topo_time = nl.topo_time, **nl.topo_kwargs)
+grid = Grid(domain_x    = nl.domain_x, 
+			nx          = nl.nx, 
+			domain_y    = nl.domain_y, 
+			ny          = nl.ny, 
+			domain_z    = nl.domain_z, 
+			nz          = nl.nz,
+			units_x     = 'm', 
+			dims_x      = 'x', 
+			units_y     = 'm', 
+			dims_y      = 'y', 
+			units_z     = 'K', 
+			dims_z      = 'air_potential_temperature', 
+			z_interface = None,
+			topo_type   = nl.topo_type, 
+			topo_time   = nl.topo_time, 
+			**nl.topo_kwargs)
 
 stop = time.time()
 print('Grid created in {} ms.\n'.format((stop-start) * 1000.))
 
 #
-# Instantiate the dycore
-#
-print('Instantiate dycore ...')
-start = time.time()
-
-dycore = DynamicalCore.factory(nl.model, nl.time_scheme, nl.flux_scheme, nl.horizontal_boundary_type, grid, 
-							   nl.moist_on, nl.backend, nl.damp_on, nl.damp_type, nl.damp_depth, nl.damp_max, 
-				 		  	   nl.smooth_on, nl.smooth_type, nl.smooth_damp_depth, 
-							   nl.smooth_coeff, nl.smooth_coeff_max, 
-				 		  	   nl.smooth_moist_on, nl.smooth_moist_type, nl.smooth_moist_damp_depth, 
-							   nl.smooth_moist_coeff, nl.smooth_moist_coeff_max,
-							   nl.coupling_physics_dynamics_on, nl.sedimentation_on)
-
-stop = time.time()
-print('Dycore instantiated in {} ms.\n'.format((stop-start) * 1000.))
-
-#
-# Instantiate the diagnostics
-#
-# ...
-
-#
 # Instantiate the model
 #
-print('Instantiate model ...')
+print('Instantiate the model ...')
 start = time.time()
 
-model = Model(dycore)
+model = Model()
 
 stop = time.time()
 print('Model instantiated in {} ms.\n'.format((stop-start) * 1000.))
 
 #
-# Get the initial state
+# Instantiate the dycore, then add it to the model
 #
-print('Compute initial state ...')
+print('Instantiate the dycore ...')
 start = time.time()
 
-state = dycore.get_initial_state(nl.initial_time, nl.initial_state_type, **nl.initial_state_kwargs)
+dycore = DynamicalCore.factory(model                        = nl.model, 
+							   time_scheme                  = nl.time_scheme, 
+							   flux_scheme                  = nl.flux_scheme, 
+							   horizontal_boundary_type     = nl.horizontal_boundary_type, 
+							   grid                         = grid, 
+							   moist_on                     = nl.moist_on, 
+							   backend                      = nl.backend, 
+							   damp_on                      = nl.damp_on, 
+							   damp_type                    = nl.damp_type, 
+							   damp_depth                   = nl.damp_depth, 
+							   damp_max                     = nl.damp_max, 
+				 		  	   smooth_on                    = nl.smooth_on, 
+							   smooth_type                  = nl.smooth_type, 
+							   smooth_damp_depth            = nl.smooth_damp_depth, 
+							   smooth_coeff                 = nl.smooth_coeff, 
+							   smooth_coeff_max             = nl.smooth_coeff_max, 
+				 		  	   smooth_moist_on              = nl.smooth_moist_on, 
+							   smooth_moist_type            = nl.smooth_moist_type, 
+							   smooth_moist_damp_depth      = nl.smooth_moist_damp_depth, 
+							   smooth_moist_coeff           = nl.smooth_moist_coeff, 
+							   smooth_moist_coeff_max       = nl.smooth_moist_coeff_max,
+							   physics_dynamics_coupling_on = nl.physics_dynamics_coupling_on, 
+							   sedimentation_on             = nl.sedimentation_on)
+model.set_dynamical_core(dycore)
+
+stop = time.time()
+print('Dycore instantiated in {} ms.\n'.format((stop-start) * 1000.))
+
+#
+# Instantiate the microphysical tendency-providing parameterization, then add it to the model
+#
+if nl.tendency_microphysics_on:
+	print('Instantiate the microphysical tendency-providing parameterization class ...')
+	start = time.time()
+
+	### TODO ###
+
+	stop = time.time()
+	print('Microphysical tendency-providing parameterization class instantiated in {} ms.\n'.format((stop-start) * 1000.))
+
+#
+# Instantiate the microphysical adjustment-performing parameterization, then add it to the model
+#
+if nl.adjustment_microphysics_on:
+	print('Instantiate the microphysical adjustment-performing parameterization class ...')
+	start = time.time()
+
+	adjustment_microphysics = AdjustmentMicrophysics.factory(micro_scheme        = nl.adjustment_microphysics_type, 
+													 		 grid                = grid, 
+													 		 rain_evaporation_on = nl.rain_evaporation_on, 
+													 		 backend             = nl.backend, 
+													 		 **nl.adjustment_microphysics_kwargs)
+	model.add_adjustment(adjustment_microphysics)
+
+	stop = time.time()
+	print('Microphysical adjustment-performing parameterization class instantiated in {} ms.\n'.format((stop-start) * 1000.))
+
+#
+# Get the initial state
+#
+print('Compute the initial state ...')
+start = time.time()
+
+state = dycore.get_initial_state(initial_time       = nl.initial_time, 
+								 initial_state_type = nl.initial_state_type, 
+								 **nl.initial_state_kwargs)
 
 stop = time.time()
 print('Initial state computed in {} ms.\n'.format((stop-start) * 1000.))
 
 #
-# Integrate
+# Run the simulation
 #
-print('Start simulation ...\n')
+print('Start the simulation ...\n')
 start = time.time()
 
-state_out, state_save = model(nl.dt, nl.simulation_time, state, save_iterations = nl.save_iterations)
+state_out, state_save = model(dt              = nl.dt, 
+							  simulation_time = nl.simulation_time, 
+							  state           = state, 
+							  save_iterations = nl.save_iterations)
 
 stop = time.time()
 print('\nSimulation completed in {} s.\n'.format(stop-start))
 
 #
-# Save to output
+# Save
 #
 try:
 	with open(nl.save_dest, 'wb') as output:
