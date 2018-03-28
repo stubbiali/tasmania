@@ -34,6 +34,7 @@ from tasmania.dycore.horizontal_boundary import RelaxedSymmetricXZ, RelaxedSymme
 from tasmania.namelist import datatype
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
+import tasmania.utils.utils as utils
 
 class PrognosticIsentropic:
 	"""
@@ -155,7 +156,7 @@ class PrognosticIsentropic:
 		return self._flux.nb
 
 	@abc.abstractmethod
-	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
+	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None, tendencies = None):
 		"""
 		Method advancing the conservative, prognostic model variables one time step forward.
 		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
@@ -192,7 +193,11 @@ class PrognosticIsentropic:
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly collecting useful diagnostics.
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
+			For the time being, this is not actually used.
+		tendencies : `obj`, optional
+			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			For the time being, this is not actually used.
 
 		Return
 		------
@@ -207,7 +212,7 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 
-	def step_coupling_physics_with_dynamics(self, dt, state_now, state_prv, state_old = None, diagnostics = None):
+	def step_coupling_physics_with_dynamics(self, dt, state_now, state_prv, diagnostics):
 		"""
 		Method advancing the conservative, prognostic model variables one time step forward by coupling physics with
 		dynamics, i.e., by accounting for the change over time in potential temperature.
@@ -240,7 +245,7 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
 			This may be the output of :meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
-		diagnostics : `obj`, optional
+		diagnostics : obj
 			:class:`~storages.grid_data.GridData` collecting the following variables:
 			
 			* change_over_time_in_air_potential_temperature (unstaggered).
@@ -258,10 +263,11 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 		# Initialize the output state
-		state_new = StateIsentropic(state_now.time + dt, self._grid)
+		time_now = utils.convert_datetime64_to_datetime(state_now['air_isentropic_density'].coords['time'].values[0])
+		state_new = StateIsentropic(time_now + dt, self._grid)
 
 		# Extract current time conservative model variables
-		s_now  = state_now['isentropic_density'].values[:,:,:,0]
+		s_now  = state_now['air_isentropic_density'].values[:,:,:,0]
 		U_now  = state_now['x_momentum_isentropic'].values[:,:,:,0]
 		V_now  = state_now['y_momentum_isentropic'].values[:,:,:,0]
 		Qv_now = state_now['water_vapor_isentropic_density'].values[:,:,:,0]
@@ -269,7 +275,7 @@ class PrognosticIsentropic:
 		Qr_now = state_now['precipitation_water_isentropic_density'].values[:,:,:,0]
 
 		# Extract provisional conservative model variables
-		s_prv  = state_prv['isentropic_density'].values[:,:,:,0]
+		s_prv  = state_prv['air_isentropic_density'].values[:,:,:,0]
 		U_prv  = state_prv['x_momentum_isentropic'].values[:,:,:,0]
 		V_prv  = state_prv['y_momentum_isentropic'].values[:,:,:,0]
 		Qv_prv = state_prv['water_vapor_isentropic_density'].values[:,:,:,0]
@@ -291,7 +297,7 @@ class PrognosticIsentropic:
 		# Run the stencil
 		self._stencil_stepping_by_coupling_physics_with_dynamics.compute()
 
-		# Set the lowest and highest layers
+		# Set the lower and upper layers
 		self._out_s_new[:,:,:self.nb], self._out_s_new[:,:,-self.nb:] = s_prv[:,:,:self.nb], s_prv[:,:,-self.nb:]
 		self._out_U_new[:,:,:self.nb], self._out_U_new[:,:,-self.nb:] = U_prv[:,:,:self.nb], U_prv[:,:,-self.nb:]
 		self._out_V_new[:,:,:self.nb], self._out_V_new[:,:,-self.nb:] = V_prv[:,:,:self.nb], V_prv[:,:,-self.nb:]

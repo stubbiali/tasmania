@@ -24,11 +24,13 @@
 Plotting utilities.
 """
 import matplotlib as mpl
+import matplotlib.animation as manimation
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
 import matplotlib.pyplot as plt
 import numpy as np
 
+import tasmania.utils.utils as utils
 from tasmania.utils.utils import smaller_than as lt
 
 def reverse_colormap(cmap, name = None):
@@ -264,13 +266,18 @@ def contourf_xz(grid, topography, height, field, **kwargs):
 	text_loc : str
 		String specifying the location where the text box should be placed. Default is 'upper right'; 
 		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
+
+	Return
+	------
+	obj :
+		The generated plot.
 	"""
 	# Shortcuts
 	nx, nz = grid.nx, grid.nz
 	ni, nk = field.shape
 
 	# Get keyword arguments
-	show            = kwargs.get('show', True)
+	show             = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
 	fontsize         = kwargs.get('fontsize', 12)
 	figsize			 = kwargs.get('figsize', [8,8])
@@ -366,10 +373,213 @@ def contourf_xz(grid, topography, height, field, **kwargs):
 
 	# Show
 	fig.tight_layout()
-	if show or (destination is None):
+	if show:
 		plt.show()
-	else:
+	elif destination is not None:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
+
+	return fig
+
+def contourf_animation_xz(time, grid, topography, height, field, destination, **kwargs):
+	"""
+	Generate a :math:`xz`-contourf animation of a gridded field.
+
+	Parameters
+	----------
+	grid : obj
+		The underlying grid, as an instance of :math:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+	topography : array_like
+		One-dimensional :class:`numpy.ndarray` representing the underlying topography.
+	height : array_like
+		Three-dimensional :class:`numpy.ndarray` representing the height of the vertical coordinates isolines.
+		It is assumed that:
+		
+		* the first array axis represents :math:`x`;
+		* the second array axis represents the vertical coordinate;
+		* the third array axis represents the time.
+
+	field : array_like
+		Three-dimensional :class:`numpy.ndarray` representing the field to plot.
+		It is assumed that:
+		
+		* the first array axis represents :math:`x`;
+		* the second array axis represents the vertical coordinate;
+		* the third array axis represents the time.
+
+	destination : str
+		String specify the path to the location where the movie will be saved. Note that the extension should be specified as well.
+		
+	Keyword arguments
+	-----------------
+	fontsize : int
+		The fontsize to be used. Default is 12.
+	figsize : sequence
+		Sequence representing the figure size. Default is [8,8].
+	title : str
+		The figure title. Default is an empty string.
+	x_label : str
+		Label for the :math:`x`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	x_factor : float
+		Scaling factor for the :math:`x`-axis. Default is 1.
+	x_lim : sequence
+		Sequence representing the interval of the :math:`x`-axis to visualize. By default, the entire domain is shown.
+	z_label : str
+		Label for the :math:`z`-axis. Default is '<axis_dimension> [<axis_units>]'.
+	z_factor : float
+		Scaling factor for the :math:`z`-axis. Default is 1.
+	z_lim : sequence
+		Sequence representing the interval of the :math:`z`-axis to visualize. By default, the entire domain is shown.
+	field_factor : float
+		Scaling factor for the field. Default is 1.
+	plot_height: bool
+		:obj:`True` to plot the height of the vertical coordinate isolines, :obj:`False` otherwise. Default is :obj:`True`.
+	cmap_name : str
+		Name of the Matplotlib's color map to be used. All the color maps provided by Matplotlib, as well as the corresponding inverted
+		versions, are available.
+	cbar_levels : int
+		Number of levels for the color bar. Default is 14.
+	cbar_ticks_step : int
+		Distance between two consecutive labelled ticks of the color bar. Default is 1, i.e., all ticks are displayed with the
+		corresponding label.
+	cbar_center : float
+		Center of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field over time.
+	cbar_half-width : float
+		Half-width of the range covered by the color bar. By default, the color bar cover the spectrum identified by the minimum
+		and the maximum assumed by the field over time.
+	cbar_x_label : str
+		Label for the horizontal axis of the color bar. Default is an empty string.
+	cbar_y_label : str
+		Label for the vertical axis of the color bar. Default is an empty string.
+	cbar_orientation : str 
+		Orientation of the color bar. Either 'vertical' (default) or 'horizontal'.
+	fps : int
+		Frames per second. Default is 15.
+	text : str
+		Text to be added to the figure as anchored text. By default, no extra text is shown.
+	text_loc : str
+		String specifying the location where the text box should be placed. Default is 'upper right'; 
+		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
+	"""
+	# Shortcuts
+	nx, nz = grid.nx, grid.nz
+	ni, nk, nt = field.shape
+
+	# Get keyword arguments
+	fontsize         = kwargs.get('fontsize', 12)
+	figsize			 = kwargs.get('figsize', [8,8])
+	title            = kwargs.get('title', '')
+	x_label          = kwargs.get('x_label', '{} [${}$]'.format(grid.x.dims, grid.x.attrs.get('units', '')))
+	x_factor         = kwargs.get('x_factor', 1.)
+	x_lim			 = kwargs.get('x_lim', None)
+	z_label          = kwargs.get('z_label', '{} [${}$]'.format(grid.z.dims, grid.z.attrs.get('units', '')))
+	z_factor         = kwargs.get('z_factor', 1.)
+	z_lim			 = kwargs.get('z_lim', None)
+	field_factor     = kwargs.get('field_factor', 1.)
+	plot_height		 = kwargs.get('plot_height', True)
+	cmap_name        = kwargs.get('cmap_name', 'RdYlBu')
+	cbar_levels      = kwargs.get('cbar_levels', 14)
+	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
+	cbar_center      = kwargs.get('cbar_center', None)
+	cbar_half_width  = kwargs.get('cbar_half_width', None)
+	cbar_x_label     = kwargs.get('cbar_x_label', '')
+	cbar_y_label     = kwargs.get('cbar_y_label', '')
+	cbar_title       = kwargs.get('cbar_title', '')
+	cbar_orientation = kwargs.get('cbar_orientation', 'vertical')
+	fps				 = kwargs.get('fps', 15)
+	text			 = kwargs.get('text', None)
+	text_loc		 = kwargs.get('text_loc', 'upper right')
+
+	# Global settings
+	mpl.rcParams['font.size'] = fontsize
+
+	# Instantiate figure and axis objects
+	fig, ax = plt.subplots(figsize = figsize)
+
+	# Instantiate writer class
+	ffmpeg_writer = manimation.writers['ffmpeg']
+	metadata = {'title': ''}
+	writer = ffmpeg_writer(fps = fps, metadata = metadata)
+
+	with writer.saving(fig, destination, nt):
+		# Rescale the field for visualization purposes
+		field *= field_factor
+
+		# The x-grid underlying the isentropes and the field
+		x1 = x_factor * np.repeat(grid.x.values[:, np.newaxis], nz, axis = 1)
+		xv = x_factor * (grid.x.values if ni == nx else grid.x_half_levels.values)
+		x2 = np.repeat(xv[:, np.newaxis], nk, axis = 1)
+
+		# The isentropes
+		z = z_factor * height
+		z1 = z if nk == nz + 1 else 0.5 * (z[:, :-1, :] + z[:, 1:, :])
+
+		# The z-grid underlying the field
+		z2 = np.zeros((ni, nk, nt), dtype = float)
+		if ni == nx:
+			z2[:, :, :] = z1[:, :, :]
+		else:
+			z2[1:-1, :, :] = 0.5 * (z1[:-1, :, :] + z1[1:, :, :])
+			z2[0, :, :], z2[-1, :, :] = z2[1, :, :], z2[-2, :, :]
+
+		# Create the colormap
+		field_min, field_max = np.amin(field), np.amax(field)
+		if cbar_center is None or not (lt(field_min, cbar_center) and lt(cbar_center, field_max)):
+			cbar_lb, cbar_ub = field_min, field_max
+		else:
+			half_width = max(cbar_center - field_min, field_max - cbar_center) if cbar_half_width is None else cbar_half_width
+			cbar_lb, cbar_ub = cbar_center - half_width, cbar_center + half_width 
+		color_scale = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint = True)
+
+		if cmap_name == 'BuRd':
+			cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
+		else:
+			cm = plt.get_cmap(cmap_name)
+
+		for n in range(nt):
+			# Clean the canvas
+			ax.cla()
+
+			# Plot the isentropes
+			if plot_height:
+				for k in range(0, nk):
+					ax.plot(x1[:, 0], z1[:, k, n], color = 'gray', linewidth = 1)
+			ax.plot(x1[:, 0], z[:, -1, n], color = 'black', linewidth = 1)
+
+			# Plot the field
+			surf = plt.contourf(x2, z2[:, :, n], field[:, :, n], color_scale, cmap = cm)
+		
+			# Set plot settings
+			ax.set(xlabel = x_label, ylabel = z_label)
+			if x_lim is None:
+				ax.set_xlim([x1[0,0], x1[-1,0]])
+			else:
+				ax.set_xlim(x_lim)
+			if z_lim is not None:
+				ax.set_ylim(z_lim)
+
+			if n == 0:
+				# Set colorbar
+				cb = plt.colorbar(orientation = cbar_orientation)
+				cb.set_ticks(0.5 * (color_scale[:-1] + color_scale[1:])[::cbar_ticks_step])
+				if cbar_title is not None:
+					cb.ax.set_title(cbar_title)
+				if cbar_x_label is not None:
+					cb.ax.set_xlabel(cbar_x_label)
+				if cbar_y_label is not None:
+					cb.ax.set_ylabel(cbar_y_label)
+
+			# Add text
+			if text is not None:
+				ax.add_artist(AnchoredText(text, loc = text_loc))
+
+			# Add time
+			plt.title(title, loc = 'left', fontsize = fontsize - 1)
+			plt.title(str(utils.convert_datetime64_to_datetime(time[n]) - utils.convert_datetime64_to_datetime(time[0])), 
+					  loc = 'right', fontsize = fontsize - 1)
+
+			# Let the writer grab the frame
+			writer.grab_frame()
 
 def contourf_xy(grid, field, **kwargs):
 	"""

@@ -47,7 +47,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				 smooth_on = True, smooth_type = 'first_order', smooth_damp_depth = 10, 
 				 smooth_coeff = .03, smooth_coeff_max = .24, 
 				 smooth_moist_on = False, smooth_moist_type = 'first_order', smooth_moist_damp_depth = 10,
-				 smooth_coeff_moist = .03, smooth_coeff_moist_max = .24,
+				 smooth_moist_coeff = .03, smooth_moist_coeff_max = .24,
 				 physics_dynamics_coupling_on = False, sedimentation_on = False):
 		"""
 		Constructor.
@@ -97,9 +97,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			See :class:`dycore.horizontal_smoothing.HorizontalSmoothing` for the available options.
 		smooth_moist_damp_depth : `int`, optional
 			Number of vertical layers in the smoothing damping region for the water constituents. Default is 10.
-		smooth_coeff_moist : `float`, optional
+		smooth_moist_coeff : `float`, optional
 			Smoothing coefficient for the water constituents. Default is 0.03.
-		smooth_coeff_moist_max : `float`, optional
+		smooth_moist_coeff_max : `float`, optional
 			Maximum value for the smoothing coefficient for the water constituents. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
 		physics_dynamics_coupling_on : `bool`, optional
@@ -141,13 +141,25 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			if moist_on and smooth_moist_on:
 				self._smoother_moist = HorizontalSmoothing.factory(smooth_moist_type, (nx, ny, nz), grid, 
 																   smooth_moist_damp_depth, 
-														 		   smooth_coeff_moist, smooth_coeff_moist_max, backend)
+														 		   smooth_moist_coeff, smooth_moist_coeff_max, backend)
 
 		# Set the pointer to the entry-point method, distinguishing between dry and moist model
 		self._carry_out_large_timestep = self._carry_out_large_timestep_dry if not moist_on else \
 										 self._carry_out_large_timestep_moist
 
-	def __call__(self, dt, state, diagnostics = None):
+	@property
+	def time_levels(self):
+		"""
+		Get the number of time leves the dynamical core relies on.
+
+		Return
+		------
+		int :
+			The number of time levels needed by the dynamical core.
+		"""
+		return self._prognostic.time_levels
+
+	def __call__(self, dt, state, diagnostics = None, tendencies = None):
 		"""
 		Call operator advancing the state variables one step forward. 
 
@@ -171,12 +183,14 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing possibly required diagnostics, namely:
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics, namely:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered);
-			* raindrop_fall_velocity (unstaggered).
+			* change_over_time_in_air_potential_temperature (unstaggered, required when coupling between physics and dynamics \
+				is switched on).
 
 			Default is :obj:`None`.
+		tendencies : `obj`, optional
+			:class:`~storages.grid_data.GridData` possibly storing tendencies. Default is obj:`None`.
 
 		Return
 		------
@@ -199,7 +213,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* air_density (unstaggered, only if cloud microphysics is switched on);
 			* air_temperature (unstaggered, only if cloud microphysics is switched on).
 		"""
-		return self._carry_out_large_timestep(dt, state, diagnostics)
+		return self._carry_out_large_timestep(dt, state, diagnostics, tendencies)
 
 	def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 		"""
@@ -286,8 +300,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			exn_col = np.zeros(nz + 1, dtype = datatype)
 			exn_col[-1] = cp
 			for k in range(0, nz):
-				exn_col[nz - k - 1] = exn_col[nz - k] - dz * g**2 / \
-									  (brunt_vaisala_initial**2 * z[nz - k - 1]**2)
+				exn_col[nz - k - 1] = exn_col[nz - k] - 4.* dz * g**2 / \
+									  (brunt_vaisala_initial**2 * ((z_hl[nz - k - 1] + z_hl[nz - k])**2))
 			exn = np.tile(exn_col[np.newaxis, np.newaxis, :], (nx, ny, 1))
 
 			# The initial pressure
@@ -328,7 +342,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				# Compute the pressure and the temperature at the main levels
 				p_ml  = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
 				theta = np.tile(self._grid.z.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
-				T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
+				#T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
+				theta_hl = np.tile(self._grid.z_half_levels.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
+				T_ml = 0.5 * (theta_hl[:, :, :-1] * exn[:, :, :-1] + theta_hl[:, :, 1:] * exn[:, :, 1:]) / cp
 
 				# Convert relative humidity to water vapor
 				qv = utils_meteo.convert_relative_humidity_to_water_vapor('goff_gratch', p_ml, T_ml, rh)
@@ -472,7 +488,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		return state
 
-	def _carry_out_large_timestep_dry(self, dt, state, diagnostics):
+	def _carry_out_large_timestep_dry(self, dt, state, diagnostics, tendencies):
 		"""
 		Method advancing the dry isentropic state by a single time step.
 
@@ -493,8 +509,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* montgomery_potential (unstaggered).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing possibly required diagnostics.
-			By the time being, it is not actually used. 
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
+			For the time being, this is not actually used. 
+		tendencies : `obj`, optional 
+			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			For the time being, this is not actually used. 
 
 		Return
 		------
@@ -563,7 +582,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		return state_new
 
-	def _carry_out_large_timestep_moist(self, dt, state, diagnostics):
+	def _carry_out_large_timestep_moist(self, dt, state, diagnostics, tendencies):
 		"""
 		Method advancing the moist isentropic state by a single time step.
 
@@ -587,9 +606,13 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing possibly required diagnostics, namely:
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics, namely:
 			
 			* change_over_time_in_air_potential_temperature (unstaggered).
+
+		tendencies : `obj`, optional 
+			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			For the time being, this is not actually used.
 
 		Return
 		------
@@ -625,10 +648,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Qr_now = np.copy(state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
 		# Perform the prognostic step, neglecting the vertical advection
-		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics)
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics, tendencies = tendencies)
 
 		# Couple physics with dynamics
-		if self._coupling_physics_dynamics_on:
+		if self._physics_dynamics_coupling_on:
 			diagnostics = GridData(change_over_time_in_air_potential_temperature = np.zeros_like(s_now))
 			state_new = self._prognostic.step_coupling_physics_with_dynamics(dt, state_now, state_new, diagnostics)
 
@@ -692,7 +715,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(Qc_new, Qc_now)
 			self._boundary.apply(Qr_new, Qr_now)
 
-		# Diagnose the mass fraction of each water constituent
+		# Diagnose the mass fraction of each water constituent, possibly clipping negative values
 		state_new.update(self._diagnostic.get_mass_fraction_of_water_constituents_in_air(state_new)) 
 
 		# Diagnose the velocity components
