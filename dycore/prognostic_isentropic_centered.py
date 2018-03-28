@@ -8,6 +8,7 @@ from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
 from tasmania.namelist import datatype
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
+import tasmania.utils.utils as utils
 
 class PrognosticIsentropicCentered(PrognosticIsentropic):
 	"""
@@ -64,7 +65,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# This will be re-directed when the forward method is invoked for the first time
 		self._stencil_stepping_by_neglecting_vertical_advection = None
 
-	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
+	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None, tendencies = None):
 		"""
 		Method advancing the conservative, prognostic model variables one time step forward via a centered time-integration scheme.
 		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
@@ -100,7 +101,11 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly collecting useful diagnostics.
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
+			For the time being, this is not actually used.
+		tendencies : `obj`, optional
+			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			For the time being, this is not actually used.
 
 		Return
 		------
@@ -115,7 +120,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 		# Initialize the output state
-		state_new = StateIsentropic(state.time + dt, self._grid)
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		state_new = StateIsentropic(time + dt, self._grid)
 
 		# Extract the needed model variables at the current time level
 		s   = state['air_isentropic_density'].values[:,:,:,0]
@@ -173,12 +179,12 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._Qc_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qc_old)
 			self._Qr_old_ = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr_old)
 
-		# The first time this method is invoked, initialize the GT4Py's stencils
+		# The first time this method is invoked, initialize the GT4Py's stencil
 		if self._stencil_stepping_by_neglecting_vertical_advection is None:
 			self._stencil_stepping_by_neglecting_vertical_advection_initialize(s_, u_, v_)
 
-		# Update the attributes which serve as inputs to the first GT4Py's stencil
-		self._set_stencils_stepping_by_neglecting_vertical_advection_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
+		# Update the attributes which serve as inputs to the GT4Py's stencil
+		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
 			self._s_old_, self._U_old_, self._V_old_, self._Qv_old_, self._Qc_old_, self._Qr_old_)
 		
 		# Run the stencil's compute function
@@ -306,7 +312,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._old_Qc_ = np.zeros_like(s_)
 			self._old_Qr_ = np.zeros_like(s_)
 
-	def _set_stencils_stepping_by_neglecting_vertical_advection_inputs(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
+	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(self, dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_, 
 																	   s_old_, U_old_, V_old_, Qv_old_, Qc_old_, Qr_old_):
 		"""
 		Update the attributes which serve as inputs to the GT4Py's stencil.
@@ -362,7 +368,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			at the previous time level.
 		"""
 		# Update the time step and the Numpy arrays carrying the current solution
-		super()._set_stencils_stepping_by_neglecting_vertical_advection_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
+		super()._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
 		
 		# Update the Numpy arrays carrying the solution at the previous time step
 		self._old_s_[:,:,:] = s_old_[:,:,:]

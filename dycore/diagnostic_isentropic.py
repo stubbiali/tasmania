@@ -4,6 +4,7 @@ import numpy as np
 import gridtools as gt
 from tasmania.namelist import cp, datatype, g, p_ref, Rd
 from tasmania.storages.grid_data import GridData
+import tasmania.utils.utils as utils
 
 class DiagnosticIsentropic:
 	"""
@@ -32,6 +33,7 @@ class DiagnosticIsentropic:
 		if self._moist_on:
 			self._stencil_diagnosing_water_constituents_isentropic_density = None
 			self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air = None
+			self._stencil_clipping = None
 		self._stencil_diagnosing_air_pressure = None
 		self._stencil_diagnosing_montgomery = None
 		self._stencil_diagnosing_height = None
@@ -113,7 +115,8 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_water_constituents_isentropic_density.compute()
 
 		# Set the output
-		out = GridData(state.time, self._grid, 
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		out = GridData(time, self._grid, 
 					   water_vapor_isentropic_density = self._out_Qv,
 					   cloud_liquid_water_isentropic_density = self._out_Qc, 
 					   precipitation_water_isentropic_density = self._out_Qr)
@@ -181,7 +184,8 @@ class DiagnosticIsentropic:
 			self.boundary.set_outermost_layers_y(self._out_v, v_old) 
 
 		# Set the output
-		out = GridData(state.time, self._grid, 
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		out = GridData(time, self._grid, 
 					   x_velocity = self._out_u, 
 					   y_velocity = self._out_v)
 
@@ -216,18 +220,22 @@ class DiagnosticIsentropic:
 		Qc = state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
 		Qr = state['precipitation_water_isentropic_density'].values[:,:,:,0]
 
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air is None:
 			self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air_initialize()
 
 		# Update the attributes which serve as inputs to the GT4Py's stencils
 		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air_set_inputs(s, Qv, Qc, Qr)
 
-		# Run the stencils' compute functions
+		# Daignose the mass fraction of each water constituent, ...
 		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air.compute()
 
+		# ... clipping negative values
+		self._stencil_clipping.compute()
+
 		# Set the output
-		out = GridData(state.time, self._grid, 
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		out = GridData(time, self._grid, 
 					   mass_fraction_of_water_vapor_in_air = self._out_qv,
 					   mass_fraction_of_cloud_liquid_water_in_air = self._out_qc, 
 					   mass_fraction_of_precipitation_water_in_air = self._out_qr)
@@ -291,7 +299,8 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_height.compute()
 
 		# Set the output
-		out = GridData(state.time, self._grid, 
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		out = GridData(time, self._grid, 
 					   air_pressure = self._out_p, 
 					   exner_function = self._out_exn,
 					   montgomery_potential = self._out_mtg, 
@@ -333,7 +342,8 @@ class DiagnosticIsentropic:
 		self._stencil_diagnosing_air_density.compute()
 
 		# Set the output
-		out = GridData(state.time, self._grid, air_density = self._out_rho)
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		out = GridData(time, self._grid, air_density = self._out_rho)
 
 		return out
 
@@ -362,7 +372,8 @@ class DiagnosticIsentropic:
 		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:]) / cp
 
 		# Set the output
-		out = GridData(state.time, self._grid, air_temperature = T)
+		time = utils.convert_datetime64_to_datetime(state['exner_function'].coords['time'].values[0])
+		out = GridData(time, self._grid, air_temperature = T)
 
 		return out
 
@@ -598,15 +609,28 @@ class DiagnosticIsentropic:
 		self._in_Qc = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_Qr = np.zeros((nx, ny, nz), dtype = datatype)
 
+		# Allocate the Numpy arrays which will carry the temporary fields
+		self._tmp_qv = np.zeros((nx, ny, nz), dtype = datatype)
+		self._tmp_qc = np.zeros((nx, ny, nz), dtype = datatype)
+		self._tmp_qr = np.zeros((nx, ny, nz), dtype = datatype)
+
 		# Allocate the Numpy arrays which will carry the output fields
 		self._out_qv = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qc = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qr = np.zeros((nx, ny, nz), dtype = datatype)
 
-		# Instantiate the stencil
+		# Instantiate the stencil in charge of the diagnosis
 		self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air = gt.NGStencil( 
 			definitions_func = self._stencil_diagnosing_mass_fraction_of_water_constituents_in_air_defs,
 			inputs = {'in_s': self._in_s, 'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
+			outputs = {'out_qv': self._tmp_qv, 'out_qc': self._tmp_qc, 'out_qr': self._tmp_qr},
+			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
+			mode = self._backend)
+
+		# Instantiate the stencil in charge of the clipping
+		self._stencil_clipping = gt.NGStencil( 
+			definitions_func = self._stencil_clipping_defs,
+			inputs = {'in_qv': self._tmp_qv, 'in_qc': self._tmp_qc, 'in_qr': self._tmp_qr},
 			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)), 
 			mode = self._backend)
@@ -675,6 +699,45 @@ class DiagnosticIsentropic:
 		out_qv[i, j, k] = in_Qv[i, j, k] / in_s[i, j, k]
 		out_qc[i, j, k] = in_Qc[i, j, k] / in_s[i, j, k]
 		out_qr[i, j, k] = in_Qr[i, j, k] / in_s[i, j, k]
+
+		return out_qv, out_qc, out_qr
+
+	def _stencil_clipping_defs(self, in_qv, in_qc, in_qr):
+		"""
+		GT4Py's stencil clipping (i.e., setting to zero the negative values of) the mass fraction of each water constituent.
+
+		Parameters
+		----------
+		in_qv : obj
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of water vapor.
+		in_qc : obj
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of cloud water.
+		in_qr : obj
+			:class:`gridtools.Equation` representing the diagnosed mass fraction of precipitation water.
+
+		Returns
+		-------
+		out_qv : obj
+			:class:`gridtools.Equation` representing the clipped mass fraction of water vapor.
+		out_qc : obj
+			:class:`gridtools.Equation` representing the clipped mass fraction of cloud water.
+		out_qr : obj
+			:class:`gridtools.Equation` representing the clipped mass fraction of precipitation water.
+		"""
+		# Indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Output fields
+		out_qv = gt.Equation()
+		out_qc = gt.Equation()
+		out_qr = gt.Equation()
+
+		# Computations
+		out_qv[i, j, k] = in_qv[i, j, k] * (in_qv[i, j, k] >= 0.)
+		out_qc[i, j, k] = in_qc[i, j, k] * (in_qc[i, j, k] >= 0.)
+		out_qr[i, j, k] = in_qr[i, j, k] * (in_qr[i, j, k] >= 0.)
 
 		return out_qv, out_qc, out_qr
 

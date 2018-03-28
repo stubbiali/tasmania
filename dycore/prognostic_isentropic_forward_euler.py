@@ -8,6 +8,7 @@ from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
 from tasmania.namelist import datatype
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
+import tasmania.utils.utils as utils
 
 class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	"""
@@ -58,7 +59,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._stencil_stepping_by_neglecting_vertical_advection_first = None
 		self._stencil_stepping_by_neglecting_vertical_advection_second = None
 
-	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None):
+	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None, tendencies = None):
 		"""
 		Method advancing the conservative, prognostic model variables one time step forward via the forward Euler method.
 		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
@@ -84,17 +85,13 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		state_old : `obj`, optional
 			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
-			It should contain the following variables:
-
-			* air_isentropic_density (unstaggered);
-			* x_momentum_isentropic (unstaggered);
-			* y_momentum_isentropic (unstaggered);
-			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
-			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
-			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
-
+			This is not actually used, yet it appears as default argument for compliancy with the class hierarchy interface.
 		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly collecting useful diagnostics.
+			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
+			For the time being, this is not actually used.
+		tendencies : `obj`, optional
+			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			For the time being, this is not actually used.
 
 		Return
 		------
@@ -109,7 +106,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 		# Initialize the output state
-		state_new = StateIsentropic(state.time + dt, self._grid)
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		state_new = StateIsentropic(time + dt, self._grid)
 
 		# Extract the model variables which are needed
 		s   = state['air_isentropic_density'].values[:,:,:,0]
@@ -165,7 +163,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			s_prov = .5 * (s + s_new)
 
 		# Diagnose the Montgomery potential from the provisional isentropic density
-		state_prov = StateIsentropic(state.time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
+		state_prov = StateIsentropic(time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
 		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['air_pressure'].values[0,0,0,0])
 
 		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
