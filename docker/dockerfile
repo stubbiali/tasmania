@@ -10,9 +10,36 @@ ADD . /tasmania/docker
 # Install required Python packages specified in requirements.txt
 RUN pip install -r /tasmania/docker/requirements.txt
 
-# Run the bootstrap
-RUN chmod +x /tasmania/docker/bootstrap.sh 
-RUN /tasmania/docker/bootstrap.sh
+# Install GT4Py dependencies
+RUN apt-get update && \
+	apt-get install -y chromium				\
+					   cmake                \
+                   	   libfreetype6-dev     \
+                   	   libpng12-dev         \
+                   	   pkg-config           \
+				   	   qt-sdk				\
+				   	   vim					\
+				   	   x11-apps				\
+                	--no-install-recommends
+
+# Install Boost-1.58.0
+RUN wget -q -O boost_1_58_0.tar.gz 'http://downloads.sourceforge.net/project/boost/boost/1.58.0/boost_1_58_0.tar.gz?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.58.0%2F&ts=1446134333&use_mirror=kent' && \
+	tar xvzf boost_1_58_0.tar.gz && \
+	cd boost_1_58_0 && \
+	./bootstrap.sh --with-libraries=timer,system,chrono --exec-prefix=/usr/local && \
+	./b2 install && \
+	cd .. && \
+	rm -rf boost_1_58_0 boost_1_58_0.tar.gz
+
+# Set matplotlib backend to Qt5
+RUN cat /usr/local/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	cp /tmp/.matplotlibrc /usr/local/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc
+
+# Personalize bashrc configuration file
+RUN cat /tasmania/docker/bashrc >> ~/.bashrc
+
+# Set vimrc configuration file
+RUN cp /tasmania/docker/vimrc ~/.vimrc
 
 # Set useful environmental variables
 ENV TERM xterm-256color
