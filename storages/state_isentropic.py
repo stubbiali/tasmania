@@ -246,7 +246,7 @@ class StateIsentropic(GridData):
 			The index corresponding to the time level to plot.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`utils.utils_plot.contour_xz` for the complete list.
+			See :func:`utils.utils_plot.contourf_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz
@@ -287,6 +287,50 @@ class StateIsentropic(GridData):
 		# Plot
 		utils_plot.contourf_xz(self.grid, self.grid.topography_height[:, y_level], 
 							   self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
+
+	def contourf_animation_xz(self, field_to_plot, y_level, destination, **kwargs):
+		"""
+		Generate a contourf animation of a field at the cross-section :math:`y = \\bar{y}`.
+
+		Parameters
+		----------
+		field_to_plot : str 
+			String specifying the field to plot. This might be:
+
+			* the name of a variable stored in the current object.
+
+		y_level : int 
+			Index corresponding to the :math:`y`-level identifying the cross-section to plot.
+		destination : str
+			String specify the path to the location where the movie will be saved. Note that the extension should be 
+			specified as well.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. 
+			See :func:`utils.utils_plot.contourf_animation_xz` for the complete list.
+		"""
+		# Shortcuts
+		nx, nz = self.grid.nx, self.grid.nz
+		time = self._vars[list(self._vars.keys())[0]].coords['time'].values 
+		nt = len(time)
+		dx = self.grid.dx
+
+		# Extract, compute, or interpolate the field to plot
+		if field_to_plot in self._vars:
+			var = self._vars[field_to_plot].values[:, y_level, :, :] 
+		elif field_to_plot == 'air_temperature':
+			z = self.grid.z_half_levels.values
+			p = self._vars['pressure'].values[:, y_level, :, :]
+			exn = self._vars['exner_function'].values[:, y_level, :, :]
+
+			var = np.zeros((nx, nz + 1, nt), dtype = datatype)
+			for k in range(nz + 1):
+				var[:, k, :] = exn[:, k, :] * z[k] / cp 
+		else:
+			raise RuntimeError('Unknown field to plot.')
+
+		# Plot
+		utils_plot.contourf_animation_xz(time, self.grid, self.grid.topography_height[:, y_level], 
+							   			 self._vars['height'].values[:, y_level, :, :], var, destination, **kwargs)
 
 	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
 		"""
