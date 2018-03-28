@@ -32,8 +32,8 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_leapfrog.pickle')
-field = 'air_temperature'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_maccormack_animation_bis.pickle')
+field = 'mass_fraction_of_cloud_liquid_water_in_air'
 y_level = 0
 time_level = -1
 

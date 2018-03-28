@@ -197,13 +197,13 @@ topo_kwargs     = {
 #
 model                    = 'isentropic' 
 moist_on				 = True
-horizontal_boundary_type = 'periodic'
+horizontal_boundary_type = 'relaxed'
 
 #
 # Numerical settings
 #
-time_scheme             = 'forward_euler'
-flux_scheme             = 'maccormack'
+time_scheme             = 'centered'
+flux_scheme             = 'centered'
 damp_on	                = False
 damp_type               = 'rayleigh'
 damp_depth              = 30
@@ -251,6 +251,6 @@ initial_state_kwargs  = {
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = np.arange(30, 2161, 30)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_periodic_maccormack_animation.pickle')
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_leapfrog_animation.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float64
