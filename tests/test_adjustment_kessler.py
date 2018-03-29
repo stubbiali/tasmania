@@ -1,5 +1,5 @@
 """
-Script to test the class AdjustmentMicrophysicsKessler.
+Script to test the class AdjustmentMicrophysicsKesslerWRF.
 """
 from datetime import datetime, timedelta
 import numpy as np
@@ -32,7 +32,7 @@ state = StateIsentropic(datetime(year = 1992, month = 2, day = 20), grid,
 						mass_fraction_of_cloud_liquid_water_in_air  = qc,
 						mass_fraction_of_precipitation_water_in_air = qr)
 
-mp = AdjustmentMicrophysics.factory('kessler', grid, False, gt.mode.NUMPY)
+mp = AdjustmentMicrophysics.factory('kessler_wrf', grid, False, gt.mode.NUMPY)
 mp.time_levels = 1
 
 state_new, diagnostics = mp(dt, state)
