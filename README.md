@@ -14,13 +14,13 @@ A *container* is a runtime instance of an *image*, which in turn is an executabl
 
 [Docker](https://www.docker.com/) is a platform for developers and sysadmins to develop, deploy, and run applications with containers. To create a local instance of the Docker image from which the container for `Tasmania` will be spawn, from the repo root directory issue:
 
-	docker build -t tasmania docker
+	docker build -t tasmania-ci docker
 
 Later, type
 
-	docker run -dit -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD:/tasmania tasmania
+	docker run -dit -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD:/tasmania tasmania-ci
 
-to run the container in detached mode. The flags `-e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix` are required only if ones want to generate plots via [Matplotlib](https://matplotlib.org/). If this is not the case, they can be omitted. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*. In this way, the folder `/tasmania` within the container will be in sync with the repo root directory.
+to run the container in detached mode. The flags `-e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix` are required only if one wants to generate plots via [Matplotlib](https://matplotlib.org/). If this is not the case, they can be omitted. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*. In this way, the folder `/tasmania` within the container will be in sync with the repo root directory.
 
 When successful, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:
 
