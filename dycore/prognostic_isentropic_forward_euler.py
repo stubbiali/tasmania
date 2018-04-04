@@ -3,7 +3,7 @@ import numpy as np
 
 import gridtools as gt
 from tasmania.dycore.flux_isentropic import FluxIsentropic
-from tasmania.dycore.horizontal_boundary import RelaxedSymmetricXZ, RelaxedSymmetricYZ
+from tasmania.dycore.horizontal_boundary_relaxed import RelaxedSymmetricXZ, RelaxedSymmetricYZ
 from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
 from tasmania.namelist import datatype
 from tasmania.storages.grid_data import GridData
@@ -22,7 +22,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	steps : int
 		Number of steps the scheme entails.
 	"""
-	def __init__(self, flux_scheme, grid, moist_on, backend):
+	def __init__(self, flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, sedimentation_on):
 		"""
 		Constructor.
 		
@@ -40,7 +40,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT$Py's stencils.
+			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
+		physics_dynamics_coupling_on : bool
+			:obj:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
+			:obj:`False` otherwise.
+		sedimentation_on : bool
+			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
 
 		Note
 		----
@@ -48,14 +53,15 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.factory` of 
 		:class:`~dycore.prognostic_isentropic.PrognosticIsentropic`.
 		"""
-		super().__init__(flux_scheme, grid, moist_on, backend)
+		super().__init__(flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, sedimentation_on)
 
 		# Number of time levels and steps entailed
 		self.time_levels = 1
 		self.steps = 1
 
-		# The pointers to the stencils' compute function
-		# They will be re-directed when the forward method is invoked for the first time
+		# Initialize the pointers to the compute functions of the stencils stepping the solution by neglecting 
+		# vertical advection. These will be re-directed when the corresponding forward method is invoked for 
+		# the first time
 		self._stencil_stepping_by_neglecting_vertical_advection_first = None
 		self._stencil_stepping_by_neglecting_vertical_advection_second = None
 
@@ -109,171 +115,174 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
 		state_new = StateIsentropic(time + dt, self._grid)
 
-		# Extract the model variables which are needed
-		s   = state['air_isentropic_density'].values[:,:,:,0]
-		u   = state['x_velocity'].values[:,:,:,0]
-		v   = state['y_velocity'].values[:,:,:,0]
-		U   = state['x_momentum_isentropic'].values[:,:,:,0]
-		V   = state['y_momentum_isentropic'].values[:,:,:,0]
-		mtg = state['montgomery_potential'].values[:,:,:,0]
-		Qv	= None if not self._moist_on else state['water_vapor_isentropic_density'].values[:,:,:,0]
-		Qc	= None if not self._moist_on else state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
-		Qr	= None if not self._moist_on else state['precipitation_water_isentropic_density'].values[:,:,:,0]
-
-		# Extend the arrays to accommodate the horizontal boundary conditions
-		s_   = self.boundary.from_physical_to_computational_domain(s)
-		u_   = self.boundary.from_physical_to_computational_domain(u)
-		v_   = self.boundary.from_physical_to_computational_domain(v)
-		mtg_ = self.boundary.from_physical_to_computational_domain(mtg)
-		U_   = self.boundary.from_physical_to_computational_domain(U)
-		V_   = self.boundary.from_physical_to_computational_domain(V)
-		Qv_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qv)
-		Qc_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qc)
-		Qr_  = None if not self._moist_on else self.boundary.from_physical_to_computational_domain(Qr)
-
 		# The first time this method is invoked, initialize the GT4Py's stencils
 		if self._stencil_stepping_by_neglecting_vertical_advection_first is None:
-			self._stencils_stepping_by_neglecting_vertical_advection_initialize(s_, u_, v_)
+			self._stencils_stepping_by_neglecting_vertical_advection_initialize(state)
 
 		# Update the attributes which serve as inputs to the first GT4Py's stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, s_, u_, v_, mtg_, U_, V_, Qv_, Qc_, Qr_)
+		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, state)
 		
 		# Run the compute function of the stencil stepping the isentropic density and the water constituents,
 		# and providing provisional values for the momentums
 		self._stencil_stepping_by_neglecting_vertical_advection_first.compute()
 
-		# Bring the updated density and water constituents back to the original dimensions
+		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		s_new  = self.boundary.from_computational_to_physical_domain(self._out_s_, (nx, ny, nz))
-		Qv_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qv_, (nx, ny, nz))
-		Qc_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qc_, (nx, ny, nz))
-		Qr_new = None if not self._moist_on else self.boundary.from_computational_to_physical_domain(self._out_Qr_, (nx, ny, nz))
+		mi, mj = self._mi, self._mj
+
+		# Bring the updated density and water constituents back to the original dimensions
+		out_s  = self.boundary.from_computational_to_physical_domain(self._out_s[:mi, :mj, :], (nx, ny, nz))
+		out_Qv = None if not self._moist_on else \
+				 self.boundary.from_computational_to_physical_domain(self._out_Qv[:mi, :mj, :], (nx, ny, nz))
+		out_Qc = None if not self._moist_on else \
+				 self.boundary.from_computational_to_physical_domain(self._out_Qc[:mi, :mj, :], (nx, ny, nz))
+		out_Qr = None if not self._moist_on else \
+				 self.boundary.from_computational_to_physical_domain(self._out_Qr[:mi, :mj, :], (nx, ny, nz))
 
 		# Apply the boundary conditions on the updated isentropic density and water constituents
-		self.boundary.apply(s_new, s)
+		self.boundary.apply(out_s, state['air_isentropic_density'].values[:,:,:,0])
 		if self._moist_on:
-			self.boundary.apply(Qv_new, Qv)
-			self.boundary.apply(Qc_new, Qc)
-			self.boundary.apply(Qr_new, Qr)
+			self.boundary.apply(out_Qv, state['water_vapor_isentropic_density'].values[:,:,:,0])
+			self.boundary.apply(out_Qc, state['cloud_liquid_water_isentropic_density'].values[:,:,:,0])
+			self.boundary.apply(out_Qr, state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
 		# Compute the provisional isentropic density; this may be scheme-dependent
 		if self._flux_scheme in ['upwind', 'centered']:
-			s_prov = s_new
+			s_prov = out_s
 		elif self._flux_scheme in ['maccormack']:
-			s_prov = .5 * (s + s_new)
+			s_prov = .5 * (state['air_isentropic_density'].values[:,:,:,0] + out_s)
 
 		# Diagnose the Montgomery potential from the provisional isentropic density
 		state_prov = StateIsentropic(time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
 		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['air_pressure'].values[0,0,0,0])
 
 		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
-		self._prv_s[:,:,:]   = self.boundary.from_physical_to_computational_domain(s_prov)
-		self._prv_mtg[:,:,:] = self.boundary.from_physical_to_computational_domain(gd['montgomery_potential'].values[:,:,:,0])
+		self._in_s_prv[:mi, :mj, :]   = self.boundary.from_physical_to_computational_domain(s_prov)
+		self._in_mtg_prv[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(
+											gd['montgomery_potential'].values[:,:,:,0])
 
 		# Run the compute function of the stencil stepping the momentums
 		self._stencil_stepping_by_neglecting_vertical_advection_second.compute()
 
 		# Bring the momentums back to the original dimensions
 		if type(self.boundary) == RelaxedSymmetricXZ:
-			U_new = self.boundary.from_computational_to_physical_domain(self._out_U_, (nx, ny, nz), change_sign = False)
-			V_new = self.boundary.from_computational_to_physical_domain(self._out_V_, (nx, ny, nz), change_sign = True) 
+			out_U = self.boundary.from_computational_to_physical_domain(self._out_U[:mi, :mj, :], (nx, ny, nz), 
+																		change_sign = False)
+			out_V = self.boundary.from_computational_to_physical_domain(self._out_V[:mi, :mj, :], (nx, ny, nz), 
+																		change_sign = True) 
 		elif type(self.boundary) == RelaxedSymmetricYZ:
-			U_new = self.boundary.from_computational_to_physical_domain(self._out_U_, (nx, ny, nz), change_sign = True)
-			V_new = self.boundary.from_computational_to_physical_domain(self._out_V_, (nx, ny, nz), change_sign = False) 
+			out_U = self.boundary.from_computational_to_physical_domain(self._out_U[:mi, :mj, :], (nx, ny, nz), 
+																		change_sign = True)
+			out_V = self.boundary.from_computational_to_physical_domain(self._out_V[:mi, :mj, :], (nx, ny, nz), 
+																		change_sign = False) 
 		else:
-			U_new = self.boundary.from_computational_to_physical_domain(self._out_U_, (nx, ny, nz))
-			V_new = self.boundary.from_computational_to_physical_domain(self._out_V_, (nx, ny, nz)) 
+			out_U = self.boundary.from_computational_to_physical_domain(self._out_U[:mi, :mj, :], (nx, ny, nz))
+			out_V = self.boundary.from_computational_to_physical_domain(self._out_V[:mi, :mj, :], (nx, ny, nz)) 
 
 		# Apply the boundary conditions on the momentums
-		self.boundary.apply(U_new, U)
-		self.boundary.apply(V_new, V)
+		self.boundary.apply(out_U, state['x_momentum_isentropic'].values[:,:,:,0])
+		self.boundary.apply(out_V, state['y_momentum_isentropic'].values[:,:,:,0])
 
 		# Update the output state
-		state_new.add(air_isentropic_density                 = s_new, 
-					  x_momentum_isentropic                  = U_new, 
-					  y_momentum_isentropic                  = V_new,
-					  water_vapor_isentropic_density         = Qv_new, 
-					  cloud_liquid_water_isentropic_density  = Qc_new,
-					  precipitation_water_isentropic_density = Qr_new)
+		state_new.add(air_isentropic_density                 = out_s, 
+					  x_momentum_isentropic                  = out_U, 
+					  y_momentum_isentropic                  = out_V,
+					  water_vapor_isentropic_density         = out_Qv, 
+					  cloud_liquid_water_isentropic_density  = out_Qc,
+					  precipitation_water_isentropic_density = out_Qr)
 
 		return state_new
 
-	def _stencils_stepping_by_neglecting_vertical_advection_initialize(self, s_, u_, v_):
+	def _stencils_stepping_by_neglecting_vertical_advection_initialize(self, state):
 		"""
-		Initialize the GT4Py's stencils implementing the forward Euler scheme.
+		Initialize the GT4Py's stencils implementing the forward Euler scheme to step the solution by neglecting
+		vertical advection.
 
 		Parameters
 		----------
-		s_ : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
-			at current time.
-		u_ : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`x`-velocity 
-			at current time.
-		v_ : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the :math:`y`-velocity 
-			at current time.
-		"""
-		# Allocate the Numpy arrays which will serve as inputs to the first stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(s_, u_, v_)
+		state : obj
+			:class:`~storages.state_isentropic.StateIsentropic` representing the current state. 
+			It should contain the following variables:
 
-		# Allocate the Numpy arrays which will store temporary fields
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(s_)
+			* air_isentropic_density (unstaggered).
+		"""
+		# Deduce the shape of any (unstaggered) input field
+		s = self.boundary.from_physical_to_computational_domain(state['air_isentropic_density'].values[:,:,:,0])
+		mi, mj, nz = s.shape
+
+		# Allocate the Numpy arrays which will serve as inputs to the first stencil
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(mi, mj)
+
+		# Allocate the Numpy arrays which will store provisional (i.e., temporary) fields
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(mi, mj)
 
 		# Allocate the Numpy arrays which will store the output fields
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(s_)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(mi, mj)
 
-		# Set the computational domain and the backend
-		ni, nj, nk = s_.shape[0] - 2 * self.nb, s_.shape[1] - 2 * self.nb, s_.shape[2]
-		_domain = gt.domain.Rectangle((self.nb, self.nb, 0), 
-									  (self.nb + ni - 1, self.nb + nj - 1, nk - 1))
+		# Set the stencils' computational domain and the backend
+		nb = self.nb
+		ni, nj, nk = mi - 2 * nb, mj - 2 * nb, nz
+		_domain = gt.domain.Rectangle((nb, nb, 0), 
+									  (nb + ni - 1, nb + nj - 1, nk - 1))
 		_mode = self._backend
 
 		# Instantiate the first stencil
 		if not self._moist_on:
 			self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
 				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
-				inputs = {'in_s': self._in_s_, 'in_u': self._in_u_, 'in_v': self._in_v_, 
-						  'in_mtg': self._in_mtg_, 'in_U': self._in_U_, 'in_V': self._in_V_},
+				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
+						  'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V},
 				global_inputs = {'dt': self._dt},
-				outputs = {'out_s': self._out_s_, 'out_U': self._prv_U, 'out_V': self._prv_V},
+				outputs = {'out_s': self._out_s, 'out_U': self._tmp_U, 'out_V': self._tmp_V},
 				domain = _domain, 
 				mode = _mode)
 		else:
 			self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
 				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
-				inputs = {'in_s': self._in_s_, 'in_u': self._in_u_, 'in_v': self._in_v_, 
-						  'in_mtg': self._in_mtg_, 'in_U': self._in_U_, 'in_V': self._in_V_,  
-						  'in_Qv': self._in_Qv_, 'in_Qc': self._in_Qc_, 'in_Qr': self._in_Qr_},
+				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
+						  'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V,  
+						  'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
 				global_inputs = {'dt': self._dt},
-				outputs = {'out_s': self._out_s_, 'out_U': self._prv_U, 'out_V': self._prv_V,
-						   'out_Qv': self._out_Qv_, 'out_Qc': self._out_Qc_, 'out_Qr': self._out_Qr_},
+				outputs = {'out_s': self._out_s, 'out_U': self._tmp_U, 'out_V': self._tmp_V,
+						   'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr},
 				domain = _domain, 
 				mode = _mode)
 
 		# Instantiate the second stencil
 		self._stencil_stepping_by_neglecting_vertical_advection_second = gt.NGStencil( 
 			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_second_defs,
-			inputs = {'in_s': self._prv_s, 'in_mtg': self._prv_mtg, 'in_U': self._prv_U, 'in_V': self._prv_V},
+			inputs = {'in_s': self._in_s_prv, 'in_mtg': self._in_mtg_prv, 'in_U': self._tmp_U, 'in_V': self._tmp_V},
 			global_inputs = {'dt': self._dt},
-			outputs = {'out_U': self._out_U_, 'out_V': self._out_V_},
+			outputs = {'out_U': self._out_U, 'out_V': self._out_V},
 			domain = _domain, 
 			mode = _mode)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(self, s_):
+	def _stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(self, mi, mj):
 		"""
-		Allocate the Numpy arrays which will store temporary fields.
+		Allocate the Numpy arrays which will store temporary fields to be shared between the stencils
+		stepping the solution by neglecting vertical advection.
 
 		Parameters
 		----------
-		s_ : array_like 
-			:class:`numpy.ndarray` representing the stencils' computational domain for the isentropic density 
-			at current time.
+		mi : int
+			:math:`x`-extent of an input array representing an :math:`x`-unstaggered field.
+		mj : int
+			:math:`y`-extent of an input array representing a :math:`y`-unstaggered field.
 		"""
-		self._prv_U   = np.zeros_like(s_)
-		self._prv_V   = np.zeros_like(s_)
-		self._prv_s   = np.zeros_like(s_)
-		self._prv_mtg = np.zeros_like(s_)
+		# Shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+
+		# Determine the size of the arrays
+		# Even if these arrays will not be shared with the stencil in charge of coupling physics with dynamics,
+		# they should be treated as they were
+		li = mi if not self._physics_dynamics_coupling_on else max(mi, nx)
+		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
+
+		# Allocate the arrays
+		self._tmp_U      = np.zeros((li, lj, nz), dtype = datatype)
+		self._tmp_V      = np.zeros((li, lj, nz), dtype = datatype)
+		self._in_s_prv   = np.zeros((li, lj, nz), dtype = datatype)
+		self._in_mtg_prv = np.zeros((li, lj, nz), dtype = datatype)
 
 	def _stencil_stepping_by_neglecting_vertical_advection_first_defs(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
 					  											   	  in_Qv = None, in_Qc = None, in_Qr = None):
@@ -400,9 +409,13 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		return out_U, out_V
 
-	def _stencil_stepping_by_coupling_physics_with_dynamics_defs(dt, s_now, U_now, V_now, s_prv, U_prv, V_prv,
-															  	 Qv_now = None, Qc_now = None, Qr_now = None,
-															  	 Qv_prv = None, Qc_prv = None, Qr_prv = None):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_defs(dt, in_w, 
+																 in_s, in_s_prv, 
+																 in_U, in_U_prv, 
+																 in_V, in_V_prv,
+															  	 in_Qv = None, in_Qv_prv = None, 
+																 in_Qc = None, in_Qc_prv = None, 
+																 in_Qr = None, in_Qr_prv = None):
 		"""
 		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.
@@ -411,44 +424,47 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		----------
 		dt : obj 
 			:class:`gridtools.Global` representing the time step.
-		s_now : obj
+		in_w : obj
+			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in
+			potential temperature. 
+		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density. 
-		U_now : obj 
-			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
-		V_now : obj 
-			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
-		s_prv : obj 
+		in_s_prv : obj 
 			:class:`gridtools.Equation` representing the provisional isentropic density. 
-		U_prv : obj 
+		in_U : obj 
+			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
+		in_U_prv : obj 
 			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum.
-		V_prv : obj
+		in_V : obj 
+			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
+		in_V_prv : obj
 			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum.
-		Qv_now : `obj`, optional 
+		in_Qv : `obj`, optional 
 			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
-		Qc_now : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of cloud liquid water.
-		Qr_now : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of precipitation water.
-		Qv_prv : `obj`, optional
+		in_Qv_prv : `obj`, optional
 			:class:`gridtools.Equation` representing the provisional isentropic density of water vapor.
-		Qc_prv : `obj`, optional
+		in_Qc : `obj`, optional 
+			:class:`gridtools.Equation` representing the current isentropic density of cloud liquid water.
+		in_Qc_prv : `obj`, optional
 			:class:`gridtools.Equation` representing the provisional isentropic density of cloud liquid water.
-		Qr_prv : `obj`, optional
+		in_Qr : `obj`, optional 
+			:class:`gridtools.Equation` representing the current isentropic density of precipitation water.
+		in_Qr_prv : `obj`, optional
 			:class:`gridtools.Equation` representing the provisional isentropic density of precipitation water.
 
 		Returns
 		-------
-		s_new : obj
+		out_s : obj
 			:class:`gridtools.Equation` representing the updated isentropic density. 
-		U_new : obj 
+		out_U : obj 
 			:class:`gridtools.Equation` representing the updated :math:`x`-momentum.
-		V_new : obj 
+		out_V : obj 
 			:class:`gridtools.Equation` representing the updated :math:`y`-momentum.
-		Qv_new : `obj`, optional 
+		out_Qv : `obj`, optional 
 			:class:`gridtools.Equation` representing the updated isentropic density of water vapor.
-		Qc_new : `obj`, optional 
+		out_Qc : `obj`, optional 
 			:class:`gridtools.Equation` representing the updated isentropic density of cloud liquid water.
-		Qr_new : `obj`, optional 
+		out_Qr : `obj`, optional 
 			:class:`gridtools.Equation` representing the updated isentropic density of precipitation water.
 		"""
 		# Indeces
@@ -457,32 +473,32 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		k = gt.Index()
 
 		# Output fields
-		new_s = gt.Equation()
-		new_U = gt.Equation()
-		new_V = gt.Equation()
+		out_s = gt.Equation()
+		out_U = gt.Equation()
+		out_V = gt.Equation()
 		if self._moist_on:
-			new_Qv = gt.Equation()
-			new_Qc = gt.Equation()
-			new_Qr = gt.Equation()
+			out_Qv = gt.Equation()
+			out_Qc = gt.Equation()
+			out_Qr = gt.Equation()
 
 		# Computations
 		if not self._moist_on:
-			flux_s_z, flux_U_z, flux_V_z = self._flux.get_vertical_fluxes(i, j, k, dt, w, now_s, prv_s, 
-																		  now_U, prv_U, now_V, prv_V)
+			flux_s_z, flux_U_z, flux_V_z = self._flux.get_vertical_fluxes(i, j, k, dt, in_w, in_s, in_s_prv, 
+																		  in_U, in_U_prv, in_V, in_V_prv)
 		else:	
 			flux_s_z, flux_U_z, flux_V_z, flux_Qv_z, flux_Qc_z, flux_Qr_z = \
-				self._flux.get_vertical_fluxes(i, j, k, dt, w, now_s, prv_s, now_U, prv_U, now_V, prv_V,
-											   now_Qv, prv_Qv, now_Qc, prv_Qc, now_Qr, prv_Qr)
+				self._flux.get_vertical_fluxes(i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv,
+											   in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv)
 
-		new_s[i, j, k] = prv_s[i, j, k] - dt * (flux_s_z[i, j, k] - flux_s_z[i, j, k+1]) / self._grid.dz
-		new_U[i, j, k] = prv_U[i, j, k] - dt * (flux_U_z[i, j, k] - flux_U_z[i, j, k+1]) / self._grid.dz
-		new_V[i, j, k] = prv_V[i, j, k] - dt * (flux_V_z[i, j, k] - flux_V_z[i, j, k+1]) / self._grid.dz
+		out_s[i, j, k] = in_s_prv[i, j, k] - dt * (flux_s_z[i, j, k] - flux_s_z[i, j, k+1]) / self._grid.dz
+		out_U[i, j, k] = in_U_prv[i, j, k] - dt * (flux_U_z[i, j, k] - flux_U_z[i, j, k+1]) / self._grid.dz
+		out_V[i, j, k] = in_V_prv[i, j, k] - dt * (flux_V_z[i, j, k] - flux_V_z[i, j, k+1]) / self._grid.dz
 		if self._moist_on:
-			new_Qv[i, j, k] = prv_Qv[i, j, k] - dt * (flux_Qv_z[i, j, k] - flux_Qv_z[i, j, k+1]) / self._grid.dz
-			new_Qc[i, j, k] = prv_Qc[i, j, k] - dt * (flux_Qc_z[i, j, k] - flux_Qc_z[i, j, k+1]) / self._grid.dz
-			new_Qr[i, j, k] = prv_Qr[i, j, k] - dt * (flux_Qr_z[i, j, k] - flux_Qr_z[i, j, k+1]) / self._grid.dz
+			out_Qv[i, j, k] = in_Qv_prv[i, j, k] - dt * (flux_Qv_z[i, j, k] - flux_Qv_z[i, j, k+1]) / self._grid.dz
+			out_Qc[i, j, k] = in_Qc_prv[i, j, k] - dt * (flux_Qc_z[i, j, k] - flux_Qc_z[i, j, k+1]) / self._grid.dz
+			out_Qr[i, j, k] = in_Qr_prv[i, j, k] - dt * (flux_Qr_z[i, j, k] - flux_Qr_z[i, j, k+1]) / self._grid.dz
 
 		if not self._moist_on:
-			return new_s, new_U, new_V
+			return out_s, out_U, out_V
 		else:
-			return new_s, new_U, new_V, new_Qv, new_Qc, new_Qr
+			return out_s, out_U, out_V, out_Qv, out_Qc, out_Qr

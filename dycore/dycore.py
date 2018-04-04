@@ -29,9 +29,10 @@ class DynamicalCore(TimeStepper):
 		self._grid, self._moist_on = grid, moist_on
 
 		# Initialize pointer to the object taking care of the microphysics
-		self.microphysics = None
+		self._microphysics = None
 
 	@property
+	@abc.abstractmethod
 	def time_levels(self):
 		"""
 		Get the number of time leves the dynamical core relies on.
@@ -42,7 +43,33 @@ class DynamicalCore(TimeStepper):
 		int :
 			The number of time levels needed by the dynamical core.
 		"""
-		return self
+
+	@property
+	def microphysics(self):
+		"""
+		Get the attribute in charge of computing the raindrop fall velocity.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Return
+		------
+		obj :
+			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+		"""
+
+	@microphysics.setter
+	@abc.abstractmethod
+	def microphysics(self, micro):
+		"""
+		Set the attribute in charge of computing the raindrop fall velocity.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Parameters
+		----------
+		micro : obj
+			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+		"""
 
 	@abc.abstractmethod
 	def __call__(self, dt, state, diagnostics = None, tendencies = None):
