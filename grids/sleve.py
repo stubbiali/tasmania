@@ -266,6 +266,8 @@ class SLEVE3d(GridXYZ):
 		The :math:`z`-spacing.
 	z_interface : float
 		The interface coordinate :math:`z_F`.
+	topography : obj
+		:class:`~tasmania.grids.topography.Topography2d` representing the underlying topography.
 	height : obj
 		:class:`xarray.DataArray` representing the geometric height of the main levels.
 	height_half_levels : obj

@@ -42,13 +42,12 @@ For the two-dimensional case, letting :math:`h_s = h_s(x,y)` be the topography, 
 	* Gaussian shaped-mountain, i.e. 
 
 		.. math:: 
-			h_s(x,y) = h_{max} \exp{\left[ - \left( \\frac{x - c_x}{\sigma_x} \\right)^2 - \left( \\frac{y - c_y}{\sigma_y} \\right)^2 \\right]} ,
-
-	  where :math:`c_x = 0.5 (a_x + b_x)` and :math:`c_y = 0.5 (a_y + b_y)`;
+			h_s(x,y) = h_{max} \exp{\left[ - \left( \\frac{x - c_x}{\sigma_x} \\right)^2 - \left( \\frac{y - c_y}{\sigma_y} \\right)^2 \\right]} ;
+			
 	* modified Gaussian-shaped mountain proposed by Schaer and Durran (1997), 
 
 		.. math::
-			h_s(x,y) = \\frac{h_{max}}{\left[ 1 + \left( \\frac{x}{\sigma_x} \\right)^2 + \left( \\frac{y}{\sigma_y} \\right)^2 \\right]^{3/2}}.
+			h_s(x,y) = \\frac{h_{max}}{\left[ 1 + \left( \\frac{x - c_x}{\sigma_x} \\right)^2 + \left( \\frac{y - c_y}{\sigma_y} \\right)^2 \\right]^{3/2}}.
 
 Yet, user-defined profiles are supported as well, provided that they admit an analytical expression. 
 This is passed to the class as a string, which is then parsed in C++ via `Cython <http://cython.org>`_ 
@@ -189,6 +188,8 @@ class Topography2d:
 	topo_fact : float
 		Topography factor. It runs in between 0 (at the beginning of the simulation) and 1 (once the simulation 
 		has been run for :attr:`topo_time`).
+	topo_kwargs : dict
+		Dictionary storing all the topography settings which could be passed to the constructor as keyword arguments.
 	"""
 	def __init__(self, grid, topo_type = 'flat_terrain', topo_time = timedelta(), **kwargs):
 		"""
@@ -215,6 +216,12 @@ class Topography2d:
 		topo_max_height : float
 			When :data:`topo_type` is either 'gaussian' or 'schaer', maximum mountain height (in meters). 
 			Default is 500.
+		topo_center_x : float
+			When :data:`topo_type` is either 'gaussian' or 'schaer', :math:`x`-coordinate of the mountain center 
+			(in meters). By default, the mountain center is placed in the center of the domain.
+		topo_center_y : float
+			When :data:`topo_type` is either 'gaussian' or 'schaer', :math:`y`-coordinate of the mountain center 
+			(in meters). By default, the mountain center is placed in the center of the domain.
 		topo_width_x : float
 			When :data:`topo_type` is either 'gaussian' or 'schaer', mountain half-width in :math:`x`-direction 
 			(in meters). Default is 10000.
@@ -232,42 +239,73 @@ class Topography2d:
 		self.topo_type = topo_type
 		self.topo_time = topo_time
 		self.topo_fact = float(self.topo_time == timedelta())
+		self.topo_kwargs = kwargs
 
 		if self.topo_type == 'flat_terrain':
 			self._topo_final = np.zeros((grid.nx, grid.ny), dtype = datatype)
 		elif self.topo_type == 'gaussian':
-			topo_max_height = 500. if kwargs.get('topo_max_height') is None else kwargs['topo_max_height']
-			topo_width_x = 10000. if kwargs.get('topo_width_x') is None else kwargs['topo_width_x']
-			topo_width_y = 10000. if kwargs.get('topo_width_y') is None else kwargs['topo_width_y']
-
+			# Shortcuts
 			xv, yv = grid.x.values, grid.y.values
 			nx, ny = grid.nx, grid.ny
 			cx, cy = 0.5 * (xv[0] + xv[-1]), 0.5 * (yv[0] + yv[-1])
 
-			x, y = np.meshgrid(xv, yv, indexing = 'ij')
+			# Set topography settings
+			topo_max_height = 500. if kwargs.get('topo_max_height') is None else kwargs['topo_max_height']
+			topo_center_x   = cx if kwargs.get('topo_center_x') is None else kwargs['topo_center_x']
+			topo_center_y   = cy if kwargs.get('topo_center_y') is None else kwargs['topo_center_y']
+			topo_width_x    = 10000. if kwargs.get('topo_width_x') is None else kwargs['topo_width_x']
+			topo_width_y    = 10000. if kwargs.get('topo_width_y') is None else kwargs['topo_width_y']
 
-			self._topo_final = topo_max_height * np.exp(- ((x - cx) / topo_width_x)**2 - ((y - cy) / topo_width_y)**2)
+			# Update settings list
+			self.topo_kwargs['topo_max_height'] = topo_max_height
+			self.topo_kwargs['topo_center_x']   = topo_center_x
+			self.topo_kwargs['topo_center_y']   = topo_center_y
+			self.topo_kwargs['topo_width_x']    = topo_width_x
+			self.topo_kwargs['topo_width_y']    = topo_width_y
+
+			# Compute topography profile
+			x, y = np.meshgrid(xv, yv, indexing = 'ij')
+			self._topo_final = topo_max_height * np.exp(- ((x - topo_center_x) / topo_width_x)**2 
+														- ((y - topo_center_y) / topo_width_y)**2)
 		elif self.topo_type == 'schaer':
-			topo_max_height = 500. if kwargs.get('topo_max_height') is None else kwargs['topo_max_height']
-			topo_width_x = 10000. if kwargs.get('topo_width_x') is None else kwargs['topo_width_x']
-			topo_width_y = 10000. if kwargs.get('topo_width_y') is None else kwargs['topo_width_y']
-
+			# Shortcuts
 			xv, yv = grid.x.values, grid.y.values
 			nx, ny = grid.nx, grid.ny
 			cx, cy = 0.5 * (xv[0] + xv[-1]), 0.5 * (yv[0] + yv[-1])
 
-			x, y = np.meshgrid(xv, yv, indexing = 'ij')
+			# Set topography settings
+			topo_max_height = 500. if kwargs.get('topo_max_height') is None else kwargs['topo_max_height']
+			topo_center_x   = cx if kwargs.get('topo_center_x') is None else kwargs['topo_center_x']
+			topo_center_y   = cy if kwargs.get('topo_center_y') is None else kwargs['topo_center_y']
+			topo_width_x    = 10000. if kwargs.get('topo_width_x') is None else kwargs['topo_width_x']
+			topo_width_y    = 10000. if kwargs.get('topo_width_y') is None else kwargs['topo_width_y']
 
-			self._topo_final = topo_max_height / ((1 + (x / topo_width_x)**2 + (y / topo_width_y)**2) ** 1.5)
+			# Update settings list
+			self.topo_kwargs['topo_max_height'] = topo_max_height
+			self.topo_kwargs['topo_center_x']   = topo_center_x
+			self.topo_kwargs['topo_center_y']   = topo_center_y
+			self.topo_kwargs['topo_width_x']    = topo_width_x
+			self.topo_kwargs['topo_width_y']    = topo_width_y
+
+			# Compute topography profile
+			x, y = np.meshgrid(xv, yv, indexing = 'ij')
+			self._topo_final = topo_max_height / ((1 + ((x - topo_center_x) / topo_width_x)**2 + 
+													   ((y - topo_center_y) / topo_width_y)**2) ** 1.5)
 		elif self.topo_type == 'user_defined':
+			# Set topography expression
 			topo_str = 'x + y'.encode('UTF-8') if kwargs.get('topo_str') is None else kwargs['topo_str'].encode('UTF-8')
+
+			# Update settings list
+			self.topo_kwargs['topo_str'] = topo_str
 			
+			# Import the parser
 			try:
 				from grids.parser.parser_2d import Parser2d
 			except ImportError:
 				print('Hint: did you compile the parser?')
 				raise
 				
+			# Parse
 			parser = Parser2d(topo_str, grid.x.values, grid.y.values)
 			self._topo_final = parser.evaluate()
 
