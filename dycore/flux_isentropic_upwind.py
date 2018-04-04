@@ -10,6 +10,8 @@ class FluxIsentropicUpwind(FluxIsentropic):
 	----------
 	nb : int
 		Number of boundary layers.
+	order : int
+		Order of accuracy.
 	"""
 	def __init__(self, grid, moist_on):
 		"""
@@ -24,11 +26,12 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		"""
 		super().__init__(grid, moist_on)
 		self.nb = 1
+		self.order = 1
 
-	def _compute_horizontal_fluxes(self, i, j, k, dt, s_now, u_now, v_now, mtg_now, U_now, V_now, Qv_now, Qc_now, Qr_now):
+	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr):
 		"""
-		Method computing the :class:`gridtools.Equation`\s_now representing the upwind :math:`x`- and :math:`y`-fluxes for all 
-		the conservative prognostic variables. The :class:`gridtools.Equation`s_now are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`_s representing the upwind :math:`x`- and :math:`y`-fluxes for all 
+		the conservative prognostic variables. The :class:`gridtools.Equation`_s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -40,47 +43,47 @@ class FluxIsentropicUpwind(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
-		s_now : obj
+		in_s : obj
 			:class:`gridtools.Equation` representing the isentropic density.
-		u_now : obj
+		in_u : obj
 			:class:`gridtools.Equation` representing the :math:`x`-velocity.
-		v_now : obj
+		in_v : obj
 			:class:`gridtools.Equation` representing the :math:`y`-velocity.
-		mtg_now : obj
+		in_mtg : obj
 			:class:`gridtools.Equation` representing the Montgomery potential.
-		U_now : obj
+		in_U : obj
 			:class:`gridtools.Equation` representing the :math:`x`-momentum.
-		V_now : obj
+		in_V : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum.
-		Qv_now : obj
+		in_Qv : obj
 			:class:`gridtools.Equation` representing the isentropic density of water vapour.
-		Qc_now : obj
+		in_Qc : obj
 			:class:`gridtools.Equation` representing the isentropic density of cloud water.
-		Qr_now : obj
+		in_Qr : obj
 			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
 		"""
 		# Compute fluxes for the isentropic density and the momentums
-		self._flux_s_x = self._get_upwind_flux_x(i, j, k, u_now, s_now)
-		self._flux_s_y = self._get_upwind_flux_y(i, j, k, v_now, s_now)
-		self._flux_U_x = self._get_upwind_flux_x(i, j, k, u_now, U_now)
-		self._flux_U_y = self._get_upwind_flux_y(i, j, k, v_now, U_now)
-		self._flux_V_x = self._get_upwind_flux_x(i, j, k, u_now, V_now)
-		self._flux_V_y = self._get_upwind_flux_y(i, j, k, v_now, V_now)
+		self._flux_s_x = self._get_upwind_flux_x(i, j, k, in_u, in_s)
+		self._flux_s_y = self._get_upwind_flux_y(i, j, k, in_v, in_s)
+		self._flux_U_x = self._get_upwind_flux_x(i, j, k, in_u, in_U)
+		self._flux_U_y = self._get_upwind_flux_y(i, j, k, in_v, in_U)
+		self._flux_V_x = self._get_upwind_flux_x(i, j, k, in_u, in_V)
+		self._flux_V_y = self._get_upwind_flux_y(i, j, k, in_v, in_V)
 		
 		if self._moist_on:
 			# Compute fluxes for the water constituents
-			self._flux_Qv_x = self._get_upwind_flux_x(i, j, k, u_now, Qv_now)
-			self._flux_Qv_y = self._get_upwind_flux_y(i, j, k, v_now, Qv_now)
-			self._flux_Qc_x = self._get_upwind_flux_x(i, j, k, u_now, Qc_now)
-			self._flux_Qc_y = self._get_upwind_flux_y(i, j, k, v_now, Qc_now)
-			self._flux_Qr_x = self._get_upwind_flux_x(i, j, k, u_now, Qr_now)
-			self._flux_Qr_y = self._get_upwind_flux_y(i, j, k, v_now, Qr_now)
+			self._flux_Qv_x = self._get_upwind_flux_x(i, j, k, in_u, in_Qv)
+			self._flux_Qv_y = self._get_upwind_flux_y(i, j, k, in_v, in_Qv)
+			self._flux_Qc_x = self._get_upwind_flux_x(i, j, k, in_u, in_Qc)
+			self._flux_Qc_y = self._get_upwind_flux_y(i, j, k, in_v, in_Qc)
+			self._flux_Qr_x = self._get_upwind_flux_x(i, j, k, in_u, in_Qr)
+			self._flux_Qr_y = self._get_upwind_flux_y(i, j, k, in_v, in_Qr)
 
-	def _compute_vertical_fluxes(self, i, j, k, dt, w, s_now, s_prv, U_now, U_prv, V_now, V_prv, 
-								 Qv_now, Qv_prv, Qc_now, Qc_prv, Qr_now, Qr_prv):
+	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
+								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`\s_now representing the upwind :math:`z`-flux for all the conservative 
-		model variables. The :class:`gridtools.Equation`s_now are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`_s representing the upwind :math:`z`-flux for all the conservative 
+		model variables. The :class:`gridtools.Equation`_s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -92,58 +95,58 @@ class FluxIsentropicUpwind(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
-		w : obj
+		in_w : obj
 			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time of potential temperature.
-		s_now : obj
+		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
-		s_prv : obj
+		in_s_prv : obj
 			:class:`gridtools.Equation` representing the provisional isentropic density, i.e., the isentropic density stepped
 			disregarding the vertical advection.
-		U_now : obj
+		in_U : obj
 			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
-		U_prv : obj
+		in_U_prv : obj
 			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, i.e., the :math:`x`-momentum stepped
 			disregarding the vertical advection.
-		V_now : obj
+		in_V : obj
 			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
-		V_prv : obj
+		in_V_prv : obj
 			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, i.e., the :math:`y`-momentum stepped
 			disregarding the vertical advection.
-		Qv_now : obj
+		in_Qv : obj
 			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
-		Qv_prv : obj
+		in_Qv_prv : obj
 			:class:`gridtools.Equation` representing the provisional isentropic density of water vapor, 
 			i.e., the isentropic density of water vapor stepped disregarding the vertical advection.
-		Qc_now : obj			
+		in_Qc : obj			
 			:class:`gridtools.Equation` representing the current isentropic density of cloud water.
-		Qc_prv : obj
+		in_Qc_prv : obj
 			:class:`gridtools.Equation` representing the provisional isentropic density of cloud water, 
 			i.e., the isentropic density of cloud water stepped disregarding the vertical advection.
-		Qr_now : obj
+		in_Qr : obj
 			:class:`gridtools.Equation` representing the current isentropic density of precipitation water.
-		Qr_prv : obj
+		in_Qr_prv : obj
 			:class:`gridtools.Equation` representing the provisional isentropic density of precipitation water, 
 			i.e., the isentropic density of precipitation water stepped disregarding the vertical advection.
 		"""
 		# Interpolate the vertical velocity at the model half-levels
-		w_mid = gt.Equation()
-		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k-1])
+		tmp_w_mid = gt.Equation()
+		tmp_w_mid[i, j, k] = 0.5 * (in_w[i, j, k] + in_w[i, j, k-1])
 
 		# Compute flux for the isentropic density and the momentums
-		self._flux_s_z = self._get_upwind_flux_z(i, j, k, w_mid, s_now)
-		self._flux_U_z = self._get_upwind_flux_z(i, j, k, w_mid, U_now)
-		self._flux_V_z = self._get_upwind_flux_z(i, j, k, w_mid, V_now)
+		self._flux_s_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_s)
+		self._flux_U_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_U)
+		self._flux_V_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_V)
 		
 		if self._moist_on:
 			# Compute flux for the water constituents
-			self._flux_Qv_z = self._get_upwind_flux_z(i, j, k, w_mid, Qv_now)
-			self._flux_Qc_z = self._get_upwind_flux_z(i, j, k, w_mid, Qc_now)
-			self._flux_Qr_z = self._get_upwind_flux_z(i, j, k, w_mid, Qr_now)
+			self._flux_Qv_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_Qv)
+			self._flux_Qc_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_Qc)
+			self._flux_Qr_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_Qr)
 
-	def _get_upwind_flux_x(self, i, j, k, u, phi):
+	def _get_upwind_flux_x(self, i, j, k, in_u, in_phi):
 		"""
 		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`x`-direction for a generic 
-		prognostic variable :math:`\phi`.
+		prognostic variable :math:`phi`.
 
 		Parameters
 		----------
@@ -153,34 +156,34 @@ class FluxIsentropicUpwind(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
 		k : obj
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
-		u : obj
+		in_u : obj
 			:class:`gridtools.Equation` representing the :math:`x`-velocity.
-		phi : obj
-			:class:`gridtools.Equation` representing the field :math:`\phi`.
+		in_phi : obj
+			:class:`gridtools.Equation` representing the field :math:`phi`.
 
 		Return
 		------
 		obj :
-			:class:`gridtools.Equation` representing the upwind flux in :math:`x`-direction for :math:`\phi`.
+			:class:`gridtools.Equation` representing the upwind flux in :math:`x`-direction for :math:`phi`.
 		"""
-		# Note: by default, a GT4Py's_now Equation instance is named with the name used by the user 
+		# Note: by default, a GT4Py's Equation instance is named with the name used by the user 
 		# to reference the object itself. Here, this is likely to be dangerous as 
 		# this method is called on multiple instances of the Equation class. Hence, we explicitly 
 		# set the name for the flux based on the name of the prognostic variable.
-		phi_name = phi.get_name()
-		flux_name = 'flux_' + phi_name + '_x'
+		in_phi_name = in_phi.get_name()
+		flux_name = 'flux_' + in_phi_name + '_x'
 		flux = gt.Equation(name = flux_name)
 
-		flux[i, j, k] = u[i+1, j, k] * ((u[i+1, j, k] > 0.) * phi[  i, j, k] + 
-									  	(u[i+1, j, k] < 0.) * phi[i+1, j, k])
+		flux[i, j, k] = in_u[i+1, j, k] * ((in_u[i+1, j, k] > 0.) * in_phi[  i, j, k] + 
+									  	   (in_u[i+1, j, k] < 0.) * in_phi[i+1, j, k])
 									  
 
 		return flux
 
-	def _get_upwind_flux_y(self, i, j, k, v, phi):
+	def _get_upwind_flux_y(self, i, j, k, in_v, in_phi):
 		"""
 		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`y`-direction for a generic 
-		prognostic variable :math:`\phi`.
+		prognostic variable :math:`phi`.
 
 		Parameters
 		----------
@@ -190,33 +193,33 @@ class FluxIsentropicUpwind(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
 		k : obj
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
-		v : obj
+		in_v : obj
 			:class:`gridtools.Equation` representing the :math:`y`-velocity.
-		phi : obj
-			:class:`gridtools.Equation` representing the field :math:`\phi`.
+		in_phi : obj
+			:class:`gridtools.Equation` representing the field :math:`phi`.
 
 		Return
 		------
 		obj :
-			:class:`gridtools.Equation` representing the upwind flux in :math:`y`-direction for :math:`\phi`.
+			:class:`gridtools.Equation` representing the upwind flux in :math:`y`-direction for :math:`phi`.
 		"""
-		# Note: by default, a GT4Py's_now Equation instance is named with the name used by the user 
+		# Note: by default, a GT4Py's Equation instance is named with the name used by the user 
 		# to reference the object itself. Here, this is likely to be dangerous as 
 		# this method is called on multiple instances of the Equation class. Hence, we explicitly 
 		# set the name for the flux based on the name of the prognostic variable.
-		phi_name = phi.get_name()
-		flux_name = 'flux_' + phi_name + '_y'
+		in_phi_name = in_phi.get_name()
+		flux_name = 'flux_' + in_phi_name + '_y'
 		flux = gt.Equation(name = flux_name)
 
-		flux[i, j, k] = v[i, j+1, k] * ((v[i, j+1, k] > 0.) * phi[i,   j, k] +
-									  	(v[i, j+1, k] < 0.) * phi[i, j+1, k])
+		flux[i, j, k] = in_v[i, j+1, k] * ((in_v[i, j+1, k] > 0.) * in_phi[i,   j, k] +
+									  	   (in_v[i, j+1, k] < 0.) * in_phi[i, j+1, k])
 
 		return flux
 
-	def _get_upwind_flux_z(self, i, j, k, w_mid, phi):
+	def _get_upwind_flux_z(self, i, j, k, tmp_w_mid, in_phi):
 		"""
 		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`z`-direction for a generic 
-		prognostic variable :math:`\phi`.
+		prognostic variable :math:`phi`.
 
 		Parameters
 		----------
@@ -226,26 +229,26 @@ class FluxIsentropicUpwind(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`y`-axis.
 		k : obj
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
-		w_mid : obj
+		tmp_w_mid : obj
 			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in
 			potential temperature, at the model half levels.
-		phi : obj
-			:class:`gridtools.Equation` representing the field :math:`\phi`.
+		in_phi : obj
+			:class:`gridtools.Equation` representing the field :math:`phi`.
 
 		Return
 		------
 		obj :
-			:class:`gridtools.Equation` representing the upwind flux in :math:`z`-direction for :math:`\phi`.
+			:class:`gridtools.Equation` representing the upwind flux in :math:`z`-direction for :math:`phi`.
 		"""
-		# Note: by default, a GT4Py's_now Equation instance is named with the name used by the user 
+		# Note: by default, a GT4Py's Equation instance is named with the name used by the user 
 		# to reference the object itself. Here, this is likely to be dangerous as 
 		# this method is called on multiple instances of the Equation class. Hence, we explicitly 
 		# set the name for the flux based on the name of the prognostic variable.
-		phi_name = phi.get_name()
-		flux_name = 'flux_' + phi_name + '_z'
+		in_phi_name = in_phi.get_name()
+		flux_name = 'flux_' + in_phi_name + '_z'
 		flux = gt.Equation(name = flux_name)
 
-		flux[i, j, k] = w_mid[i, j, k] * ((w_mid[i, j, k] > 0.) * phi[i, j, k] +
-										  (w_mid[i, j, k] < 0.) * phi[i, j, k-1])
+		flux[i, j, k] = tmp_w_mid[i, j, k] * ((tmp_w_mid[i, j, k] > 0.) * in_phi[i, j, k] +
+										  	  (tmp_w_mid[i, j, k] < 0.) * in_phi[i, j, k-1])
 
 		return flux
