@@ -25,7 +25,7 @@ import numpy as np
 
 from tasmania.dycore.diagnostic_isentropic import DiagnosticIsentropic
 from tasmania.dycore.dycore import DynamicalCore
-from tasmania.dycore.horizontal_boundary import HorizontalBoundary, RelaxedSymmetricXZ, RelaxedSymmetricYZ
+from tasmania.dycore.horizontal_boundary import HorizontalBoundary
 from tasmania.dycore.horizontal_smoothing import HorizontalSmoothing
 from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
 from tasmania.dycore.vertical_damping import VerticalDamping
@@ -91,7 +91,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Maximum value for the smoothing coefficient. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
 		smooth_moist_on : `bool`, optional
-			:obj:`True` if numerical smoothing on water constituents is enabled, :obj:`False` otherwise. Default is :obj:`True`.
+			:obj:`True` if numerical smoothing on water constituents is enabled, :obj:`False` otherwise. 
+			Default is :obj:`True`.
 		smooth_moist_type: `str`, optional
 			String specifying the smoothing technique to apply to the water constituents. Default is 'first-order'.
 			See :class:`dycore.horizontal_smoothing.HorizontalSmoothing` for the available options.
@@ -103,8 +104,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Maximum value for the smoothing coefficient for the water constituents. Default is 0.24. 
 			See :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` for further details.
 		physics_dynamics_coupling_on : `bool`, optional
-			:obj:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
-			:obj:`False` otherwise. Default is :obj:`False`.
+			:obj:`True` to couple physics with dynamics, i.e., to account for the change over time in potential 
+			temperature, :obj:`False` otherwise. Default is :obj:`False`.
 		sedimentation_on : `bool`, optional
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise. Default is :obj:`False`.
 		"""
@@ -117,7 +118,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._sedimentation_on = sedimentation_on
 
 		# Instantiate the class implementing the prognostic part of the dycore
-		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, moist_on, backend)
+		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, moist_on, backend,
+														physics_dynamics_coupling_on, sedimentation_on)
 		nb = self._prognostic.nb
 
 		# Instantiate the class taking care of the boundary conditions
@@ -158,6 +160,36 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			The number of time levels needed by the dynamical core.
 		"""
 		return self._prognostic.time_levels
+
+	@property
+	def microphysics(self):
+		"""
+		Get the attribute in charge of computing the raindrop fall velocity.
+
+		Return
+		------
+		obj :
+			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+		"""
+		return self._microphysics
+
+	@microphysics.setter
+	def microphysics(self, micro):
+		"""
+		Set the attribute in charge of computing the raindrop fall velocity.
+
+		Parameters
+		----------
+		micro : obj
+			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+		"""
+		# Set attribute
+		self._microphysics = micro
+
+		# Update prognostic attribute
+		self._prognostic.microphysics = micro
 
 	def __call__(self, dt, state, diagnostics = None, tendencies = None):
 		"""
@@ -538,7 +570,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V_now = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics)
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics,
+																		tendencies = tendencies)
 
 		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state
@@ -648,7 +681,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Qr_now = np.copy(state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
 		# Perform the prognostic step, neglecting the vertical advection
-		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics, tendencies = tendencies)
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics, 
+																		tendencies = tendencies)
 
 		# Couple physics with dynamics
 		if self._physics_dynamics_coupling_on:
@@ -724,11 +758,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
 		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
 
-		#if self.microphysics is not None:
-		# Diagnose the density
-		state_new.update(self._diagnostic.get_air_density(state_new))
+		if self.microphysics is not None:
+			# Diagnose the density
+			state_new.update(self._diagnostic.get_air_density(state_new))
 
-		# Diagnose the temperature
-		state_new.update(self._diagnostic.get_air_temperature(state_new))
+			# Diagnose the temperature
+			state_new.update(self._diagnostic.get_air_temperature(state_new))
 
 		return state_new
