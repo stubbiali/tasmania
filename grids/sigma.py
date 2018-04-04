@@ -235,6 +235,8 @@ class Sigma3d(GridXYZ):
 		The :math:`\sigma`-spacing.
 	z_interface : float
 		The interface coordinate :math:`\sigma_F`.
+	topography : obj
+		:class:`~tasmania.grids.topography.Topography2d` representing the underlying topography.
 	height : obj
 		:class:`xarray.DataArray` representing the geometric height of the main levels.
 	height_half_levels : obj

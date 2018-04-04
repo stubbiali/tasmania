@@ -5,7 +5,7 @@ import numpy as np
 from tasmania.grids.axis import Axis
 from tasmania.namelist import datatype
 
-class GridXY():
+class GridXY:
 	"""
 	Rectangular and regular two-dimensional grid embedded in a reference system whose coordinates are, 
 	in the order, :math:`x` and :math:`y`. No assumption is made on the nature of the coordinates. For 

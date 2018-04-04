@@ -10,7 +10,7 @@ from tasmania.namelist import datatype
 from tasmania.utils.utils import smaller_than as lt
 from tasmania.utils.utils import smaller_or_equal_than as le
 
-class GridXYZ():
+class GridXYZ:
 	"""
 	Rectangular and regular three-dimensional grid embedded in a reference system whose coordinates are
 
@@ -37,6 +37,8 @@ class GridXYZ():
 		The :math:`z`-spacing.
 	z_interface : float
 		The interface coordinate :math:`z_F`.
+	topography : obj
+		:class:`~tasmania.grids.topography.Topography2d` representing the underlying topography.
 	
 	Note
 	----
@@ -112,7 +114,7 @@ class GridXYZ():
 				raise ValueError('z_interface should be in the range(domain_z[1], domain_z[0]).')
 		self.z_interface = z_interface 
 
-		self._topography = Topography2d(self.xy_grid, topo_type, topo_time, **kwargs)
+		self.topography = Topography2d(self.xy_grid, topo_type, topo_time, **kwargs)
 
 	@property
 	def x(self):
@@ -220,7 +222,7 @@ class GridXYZ():
 		array_like : 
 			Two-dimensional :class:`numpy.ndarray` representing the topography height.
 		"""
-		return self._topography.topo.values
+		return self.topography.topo.values
 
 	def update_topography(self, time):
 		"""
@@ -231,5 +233,5 @@ class GridXYZ():
 		time : obj
 			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
-		self._topography.update(time)
+		self.topography.update(time)
 
