@@ -82,13 +82,15 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		self.time_levels = 2
 		self.steps = 1
 
-		# Initialize the pointer to the compute function of the stencil stepping the solution by neglecting vertical advection
+		# Initialize the pointer to the compute function of the stencil stepping the solution 
+		# by neglecting vertical advection
 		# This will be re-directed when the corresponding forward method is invoked for the first time
 		self._stencil_stepping_by_neglecting_vertical_advection = None
 
-		# Initialize the pointers to the compute functions of the stencils stepping the solution by resolving the sedimentation
+		# Initialize the pointers to the compute functions of the stencils stepping the solution 
+		# by integrating the sedimentation flux
 		# These will be re-directed when the corresponding forward method is invoked for the first time
-		self._stencil_stepping_by_resolving_sedimentation = None
+		self._stencil_stepping_by_integrating_sedimentation_flux = None
 		self._stencil_computing_slow_tendency = None
 
 		# Boolean flag to quickly assess whether we are within the first time step
@@ -223,7 +225,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		return state_new
 
-	def step_resolving_sedimentation(self, dt, state_now, state_prv, diagnostics = None):
+	def step_integrating_sedimentation_flux(self, dt, state_now, state_prv, diagnostics = None):
 		"""
 		Method advancing the mass fraction of precipitation water by taking the sedimentation into account.
 		For the sake of numerical stability, a time-splitting strategy is pursued, i.e., sedimentation is resolved
@@ -270,8 +272,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* precipitation (unstaggered, two-dimensional).
 		"""
 		# The first time this method is invoked, initialize the underlying GT4Py stencils
-		if self._stencil_stepping_by_resolving_sedimentation is None:
-			self._stencils_stepping_by_resolving_sedimentation_initialize()
+		if self._stencil_stepping_by_integrating_sedimentation_flux is None:
+			self._stencils_stepping_by_integrating_sedimentation_flux_initialize()
 
 		# Compute the number of substeps required to obey the vertical CFL condition, 
 		# so retaining numerical stability
@@ -293,7 +295,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			#self._in_qr[:,:,:]     = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0] 
 			self._in_qr_prv[:,:,:] = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 		except AttributeError:
-			print('Before invoking step_resolving_sedimentation, please call step_neglecting_vertical_advection.')
+			print('Before invoking step_integrating_sedimentation_flux, please call step_neglecting_vertical_advection.')
 
 		# Set the output field
 		nb = self._flux_sedimentation.nb
@@ -335,7 +337,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			accumulated_precipitation[:,:,:] += ppt[:,:,:] * 1.e3
 
 			# Perform a small timestep
-			self._stencil_stepping_by_resolving_sedimentation.compute()
+			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
 
 		return state_new, diagnostics_out
 
@@ -681,10 +683,10 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		else:
 			return out_s, out_U, out_V, out_Qv, out_Qc, out_Qr
 
-	def _stencils_stepping_by_resolving_sedimentation_initialize(self):
+	def _stencils_stepping_by_integrating_sedimentation_flux_initialize(self):
 		"""
 		Initialize the GT4Py stencils in charge of stepping the mass fraction of precipitation water by 
-		resolving the sedimentation.
+		integrating the sedimentation flux.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -716,9 +718,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			domain           = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode             = self._backend)
 
-		# Initialize the GT4Py stencil in charge of actually stepping the solution by resolving the sedimentation
-		self._stencil_stepping_by_resolving_sedimentation = gt.NGStencil(
-			definitions_func = self._stencil_stepping_by_resolving_sedimentation_defs,
+		# Initialize the GT4Py stencil in charge of actually stepping the solution by integrating the sedimentation flux
+		self._stencil_stepping_by_integrating_sedimentation_flux = gt.NGStencil(
+			definitions_func = self._stencil_stepping_by_integrating_sedimentation_flux_defs,
 			inputs           = {'in_rho': self._in_rho, 'in_h': self._in_h, 'in_qr': self._in_qr, 
 								'in_vt': self._in_vt, 'in_tnd': self._tmp_tnd},
 			global_inputs    = {'dts': self._dts},
@@ -757,9 +759,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		return out_tnd
 
-	def _stencil_stepping_by_resolving_sedimentation_defs(self, dts, in_rho, in_h, in_qr, in_vt, in_tnd):
+	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_h, in_qr, in_vt, in_tnd):
 		"""
-		GT4Py stencil stepping the mass fraction of precipitation water by resolving the precipitation.
+		GT4Py stencil stepping the mass fraction of precipitation water by integrating the precipitation flux.
 
 		Parameters
 		----------

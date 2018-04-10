@@ -331,7 +331,7 @@ class PrognosticIsentropic:
 		return state_new
 
 	@abc.abstractmethod
-	def step_resolving_sedimentation(self, dt, state_now, state_prv, diagnostics = None):
+	def step_integrating_sedimentation_flux(self, dt, state_now, state_prv, diagnostics = None):
 		"""
 		Method advancing the mass fraction of precipitation water by taking the sedimentation into account.
 		For the sake of numerical stability, a time-splitting strategy is pursued, i.e., sedimentation is resolved
@@ -661,7 +661,7 @@ class PrognosticIsentropic:
 	def _stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(self, dt, state_now, state_prv, diagnostics):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencil which steps the solution
-		by resolving the vertical advection, i.e., by accounting for the change over time in potential temperature.
+		by integrating the vertical advection, i.e., by accounting for the change over time in potential temperature.
 
 		Parameters
 		----------
