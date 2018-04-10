@@ -33,7 +33,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 
 		Keyword arguments
 		-----------------
@@ -64,7 +64,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		self._beta_c = 1. - self._beta
 		self._kappa  = L * self._alpha * self._beta * (self._Tr - self._bw) / cp 
 
-		# Initialize pointers to the underlying GT4Py's stencils
+		# Initialize pointers to the underlying GT4Py stencils
 		# They will be properly re-directed the first time the entry point method is invoked
 		self._stencil_auxiliary = None
 		self._stencil_adjustment = None
@@ -105,7 +105,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 			
 			* change_over_time_in_air_potential_temperature (unstaggered).
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencils
+		# The first time this method is invoked, initialize the GT4Py stencils
 		if self._stencil_auxiliary is None:
 			self._stencils_initialize()
 
@@ -135,7 +135,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		self._in_Cr[:,:,:] = self._aux_Cr[:,:,:] * (self._in_qr[:,:,:] ** .875)
 		if self._rain_evaporation_on:
 			C = 1.6 + 124.9 * (self._aux_Er_3 ** .2046)
-			self._in_Er[:,:,:] = self._aux_Er_1[:,:,:] * self._aux_Er_2[:,:,:] * C[:,:,:] * (self._aux_Er_3[:,:,:]) ** .525 / \
+			self._in_Er[:,:,:] = self._aux_Er_1[:,:,:] * self._aux_Er_2[:,:,:] * C[:,:,:] * (self._aux_Er_3[:,:,:] ** .525) / \
 								 (5.4e5 + 2.55e6 / self._aux_Er_4[:,:,:])
 
 		# Run the adjustment stencil
@@ -170,7 +170,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		array_like :
 			:class:`numpy.ndarray` representing the raindrop fall velocity.
 		"""
-		# If this is the first time this method is invoked, initialize the auxiliary GT4Py's stencil
+		# If this is the first time this method is invoked, initialize the auxiliary GT4Py stencil
 		if self._stencil_raindrop_fall_velocity is None:
 			self._stencil_raindrop_fall_velocity_initialize()
 			
@@ -178,36 +178,38 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		self._in_rho[:,:,:] = state['air_density'].values[:,:,:,0]
 		self._in_qr[:,:,:]  = state['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 
-		# Update the Numpy arrays which serve as inputs to the stencil
-		self._stencil_raindrop_fall_velocity_set_inputs(rho, qr)
+		# Extract the surface density
+		rho_s = self._in_rho[:,:,-1:]
+		self._in_rho_s[:,:,:] = np.repeat(rho_s, self._grid.nz, axis = 2)
 
 		# Call the stencil's compute function
 		self._stencil_raindrop_fall_velocity.compute()
 
 		# Compute the raindrop fall velocity
-		vt = 36.34 * ((self._out_prod) ** .1346) * np.sqrt(self._out_div)
+		vt = 36.34 * (self._out_prod ** .1346) * np.sqrt(self._out_div)
 
 		return vt
 
 
 	def _stencils_initialize(self):
 		"""
-		Initialize the GT4Py's stencils.
+		Initialize the GT4Py stencils.
 		"""
-		# Initialize the GT4Py's Global representing the timestep
+		# Initialize the GT4Py Global representing the timestep
 		self._dt = gt.Global()
 
 		# Allocate the Numpy arrays which will serve as stencil inputs
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		self._in_rho = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_p   = np.zeros((nx, ny, nz+1), dtype = datatype)
 		self._in_ps  = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_exn = np.zeros((nx, ny, nz+1), dtype = datatype)
 		self._in_T   = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_qv  = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_qc  = np.zeros((nx, ny, nz), dtype = datatype)
-		self._in_qr  = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_Cr  = np.zeros((nx, ny, nz), dtype = datatype)
+		if self._stencil_raindrop_fall_velocity is None:
+			self._in_rho = np.zeros((nx, ny, nz), dtype = datatype)
+			self._in_qr  = np.zeros((nx, ny, nz), dtype = datatype)
 		if self._rain_evaporation_on:
 			self._in_Er = np.zeros((nx, ny, nz), dtype = datatype)
 
@@ -223,7 +225,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		self._out_qc   = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qr   = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_w    = np.zeros((nx, ny, nz), dtype = datatype)
-		self._out_sat  = np.zeros((nx, ny, nz), dtype = datatype)
+		#self._out_sat  = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Initialize the auxiliary stencil
 		self._stencil_auxiliary = gt.NGStencil(
@@ -240,8 +242,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		_inputs  = {'in_p': self._in_p, 'in_ps': self._in_ps, 'in_exn': self._in_exn, 'in_T': self._in_T, 
 					'in_qv': self._in_qv, 'in_qvs': self._tmp_qvs, 'in_qc': self._in_qc, 'in_qr': self._in_qr, 
 					'in_Ar': self._tmp_Ar, 'in_Cr': self._in_Cr}
-		_outputs = {'tmp_sat': self._out_sat, 'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr, 
-					'out_w': self._out_w}
+		_outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr, 'out_w': self._out_w}
 		if self._rain_evaporation_on:
 			_inputs['in_Er'] = self._in_Er
 		
@@ -255,7 +256,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 	def _stencil_auxiliary_defs(self, in_rho, in_p, in_ps, in_qv, in_qc, in_qr):
 		"""
-		GT4Py's stencil computing auxiliary quantities required by the Kessler scheme.
+		GT4Py stencil computing auxiliary quantities required by the Kessler scheme.
 
 		Parameters
 		----------
@@ -358,7 +359,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 	def _stencil_adjustment_defs(self, dt, in_p, in_ps, in_exn, in_T, in_qv, in_qvs, in_qc, in_qr, in_Ar, in_Cr, in_Er = None):
 		"""
-		GT4Py's stencil carrying out the microphysical adjustments and computing the change over time in potential temperature.
+		GT4Py stencil carrying out the microphysical adjustments and computing the change over time in potential temperature.
 
 		Parameters
 		----------
@@ -406,6 +407,8 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		# Instantiate the temporary fields
 		tmp_p   = gt.Equation()
 		tmp_qc  = gt.Equation()
+		tmp_qc_ = gt.Equation()
+		tmp_qr_ = gt.Equation()
 		tmp_sat = gt.Equation()
 		tmp_dlt = gt.Equation()
 		if self._rain_evaporation_on:
@@ -422,24 +425,30 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 		# Perform the adjustments, neglecting the evaporation of cloud liquid water
 		if not self._rain_evaporation_on:
-			tmp_qc[i, j, k] = in_qc[i, j, k] - self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k])
-			out_qr[i, j, k] = in_qr[i, j, k] + self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k])
+			tmp_qc_[i, j, k] = in_qc[i, j, k] - self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k])
+			tmp_qr_[i, j, k] = in_qr[i, j, k] + self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k])
 		else:
-			tmp_qv[i, j, k] = in_qv[i, j, k] + self.time_levels * dt * in_Er[i, j, k]
-			tmp_qc[i, j, k] = in_qc[i, j, k] - self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k])
-			out_qr[i, j, k] = in_qr[i, j, k] + self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k] - in_Er[i, j, k])
+			tmp_qv[i, j, k]  = in_qv[i, j, k] + self.time_levels * dt * in_Er[i, j, k]
+			tmp_qc_[i, j, k] = in_qc[i, j, k] - self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k])
+			tmp_qr_[i, j, k] = in_qr[i, j, k] + self.time_levels * dt * (in_Ar[i, j, k] + in_Cr[i, j, k] - in_Er[i, j, k])
+
+		# Clipping
+		tmp_qc[i, j, k] = (tmp_qc_[i, j, k] > 0.) * tmp_qc_[i, j, k]
+		out_qr[i, j, k] = (tmp_qr_[i, j, k] > 0.) * tmp_qr_[i, j, k]
 
 		# Compute the source term representing the evaporation of cloud liquid water
 		if not self._rain_evaporation_on:
 			tmp_sat[i, j, k] = (in_qvs[i, j, k] - in_qv[i, j, k]) / \
 							   (1. + self._kappa * in_ps[i, j, k] / 
 							    ((in_T[i, j, k] - self._bw) * (in_T[i, j, k] - self._bw) * 
-							   	 (in_p[i, j, k] - self._beta * in_ps[i, j, k]) * (in_p[i, j, k] - self._beta * in_ps[i, j, k])))
+							   	 (in_p[i, j, k] - self._beta * in_ps[i, j, k]) * 
+								 (in_p[i, j, k] - self._beta * in_ps[i, j, k])))
 		else:
 			tmp_sat[i, j, k] = (in_qvs[i, j, k] - tmp_qv[i, j, k]) / \
 							   (1. + self._kappa * in_ps[i, j, k] / 
 							    ((in_T[i, j, k] - self._bw) * (in_T[i, j, k] - self._bw) * 
-							   	 (in_p[i, j, k] - self._beta * in_ps[i, j, k]) * (in_p[i, j, k] - self._beta * in_ps[i, j, k])))
+							   	 (in_p[i, j, k] - self._beta * in_ps[i, j, k]) * 
+								 (in_p[i, j, k] - self._beta * in_ps[i, j, k])))
 
 		tmp_dlt[i, j, k] = (tmp_sat[i, j, k] <= tmp_qc[i, j, k]) * tmp_sat[i, j, k] + \
 						   (tmp_sat[i, j, k] > tmp_qc[i, j, k]) * tmp_qc[i, j, k]
@@ -458,18 +467,19 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		else:
 			out_w[i, j, k] = (- L) / (.5 * (in_exn[i, j, k] + in_exn[i, j, k+1])) * (tmp_dlt[i, j, k] + in_Er[i, j, k])
 
-		return tmp_sat, out_qv, out_qc, out_qr, out_w
+		return out_qv, out_qc, out_qr, out_w
 
 
 	def _stencil_raindrop_fall_velocity_initialize(self):
 		"""
-		Initialize the GT4Py's stencil providing auxiliary quantitites required to compute the raindrop velocity.
+		Initialize the GT4Py stencil providing auxiliary quantitites required to compute the raindrop velocity.
 		"""
 		# Allocate the Numpy arrays which will serve as stencil inputs
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		self._in_rho   = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_rho_s = np.zeros((nx, ny, nz), dtype = datatype)
-		self._in_qr    = np.zeros((nx, ny, nz), dtype = datatype)
+		if self._stencil_adjustment is None:
+			self._in_rho = np.zeros((nx, ny, nz), dtype = datatype)
+			self._in_qr  = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Allocate the Numpy arrays which will serve as stencil outputs
 		self._out_prod = np.zeros((nx, ny, nz), dtype = datatype)
@@ -485,7 +495,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 	def _stencil_raindrop_fall_velocity_defs(self, in_rho, in_rho_s, in_qr):
 		"""
-		GT4Py's stencil providing auxiliary quantitites required to compute the raindrop velocity. 
+		GT4Py stencil providing auxiliary quantitites required to compute the raindrop velocity. 
 
 		Parameters
 		----------
@@ -514,7 +524,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		out_div  = gt.Equation()
 
 		# Perform computations
-		out_prod[i, j, k] = 1.e3 * in_rho[i, j, k] * in_qr[i, j, k]
+		out_prod[i, j, k] = 1.e-3 * in_rho[i, j, k] * (in_qr[i, j, k] > 0.) * in_qr[i, j, k]
 		out_div[i, j, k]  = in_rho_s[i, j, k] / in_rho[i, j, k]
 
 		return out_prod, out_div
