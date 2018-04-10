@@ -166,7 +166,7 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		obj :
 			:class:`gridtools.Equation` representing the upwind flux in :math:`x`-direction for :math:`phi`.
 		"""
-		# Note: by default, a GT4Py's Equation instance is named with the name used by the user 
+		# Note: by default, a GT4Py Equation instance is named with the name used by the user 
 		# to reference the object itself. Here, this is likely to be dangerous as 
 		# this method is called on multiple instances of the Equation class. Hence, we explicitly 
 		# set the name for the flux based on the name of the prognostic variable.
@@ -203,7 +203,7 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		obj :
 			:class:`gridtools.Equation` representing the upwind flux in :math:`y`-direction for :math:`phi`.
 		"""
-		# Note: by default, a GT4Py's Equation instance is named with the name used by the user 
+		# Note: by default, a GT4Py Equation instance is named with the name used by the user 
 		# to reference the object itself. Here, this is likely to be dangerous as 
 		# this method is called on multiple instances of the Equation class. Hence, we explicitly 
 		# set the name for the flux based on the name of the prognostic variable.
@@ -240,7 +240,7 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		obj :
 			:class:`gridtools.Equation` representing the upwind flux in :math:`z`-direction for :math:`phi`.
 		"""
-		# Note: by default, a GT4Py's Equation instance is named with the name used by the user 
+		# Note: by default, a GT4Py Equation instance is named with the name used by the user 
 		# to reference the object itself. Here, this is likely to be dangerous as 
 		# this method is called on multiple instances of the Equation class. Hence, we explicitly 
 		# set the name for the flux based on the name of the prognostic variable.

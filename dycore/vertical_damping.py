@@ -29,7 +29,7 @@ class VerticalDamping:
 		damp_max : float
 			Maximum value for the damping coefficient.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils implementing the dynamical core.
 		"""
 		# Store arguments
 		self._grid       = grid
@@ -40,7 +40,7 @@ class VerticalDamping:
 		# Compute lower-bound of damping region
 		self._damp_lb = self._grid.z[self._damp_depth - 1]
 
-		# Pointer to the GT4Py's stencil implementing the absorber. This is properly redirected the first time
+		# Pointer to the GT4Py stencil implementing the absorber. This is properly redirected the first time
 		# the damp method is invoked.
 		self._stencil = None
 
@@ -88,7 +88,7 @@ class VerticalDamping:
 		damp_max : float
 			Maximum value for the damping coefficient. Default is 0.0002.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils implementing the dynamical core.
 
 		Return
 		------
@@ -118,7 +118,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 		damp_max : float
 			Maximum value for the damping coefficient.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils implementing the dynamical core.
 	"""
 		super().__init__(grid, damp_depth, damp_max, backend)
 
@@ -160,7 +160,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 
 	def _stencil_initialize(self, phi_now):
 		"""
-		Initialize the GT4Py's stencil applying Rayleigh vertical damping.
+		Initialize the GT4Py stencil applying Rayleigh vertical damping.
 
 		Parameters
 		----------
@@ -229,7 +229,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 
 	def _stencil_defs(self, dt, phi_now, phi_new, phi_ref, R):
 		"""
-		The GT4Py's stencil applying Rayleigh vertical damping.
+		The GT4Py stencil applying Rayleigh vertical damping.
 
 		Parameters
 		----------
