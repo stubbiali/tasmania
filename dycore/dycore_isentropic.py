@@ -778,8 +778,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			qr_new = state_new['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 
 			if np.any(qr > 0.) or np.any(qr_new > 0.):
-				# Resolve rain sedimentation
-				state_new_, diagnostics_out_ = self._prognostic.step_resolving_sedimentation(dt, state, state_new, diagnostics)
+				# Integrate rain sedimentation flux
+				state_new_, diagnostics_out_ = self._prognostic.step_integrating_sedimentation_flux(dt, state, 
+																									state_new, diagnostics)
 
 				# Update the output state and the output diagnostics
 				state_new.update(state_new_)
