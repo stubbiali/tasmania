@@ -358,7 +358,7 @@ def contourf_xz(grid, topography, height, field, **kwargs):
 
 	return fig
 
-def contourf_animation_xz(time, grid, topography, height, field, destination, **kwargs):
+def animation_contourf_xz(time, grid, topography, height, field, destination, **kwargs):
 	"""
 	Generate a :math:`xz`-contourf animation of a gridded field.
 
@@ -880,3 +880,145 @@ def quiver_xy(grid, vx, vy, scalar = None, **kwargs):
 	else:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
 
+def animation_profile_x(time, x, field, destination, **kwargs):
+	# Shortcuts
+	ni, nt = field.shape
+
+	# Get keyword arguments
+	fontsize         = kwargs.get('fontsize', 12)
+	figsize			 = kwargs.get('figsize', [8,8])
+	title            = kwargs.get('title', '')
+	x_label          = kwargs.get('x_label', 'x')
+	x_factor         = kwargs.get('x_factor', 1.)
+	x_lim			 = kwargs.get('x_lim', None)
+	y_label          = kwargs.get('y_label', 'y')
+	y_factor         = kwargs.get('y_factor', 1.)
+	y_lim			 = kwargs.get('y_lim', None)
+	color			 = kwargs.get('color', 'blue')
+	linewidth        = kwargs.get('linewidth', 1.)
+	fps				 = kwargs.get('fps', 15)
+	text			 = kwargs.get('text', None)
+	text_loc		 = kwargs.get('text_loc', 'upper right')
+
+	# Global settings
+	mpl.rcParams['font.size'] = fontsize
+
+	# Instantiate figure and axis objects
+	fig, ax = plt.subplots(figsize = figsize)
+
+	# Instantiate writer class
+	ffmpeg_writer = manimation.writers['ffmpeg']
+	metadata = {'title': ''}
+	writer = ffmpeg_writer(fps = fps, metadata = metadata)
+
+	with writer.saving(fig, destination, nt):
+		# Rescale the x-axis and the field for visualization purposes
+		x *= x_factor
+		field *= y_factor
+
+		for n in range(nt):
+			# Clean the canvas
+			ax.cla()
+
+			# Plot the field
+			plt.plot(x, field[:,n], color = color, linewidth = linewidth)
+		
+			# Set plot settings
+			ax.set(xlabel = x_label, ylabel = y_label)
+			if x_lim is not None:
+				ax.set_xlim(x_lim)
+			else:
+				ax.set_xlim([x[0], x[-1]])
+			if y_lim is not None:
+				ax.set_ylim(y_lim)
+			else:
+				ax.set_ylim([field.min(), field.max()])
+
+			# Add text
+			if text is not None:
+				ax.add_artist(AnchoredText(text, loc = text_loc))
+
+			# Add time
+			plt.title(title, loc = 'left', fontsize = fontsize - 1)
+			plt.title(str(utils.convert_datetime64_to_datetime(time[n]) - utils.convert_datetime64_to_datetime(time[0])), 
+					  loc = 'right', fontsize = fontsize - 1)
+
+			# Let the writer grab the frame
+			writer.grab_frame()
+
+def animation_profile_x_comparison(time, x1, field1, x2, field2, destination, **kwargs):
+	# Shortcuts
+	nt = field1.shape[1]
+
+	# Get keyword arguments
+	fontsize    	= kwargs.get('fontsize', 12)
+	figsize			= kwargs.get('figsize', [8,8])
+	title       	= kwargs.get('title', '')
+	x_label     	= kwargs.get('x_label', 'x')
+	x_factor    	= kwargs.get('x_factor', 1.)
+	x_lim			= kwargs.get('x_lim', None)
+	y_label     	= kwargs.get('y_label', 'y')
+	y_factor1   	= kwargs.get('y_factor1', 1.)
+	y_factor2   	= kwargs.get('y_factor2', 1.)
+	y_lim			= kwargs.get('y_lim', None)
+	color1			= kwargs.get('color1', 'blue')
+	linestyle1  	= kwargs.get('linestyle1', '-')
+	linewidth1  	= kwargs.get('linewidth1', 1.)
+	color2			= kwargs.get('color2', 'red')
+	linestyle2  	= kwargs.get('linestyle2', '-')
+	linewidth2  	= kwargs.get('linewidth2', 1.)
+	grid_on     	= kwargs.get('grid_on', True)
+	fps				= kwargs.get('fps', 15)
+	legend1			= kwargs.get('legend1', 'field1')
+	legend2			= kwargs.get('legend2', 'field2')
+	legend_location = kwargs.get('legend_location', 'best')
+
+	# Global settings
+	mpl.rcParams['font.size'] = fontsize
+
+	# Instantiate figure and axis objects
+	fig, ax = plt.subplots(figsize = figsize)
+
+	# Instantiate writer class
+	ffmpeg_writer = manimation.writers['ffmpeg']
+	metadata = {'title': ''}
+	writer = ffmpeg_writer(fps = fps, metadata = metadata)
+
+	with writer.saving(fig, destination, nt):
+		# Rescale the x-axis and the fields for visualization purposes
+		x1 *= x_factor
+		x2 *= x_factor
+		field1 *= y_factor1
+		field2 *= y_factor2
+
+		for n in range(nt):
+			# Clean the canvas
+			ax.cla()
+
+			# Plot the fields
+			plt.plot(x1, field1[:,n], color = color1, linestyle = linestyle1, linewidth = linewidth1, label = legend1)
+			plt.plot(x2, field2[:,n], color = color2, linestyle = linestyle2, linewidth = linewidth2, label = legend2)
+			ax.legend(loc = legend_location)
+		
+			# Set plot settings
+			ax.set(xlabel = x_label, ylabel = y_label)
+			if grid_on:
+				ax.grid()
+
+			if x_lim is not None:
+				ax.set_xlim(x_lim)
+			else:
+				ax.set_xlim([min(x1[0], x2[0]), max(x1[-1], x2[-1])])
+
+			if y_lim is not None:
+				ax.set_ylim(y_lim)
+			else:
+				ax.set_ylim([min(field1.min(), field2.min()), max(field1.max(), field2.max())])
+
+			# Add title
+			plt.title(title, loc = 'left', fontsize = fontsize - 1)
+			plt.title(str(utils.convert_datetime64_to_datetime(time[n]) - utils.convert_datetime64_to_datetime(time[0])), 
+					  loc = 'right', fontsize = fontsize - 1)
+
+			# Let the writer grab the frame
+			writer.grab_frame()
