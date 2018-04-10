@@ -43,7 +43,7 @@ from tasmania.grids.grid_xyz import GridXYZ as Grid
 from tasmania.dycore.dycore import DynamicalCore
 from tasmania.model import Model
 import tasmania.namelist as nl
-from tasmania.parameterizations.adjustment_microphysics import AdjustmentMicrophysics
+from tasmania.parameterizations.adjustments import AdjustmentMicrophysics
 
 #
 # Instantiate the grid
@@ -126,7 +126,8 @@ if nl.tendency_microphysics_on:
 	### TODO ###
 
 	stop = time.time()
-	print('Microphysical tendency-providing parameterization class instantiated in {} ms.\n'.format((stop-start) * 1000.))
+	print('Microphysical tendency-providing parameterization class instantiated in %5.5f ms.\n' %
+		  ((stop-start) * 1000.))
 
 #
 # Instantiate the microphysical adjustment-performing parameterization, then add it to the model
@@ -143,7 +144,8 @@ if nl.adjustment_microphysics_on:
 	model.add_adjustment(adjustment_microphysics)
 
 	stop = time.time()
-	print('Microphysical adjustment-performing parameterization class instantiated in {} ms.\n'.format((stop-start) * 1000.))
+	print('Microphysical adjustment-performing parameterization class instantiated in %5.5f ms.\n' %
+		  ((stop-start) * 1000.))
 
 #
 # Get the initial state
@@ -156,7 +158,7 @@ state = dycore.get_initial_state(initial_time       = nl.initial_time,
 								 **nl.initial_state_kwargs)
 
 stop = time.time()
-print('Initial state computed in {} ms.\n'.format((stop-start) * 1000.))
+print('Initial state computed in %5.5f ms.\n' % ((stop-start) * 1000.))
 
 #
 # Run the simulation
@@ -164,13 +166,13 @@ print('Initial state computed in {} ms.\n'.format((stop-start) * 1000.))
 print('Start the simulation ...\n')
 start = time.time()
 
-state_out, state_save = model(dt              = nl.dt, 
-							  simulation_time = nl.simulation_time, 
-							  state           = state, 
-							  save_iterations = nl.save_iterations)
+state_out, state_save, diagnostics_save = model(dt              = nl.dt, 
+							  					simulation_time = nl.simulation_time, 
+							  					state           = state, 
+							  					save_iterations = nl.save_iterations)
 
 stop = time.time()
-print('\nSimulation completed in {} s.\n'.format(stop-start))
+print('\nSimulation completed in %5.5f s.\n' % (stop-start))
 
 #
 # Save
@@ -178,8 +180,9 @@ print('\nSimulation completed in {} s.\n'.format(stop-start))
 try:
 	with open(nl.save_dest, 'wb') as output:
 		pickle.dump(state_save, output)
+		pickle.dump(diagnostics_save, output)
 except EnvironmentError:
-	pass
+	print('Data have not been save due to an EnvironmentError.')
 except TypeError:
-	pass
+	print('Data have not been save due to a TypeError.')
 
