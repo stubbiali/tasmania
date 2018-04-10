@@ -56,9 +56,9 @@ class Tendency:
 			The number of time levels the dynamical core relies on.
 		"""
 		if self._time_levels is None:
-			warn_msg = '''The attribute representing the number of time levels the underlying dynamical core relies on ''' \
-					   '''has not been previously set, so it is tacitly assumed it is 1.''' \
-					   '''If you want to manually set it, please use the ''time_levels'' property.'''
+			warn_msg = """The attribute representing the number of time levels the underlying dynamical core relies on """ \
+					   """has not been previously set, so it is tacitly assumed it is 1.""" \
+					   """If you want to manually set it, please use the ''time_levels'' property."""
 			warnings.warn(warn_msg, RuntimeWarning)
 			self._time_levels = 1
 		return self._time_levels
