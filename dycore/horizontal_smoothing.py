@@ -33,7 +33,7 @@ from tasmania.namelist import datatype
 class HorizontalSmoothing:
 	"""
 	Abstract base class whose derived classes apply horizontal numerical smoothing to a generic (prognostic) 
-	field by means of a GT4Py's stencil.
+	field by means of a GT4Py stencil.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -55,7 +55,7 @@ class HorizontalSmoothing:
 		smooth_coeff_max : float
 			Maximum value for the smoothing coefficient.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical smoothing.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical smoothing.
 		"""
 		# Store useful input arguments
 		self._dims              = dims
@@ -128,7 +128,7 @@ class HorizontalSmoothing:
 		smooth_coeff_max : float
 			Maximum value for the smoothing coefficient.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 
 		Return
@@ -180,7 +180,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 			Maximum value for the smoothing coefficient. For the sake of numerical stability, it should not 
 			exceed 0.25. Default is 0.24.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 
 		Note
@@ -204,7 +204,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 		array_like :
 			:class:`numpy.ndarray` representing the filtered field.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi)
 
@@ -224,7 +224,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 
 	def _stencil_initialize(self, phi):
 		"""
-		Initialize the GT4Py's stencil applying horizontal smoothing.
+		Initialize the GT4Py stencil applying horizontal smoothing.
 
 		Parameters
 		----------
@@ -245,7 +245,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 
 	def _stencil_defs(self, in_phi, gamma):
 		"""
-		The GT4Py's stencil applying first-order horizontal smoothing. A centered 5-points formula is used.
+		The GT4Py stencil applying first-order horizontal smoothing. A centered 5-points formula is used.
 
 		Parameters
 		----------
@@ -302,7 +302,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 			Maximum value for the smoothing coefficient. For the sake of numerical stability, it should not 
 			exceed 0.5. Default is 0.49.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
@@ -321,7 +321,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		array_like :
 			:class:`numpy.ndarray` representing the filtered field.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi)
 
@@ -339,7 +339,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 
 	def _stencil_initialize(self, phi):
 		"""
-		Initialize the GT4Py's stencil applying horizontal smoothing.
+		Initialize the GT4Py stencil applying horizontal smoothing.
 
 		Parameters
 		----------
@@ -360,7 +360,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 
 	def _stencil_defs(self, in_phi, gamma):
 		"""
-		The GT4Py's stencil applying horizontal smoothing. A standard centered 3-points formula is used.
+		The GT4Py stencil applying horizontal smoothing. A standard centered 3-points formula is used.
 
 		Parameters
 		----------
@@ -417,7 +417,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 			Maximum value for the smoothing coefficient. For the sake of numerical stability, it should not 
 			exceed 0.5. Default is 0.49.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
@@ -436,7 +436,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 		array_like :
 			:class:`numpy.ndarray` representing the filtered field.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi)
 
@@ -454,7 +454,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 
 	def _stencil_initialize(self, phi):
 		"""
-		Initialize the GT4Py's stencil applying horizontal smoothing.
+		Initialize the GT4Py stencil applying horizontal smoothing.
 
 		Parameters
 		----------
@@ -475,7 +475,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 
 	def _stencil_defs(self, in_phi, gamma):
 		"""
-		The GT4Py's stencil applying horizontal smoothing. A standard centered 3-points formula is used.
+		The GT4Py stencil applying horizontal smoothing. A standard centered 3-points formula is used.
 
 		Parameters
 		----------
@@ -532,7 +532,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 			Maximum value for the smoothing coefficient. For the sake of numerical stability, it should not 
 			exceed 0.25. Default is 0.24.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
@@ -551,7 +551,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		array_like :
 			:class:`numpy.ndarray` representing the filtered field.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi)
 
@@ -575,7 +575,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 
 	def _stencil_initialize(self, phi):
 		"""
-		Initialize the GT4Py's stencil applying horizontal smoothing.
+		Initialize the GT4Py stencil applying horizontal smoothing.
 
 		Parameters
 		----------
@@ -596,7 +596,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 
 	def _stencil_defs(self, in_phi, gamma):
 		"""
-		The GT4Py's stencil applying horizontal smoothing. A standard centered 5-points formula is used.
+		The GT4Py stencil applying horizontal smoothing. A standard centered 5-points formula is used.
 
 		Parameters
 		----------
@@ -656,7 +656,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 			Maximum value for the smoothing coefficient. For the sake of numerical stability, it should not 
 			exceed 0.5. Default is 0.49.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
@@ -675,7 +675,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 		array_like :
 			:class:`numpy.ndarray` representing the filtered field.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi)
 
@@ -695,7 +695,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 
 	def _stencil_initialize(self, phi):
 		"""
-		Initialize the GT4Py's stencil applying horizontal smoothing.
+		Initialize the GT4Py stencil applying horizontal smoothing.
 
 		Parameters
 		----------
@@ -716,7 +716,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 
 	def _stencil_defs(self, in_phi, gamma):
 		"""
-		The GT4Py's stencil applying horizontal smoothing. A standard centered 5-points formula is used.
+		The GT4Py stencil applying horizontal smoothing. A standard centered 5-points formula is used.
 
 		Parameters
 		----------
@@ -774,7 +774,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 			Maximum value for the smoothing coefficient. For the sake of numerical stability, it should not 
 			exceed 0.5. Default is 0.49.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencil implementing numerical 
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
@@ -793,7 +793,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 		array_like :
 			:class:`numpy.ndarray` representing the filtered field.
 		"""
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi)
 
@@ -813,7 +813,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 
 	def _stencil_initialize(self, phi):
 		"""
-		Initialize the GT4Py's stencil applying horizontal smoothing.
+		Initialize the GT4Py stencil applying horizontal smoothing.
 
 		Parameters
 		----------
@@ -834,7 +834,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 
 	def _stencil_defs(self, in_phi, gamma):
 		"""
-		The GT4Py's stencil applying horizontal smoothing. A standard centered 5-points formula is used.
+		The GT4Py stencil applying horizontal smoothing. A standard centered 5-points formula is used.
 
 		Parameters
 		----------

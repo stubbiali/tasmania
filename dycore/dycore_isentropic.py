@@ -33,12 +33,13 @@ import gridtools as gt
 from tasmania.namelist import cp, datatype, g, p_ref, Rd
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
+import tasmania.utils.utils as utils
 import tasmania.utils.utils_meteo as utils_meteo
 
 class DynamicalCoreIsentropic(DynamicalCore):
 	"""
 	This class inherits :class:`~dycore.dycore.DynamicalCore` to implement the three-dimensional 
-	(moist) isentropic dynamical core using GT4Py's stencils. The class offers different numerical
+	(moist) isentropic dynamical core using GT4Py stencils. The class offers different numerical
 	schemes to carry out the prognostic step of the dynamical core, and supports different types of 
 	lateral boundary conditions.
 	"""
@@ -68,7 +69,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils implementing the dynamical core.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils implementing the dynamical core.
 		damp_on : `bool`, optional
 			:obj:`True` if vertical damping is enabled, :obj:`False` otherwise. Default is :obj:`True`.
 		damp_type : `str`, optional
@@ -146,8 +147,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 														 		   smooth_moist_coeff, smooth_moist_coeff_max, backend)
 
 		# Set the pointer to the entry-point method, distinguishing between dry and moist model
-		self._carry_out_large_timestep = self._carry_out_large_timestep_dry if not moist_on else \
-										 self._carry_out_large_timestep_moist
+		self._step = self._step_dry if not moist_on else self._step_moist
 
 	@property
 	def time_levels(self):
@@ -182,8 +182,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		Parameters
 		----------
 		micro : obj
-			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+			Instance of a derived class of either 
+			:class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics` or 
+			:class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the 
+			raindrop fall velocity.
 		"""
 		# Set attribute
 		self._microphysics = micro
@@ -215,18 +217,19 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing diagnostics, namely:
+			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered, required when coupling between physics and dynamics \
-				is switched on).
+			* change_over_time_in_air_potential_temperature (unstaggered, required when coupling between \
+				physics and dynamics is switched on);
+			* accumulated_precipitation (unstaggered).
 
 			Default is :obj:`None`.
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly storing tendencies. Default is obj:`None`.
+			:class:`~storages.grid_data.GridData` storing tendencies. Default is obj:`None`.
 
 		Return
 		------
-		obj :
+		state_new : obj
 			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
@@ -244,8 +247,14 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered);
 			* air_density (unstaggered, only if cloud microphysics is switched on);
 			* air_temperature (unstaggered, only if cloud microphysics is switched on).
+
+		diagnostics_out : obj
+			:class:`~tasmania.storages.grid_data.GridData` storing output diagnostics, namely:
+
+			* precipitation (unstaggered, only if rain sedimentation is switched on);
+			* accumulated_precipitation (unstaggered, only if rain sedimentation is switched on);
 		"""
-		return self._carry_out_large_timestep(dt, state, diagnostics, tendencies)
+		return self._step(dt, state, diagnostics, tendencies)
 
 	def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 		"""
@@ -520,7 +529,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		return state
 
-	def _carry_out_large_timestep_dry(self, dt, state, diagnostics, tendencies):
+	def _step_dry(self, dt, state, diagnostics, tendencies):
 		"""
 		Method advancing the dry isentropic state by a single time step.
 
@@ -541,15 +550,15 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* montgomery_potential (unstaggered).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
+			:class:`~storages.grid_data.GridData` storing diagnostics.
 			For the time being, this is not actually used. 
 		tendencies : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			:class:`~storages.grid_data.GridData` storing tendencies.
 			For the time being, this is not actually used. 
 
 		Return
 		------
-		obj :
+		state_new : obj
 			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
@@ -562,7 +571,14 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* exner_function (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
 			* height (:math:`z`-staggered).
+
+		diagnostics_out : obj
+			Empty :class:`~tasmania.storages.grid_data.GridData`, as no diagnostics are computed. 	
 		"""
+		# Initialize the empty GridData to return
+		time_now = utils.convert_datetime64_to_datetime(state['air_density'].coords['time'].values[0])
+		diagnostics_out = GridData(time_now + dt, self._grid)
+
 		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
 		if self._damp_on or self._smooth_on:
 			s_now = np.copy(state['air_isentropic_density'].values[:,:,:,0])
@@ -613,9 +629,9 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
 		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
 
-		return state_new
+		return state_new, diagnostics_out
 
-	def _carry_out_large_timestep_moist(self, dt, state, diagnostics, tendencies):
+	def _step_moist(self, dt, state, diagnostics, tendencies):
 		"""
 		Method advancing the moist isentropic state by a single time step.
 
@@ -639,9 +655,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing diagnostics, namely:
+			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered).
+			* change_over_time_in_air_potential_temperature (unstaggered, required only if coupling \
+				between physics and dynamics is switched on);
+			* accumulated_precipitation (unstaggered).
 
 		tendencies : `obj`, optional 
 			:class:`~storages.grid_data.GridData` possibly storing tendencies.
@@ -649,7 +667,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		Return
 		------
-		obj :
+		state_new : obj
 			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
@@ -667,7 +685,17 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered);
 			* air_density (unstaggered, only if cloud microphysics is switched on);
 			* air_temperature (unstaggered, only if cloud microphysics is switched on).
+
+		diagnostics_out : obj
+			:class:`~tasmania.storages.grid_data.GridData` collecting output diagnostics, namely:
+
+			* precipitation (unstaggered, only if rain sedimentation is switched on);
+			* accumulated_precipitation (unstaggered, only if rain sedimentation is switched on).
 		"""
+		# Initialize the GridData to return
+		time_now = utils.convert_datetime64_to_datetime(state['air_density'].coords['time'].values[0])
+		diagnostics_out = GridData(time_now + dt, self._grid)
+
 		# Diagnose the isentropic density for each water constituent to build the conservative state
 		state.update(self._diagnostic.get_water_constituents_isentropic_density(state))
 
@@ -684,10 +712,12 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics, 
 																		tendencies = tendencies)
 
-		# Couple physics with dynamics
 		if self._physics_dynamics_coupling_on:
-			diagnostics = GridData(change_over_time_in_air_potential_temperature = np.zeros_like(s_now))
-			state_new = self._prognostic.step_coupling_physics_with_dynamics(dt, state_now, state_new, diagnostics)
+			# Couple physics with dynamics
+			state_new_ = self._prognostic.step_coupling_physics_with_dynamics(dt, state, state_new, diagnostics)
+
+			# Update the output state
+			state_new.update(state_new_)
 
 		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state
@@ -765,4 +795,19 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			# Diagnose the temperature
 			state_new.update(self._diagnostic.get_air_temperature(state_new))
 
-		return state_new
+		if self._sedimentation_on:
+			qr     = state['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
+			qr_new = state_new['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
+
+			if np.any(qr > 0.) or np.any(qr_new > 0.):
+				# Resolve rain sedimentation
+				state_new_, diagnostics_out_ = self._prognostic.step_resolving_sedimentation(dt, state, state_new, diagnostics)
+
+				# Update the output state and the output diagnostics
+				state_new.update(state_new_)
+				diagnostics_out.update(diagnostics_out_)
+			else:
+				diagnostics_out.add(precipitation = np.zeros((self._grid.nx, self._grid.ny), dtype = datatype),
+									accumulated_precipitation = np.zeros((self._grid.nx, self._grid.ny), dtype = datatype))
+
+		return state_new, diagnostics_out

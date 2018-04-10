@@ -26,6 +26,7 @@ import numpy as np
 
 import gridtools as gt
 from tasmania.dycore.flux_isentropic import FluxIsentropic
+from tasmania.dycore.flux_sedimentation import FluxSedimentation
 from tasmania.namelist import datatype
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
@@ -57,7 +58,7 @@ class PrognosticIsentropic:
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
-			:class:`gridtools.mode` specifying the backend for the GT4Py's stencils.
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 		physics_dynamics_coupling_on : bool
 			:obj:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
 			:obj:`False` otherwise.
@@ -71,8 +72,9 @@ class PrognosticIsentropic:
 		# Instantiate the class computing the numerical horizontal and vertical fluxes
 		self._flux = FluxIsentropic.factory(flux_scheme, grid, moist_on)
 
-		# Instantiate the class computing the numerical sedimentation flux
-		self._flux_sedimentation = None
+		# Instantiate the class computing the vertical derivative of the sedimentation flux
+		if sedimentation_on:
+			self._flux_sedimentation = FluxSedimentation.factory(self._flux.order)
 
 		# Initialize the attributes representing the diagnostic step and the lateral boundary conditions
 		# Remark: these should be suitably set before calling the stepping method for the first time
@@ -297,7 +299,7 @@ class PrognosticIsentropic:
 		time_now = utils.convert_datetime64_to_datetime(state_now['air_isentropic_density'].coords['time'].values[0])
 		state_new = StateIsentropic(time_now + dt, self._grid)
 
-		# The first time this method is invoked, initialize the GT4Py's stencil
+		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil_stepping_by_coupling_physics_with_dynamics is None:
 			self._stencil_stepping_by_coupling_physics_with_dynamics_initialize(state_now)
 
@@ -328,6 +330,56 @@ class PrognosticIsentropic:
 
 		return state_new
 
+	@abc.abstractmethod
+	def step_resolving_sedimentation(self, dt, state_now, state_prv, diagnostics = None):
+		"""
+		Method advancing the mass fraction of precipitation water by taking the sedimentation into account.
+		For the sake of numerical stability, a time-splitting strategy is pursued, i.e., sedimentation is resolved
+		using a timestep which may be smaller than that specified by the user.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Parameters
+		----------
+		dt : obj 
+			:class:`datetime.timedelta` representing the time step.
+		state_now : obj
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
+			It should contain the following variables:
+
+			* air_isentropic_density (unstaggered);
+			* height (:math:`z`-staggered);
+			* mass_fraction_of_precipitation_water_in air (unstaggered).
+
+		state_prv : obj
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the provisional state, i.e.,
+			the state stepped without taking the sedimentation flux into account. 
+			It should contain the following variables:
+
+			* mass_fraction_of_precipitation_water_in_air (unstaggered).
+
+			This may be the output of either
+			:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection` or
+			:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.step_coupling_physics_with_dynamics`.
+		diagnostics : `obj`, optional
+			:class:`~tasmania.storages.grid_data.GridData` collecting the following diagnostics:
+
+			* accumulated_precipitation (unstaggered, two-dimensional);
+			* precipitation (unstaggered, two-dimensional).
+
+		Returns
+		-------
+		state_new : obj
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` containing the following updated variables:
+			
+			* mass_fraction_of_precipitation_water_in air (unstaggered).
+
+		diagnostics_out : obj
+			:class:`~tasmania.storages.grid_data.GridData` collecting the output diagnostics, i.e.:
+
+			* accumulated_precipitation (unstaggered, two-dimensional);
+			* precipitation (unstaggered, two-dimensional).
+		"""
+
 	@staticmethod
 	def factory(time_scheme, flux_scheme, grid, moist_on, backend, physics_dynamics_coupling_on, sedimentation_on):
 		"""
@@ -354,7 +406,7 @@ class PrognosticIsentropic:
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
-			:class:`gridtools.Mode` specifying the backend for the GT4Py's stencils.
+			:class:`gridtools.Mode` specifying the backend for the GT4Py stencils.
 		physics_dynamics_coupling_on : bool
 			:obj:`True` to couple physics with dynamics, i.e., to account for the change over time in potential temperature,
 			:obj:`False` otherwise.
@@ -379,7 +431,7 @@ class PrognosticIsentropic:
 
 	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self, mi, mj):
 		"""
-		Allocate the attributes which serve as inputs to the GT4Py's stencils which step the solution
+		Allocate the attributes which serve as inputs to the GT4Py stencils which step the solution
 		disregarding the vertical advection.
 
 		Parameters
@@ -395,7 +447,7 @@ class PrognosticIsentropic:
 		# Keep track of the input arguments
 		self._mi, self._mj = mi, mj
 
-		# Instantiate a GT4Py's Global representing the timestep
+		# Instantiate a GT4Py Global representing the timestep
 		self._dt = gt.Global()
 
 		# Determine the size of the input arrays
@@ -458,7 +510,7 @@ class PrognosticIsentropic:
 
 	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(self, dt, state):
 		"""
-		Update the attributes which serve as inputs to the GT4Py's stencils which step the solution
+		Update the attributes which serve as inputs to the GT4Py stencils which step the solution
 		disregarding the vertical advection.
 
 		Parameters
@@ -497,7 +549,7 @@ class PrognosticIsentropic:
 			Qc = state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
 			Qr = state['precipitation_water_isentropic_density'].values[:,:,:,0]
 		
-		# Update the Numpy arrays which serve as inputs to the GT4Py's stencils
+		# Update the Numpy arrays which serve as inputs to the GT4Py stencils
 		self._in_s  [  :mi,   :mj, :] = self.boundary.from_physical_to_computational_domain(s)
 		self._in_u  [:mi+1,   :mj, :] = self.boundary.from_physical_to_computational_domain(u)
 		self._in_v  [  :mi, :mj+1, :] = self.boundary.from_physical_to_computational_domain(v)
@@ -511,7 +563,7 @@ class PrognosticIsentropic:
 
 	def _stencil_stepping_by_coupling_physics_with_dynamics_initialize(self, state_now):
 		"""
-		Initialize the GT4Py's stencil in charge of stepping the solution by coupling physics with dynamics,
+		Initialize the GT4Py stencil in charge of stepping the solution by coupling physics with dynamics,
 		i.e., by accounting for the change over time in potential temperature.
 
 		Parameters
@@ -556,7 +608,7 @@ class PrognosticIsentropic:
 
 	def _stencil_stepping_by_coupling_physics_with_dynamics_allocate_inputs(self):
 		"""
-		Allocate the attributes which serve as inputs to the GT4Py's stencil which step the solution
+		Allocate the attributes which serve as inputs to the GT4Py stencil which step the solution
 		by coupling physics with dynamics, i.e., accounting for the change over time in potential temperature.
 		"""
 		# Shortcuts
@@ -576,7 +628,7 @@ class PrognosticIsentropic:
 
 		# Allocate objects which may be shared with the stencil stepping the solution by neglecting vertical advection
 		if self._stencil_stepping_by_neglecting_vertical_advection is None:
-			# Instantiate a GT4Py's Global representing the timestep
+			# Instantiate a GT4Py Global representing the timestep
 			self._dt = gt.Global()
 
 			# Allocate the Numpy arrays which will represent the current time model variables
@@ -608,7 +660,7 @@ class PrognosticIsentropic:
 
 	def _stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(self, dt, state_now, state_prv, diagnostics):
 		"""
-		Update the attributes which serve as inputs to the GT4Py's stencil which steps the solution
+		Update the attributes which serve as inputs to the GT4Py stencil which steps the solution
 		by resolving the vertical advection, i.e., by accounting for the change over time in potential temperature.
 
 		Parameters
@@ -682,7 +734,7 @@ class PrognosticIsentropic:
 															  	 Qc_now = None, Qc_prv = None,
 															  	 Qr_now = None, Qr_prv = None):
 		"""
-		GT4Py's stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
+		GT4Py stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
