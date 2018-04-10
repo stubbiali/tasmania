@@ -12,6 +12,7 @@ Physical constants:
 	* :data:`namelist.cp`: Specific heat of dry air at constant pressure ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
 	* :data:`namelist.g`: Mean gravitational acceleration ([:math:`m ~ s^{-2}`]). 
 	* :data:`namelist.L`: Specific latent heat of condensation of water ([:math:`J ~ kg^{-1}`]).
+	* :data:`namelist.rho_water`: Water density ([:math:`kg ~ m^{-3}`]).
 
 Grid settings:
 	* :data:`namelist.domain_x`: Tuple storing the boundaries of the domain in the :math:`x`-direction \
@@ -123,7 +124,7 @@ Simulation settings:
 	* :data:`namelist.temperature_initial`: The initial, uniform temperature ([:math:`K`]).
 	* :data:`namelist.initial_state_kwargs`: Dictionary storing :data:`~namelist.x_velocity_initial`, \
 		:data:`~namelist.y_velocity_initial`, :data:`~namelist.brunt_vaisala_initial` and :data:`~namelist.temperature_initial`.
-	* :data:`namelist.backend`: GT4Py's backend to use. Available options are:
+	* :data:`namelist.backend`: GT4Py backend to use. Available options are:
 		
 			- :data:`gridtools.mode.NUMPY`: Numpy (i.e., vectorized) backend.
 
@@ -141,15 +142,16 @@ import gridtools as gt
 #
 # Physical constants
 #
-p_ref = 1.e5
-p_sl  = 1.e5
-T_sl  = 288.15
-beta  = 42.
-Rd    = 287.05
-Rv	  = 461.52
-cp    = 1004.
-g     = 9.81
-L	  = 2.5e6
+p_ref     = 1.e5
+p_sl      = 1.e5
+T_sl      = 288.15
+beta      = 42.
+Rd        = 287.05
+Rv	      = 461.52
+cp        = 1004.
+g         = 9.81
+L	      = 2.5e6
+rho_water = 1000.
 
 #
 # Grid settings
@@ -180,8 +182,8 @@ horizontal_boundary_type = 'relaxed'
 #
 # Numerical settings
 #
-time_scheme             = 'centered'
-flux_scheme             = 'centered'
+time_scheme             = 'forward_euler'
+flux_scheme             = 'maccormack'
 damp_on	                = False
 damp_type               = 'rayleigh'
 damp_depth              = 30
@@ -201,15 +203,15 @@ smooth_moist_coeff_max  = .25
 # Microphysics settings
 #
 physics_dynamics_coupling_on   = False
-sedimentation_on	           = False
-rain_evaporation_on			   = False
+sedimentation_on	           = True
+rain_evaporation_on			   = True
 tendency_microphysics_on       = False
 tendency_microphysics_type     = ''
 tendency_microphysics_kwargs   = {}
 adjustment_microphysics_on     = True
 adjustment_microphysics_type   = 'kessler_wrf'
 adjustment_microphysics_kwargs = {
-								  'a' : .001,
+								  'a' : .0001,
 								  'k1': .001,
 								  'k2': 2.2,
 								 }
@@ -229,6 +231,6 @@ initial_state_kwargs  = {
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = np.arange(30, 2161, 30)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_leapfrog_animation.pickle')
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_evaporation_maccormack.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float64
