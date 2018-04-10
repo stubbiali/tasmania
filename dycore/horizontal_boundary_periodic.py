@@ -294,7 +294,7 @@ class PeriodicXZ(HorizontalBoundary):
 
 		# Repeat in the y-direction
 		return np.concatenate((np.repeat(phi_[:, 0:1, :], nb, axis = 1),
-							   phi_
+							   phi_,
 							   np.repeat(phi_[:, -1:, :], nb, axis = 1)), axis = 1)
 
 	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):
@@ -472,7 +472,7 @@ class PeriodicYZ(HorizontalBoundary):
 
 		# Repeat in the x-direction
 		return np.concatenate((np.repeat(phi_[0:1, :, :], nb, axis = 0),
-							   phi_
+							   phi_,
 							   np.repeat(phi_[-1:, :, :], nb, axis = 0)), axis = 0)
 
 	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):

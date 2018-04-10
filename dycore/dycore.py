@@ -106,14 +106,16 @@ class DynamicalCore(TimeStepper):
 		state : obj 
 			The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing diagnostics. Default is :obj:`None`.
+			:class:`~storages.grid_data.GridData` storing diagnostics. Default is :obj:`None`.
 		tendencies : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing tendencies. Default is :obj:`None`.
+			:class:`~storages.grid_data.GridData` storing tendencies. Default is :obj:`None`.
 
 		Return
 		------
-		obj :
+		state_new : obj
 			The state at the next time level. This is of the same class of :data:`state`.
+		diagnostics_out : obj
+			:class:`~storages.grid_data.GridData` storing output diagnostics.
 		"""
 
 	@abc.abstractmethod

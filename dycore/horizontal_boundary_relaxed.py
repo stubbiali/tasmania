@@ -168,19 +168,19 @@ class Relaxed(HorizontalBoundary):
 
 		# Apply the relaxed boundary conditions in the x-direction
 		if nj == ny: # unstaggered
-			phi_new[ :nr, :, :] = self._stgy_w[:, :-1, :nk] * west + (1 - self._stgy_w[:, :-1, :nk]) * phi_new[ :nr, :, :]
-			phi_new[-nr:, :, :] = self._stgy_e[:, :-1, :nk] * east + (1 - self._stgy_e[:, :-1, :nk]) * phi_new[-nr:, :, :]
+			phi_new[ :nr, :, :] = self._stgy_w[:, :-1, :nk] * west + (1. - self._stgy_w[:, :-1, :nk]) * phi_new[ :nr, :, :]
+			phi_new[-nr:, :, :] = self._stgy_e[:, :-1, :nk] * east + (1. - self._stgy_e[:, :-1, :nk]) * phi_new[-nr:, :, :]
 		else:		 # y-staggered
-			phi_new[ :nr, :, :] = self._stgy_w[:, :, nk] * west + (1 - self._stgy_w[:, :, :nk]) * phi_new[ :nr, :, :]
-			phi_new[-nr:, :, :] = self._stgy_e[:, :, nk] * east + (1 - self._stgy_e[:, :, :nk]) * phi_new[-nr:, :, :]
+			phi_new[ :nr, :, :] = self._stgy_w[:, :, nk] * west + (1. - self._stgy_w[:, :, :nk]) * phi_new[ :nr, :, :]
+			phi_new[-nr:, :, :] = self._stgy_e[:, :, nk] * east + (1. - self._stgy_e[:, :, :nk]) * phi_new[-nr:, :, :]
 
 		# Apply the relaxed boundary conditions in the y-direction
 		if ni == nx: # unstaggered
-			phi_new[:,  :nr, :] = self._stgx_s[:-1, :, :nk] * south + (1 - self._stgx_s[:-1, :, :nk]) * phi_new[:,  :nr, :]
-			phi_new[:, -nr:, :] = self._stgx_n[:-1, :, :nk] * north + (1 - self._stgx_n[:-1, :, :nk]) * phi_new[:, -nr:, :]
+			phi_new[:,  :nr, :] = self._stgx_s[:-1, :, :nk] * south + (1. - self._stgx_s[:-1, :, :nk]) * phi_new[:,  :nr, :]
+			phi_new[:, -nr:, :] = self._stgx_n[:-1, :, :nk] * north + (1. - self._stgx_n[:-1, :, :nk]) * phi_new[:, -nr:, :]
 		else:		 # x-staggered
-			phi_new[:,  :nr, :] = self._stgx_s[:, :, nk] * south + (1 - self._stgx_s[:, :, nk]) * phi_new[:,  :nr, :]
-			phi_new[:, -nr:, :] = self._stgx_n[:, :, nk] * north + (1 - self._stgx_n[:, :, nk]) * phi_new[:, -nr:, :]
+			phi_new[:,  :nr, :] = self._stgx_s[:, :, nk] * south + (1. - self._stgx_s[:, :, nk]) * phi_new[:,  :nr, :]
+			phi_new[:, -nr:, :] = self._stgx_n[:, :, nk] * north + (1. - self._stgx_n[:, :, nk]) * phi_new[:, -nr:, :]
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
@@ -340,8 +340,8 @@ class RelaxedXZ(HorizontalBoundary):
 		east  = np.repeat(phi_now[-1:, :, :], nr, axis = 0)
 
 		# Apply the relaxed boundary conditions in the x-direction
-		phi_new[ :nr, :, :] = self._stg_w[:, :, :nk] * west + (1 - self._stg_w[:, :, :nk]) * phi_new[ :nr, :, :]
-		phi_new[-nr:, :, :] = self._stg_e[:, :, :nk] * east + (1 - self._stg_e[:, :, :nk]) * phi_new[-nr:, :, :]
+		phi_new[ :nr, :, :] = self._stg_w[:, :, :nk] * west + (1. - self._stg_w[:, :, :nk]) * phi_new[ :nr, :, :]
+		phi_new[-nr:, :, :] = self._stg_e[:, :, :nk] * east + (1. - self._stg_e[:, :, :nk]) * phi_new[-nr:, :, :]
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
@@ -515,8 +515,8 @@ class RelaxedYZ(HorizontalBoundary):
 		north = np.repeat(phi_now[:, -1:, :], nr, axis = 1)
 
 		# Apply the relaxed boundary conditions in the x-direction
-		phi_new[:,  :nr, :] = self._stg_s * south + (1 - self._stg_s) * phi_new[:,  :nr, :]
-		phi_new[:, -nr:, :] = self._stg_n * north + (1 - self._stg_n) * phi_new[:, -nr:, :]
+		phi_new[:,  :nr, :] = self._stg_s * south + (1. - self._stg_s) * phi_new[:,  :nr, :]
+		phi_new[:, -nr:, :] = self._stg_n * north + (1. - self._stg_n) * phi_new[:, -nr:, :]
 
 	def set_outermost_layers_y(self, phi_new, phi_now):
 		"""
