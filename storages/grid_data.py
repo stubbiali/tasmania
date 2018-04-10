@@ -4,6 +4,7 @@ import xarray as xr
 
 from tasmania.grids.axis import Axis
 import tasmania.utils.utils as utils
+import tasmania.utils.utils_plot as utils_plot
 
 class GridData:
 	"""
@@ -46,6 +47,8 @@ class GridData:
 		'precipitation_water_isentropic_density'       : 'kg m-2 K-1'    ,
 		'change_over_time_in_air_potential_temperature': 'K s-1'		 ,
 		'raindrop_fall_speed'						   : 'm s-1'		 ,
+		'precipitation'								   : 'mm h-1'        ,
+		'accumulated_precipitation'					   : 'mm'			 ,
 	}
 
 	def __init__(self, time, grid, **kwargs):
@@ -73,7 +76,11 @@ class GridData:
 
 				# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
 				# A notable example of a two-dimensional field is the accumulated precipitation
-				if var.shape == 1:
+				if len(var.shape) == 2:
+					var = var[:, :, np.newaxis]
+				if var.shape[2] == 1:
+					z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
+				elif var.shape[2] == 1:
 					z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
 				elif var.shape[2] == grid.nz:
 					z = grid.z 
@@ -132,7 +139,9 @@ class GridData:
 
 				# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
 				# A notable example of a two-dimensional field is the accumulated precipitation
-				if var.shape == 1:
+				if len(var.shape) == 2:
+					var = var[:, :, np.newaxis]
+				if var.shape[2] == 1:
 					z = Axis(np.array([self.grid.z_half_levels[-1]]), self.grid.z.dims, attrs = self.grid.z.attrs)
 				elif var.shape[2] == self.grid.nz:
 					z = self.grid.z 
@@ -180,7 +189,11 @@ class GridData:
 			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
 		"""
 		for key in other._vars:
-			self._vars[key] = other._vars[key]
+			try:
+				self._vars[key].values[:,:,:,:] = other._vars[key].values[:,:,:,:]
+				self._vars[key].coords['time'] = other._vars[key].coords['time']
+			except KeyError:
+				self._vars[key] = other._vars[key]
 	
 	def append(self, other):
 		"""
@@ -237,3 +250,25 @@ class GridData:
 		else:
 			raise KeyError('The variable {} is not stored within the current object'.format(key))
 
+	def animation_profile_x(self, field_to_plot, y_level, z_level, destination, **kwargs):
+		"""
+		Generate an animation showing a field along the line identified by :math:`y = \\bar{y}` and :math:`z = \\bar{z}`.
+
+		Parameters
+		----------
+		"""
+		# Shortcuts
+		nx = self.grid.nx
+		time = self._vars[list(self._vars.keys())[0]].coords['time'].values 
+
+		# Extract, compute, or interpolate the field to plot
+		if field_to_plot in self._vars:
+			var = self._vars[field_to_plot].values[:, y_level, z_level, :] 
+		else:
+			raise RuntimeError('Unknown field to plot.')
+
+		# Infer the underlying x-grid
+		x = self.grid.x.values if var.shape[0] == nx else self.grid.x_half_levels.values
+
+		# Plot
+		utils_plot.animation_profile_x(time, x, var, destination, **kwargs)

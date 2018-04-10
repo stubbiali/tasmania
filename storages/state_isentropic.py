@@ -266,7 +266,7 @@ class StateIsentropic(GridData):
 		utils_plot.contourf_xz(self.grid, self.grid.topography_height[:, y_level], 
 							   self._vars['height'].values[:, y_level, :, time_level], var, **kwargs)
 
-	def contourf_animation_xz(self, field_to_plot, y_level, destination, **kwargs):
+	def animation_contourf_xz(self, field_to_plot, y_level, destination, **kwargs):
 		"""
 		Generate a contourf animation of a field at the cross-section :math:`y = \\bar{y}`.
 
@@ -284,7 +284,7 @@ class StateIsentropic(GridData):
 			specified as well.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`utils.utils_plot.contourf_animation_xz` for the complete list.
+			See :func:`utils.utils_plot.animation_contourf_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz
@@ -307,7 +307,7 @@ class StateIsentropic(GridData):
 			raise RuntimeError('Unknown field to plot.')
 
 		# Plot
-		utils_plot.contourf_animation_xz(time, self.grid, self.grid.topography_height[:, y_level], 
+		utils_plot.animation_contourf_xz(time, self.grid, self.grid.topography_height[:, y_level], 
 							   			 self._vars['height'].values[:, y_level, :, :], var, destination, **kwargs)
 
 	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
