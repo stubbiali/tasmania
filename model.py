@@ -24,6 +24,8 @@ import copy
 from datetime import timedelta
 import numpy as np
 
+from tasmania.parameterizations.adjustments import AdjustmentMicrophysics
+from tasmania.parameterizations.tendencies import TendencyMicrophysics
 from tasmania.storages.grid_data import GridData
 import tasmania.utils.utils as utils
 
@@ -65,6 +67,17 @@ class Model:
 		for adjustment_param in self._adjustment_params:
 			adjustment_param.time_levels = dycore.time_levels
 
+		# Update the dycore by setting the microphysics scheme
+		done = False
+		for tendency_param in self._tendency_params:
+			if isinstance(tendency_param, TendencyMicrophysics) and not done:
+				self._dycore.microphysics = tendency_param
+				done = True
+		for adjustment_param in self._adjustment_params:
+			if isinstance(adjustment_param, AdjustmentMicrophysics) and not done:
+				self._dycore.microphysics = adjustment_param
+				done = True
+
 	def add_tendency(self, tendency):
 		"""
 		Add a *tendency-providing* parameterization to the model.
@@ -80,8 +93,15 @@ class Model:
 		In a simulation, tendency-providing parameterizations will be executed in the same order they have been added to the model.
 		"""
 		self._tendency_params.append(tendency)
+		
+		#
+		# Set dependencies
+		#
 		if self._dycore is not None:
-			self._tendency_params[-1].time_levels = self._dycore.time_levels
+			tendency.time_levels = self._dycore.time_levels
+
+		if isinstance(tendency, TendencyMicrophysics) and self._dycore is not None:
+			self._dycore.microphysics = tendency
 
 	def add_adjustment(self, adjustment):
 		"""
@@ -98,8 +118,15 @@ class Model:
 		In a simulation, adjustment-performing parameterizations will be executed in the same order they have been added to the model.
 		"""
 		self._adjustment_params.append(adjustment)
+
+		#
+		# Set dependencies
+		#
 		if self._dycore is not None:
-			self._adjustment_params[-1].time_levels = self._dycore.time_levels 
+			adjustment.time_levels = self._dycore.time_levels 
+
+		if isinstance(adjustment, AdjustmentMicrophysics) and self._dycore is not None:
+			self._dycore.microphysics = adjustment
 
 	def __call__(self, dt, simulation_time, state, save_iterations = []):
 		"""
@@ -123,20 +150,22 @@ class Model:
 			The final state, of the same class of :data:`state`.
 		state_save : obj
 			The sequence of saved states, of the same class of :data:`state`.
+		diagnostics_save : obj
 		"""
 		# Initialize the control variables and copy the timestep
-		steps = 0
+		steps 		 = 0
+		first_save   = 1
 		elapsed_time = timedelta()
-		dt_ = copy.deepcopy(dt)
+		dt_          = copy.deepcopy(dt)
 
 		# Initialize storages collecting tendencies and diagnostics
-		time = utils.convert_datetime64_to_datetime(state[state.variable_names[0]].coords['time'].values[0])
-		tendencies = GridData(time, state.grid)
+		time        = utils.convert_datetime64_to_datetime(state[state.variable_names[0]].coords['time'].values[0])
+		tendencies  = GridData(time, state.grid)
 		diagnostics = GridData(time, state.grid)
 
 		# Initialize the outputs
-		state_out = copy.deepcopy(state)
-		state_save = copy.deepcopy(state)
+		state_out        = copy.deepcopy(state)
+		state_save       = copy.deepcopy(state)
 
 		while elapsed_time < simulation_time:
 			# Update control variables
@@ -155,14 +184,16 @@ class Model:
 				tendencies.update(tendencies_)
 				diagnostics.update(diagnostics_)
 
-			# Run the dynamical core, then update the state
-			state_new = self._dycore(dt_, state_out, diagnostics, tendencies)
-			state_out.update(state_new)
+			# Run the dynamical core, then update the state and the diagnostics
+			state_out_, diagnostics_ = self._dycore(dt_, state_out, diagnostics, tendencies)
+			state_out.update(state_out_)
+			diagnostics.update(diagnostics_)
 
-			# Run the adjustment-performing parameterizations; after each parameterization, update the state and collect diagnostics
+			# Run the adjustment-performing parameterizations; after each parameterization, 
+			# update the state and collect diagnostics
 			for adjustment_param in self._adjustment_params:
-				state_new, diagnostics_ = adjustment_param(dt_, state_out)
-				state_out.update(state_new)
+				state_out_, diagnostics_ = adjustment_param(dt_, state_out)
+				state_out.update(state_out_)
 				diagnostics.update(diagnostics_)
 
 			# Check the CFL condition
@@ -176,9 +207,18 @@ class Model:
 			if (steps in save_iterations) or (elapsed_time == simulation_time):
 				state_save.grid.update_topography(elapsed_time)
 				state_save.append(state_out)
+
+				if first_save: 
+					diagnostics_save = copy.deepcopy(diagnostics)
+					diagnostics_save.grid.update_topography(elapsed_time)
+					first_save = 0
+				else:
+					diagnostics_save.grid.update_topography(elapsed_time)
+					diagnostics_save.append(diagnostics)
+
 				print('Step %6.i saved' % (steps))
 
-		return state_out, state_save
+		return state_out, state_save, diagnostics_save
 
 
 
