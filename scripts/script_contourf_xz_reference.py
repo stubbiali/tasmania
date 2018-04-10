@@ -34,8 +34,8 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename   = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_leapfrog_reference.npz')
-field      = 'horizontal_velocity' #'specific_humidity' #'specific_cloud_liquid_water_content'
+filename   = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_leapfrog_reference.npz')
+field      = 'specific_cloud_liquid_water_content' #'specific_humidity' #'specific_cloud_liquid_water_content'
 time_level = -1
 
 #
@@ -52,12 +52,12 @@ x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,10]
-field_factor     = 1. #1.e3
+field_factor     = 1.e3
 plot_height		 = True
-cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 18
 cbar_ticks_step  = 4
-cbar_center      = 15.
+cbar_center      = None #15.
 cbar_half_width  = None #0.85
 cbar_x_label     = 'Water vapor [g kg$^{-1}$]'
 cbar_y_label     = ''
