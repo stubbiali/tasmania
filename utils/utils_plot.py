@@ -407,7 +407,8 @@ def animation_contourf_xz(time, grid, topography, height, field, destination, **
 		* the third array axis represents the time.
 
 	destination : str
-		String specify the path to the location where the movie will be saved. Note that the extension should be specified as well.
+		String specifying the path to the location where the movie will be saved. 
+		Note that the string should include the extension as well.
 		
 	Keyword arguments
 	-----------------
