@@ -175,6 +175,66 @@ class GridData:
 									dims = [x.dims, y.dims, z.dims, 'time'],
 									attrs = {'units': GridData.units[key]})
 				self._vars[key] = _var
+
+	def extend(self, other):
+		"""
+		Extend the current object by adding the variables stored by another object.
+
+		Notes
+		-----
+		* The variables are deep copied.
+		* The incoming variables do not need to be defined at the same time level.
+
+		Parameters
+		----------
+		other : obj 
+			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
+		"""
+		for key in other._vars:
+			self._vars[key] = copy.deepcopy(other._vars[key])
+
+	def update(self, other):
+		"""
+		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
+		
+		Notes
+		-----
+		* It is assumed that *all* the variables stored by the input object are present also in the current object. 
+		* After the update, the stored variables might not be all defined at the same time level.
+
+		Parameters
+		----------
+		other : obj 
+			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
+		"""
+		for key in other._vars:
+			self._vars[key].values[:,:,:,:] = other._vars[key].values[:,:,:,:]
+			self._vars[key].coords['time']  = other._vars[key].coords['time']
+
+	def extend_and_update(self, other):
+		"""
+		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
+		This implies that, for each variable stored in the incoming object:
+
+		* if the current object contains a variable with the same name, that variable is updated;
+		* if the current object does not contain any variable with the same name, that variable is deep copied inside \
+			the current object.
+
+		Note
+		----
+		After the update, the stored variables might not be all defined at the same time level.
+
+		Parameters
+		----------
+		other : obj 
+			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
+		"""
+		for key in other._vars:
+			try:
+				self._vars[key].values[:,:,:,:] = other._vars[key].values[:,:,:,:]
+				self._vars[key].coords['time'] = other._vars[key].coords['time']
+			except KeyError:
+				self._vars[key] = copy.deepcopy(other._vars[key])
 	
 	def pop(self, key):
 		"""
@@ -195,28 +255,6 @@ class GridData:
 		except KeyError:
 			return None
 
-	def update(self, other):
-		"""
-		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
-		This implies that, for each variable stored in the input object:
-
-		* if the current object contains a variable with the same name, that variable is updated;
-		* if the current object does not contain any variable with the same name, a new variable is added to the current object.
-
-		Note that after the update, the stored variables might not be defined at the same time level.
-
-		Parameters
-		----------
-		other : obj 
-			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
-		"""
-		for key in other._vars:
-			try:
-				self._vars[key].values[:,:,:,:] = other._vars[key].values[:,:,:,:]
-				self._vars[key].coords['time'] = other._vars[key].coords['time']
-			except KeyError:
-				self._vars[key] = other._vars[key]
-	
 	def append(self, other):
 		"""
 		Append a new state to the sequence of states.
@@ -274,10 +312,22 @@ class GridData:
 
 	def animation_profile_x(self, field_to_plot, y_level, z_level, destination, **kwargs):
 		"""
-		Generate an animation showing a field along the line identified by :math:`y = \\bar{y}` and :math:`z = \\bar{z}`.
+		Generate an animation showing a field along a section line orthogonal to the :math:`yz`-plane.
 
 		Parameters
 		----------
+		field_to_plot : str
+			The name of the field to plot.	
+		y_level : int
+			:math:`y`-index identifying the section line. 
+		z_level : int
+			:math:`z`-index identifying the section line. 
+		destination : str
+			String specifying the path to the location where the movie will be saved. 
+			Note that the string should include the extension as well.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. 
+			See :func:`tasmania.utils.utils_plot.animation_profile_x` for the complete list.
 		"""
 		# Shortcuts
 		nx = self.grid.nx
