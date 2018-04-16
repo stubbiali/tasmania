@@ -220,7 +220,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._in_Qc_old[:,:,:] = self._in_Qc[:mi,:mj,:]
 			self._in_Qr_old[:,:,:] = self._in_Qr[:mi,:mj,:]
 
-		# At this point, the first timestep has been performed
+		# At this point, the first timestep is surely over
 		self._is_first_timestep = False
 
 		return state_new
@@ -239,7 +239,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
+			* air_density (unstaggered);
 			* air_isentropic_density (unstaggered);
+			* air_pressure (:math:`z`-staggered);
 			* height (:math:`z`-staggered);
 			* mass_fraction_of_precipitation_water_in air (unstaggered).
 
@@ -248,7 +250,14 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			the state stepped without taking the sedimentation flux into account. 
 			It should contain the following variables:
 
-			* mass_fraction_of_precipitation_water_in_air (unstaggered).
+			* air_density (unstaggered);
+			* air_isentropic_density (unstaggered);
+			* air_pressure (:math:`z`-staggered);
+			* exner_function (:math:`z`-staggered);
+			* montgomery_potential (unstaggered);
+			* height (:math:`z`-staggered);
+			* mass_fraction_of_precipitation_water_in air (unstaggered);
+			* precipitation_water_isentropic_density (unstaggered).
 
 			This may be the output of either
 			:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection` or
@@ -263,7 +272,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		state_new : obj
 			:class:`~tasmania.storages.state_isentropic.StateIsentropic` containing the following updated variables:
 			
-			* mass_fraction_of_precipitation_water_in air (unstaggered).
+			* mass_fraction_of_precipitation_water_in air (unstaggered);
+			* precipitation_water_isentropic_density (unstaggered).
 
 		diagnostics_out : obj
 			:class:`~tasmania.storages.grid_data.GridData` collecting the output diagnostics, i.e.:
@@ -281,32 +291,31 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		vt = self.microphysics.get_raindrop_fall_velocity(state_now)
 		cfl = np.max(vt[:,:,:] * (1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds) / \
 					 (h[:,:,:-1] - h[:,:,1:]))
-		substeps = max(2. * np.ceil(cfl), 2.)
+		substeps = 2. * max(np.ceil(cfl), 1.)
 		dts = 2. * dt / substeps
 
 		# Update the attributes which serve as inputs to the GT4Py stencils
 		nx, ny = self._grid.nx, self._grid.ny
 		self._dt.value  = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 		self._dts.value = 1.e-6 * dts.microseconds if dts.seconds == 0. else dts.seconds
-		self._in_rho[:,:,:] = state_now['air_density'].values[:,:,:,0]
-		self._in_h[:,:,:]   = state_now['height'].values[:,:,:,0]
-		try:
-			self._in_qr[:,:,:]     = self._in_Qr_old[:nx,:ny,:] / self._in_s_old[:nx,:ny,:]
-			#self._in_qr[:,:,:]     = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0] 
-			self._in_qr_prv[:,:,:] = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
-		except AttributeError:
-			print('Before invoking step_integrating_sedimentation_flux, please call step_neglecting_vertical_advection.')
+		self._in_s[:nx,:ny,:]     = self._in_s_old[:nx,:ny,:]
+		self._in_s_prv[:nx,:ny,:] = state_prv['air_isentropic_density'].values[:,:,:,0]
+		self._in_qr[:,:,:] 	   	  = self._in_Qr_old[:nx,:ny,:] / self._in_s_old[:nx,:ny,:] 
+		self._in_qr_prv[:,:,:] 	  = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 
-		# Set the output field
+		# Set the output fields
 		nb = self._flux_sedimentation.nb
-		self._out_qr[:,:,:nb] = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:nb,0]
-		self._out_qr[:,:,nb:] = self._in_qr[:,:,nb:]
+		self._out_s[:nx,:ny,:nb] = state_prv['air_isentropic_density'].values[:,:,:nb,0]
+		self._out_s[:nx,:ny,nb:] = self._in_s[:nx,:ny,nb:]
+		self._out_qr[:,:,:nb]    = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:nb,0]
+		self._out_qr[:,:,nb:]    = self._in_qr[:nx,:ny,nb:]
 
 		# Initialize the output state
 		time_now = utils.convert_datetime64_to_datetime(state_now['air_density'].coords['time'].values[0])
 		state_new = StateIsentropic(time_now + dt, self._grid,
-									air_density                                 = self._in_rho,
-									height                                      = self._in_h,
+									air_density									= self._in_rho,
+									air_isentropic_density						= self._out_s[:nx,:ny,:],
+									height										= self._in_h,
 									mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
 		# Initialize the arrays storing the precipitation and the accumulated precipitation
@@ -320,13 +329,14 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 								   precipitation             = precipitation,
 								   accumulated_precipitation = accumulated_precipitation)
 
-		# Compute the slow tendency from the large timestepping
-		self._stencil_computing_slow_tendency.compute()
+		# Compute the slow tendencies from the large timestepping
+		self._stencil_computing_slow_tendencies.compute()
 
-		# Perform the substeps strategy
-		for n in range(int(substeps)):
-			# Advance the solution
-			self._in_qr[:,:,nb:] = self._out_qr[:,:,nb:]
+		# Perform the time-splitting procedure
+		for _ in range(int(substeps)):
+			# Diagnose the geometric height and the air density
+			state_new.update(self.diagnostic.get_height(state_new, pt = state_now['air_pressure'].values[0,0,0,0]))
+			state_new.update(self.diagnostic.get_air_density(state_new))
 
 			# Compute the raindrop fall velocity
 			self._in_vt[:,:,:] = self.microphysics.get_raindrop_fall_velocity(state_new)
@@ -338,6 +348,22 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 			# Perform a small timestep
 			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
+
+			# Advance the solution
+			self._in_s[:,:,nb:]  = self._out_s[:,:,nb:]
+			self._in_qr[:,:,nb:] = self._out_qr[:,:,nb:]
+
+		# Pop out diagnostic variables from output state
+		state_new.pop('air_density')
+		state_new.pop('air_isentropic_density')
+		state_new.pop('air_pressure')
+		state_new.pop('exner_function')
+		state_new.pop('montgomery_potential')
+		state_new.pop('height')
+
+		# Diagnose the isentropic density of precipitation water
+		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
+		state_new.add(precipitation_water_isentropic_density = self._out_Qr[:nx,:ny,:])
 
 		return state_new, diagnostics_out
 
@@ -698,44 +724,61 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		
 		# Allocate the Numpy arrays which will serve as stencils' inputs
 		self._in_rho    = np.zeros((nx, ny, nz  ), dtype = datatype)
+		self._in_s_prv  = np.zeros((nx, ny, nz  ), dtype = datatype)
 		self._in_h      = np.zeros((nx, ny, nz+1), dtype = datatype)
 		self._in_qr     = np.zeros((nx, ny, nz  ), dtype = datatype)
 		self._in_qr_prv = np.zeros((nx, ny, nz  ), dtype = datatype)
 		self._in_vt     = np.zeros((nx, ny, nz  ), dtype = datatype)
 
-		# Allocate the Numpy arrays which will be shared between different stencils
-		self._tmp_tnd = np.zeros((nx, ny, nz), dtype = datatype)
+		# Allocate the Numpy arrays which will be shared accross different stencils
+		self._tmp_s_tnd  = np.zeros((nx, ny, nz), dtype = datatype)
+		self._tmp_qr_tnd = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Allocate the Numpy arrays which will serve as stencils' outputs
 		self._out_qr = np.zeros((nx, ny, nz), dtype = datatype)
 
-		# Initialize the GT4Py stencil in charge of computing the slow tendency
-		self._stencil_computing_slow_tendency = gt.NGStencil(
-			definitions_func = self._stencil_computing_slow_tendency_defs,
-			inputs           = {'in_qr_old': self._in_qr, 'in_qr_prv': self._in_qr_prv},
+		# Initialize the GT4Py stencil in charge of computing the slow tendencies
+		self._stencil_computing_slow_tendencies = gt.NGStencil(
+			definitions_func = self._stencil_computing_slow_tendencies_defs,
+			inputs           = {'in_s_old': self._in_s, 'in_s_prv': self._in_s_prv,
+								'in_qr_old': self._in_qr, 'in_qr_prv': self._in_qr_prv},
 			global_inputs    = {'dt': self._dt},
-			outputs          = {'out_tnd': self._tmp_tnd},
+			outputs          = {'out_s_tnd': self._tmp_s_tnd, 'out_qr_tnd': self._tmp_qr_tnd},
 			domain           = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode             = self._backend)
 
 		# Initialize the GT4Py stencil in charge of actually stepping the solution by integrating the sedimentation flux
 		self._stencil_stepping_by_integrating_sedimentation_flux = gt.NGStencil(
 			definitions_func = self._stencil_stepping_by_integrating_sedimentation_flux_defs,
-			inputs           = {'in_rho': self._in_rho, 'in_h': self._in_h, 'in_qr': self._in_qr, 
-								'in_vt': self._in_vt, 'in_tnd': self._tmp_tnd},
+			inputs           = {'in_rho': self._in_rho, 'in_s': self._in_s,	'in_h': self._in_h, 
+								'in_qr': self._in_qr, 'in_vt': self._in_vt, 
+								'in_s_tnd': self._tmp_s_tnd, 'in_qr_tnd': self._tmp_qr_tnd},
 			global_inputs    = {'dts': self._dts},
-			outputs          = {'out_qr': self._out_qr},
+			outputs          = {'out_s': self._out_s[:nx,:ny,:], 'out_qr': self._out_qr},
 			domain           = gt.domain.Rectangle((0, 0, nb), (nx - 1, ny - 1, nz - 1)),
 			mode             = self._backend)
 
-	def _stencil_computing_slow_tendency_defs(self, dt, in_qr_old, in_qr_prv):
+		# Initialize the GT4Py stencil clipping the negative values for the mass fraction of precipitation water,
+		# and diagnosing the isentropic density of precipitation water
+		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water = gt.NGStencil(
+			definitions_func = self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water_defs,
+			inputs           = {'in_s': self._out_s, 'in_qr': self._out_qr},
+			outputs          = {'out_qr': self._out_qr, 'out_Qr': self._out_Qr[:nx,:ny,:]},
+			domain           = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
+			mode             = self._backend)
+
+	def _stencil_computing_slow_tendencies_defs(self, dt, in_s_old, in_s_prv, in_qr_old, in_qr_prv):
 		"""
-		GT4Py stencil computing the slow tendency for the mass fraction of precipitation water.
+		GT4Py stencil computing the slow tendencies required to resolve rain sedimentation.
 
 		Parameters
 		----------
 		dt : obj
 			:class:`gridtools.Global` representing the large timestep.
+		in_s_old : obj
+			:class:`gridtools.Equation` representing the old isentropic density.
+		in_s_prv : obj
+			:class:`gridtools.Equation` representing the provisional isentropic density.
 		in_qr_old : obj
 			:class:`gridtools.Equation` representing the old mass fraction of precipitation water.
 		in_qr_prv : obj
@@ -743,25 +786,31 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		Return
 		------
-		obj :
-			:class:`gridtools.Equation` representing the slow tendency.
+		out_s_tnd : obj :
+			:class:`gridtools.Equation` representing the slow tendency for the isentropic density.
+		out_qr_tnd : obj :
+			:class:`gridtools.Equation` representing the slow tendency for the mass fraction of precipitation water.
 		"""
 		# Indeces
 		i = gt.Index()
 		j = gt.Index()
 		k = gt.Index()
 
-		# Output field
-		out_tnd = gt.Equation()
+		# Output fields
+		out_s_tnd  = gt.Equation()
+		out_qr_tnd = gt.Equation()
 
 		# Computations
-		out_tnd[i, j, k] = 0.5 * (in_qr_prv[i, j, k] - in_qr_old[i, j, k]) / dt
+		out_s_tnd[i, j, k]  = 0.5 * (in_s_prv[i, j, k] - in_s_old[i, j, k]) / dt
+		out_qr_tnd[i, j, k] = 0.5 * (in_qr_prv[i, j, k] - in_qr_old[i, j, k]) / dt
 
-		return out_tnd
+		return out_s_tnd, out_qr_tnd
 
-	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_h, in_qr, in_vt, in_tnd):
+	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_s, in_h, in_qr, 
+														  		 in_vt, in_s_tnd, in_qr_tnd):
 		"""
-		GT4Py stencil stepping the mass fraction of precipitation water by integrating the precipitation flux.
+		GT4Py stencil stepping the isentropic density and the mass fraction of precipitation water 
+		by integrating the precipitation flux.
 
 		Parameters
 		----------
@@ -769,18 +818,25 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`gridtools.Global` representing the small timestep.
 		in_rho : obj
 			:class:`gridtools.Equation` representing the air density.
+		in_s : obj
+			:class:`gridtools.Equation` representing the air isentropic density.
 		in_h : obj
 			:class:`gridtools.Equation` representing the geometric height of the model half-levels.
 		in_qr : obj
 			:class:`gridtools.Equation` representing the input mass fraction of precipitation water.
 		in_vt : obj
 			:class:`gridtools.Equation` representing the raindrop fall velocity.
-		in_tnd : obj
-			:class:`gridtools.Equation` representing the slow tendency from the large timestepping.
+		in_s_tnd : obj
+			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the isentropic density.
+		in_qr_tnd : obj
+			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the mass fraction of
+			precipitation water.
 
 		Return
 		------
-		obj :
+		out_s : obj
+			:class:`gridtools.Equation` representing the output isentropic density.
+		out_qr : obj
 			:class:`gridtools.Equation` representing the output mass fraction of precipitation water.
 		"""
 		# Indeces
@@ -789,14 +845,52 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		k = gt.Index()
 
 		# Temporary and output fields
-		tmp_qr = gt.Equation()
+		tmp_qr_st = gt.Equation()
+		tmp_qr    = gt.Equation()
+		out_s     = gt.Equation()
+		out_qr    = gt.Equation()
+
+		# Update isentropic density
+		out_s[i, j, k] = in_s[i, j, k] + dts * in_s_tnd[i, j, k]
+
+		# Update mass fraction of precipitation water
+		tmp_dfdz = self._flux_sedimentation.get_vertical_derivative_of_sedimentation_flux(i, j, k, in_rho, in_h, in_qr, in_vt)
+		tmp_qr_st[i, j, k] = in_qr[i, j, k] + dts * in_qr_tnd[i, j, k]
+		tmp_qr[i, j, k] = tmp_qr_st[i, j, k] - dts * tmp_dfdz[i, j, k] / in_rho[i, j, k]
+		out_qr[i, j, k] = (tmp_qr[i, j, k] > 0.) * tmp_qr[i, j, k] + (tmp_qr[i, j, k] < 0.) * tmp_qr_st[i, j, k]
+
+		return out_s, out_qr
+
+	def _stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water_defs(self, in_s, in_qr):
+		"""
+		GT4Py stencil clipping the negative values for the mass fraction of precipitation water, 
+		and diagnosing the isentropic density of precipitation water.
+
+		Parameters
+		----------
+		in_s : obj
+			:class:`gridtools.Equation` representing the air isentropic density.
+		in_qr : obj
+			:class:`gridtools.Equation` representing the mass fraction of precipitation water in air.
+
+		Return
+		------
+		out_qr : obj
+			:class:`gridtools.Equation` representing the clipped mass fraction of precipitation water.
+		out_Qr : obj
+			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+		"""
+		# Indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Output fields
 		out_qr = gt.Equation()
+		out_Qr = gt.Equation()
 
 		# Computations
-		tmp_dfdz = self._flux_sedimentation.get_vertical_derivative_of_sedimentation_flux(i, j, k, in_rho, in_h, in_qr, in_vt)
-		tmp_qr[i, j, k] = in_qr[i, j, k] + dts * tmp_dfdz[i, j, k] / in_rho[i, j, k] + dts * in_tnd[i, j, k]
-		out_qr[i, j, k] = (tmp_qr[i, j, k] > 0.) * tmp_qr[i, j, k]
+		out_qr[i, j, k] = (in_qr[i, j, k] > 0.) * in_qr[i, j, k]
+		out_Qr[i, j, k] = in_s[i, j, k] * out_qr[i, j, k]
 
-		return out_qr
-
-
+		return out_qr, out_Qr
