@@ -32,17 +32,17 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename    = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_upwind.pickle')
-field       = 'mass_fraction_of_precipitation_water_in_air'
+filename    = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_leapfrog.pickle')
+field       = 'mass_fraction_of_cloud_liquid_water_in_air'
 y_level     = 0
-destination = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180410_status_meeting/movie/verification_kessler_wrf_sedimentation_upwind_precipitation_water.mp4')
+destination = os.path.join(os.environ['TASMANIA_ROOT'], 'results/movies/verification_kessler_wrf_sedimentation_leapfrog_cloud_liquid_water.mp4')
 
 #
 # Optional settings
 #
 fontsize         = 16
 figsize          = [7,8]
-title            = 'Precipitation water [g kg$^{-1}$]'
+title            = 'Cloud liquid water [g kg$^{-1}$]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
