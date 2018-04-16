@@ -182,7 +182,7 @@ try:
 		pickle.dump(state_save, output)
 		pickle.dump(diagnostics_save, output)
 except EnvironmentError:
-	print('Data have not been save due to an EnvironmentError.')
+	print('Data have not been saved due to an EnvironmentError.')
 except TypeError:
-	print('Data have not been save due to a TypeError.')
+	print('Data have not been saved due to a TypeError.')
 
