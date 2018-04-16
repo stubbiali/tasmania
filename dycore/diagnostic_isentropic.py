@@ -330,6 +330,57 @@ class DiagnosticIsentropic:
 
 		return out
 
+	def get_height(self, state, pt):
+		"""
+		Diagnosis of the geometric height of the half-levels.
+
+		Parameters
+		----------
+		state : obj
+			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+
+			* air_isentropic_density (unstaggered).
+
+		pt : float
+			Pressure value at the top of the domain.
+
+		Return
+		------
+		obj :
+			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+
+			* height (:math:`z`-staggered).
+		"""
+		# Extract the required variables
+		s  = state['air_isentropic_density'].values[:,:,:,0]
+
+		# The first time this method is invoked, initialize the GT4Py stencils
+		if self._stencil_diagnosing_air_pressure is None:
+			self._stencil_diagnosing_air_pressure_initialize()
+			self._stencil_diagnosing_height_initialize()
+
+		# Update the attributes which serve as inputs to the GT4Py stencils
+		self._stencil_diagnosing_air_pressure_set_inputs(s)
+
+		# Apply upper boundary condition on pressure
+		self._out_p[:, :, 0] = pt
+
+		# Compute pressure at all other locations
+		self._stencil_diagnosing_air_pressure.compute()
+	
+		# Compute the Exner function (not via a GT4Py stencils)
+		self._out_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp) 
+
+		# Compute geometrical height of isentropes
+		self._out_h[:, :, -1] = self._grid.topography_height
+		self._stencil_diagnosing_height.compute()
+
+		# Set the output
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
+		out = GridData(time, self._grid, height = self._out_h)
+
+		return out
+
 	def get_air_density(self, state):
 		"""
 		Diagnosis of the density.

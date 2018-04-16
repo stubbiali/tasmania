@@ -328,7 +328,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 								   precipitation             = precipitation,
 								   accumulated_precipitation = accumulated_precipitation)
 
-		# Compute the slow tendencies from the large timestepping
+		# Compute the slow tendencies over the large timestep
 		self._stencil_computing_slow_tendencies.compute()
 
 		# Perform the time-splitting procedure
@@ -345,13 +345,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
 
 			# Diagnose the geometric height and the air density
-			state_new.update(self.diagnostic.get_diagnostic_variables(state_new, 
-																	  pt = state_now['air_pressure'].values[0,0,0,0]))
+			state_new.update(self.diagnostic.get_height(state_new, pt = state_now['air_pressure'].values[0,0,0,0]))
 			state_new.update(self.diagnostic.get_air_density(state_new))
 
 			# Advance the solution
-			self._in_s[:,:,nb:]  = self._out_s[:,:,nb:]
-			self._in_qr[:,:,nb:] = self._out_qr[:,:,nb:]
+			self._in_s[:,:,:]  = self._out_s[:,:,:]
+			self._in_qr[:,:,:] = self._out_qr[:,:,:]
 
 		# Diagnose the isentropic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
@@ -766,7 +765,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		return out_s_tnd, out_qr_tnd
 
 	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_s, in_h, in_qr, 
-														  in_vt, in_s_tnd, in_qr_tnd):
+				  											  	 in_vt, in_s_tnd, in_qr_tnd):
 		"""
 		GT4Py stencil stepping the isentropic density and the mass fraction of precipitation water 
 		by integrating the precipitation flux.
