@@ -226,7 +226,7 @@ smooth_moist_coeff_max  = .25
 #
 physics_dynamics_coupling_on   = False
 sedimentation_on	           = True
-rain_evaporation_on			   = True
+rain_evaporation_on			   = False
 tendency_microphysics_on       = False
 tendency_microphysics_type     = ''
 tendency_microphysics_kwargs   = {}
@@ -253,6 +253,6 @@ initial_state_kwargs  = {
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = np.arange(30, 2161, 30)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_evaporation_leapfrog.pickle')
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_leapfrog.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float64
