@@ -269,8 +269,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		vt = self.microphysics.get_raindrop_fall_velocity(state_now)
 		cfl = np.max(vt[:,:,:] * (1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds) / \
 					 (h[:,:,:-1] - h[:,:,1:]))
-		substeps = 2. * max(np.ceil(cfl), 1.)
-		dts = 2. * dt / substeps
+		substeps = max(np.ceil(cfl), 1.)
+		dts = dt / substeps
 
 		# Update the attributes which serve as inputs to the GT4Py stencils
 		nx, ny = self._grid.nx, self._grid.ny
@@ -310,6 +310,12 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# Compute the slow tendencies from the large timestepping
 		self._stencil_computing_slow_tendencies.compute()
 
+		# Advance the solution
+		self._in_s[:nx,:ny,:nb] = state_now['air_isentropic_density'].values[:,:,:nb,0]
+		self._in_s[:nx,:ny,nb:] = self._out_s[:nx,:ny,nb:]
+		self._in_qr[:,:,:nb]    = state_now['mass_fraction_of_precipitation_water_in_air'].values[:,:,:nb,0]
+		self._in_qr[:,:,nb:]    = self._out_qr[:,:,nb:]
+
 		# Perform the time-splitting procedure
 		for _ in range(int(substeps)):
 			# Diagnose the geometric height and the air density
@@ -331,12 +337,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._in_s[:,:,nb:]  = self._out_s[:,:,nb:]
 			self._in_qr[:,:,nb:] = self._out_qr[:,:,nb:]
 
-		# Pop out diagnostic variables from output state
+		# Pop out useless variables from output state
 		state_new.pop('air_density')
 		state_new.pop('air_isentropic_density')
-		state_new.pop('air_pressure')
-		state_new.pop('exner_function')
-		state_new.pop('montgomery_potential')
 		state_new.pop('height')
 
 		# Diagnose the isentropic density of precipitation water
