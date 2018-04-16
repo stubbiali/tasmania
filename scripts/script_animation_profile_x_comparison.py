@@ -21,7 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-A script to generate an animation showing the time evolution of two fields along a line perpendicular to the :math:`yz`-plane.
+A script to generate an animation showing the time evolution of two fields along a cross line 
+orthogonal to the :math:`yz`-plane.
 """
 import matplotlib as mpl
 import matplotlib.animation as manimation
@@ -37,13 +38,16 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename1    = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_leapfrog.pickle')
+filename1    = os.path.join(os.environ['TASMANIA_ROOT'], 
+							'data/verification_kessler_wrf_sedimentation_leapfrog.pickle')
 field1       = 'accumulated_precipitation'
-filename2    = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_maccormack.pickle')
+filename2    = os.path.join(os.environ['TASMANIA_ROOT'], 
+							'data/verification_kessler_wrf_sedimentation_evaporation_leapfrog.pickle')
 field2       = 'accumulated_precipitation'
 y_level     = 0
 z_level     = -1
-destination = os.path.join(os.environ['TASMANIA_ROOT'], 'results/movies/kessler_sedimentation/verification_kessler_wrf_sedimentation_leapfrog_maccormack_accumulated_precipitation.mp4')
+destination = os.path.join(os.environ['TASMANIA_ROOT'], 
+						   'results/movies/kessler_sedimentation_evaporation/verification_kessler_wrf_sedimentation_evaporation_leapfrog_accumulated_precipitation.mp4')
 
 #
 # Animation settings
@@ -57,17 +61,17 @@ x_lim			 = None #[-40,40]
 y_factor1        = 1. #1.e-3
 y_factor2        = 1. #1.e-3
 y_label			 = '' #'$z$ [km]'
-y_lim            = [0,1.]
+y_lim            = [0,1.2]
 color1           = 'green'
 linestyle1		 = '-'
 linewidth1       = 1.5
-color2           = 'blue'
-linestyle2		 = '-' 
+color2           = 'green'
+linestyle2		 = '--' 
 linewidth2       = 1.5
 grid_on			 = True
 fps				 = 7
-legend1			 = 'LF'
-legend2			 = 'MC'
+legend1			 = 'Rain evap. OFF'
+legend2			 = 'Rain evap. ON'
 legend_location  = 'upper right'
 
 #
