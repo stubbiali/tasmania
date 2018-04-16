@@ -496,8 +496,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 								height = h)
 
 		# Diagnose the air density and temperature
-		state.update(self._diagnostic.get_air_density(state)),
-		state.update(self._diagnostic.get_air_temperature(state))
+		state.extend(self._diagnostic.get_air_density(state)),
+		state.extend(self._diagnostic.get_air_temperature(state))
 
 		if self._moist_on:
 			# Add the mass fraction of each water component
@@ -602,10 +602,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(V_new, V_now)
 
 		# Diagnose the velocity components
-		state_new.update(self._diagnostic.get_velocity_components(state_new, state))
+		state_new.extend(self._diagnostic.get_velocity_components(state_new, state))
 
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
-		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
+		state_new.extend(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
 
 		return state_new, diagnostics_out
 
@@ -672,10 +672,12 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		"""
 		# Initialize the GridData to return
 		time_now = utils.convert_datetime64_to_datetime(state['air_density'].coords['time'].values[0])
-		diagnostics_out = GridData(time_now + dt, self._grid)
+		diagnostics_out = GridData(time_now + dt, self._grid,
+								   precipitation = np.zeros((self._grid.nx, self._grid.ny), dtype = datatype),
+								   accumulated_precipitation = np.zeros((self._grid.nx, self._grid.ny), dtype = datatype))
 
 		# Diagnose the isentropic density for each water constituent to build the conservative state
-		state.update(self._diagnostic.get_water_constituents_isentropic_density(state))
+		state.extend_and_update(self._diagnostic.get_water_constituents_isentropic_density(state))
 
 		# If either damping or smoothing is enabled: deep-copy the prognostic model variables
 		if self._damp_on or self._smooth_on:
@@ -758,20 +760,20 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			self._boundary.apply(Qr_new, Qr_now)
 
 		# Diagnose the mass fraction of each water constituent, possibly clipping negative values
-		state_new.update(self._diagnostic.get_mass_fraction_of_water_constituents_in_air(state_new)) 
+		state_new.extend(self._diagnostic.get_mass_fraction_of_water_constituents_in_air(state_new)) 
 
 		# Diagnose the velocity components
-		state_new.update(self._diagnostic.get_velocity_components(state_new, state))
+		state_new.extend(self._diagnostic.get_velocity_components(state_new, state))
 
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
-		state_new.update(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
+		state_new.extend(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
 
 		if self.microphysics is not None:
 			# Diagnose the density
-			state_new.update(self._diagnostic.get_air_density(state_new))
+			state_new.extend(self._diagnostic.get_air_density(state_new))
 
 			# Diagnose the temperature
-			state_new.update(self._diagnostic.get_air_temperature(state_new))
+			state_new.extend(self._diagnostic.get_air_temperature(state_new))
 
 		if self._sedimentation_on:
 			qr     = state['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
@@ -785,8 +787,5 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				# Update the output state and the output diagnostics
 				state_new.update(state_new_)
 				diagnostics_out.update(diagnostics_out_)
-			else:
-				diagnostics_out.add(precipitation = np.zeros((self._grid.nx, self._grid.ny), dtype = datatype),
-									accumulated_precipitation = np.zeros((self._grid.nx, self._grid.ny), dtype = datatype))
 
 		return state_new, diagnostics_out
