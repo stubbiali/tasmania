@@ -93,7 +93,8 @@ class Model:
 
 		Note
 		----
-		In a simulation, adjustment-performing parameterizations will be executed in the same order they have been added to the model.
+		In a simulation, adjustment-performing parameterizations will be executed in the same order they have been added 
+		to the model.
 		"""
 		self._adjustment_params.append(adjustment)
 
@@ -142,9 +143,65 @@ class Model:
 		diagnostics = GridData(time, state.grid)
 
 		# Initialize the outputs
-		state_out        = copy.deepcopy(state)
-		state_save       = copy.deepcopy(state)
+		state_out  = copy.deepcopy(state)
+		state_save = copy.deepcopy(state)
 
+		#
+		# First time step, performed out of the loop to avoid if-statements
+		#
+		# Update control variables
+		steps += 1
+		elapsed_time += dt_
+		if elapsed_time > simulation_time:
+			dt_ = simulation_time - (elapsed_time - dt_)
+			elapsed_time = simulation_time
+
+		# Update the time-dependent topography (useful for stability purposes)
+		self._dycore.update_topography(elapsed_time)
+
+		# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
+		for tendency_param in self._tendency_params: 
+			tendencies_, diagnostics_ = tendency_param(dt_, state_out)
+			tendencies.extend(tendencies_)
+			diagnostics.extend(diagnostics_)
+
+		# Run the dynamical core, then update the state and the diagnostics
+		state_out_, diagnostics_ = self._dycore(dt_, state_out, diagnostics, tendencies)
+		state_out.extend(state_out_)
+		diagnostics.extend(diagnostics_)
+
+		# Run the adjustment-performing parameterizations; after each parameterization, 
+		# update the state and collect diagnostics
+		for adjustment_param in self._adjustment_params:
+			state_out_, diagnostics_ = adjustment_param(dt_, state_out)
+			state_out.update(state_out_)
+			diagnostics.extend(diagnostics_)
+
+		# Check the CFL condition
+		u_max, u_min = state_out.get_max('x_velocity'), state_out.get_min('x_velocity')
+		v_max, v_min = state_out.get_max('y_velocity'), state_out.get_min('y_velocity')
+		cfl = state_out.get_cfl(dt_)
+		print('Step %6.i, CFL number: %5.5E, u max: %4.4f m/s, u min: %4.4f m/s, v max: %4.4f m/s, v min %4.4f m/s' 
+			  % (steps, cfl, u_max, u_min, v_max, v_min))
+
+		# Save, if needed
+		if (steps in save_iterations) or (elapsed_time == simulation_time):
+			state_save.grid.update_topography(elapsed_time)
+			state_save.append(state_out)
+
+			if first_save: 
+				diagnostics_save = copy.deepcopy(diagnostics)
+				diagnostics_save.grid.update_topography(elapsed_time)
+				first_save = 0
+			else:
+				diagnostics_save.grid.update_topography(elapsed_time)
+				diagnostics_save.append(diagnostics)
+
+			print('Step %6.i saved' % (steps))
+
+		#
+		# Time loop
+		#
 		while elapsed_time < simulation_time:
 			# Update control variables
 			steps += 1
