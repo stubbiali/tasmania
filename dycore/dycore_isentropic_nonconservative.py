@@ -113,13 +113,13 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 		self._prognostic.diagnostic = self._diagnostic
 
 		# Instantiate the classes in charge of applying vertical damping
+		nx, ny, nz = grid.nx, grid.ny, grid.nz
 		if damp_on: 
-			self._damper_unstg = VerticalDamping.factory(damp_type, grid, damp_depth, damp_max, backend)
-			self._damper_stg_x = VerticalDamping.factory(damp_type, grid, damp_depth, damp_max, backend)
-			self._damper_stg_y = VerticalDamping.factory(damp_type, grid, damp_depth, damp_max, backend)
+			self._damper_unstg = VerticalDamping.factory(damp_type, (  nx,   ny, nz), grid, damp_depth, damp_max, backend)
+			self._damper_stg_x = VerticalDamping.factory(damp_type, (nx+1,   ny, nz), grid, damp_depth, damp_max, backend)
+			self._damper_stg_y = VerticalDamping.factory(damp_type, (  nx, ny+1, nz), grid, damp_depth, damp_max, backend)
 
 		# Instantiate the classes in charge of applying numerical smoothing
-		nx, ny, nz = grid.nx, grid.ny, grid.nz
 		if smooth_on:
 			self._smoother_s = HorizontalSmoothing.factory(smooth_type, (nx, ny, nz), grid, smooth_damp_depth, 
 														   smooth_coeff, smooth_coeff_max, backend)

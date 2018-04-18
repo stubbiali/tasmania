@@ -16,12 +16,14 @@ class VerticalDamping:
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, grid, damp_depth, damp_max, backend):
+	def __init__(self, dims, grid, damp_depth, damp_max, backend):
 		"""
 		Constructor.
 
 		Parameters
 		----------
+		dims : tuple
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply vertical damping.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		damp_depth : int
@@ -32,6 +34,7 @@ class VerticalDamping:
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils implementing the dynamical core.
 		"""
 		# Store arguments
+		self._dims       = dims
 		self._grid       = grid
 		self._damp_depth = damp_depth
 		self._damp_max   = damp_max
@@ -69,13 +72,15 @@ class VerticalDamping:
 		"""
 	
 	@staticmethod
-	def factory(damp_type, grid, damp_depth, damp_max, backend):
+	def factory(damp_type, dims, grid, damp_depth, damp_max, backend):
 		"""
 		Static method which returns an instance of the derived class implementing the damping method 
 		specified by :data:`damp_type`. 
 
 		Parameters
 		----------
+		dims : tuple
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply vertical damping.
 		damp_type : str
 			String specifying the damper to implement. Either:
 
@@ -96,7 +101,7 @@ class VerticalDamping:
 			An instance of the derived class implementing the damping method specified by :data:`damp_type`.
 		"""
 		if damp_type == 'rayleigh':
-			return VerticalDampingRayleigh(grid, damp_depth, damp_max, backend)
+			return VerticalDampingRayleigh(dims, grid, damp_depth, damp_max, backend)
 		else:
 			raise ValueError('Unknown damping scheme. Available options: ''rayleigh''.')
 
@@ -105,12 +110,14 @@ class VerticalDampingRayleigh(VerticalDamping):
 	"""
 	This class inherits :class:`VerticalDamping` to implement a Rayleigh absorber.
 	"""
-	def __init__(self, grid, damp_depth, damp_max, backend):
+	def __init__(self, dims, grid, damp_depth, damp_max, backend):
 		"""
 		Constructor.
 
 		Parameters
 		----------
+		dims : tuple
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply vertical damping.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		damp_depth : int
@@ -119,8 +126,8 @@ class VerticalDampingRayleigh(VerticalDamping):
 			Maximum value for the damping coefficient.
 		backend : obj
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils implementing the dynamical core.
-	"""
-		super().__init__(grid, damp_depth, damp_max, backend)
+		"""
+		super().__init__(dims, grid, damp_depth, damp_max, backend)
 
 	def apply(self, dt, phi_now, phi_new, phi_ref):
 		"""
@@ -145,7 +152,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 		"""
 		# The first time this method is invoked, initialize the stencil
 		if self._stencil is None:
-			self._stencil_initialize(phi_now)
+			self._stencil_initialize()
 
 		# Update the attributes which will carry the stencil's input field
 		self._stencil_set_inputs(dt, phi_now, phi_new, phi_ref)
@@ -158,7 +165,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 
 		return self._phi_out
 
-	def _stencil_initialize(self, phi_now):
+	def _stencil_initialize(self):
 		"""
 		Initialize the GT4Py stencil applying Rayleigh vertical damping.
 
@@ -169,7 +176,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		ni, nj, nk = phi_now.shape[0], phi_now.shape[1], phi_now.shape[2]
+		ni, nj, nk = self._dims
 		za, zt = self._damp_lb, self._grid.z_half_levels[0]
 
 		if nk == nz:
@@ -185,17 +192,12 @@ class VerticalDampingRayleigh(VerticalDamping):
 
 		# Allocate the attributes which will carry the stencil's input fields
 		self._dt = gt.Global()
-		self._phi_now = np.zeros_like(phi_now)
-		self._phi_new = np.zeros_like(phi_now)
-		self._phi_ref = np.zeros_like(phi_now)
+		self._phi_now = np.zeros((ni, nj, nk), dtype = datatype)
+		self._phi_new = np.zeros((ni, nj, nk), dtype = datatype)
+		self._phi_ref = np.zeros((ni, nj, nk), dtype = datatype)
 
 		# Allocate the Numpy array which will carry the stencil's output field
-		self._phi_out = np.zeros_like(phi_now)
-
-		# The computational domain should be set large enough to accommodate
-		# either staggered or unstaggered fields
-		_domain = gt.domain.Rectangle((0, 0, 0),
-									  (ni - 1, nj - 1, self._damp_depth - 1))
+		self._phi_out = np.zeros((ni, nj, nk), dtype = datatype)
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
@@ -203,7 +205,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 			inputs = {'phi_now': self._phi_now, 'phi_new': self._phi_new, 'phi_ref': self._phi_ref, 'R': self._rmat},
 			global_inputs = {'dt': self._dt},
 			outputs = {'phi_out': self._phi_out},
-			domain = _domain, 
+			domain = gt.domain.Rectangle((0, 0, 0), (ni - 1, nj - 1, self._damp_depth - 1)), 
 			mode = self._backend)
 
 	def _stencil_set_inputs(self, dt, phi_now, phi_new, phi_ref):
