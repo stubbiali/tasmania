@@ -2,19 +2,19 @@ import copy
 import numpy as np
 
 import gridtools as gt
-from tasmania.dycore.flux_isentropic import FluxIsentropic
 from tasmania.dycore.horizontal_boundary_relaxed import RelaxedSymmetricXZ, RelaxedSymmetricYZ
-from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
+from tasmania.dycore.prognostic_isentropic_nonconservative import PrognosticIsentropicNonconservative
 from tasmania.namelist import datatype, rho_water
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
 import tasmania.utils.utils as utils
 
-class PrognosticIsentropicCentered(PrognosticIsentropic):
+class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconservative):
 	"""
-	This class inherits :class:`~dycore.prognostic_isentropic.PrognosticIsentropic` to implement 
-	a centered time-integration scheme to carry out the prognostic step of the three-dimensional 
-	moist isentropic dynamical core.
+	This class inherits :class:`~dycore.prognostic_isentropic_nonconservative.PrognosticIsentropicNonconservative` 
+	to implement a centered time-integration scheme to carry out the prognostic step of the three-dimensional 
+	moist isentropic dynamical core. The nonconservative form of the governing equations, expressed using isentropic
+	coordinates, is used.
 
 	Attributes
 	----------
@@ -51,8 +51,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Note
 		----
 		To instantiate an object of this class, one should prefer the static method
-		:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.factory` of
-		:class:`~dycore.prognostic_isentropic.PrognosticIsentropic`.
+		:meth:`~dycore.prognostic_isentropic_nonconservative.PrognosticIsentropicNonconservative.factory` of
+		:class:`~dycore.prognostic_isentropic_nonconservative.PrognosticIsentropicNonconservative`.
 		"""
 		super().__init__(flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, sedimentation_on)
 
@@ -60,14 +60,16 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		self.time_levels = 2
 		self.steps = 1
 
-		# Initialize the pointer to the compute function of the stencil stepping the solution 
-		# by neglecting vertical advection
-		# This will be re-directed when the corresponding forward method is invoked for the first time
-		self._stencil_stepping_by_neglecting_vertical_advection = None
+		# Initialize the pointer to the compute functions of the stencils stepping the solution 
+		# by neglecting vertical advection; these will be re-directed when the corresponding forward method 
+		# is invoked for the first time
+		self._stencil_stepping_by_neglecting_vertical_advection_unstaggered = None
+		self._stencil_stepping_by_neglecting_vertical_advection_velocity_x  = None
+		self._stencil_stepping_by_neglecting_vertical_advection_velocity_y  = None
 
 		# Initialize the pointers to the compute functions of the stencils stepping the solution 
-		# by integrating the sedimentation flux
-		# These will be re-directed when the corresponding forward method is invoked for the first time
+		# by integrating the sedimentation flux; these will be re-directed when the corresponding forward method 
+		# is invoked for the first time
 		self._stencil_stepping_by_integrating_sedimentation_flux = None
 		self._stencil_computing_slow_tendency = None
 
@@ -76,7 +78,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None, tendencies = None):
 		"""
-		Method advancing the conservative, prognostic model variables one time step forward via a centered time-integration 
+		Method advancing the prognostic model variables one time step forward via a centered time-integration 
 		scheme. Only horizontal derivates are considered; possible vertical derivatives are disregarded.
 
 		Parameters
@@ -89,9 +91,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
-			* x_momentum_isentropic (unstaggered);
 			* y_velocity (:math:`y`-staggered);
-			* y_momentum_isentropic (unstaggered);
 			* air_pressure (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
@@ -103,8 +103,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
-			* x_momentum_isentropic (unstaggered);
-			* y_momentum_isentropic (unstaggered);
+			* x_velocity (:math:`x`-staggered);
+			* y_velocity (:math:`y`-staggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
@@ -122,25 +122,27 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
 			* air_isentropic_density (unstaggered);
-			* x_momentum_isentropic (unstaggered);
-			* y_momentum_isentropic (unstaggered);
-			* water_vapor_isentropic_density (unstaggered, optional);
-			* cloud_liquid_water_isentropic_density (unstaggered, optional);
-			* precipitation_water_isentropic_density (unstaggered, optional).
+			* x_velocity (:math:`x`-staggered);
+			* y_velocity (:math:`y`-staggered);
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 		"""
 		# Initialize the output state
 		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
 		state_new = StateIsentropic(time + dt, self._grid)
 
-		# The first time this method is invoked, initialize the GT4Py stencil
-		if self._stencil_stepping_by_neglecting_vertical_advection is None:
-			self._stencil_stepping_by_neglecting_vertical_advection_initialize(state)
+		# The first time this method is invoked, initialize the GT4Py stencils
+		if self._stencil_stepping_by_neglecting_vertical_advection_unstaggered is None:
+			self._stencils_stepping_by_neglecting_vertical_advection_initialize(state)
 
-		# Update the attributes which serve as inputs to the GT4Py stencil
+		# Update the attributes which serve as inputs to the GT4Py stencils
 		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, state, state_old)
 		
-		# Run the stencil's compute function
-		self._stencil_stepping_by_neglecting_vertical_advection.compute()
+		# Run the stencils' compute functions
+		self._stencil_stepping_by_neglecting_vertical_advection_unstaggered.compute()
+		self._stencil_stepping_by_neglecting_vertical_advection_velocity_x.compute()
+		self._stencil_stepping_by_neglecting_vertical_advection_velocity_y.compute()
 		
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -149,54 +151,54 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# Bring the updated isentropic density back to the original dimensions
 		s_new = self.boundary.from_computational_to_physical_domain(self._out_s[:mi, :mj, :], (nx, ny, nz))
 
-		# Bring the updated momentums back to the original dimensions
+		# Bring the updated velocity components back to the original dimensions
 		if type(self.boundary) == RelaxedSymmetricXZ:
-			U_new = self.boundary.from_computational_to_physical_domain(self._out_U[:mi, :mj, :], (nx, ny, nz), 
+			u_new = self.boundary.from_computational_to_physical_domain(self._out_u[:mi+1, :mj, :], (nx+1,   ny, nz), 
 																		change_sign = False)
-			V_new = self.boundary.from_computational_to_physical_domain(self._out_V[:mi, :mj, :], (nx, ny, nz), 
+			v_new = self.boundary.from_computational_to_physical_domain(self._out_v[:mi, :mj+1, :], (  nx, ny+1, nz), 
 																		change_sign = True) 
 		elif type(self.boundary) == RelaxedSymmetricYZ:
-			U_new = self.boundary.from_computational_to_physical_domain(self._out_U[:mi, :mj, :], (nx, ny, nz), 
+			u_new = self.boundary.from_computational_to_physical_domain(self._out_u[:mi+1, :mj, :], (nx+1,   ny, nz), 
 																		change_sign = True)
-			V_new = self.boundary.from_computational_to_physical_domain(self._out_V[:mi, :mj, :], (nx, ny, nz), 
+			v_new = self.boundary.from_computational_to_physical_domain(self._out_v[:mi, :mj+1, :], (  nx, ny+1, nz), 
 																		change_sign = False) 
 		else:
-			U_new = self.boundary.from_computational_to_physical_domain(self._out_U[:mi, :mj, :], (nx, ny, nz))
-			V_new = self.boundary.from_computational_to_physical_domain(self._out_V[:mi, :mj, :], (nx, ny, nz)) 
+			u_new = self.boundary.from_computational_to_physical_domain(self._out_u[:mi+1, :mj, :], (nx+1,   ny, nz))
+			v_new = self.boundary.from_computational_to_physical_domain(self._out_v[:mi, :mj+1, :], (  nx, ny+1, nz)) 
 
 		# Bring the updated water constituents back to the original dimensions
-		Qv_new = None if not self._moist_on else \
-				 self.boundary.from_computational_to_physical_domain(self._out_Qv[:mi, :mj, :], (nx, ny, nz))
-		Qc_new = None if not self._moist_on else \
-				 self.boundary.from_computational_to_physical_domain(self._out_Qc[:mi, :mj, :], (nx, ny, nz))
-		Qr_new = None if not self._moist_on else \
-				 self.boundary.from_computational_to_physical_domain(self._out_Qr[:mi, :mj, :], (nx, ny, nz))
+		qv_new = None if not self._moist_on else \
+				 self.boundary.from_computational_to_physical_domain(self._out_qv[:mi, :mj, :], (nx, ny, nz))
+		qc_new = None if not self._moist_on else \
+				 self.boundary.from_computational_to_physical_domain(self._out_qc[:mi, :mj, :], (nx, ny, nz))
+		qr_new = None if not self._moist_on else \
+				 self.boundary.from_computational_to_physical_domain(self._out_qr[:mi, :mj, :], (nx, ny, nz))
 
 		# Apply the boundary conditions
 		self.boundary.apply(s_new, state['air_isentropic_density'].values[:,:,:,0])
-		self.boundary.apply(U_new, state['x_momentum_isentropic'].values[:,:,:,0])
-		self.boundary.apply(V_new, state['y_momentum_isentropic'].values[:,:,:,0])
+		self.boundary.apply(u_new, state['x_velocity'].values[:,:,:,0])
+		self.boundary.apply(v_new, state['y_velocity'].values[:,:,:,0])
 		if self._moist_on:
-			self.boundary.apply(Qv_new, state['water_vapor_isentropic_density'].values[:,:,:,0])
-			self.boundary.apply(Qc_new, state['cloud_liquid_water_isentropic_density'].values[:,:,:,0])
-			self.boundary.apply(Qr_new, state['precipitation_water_isentropic_density'].values[:,:,:,0])
+			self.boundary.apply(qv_new, state['mass_fraction_of_water_vapor_in_air'].values[:,:,:,0])
+			self.boundary.apply(qc_new, state['mass_fraction_of_cloud_liquid_water_in_air'].values[:,:,:,0])
+			self.boundary.apply(qr_new, state['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0])
 
 		# Update the output state
-		state_new.add(air_isentropic_density                 = s_new, 
-					  x_momentum_isentropic                  = U_new, 
-					  y_momentum_isentropic                  = V_new, 
-					  water_vapor_isentropic_density         = Qv_new, 
-					  cloud_liquid_water_isentropic_density  = Qc_new,
-					  precipitation_water_isentropic_density = Qr_new)
+		state_new.add(air_isentropic_density                      = s_new, 
+					  x_velocity                                  = u_new, 
+					  y_velocity                                  = v_new, 
+					  mass_fraction_of_water_vapor_in_air         = qv_new, 
+					  mass_fraction_of_cloud_liquid_water_in_air  = qc_new,
+					  mass_fraction_of_precipitation_water_in_air = qr_new)
 
 		# Keep track of the current state for the next timestep
-		self._in_s_old[:mi, :mj, :] = self._in_s[:mi, :mj, :]
-		self._in_U_old[:mi, :mj, :] = self._in_U[:mi, :mj, :]
-		self._in_V_old[:mi, :mj, :] = self._in_V[:mi, :mj, :]
+		self._in_s_old[  :mi,   :mj, :] = self._in_s[  :mi,   :mj, :]
+		self._in_u_old[:mi+1,   :mj, :] = self._in_u[:mi+1,   :mj, :]
+		self._in_v_old[  :mi, :mj+1, :] = self._in_v[  :mi, :mj+1, :]
 		if self._moist_on:
-			self._in_Qv_old[:mi, :mj, :] = self._in_Qv[:mi, :mj, :]
-			self._in_Qc_old[:mi, :mj, :] = self._in_Qc[:mi, :mj, :]
-			self._in_Qr_old[:mi, :mj, :] = self._in_Qr[:mi, :mj, :]
+			self._in_qv_old[:mi, :mj, :] = self._in_qv[:mi, :mj, :]
+			self._in_qc_old[:mi, :mj, :] = self._in_qc[:mi, :mj, :]
+			self._in_qr_old[:mi, :mj, :] = self._in_qr[:mi, :mj, :]
 
 		# At this point, the first timestep is surely over
 		self._is_first_timestep = False
@@ -206,8 +208,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 	def step_integrating_sedimentation_flux(self, dt, state_now, state_prv, diagnostics = None):
 		"""
 		Method advancing the mass fraction of precipitation water by taking the sedimentation into account.
-		For the sake of numerical stability, a time-splitting strategy is pursued, i.e., sedimentation is resolved
-		using a timestep which may be smaller than that specified by the user.
+		For the sake of numerical stability, a time-splitting strategy is pursued, i.e., the sedimentation flux
+		is integrated using a timestep which may be smaller than that specified by the user.
 
 		Parameters
 		----------
@@ -228,7 +230,9 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			the state stepped without taking the sedimentation flux into account. 
 			It should contain the following variables:
 
+			* air_density (unstaggered);
 			* air_isentropic_density (unstaggered);
+			* air_pressure (:math:`z`-staggered);
 			* mass_fraction_of_precipitation_water_in air (unstaggered).
 
 			This may be the output of either
@@ -245,7 +249,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			:class:`~tasmania.storages.state_isentropic.StateIsentropic` containing the following updated variables:
 			
 			* mass_fraction_of_precipitation_water_in air (unstaggered);
-			* precipitation_water_isentropic_density (unstaggered).
+			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 
 		diagnostics_out : obj
 			:class:`~tasmania.storages.grid_data.GridData` collecting the output diagnostics, i.e.:
@@ -270,23 +274,23 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		nx, ny = self._grid.nx, self._grid.ny
 		self._dt.value  = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 		self._dts.value = 1.e-6 * dts.microseconds if dts.seconds == 0. else dts.seconds
-		self._in_s[:nx,:ny,:]     = self._in_s_old[:nx,:ny,:]
-		self._in_s_prv[:nx,:ny,:] = state_prv['air_isentropic_density'].values[:,:,:,0]
-		self._in_qr[:,:,:] 	   	  = self._in_Qr_old[:nx,:ny,:] / self._in_s_old[:nx,:ny,:] 
-		self._in_qr_prv[:,:,:] 	  = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
+		self._in_s[:nx, :ny, :]     = self._in_s_old[:nx, :ny, :]
+		self._in_s_prv[:nx, :ny, :] = state_prv['air_isentropic_density'].values[:, :, :, 0]
+		self._in_qr[:, :, :] 	   	= self._in_Qr_old[:nx, :ny, :] / self._in_s_old[:nx, :ny, :] 
+		self._in_qr_prv[:, :, :] 	= state_prv['mass_fraction_of_precipitation_water_in_air'].values[:, :, :, 0]
 
 		# Set the output fields
 		nb = self._flux_sedimentation.nb
-		self._out_s[:nx,:ny,:nb] = state_prv['air_isentropic_density'].values[:,:,:nb,0]
-		self._out_s[:nx,:ny,nb:] = self._in_s[:nx,:ny,nb:]
-		self._out_qr[:,:,:nb]    = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:nb,0]
-		self._out_qr[:,:,nb:]    = self._in_qr[:nx,:ny,nb:]
+		self._out_s[:nx, :ny, :nb] = state_prv['air_isentropic_density'].values[:, :, :nb, 0]
+		self._out_s[:nx, :ny, nb:] = self._in_s[:nx, :ny, nb:]
+		self._out_qr[:, :, :nb]    = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:, :, :nb, 0]
+		self._out_qr[:, :, nb:]    = self._in_qr[:nx, :ny, nb:]
 
 		# Initialize the output state
 		time_now = utils.convert_datetime64_to_datetime(state_now['air_density'].coords['time'].values[0])
 		state_new = StateIsentropic(time_now + dt, self._grid,
 									air_density									= self._in_rho,
-									air_isentropic_density						= self._out_s[:nx,:ny,:],
+									air_isentropic_density						= self._out_s[:nx, :ny, :],
 									height										= self._in_h,
 									mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
@@ -305,10 +309,10 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		self._stencil_computing_slow_tendencies.compute()
 
 		# Advance the solution
-		self._in_s[:nx,:ny,:nb] = state_now['air_isentropic_density'].values[:,:,:nb,0]
-		self._in_s[:nx,:ny,nb:] = self._out_s[:nx,:ny,nb:]
-		self._in_qr[:,:,:nb]    = state_now['mass_fraction_of_precipitation_water_in_air'].values[:,:,:nb,0]
-		self._in_qr[:,:,nb:]    = self._out_qr[:,:,nb:]
+		self._in_s[:nx, :ny, :nb] = state_now['air_isentropic_density'].values[:, :, :nb, 0]
+		self._in_s[:nx, :ny, nb:] = self._out_s[:nx, :ny, nb:]
+		self._in_qr[:, :, :nb]    = state_now['mass_fraction_of_precipitation_water_in_air'].values[:, :, :nb, 0]
+		self._in_qr[:, :, nb:]    = self._out_qr[:, :, nb:]
 
 		# Perform the time-splitting procedure
 		for _ in range(int(substeps)):
@@ -328,8 +332,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
 
 			# Advance the solution
-			self._in_s[:,:,nb:]  = self._out_s[:,:,nb:]
-			self._in_qr[:,:,nb:] = self._out_qr[:,:,nb:]
+			self._in_s[:, :, nb:]  = self._out_s[:, :, nb:]
+			self._in_qr[:, :, nb:] = self._out_qr[:, :, nb:]
 
 		# Pop out useless variables from output state
 		state_new.pop('air_density')
@@ -338,13 +342,13 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 		# Diagnose the isentropic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
-		state_new.add(precipitation_water_isentropic_density = self._out_Qr[:nx,:ny,:])
+		state_new.add(mass_fraction_of_precipitation_water_in_air = self._out_Qr[:nx, :ny, :])
 
 		return state_new, diagnostics_out
 
-	def _stencil_stepping_by_neglecting_vertical_advection_initialize(self, state):
+	def _stencils_stepping_by_neglecting_vertical_advection_initialize(self, state):
 		"""
-		Initialize the GT4Py stencil implementing a time-integration centered scheme to step the solution 
+		Initialize the GT4Py stencils implementing a time-integration centered scheme to step the solution 
 		by neglecting vertical advection.
 
 		Parameters
@@ -365,32 +369,47 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# Allocate the Numpy arrays which will store the output fields
 		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(mi, mj)
 
-		# Set the stencil's inputs and outputs
-		_inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
-				   'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V,
-				   'in_s_old': self._in_s_old, 'in_U_old': self._in_U_old, 'in_V_old': self._in_V_old}
-		_outputs = {'out_s': self._out_s, 'out_U': self._out_U, 'out_V': self._out_V}
+		# Set inputs and outputs for the stencil stepping the isentropic density and, possibly, the water constituents
+		_inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 'in_mtg': self._in_mtg, 'in_s_old': self._in_s_old} 
+		_outputs = {'out_s': self._out_s}
 		if self._moist_on:
-			_inputs.update({'in_Qv': self._in_Qv, 'in_Qv_old': self._in_Qv_old,
-							'in_Qc': self._in_Qc, 'in_Qc_old': self._in_Qc_old,
-							'in_Qr': self._in_Qr, 'in_Qr_old': self._in_Qr_old})
-			_outputs.update({'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr})
+			_inputs.update({'in_qv': self._in_qv, 'in_qv_old': self._in_qv_old,
+							'in_qc': self._in_qc, 'in_qc_old': self._in_qc_old,
+							'in_qr': self._in_qr, 'in_qr_old': self._in_qr_old})
+			_outputs.update({'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr})
 
-		# Set the stencil's computational domain and the backend
+		# Instantiate the stencil stepping the isentropic density and, possibly, the water constituents
 		nb = self.nb
 		ni, nj, nk = mi - 2 * nb, mj - 2 * nb, nz
-		_domain = gt.domain.Rectangle((nb, nb, 0), 
-									  (nb + ni - 1, nb + nj - 1, nk - 1))
-		_mode = self._backend
-
-		# Instantiate the stencil
-		self._stencil_stepping_by_neglecting_vertical_advection = gt.NGStencil( 
-			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_defs,
+		self._stencil_stepping_by_neglecting_vertical_advection_unstaggered = gt.NGStencil( 
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_unstaggered_defs,
 			inputs = _inputs,
 			global_inputs = {'dt': self._dt},
 			outputs = _outputs,
-			domain = _domain, 
-			mode = _mode)
+			domain = gt.domain.Rectangle((nb, nb, 0), (nb + ni - 1, nb + nj - 1, nk - 1)), 
+			mode = self._backend)
+
+		# Instantiate the stencil stepping the x-velocity
+		ni, nj, nk = mi - 2 * nb + 1, mj - 2 * nb, nz
+		self._stencil_stepping_by_neglecting_vertical_advection_velocity_x = gt.NGStencil( 
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_velocity_x_defs,
+			inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 'in_mtg': self._in_mtg, 
+					  'in_u_old': self._in_u_old},
+			global_inputs = {'dt': self._dt},
+			outputs = {'out_u': self._out_u},
+			domain = gt.domain.Rectangle((nb, nb, 0), (nb + ni - 1, nb + nj - 1, nk - 1)), 
+			mode = self._backend)
+
+		# Instantiate the stencil stepping the y-velocity
+		ni, nj, nk = mi - 2 * nb, mj - 2 * nb + 1, nz
+		self._stencil_stepping_by_neglecting_vertical_advection_velocity_y = gt.NGStencil( 
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_velocity_y_defs,
+			inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 'in_mtg': self._in_mtg, 
+					  'in_v_old': self._in_v_old},
+			global_inputs = {'dt': self._dt},
+			outputs = {'out_v': self._out_v},
+			domain = gt.domain.Rectangle((nb, nb, 0), (nb + ni - 1, nb + nj - 1, nk - 1)), 
+			mode = self._backend)
 
 	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self, mi, mj):
 		"""
@@ -418,19 +437,19 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# Allocate the Numpy arrays which represent the solution at the previous time step,
 		# and which may be shared among different stencils
 		self._in_s_old  = np.zeros((li, lj, nz), dtype = datatype)
-		self._in_Qr_old = np.zeros((li, lj, nz), dtype = datatype)
+		self._in_qr_old = np.zeros((li, lj, nz), dtype = datatype)
 
 		# Allocate the Numpy arrays which represent the solution at the previous time step,
 		# and which are not shared among different stencils
-		self._in_U_old = np.zeros((mi, mj, nz), dtype = datatype)
-		self._in_V_old = np.zeros((mi, mj, nz), dtype = datatype)
+		self._in_u_old = np.zeros((mi+1,   mj, nz), dtype = datatype)
+		self._in_v_old = np.zeros((  mi, mj+1, nz), dtype = datatype)
 		if self._moist_on:
-			self._in_Qv_old = np.zeros((mi, mj, nz), dtype = datatype)
-			self._in_Qc_old = np.zeros((mi, mj, nz), dtype = datatype)
+			self._in_qv_old = np.zeros((mi, mj, nz), dtype = datatype)
+			self._in_qc_old = np.zeros((mi, mj, nz), dtype = datatype)
 
 	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(self, dt, state, state_old = None):
 		"""
-		Update the attributes which serve as inputs to the GT4Py stencil stepping the solution 
+		Update the attributes which serve as inputs to the GT4Py stencils stepping the solution 
 		by neglecting vertical advection.
 
 		Parameters
@@ -443,9 +462,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
-			* x_momentum_isentropic (unstaggered);
 			* y_velocity (:math:`y`-staggered);
-			* y_momentum_isentropic (unstaggered);
 			* montgomery_potential (isentropic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
@@ -456,241 +473,302 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
-			* x_momentum_isentropic (unstaggered);
-			* y_momentum_isentropic (unstaggered);
+			* x_velocity (:math:`x`-staggered);
+			* y_velocity (:math:`y`-staggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 		"""
+		# Shortcuts
+		mi, mj = self._mi, self._mj
+		qv_label = 'mass_fraction_of_water_vapor_in_air' 
+		qc_label = 'mass_fraction_of_cloud_liquid_water_in_air'
+		qr_label = 'mass_fraction_of_precipitation_water_in_air'
+
 		# Update the time step, and the Numpy arrays representing the current solution
 		super()._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, state)
 		
 		# Update the Numpy arrays representing the solution at the previous time step
 		# This should be done only if the old state is explicitly given, or if this is the first time step
 		if state_old is not None:		# Old state explicitly given
-			self._in_s_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										state_old['air_isentropic_density'].values[:,:,:,0])
-			self._in_U_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										state_old['x_momentum_isentropic'].values[:,:,:,0])
-			self._in_V_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										state_old['y_momentum_isentropic'].values[:,:,:,0])
+			self._in_s_old[:mi, :mj, :] = \
+				self.boundary.from_physical_to_computational_domain(state_old['air_isentropic_density'].values[:,:,:,0])
+			self._in_u_old[:mi+1, :mj, :] = \
+				self.boundary.from_physical_to_computational_domain(state_old['x_velocity'].values[:,:,:,0])
+			self._in_v_old[:mi, :mj+1, :] = \
+				self.boundary.from_physical_to_computational_domain(state_old['y_velocity'].values[:,:,:,0])
 
 			if self._moist_on:
-				self._in_Qv_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										 	 state_old['water_vapor_isentropic_density'].values[:,:,:,0])
-				self._in_Qc_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										 	 state_old['cloud_liquid_water_isentropic_density'].values[:,:,:,0])
-				self._in_Qr_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										 	 state_old['precipitation_water_isentropic_density'].values[:,:,:,0])
+				self._in_qv_old[:mi, :mj, :] = \
+					self.boundary.from_physical_to_computational_domain(state_old[qv_label].values[:,:,:,0])
+				self._in_qc_old[:mi, :mj, :] = \
+					self.boundary.from_physical_to_computational_domain(state_old[qc_label].values[:,:,:,0])
+				self._in_qr_old[:mi, :mj, :] = \
+					self.boundary.from_physical_to_computational_domain(state_old[qr_label].values[:,:,:,0])
 		elif self._is_first_timestep:	# This is the first timestep
-			self._in_s_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										state['air_isentropic_density'].values[:,:,:,0])
-			self._in_U_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										state['x_momentum_isentropic'].values[:,:,:,0])
-			self._in_V_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										state['y_momentum_isentropic'].values[:,:,:,0])
+			self._in_s_old[:mi, :mj, :] = \
+				self.boundary.from_physical_to_computational_domain(state['air_isentropic_density'].values[:,:,:,0])
+			self._in_u_old[:mi+1, :mj, :] = \
+				self.boundary.from_physical_to_computational_domain(state['x_velocity'].values[:,:,:,0])
+			self._in_v_old[:mi, :mj+1, :] = \
+				self.boundary.from_physical_to_computational_domain(state['y_velocity'].values[:,:,:,0])
 
 			if self._moist_on:
-				self._in_Qv_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										 	 state['water_vapor_isentropic_density'].values[:,:,:,0])
-				self._in_Qc_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										 	 state['cloud_liquid_water_isentropic_density'].values[:,:,:,0])
-				self._in_Qr_old[:,:,:] = self.boundary.from_physical_to_computational_domain(
-										 	 state['precipitation_water_isentropic_density'].values[:,:,:,0])
+				self._in_qv_old[:mi, :mj, :] = \
+					self.boundary.from_physical_to_computational_domain(state[qv_label].values[:,:,:,0])
+				self._in_qc_old[:mi, :mj, :] = \
+					self.boundary.from_physical_to_computational_domain(state[qc_label].values[:,:,:,0])
+				self._in_qr_old[:mi, mj:, :] = \
+					self.boundary.from_physical_to_computational_domain(state[qr_label].values[:,:,:,0])
 
-	def _stencil_stepping_by_neglecting_vertical_advection_defs(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
-															 	in_s_old, in_U_old, in_V_old,
-					  										 	in_Qv = None, in_Qc = None, in_Qr = None, 
-															 	in_Qv_old = None, in_Qc_old = None, in_Qr_old = None):
+	def _stencil_stepping_by_neglecting_vertical_advection_unstaggered_defs(self, dt, in_s, in_u, in_v, in_mtg, in_s_old, 
+																			in_qv = None, in_qc = None, in_qr = None, 
+																			in_qv_old = None, in_qc_old = None, in_qr_old = None):
 		"""
-		GT4Py stencil implementing the centered time-integration scheme.
+		GT4Py stencil advancing the isentropic density and, possibly, the water constituents via a centered time-integration scheme.
 
 		Parameters
 		----------
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_s : obj
-			:class:`gridtools.Equation` representing the isentropic density at the current time.
+			:class:`gridtools.Equation` representing the isentropic density at the current time level.
 		in_u : obj
-			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time.
+			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time level.
 		in_v : obj
-			:class:`gridtools.Equation` representing the :math:`y`-velocity at the current time.
-		in_mtg : obj
-			:class:`gridtools.Equation` representing the Montgomery potential at the current time.
-		in_U : obj
-			:class:`gridtools.Equation` representing the :math:`x`-momentum at the current time.
-		in_V : obj
-			:class:`gridtools.Equation` representing the :math:`y`-momentum at the current time.
+			:class:`gridtools.Equation` representing the :math:`y`-velocity at the current time level.
+		in_s : obj
+			:class:`gridtools.Equation` representing the Montgomery potential at the current time level.
 		in_s_old : obj
 			:class:`gridtools.Equation` representing the isentropic density at the previous time level.
-		in_U_old : obj
-			:class:`gridtools.Equation` representing the :math:`x`-momentum at the previous time level.
-		in_V_old : obj
-			:class:`gridtools.Equation` representing the :math:`y`-momentum at the previous time level.
-		in_Qv : `obj`, optional
-			:class:`gridtools.Equation` representing the mass of water vapour at the current time.
-		in_Qc : `obj`, optional
-			:class:`gridtools.Equation` representing the mass of cloud water at the current time.
-		in_Qr : `obj`, optional
-			:class:`gridtools.Equation` representing the mass of precipitation water at the current time.
-		in_Qv_old : `obj`, optional
-			:class:`gridtools.Equation` representing the mass of water vapour at the previous time level.
-		in_Qc_old : `obj`, optional
-			:class:`gridtools.Equation` representing the mass of cloud water at the previous time level.
-		in_Qr_old : `obj`, optional
-			:class:`gridtools.Equation` representing the mass of precipitation water at the previous time level.
+		in_qv : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction of water vapor at the current time level.
+		in_qc : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction of cloud liquid water at the current time level.
+		in_qr : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction of precipitation water at the current time level.
+		in_qv_old : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction of water vapor at the previous time level.
+		in_qc_old : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction of cloud liquid water at the previous time level.
+		in_qr_old : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction of precipitation water at the previous time level.
 
 		Returns
 		-------
 		out_s : obj
 			:class:`gridtools.Equation` representing the stepped isentropic density.
-		out_U : obj
-			:class:`gridtools.Equation` representing the stepped :math:`x`-momentum.
-		out_V : obj
-			:class:`gridtools.Equation` representing the stepped :math:`y`-momentum.
-		out_Qv : `obj`, optional
-			:class:`gridtools.Equation` representing the stepped mass of water vapour.
-		out_Qc : `obj`, optional
-			:class:`gridtools.Equation` representing the stepped mass of cloud water.
-		out_Qr : `obj`, optional
-			:class:`gridtools.Equation` representing the stepped mass of precipitation water.
+		out_qv : `obj`, optional
+			:class:`gridtools.Equation` representing the stepped mass fraction of water vapour.
+		out_qc : `obj`, optional
+			:class:`gridtools.Equation` representing the stepped mass fraction of cloud liquid water.
+		out_qr : `obj`, optional
+			:class:`gridtools.Equation` representing the stepped mass fraction of precipitation water.
 		"""
-		# Indeces
+		# Shortcuts
+		dx, dy = self._grid.dx, self._grid.dy
+
+		# Declare indeces
 		i = gt.Index()
 		j = gt.Index()
 		k = gt.Index()
 
-		# Output fields
+		# Declare temporary and output fields
+		tmp_u = gt.Equation()
+		tmp_v = gt.Equation()
 		out_s = gt.Equation()
-		out_U = gt.Equation()
-		out_V = gt.Equation()
 		if self._moist_on:
-			out_Qv = gt.Equation()
-			out_Qc = gt.Equation()
-			out_Qr = gt.Equation()
+			out_qv = gt.Equation()
+			out_qc = gt.Equation()
+			out_qr = gt.Equation()
 
-		# Computations
+		# Evaluate the numerical fluxes
 		if not self._moist_on:
-			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y = \
-				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
+			flux_s_x, flux_s_y, _, _, _, _ = \
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg)
 		else:
-			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y, \
-			flux_Qv_x, flux_Qv_y, flux_Qc_x, flux_Qc_y, flux_Qr_x, flux_Qr_y = \
-				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
+			flux_s_x, flux_s_y, _, _, _, _,	flux_qv_x, flux_qv_y, flux_qc_x, flux_qc_y, flux_qr_x, flux_qr_y = \
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_qv, in_qc, in_qr)
 
-		out_s[i, j, k] = in_s_old[i, j, k] - 2. * dt * ((flux_s_x[i, j, k] - flux_s_x[i-1, j, k]) / self._grid.dx +
-						 					         	(flux_s_y[i, j, k] - flux_s_y[i, j-1, k]) / self._grid.dy)
-		out_U[i, j, k] = in_U_old[i, j, k] - 2. * dt * ((flux_U_x[i, j, k] - flux_U_x[i-1, j, k]) / self._grid.dx +
-						 					         	(flux_U_y[i, j, k] - flux_U_y[i, j-1, k]) / self._grid.dy) \
-										   - dt * in_s[i, j, k] * (in_mtg[i+1, j, k] - in_mtg[i-1, j, k]) / self._grid.dx
-		out_V[i, j, k] = in_V_old[i, j, k] - 2. * dt * ((flux_V_x[i, j, k] - flux_V_x[i-1, j, k]) / self._grid.dx +
-						 					         	(flux_V_y[i, j, k] - flux_V_y[i, j-1, k]) / self._grid.dy) \
-										   - dt * in_s[i, j, k] * (in_mtg[i, j+1, k] - in_mtg[i, j-1, k]) / self._grid.dy
+		# Interpolate the velocity components at the mass points
+		tmp_u[i, j, k] = in_u[i, j, k] + in_u[i+1, j, k]
+		tmp_v[i, j, k] = in_v[i, j, k] + in_v[i, j+1, k]
+
+		# Step the isentropic density
+		out_s[i, j, k] = in_s_old[i, j, k] - 2. * dt * ((flux_s_x[i+1, j, k] - flux_s_x[i, j, k]) / dx +
+						 					            (flux_s_y[i, j+1, k] - flux_s_y[i, j, k]) / dy)
+
 		if self._moist_on:
-			out_Qv[i, j, k] = in_Qv_old[i, j, k] - 2. * dt * ((flux_Qv_x[i, j, k] - flux_Qv_x[i-1, j, k]) / self._grid.dx +
-						 						  	 	   	  (flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy)
-			out_Qc[i, j, k] = in_Qc_old[i, j, k] - 2. * dt * ((flux_Qc_x[i, j, k] - flux_Qc_x[i-1, j, k]) / self._grid.dx +
-						 						  	 	   	  (flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy)
-			out_Qr[i, j, k] = in_Qr_old[i, j, k] - 2. * dt * ((flux_Qr_x[i, j, k] - flux_Qr_x[i-1, j, k]) / self._grid.dx +
-						 						  	 	   	  (flux_Qr_y[i, j, k] - flux_Qr_y[i, j-1, k]) / self._grid.dy)
+			# Step the mass fraction of water vapor
+			out_qv[i, j, k] = in_qv_old[i, j, k] - dt * (tmp_u[i, j, k] * (flux_qv_x[i+1, j, k] - flux_qv_x[i, j, k]) / dx +
+						 						  	 	 tmp_v[i, j, k] * (flux_qv_y[i, j+1, k] - flux_qv_y[i, j, k]) / dy)
 
-			return out_s, out_U, out_V, out_Qv, out_Qc, out_Qr
+			# Step the mass fraction of cloud liquid water
+			out_qc[i, j, k] = in_qc_old[i, j, k] - dt * (tmp_u[i, j, k] * (flux_qc_x[i+1, j, k] - flux_qc_x[i, j, k]) / dx +
+						 						  	 	 tmp_v[i, j, k] * (flux_qc_y[i, j+1, k] - flux_qc_y[i, j, k]) / dy)
+
+			# Step the mass fraction of precipitation water
+			out_qr[i, j, k] = in_qr_old[i, j, k] - dt * (tmp_u[i, j, k] * (flux_qr_x[i+1, j, k] - flux_qr_x[i, j, k]) / dx +
+						 						  	 	 tmp_v[i, j, k] * (flux_qr_y[i, j+1, k] - flux_qr_y[i, j, k]) / dy)
+
+		if not self._moist_on:
+			return out_s
 		else:
-			return out_s, out_U, out_V
+			return out_s, out_qv, out_qc, out_qr
+
+	def _stencil_stepping_by_neglecting_vertical_advection_velocity_x_defs(self, dt, in_s, in_u, in_v, in_mtg, in_u_old): 
+		"""
+		GT4Py stencil advancing the :math:`x`-velocity via a centered time-integration scheme.
+
+		Parameters
+		----------
+		dt : obj
+			:class:`gridtools.Global` representing the time step.
+		in_s : obj
+			:class:`gridtools.Equation` representing the isentropic density at the current time level.
+		in_u : obj
+			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time level.
+		in_v : obj
+			:class:`gridtools.Equation` representing the :math:`y`-velocity at the current time level.
+		in_mtg : obj
+			:class:`gridtools.Equation` representing the Montgomery potential at the current time level.
+		in_u_old : obj
+			:class:`gridtools.Equation` representing the :math:`x`-velocity at the previous time level.
+
+		Return
+		------
+		obj :
+			:class:`gridtools.Equation` representing the stepped :math:`x`-velocity.
+		"""
+		# Shortcuts
+		dx, dy = self._grid.dx, self._grid.dy
+
+		# Declare indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Declare the output field
+		out_u = gt.Equation()
+
+		# Evaluate the numerical fluxes
+		_, _, flux_u_x, flux_u_y, _, _ = self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg)
+
+		# Step the x-velocity
+		out_u[i, j, k] = in_u_old[i, j, k] \
+						 - 2. * dt * (in_u[i, j, k] * (flux_u_x[i, j, k] - flux_u_x[i-1, j, k]) / dx +
+						 	     	  0.25 * (in_v[i-1, j, k] + in_v[i, j, k] + in_v[i-1, j+1, k] + in_v[i, j+1, k]) * 
+								 	  (flux_u_y[i, j+1, k] - flux_u_y[i, j, k]) / dy +
+								 	  (in_mtg[i, j, k] - in_mtg[i-1, j, k]) / dx)
+
+		return out_u
+
+	def _stencil_stepping_by_neglecting_vertical_advection_velocity_y_defs(self, dt, in_s, in_u, in_v, in_mtg, in_v_old): 
+		"""
+		GT4Py stencil advancing the :math:`y`-velocity via a centered time-integration scheme.
+
+		Parameters
+		----------
+		dt : obj
+			:class:`gridtools.Global` representing the time step.
+		in_s : obj
+			:class:`gridtools.Equation` representing the isentropic density at the current time level.
+		in_u : obj
+			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time level.
+		in_v : obj
+			:class:`gridtools.Equation` representing the :math:`y`-velocity at the current time level.
+		in_mtg : obj
+			:class:`gridtools.Equation` representing the Montgomery potential at the current time level.
+		in_v_old : obj
+			:class:`gridtools.Equation` representing the :math:`y`-velocity at the previous time level.
+
+		Return
+		------
+		obj :
+			:class:`gridtools.Equation` representing the stepped :math:`y`-velocity.
+		"""
+		# Shortcuts
+		dx, dy = self._grid.dx, self._grid.dy
+
+		# Declare indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Declare the output field
+		out_v = gt.Equation()
+
+		# Evaluate the numerical fluxes
+		_, _, _, _, flux_v_x, flux_v_y = self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg)
+
+		# Step the y-velocity
+		out_v[i, j, k] = in_v_old[i, j, k] \
+						 - 2. * dt * (0.25 * (in_u[i, j-1, k] + in_u[i+1, j-1, k] + in_u[i, j, k] + in_u[i+1, j, k]) *
+								 	  (flux_v_x[i+1, j, k] - flux_v_x[i, j, k]) / dx +
+						 	     	  in_v[i, j, k] * (flux_v_y[i, j, k] - flux_v_y[i, j-1, k]) / dy + 
+								 	  (in_mtg[i, j, k] - in_mtg[i, j-1, k]) / dy)
+
+		return out_v
 
 	def _stencil_stepping_by_coupling_physics_with_dynamics_defs(dt, in_w, 
-																 in_s, in_s_prv, 
-																 in_U, in_U_prv, 
-																 in_V, in_V_prv,
-															  	 in_Qv = None, in_Qv_prv = None, 
-																 in_Qc = None, in_Qc_prv = None, 
-																 in_Qr = None, in_Qr_prv = None):
+																 in_s_now, in_s_prv, 
+																 in_u_now, in_u_prv, 
+																 in_v_now, in_v_prv,
+															  	 qv_now = None, qv_prv = None, 
+															  	 qc_now = None, qc_prv = None,
+															  	 qr_now = None, qr_prv = None):
 		"""
 		GT4Py stencil stepping the solution by coupling physics with dynamics, i.e., by accounting for the
 		change over time in potential temperature.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
 		----------
 		dt : obj 
 			:class:`gridtools.Global` representing the time step.
-		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in
-			potential temperature. 
-		in_s : obj
+		in_w : array_like
+			:class:`numpy.ndarray` representing the vertical velocity, i.e., the change over time in potential temperature.
+		in_s_now : obj
 			:class:`gridtools.Equation` representing the current isentropic density. 
 		in_s_prv : obj 
 			:class:`gridtools.Equation` representing the provisional isentropic density. 
-		in_U : obj 
-			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
-		in_U_prv : obj 
-			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum.
-		in_V : obj 
-			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
-		in_V_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum.
-		in_Qv : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
-		in_Qc : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of cloud liquid water.
-		in_Qr : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of precipitation water.
-		in_Qv_prv : `obj`, optional
-			:class:`gridtools.Equation` representing the provisional isentropic density of water vapor.
-		in_Qc_prv : `obj`, optional
-			:class:`gridtools.Equation` representing the provisional isentropic density of cloud liquid water.
-		in_Qr_prv : `obj`, optional
-			:class:`gridtools.Equation` representing the provisional isentropic density of precipitation water.
+		in_u_now : obj 
+			:class:`gridtools.Equation` representing the current :math:`x`-velocity.
+		in_u_prv : obj 
+			:class:`gridtools.Equation` representing the provisional :math:`x`-velocity.
+		in_v_now : obj 
+			:class:`gridtools.Equation` representing the current :math:`y`-velocity.
+		in_v_prv : obj
+			:class:`gridtools.Equation` representing the provisional :math:`y`-velocity.
+		in_qv_now : `obj`, optional 
+			:class:`gridtools.Equation` representing the current mass fraction of water vapor.
+		in_qv_prv : `obj`, optional
+			:class:`gridtools.Equation` representing the provisional mass fraction of water vapor.
+		in_qc_now : `obj`, optional 
+			:class:`gridtools.Equation` representing the current mass fraction of cloud liquid water.
+		in_qc_prv : `obj`, optional
+			:class:`gridtools.Equation` representing the provisional mass fraction of cloud liquid water.
+		in_qr_now : `obj`, optional 
+			:class:`gridtools.Equation` representing the current mass fraction of precipitation water.
+		in_qr_prv : `obj`, optional
+			:class:`gridtools.Equation` representing the provisional mass fraction of precipitation water.
 
 		Returns
 		-------
 		out_s : obj
 			:class:`gridtools.Equation` representing the updated isentropic density. 
-		out_U : obj 
-			:class:`gridtools.Equation` representing the updated :math:`x`-momentum.
-		out_V : obj 
-			:class:`gridtools.Equation` representing the updated :math:`y`-momentum.
-		out_Qv : `obj`, optional 
-			:class:`gridtools.Equation` representing the updated isentropic density of water vapor.
-		out_Qc : `obj`, optional 
-			:class:`gridtools.Equation` representing the updated isentropic density of cloud liquid water.
-		out_Qr : `obj`, optional 
-			:class:`gridtools.Equation` representing the updated isentropic density of precipitation water.
+		out_u : obj 
+			:class:`gridtools.Equation` representing the updated :math:`x`-velocity.
+		out_v : obj 
+			:class:`gridtools.Equation` representing the updated :math:`y`-velocity.
+		out_qv : `obj`, optional 
+			:class:`gridtools.Equation` representing the updated mass fraction of water vapor.
+		out_qc : `obj`, optional 
+			:class:`gridtools.Equation` representing the updated mass fraction of cloud liquid water.
+		out_qr : `obj`, optional 
+			:class:`gridtools.Equation` representing the updated mass fraction of precipitation water.
 		"""
-		# Indeces
-		i = gt.Index()
-		j = gt.Index()
-		k = gt.Index()
-
-		# Output fields
-		out_s = gt.Equation()
-		out_U = gt.Equation()
-		out_V = gt.Equation()
-		if self._moist_on:
-			out_Qv = gt.Equation()
-			out_Qc = gt.Equation()
-			out_Qr = gt.Equation()
-
-		# Computations
-		if not self._moist_on:
-			flux_s_z, flux_U_z, flux_V_z = self._flux.get_vertical_fluxes(i, j, k, dt, in_w, in_s, in_s_prv, 
-																		  in_U, in_U_prv, in_V, in_V_prv)
-		else:	
-			flux_s_z, flux_U_z, flux_V_z, flux_Qv_z, flux_Qc_z, flux_Qr_z = \
-				self._flux.get_vertical_fluxes(i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv,
-											   in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv)
-
-		out_s[i, j, k] = in_s_prv[i, j, k] - 2. * dt * (flux_s_z[i, j, k] - flux_s_z[i, j, k+1]) / self._grid.dz
-		out_U[i, j, k] = in_U_prv[i, j, k] - 2. * dt * (flux_U_z[i, j, k] - flux_U_z[i, j, k+1]) / self._grid.dz
-		out_V[i, j, k] = in_V_prv[i, j, k] - 2. * dt * (flux_V_z[i, j, k] - flux_V_z[i, j, k+1]) / self._grid.dz
-		if self._moist_on:
-			out_Qv[i, j, k] = in_Qv_prv[i, j, k] - 2. * dt * (flux_Qv_z[i, j, k] - flux_Qv_z[i, j, k+1]) / self._grid.dz
-			out_Qc[i, j, k] = in_Qc_prv[i, j, k] - 2. * dt * (flux_Qc_z[i, j, k] - flux_Qc_z[i, j, k+1]) / self._grid.dz
-			out_Qr[i, j, k] = in_Qr_prv[i, j, k] - 2. * dt * (flux_Qr_z[i, j, k] - flux_Qr_z[i, j, k+1]) / self._grid.dz
-
-		if not self._moist_on:
-			return out_s, out_U, out_V
-		else:
-			return out_s, out_U, out_V, out_Qv, out_Qc, out_Qr
+		### TODO ###
 
 	def _stencils_stepping_by_integrating_sedimentation_flux_initialize(self):
 		"""

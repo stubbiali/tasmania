@@ -718,8 +718,8 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 
 		# Computations
 		out_phi[i, j, k] = (1 - 6. * gamma[i, j, k]) * in_phi[i, j, k] + \
-						   gamma[i, j, k] * (- (in_phi[i-2, j, k] + in_phi[i+2, j, k]) 
-						   					 + 4. * (in_phi[i-1, j, k] + in_phi[i+1, j, k]))
+						   gamma[i, j, k] * (4. * (in_phi[i-1, j, k] + in_phi[i+1, j, k]) \
+											 - in_phi[i-2, j, k] - in_phi[i+2, j, k])
 
 		return out_phi
 

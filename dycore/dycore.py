@@ -47,28 +47,28 @@ class DynamicalCore(TimeStepper):
 	@property
 	def microphysics(self):
 		"""
-		Get the attribute in charge of computing the raindrop fall velocity.
+		Get the attribute taking care of cloud microphysical dynamics.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Return
 		------
 		obj :
 			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
 		"""
 
 	@microphysics.setter
 	@abc.abstractmethod
 	def microphysics(self, micro):
 		"""
-		Set the attribute in charge of computing the raindrop fall velocity.
+		Set the attribute taking care of cloud microphysical dynamics.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
 		----------
 		micro : obj
 			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
 		"""
 
 	@abc.abstractmethod
@@ -134,8 +134,10 @@ class DynamicalCore(TimeStepper):
 		model : str
 			String specifying the dynamical core to implement. Either:
 
-			* 'isentropic', for the hydrostatic, isentropic dynamical core;
-			* 'isentropic_isothermal', for the hydrostatic, isentropic, isothermal dynamical core.
+			* 'isentropic_conservative', for the isentropic dynamical core based on the conservative form of 
+				the governing equations;
+			* 'isentropic_nonconservative', for the isentropic dynamical core based on the nonconservative form of 
+				the governing equations.
 
 		*args :
 			Positional arguments to forward to the derived class.
@@ -147,6 +149,9 @@ class DynamicalCore(TimeStepper):
 		obj :
 			Instance of the derived class implementing the specified model.
 		"""
-		if model == 'isentropic':
+		if model == 'isentropic_conservative':
 			from tasmania.dycore.dycore_isentropic import DynamicalCoreIsentropic
 			return DynamicalCoreIsentropic(*args, **kwargs)
+		elif model == 'isentropic_nonconservative':
+			from tasmania.dycore.dycore_isentropic_nonconservative import DynamicalCoreIsentropicNonconservative
+			return DynamicalCoreIsentropicNonconservative(*args, **kwargs)

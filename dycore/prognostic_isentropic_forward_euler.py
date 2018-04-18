@@ -225,14 +225,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			the state stepped without taking the sedimentation flux into account. 
 			It should contain the following variables:
 
-			* air_density (unstaggered);
 			* air_isentropic_density (unstaggered);
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
-			* montgomery_potential (unstaggered);
-			* height (:math:`z`-staggered);
-			* mass_fraction_of_precipitation_water_in air (unstaggered);
-			* precipitation_water_isentropic_density (unstaggered).
+			* mass_fraction_of_precipitation_water_in air (unstaggered).
 
 			This may be the output of either
 			:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection` or
