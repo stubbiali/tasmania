@@ -12,8 +12,8 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename   = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_leapfrog_reference.npz')
-field      = 'specific_cloud_liquid_water_content' #'specific_humidity' #'specific_cloud_liquid_water_content'
+filename   = os.path.join(os.environ['TASMANIA_ROOT'], 'data/nmwc_model_check.npz')
+field      = 'horizontal_velocity' #'specific_humidity' #'specific_cloud_liquid_water_content'
 time_level = -1
 
 #
@@ -22,25 +22,25 @@ time_level = -1
 show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
 fontsize         = 16
-figsize          = [7,8]
-title            = ''
+figsize          = [8,7]
+title            = '$x$-velocity [m s$^{-1}$]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,10]
-field_factor     = 1.e3
+field_factor     = 1.
 plot_height		 = True
-cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
-cbar_levels      = 18
-cbar_ticks_step  = 4
-cbar_center      = None #15.
-cbar_half_width  = None #0.85
-cbar_x_label     = 'Water vapor [g kg$^{-1}$]'
+cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cbar_levels      = 12
+cbar_ticks_step  = 1
+cbar_center      = 15.
+cbar_half_width  = 11.
+cbar_x_label     = ''
 cbar_y_label     = ''
 cbar_title       = ''
-cbar_orientation = 'horizontal'
+cbar_orientation = 'vertical'
 text			 = None #'$t = \dfrac{L}{\overline{u}}$'
 text_loc		 = 'upper right'
 
@@ -54,7 +54,7 @@ with np.load(filename) as data:
 	# Extract the field to plot
 	field = data[field][time_level,::-1,:].transpose()
 
-	# Create the underlying grid
+	# Create the underlying three-dimensional grid
 	x, nx = data['x'], data['nx']
 	nz = data['nz']
 	th00, thll = data['th00'][0], data['thl'][0]
@@ -75,9 +75,28 @@ with np.load(filename) as data:
 				   topo_type       = 'gaussian',  
 				   topo_max_height = topo_max,
 				   topo_width_x    = topo_width)
+
+	# Shortcuts
+	ni, nk = field.shape
+
+	# Create the underlying x-grid
+	x  = grid.x.values[:] if ni == nx else grid.x_half_levels.values[:]
+	xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
+
+	# Create the underlying z-grid
+	z  = height if nk == nz + 1 else 0.5 * (height[:,:-1] + height[:,1:])
+	zv = np.zeros((ni, nk), dtype = float)
+	if ni == nx:
+		zv[:, :] = z[:, :]
+	else:
+		zv[1:-1, :] = 0.5 * (z[:-1, :] + z[1:, :])
+		zv[0, :], zv[-1, :] = zv[1, :], zv[-2, :]
+
+	# Extract the topography height
+	topography = grid.topography_height[:, 0]
 	
 	# Plot the specified field
-	utils_plot.contourf_xz(grid, grid.topography_height[:,0], height, field, 
+	utils_plot.contourf_xz(xv, zv, topography, field, 
 						   show             = show,
 						   destination      = destination,
 						   fontsize         = fontsize,

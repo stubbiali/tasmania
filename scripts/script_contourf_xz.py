@@ -1,5 +1,5 @@
 """
-A script to generate a xz-contourf of a field.
+A script to generate the contourf plot of a field at a cross section parallel to the :math:`xz`-plane.
 """
 import os
 import pickle
@@ -10,8 +10,8 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_clipping_maccormack.pickle')
-field = 'mass_fraction_of_precipitation_water_in_air'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/nmwc_model_check_leapfrog.pickle')
+field = 'x_velocity'
 y_level = 0
 time_level = -1
 
@@ -22,21 +22,21 @@ show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
 fontsize         = 16
 figsize          = [7,8]
-title            = ''
+title            = '$x$-velocity [m s$^{-1}$]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,10]
-field_factor     = 1.e3
+field_factor     = 1.
 plot_height		 = True
-cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
-cbar_levels      = 18
-cbar_ticks_step  = 4
-cbar_center      = None #15.
-cbar_half_width  = None #0.85
-cbar_x_label     = 'Water vapor [g kg$^{-1}$]'
+cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cbar_levels      = 12
+cbar_ticks_step  = 1
+cbar_center      = 15.
+cbar_half_width  = 11.
+cbar_x_label     = ''
 cbar_y_label     = ''
 cbar_title       = ''
 cbar_orientation = 'horizontal'
