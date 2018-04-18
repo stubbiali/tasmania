@@ -45,7 +45,7 @@ class HorizontalSmoothing:
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : int
@@ -118,7 +118,7 @@ class HorizontalSmoothing:
 			* 'second_order', for second-order numerical smoothing.
 
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : int
@@ -169,7 +169,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
@@ -291,7 +291,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
@@ -406,7 +406,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : int
@@ -521,7 +521,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
@@ -645,7 +645,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
@@ -763,7 +763,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 		Parameters
 		----------
 		dims : tuple
-			Tuple of the dimension of the arrays on which to apply numerical smoothing.
+			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
