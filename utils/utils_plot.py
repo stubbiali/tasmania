@@ -262,6 +262,9 @@ def contourf_xz(x, z, topography, field, **kwargs):
 		String specifying the location where the text box should be placed. Default is 'upper right'; 
 		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
 	"""
+	# Shortcuts
+	ni, nk = field.shape
+
 	# Get keyword arguments
 	show             = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
@@ -294,6 +297,7 @@ def contourf_xz(x, z, topography, field, **kwargs):
 	# Rescale the axes and the field for visualization purposes
 	x *= x_factor
 	z *= z_factor
+	topography *= z_factor
 	field *= field_factor
 
 	# Instantiate figure and axis objects
@@ -303,7 +307,7 @@ def contourf_xz(x, z, topography, field, **kwargs):
 	if plot_height:
 		for k in range(0, nk):
 			ax.plot(x[:, k], z[:, k], color = 'gray', linewidth = 1)
-	ax.plot(x[:, -1], z[:, -1], color = 'black', linewidth = 1)
+	ax.plot(x[:, -1], topography, color = 'black', linewidth = 1)
 
 	# Determine color scale for colormap
 	field_min, field_max = np.amin(field), np.amax(field)
@@ -324,7 +328,8 @@ def contourf_xz(x, z, topography, field, **kwargs):
 	surf = plt.contourf(x, z, field, color_scale, cmap = cm)
 
 	# Set plot settings
-	ax.set(xlabel = x_label, ylabel = z_label, title = title)
+	ax.set(xlabel = x_label, ylabel = z_label)
+	ax.set_title(title, loc = 'left', fontsize = fontsize - 1)
 	if x_lim is None:
 		ax.set_xlim([x[0,0], x[-1,0]])
 	else:
