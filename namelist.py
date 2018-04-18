@@ -182,14 +182,14 @@ domain_x        = [0, 500.e3]
 nx              = 101
 domain_y        = [-1., 1.]
 ny              = 1
-domain_z        = [280. + 60., 280.]
+domain_z        = [300. + 60., 300.]
 nz              = 60
 z_interface     = None
 topo_type       = 'gaussian'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
-				   'topo_max_height': 1000.,
-				   'topo_width_x'   : 25.e3,
+				   'topo_max_height': 500.,
+				   'topo_width_x'   : 50.e3,
 				   'topo_width_y'   : 50.e3,
 				   'topo_str'       : '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
 				  }
@@ -197,9 +197,9 @@ topo_kwargs     = {
 #
 # Model settings
 #
-model                    = 'isentropic' 
-moist_on				 = True
-horizontal_boundary_type = 'relaxed'
+model                    = 'isentropic_nonconservative' 
+moist_on				 = False
+horizontal_boundary_type = 'periodic'
 
 #
 # Numerical settings
@@ -212,8 +212,8 @@ damp_depth              = 30
 damp_max                = .0002
 smooth_on               = True
 smooth_type             = 'first_order'
-smooth_damp_depth       = 30
-smooth_coeff            = .05
+smooth_damp_depth       = 0
+smooth_coeff            = .005
 smooth_coeff_max        = .25
 smooth_moist_on		    = False
 smooth_moist_type       = 'first_order'
@@ -225,12 +225,12 @@ smooth_moist_coeff_max  = .25
 # Microphysics settings
 #
 physics_dynamics_coupling_on   = False
-sedimentation_on	           = True
-rain_evaporation_on			   = True
+sedimentation_on	           = False
+rain_evaporation_on			   = False
 tendency_microphysics_on       = False
 tendency_microphysics_type     = ''
 tendency_microphysics_kwargs   = {}
-adjustment_microphysics_on     = True
+adjustment_microphysics_on     = False
 adjustment_microphysics_type   = 'kessler_wrf'
 adjustment_microphysics_kwargs = {
 								  'a' : .0001,
@@ -252,7 +252,7 @@ initial_state_kwargs  = {
 						 'temperature'          : 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = np.arange(30, 2161, 30)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_sedimentation_evaporation_leapfrog.pickle')
+save_iterations		  = [] #np.arange(30, 2161, 30)
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/nmwc_model_check_leapfrog.pickle')
 tol      		      = 1.e-8		
-datatype 		      = np.float64
+datatype 		      = np.float32
