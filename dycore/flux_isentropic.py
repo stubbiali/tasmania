@@ -24,7 +24,7 @@ import abc
 
 class FluxIsentropic:
 	"""
-	Abstract base class whose derived classes implement different schemes for computing the numerical fluxes for 
+	Abstract base class whose derived classes implement different schemes to compute the numerical fluxes for 
 	the three-dimensional isentropic dynamical core. The conservative form of the governing equations is used.
 	"""
 	# Make the class abstract
@@ -47,7 +47,7 @@ class FluxIsentropic:
 	def get_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
 							  in_Qv = None, in_Qc = None, in_Qr = None):
 		"""
-		Method returning the :class:`gridtools.Equation`\in_s representing the :math:`x`- and :math:`y`-fluxes 
+		Method returning the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes 
 		for all the conservative model variables.
 
 		Parameters
@@ -116,7 +116,7 @@ class FluxIsentropic:
 	def get_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 							in_Qv = None, in_Qv_prv = None, in_Qc = None, in_Qc_prv = None,	in_Qr = None, in_Qr_prv = None):
 		"""
-		Method returning the :class:`gridtools.Equation`\in_s representing the :math:`z`-flux for all the conservative 
+		Method returning the :class:`gridtools.Equation`~s representing the :math:`z`-flux for all the conservative 
 		model variables.
 
 		Parameters
@@ -130,7 +130,7 @@ class FluxIsentropic:
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time of potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in potential temperature.
 		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
 		in_s_prv : obj
@@ -222,8 +222,8 @@ class FluxIsentropic:
 	@abc.abstractmethod
 	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr):
 		"""
-		Method computing the :class:`gridtools.Equation`\in_s representing the :math:`x`- and :math:`y`-fluxes for all 
-		the conservative prognostic variables. The :class:`gridtools.Equation`in_s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes for all 
+		the conservative prognostic variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
 		As this method is marked as abstract, the implementation is delegated to the derived classes.
 
 		Parameters
@@ -260,8 +260,8 @@ class FluxIsentropic:
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`\in_s representing the :math:`z`-flux for all the conservative 
-		model variables. The :class:`gridtools.Equation`in_s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`\~s representing the :math:`z`-flux for all the conservative 
+		model variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
 		As this method is marked as abstract, the implementation is delegated to the derived classes.
 
 		Parameters
@@ -275,7 +275,7 @@ class FluxIsentropic:
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time of potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in potential temperature.
 		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
 		in_s_prv : obj

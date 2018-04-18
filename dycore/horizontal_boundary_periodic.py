@@ -289,8 +289,8 @@ class PeriodicXZ(HorizontalBoundary):
 		phi_[nb:-nb, :, :] = phi
 
 		# Extend in the x-direction
-		phi_[0:nb, :, :] = phi_[nx:nx+nb  , :, :]
-		phi_[-nb:, :, :] = phi_[-nx-nb:-nx, :, :]
+		phi_[ :nb, :, :] = phi_[(nx - 1):(nx - 1 + nb)    , :, :]
+		phi_[-nb:, :, :] = phi_[(- nx + 1 - nb):(- nx + 1), :, :]
 
 		# Repeat in the y-direction
 		return np.concatenate((np.repeat(phi_[:, 0:1, :], nb, axis = 1),

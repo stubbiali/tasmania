@@ -25,8 +25,9 @@ from tasmania.dycore.flux_isentropic import FluxIsentropic
 
 class FluxIsentropicCentered(FluxIsentropic):
 	"""
-	Class which inherits :class:`~dycore.flux_isentropic.FluxIsentropic` to implement a centered scheme to compute 
-	the numerical fluxes for the governing equations expressed in conservative form using isentropic coordinates.
+	Class which inherits :class:`~dycore.flux_isentropic.FluxIsentropicNonconservative` to implement a 
+	centered scheme to compute the numerical fluxes for the prognostic model variables. 
+	The conservative form of the governing equations, expressed using isentropic coordinates, is used.
 
 	Attributes
 	----------
@@ -155,15 +156,15 @@ class FluxIsentropicCentered(FluxIsentropic):
 		tmp_w_mid[i, j, k] = 0.5 * (in_w[i, j, k] + in_w[i, j, k-1])
 
 		# Compute flux for the isentropic density and the momentums
-		self._flux_s_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_s)
-		self._flux_U_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_U)
-		self._flux_V_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_V)
+		self._flux_s_z = self._get_centered_flux_z(i, j, k, tmp_w_mid, in_s)
+		self._flux_U_z = self._get_centered_flux_z(i, j, k, tmp_w_mid, in_U)
+		self._flux_V_z = self._get_centered_flux_z(i, j, k, tmp_w_mid, in_V)
 		
 		if self._moist_on:
 			# Compute flux for the water constituents
-			self._flux_Qv_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_Qv)
-			self._flux_Qc_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_Qc)
-			self._flux_Qr_z = self._get_upwind_flux_z(i, j, k, tmp_w_mid, in_Qr)
+			self._flux_Qv_z = self._get_centered_flux_z(i, j, k, tmp_w_mid, in_Qv)
+			self._flux_Qc_z = self._get_centered_flux_z(i, j, k, tmp_w_mid, in_Qc)
+			self._flux_Qr_z = self._get_centered_flux_z(i, j, k, tmp_w_mid, in_Qr)
 
 	def _get_centered_flux_x(self, i, j, k, in_u, in_phi):
 		"""
