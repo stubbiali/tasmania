@@ -119,6 +119,8 @@ class Topography1d:
 		topo_str : str
 			When :data:`topo_type` is 'user_defined', terrain profile expression in the independent variable :math:`x`. 
 			Must be fully C++-compliant.
+		topo_smooth : bool
+			:obj:`True` to smooth the topography out, :obj:`False` otherwise. Default is :obj:`False`.
 		"""
 		if topo_type not in ['flat_terrain', 'gaussian', 'user_defined']:
 			raise ValueError("""Unknown topography type. Supported types are:
@@ -148,6 +150,10 @@ class Topography1d:
 				
 			parser = Parser1d(topo_str, x.values)
 			self._topo_final = parser.evaluate()
+			
+		# Smooth the topography out
+		if kwargs.get('topo_smooth', False):
+			self._topo_final[1:-1] += 0.25 * (self._topo_final[:-2] - 2. * self._topo_final[1:-1] + self._topo_final[2:]) 
 
 		self.topo = xr.DataArray(self.topo_fact * self._topo_final, 
 								 coords = x.coords, dims = x.dims, attrs = {'units': 'm'})	
@@ -231,6 +237,8 @@ class Topography2d:
 		topo_str : str
 			When :data:`topo_type` is 'user_defined', terrain profile expression in the independent variables 
 			:math:`x` and :math:`y`. Must be fully C++-compliant.
+		topo_smooth : bool
+			:obj:`True` to smooth the topography out, :obj:`False` otherwise. Default is :obj:`False`.
 		"""
 		if topo_type not in ['flat_terrain', 'gaussian', 'schaer', 'user_defined']:
 			raise ValueError("""Unknown topography type. Supported types are: \n"""
@@ -308,6 +316,12 @@ class Topography2d:
 			# Parse
 			parser = Parser2d(topo_str, grid.x.values, grid.y.values)
 			self._topo_final = parser.evaluate()
+			
+		# Smooth the topography out
+		if kwargs.get('topo_smooth', False):
+			self._topo_final[1:-1, 1:-1] += 0.125 * (self._topo_final[:-2, 1:-1] + self._topo_final[2:, 1:-1] +
+													 self._topo_final[1:-1, :-2] + self._topo_final[1:-1, 2:] -
+													 4. * self._topo_final[1:-1, 1:-1]) 
 
 		self.topo = xr.DataArray(self.topo_fact * self._topo_final, 
 								 coords = [grid.x.values, grid.y.values], 
