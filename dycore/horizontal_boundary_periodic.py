@@ -77,12 +77,12 @@ class Periodic(HorizontalBoundary):
 		phi_[nb:-nb, nb:-nb, :] = phi
 
 		# Extend in the x-direction
-		phi_[0:nb, nb:-nb, :] = phi_[nx:nx+nb  , nb:-nb, :]
-		phi_[-nb:, nb:-nb, :] = phi_[-nx-nb:-nx, nb:-nb, :]
+		phi_[ :nb, nb:-nb, :] = phi_[(nx - 1):(nx - 1 + nb)    , nb:-nb, :]
+		phi_[-nb:, nb:-nb, :] = phi_[(- nx + 1 - nb):(- nx + 1), nb:-nb, :]
 
 		# Extend in the y-direction
-		phi_[:, 0:nb, :] = phi_[:, ny:ny+nb  , :]
-		phi_[:, -nb:, :] = phi_[:, -ny-nb:-ny, :]
+		phi_[:,  :nb, :] = phi_[:, (ny - 1):(ny - 1 + nb)    , :]
+		phi_[:, -nb:, :] = phi_[:, (- ny + 1 - nb):(- ny + 1), :]
 
 		return phi_
 
@@ -116,7 +116,7 @@ class Periodic(HorizontalBoundary):
 		# Check
 		assert ((ni == nx + 2*nb) or (ni == nx + 1 + 2*nb)) and ((nj == ny + 2*nb) or (nj == ny + 1 + 2*nb)), \
 			   'The input field does not have the dimensions one would expect.' \
-			   'Hint: was the field extended?'
+			   'Hint: has the field been previously extended?'
 
 		# Shrink
 		return phi_[nb:-nb, nb:-nb, :]
@@ -141,14 +141,18 @@ class Periodic(HorizontalBoundary):
 		nx, ny, nz, nb = self.grid.nx, self.grid.ny, self.grid.nz, self.nb
 		ni, nj, _ = phi_now.shape
 
-		# Apply the periodic boundary conditions only if the field is staggered
-		# If the field is unstaggered, then it should be automatically periodic 
-		# once the computations are over, due to the periodic extension performed 
-		# before the computations started
+		# Make the field periodic in the x-direction
+		# Remark: This is applied only if the field is x-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
 		if ni == nx + 1:
 			phi_new[ 0, :, :] = phi_new[-2, :, :]
 			phi_new[-1, :, :] = phi_new[ 1, :, :]
 
+		# Make the field periodic in the y-direction
+		# Remark: This is applied only if the field is y-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
 		if nj == ny + 1:
 			phi_new[:,  0, :] = phi_new[:, -2, :]
 			phi_new[:, -1, :] = phi_new[:,  1, :]
@@ -170,8 +174,15 @@ class Periodic(HorizontalBoundary):
 		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
 		argument for compliancy with the class hierarchy interface.
 		"""
-		nx = self.grid.nx
-		phi_new[0, :, :], phi_new[-1, :, :] = phi_new[nx-1, :, :], phi_new[-nx-1, :, :]
+		# Shortcuts
+		nx, ni = self.grid.nx, phi_new.shape[0]
+
+		# Set the outermost layers
+		# Remark: This is applied only if the field is x-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
+		if ni == nx + 1:
+			phi_new[0, :, :], phi_new[-1, :, :] = phi_new[nx-1, :, :], phi_new[-nx, :, :]
 
 	def set_outermost_layers_y(self, phi_new, phi_now = None):
 		"""
@@ -190,8 +201,15 @@ class Periodic(HorizontalBoundary):
 		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
 		argument for compliancy with the class hierarchy interface.
 		"""
-		nx = self.grid.nx
-		phi_new[:, 0, :], phi_new[:, -1, :] = phi_new[:, nx-1, :], phi_new[:, -nx-1, :]
+		# Shortcuts
+		ny, nj = self.grid.ny, phi_new.shape[1]
+
+		# Set the outermost layers
+		# Remark: This is applied only if the field is y-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
+		if nj == ny + 1:
+			phi_new[:, 0, :], phi_new[:, -1, :] = phi_new[:, ny-1, :], phi_new[:, -ny, :]
 
 	def get_computational_grid(self):
 		"""
@@ -343,10 +361,10 @@ class PeriodicXZ(HorizontalBoundary):
 		# Shortcuts
 		nx, ni = self.grid.nx, phi_now.shape[0]
 
-		# Apply the periodic boundary conditions only if the field is staggered
-		# If the field is unstaggered, then it should be automatically periodic 
-		# once the computations are over, due to the periodic extension performed 
-		# before the computations started
+		# Make the field periodic in the x-direction
+		# Remark: This is applied only if the field is x-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
 		if ni == nx + 1:
 			phi_new[ 0, :, :] = phi_new[-2, :, :]
 			phi_new[-1, :, :] = phi_new[ 1, :, :]
@@ -368,8 +386,15 @@ class PeriodicXZ(HorizontalBoundary):
 		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
 		argument for compliancy with the class hierarchy interface.
 		"""
-		nx = self.grid.nx
-		phi_new[0, :, :], phi_new[-1, :, :] = phi_new[nx-1, :, :], phi_new[-nx-1, :, :]
+		# Shortcuts
+		nx, ni = self.grid.nx, phi_new.shape[0]
+
+		# Set the outermost layers
+		# Remark: This is applied only if the field is x-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
+		if ni == nx + 1:
+			phi_new[0, :, :], phi_new[-1, :, :] = phi_new[nx-1, :, :], phi_new[-nx, :, :]
 
 	def get_computational_grid(self):
 		"""
@@ -466,9 +491,9 @@ class PeriodicYZ(HorizontalBoundary):
 		phi_ = np.zeros((nx, nj + 2*nb, nk), dtype = datatype)
 		phi_[:, nb:-nb, :] = phi
 
-		# Extend in the y-direction
-		phi_[:, 0:nb, :] = phi_[:, nx:nx+nb  , :]
-		phi_[:, -nb:, :] = phi_[:, -nx-nb:-nx, :]
+		# Extend in the x-direction
+		phi_[ :nb, :, :] = phi_[(nx - 1):(nx - 1 + nb)    , :, :]
+		phi_[-nb:, :, :] = phi_[(- nx + 1 - nb):(- nx + 1), :, :]
 
 		# Repeat in the x-direction
 		return np.concatenate((np.repeat(phi_[0:1, :, :], nb, axis = 0),
@@ -521,10 +546,10 @@ class PeriodicYZ(HorizontalBoundary):
 		# Shortcuts
 		ny, nj = self.grid.ny, phi_now.shape[1]
 
-		# Apply the periodic boundary conditions only if the field is staggered
-		# If the field is unstaggered, then it should be automatically periodic 
-		# once the computations are over, due to the periodic extension performed 
-		# before the computations started
+		# Make the field periodic in the x-direction
+		# Remark: This is applied only if the field is x-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
 		if nj == ny + 1:
 			phi_new[:,  0, :] = phi_new[:, -2, :]
 			phi_new[:, -1, :] = phi_new[:,  1, :]
@@ -546,8 +571,15 @@ class PeriodicYZ(HorizontalBoundary):
 		The argument :data:`phi_now` is not required by the implementation, yet it is retained as optional
 		argument for compliancy with the class hierarchy interface.
 		"""
-		ny = self.grid.ny
-		phi_new[:, 0, :], phi_new[:, -1, :] = phi_new[:, ny-1, :], phi_new[:, -ny-1, :]
+		# Shortcuts
+		ny, nj = self.grid.ny, phi_new.shape[1]
+
+		# Set the outermost layers
+		# Remark: This is applied only if the field is y-staggered
+		# If the field is unstaggered, it should be automatically periodic once the computations are over, 
+		# due to the periodic extension performed before the computations started
+		if nj == ny + 1:
+			phi_new[:, 0, :], phi_new[:, -1, :] = phi_new[:, ny-1, :], phi_new[:, -ny, :]
 
 	def get_computational_grid(self):
 		"""
