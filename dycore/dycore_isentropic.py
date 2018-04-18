@@ -133,11 +133,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._prognostic.diagnostic = self._diagnostic
 
 		# Instantiate the class in charge of applying vertical damping
+		nx, ny, nz = grid.nx, grid.ny, grid.nz
 		if damp_on: 
-			self._damper = VerticalDamping.factory(damp_type, grid, damp_depth, damp_max, backend)
+			self._damper = VerticalDamping.factory(damp_type, (nx, ny, nz), grid, damp_depth, damp_max, backend)
 
 		# Instantiate the classes in charge of applying numerical smoothing
-		nx, ny, nz = grid.nx, grid.ny, grid.nz
 		if smooth_on:
 			self._smoother = HorizontalSmoothing.factory(smooth_type, (nx, ny, nz), grid, smooth_damp_depth, 
 														 smooth_coeff, smooth_coeff_max, backend)
