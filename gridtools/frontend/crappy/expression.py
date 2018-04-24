@@ -40,7 +40,9 @@ class Expression:
 		return self._rank
 
 	def add_edge(self, expression, indices_transformation=None):
-		self._edges.append(Edge(expression_source=self, expression_target=expression, indices_transformation=indices_transformation))
+		self._edges.append(Edge(expression_source      = self, 
+								expression_target      = expression, 
+								indices_transformation = indices_transformation))
 
 	def get_edges(self):
 		return self._edges
@@ -72,6 +74,12 @@ class Expression:
 	def __rtruediv__(self, other):
 		return ExpressionBinaryOperator(_make_expression_if_necessary(other), self, "/")
 
+	def __pow__(self, other):
+		return ExpressionBinaryOperator(self, _make_expression_if_necessary(other), "**")
+
+	def __rpow__(self, other):
+		return ExpressionBinaryOperator(_make_expression_if_necessary(other), self, "**")
+
 	def __gt__(self, other):
 		return ExpressionBinaryOperator(self, _make_expression_if_necessary(other), ">")
 
@@ -83,6 +91,12 @@ class Expression:
 
 	def __le__(self, other):
 		return ExpressionBinaryOperator(self, _make_expression_if_necessary(other), "<=")
+
+	def __pos__(self):
+		return ExpressionUnaryOperator(self, "+")
+
+	def __neg__(self):
+		return ExpressionUnaryOperator(self, "-")
 
 
 class ExpressionNamed(Expression):
@@ -131,8 +145,24 @@ class ExpressionBinaryOperator(Expression):
 		return self.get_edge_lhs().get_expression_target()
 
 	def get_expression_rhs(self):
-		assert len(self.get_edges()) == 2
 		return self.get_edge_rhs().get_expression_target()
+
+	def __str__(self):
+		return str(self._operator)
+
+
+class ExpressionUnaryOperator(Expression):
+	def __init__(self, expression, operator):
+		super().__init__()
+		self.add_edge(expression)
+		self._operator = operator
+
+	def get_edge_out(self):
+		assert len(self.get_edges()) == 1
+		return self.get_edges()[0]
+
+	def get_expression_out(self):
+		return self.get_edge_out().get_expression_target()
 
 	def __str__(self):
 		return str(self._operator)
@@ -176,9 +206,6 @@ class Equation:
 			self.expression = ExpressionNamed(name_given_by_user = self._get_name_given_by_user())
 
 	def get_name(self):
-		"""
-		Added by S. Ubbiali on 01/18/2018.
-		"""
 		return self.expression._name_given_by_user
 
 	def _get_name_given_by_user(self):

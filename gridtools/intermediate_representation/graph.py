@@ -32,6 +32,21 @@ class NodeBinaryOperator:
         return self.operator
 
 
+class NodeUnaryOperator:
+    """
+    This class implements a unary operator node of the graph.
+    E.g. the minus sign in the expression - A[i, j] is represented in the graph by an instance of this class.
+    """
+    def __init__(self, operator):
+        """
+        :param operator: A string representation of the operator.
+        """
+        self.operator = operator
+
+    def __str__(self):
+        return self.operator
+
+
 class NodeConstant:
     """
     This class implements the constant node in the graph.
