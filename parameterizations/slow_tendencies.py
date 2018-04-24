@@ -21,10 +21,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+import warnings
 
-class Adjustment:
+class SlowTendency:
 	"""
-	Abstract base class whose derived classes implement different ajustment schemes.
+	Abstract base class whose derived classes implement different parameterization schemes 
+	providing slow-varying tendencies. Here, *slow-varying* refers to those tendencies which
+	should be calculated on the largest model timestep.
 
 	Note
 	----
@@ -43,7 +46,6 @@ class Adjustment:
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
 		"""
 		self._grid = grid
-		self._time_levels = None
 
 	@property
 	def time_levels(self):
@@ -57,7 +59,7 @@ class Adjustment:
 		"""
 		if self._time_levels is None:
 			warn_msg = """The attribute representing the number of time levels the underlying dynamical core relies on """ \
-					   """has not been previously set, so it is tacitly assumed it is 1. """ \
+					   """has not been previously set, so it is tacitly assumed it is 1.""" \
 					   """If you want to manually set it, please use the ''time_levels'' property."""
 			warnings.warn(warn_msg, RuntimeWarning)
 			self._time_levels = 1
@@ -86,30 +88,26 @@ class Adjustment:
 		dt : obj
 			:class:`datetime.timedelta` representing the timestep.
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 
 		Return
 		------
-		state_new : obj
-			:class:`~storages.grid_data.GridData` storing the output, adjusted state.
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing possible output tendencies.
+			:class:`~storages.grid_data.GridData` storing the calculated tendencies.
 		diagnostics : obj
 			:class:`~storages.grid_data.GridData` storing possible output diagnostics.
 		"""
 
-class AdjustmentMicrophysics(Adjustment):
+class SlowTendencyMicrophysics(SlowTendency):
 	"""
-	Abstract base class whose derived classes implement different parameterization schemes carrying out 
-	microphysical adjustments. The model variables which get adjusted are:
-
-	* the mass fraction of water vapor;
-	* the mass fraction of cloud liquid water;
-	* the mass fraction of precipitation water.
-
-	The derived classes also compute the following diagnostics:
+	Abstract base class whose derived classes implement different parameterization schemes providing 
+	slow-varying microphysical tendencies. The derived classes also compute the following diagnostics:
 
 	* the raindrop fall speed ([:math:`m \, s^{-1}`]).
+
+	Note
+	----
+	Unless specified, none of the derived classes carries out the saturation adjustment.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -174,7 +172,7 @@ class AdjustmentMicrophysics(Adjustment):
 			Keyword arguments to be forwarded to the derived class.
 		"""
 		if micro_scheme == 'kessler_wrf':
-			from tasmania.parameterizations.adjustment_microphysics_kessler_wrf import AdjustmentMicrophysicsKesslerWRF
-			return AdjustmentMicrophysicsKesslerWRF(grid, rain_evaporation_on, backend, **kwargs)
+			from tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf import SlowTendencyMicrophysicsKesslerWRF
+			return SlowTendencyMicrophysicsKesslerWRF(grid, rain_evaporation_on, backend, **kwargs)
 		else:
 			raise ValueError('Unknown microphysics parameterization scheme.')
