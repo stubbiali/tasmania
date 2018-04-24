@@ -1,8 +1,7 @@
 import inspect
 import networkx as nx
-from gridtools.frontend.crappy.expression import Equation 
-from gridtools.frontend.crappy.expression import ExpressionNamed, ExpressionBinaryOperator
-from gridtools.frontend.crappy.expression import ExpressionConstant, ExpressionGlobal
+from gridtools.frontend.crappy.expression import Equation, ExpressionNamed, ExpressionBinaryOperator, \
+												 ExpressionUnaryOperator, ExpressionConstant, ExpressionGlobal
 from gridtools.intermediate_representation import graph as irgraph
 from gridtools.intermediate_representation.ir import IR
 
@@ -59,6 +58,8 @@ class Frontend:
 			return self._add_expression_named_to_graph(graph, expression, expression_to_node_map)
 		elif type(expression) is ExpressionBinaryOperator:
 			return self._add_expression_binary_operator_to_graph(graph, expression, expression_to_node_map)
+		elif type(expression) is ExpressionUnaryOperator:
+			return self._add_expression_unary_operator_to_graph(graph, expression, expression_to_node_map)
 		elif type(expression) is ExpressionConstant:
 			return self._add_expression_constant_to_graph(graph, expression, expression_to_node_map)
 		elif type(expression) is ExpressionGlobal:
@@ -95,6 +96,15 @@ class Frontend:
 		graph.add_edge(node, node_right, key=edge_right)
 		expression_to_node_map[expression] = node
 
+		return node
+
+	def _add_expression_unary_operator_to_graph(self, graph, expression, expression_to_node_map):
+		node = irgraph.NodeUnaryOperator(operator=str(expression))
+		node_out = self._add_expression_to_graph(graph, expression.get_expression_out(), expression_to_node_map)
+		indices_offsets_out = expression.get_edge_out().get_indices_transformation().get_offsets_to_apply_to_source_indices()
+		edge_out = irgraph.Edge(indices_offsets = indices_offsets_out)
+		graph.add_edge(node, node_out, key = edge_out)
+		expression_to_node_map[expression] = node
 		return node
 
 	def _add_expression_constant_to_graph(self, graph, expression, expression_to_node_map):

@@ -63,7 +63,7 @@ def get_out_edge_right(g, node):
 
 
 def is_temporary_named_expression(g, node):
-	return g.predecessors(node) and g.successors(node) and type(node) is irg.NodeNamedExpression
+	return g.predecessors(node) and g.successors(node) and (type(node) is irg.NodeNamedExpression)
 
 
 def find_roots(g):
