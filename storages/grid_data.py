@@ -48,29 +48,33 @@ class GridData:
 	"""
 	# Specify the units in which variables should be expressed
 	units = {
-		'air_density'			   					   : 'kg m-3'		 ,
-		'air_isentropic_density'   					   : 'kg m-2 K-1'    ,
-		'x_velocity'           					       : 'm s-1'         ,
-		'x_velocity_unstaggered'				       : 'm s-1'         ,
-		'y_velocity'           					       : 'm s-1'         ,
-		'y_velocity_unstaggered'				       : 'm s-1'         ,
-		'x_momentum_isentropic'					       : 'kg m-1 s-1 K-1',
-		'y_momentum_isentropic'					       : 'kg m-1 s-1 K-1',
-		'air_pressure'             					   : 'Pa'            ,
-		'exner_function'       					       : 'm2 s-2 K-2'    ,
-		'montgomery_potential' 					       : 'm2 s-2'        ,
-		'height'               					       : 'm'             ,
-		'air_temperature'							   : 'K'             ,
-		'mass_fraction_of_water_vapor_in_air'          : 'kg kg-1'       ,
-		'water_vapor_isentropic_density'               : 'kg m-2 K-1'    ,
-		'mass_fraction_of_cloud_liquid_water_in_air'   : 'kg kg-1'       ,
-		'cloud_liquid_water_isentropic_density'        : 'kg m-2 K-1'    ,
-		'mass_fraction_of_precipitation_water_in_air'  : 'kg kg-1'       ,
-		'precipitation_water_isentropic_density'       : 'kg m-2 K-1'    ,
-		'change_over_time_in_air_potential_temperature': 'K s-1'		 ,
-		'raindrop_fall_speed'						   : 'm s-1'		 ,
-		'precipitation'								   : 'mm h-1'        ,
-		'accumulated_precipitation'					   : 'mm'			 ,
+		'accumulated_precipitation'									: 'mm'			 	,
+		'air_density'												: 'kg m-3'		 	,
+		'air_isentropic_density'									: 'kg m-2 K-1'    	,
+		'air_pressure'												: 'Pa'            	,
+		'air_temperature'											: 'K'             	,
+		'cloud_liquid_water_isentropic_density'						: 'kg m-2 K-1'    	,
+		'exner_function'											: 'm2 s-2 K-2'    	,
+		'height'													: 'm'             	,
+		'mass_fraction_of_cloud_liquid_water_in_air'				: 'kg kg-1'       	,
+		'mass_fraction_of_precipitation_water_in_air'				: 'kg kg-1'       	,
+		'mass_fraction_of_water_vapor_in_air'						: 'kg kg-1'       	,
+		'montgomery_potential'										: 'm2 s-2'        	,
+		'precipitation'												: 'mm h-1'        	,
+		'precipitation_water_isentropic_density'					: 'kg m-2 K-1'    	,
+		'raindrop_fall_speed'										: 'm s-1'		 	,
+		'tendency_of_air_potential_temperature'						: 'K s-1'		 	,
+		'tendency_of_mass_fraction_of_cloud_liquid_water_in_air'	: 'kg kg-1 s-1'		,
+		'tendency_of_mass_fraction_of_precipitation_water_in_air'	: 'kg kg-1 s-1'		,
+		'tendency_of_mass_fraction_of_water_vapor_in_air'			: 'kg kg-1 s-1'		,
+		'water_vapor_isentropic_density'							: 'kg m-2 K-1'    	,
+		'x_momentum_isentropic'										: 'kg m-1 s-1 K-1'	,
+		'x_velocity'												: 'm s-1'         	,
+		'x_velocity_unstaggered'									: 'm s-1'         	,
+		'y_momentum_isentropic'										: 'kg m-1 s-1 K-1'	,
+		'y_velocity'												: 'm s-1'         	,
+		'y_velocity_unstaggered'									: 'm s-1'         	,
+		'change_over_time_in_air_potential_temperature'				: 'K s-1'		 	,	# to be removed
 	}
 
 	def __init__(self, time, grid, **kwargs):
@@ -86,7 +90,7 @@ class GridData:
 		**kwargs : array_like
 			:class:`numpy.ndarray` representing a gridded variable.
 		"""
-		self._time, self.grid = time, grid
+		self.grid = grid
 
 		self._vars = dict()
 		for key in kwargs:
@@ -143,12 +147,31 @@ class GridData:
 		"""
 		return list(self._vars.keys())
 
-	def add(self, **kwargs):
+	@property
+	def time(self):
+		"""
+		Shortcut to the time instant at which the variables are defined.
+
+		Return
+		------
+		obj :
+			:class:`datetime.timedelta` representing the time instant at which the variables are defined.
+
+		Warning
+		-------
+		Within an instance of this class, variables are not forced to be defined at the same time level, 
+		so the behaviour of this method might be undefined.
+		"""
+		return utils.convert_datetime64_to_datetime(self._vars[self.variable_names[0]].coords['time'].values[0])
+
+	def add_variables(self, time, **kwargs):
 		"""
 		Add a list of variables, passed as keyword arguments.
 
 		Parameters
 		----------
+		time : obj
+			:class:`datetime.datetime` representing the time instant at which the variables are defined.
 		**kwargs : array_like
 			:class:`numpy.ndarray` representing a gridded variable.
 		"""
@@ -171,7 +194,7 @@ class GridData:
 					z = self.grid.z_half_levels
 
 				_var = xr.DataArray(var[:, :, :, np.newaxis], 
-									coords = [x.values, y.values, z.values, [self._time]],
+									coords = [x.values, y.values, z.values, [time]],
 									dims = [x.dims, y.dims, z.dims, 'time'],
 									attrs = {'units': GridData.units[key]})
 				self._vars[key] = _var
@@ -309,6 +332,20 @@ class GridData:
 			return np.amin(self._vars[key].values[:,:,:,-1])
 		else:
 			raise KeyError('The variable {} is not stored within the current object'.format(key))
+
+	def __iadd__(self, other):
+		"""
+		"""
+		for key in other._vars:
+			if self._vars.get(key, None) is None:
+				self._vars[key] = copy.deepcopy(other._vars[key])
+			elif self._vars[key].coords['time'].values[0] != other._vars[key].coords['time'].values[0]:
+				self._vars[key].coords['time'].values[0] = other._vars[key].coords['time'].values[0]
+				self._vars[key].values[:,:,:,0] = other._vars[key].values[:,:,:,0]
+			else:
+				self._vars[key].values[:,:,:,0] += other._vars[key].values[:,:,:,0]
+
+		return self
 
 	def animation_profile_x(self, field_to_plot, y_level, z_level, destination, **kwargs):
 		"""
