@@ -206,12 +206,13 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 			self.boundary.apply(qr_new, state['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0])
 
 		# Update the output state
-		state_new.add(air_isentropic_density                      = s_new, 
-					  x_velocity                                  = u_new, 
-					  y_velocity                                  = v_new, 
-					  mass_fraction_of_water_vapor_in_air         = qv_new, 
-					  mass_fraction_of_cloud_liquid_water_in_air  = qc_new,
-					  mass_fraction_of_precipitation_water_in_air = qr_new)
+		state_new.add_variables(time + dt,
+					  			air_isentropic_density                      = s_new, 
+					  			x_velocity                                  = u_new, 
+					  			y_velocity                                  = v_new, 
+					  			mass_fraction_of_water_vapor_in_air         = qv_new, 
+					  			mass_fraction_of_cloud_liquid_water_in_air  = qc_new,
+					  			mass_fraction_of_precipitation_water_in_air = qr_new)
 
 		# Keep track of the current state for the next timestep
 		self._in_s_old[  :mi,   :mj, :] = self._in_s[  :mi,   :mj, :]
@@ -364,7 +365,8 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 
 		# Diagnose the isentropic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
-		state_new.add(mass_fraction_of_precipitation_water_in_air = self._out_Qr[:nx, :ny, :])
+		state_new.add_variables(time_now + dt, 
+								mass_fraction_of_precipitation_water_in_air = self._out_Qr[:nx, :ny, :])
 
 		return state_new, diagnostics_out
 
