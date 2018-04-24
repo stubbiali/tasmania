@@ -74,7 +74,7 @@ def _reverse_colormap(cmap, name = None):
 
 	return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
 
-def contour_xz(x, z, topography, field, **kwargs):
+def contour_xz(x, z, field, topography, **kwargs):
 	"""
 	Generate the contour plot of a gridded field at a cross-section parallel to the :math:`xz`-plane.
 
@@ -84,10 +84,10 @@ def contour_xz(x, z, topography, field, **kwargs):
 		Two-dimensional :class:`numpy.ndarray` representing the underlying :math:`x`-grid.
 	z : array_like
 		Two-dimensional :class:`numpy.ndarray` representing the underlying :math:`z`-grid.
-	topography : array_like
-		One-dimensional :class:`numpy.ndarray` representing the underlying topography height.
 	field : array_like
 		Two-dimensional :class:`numpy.ndarray` representing the field to plot.
+	topography : array_like
+		One-dimensional :class:`numpy.ndarray` representing the underlying topography.
 		
 	Keyword arguments
 	-----------------
@@ -119,9 +119,8 @@ def contour_xz(x, z, topography, field, **kwargs):
 		By default, the entire domain is shown.
 	field_factor : float
 		Scaling factor for the field. Default is 1.
-	plot_height: bool
-		:obj:`True` to plot the height of the vertical coordinate isolines, :obj:`False` otherwise. 
-		Default is :obj:`True`.
+	draw_z_isolines : bool
+		:obj:`True` to draw the :math:`z`-isolines, :obj:`False` otherwise. Default is :obj:`True`.
 	text : str
 		Text to be added to the figure as anchored text. By default, no extra text is shown.
 	text_loc : str
@@ -144,7 +143,7 @@ def contour_xz(x, z, topography, field, **kwargs):
 	z_factor         = kwargs.get('z_factor', 1.)
 	z_lim			 = kwargs.get('z_lim', None)
 	field_factor     = kwargs.get('field_factor', 1.)
-	plot_height		 = kwargs.get('plot_height', True)
+	draw_z_isolines  = kwargs.get('draw_z_isolines', True)
 	text			 = kwargs.get('text', None)
 	text_loc		 = kwargs.get('text_loc', 'upper right')
 
@@ -152,18 +151,21 @@ def contour_xz(x, z, topography, field, **kwargs):
 	mpl.rcParams['font.size'] = fontsize
 
 	# Rescale the axes and the field for visualization purposes
-	x *= x_factor
-	z *= z_factor
-	field *= field_factor
+	x          *= x_factor
+	z          *= z_factor
+	field      *= field_factor
+	topography *= z_factor
 
 	# Instantiate figure and axis objects
 	fig, ax = plt.subplots(figsize = figsize)
 
 	# Plot the z-isolines
-	if plot_height:
-		for k in range(0, nk):
+	if draw_z_isolines:
+		for k in range(nk):
 			ax.plot(x[:, k], z[:, k], color = 'gray', linewidth = 1)
-	ax.plot(x[:, -1], topography[:, -1], color = 'black', linewidth = 1)
+
+	# Plot the topography
+	ax.plot(x[:, -1], topography, color = 'black', linewidth = 1)
 
 	# Plot the field
 	surf = plt.contour(x, z, field, colors = 'black')
@@ -188,7 +190,7 @@ def contour_xz(x, z, topography, field, **kwargs):
 	else:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
 
-def contourf_xz(x, z, topography, field, **kwargs):
+def contourf_xz(x, z, field, topography, **kwargs):
 	"""
 	Generate the contourf plot of a gridded field at a cross-section parallel to the :math:`xz`-plane.
 
@@ -198,10 +200,10 @@ def contourf_xz(x, z, topography, field, **kwargs):
 		Two-dimensional :class:`numpy.ndarray` representing the underlying :math:`x`-grid.
 	z : array_like
 		Two-dimensional :class:`numpy.ndarray` representing the underlying :math:`z`-grid.
-	topography : array_like
-		One-dimensional :class:`numpy.ndarray` representing the underlying topography height.
 	field : array_like
 		Two-dimensional :class:`numpy.ndarray` representing the field to plot.
+	topography : array_like
+		One-dimensional :class:`numpy.ndarray` representing the underlying topography.
 		
 	Keyword arguments
 	-----------------
@@ -233,9 +235,8 @@ def contourf_xz(x, z, topography, field, **kwargs):
 		By default, the entire domain is shown.
 	field_factor : float
 		Scaling factor for the field. Default is 1.
-	plot_height: bool
-		:obj:`True` to plot the height of the vertical coordinate isolines, :obj:`False` otherwise. 
-		Default is :obj:`True`.
+	draw_z_isolines : bool
+		:obj:`True` to draw the :math:`z`-isolines, :obj:`False` otherwise. Default is :obj:`True`.
 	cmap_name : str
 		Name of the Matplotlib's color map to be used. All the color maps provided by Matplotlib, 
 		as well as the corresponding inverted versions, are available.
@@ -278,7 +279,7 @@ def contourf_xz(x, z, topography, field, **kwargs):
 	z_factor         = kwargs.get('z_factor', 1.)
 	z_lim			 = kwargs.get('z_lim', None)
 	field_factor     = kwargs.get('field_factor', 1.)
-	plot_height		 = kwargs.get('plot_height', True)
+	draw_z_isolines  = kwargs.get('draw_z_isolines', True)
 	cmap_name        = kwargs.get('cmap_name', 'RdYlBu')
 	cbar_levels      = kwargs.get('cbar_levels', 14)
 	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
@@ -295,18 +296,20 @@ def contourf_xz(x, z, topography, field, **kwargs):
 	mpl.rcParams['font.size'] = fontsize
 
 	# Rescale the axes and the field for visualization purposes
-	x *= x_factor
-	z *= z_factor
+	x          *= x_factor
+	z          *= z_factor
+	field      *= field_factor
 	topography *= z_factor
-	field *= field_factor
 
 	# Instantiate figure and axis objects
 	fig, ax = plt.subplots(figsize = figsize)
 
 	# Plot the z-isolines
-	if plot_height:
-		for k in range(0, nk):
+	if draw_z_isolines:
+		for k in range(nk):
 			ax.plot(x[:, k], z[:, k], color = 'gray', linewidth = 1)
+
+	# Plot the topography
 	ax.plot(x[:, -1], topography, color = 'black', linewidth = 1)
 
 	# Determine color scale for colormap
@@ -355,13 +358,16 @@ def contourf_xz(x, z, topography, field, **kwargs):
 	elif destination is not None:
 		plt.savefig(destination + '.eps', format = 'eps', dpi = 1000)
 
-def animation_contourf_xz(time, x, z, field, destination, **kwargs):
+def animation_contourf_xz(destination, time, x, z, field, topography, **kwargs):
 	"""
 	Generate an animation showing the time evolution of the contourfs of a field at a cross-section 
 	parallel to the :math:`xz`-plane.
 
 	Parameters
 	----------
+	destination : str
+		String specifying the path to the location where the movie will be saved. 
+		Note that the string should include the extension as well.
 	time : array_like
 		Array of :class:`datetime.datetime`~s representing the time instants of the frames.
 	x : array_like
@@ -383,9 +389,12 @@ def animation_contourf_xz(time, x, z, field, destination, **kwargs):
 		* the second array axis represents the vertical coordinate;
 		* the third array axis represents the time.
 
-	destination : str
-		String specifying the path to the location where the movie will be saved. 
-		Note that the string should include the extension as well.
+	topography : `array_like`, optional
+		Two-dimensional :class:`numpy.ndarray` representing the underlying topography.
+		It is assumed that:
+		
+		* the first array axis represents :math:`x`;
+		* the second array axis represents the time.
 		
 	Keyword arguments
 	-----------------
@@ -411,9 +420,8 @@ def animation_contourf_xz(time, x, z, field, destination, **kwargs):
 		By default, the entire domain is shown.
 	field_factor : float
 		Scaling factor for the field. Default is 1.
-	plot_height: bool
-		:obj:`True` to plot the height of the vertical coordinate isolines, :obj:`False` otherwise. 
-		Default is :obj:`True`.
+	draw_z_isolines : bool
+		:obj:`True` to draw the :math:`z`-isolines, :obj:`False` otherwise. Default is :obj:`True`.
 	cmap_name : str
 		Name of the Matplotlib's color map to be used. All the color maps provided by Matplotlib, 
 		as well as the corresponding inverted versions, are available.
@@ -456,7 +464,7 @@ def animation_contourf_xz(time, x, z, field, destination, **kwargs):
 	z_factor         = kwargs.get('z_factor', 1.)
 	z_lim			 = kwargs.get('z_lim', None)
 	field_factor     = kwargs.get('field_factor', 1.)
-	plot_height		 = kwargs.get('plot_height', True)
+	draw_z_isolines  = kwargs.get('draw_z_isolines', True)
 	cmap_name        = kwargs.get('cmap_name', 'RdYlBu')
 	cbar_levels      = kwargs.get('cbar_levels', 14)
 	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
@@ -483,9 +491,10 @@ def animation_contourf_xz(time, x, z, field, destination, **kwargs):
 
 	with writer.saving(fig, destination, nt):
 		# Rescale the axes and the field for visualization purposes
-		x *= x_factor
-		z *= z_factor
-		field *= field_factor
+		x          *= x_factor
+		z          *= z_factor
+		field      *= field_factor
+		topography *= z_factor
 
 		# Create the color bar for the colormap
 		field_min, field_max = np.amin(field), np.amax(field)
@@ -508,10 +517,12 @@ def animation_contourf_xz(time, x, z, field, destination, **kwargs):
 			ax.cla()
 
 			# Plot the z-isolines
-			if plot_height:
-				for k in range(0, nk):
+			if draw_z_isolines:
+				for k in range(nk):
 					ax.plot(x[:, k], z[:, k, n], color = 'gray', linewidth = 1)
-			ax.plot(x[:, -1], z[:, -1, n], color = 'black', linewidth = 1)
+
+			# Plot the topography
+			ax.plot(x[:, -1], topography[:, n], color = 'black', linewidth = 1)
 
 			# Plot the field
 			surf = plt.contourf(x, z[:, :, n], field[:, :, n], color_scale, cmap = cm)
@@ -1005,32 +1016,29 @@ def animation_profile_x(time, x, field, destination, **kwargs):
 			# Let the writer grab the frame
 			writer.grab_frame()
 
-def animation_profile_x_comparison(time, x1, field1, x2, field2, destination, **kwargs):
+def animation_profile_x_comparison(time, x, field, destination, **kwargs):
 	"""
-	Generate an animation showing the time evolution of two fields along a cross line orthogonal 
+	Generate an animation showing the time evolution of one or more fields along a cross line orthogonal 
 	to the :math:`yz`-plane.
 
 	Parameters
 	----------
 	time : array_like 
 		Array of :class:`datetime.datetime`~s representing the time instants of the frames.
-	x1 : array_like
-		One-dimensional :class:`numpy.ndarray` representing the :math:`x`-grid underlying the first field.
-	field1 : array_like
-		Two-dimensional :class:`numpy.ndarray` representing the first field to plot.
+	x : list
+		Two-dimensional :class:`numpy.ndarray` storing the :math:`x`-grids underlying each field.
 		It is assumed that:
-		
-		* the first array axis represents :math:`x`;
-		* the second array axis represents the time.
 
-	x2 : array_like
-		One-dimensional :class:`numpy.ndarray` representing the :math:`x`-grid underlying the second field.
-	field2 : array_like
-		Two-dimensional :class:`numpy.ndarray` representing the second field to plot.
+		* the fields are concatenated along the first array axis;
+		* the second array axis represents :math:`x`.
+
+	field : array_like
+		Three-dimensional :class:`numpy.ndarray` storing the fields to plot.
 		It is assumed that:
 		
-		* the first array axis represents :math:`x`;
-		* the second array axis represents the time.
+		* the fields are concatenated along the first array axis;
+		* the second array axis represents :math:`x`;
+		* the third array axis represents the time.
 
 	destination : str
 		String specifying the path to the location where the movie will be saved. 
@@ -1053,39 +1061,29 @@ def animation_profile_x_comparison(time, x1, field1, x2, field2, destination, **
 		By default, the entire domain is shown.
 	y_label : str
 		Label for the :math:`y`-axis. Default is 'y'.
-	y_factor1 : float
-		Scaling factor for the first field. Default is 1.
-	y_factor2 : float
-		Scaling factor for the second field. Default is 1.
 	y_lim : sequence
 		Sequence representing the interval of the :math:`y`-axis to visualize. 
 		By default, the entire domain is shown.
-	color1 : str
-		String specifying the color for the first field. Default is 'blue'.
-	linestyle1 : float
-		The linestyle for the first field. Default is '-'.
-	linewidth1 : float
-		The linewidth for the first field. Default is 1.
-	color2 : str
-		String specifying the color for the second field. Default is 'red'.
-	linestyle2 : float
-		The linestyle for the second field. Default is '-'.
-	linewidth2 : float
-		The linewidth for the second field. Default is 1.
+	field_factor : list
+		List storing the scaling factor for each field. By default, all scaling factors are assumed to be 1.
+	color : list
+		List of strings specifying the line color for each field. The default sequence of colors is: 'blue', 'red', 'green', 'black'.
+	linestyle : list
+		List of strings specifying the line style for each field. The default line style is '-'.
+	linewidth : list
+		List of floats representing the line width for each field. The default line width is 1.
 	grid_on : bool
 		:obj:`True` to draw the grid, :obj:`False` otherwise. Default is :obj:`True`.
 	fps : int
 		Frames per second. Default is 15.
-	legend1 : str
-		Legend entry for the first field. Default is 'field1'.
-	legend2 : str
-		Legend entry for the second field. Default is 'field1'.
+	legend : list
+		List gathering the legend entries for each field. Default is 'field1', 'field2', etc.
 	legend_loc : str
 		String specifying the location where the legend box should be placed. Default is 'best'; 
 		please see :func:`matplotlib.pyplot.legend` for all the available options.
 	"""
 	# Shortcuts
-	nt = field1.shape[1]
+	nf, _, nt = field.shape
 
 	# Get keyword arguments
 	fontsize    	= kwargs.get('fontsize', 12)
@@ -1095,20 +1093,20 @@ def animation_profile_x_comparison(time, x1, field1, x2, field2, destination, **
 	x_factor    	= kwargs.get('x_factor', 1.)
 	x_lim			= kwargs.get('x_lim', None)
 	y_label     	= kwargs.get('y_label', 'y')
-	y_factor1   	= kwargs.get('y_factor1', 1.)
-	y_factor2   	= kwargs.get('y_factor2', 1.)
 	y_lim			= kwargs.get('y_lim', None)
-	color1			= kwargs.get('color1', 'blue')
-	linestyle1  	= kwargs.get('linestyle1', '-')
-	linewidth1  	= kwargs.get('linewidth1', 1.)
-	color2			= kwargs.get('color2', 'red')
-	linestyle2  	= kwargs.get('linestyle2', '-')
-	linewidth2  	= kwargs.get('linewidth2', 1.)
+	field_factor	= kwargs.get('field_factor', [1.] * nf)
+	color			= kwargs.get('color', ['blue', 'red', 'green', 'black'])
+	linestyle  		= kwargs.get('linestyle', ['-'] * nf)
+	linewidth  		= kwargs.get('linewidth', [1.] * nf)
 	grid_on     	= kwargs.get('grid_on', True)
 	fps				= kwargs.get('fps', 15)
-	legend1			= kwargs.get('legend1', 'field1')
-	legend2			= kwargs.get('legend2', 'field2')
+	legend			= kwargs.get('legend', ['field1', 'field2', 'field3', 'field4'])
 	legend_loc      = kwargs.get('legend_loc', 'best')
+
+	# Rescale the x-axis and the fields for visualization purposes
+	for m in range(nf):
+		x[m,:]       *= x_factor
+		field[m,:,:] *= field_factor[m]
 
 	# Global settings
 	mpl.rcParams['font.size'] = fontsize
@@ -1122,35 +1120,33 @@ def animation_profile_x_comparison(time, x1, field1, x2, field2, destination, **
 	writer = ffmpeg_writer(fps = fps, metadata = metadata)
 
 	with writer.saving(fig, destination, nt):
-		# Rescale the x-axis and the fields for visualization purposes
-		x1 *= x_factor
-		x2 *= x_factor
-		field1 *= y_factor1
-		field2 *= y_factor2
-
 		for n in range(nt):
 			# Clean the canvas
 			ax.cla()
 
 			# Plot the fields
-			plt.plot(x1, field1[:,n], color = color1, linestyle = linestyle1, linewidth = linewidth1, label = legend1)
-			plt.plot(x2, field2[:,n], color = color2, linestyle = linestyle2, linewidth = linewidth2, label = legend2)
+			for m in range(nf):
+				plt.plot(x[m,:], field[m,:,n], color = color[m], linestyle = linestyle[m], linewidth = linewidth[m], label = legend[m])
 			ax.legend(loc = legend_loc)
 		
-			# Set plot settings
+			# Set axis labels
 			ax.set(xlabel = x_label, ylabel = y_label)
+
+			# Draw grid
 			if grid_on:
 				ax.grid()
 
+			# Set x-axis limit
 			if x_lim is not None:
 				ax.set_xlim(x_lim)
 			else:
-				ax.set_xlim([min(x1[0], x2[0]), max(x1[-1], x2[-1])])
+				ax.set_xlim([x[:,0].min(), x[:,-1].max()])
 
+			# Set y-axis limit
 			if y_lim is not None:
 				ax.set_ylim(y_lim)
 			else:
-				ax.set_ylim([min(field1.min(), field2.min()), max(field1.max(), field2.max())])
+				ax.set_ylim([field.min(), field.max()])
 
 			# Add title
 			plt.title(title, loc = 'left', fontsize = fontsize - 1)
