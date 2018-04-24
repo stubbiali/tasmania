@@ -65,12 +65,6 @@ def dfs_translate(node, edge, graph, out_access_extents, vertical_direction):
 
 		return "{0}{1}".format(str(node), indexing_string)
 
-	if type(node) is irg.NodeConstant:
-		return str(node)
-
-	if type(node) is irg.NodeGlobal:
-		return "{}.value".format(str(node))
-
 	if type(node) is irg.NodeBinaryOperator:
 		left_node = irutils.get_successor_left(graph, node)
 		right_node = irutils.get_successor_right(graph, node)
@@ -85,6 +79,19 @@ def dfs_translate(node, edge, graph, out_access_extents, vertical_direction):
 		right = dfs_translate(right_node, right_edge, graph, out_access_extents, vertical_direction)
 
 		return "({0}) {1} ({2})".format(left, str(node), right) 
+
+	if type(node) is irg.NodeUnaryOperator:
+		out_node = irutils.get_successor(graph, node)
+		out_edge = irutils.get_out_edge(graph, node) 
+		out = dfs_translate(out_node, out_edge, graph, out_access_extents, vertical_direction)
+
+		return "{0} ({1})".format(str(node), out)
+
+	if type(node) is irg.NodeConstant:
+		return str(node)
+
+	if type(node) is irg.NodeGlobal:
+		return "{}.value".format(str(node))
 
 
 def generate_indexing_string_for_named_expression(out_access_extents, access_offsets, vertical_direction):

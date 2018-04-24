@@ -56,12 +56,6 @@ def dfs_assignment_statements(node, graph):
 	if type(node) is irg.NodeNamedExpression:
 		return [node]
 
-	if type(node) is irg.NodeConstant:
-		return [node]
-
-	if type(node) is irg.NodeGlobal:
-		return [node]
-
 	if type(node) is irg.NodeBinaryOperator:
 		stage_nodes = [node]
 		for succ in graph.successors(node):
@@ -70,6 +64,21 @@ def dfs_assignment_statements(node, graph):
 					stage_nodes.append(n)
 
 		return stage_nodes
+
+	if type(node) is irg.NodeUnaryOperator:
+		stage_nodes = [node]
+		for succ in graph.successors(node):
+			for n in dfs_assignment_statements(succ, graph):
+				if n not in stage_nodes:
+					stage_nodes.append(n)
+
+		return stage_nodes
+
+	if type(node) is irg.NodeConstant:
+		return [node]
+
+	if type(node) is irg.NodeGlobal:
+		return [node]
 
 
 def find_topologically_sorted_temporaries(graph):
