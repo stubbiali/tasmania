@@ -28,10 +28,12 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		self.nb = 1
 		self.order = 1
 
-	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr):
+	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr, 
+								   in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		Method computing the :class:`gridtools.Equation`_s representing the upwind :math:`x`- and :math:`y`-fluxes for all 
-		the conservative prognostic variables. The :class:`gridtools.Equation`_s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the upwind :math:`x`- 
+		and :math:`y`-fluxes for all the conservative prognostic variables. 
+		The :class:`gridtools.Equation`~s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -56,11 +58,22 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		in_V : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum.
 		in_Qv : obj
-			:class:`gridtools.Equation` representing the isentropic density of water vapour.
+			:class:`gridtools.Equation` representing the isentropic density of water vapor.
 		in_Qc : obj
 			:class:`gridtools.Equation` representing the isentropic density of cloud water.
 		in_Qr : obj
 			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+		in_qv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of water vapor.
+		in_qc_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of cloud liquid water.
+		in_qr_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of precipitation water.
+
+		Note
+		----
+		:data:`in_qv_tnd`, :data:`in_qc_tnd`, and :data:`in_qr_tnd` are not actually used, yet they appear
+		as default arguments for compliancy with the class hierarchy interface.
 		"""
 		# Compute fluxes for the isentropic density and the momentums
 		self._flux_s_x = self._get_upwind_flux_x(i, j, k, in_u, in_s)
@@ -82,8 +95,9 @@ class FluxIsentropicUpwind(FluxIsentropic):
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`_s representing the upwind :math:`z`-flux for all the conservative 
-		model variables. The :class:`gridtools.Equation`_s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the upwind :math:`z`-flux 
+		for all the conservative model variables. 
+		The :class:`gridtools.Equation`~s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -96,22 +110,23 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time of potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, 
+			i.e., the change over time of potential temperature.
 		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
 		in_s_prv : obj
-			:class:`gridtools.Equation` representing the provisional isentropic density, i.e., the isentropic density stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional isentropic density, 
+			i.e., the isentropic density stepped disregarding the vertical advection.
 		in_U : obj
 			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
 		in_U_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, i.e., the :math:`x`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, 
+			i.e., the :math:`x`-momentum stepped disregarding the vertical advection.
 		in_V : obj
 			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
 		in_V_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, i.e., the :math:`y`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, 
+			i.e., the :math:`y`-momentum stepped disregarding the vertical advection.
 		in_Qv : obj
 			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
 		in_Qv_prv : obj
@@ -145,8 +160,8 @@ class FluxIsentropicUpwind(FluxIsentropic):
 
 	def _get_upwind_flux_x(self, i, j, k, in_u, in_phi):
 		"""
-		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`x`-direction for a generic 
-		prognostic variable :math:`phi`.
+		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`x`-direction 
+		for a generic prognostic variable :math:`phi`.
 
 		Parameters
 		----------
@@ -182,8 +197,8 @@ class FluxIsentropicUpwind(FluxIsentropic):
 
 	def _get_upwind_flux_y(self, i, j, k, in_v, in_phi):
 		"""
-		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`y`-direction for a generic 
-		prognostic variable :math:`phi`.
+		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`y`-direction 
+		for a generic prognostic variable :math:`phi`.
 
 		Parameters
 		----------
@@ -218,8 +233,8 @@ class FluxIsentropicUpwind(FluxIsentropic):
 
 	def _get_upwind_flux_z(self, i, j, k, tmp_w_mid, in_phi):
 		"""
-		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`z`-direction for a generic 
-		prognostic variable :math:`phi`.
+		Get the :class:`gridtools.Equation` representing the upwind flux in :math:`z`-direction 
+		for a generic prognostic variable :math:`phi`.
 
 		Parameters
 		----------
@@ -248,7 +263,7 @@ class FluxIsentropicUpwind(FluxIsentropic):
 		flux_name = 'flux_' + in_phi_name + '_z'
 		flux = gt.Equation(name = flux_name)
 
-		flux[i, j, k] = tmp_w_mid[i, j, k] * ((tmp_w_mid[i, j, k] > 0.) * in_phi[i, j, k] +
-										  	  (tmp_w_mid[i, j, k] < 0.) * in_phi[i, j, k-1])
+		flux[i, j, k] = tmp_w_mid[i, j, k] * ((tmp_w_mid[i, j, k] > 0.) * in_phi[i, j, k-1] +
+										  	  (tmp_w_mid[i, j, k] < 0.) * in_phi[i, j,   k])
 
 		return flux

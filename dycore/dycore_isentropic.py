@@ -27,7 +27,8 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				 smooth_coeff = .03, smooth_coeff_max = .24, 
 				 smooth_moist_on = False, smooth_moist_type = 'first_order', smooth_moist_damp_depth = 10,
 				 smooth_moist_coeff = .03, smooth_moist_coeff_max = .24,
-				 physics_dynamics_coupling_on = False, sedimentation_on = False):
+				 physics_dynamics_coupling_on = False, 
+				 sedimentation_on = False, sedimentation_flux_type = 'first_order_upwind', sedimentation_substeps = 2):
 		"""
 		Constructor.
 
@@ -87,18 +88,29 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			temperature, :obj:`False` otherwise. Default is :obj:`False`.
 		sedimentation_on : `bool`, optional
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise. Default is :obj:`False`.
+		sedimentation_flux_type : str
+			String specifying the method used to compute the numerical sedimentation flux. Available options are:
+
+			- 'first_order_upwind', for the first-order upwind scheme;
+			- 'second_order_upwind', for the second-order upwind scheme.
+
+		sedimentation_substeps : int
+			Number of sub-timesteps to perform in order to integrate the sedimentation flux. 
 		"""
 		# Call parent constructor
 		super().__init__(grid, moist_on)
 
 		# Keep track of the input parameters
-		self._damp_on, self._smooth_on, self._smooth_moist_on = damp_on, smooth_on, smooth_moist_on
+		self._damp_on                      = damp_on
+		self._smooth_on                    = smooth_on
+		self._smooth_moist_on              = smooth_moist_on
 		self._physics_dynamics_coupling_on = physics_dynamics_coupling_on
-		self._sedimentation_on = sedimentation_on
+		self._sedimentation_on             = sedimentation_on
 
 		# Instantiate the class implementing the prognostic part of the dycore
 		self._prognostic = PrognosticIsentropic.factory(time_scheme, flux_scheme, grid, moist_on, backend,
-														physics_dynamics_coupling_on, sedimentation_on)
+														physics_dynamics_coupling_on, sedimentation_on, 
+														sedimentation_flux_type, sedimentation_substeps)
 		nb = self._prognostic.nb
 
 		# Instantiate the class taking care of the boundary conditions
@@ -142,13 +154,16 @@ class DynamicalCoreIsentropic(DynamicalCore):
 	@property
 	def microphysics(self):
 		"""
-		Get the attribute taking care of the cloud microphysical dynamics.
+		Get the attribute in charge of calculating the raindrop fall velocity.
 
 		Return
 		------
 		obj :
-			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
+			Instance of a derived class of either 
+			:class:`~tasmania.parameterizations.slow_tendencies.SlowTendencyMicrophysics`,
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendencyMicrophysics`,
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` in 
+			charge of calculating the raindrop fall velocity.
 		"""
 		return self._microphysics
 
@@ -166,10 +181,42 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		# Set attribute
 		self._microphysics = micro
 
-		# Update prognostic attribute
+		# Update prognostic class
 		self._prognostic.microphysics = micro
 
-	def __call__(self, dt, state, diagnostics = None, tendencies = None):
+	@property
+	def fast_tendency_parameterizations(self):
+		"""
+		Get the list of parameterizations calculating fast-varying tendencies.
+
+		Return
+		------
+		list :
+			List containing instances of derived classes of 
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
+			calculating fast-varying tendencies.
+		"""
+		return self._fast_tendency_params
+
+	@fast_tendency_parameterizations.setter
+	def fast_tendency_parameterizations(self, fast_tendency_params):
+		"""
+		Set the list of parameterizations calculating fast-varying tendencies.
+
+		Parameters
+		----------
+		fast_tendency_paras : list
+			List containing instances of derived classes of 
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
+			calculating fast-varying tendencies.
+		"""
+		# Set attribute
+		self._fast_tendency_params = fast_tendency_params
+
+		# Update prognostic class
+		self._prognostic.fast_tendency_parameterizations = fast_tendency_params
+
+	def __call__(self, dt, state, tendencies = None, diagnostics = None):
 		"""
 		Call operator advancing the state variables one step forward. 
 
@@ -192,16 +239,21 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
+		tendencies : `obj`, optional
+			:class:`~storages.grid_data.GridData` storing tendencies, namely:
+			
+			* tendency_of_air_potential_temperature (unstaggered);
+			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_precipitation_water_in_air (unstaggered).
+			
+			Default is obj:`None`.
 		diagnostics : `obj`, optional 
 			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered, required when coupling between \
-				physics and dynamics is switched on);
 			* accumulated_precipitation (unstaggered).
 
 			Default is :obj:`None`.
-		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing tendencies. Default is obj:`None`.
 
 		Return
 		------
@@ -499,13 +551,14 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		if self._moist_on:
 			# Add the mass fraction of each water component
-			state.add(mass_fraction_of_water_vapor_in_air = qv, 
-					  mass_fraction_of_cloud_liquid_water_in_air = qc,
-					  mass_fraction_of_precipitation_water_in_air = qr)
+			state.add_variables(initial_time,
+								mass_fraction_of_water_vapor_in_air = qv, 
+					  			mass_fraction_of_cloud_liquid_water_in_air = qc,
+					  			mass_fraction_of_precipitation_water_in_air = qr)
 
 		return state
 
-	def _step_dry(self, dt, state, diagnostics, tendencies):
+	def _step_dry(self, dt, state, tendencies, diagnostics):
 		"""
 		Method advancing the dry isentropic state by a single time step.
 
@@ -523,14 +576,14 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* y_velocity (:math:`y`-staggered);
 			* y_momentum_isentropic (unstaggered);
 			* air_pressure (:math:`z`-staggered);
-			* montgomery_potential (unstaggered).
+			* montgomery_potential (unstaggered);
 
-		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics.
-			For the time being, this is not actually used. 
-		tendencies : `obj`, optional 
+		tendencies : obj
 			:class:`~storages.grid_data.GridData` storing tendencies.
-			For the time being, this is not actually used. 
+			For the time being, this is not used. 
+		diagnostics : obj
+			:class:`~storages.grid_data.GridData` storing diagnostics.
+			For the time being, this is not used. 
 
 		Return
 		------
@@ -562,8 +615,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			V_now = np.copy(state['y_momentum_isentropic'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics,
-																		tendencies = tendencies)
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, tendencies = tendencies)
 
 		if self._damp_on:
 			# If this is the first call to the entry-point method: set the reference state
@@ -607,7 +659,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 
 		return state_new, diagnostics_out
 
-	def _step_moist(self, dt, state, diagnostics, tendencies):
+	def _step_moist(self, dt, state, tendencies, diagnostics):
 		"""
 		Method advancing the moist isentropic state by a single time step.
 
@@ -626,20 +678,25 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* y_momentum_isentropic (unstaggered);
 			* air_pressure (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
-			* mass_fraction_of_water_vapor_in_air (unstaggered);
-			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
-			* mass_fraction_of_precipitation_water_in_air (unstaggered).
+			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
+			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
+			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
+		tendencies : `obj`, optional
+			:class:`~storages.grid_data.GridData` storing tendencies, namely:
+			
+			* tendency_of_air_potential_temperature (unstaggered);
+			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_precipitation_water_in_air (unstaggered).
+			
+			Default is obj:`None`.
 		diagnostics : `obj`, optional 
 			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered, required only if coupling \
-				between physics and dynamics is switched on);
 			* accumulated_precipitation (unstaggered).
 
-		tendencies : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing tendencies.
-			For the time being, this is not actually used.
+			Default is :obj:`None`.
 
 		Return
 		------
@@ -687,12 +744,11 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			Qr_now = np.copy(state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
 		# Perform the prognostic step, neglecting the vertical advection
-		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, diagnostics = diagnostics, 
-																		tendencies = tendencies)
+		state_new = self._prognostic.step_neglecting_vertical_advection(dt, state, tendencies = tendencies)
 
 		if self._physics_dynamics_coupling_on:
 			# Couple physics with dynamics
-			state_new_ = self._prognostic.step_coupling_physics_with_dynamics(dt, state, state_new, diagnostics)
+			state_new_ = self._prognostic.step_coupling_physics_with_dynamics(dt, state, state_new, tendencies)
 
 			# Update the output state
 			state_new.update(state_new_)

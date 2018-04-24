@@ -6,11 +6,6 @@ class DynamicalCore(TimeStepper):
 	"""
 	Abstract base class whose derived classes implement different dynamical cores.
 	The class inherits :class:`sympl.TimeStepper`.
-
-	Attributes
-	----------
-	microphysics : obj
-		Derived class of :class:`~parameterizations.microphysics.Microphysics` taking care of the cloud microphysics.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -28,8 +23,11 @@ class DynamicalCore(TimeStepper):
 		"""
 		self._grid, self._moist_on = grid, moist_on
 
-		# Initialize pointer to the object taking care of the microphysics
+		# Initialize pointer to the object in charge of calculating the raindrop fall velocity
 		self._microphysics = None
+
+		# Initialize the list of parameterizations calculating fast-varying tendencies
+		self._fast_tendency_params = []
 
 	@property
 	@abc.abstractmethod
@@ -45,34 +43,71 @@ class DynamicalCore(TimeStepper):
 		"""
 
 	@property
+	@abc.abstractmethod
 	def microphysics(self):
 		"""
-		Get the attribute taking care of cloud microphysical dynamics.
+		Get the attribute in charge of calculating the raindrop fall velocity.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Return
 		------
 		obj :
-			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
+			Instance of a derived class of either 
+			:class:`~tasmania.parameterizations.slow_tendencies.SlowTendencyMicrophysics`,
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendencyMicrophysics`,
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` in 
+			charge of calculating the raindrop fall velocity.
 		"""
 
 	@microphysics.setter
 	@abc.abstractmethod
 	def microphysics(self, micro):
 		"""
-		Set the attribute taking care of cloud microphysical dynamics.
+		Set the attribute in charge of calculating the raindrop fall velocity.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
 		----------
 		micro : obj
-			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
+			Instance of a derived class of either 
+			:class:`~tasmania.parameterizations.slow_tendencies.SlowTendencyMicrophysics`,
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendencyMicrophysics`,
+			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` in 
+			charge of calculating the raindrop fall velocity.
+		"""
+
+	@property
+	@abc.abstractmethod
+	def fast_tendency_parameterizations(self):
+		"""
+		Get the list of parameterizations calculating fast-varying tendencies.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Return
+		------
+		list :
+			List containing instances of derived classes of 
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
+			calculating fast-varying tendencies.
+		"""
+
+	@fast_tendency_parameterizations.setter
+	@abc.abstractmethod
+	def fast_tendency_parameterizations(self, fast_tendency_params):
+		"""
+		Set the list of parameterizations calculating fast-varying tendencies.
+		As this method is marked as abstract, its implementation is delegated to the derived classes.
+
+		Parameters
+		----------
+		fast_tendency_paras : list
+			List containing instances of derived classes of 
+			:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
+			calculating fast-varying tendencies.
 		"""
 
 	@abc.abstractmethod
-	def __call__(self, dt, state, diagnostics = None, tendencies = None):
+	def __call__(self, dt, state, tendencies = None, diagnostics = None):
 		"""
 		Call operator advancing the input state one step forward. 
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
@@ -83,10 +118,10 @@ class DynamicalCore(TimeStepper):
 			:class:`datetime.timedelta` object representing the time step.
 		state : obj 
 			The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
-		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics. Default is :obj:`None`.
 		tendencies : `obj`, optional 
 			:class:`~storages.grid_data.GridData` storing tendencies. Default is :obj:`None`.
+		diagnostics : `obj`, optional 
+			:class:`~storages.grid_data.GridData` storing diagnostics. Default is :obj:`None`.
 
 		Return
 		------

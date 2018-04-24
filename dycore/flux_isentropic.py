@@ -23,7 +23,8 @@ class FluxIsentropic:
 		self._moist_on = moist_on
 
 	def get_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
-							  in_Qv = None, in_Qc = None, in_Qr = None):
+							  in_Qv = None, in_Qc = None, in_Qr = None,
+							  in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
 		Method returning the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes 
 		for all the conservative model variables.
@@ -51,11 +52,17 @@ class FluxIsentropic:
 		in_V : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum.
 		in_Qv : `obj`, optional
-			:class:`gridtools.Equation` representing the isentropic density of water vapour.
+			:class:`gridtools.Equation` representing the isentropic density of water vapor.
 		in_Qc : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density of cloud water.
 		in_Qr : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+		in_qv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of water vapor.
+		in_qc_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of cloud liquid water.
+		in_qr_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of precipitation water.
 
 		Returns
 		-------
@@ -72,24 +79,32 @@ class FluxIsentropic:
 		flux_V_y : obj
 			:class:`gridtools.Equation` representing the :math:`y`-flux for the :math:`y`-momentum.
 		flux_Qv_x : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`x`-flux for the isentropic density of water vapour.
+			:class:`gridtools.Equation` representing the :math:`x`-flux for the isentropic density of water vapor.
 		flux_Qv_y : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`y`-flux for the isentropic density of water vapour.
+			:class:`gridtools.Equation` representing the :math:`y`-flux for the isentropic density of water vapor.
 		flux_Qc_x : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`x`-flux for the isentropic density of cloud water.
+			:class:`gridtools.Equation` representing the :math:`x`-flux for the isentropic density of cloud liquid water.
 		flux_Qc_y : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`y`-flux for the isentropic density of cloud water.
+			:class:`gridtools.Equation` representing the :math:`y`-flux for the isentropic density of cloud liquid water.
 		flux_Qr_x : `obj`, optional
 			:class:`gridtools.Equation` representing the :math:`x`-flux for the isentropic density of precipitation water.
 		flux_Qr_y : `obj`, optional
 			:class:`gridtools.Equation` representing the :math:`y`-flux for the isentropic density of precipitation water.
 		"""
-		self._compute_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
-		if self._moist_on:
-			return self._flux_s_x, self._flux_s_y, self._flux_U_x, self._flux_U_y, self._flux_V_x, self._flux_V_y, \
-				   self._flux_Qv_x, self._flux_Qv_y, self._flux_Qc_x, self._flux_Qc_y, self._flux_Qr_x, self._flux_Qr_y
+		self._compute_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
+										in_Qv, in_Qc, in_Qr,
+										in_qv_tnd, in_qc_tnd, in_qr_tnd)
+		if not self._moist_on:
+			return self._flux_s_x, self._flux_s_y, \
+				   self._flux_U_x, self._flux_U_y, \
+				   self._flux_V_x, self._flux_V_y
 		else:
-			return self._flux_s_x, self._flux_s_y, self._flux_U_x, self._flux_U_y, self._flux_V_x, self._flux_V_y
+			return self._flux_s_x,  self._flux_s_y,  \
+				   self._flux_U_x,  self._flux_U_y,  \
+				   self._flux_V_x,  self._flux_V_y,  \
+				   self._flux_Qv_x, self._flux_Qv_y, \
+				   self._flux_Qc_x, self._flux_Qc_y, \
+				   self._flux_Qr_x, self._flux_Qr_y
 
 	def get_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 							in_Qv = None, in_Qv_prv = None, in_Qc = None, in_Qc_prv = None,	in_Qr = None, in_Qr_prv = None):
@@ -108,22 +123,23 @@ class FluxIsentropic:
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, 
+			i.e., the change over time in potential temperature.
 		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
 		in_s_prv : obj
-			:class:`gridtools.Equation` representing the provisional isentropic density, i.e., the isentropic density stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional isentropic density, 
+			i.e., the isentropic density stepped disregarding the vertical advection.
 		in_U : obj
 			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
 		in_U_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, i.e., the :math:`x`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, 
+			i.e., the :math:`x`-momentum stepped disregarding the vertical advection.
 		in_V : obj
 			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
 		in_V_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, i.e., the :math:`y`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, 
+			i.e., the :math:`y`-momentum stepped disregarding the vertical advection.
 		in_Qv : `obj`, optional
 			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
 		in_Qv_prv : `obj`, optional
@@ -149,7 +165,7 @@ class FluxIsentropic:
 		flux_V_z : obj
 			:class:`gridtools.Equation` representing the :math:`z`-flux for the :math:`y`-momentum.
 		flux_Qv_z : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density of water vapour.
+			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density of water vapor.
 		flux_Qc_z : `obj`, optional
 			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density of cloud water.
 		flux_Qr_z : `obj`, optional
@@ -198,10 +214,12 @@ class FluxIsentropic:
 			return FluxIsentropicMacCormack(grid, moist_on)
 
 	@abc.abstractmethod
-	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr):
+	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr, 
+								   in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes for all 
-		the conservative prognostic variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the :math:`x`- and 
+		:math:`y`-fluxes for all the conservative prognostic variables. 
+		The :class:`gridtools.Equation`~s are then set as instance attributes.
 		As this method is marked as abstract, the implementation is delegated to the derived classes.
 
 		Parameters
@@ -227,19 +245,26 @@ class FluxIsentropic:
 		in_V : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum.
 		in_Qv : obj
-			:class:`gridtools.Equation` representing the isentropic density of water vapour.
+			:class:`gridtools.Equation` representing the isentropic density of water vapor.
 		in_Qc : obj
-			:class:`gridtools.Equation` representing the isentropic density of cloud water.
+			:class:`gridtools.Equation` representing the isentropic density of cloud liquid water.
 		in_Qr : obj
 			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+		in_qv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of water vapor.
+		in_qc_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of cloud liquid water.
+		in_qr_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of precipitation water.
 		"""
 
 	@abc.abstractmethod
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`\~s representing the :math:`z`-flux for all the conservative 
-		model variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the :math:`z`-flux 
+		for all the conservative model variables. The :class:`gridtools.Equation`~s are then 
+		set as instance attributes.
 		As this method is marked as abstract, the implementation is delegated to the derived classes.
 
 		Parameters
@@ -253,22 +278,23 @@ class FluxIsentropic:
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, 
+			i.e., the change over time in potential temperature.
 		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
 		in_s_prv : obj
-			:class:`gridtools.Equation` representing the provisional isentropic density, i.e., the isentropic density stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional isentropic density, 
+			i.e., the isentropic density stepped disregarding the vertical advection.
 		in_U : obj
 			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
 		in_U_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, i.e., the :math:`x`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, 
+			i.e., the :math:`x`-momentum stepped disregarding the vertical advection.
 		in_V : obj
 			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
 		in_V_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, i.e., the :math:`y`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, 
+			i.e., the :math:`y`-momentum stepped disregarding the vertical advection.
 		in_Qv : obj
 			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
 		in_Qv_prv : obj

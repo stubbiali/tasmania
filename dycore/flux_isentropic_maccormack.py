@@ -28,10 +28,12 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		self.nb = 1
 		self.order = 2
 
-	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr):
+	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr, 
+								   in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		Method computing the :class:`gridtools.Equation`_s representing the MacCormack :math:`x`- and :math:`y`-fluxes for all 
-		the conservative prognostic variables. The :class:`gridtools.Equation`_s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the MacCormack :math:`x`- 
+		and :math:`y`-fluxes for all the conservative prognostic variables. 
+		The :class:`gridtools.Equation`~s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -61,6 +63,12 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 			:class:`gridtools.Equation` representing the isentropic density of cloud water.
 		in_Qr : obj
 			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+		in_qv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of water vapor.
+		in_qc_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of cloud liquid water.
+		in_qr_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of precipitation water.
 		"""
 		# Diagnose unstaggered velocities
 		tmp_u_unstg = gt.Equation()
@@ -69,47 +77,48 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		tmp_v_unstg[i, j, k] = in_V[i, j, k] / in_s[i, j, k]
 
 		# Compute predicted values for the isentropic density and the momentums
-		tmp_s_prd = self._get_maccormack_horizontal_predicted_value_density(i, j, k, dt, in_s, in_U, in_V)
-		tmp_tmp_U_prd = self._get_maccormack_horizontal_predicted_value_momentum_x(i, j, k, dt, in_s, tmp_u_unstg, 
-																			   tmp_v_unstg, in_mtg, in_U)
-		tmp_tmp_V_prd = self._get_maccormack_horizontal_predicted_value_momentum_y(i, j, k, dt, in_s, tmp_u_unstg, 
-																			   tmp_v_unstg, in_mtg, in_V)
+		tmp_s_prd = self._get_maccormack_horizontal_predicted_value_s(i, j, k, dt, in_s, in_U, in_V)
+		tmp_U_prd = self._get_maccormack_horizontal_predicted_value_U(i, j, k, dt, in_s, tmp_u_unstg, 
+																	  tmp_v_unstg, in_mtg, in_U)
+		tmp_V_prd = self._get_maccormack_horizontal_predicted_value_V(i, j, k, dt, in_s, tmp_u_unstg, 
+																	  tmp_v_unstg, in_mtg, in_V)
 
 		if self._moist_on:
 			# Compute predicted values for the water constituents
-			tmp_Qtmp_V_prd = self._get_maccormack_horizontal_predicted_value_constituent(i, j, k, dt, tmp_u_unstg, 
-																					 tmp_v_unstg, in_Qv)
-			tmp_Qc_prd = self._get_maccormack_horizontal_predicted_value_constituent(i, j, k, dt, tmp_u_unstg, 
-																					 tmp_v_unstg, in_Qc)
-			tmp_Qr_prd = self._get_maccormack_horizontal_predicted_value_constituent(i, j, k, dt, tmp_u_unstg, 
-																					 tmp_v_unstg, in_Qr)
+			tmp_Qv_prd = self._get_maccormack_horizontal_predicted_value_Q(i, j, k, dt, in_s, tmp_u_unstg, 
+																		   tmp_v_unstg, in_Qv, in_qr_tnd)
+			tmp_Qc_prd = self._get_maccormack_horizontal_predicted_value_Q(i, j, k, dt, in_s, tmp_u_unstg, 
+																		   tmp_v_unstg, in_Qc, in_qc_tnd)
+			tmp_Qr_prd = self._get_maccormack_horizontal_predicted_value_Q(i, j, k, dt, in_s, tmp_u_unstg, 
+																		   tmp_v_unstg, in_Qr, in_qv_tnd)
 		
 		# Diagnose predicted values for the velocities
-		tmp_tmp_U_prd_unstg = self._get_velocity(i, j, k, tmp_s_prd, tmp_tmp_U_prd)
-		tmp_tmp_V_prd_unstg = self._get_velocity(i, j, k, tmp_s_prd, tmp_tmp_V_prd)
+		tmp_u_prd_unstg = self._get_velocity(i, j, k, tmp_s_prd, tmp_U_prd)
+		tmp_v_prd_unstg = self._get_velocity(i, j, k, tmp_s_prd, tmp_V_prd)
 
 		# Compute the fluxes for the isentropic density and the momentums
-		self._flux_s_x = self._get_maccormack_flux_x_density(i, j, k, in_U, tmp_tmp_U_prd)
-		self._flux_s_y = self._get_maccormack_flux_y_density(i, j, k, in_V, tmp_tmp_V_prd)
-		self._flux_U_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_U, tmp_tmp_U_prd_unstg, tmp_tmp_U_prd)
-		self._flux_U_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_U, tmp_tmp_V_prd_unstg, tmp_tmp_U_prd)
-		self._flux_V_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_V, tmp_tmp_U_prd_unstg, tmp_tmp_V_prd)
-		self._flux_V_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_V, tmp_tmp_V_prd_unstg, tmp_tmp_V_prd)
+		self._flux_s_x = self._get_maccormack_flux_x_s(i, j, k, in_U, tmp_U_prd)
+		self._flux_s_y = self._get_maccormack_flux_y_s(i, j, k, in_V, tmp_V_prd)
+		self._flux_U_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_U, tmp_u_prd_unstg, tmp_U_prd)
+		self._flux_U_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_U, tmp_v_prd_unstg, tmp_U_prd)
+		self._flux_V_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_V, tmp_u_prd_unstg, tmp_V_prd)
+		self._flux_V_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_V, tmp_v_prd_unstg, tmp_V_prd)
 
 		if self._moist_on:
 			# Compute the fluxes for the water constituents
-			self._flux_Qv_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_Qv, tmp_tmp_U_prd_unstg, tmp_Qtmp_V_prd)
-			self._flux_Qv_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_Qv, tmp_tmp_V_prd_unstg, tmp_Qtmp_V_prd)
-			self._flux_Qc_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_Qc, tmp_tmp_U_prd_unstg, tmp_Qc_prd)
-			self._flux_Qc_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_Qc, tmp_tmp_V_prd_unstg, tmp_Qc_prd)
-			self._flux_Qr_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_Qr, tmp_tmp_U_prd_unstg, tmp_Qr_prd)
-			self._flux_Qr_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_Qr, tmp_tmp_V_prd_unstg, tmp_Qr_prd)
+			self._flux_Qv_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_Qv, tmp_u_prd_unstg, tmp_Qv_prd)
+			self._flux_Qv_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_Qv, tmp_v_prd_unstg, tmp_Qv_prd)
+			self._flux_Qc_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_Qc, tmp_u_prd_unstg, tmp_Qc_prd)
+			self._flux_Qc_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_Qc, tmp_v_prd_unstg, tmp_Qc_prd)
+			self._flux_Qr_x = self._get_maccormack_flux_x(i, j, k, tmp_u_unstg, in_Qr, tmp_u_prd_unstg, tmp_Qr_prd)
+			self._flux_Qr_y = self._get_maccormack_flux_y(i, j, k, tmp_v_unstg, in_Qr, tmp_v_prd_unstg, tmp_Qr_prd)
 
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`_s representing the MacCormack :math:`z`-flux for all the conservative 
-		model variables. The :class:`gridtools.Equation`_s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`~s representing the MacCormack :math:`z`-flux 
+		for all the conservative model variables. 
+		The :class:`gridtools.Equation`~s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -122,22 +131,23 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time of potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, 
+			i.e., the change over time of potential temperature.
 		in_s : obj
 			:class:`gridtools.Equation` representing the current isentropic density.
 		in_s_prv : obj
-			:class:`gridtools.Equation` representing the provisional isentropic density, i.e., the isentropic density stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional isentropic density, 
+			i.e., the isentropic density stepped disregarding the vertical advection.
 		in_U : obj
 			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
 		in_U_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, i.e., the :math:`x`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum, 
+			i.e., the :math:`x`-momentum stepped disregarding the vertical advection.
 		in_V : obj
 			:class:`gridtools.Equation` representing the current :math:`y`-momentum.
 		in_V_prv : obj
-			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, i.e., the :math:`y`-momentum stepped
-			disregarding the vertical advection.
+			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum, 
+			i.e., the :math:`y`-momentum stepped disregarding the vertical advection.
 		in_Qv : obj
 			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
 		in_Qv_prv : obj
@@ -176,7 +186,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 			self._flux_Qc_z = self._get_maccormack_flux_z(i, j, k, in_w, in_Qc, in_Qc_prv, tmp_Qc_prd)
 			self._flux_Qr_z = self._get_maccormack_flux_z(i, j, k, in_w, in_Qr, in_Qr_prv, tmp_Qr_prd)
 
-	def _get_maccormack_horizontal_predicted_value_density(self, i, j, k, dt, in_s, in_U, in_V):
+	def _get_maccormack_horizontal_predicted_value_s(self, i, j, k, dt, in_s, in_U, in_V):
 		"""
 		Get the :class:`gridtools.Equation` representing the predicted value for the isentropic density,
 		computed without taking the vertical advection into account.
@@ -208,7 +218,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 											 	   (in_V[i, j+1, k] - in_V[i, j, k]) / self._grid.dy)
 		return tmp_s_prd	
 
-	def _get_maccormack_horizontal_predicted_value_momentum_x(self, i, j, k, dt, in_s, tmp_u_unstg, tmp_v_unstg, in_mtg, in_U):
+	def _get_maccormack_horizontal_predicted_value_U(self, i, j, k, dt, in_s, tmp_u_unstg, tmp_v_unstg, in_mtg, in_U):
 		"""
 		Get the :class:`gridtools.Equation` representing the predicted value for the :math:`x`-momentum,
 		computed without taking the vertical advection into account.
@@ -247,7 +257,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 											 	   in_s[i, j, k] * (in_mtg[i+1, j, k] - in_mtg[i, j, k]) / self._grid.dx)
 		return tmp_U_prd	
 
-	def _get_maccormack_horizontal_predicted_value_momentum_y(self, i, j, k, dt, in_s, tmp_u_unstg, tmp_v_unstg, in_mtg, in_V):
+	def _get_maccormack_horizontal_predicted_value_V(self, i, j, k, dt, in_s, tmp_u_unstg, tmp_v_unstg, in_mtg, in_V):
 		"""
 		Get the :class:`gridtools.Equation` representing the predicted value for the :math:`y`-momentum,
 		computed without taking the vertical advection into account.
@@ -286,10 +296,11 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 											 	   in_s[i, j, k] * (in_mtg[i, j+1, k] - in_mtg[i, j, k]) / self._grid.dy)
 		return tmp_V_prd	
 
-	def _get_maccormack_horizontal_predicted_value_constituent(self, i, j, k, dt, tmp_u_unstg, tmp_v_unstg, in_Q):
+	def _get_maccormack_horizontal_predicted_value_Q(self, i, j, k, dt, in_s, tmp_u_unstg, tmp_v_unstg, 
+													 in_Q, in_q_tnd):
 		"""
-		Get the :class:`gridtools.Equation` representing the predicted value for the isentropic density of a generic 
-		water constituent :math:`Q`, computed without taking the vertical advection into account.
+		Get the :class:`gridtools.Equation` representing the predicted value for the isentropic 
+		density of a generic water constituent, computed without taking the vertical advection into account.
 		
 		Parameters
 		----------
@@ -301,25 +312,36 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
+		in_s : obj
+			:class:`gridtools.Equation` representing the air isentropic density.
 		tmp_u_unstg : obj
 			:class:`gridtools.Equation` representing the unstaggered :math:`x`-velocity.
 		tmp_v_unstg : obj
 			:class:`gridtools.Equation` representing the unstaggered :math:`y`-velocity.
 		in_Q : obj
-			:class:`gridtools.Equation` representing the isentropic density of a generic water constituent :math:`Q`.
+			:class:`gridtools.Equation` representing the isentropic density of a generic water constituent.
+		in_q_tnd : obj
+			:class:`gridtools.Equation` representing the tendency of the mass fraction of the water constituent.
 
 		Return
 		------
 		obj :
-			:class:`gridtools.Equation` representing the predicted value for :math:`Q`.
+			:class:`gridtools.Equation` representing the predicted value for the water constituent.
 		"""
 		in_Q_name = in_Q.get_name()
 		tmp_Q_prd_name = in_Q_name + '_prd'
 		tmp_Q_prd = gt.Equation(name = tmp_Q_prd_name)
-		tmp_Q_prd[i, j, k] = in_Q[i, j, k] - dt * ((tmp_u_unstg[i+1,   j, k] * in_Q[i+1,   j, k] -
-											  	 	tmp_u_unstg[  i,   j, k] * in_Q[  i,   j, k]) / self._grid.dx + 
-										 	 	   (tmp_v_unstg[  i, j+1, k] * in_Q[  i, j+1, k] - 
-											  	 	tmp_v_unstg[  i,   j, k] * in_Q[  i,   j, k]) / self._grid.dy)
+		if in_q_tnd is None:
+			tmp_Q_prd[i, j, k] = in_Q[i, j, k] - dt * ((tmp_u_unstg[i+1,   j, k] * in_Q[i+1,   j, k] -
+											  	 		tmp_u_unstg[  i,   j, k] * in_Q[  i,   j, k]) / self._grid.dx + 
+										 	 	   	   (tmp_v_unstg[  i, j+1, k] * in_Q[  i, j+1, k] - 
+											  	 		tmp_v_unstg[  i,   j, k] * in_Q[  i,   j, k]) / self._grid.dy)
+		else:
+			tmp_Q_prd[i, j, k] = in_Q[i, j, k] - dt * ((tmp_u_unstg[i+1,   j, k] * in_Q[i+1,   j, k] -
+											  	 		tmp_u_unstg[  i,   j, k] * in_Q[  i,   j, k]) / self._grid.dx + 
+										 	 	   	   (tmp_v_unstg[  i, j+1, k] * in_Q[  i, j+1, k] - 
+											  	 		tmp_v_unstg[  i,   j, k] * in_Q[  i,   j, k]) / self._grid.dy +
+													   in_s[i, j, k] * in_q_tnd[i, j, k])
 		return tmp_Q_prd	
 
 	def _get_maccormack_vertical_predicted_value(self, i, j, k, dt, in_w, in_phi, in_phi_prv):
@@ -384,10 +406,10 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		vel[i, j, k] = mnt[i, j, k] / s[i, j, k]
 		return vel
 
-	def _get_maccormack_flux_x(self, i, j, k, tmp_u_unstg, in_phi, tmp_U_prd_unstg, tmp_phi_prd):
+	def _get_maccormack_flux_x(self, i, j, k, tmp_u_unstg, in_phi, tmp_u_prd_unstg, tmp_phi_prd):
 		"""
-		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`x`-direction for a 
-		generic prognostic variable :math:`\phi`.
+		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`x`-direction 
+		for a generic prognostic variable :math:`\phi`.
 
 		Parameters
 		----------
@@ -401,7 +423,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 			:class:`gridtools.Equation` representing the unstaggered :math:`x`-velocity at the current time.
 		in_phi : obj
 			:class:`gridtools.Equation` representing the field :math:`\phi` at the current time.
-		tmp_U_prd_unstg : obj
+		tmp_u_prd_unstg : obj
 			:class:`gridtools.Equation` representing the predicted value for the unstaggered :math:`x`-velocity.
 		tmp_phi_prd : obj
 			:class:`gridtools.Equation` representing the predicted value for the field :math:`\phi`.
@@ -414,13 +436,14 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		phi_name = in_phi.get_name()
 		flux_name = 'flux_' + phi_name + '_x'
 		flux = gt.Equation(name = flux_name)
-		flux[i, j, k] = 0.5 * (tmp_u_unstg[i+1, j, k] * in_phi[i+1, j, k] + tmp_U_prd_unstg[i, j, k] * tmp_phi_prd[i, j, k])
+		flux[i, j, k] = 0.5 * (tmp_u_unstg[i+1, j, k] * in_phi[i+1, j, k] + 
+							   tmp_u_prd_unstg[i, j, k] * tmp_phi_prd[i, j, k])
 		return flux
 
-	def _get_maccormack_flux_x_density(self, i, j, k, in_U, tmp_U_prd):
+	def _get_maccormack_flux_x_s(self, i, j, k, in_U, tmp_U_prd):
 		"""
-		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`x`-direction for the
-		isentropic density.
+		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`x`-direction 
+		for the isentropic density.
 
 		Parameters
 		----------
@@ -444,10 +467,10 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		flux_in_s_x[i, j, k] = 0.5 * (in_U[i+1, j, k] + tmp_U_prd[i, j, k])
 		return flux_in_s_x
 
-	def _get_maccormack_flux_y(self, i, j, k, tmp_v_unstg, in_phi, tmp_V_prd_unstg, tmp_phi_prd):
+	def _get_maccormack_flux_y(self, i, j, k, tmp_v_unstg, in_phi, tmp_v_prd_unstg, tmp_phi_prd):
 		"""
-		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`y`-direction for a 
-		generic prognostic variable :math:`\phi`.
+		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`y`-direction 
+		for a generic prognostic variable :math:`\phi`.
 
 		Parameters
 		----------
@@ -461,7 +484,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 			:class:`gridtools.Equation` representing the unstaggered :math:`y`-velocity at the current time.
 		in_phi : obj
 			:class:`gridtools.Equation` representing the field :math:`\phi` at the current time.
-		tmp_V_prd_unstg : obj
+		tmp_v_prd_unstg : obj
 			:class:`gridtools.Equation` representing the predicted value for the unstaggered :math:`y`-velocity.
 		tmp_phi_prd : obj
 			:class:`gridtools.Equation` representing the predicted value for the field :math:`\phi`.
@@ -474,13 +497,14 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		phi_name = in_phi.get_name()
 		flux_name = 'flux_' + phi_name + '_y'
 		flux = gt.Equation(name = flux_name)
-		flux[i, j, k] = 0.5 * (tmp_v_unstg[i, j+1, k] * in_phi[i, j+1, k] + tmp_V_prd_unstg[i, j, k] * tmp_phi_prd[i, j, k])
+		flux[i, j, k] = 0.5 * (tmp_v_unstg[i, j+1, k] * in_phi[i, j+1, k] + 
+							   tmp_v_prd_unstg[i, j, k] * tmp_phi_prd[i, j, k])
 		return flux
 
-	def _get_maccormack_flux_y_density(self, i, j, k, in_V, tmp_V_prd):
+	def _get_maccormack_flux_y_s(self, i, j, k, in_V, tmp_V_prd):
 		"""
-		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`y`-direction for the
-		isentropic density.
+		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`y`-direction 
+		for the isentropic density.
 
 		Parameters
 		----------
@@ -518,12 +542,13 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		k : obj
 			:class:`gridtools.Index` representing the index running along the :math:`\\theta`-axis.
 		in_w : obj
-			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in potential temperature.
+			:class:`gridtools.Equation` representing the vertical velocity, 
+			i.e., the change over time in potential temperature.
 		in_phi : obj
 			:class:`gridtools.Equation` representing the field :math:`\phi` at current time.
 		in_phi_prv : obj
-			:class:`gridtools.Equation` representing the provisional value for :math:`\phi`, i.e., :math:`\phi` stepped disregarding 
-			the vertical advection.
+			:class:`gridtools.Equation` representing the provisional value for :math:`\phi`, 
+			i.e., :math:`\phi` stepped disregarding the vertical advection.
 		tmp_phi_prd : obj
 			:class:`gridtools.Equation` representing the predicted value for the field :math:`\phi`.
 
