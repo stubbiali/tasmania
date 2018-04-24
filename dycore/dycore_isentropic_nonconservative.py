@@ -508,9 +508,10 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 
 		if self._moist_on:
 			# Add the mass fraction of each water component
-			state.add(mass_fraction_of_water_vapor_in_air         = qv, 
-					  mass_fraction_of_cloud_liquid_water_in_air  = qc,
-					  mass_fraction_of_precipitation_water_in_air = qr)
+			state.add_variables(initial_time,
+					  			mass_fraction_of_water_vapor_in_air         = qv, 
+					  			mass_fraction_of_cloud_liquid_water_in_air  = qc,
+					  			mass_fraction_of_precipitation_water_in_air = qr)
 
 		return state
 

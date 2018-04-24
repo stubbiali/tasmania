@@ -44,7 +44,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	steps : int
 		Number of steps the scheme entails.
 	"""
-	def __init__(self, flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, sedimentation_on):
+	def __init__(self, flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, 
+				 sedimentation_on, sedimentation_flux_type, sedimentation_substeps):
 		"""
 		Constructor.
 		
@@ -68,6 +69,14 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			:obj:`False` otherwise.
 		sedimentation_on : bool
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
+		sedimentation_flux_type : str
+			String specifying the method used to compute the numerical sedimentation flux. Available options are:
+
+			- 'first_order_upwind', for the first-order upwind scheme;
+			- 'second_order_upwind', for the second-order upwind scheme.
+
+		sedimentation_substeps : int
+			Number of sub-timesteps to perform in order to integrate the sedimentation flux. 
 
 		Note
 		----
@@ -75,7 +84,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.factory` of 
 		:class:`~dycore.prognostic_isentropic.PrognosticIsentropic`.
 		"""
-		super().__init__(flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, sedimentation_on)
+		super().__init__(flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, 
+						 sedimentation_on, sedimentation_flux_type, sedimentation_substeps)
 
 		# Number of time levels and steps entailed
 		self.time_levels = 1
@@ -91,13 +101,15 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		# by integrating the sedimentation flux
 		# These will be re-directed when the corresponding forward method is invoked for the first time
 		self._stencil_computing_slow_tendencies = None
+		self._stencil_ensuring_vertical_cfl_is_obeyed = None
 		self._stencil_stepping_by_integrating_sedimentation_flux = None
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water = None
 
-	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None, tendencies = None):
+	def step_neglecting_vertical_advection(self, dt, state, state_old = None, tendencies = None):
 		"""
-		Method advancing the conservative, prognostic model variables one time step forward via the forward Euler method.
-		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
+		Method advancing the conservative, prognostic model variables one time step forward 
+		via the forward Euler method. Only horizontal derivates are considered; possible vertical 
+		derivatives are disregarded.
 
 		Parameters
 		----------
@@ -120,13 +132,16 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		state_old : `obj`, optional
 			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
-			This is not actually used, yet it appears as default argument for compliancy with the class hierarchy interface.
-		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
-			For the time being, this is not actually used.
+			This is not actually used, yet it appears as default argument for compliancy with 
+			the class hierarchy interface.
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly storing tendencies.
-			For the time being, this is not actually used.
+			:class:`~storages.grid_data.GridData` storing the following tendencies:
+
+			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_precipitation_water_in_air (unstaggered).
+
+			Default is :obj:`None`.
 
 		Return
 		------
@@ -140,16 +155,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
-		# Initialize the output state
-		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
-		state_new = StateIsentropic(time + dt, self._grid)
-
 		# The first time this method is invoked, initialize the GT4Py stencils
 		if self._stencil_stepping_by_neglecting_vertical_advection_first is None:
-			self._stencils_stepping_by_neglecting_vertical_advection_initialize(state)
+			self._stencils_stepping_by_neglecting_vertical_advection_initialize(state, tendencies)
 
 		# Update the attributes which serve as inputs to the first GT4Py stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, state)
+		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, state, tendencies)
 		
 		# Run the compute function of the stencil stepping the isentropic density and the water constituents,
 		# and providing provisional values for the momentums
@@ -182,6 +193,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			s_prov = .5 * (state['air_isentropic_density'].values[:,:,:,0] + out_s)
 
 		# Diagnose the Montgomery potential from the provisional isentropic density
+		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
 		state_prov = StateIsentropic(time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
 		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['air_pressure'].values[0,0,0,0])
 
@@ -212,13 +224,14 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self.boundary.apply(out_U, state['x_momentum_isentropic'].values[:,:,:,0])
 		self.boundary.apply(out_V, state['y_momentum_isentropic'].values[:,:,:,0])
 
-		# Update the output state
-		state_new.add(air_isentropic_density                 = out_s, 
-					  x_momentum_isentropic                  = out_U, 
-					  y_momentum_isentropic                  = out_V,
-					  water_vapor_isentropic_density         = out_Qv, 
-					  cloud_liquid_water_isentropic_density  = out_Qc,
-					  precipitation_water_isentropic_density = out_Qr)
+		# Instantiate the output state
+		state_new = StateIsentropic(time + dt, self._grid,
+									air_isentropic_density				   = out_s,
+					  				x_momentum_isentropic                  = out_U, 
+					  				y_momentum_isentropic                  = out_V,
+					  				water_vapor_isentropic_density         = out_Qv, 
+					  				cloud_liquid_water_isentropic_density  = out_Qc,
+					  				precipitation_water_isentropic_density = out_Qr)
 
 		return state_new
 
@@ -276,14 +289,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		if self._stencil_stepping_by_integrating_sedimentation_flux is None:
 			self._stencils_stepping_by_integrating_sedimentation_flux_initialize()
 
-		# Compute the number of substeps required to obey the vertical CFL condition, 
-		# so retaining numerical stability
-		h = state_now['height'].values[:,:,:,0]
-		vt = self.microphysics.get_raindrop_fall_velocity(state_now)
-		cfl = np.max(vt[:,:,:] * (1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds) / \
-					 (h[:,:,:-1] - h[:,:,1:]))
-		substeps = max(np.ceil(cfl), 1.)
-		dts = dt / substeps
+		# Compute the smaller timestep
+		dts = dt / float(self._sedimentation_substeps)
 
 		# Update the attributes which serve as inputs to the GT4Py stencils
 		nx, ny = self._grid.nx, self._grid.ny
@@ -326,9 +333,13 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._stencil_computing_slow_tendencies.compute()
 
 		# Perform the time-splitting procedure
-		for n in range(int(substeps)):
+		for n in range(self._sedimentation_substeps):
 			# Compute the raindrop fall velocity
 			self._in_vt[:,:,:] = self.microphysics.get_raindrop_fall_velocity(state_new)
+
+			# Make sure the vertical CFL is obeyed
+			self._stencil_ensuring_vertical_cfl_is_obeyed.compute()
+			self._in_vt[:,:,:] = self._out_vt[:,:,:]
 
 			# Compute the precipitation and the accumulated precipitation
 			ppt = self._in_rho[:,:,-1:] * self._in_qr[:,:,-1:] * self._in_vt[:,:,-1:] * self._dts.value / rho_water
@@ -348,14 +359,15 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		# Diagnose the isentropic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
-		state_new.add(precipitation_water_isentropic_density = self._out_Qr[:nx,:ny,:])
+		state_new.add_variables(time_now + dt,
+								precipitation_water_isentropic_density = self._out_Qr[:nx,:ny,:])
 
 		return state_new, diagnostics_out
 
-	def _stencils_stepping_by_neglecting_vertical_advection_initialize(self, state):
+	def _stencils_stepping_by_neglecting_vertical_advection_initialize(self, state, tendencies):
 		"""
-		Initialize the GT4Py stencils implementing the forward Euler scheme to step the solution by neglecting
-		vertical advection.
+		Initialize the GT4Py stencils implementing the forward Euler scheme to step the solution 
+		by neglecting vertical advection.
 
 		Parameters
 		----------
@@ -370,7 +382,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		mi, mj, nz = s.shape
 
 		# Allocate the Numpy arrays which will serve as inputs to the first stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(mi, mj)
+		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(mi, mj, tendencies)
 
 		# Allocate the Numpy arrays which will store provisional (i.e., temporary) fields
 		self._stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(mi, mj)
@@ -385,32 +397,35 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 									  (nb + ni - 1, nb + nj - 1, nk - 1))
 		_mode = self._backend
 
+		# Set the first stencil's inputs and outputs
+		_inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
+				   'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V}
+		_outputs = {'out_s': self._out_s, 'out_U': self._tmp_U, 'out_V': self._tmp_V}
+		if self._moist_on:
+			_inputs.update({'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc,	'in_Qr': self._in_Qr})
+			_outputs.update({'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr})
+		if tendencies is not None:
+			if tendencies['tendency_of_mass_fraction_of_water_vapor_in_air'] is not None:
+				_inputs['in_qv_tnd'] = self._in_qv_tnd
+			if tendencies['tendency_of_mass_fraction_of_cloud_liquid_water_in_air'] is not None:
+				_inputs['in_qc_tnd'] = self._in_qc_tnd
+			if tendencies['tendency_of_mass_fraction_of_precipitation_water_in_air'] is not None:
+				_inputs['in_qr_tnd'] = self._in_qr_tnd
+
 		# Instantiate the first stencil
-		if not self._moist_on:
-			self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
-				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
-				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
-						  'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V},
-				global_inputs = {'dt': self._dt},
-				outputs = {'out_s': self._out_s, 'out_U': self._tmp_U, 'out_V': self._tmp_V},
-				domain = _domain, 
-				mode = _mode)
-		else:
-			self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
-				definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
-				inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 
-						  'in_mtg': self._in_mtg, 'in_U': self._in_U, 'in_V': self._in_V,  
-						  'in_Qv': self._in_Qv, 'in_Qc': self._in_Qc, 'in_Qr': self._in_Qr},
-				global_inputs = {'dt': self._dt},
-				outputs = {'out_s': self._out_s, 'out_U': self._tmp_U, 'out_V': self._tmp_V,
-						   'out_Qv': self._out_Qv, 'out_Qc': self._out_Qc, 'out_Qr': self._out_Qr},
-				domain = _domain, 
-				mode = _mode)
+		self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil( 
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
+			inputs = _inputs,
+			global_inputs = {'dt': self._dt},
+			outputs = _outputs,
+			domain = _domain, 
+			mode = _mode)
 
 		# Instantiate the second stencil
 		self._stencil_stepping_by_neglecting_vertical_advection_second = gt.NGStencil( 
 			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_second_defs,
-			inputs = {'in_s': self._in_s_prv, 'in_mtg': self._in_mtg_prv, 'in_U': self._tmp_U, 'in_V': self._tmp_V},
+			inputs = {'in_s': self._in_s_prv, 'in_mtg': self._in_mtg_prv, 
+					  'in_U': self._tmp_U, 'in_V': self._tmp_V},
 			global_inputs = {'dt': self._dt},
 			outputs = {'out_U': self._out_U, 'out_V': self._out_V},
 			domain = _domain, 
@@ -444,7 +459,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._in_mtg_prv = np.zeros((li, lj, nz), dtype = datatype)
 
 	def _stencil_stepping_by_neglecting_vertical_advection_first_defs(self, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
-					  											   	  in_Qv = None, in_Qc = None, in_Qr = None):
+					  											   	  in_Qv = None, in_Qc = None, in_Qr = None,
+																	  in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
 		GT4Py stencil stepping the isentropic density and the water constituents via the forward Euler scheme.
 		Further, it computes provisional values for the momentums, i.e., it updates the momentums disregarding
@@ -472,6 +488,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			:class:`gridtools.Equation` representing the mass of cloud water at the current time.
 		in_Qr : `obj`, optional
 			:class:`gridtools.Equation` representing the mass of precipitation water at the current time.
+		in_qv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the parameterized tendency of the mass fraction of water vapor.
+		in_qc_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the parameterized tendency of the mass fraction of cloud liquid water.
+		in_qr_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the parameterized tendency of the mass fraction of precipitation water.
 
 		Returns
 		-------
@@ -488,12 +510,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		out_Qr : `obj`, optional
 			:class:`gridtools.Equation` representing the stepped mass of precipitation water.
 		"""
-		# Indeces
+		# Declare indeces
 		i = gt.Index()
 		j = gt.Index()
 		k = gt.Index()
 
-		# Output fields
+		# Instantiate output fields
 		out_s = gt.Equation()
 		out_U = gt.Equation()
 		out_V = gt.Equation()
@@ -502,32 +524,71 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			out_Qc = gt.Equation()
 			out_Qr = gt.Equation()
 
-		# Computations
+		# Calculate the fluxes
 		if not self._moist_on:
-			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y = \
+			flux_s_x, flux_s_y,  \
+			flux_U_x, flux_U_y,  \
+			flux_V_x, flux_V_y = \
 				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V)
 		else:
-			flux_s_x, flux_s_y, flux_U_x, flux_U_y, flux_V_x, flux_V_y, \
-			flux_Qv_x, flux_Qv_y, flux_Qc_x, flux_Qc_y, flux_Qr_x, flux_Qr_y = \
-				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr)
+			flux_s_x,  flux_s_y,   \
+			flux_U_x,  flux_U_y,   \
+			flux_V_x,  flux_V_y,   \
+			flux_Qv_x, flux_Qv_y,  \
+			flux_Qc_x, flux_Qc_y,  \
+			flux_Qr_x, flux_Qr_y = \
+				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
+												 in_Qv, in_Qc, in_Qr, in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
+		# Advance the isentropic density
 		out_s[i, j, k] = in_s[i, j, k] - dt * ((flux_s_x[i, j, k] - flux_s_x[i-1, j, k]) / self._grid.dx +
 						 					   (flux_s_y[i, j, k] - flux_s_y[i, j-1, k]) / self._grid.dy)
+
+		# Advance the x-momentum
 		out_U[i, j, k] = in_U[i, j, k] - dt * ((flux_U_x[i, j, k] - flux_U_x[i-1, j, k]) / self._grid.dx +
 						 					   (flux_U_y[i, j, k] - flux_U_y[i, j-1, k]) / self._grid.dy)
+
+		# Advance the y-momentum
 		out_V[i, j, k] = in_V[i, j, k] - dt * ((flux_V_x[i, j, k] - flux_V_x[i-1, j, k]) / self._grid.dx +
 						 					   (flux_V_y[i, j, k] - flux_V_y[i, j-1, k]) / self._grid.dy)
 		if self._moist_on:
-			out_Qv[i, j, k] = in_Qv[i, j, k] - dt * ((flux_Qv_x[i, j, k] - flux_Qv_x[i-1, j, k]) / self._grid.dx +
-						 						  	 (flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy)
-			out_Qc[i, j, k] = in_Qc[i, j, k] - dt * ((flux_Qc_x[i, j, k] - flux_Qc_x[i-1, j, k]) / self._grid.dx +
-						 						  	 (flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy)
-			out_Qr[i, j, k] = in_Qr[i, j, k] - dt * ((flux_Qr_x[i, j, k] - flux_Qr_x[i-1, j, k]) / self._grid.dx +
-						 						  	 (flux_Qr_y[i, j, k] - flux_Qr_y[i, j-1, k]) / self._grid.dy)
+			# Advance the isentropic density of water vapor
+			if in_qv_tnd is None:
+				out_Qv[i, j, k] = in_Qv[i, j, k] - \
+								  dt * ((flux_Qv_x[i, j, k] - flux_Qv_x[i-1, j, k]) / self._grid.dx +
+						 				(flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy)
+			else:
+				out_Qv[i, j, k] = in_Qv[i, j, k] - \
+								  dt * ((flux_Qv_x[i, j, k] - flux_Qv_x[i-1, j, k]) / self._grid.dx +
+						 				(flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy +
+										in_s[i, j, k] * in_qv_tnd[i, j, k])
 
-			return out_s, out_U, out_V, out_Qv, out_Qc, out_Qr
-		else:
+			# Advance the isentropic density of cloud liquid water
+			if in_qc_tnd is None:
+				out_Qc[i, j, k] = in_Qc[i, j, k] - \
+								  dt * ((flux_Qc_x[i, j, k] - flux_Qc_x[i-1, j, k]) / self._grid.dx +
+						 				(flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy)
+			else:
+				out_Qc[i, j, k] = in_Qc[i, j, k] - \
+								  dt * ((flux_Qc_x[i, j, k] - flux_Qc_x[i-1, j, k]) / self._grid.dx +
+						 				(flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy +
+										in_s[i, j, k] * in_qc_tnd[i, j, k])
+
+			# Advance the isentropic density of precipitation water
+			if in_qr_tnd is None:
+				out_Qr[i, j, k] = in_Qr[i, j, k] - \
+								  dt * ((flux_Qr_x[i, j, k] - flux_Qr_x[i-1, j, k]) / self._grid.dx +
+						 				(flux_Qr_y[i, j, k] - flux_Qr_y[i, j-1, k]) / self._grid.dy)
+			else:
+				out_Qr[i, j, k] = in_Qr[i, j, k] - \
+								  dt * ((flux_Qr_x[i, j, k] - flux_Qr_x[i-1, j, k]) / self._grid.dx +
+						 				(flux_Qr_y[i, j, k] - flux_Qr_y[i, j-1, k]) / self._grid.dy +
+										in_s[i, j, k] * in_qr_tnd[i, j, k])
+
+		if not self._moist_on:
 			return out_s, out_U, out_V
+		else:
+			return out_s, out_U, out_V, out_Qv, out_Qc, out_Qr
 
 	def _stencil_stepping_by_neglecting_vertical_advection_second_defs(self, dt, in_s, in_mtg, in_U, in_V):
 		"""
@@ -682,11 +743,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._in_qr_prv = np.zeros((nx, ny, nz  ), dtype = datatype)
 		self._in_vt     = np.zeros((nx, ny, nz  ), dtype = datatype)
 
-		# Allocate the Numpy arrays which will be shared accross different stencils
+		# Allocate the Numpy arrays which will be shared among different stencils
 		self._tmp_s_tnd  = np.zeros((nx, ny, nz), dtype = datatype)
 		self._tmp_qr_tnd = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Allocate the Numpy arrays which will serve as stencils' outputs
+		self._out_vt = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qr = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Initialize the GT4Py stencil in charge of computing the slow tendencies
@@ -696,6 +758,15 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 								'in_qr': self._in_qr, 'in_qr_prv': self._in_qr_prv},
 			global_inputs    = {'dt': self._dt},
 			outputs          = {'out_s_tnd': self._tmp_s_tnd, 'out_qr_tnd': self._tmp_qr_tnd},
+			domain           = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
+			mode             = self._backend)
+
+		# Initialize the GT4Py stencil ensuring that the vertical CFL condition is fulfilled
+		self._stencil_ensuring_vertical_cfl_is_obeyed = gt.NGStencil(
+			definitions_func = self._stencil_ensuring_vertical_cfl_is_obeyed_defs,
+			inputs           = {'in_h': self._in_h, 'in_vt': self._in_vt},
+			global_inputs    = {'dts': self._dts},
+			outputs          = {'out_vt': self._out_vt},
 			domain           = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode             = self._backend)
 
@@ -758,6 +829,42 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 		return out_s_tnd, out_qr_tnd
 
+	def _stencil_ensuring_vertical_cfl_is_obeyed_defs(self, dts, in_h, in_vt):
+		"""
+		GT4Py stencil ensuring that the vertical CFL condition is fulfilled.
+		This is achieved by clipping the raindrop fall velocity field: if a cell does not satisfy the CFL constraint, 
+		the vertical velocity at that cell is reduced so that the local CFL number equals 0.95.
+
+		Parameters
+		----------
+		dts : obj
+			:class:`gridtools.Global` representing the large timestep.
+		in_h : obj
+			:class:`gridtools.Equation` representing the geometric height.
+		in_vt : obj
+			:class:`gridtools.Equation` representing the raindrop fall velocity.
+
+		Return
+		------
+		obj :
+			:class:`gridtools.Equation` representing the clipped raindrop fall velocity.
+		"""
+		# Indeces
+		i = gt.Index()
+		j = gt.Index()
+		k = gt.Index()
+
+		# Temporary and output fields
+		tmp_cfl = gt.Equation()
+		out_vt  = gt.Equation()
+
+		# Computations
+		tmp_cfl[i, j, k] = in_vt[i, j, k] * dts / (in_h[i, j, k] - in_h[i, j, k+1])
+		out_vt[i, j, k]  = (tmp_cfl[i, j, k] < 0.95) * in_vt[i, j, k] + \
+						   (tmp_cfl[i, j, k] > 0.95) * 0.95 * (in_h[i, j, k] - in_h[i, j, k+1]) / dts
+
+		return out_vt
+
 	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_s, in_h, in_qr, 
 				  											  	 in_vt, in_s_tnd, in_qr_tnd):
 		"""
@@ -808,7 +915,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		# Update mass fraction of precipitation water
 		tmp_dfdz = self._flux_sedimentation.get_vertical_derivative_of_sedimentation_flux(i, j, k, in_rho, in_h, in_qr, in_vt)
 		tmp_qr_st[i, j, k] = in_qr[i, j, k] + dts * in_qr_tnd[i, j, k]
-		tmp_qr[i, j, k] = tmp_qr_st[i, j, k] - dts * tmp_dfdz[i, j, k] / in_rho[i, j, k]
+		tmp_qr[i, j, k] = tmp_qr_st[i, j, k] + dts * tmp_dfdz[i, j, k] / in_rho[i, j, k]
 		out_qr[i, j, k] = (tmp_qr[i, j, k] > 0.) * tmp_qr[i, j, k] + (tmp_qr[i, j, k] < 0.) * tmp_qr_st[i, j, k]
 
 		return out_s, out_qr

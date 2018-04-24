@@ -36,11 +36,19 @@ class PrognosticIsentropic:
 	"""
 	Abstract base class whose derived classes implement different schemes to carry out the prognostic steps of 
 	the three-dimensional moist isentropic dynamical core. The conservative form of the governing equations is used.
+
+	Attributes
+	----------
+	fast_tendency_parameterizations : list
+		List containing instances of derived classes of 
+		:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
+		calculating fast-varying tendencies.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, flux_scheme, grid, moist_on, backend, physics_dynamics_coupling_on, sedimentation_on):
+	def __init__(self, flux_scheme, grid, moist_on, backend, physics_dynamics_coupling_on, 
+				 sedimentation_on, sedimentation_flux_type, sedimentation_substeps):
 		"""
 		Constructor.
 
@@ -64,24 +72,41 @@ class PrognosticIsentropic:
 			:obj:`False` otherwise.
 		sedimentation_on : bool
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
+		sedimentation_flux_type : str
+			String specifying the method used to compute the numerical sedimentation flux. Available options are:
+
+			- 'first_order_upwind', for the first-order upwind scheme;
+			- 'second_order_upwind', for the second-order upwind scheme.
+
+		sedimentation_substeps : int
+			Number of sub-timesteps to perform in order to integrate the sedimentation flux. 
 		"""
 		# Keep track of the input parameters
-		self._flux_scheme, self._grid, self._moist_on, self._backend = flux_scheme, grid, moist_on, backend
-		self._physics_dynamics_coupling_on, self._sedimentation_on = physics_dynamics_coupling_on, sedimentation_on
+		self._flux_scheme                  = flux_scheme
+		self._grid                         = grid
+		self._moist_on                     = moist_on
+		self._backend                      = backend
+		self._physics_dynamics_coupling_on = physics_dynamics_coupling_on
+		self._sedimentation_on             = sedimentation_on
+		self._sedimentation_flux_type      = sedimentation_flux_type
+		self._sedimentation_substeps       = sedimentation_substeps
 
 		# Instantiate the class computing the numerical horizontal and vertical fluxes
 		self._flux = FluxIsentropic.factory(flux_scheme, grid, moist_on)
 
 		# Instantiate the class computing the vertical derivative of the sedimentation flux
 		if sedimentation_on:
-			self._flux_sedimentation = FluxSedimentation.factory(self._flux.order)
+			self._flux_sedimentation = FluxSedimentation.factory(sedimentation_flux_type)
 
 		# Initialize the attributes representing the diagnostic step and the lateral boundary conditions
 		# Remark: these should be suitably set before calling the stepping method for the first time
 		self._diagnostic, self._boundary = None, None
 
-		# Initialize the attribute taking care of microphysics
+		# Initialize the attribute in charge of calculating the raindrop fall velocity
 		self._microphysics = None
+
+		# Initialize the list of parameterizations providing fast-varying cloud microphysical tendencies
+		self.fast_tendency_parameterizations = []
 
 		# Initialize the pointer to the compute function of the stencil in charge of coupling physics with dynamics
 		# This will be properly re-directed the first time the corresponding forward method is invoked
@@ -100,8 +125,8 @@ class PrognosticIsentropic:
 			three-dimensional moist isentropic dynamical core.
 		"""
 		if self._diagnostic is None:
-			raise ValueError('''The attribute which is supposed to implement the diagnostic step of the moist isentroic ''' \
-							 '''dynamical core is actually :obj:`None`. Please set it correctly.''')
+			raise ValueError("""The attribute which is supposed to implement the diagnostic step of the moist isentroic """ \
+							 """dynamical core is actually :obj:`None`. Please set it correctly.""")
 		return self._diagnostic
 
 	@diagnostic.setter
@@ -130,8 +155,8 @@ class PrognosticIsentropic:
 			the horizontal boundary conditions.
 		"""
 		if self._boundary is None:
-			raise ValueError('''The attribute which is supposed to implement the horizontal boundary conditions ''' \
-							 '''is actually None. Please set it correctly.''')
+			raise ValueError("""The attribute which is supposed to implement the horizontal boundary conditions """ \
+							 """is actually None. Please set it correctly.""")
 		return self._boundary
 
 	@boundary.setter
@@ -162,14 +187,16 @@ class PrognosticIsentropic:
 	@property
 	def microphysics(self):
 		"""
-		Get the attribute taking care of microphysics.
+		Get the attribute in charge of calculating the raindrop fall velocity.
 		If this is set to :obj:`None`, a :class:`ValueError` is thrown.
 
 		Return
 		------
 		obj :
-			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+			Instance of a derived class of either 
+			:class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics` or 
+			:class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` 
+			which provides the raindrop fall velocity.
 		"""
 		if self._microphysics is None:
 			return ValueError('The attribute taking care of microphysics has not been set.')
@@ -178,18 +205,20 @@ class PrognosticIsentropic:
 	@microphysics.setter
 	def microphysics(self, micro):
 		"""
-		Set the attribute taking care of microphysics.
+		Set the attribute in charge of calculating the raindrop fall velocity.
 
 		Parameters
 		----------
 		micro : obj
-			Instance of a derived class of either :class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics`
-			or :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` which provides the raindrop fall velocity.
+			Instance of a derived class of either 
+			:class:`~tasmania.parameterizations.tendencies.TendencyMicrophysics` or 
+			:class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` 
+			which provides the raindrop fall velocity.
 		"""
 		self._microphysics = micro
 
 	@abc.abstractmethod
-	def step_neglecting_vertical_advection(self, dt, state, state_old = None, diagnostics = None, tendencies = None):
+	def step_neglecting_vertical_advection(self, dt, state, state_old = None, tendencies = None):
 		"""
 		Method advancing the conservative, prognostic model variables one time step forward.
 		Only horizontal derivates are considered; possible vertical derivatives are disregarded.
@@ -225,12 +254,14 @@ class PrognosticIsentropic:
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
-		diagnostics : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly storing diagnostics.
-			For the time being, this is not actually used.
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` possibly storing tendencies.
-			For the time being, this is not actually used.
+			:class:`~storages.grid_data.GridData` storing the following tendencies:
+
+			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_precipitation_water_in_air (unstaggered).
+
+			Default is :obj:`None`.
 
 		Return
 		------
@@ -245,7 +276,7 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
 
-	def step_coupling_physics_with_dynamics(self, dt, state_now, state_prv, diagnostics):
+	def step_coupling_physics_with_dynamics(self, dt, state_now, state_prv, tendencies):
 		"""
 		Method advancing the conservative, prognostic model variables one time step forward by coupling physics with
 		dynamics, i.e., by accounting for the change over time in potential temperature.
@@ -277,11 +308,12 @@ class PrognosticIsentropic:
 			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
-			This may be the output of :meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
-		diagnostics : obj
-			:class:`~storages.grid_data.GridData` collecting the following variables:
+			This may be the output of 
+			:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
+		tendencies : obj
+			:class:`~storages.grid_data.GridData` collecting the following tendencies:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered).
+			* tendency_of_air_potential_temperature (unstaggered).
 
 		Return
 		------
@@ -295,16 +327,12 @@ class PrognosticIsentropic:
 			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
 		"""
-		# Initialize the output state
-		time_now = utils.convert_datetime64_to_datetime(state_now['air_isentropic_density'].coords['time'].values[0])
-		state_new = StateIsentropic(time_now + dt, self._grid)
-
 		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil_stepping_by_coupling_physics_with_dynamics is None:
 			self._stencil_stepping_by_coupling_physics_with_dynamics_initialize(state_now)
 
 		# Set stencil's inputs
-		self._stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(dt, state_now, state_prv)
+		self._stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(dt, state_now, state_prv, tendencies)
 
 		# Run the stencil
 		self._stencil_stepping_by_coupling_physics_with_dynamics.compute()
@@ -319,14 +347,17 @@ class PrognosticIsentropic:
 			self._out_Qc[:,:,:nb], self._out_Qc[:,:,-nb:] = self._in_Qc_prv[:,:,:nb], self._in_Qc_prv[:,:,-nb:]
 			self._out_Qr[:,:,:nb], self._out_Qr[:,:,-nb:] = self._in_Qr_prv[:,:,:nb], self._in_Qr_prv[:,:,-nb:]
 
-		# Update the output state
-		state_new.add(air_isentropic_density = self._out_s, 
-					  x_momentum_isentropic  = self._out_U, 
-					  y_momentum_isentropic  = self._out_V)
+		# Instantiate the output state
+		time_now = utils.convert_datetime64_to_datetime(state_now['air_isentropic_density'].coords['time'].values[0])
+		state_new = StateIsentropic(time_now + dt, self._grid,
+									air_isentropic_density = self._out_s, 
+					  				x_momentum_isentropic  = self._out_U, 
+					  				y_momentum_isentropic  = self._out_V)
 		if self._moist_on:
-			state_new.add(water_vapor_isentropic_density         = self._out_Qv, 
-					  	  cloud_liquid_water_isentropic_density  = self._out_Qc,
-					  	  precipitation_water_isentropic_density = self._out_Qr)
+			state_new.add_variables(time_now + dt,
+									water_vapor_isentropic_density         = self._out_Qv, 
+					  	  			cloud_liquid_water_isentropic_density  = self._out_Qc,
+					  	  			precipitation_water_isentropic_density = self._out_Qr)
 
 		return state_new
 
@@ -381,7 +412,8 @@ class PrognosticIsentropic:
 		"""
 
 	@staticmethod
-	def factory(time_scheme, flux_scheme, grid, moist_on, backend, physics_dynamics_coupling_on, sedimentation_on):
+	def factory(time_scheme, flux_scheme, grid, moist_on, backend, physics_dynamics_coupling_on, 
+				sedimentation_on, sedimentation_flux_type, sedimentation_substeps):
 		"""
 		Static method returning an instace of the derived class implementing the time stepping scheme specified 
 		by :data:`time_scheme`, using the flux scheme specified by :data:`flux_scheme`.
@@ -412,6 +444,14 @@ class PrognosticIsentropic:
 			:obj:`False` otherwise.
 		sedimentation_on : bool
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
+		sedimentation_flux_type : str
+			String specifying the method used to compute the numerical sedimentation flux. Available options are:
+
+			- 'first_order_upwind', for the first-order upwind scheme;
+			- 'second_order_upwind', for the second-order upwind scheme.
+
+		sedimentation_substeps : int
+			Number of sub-timesteps to perform in order to integrate the sedimentation flux. 
 
 		Return
 		------
@@ -421,15 +461,17 @@ class PrognosticIsentropic:
 		if time_scheme == 'forward_euler':
 			from tasmania.dycore.prognostic_isentropic_forward_euler import PrognosticIsentropicForwardEuler
 			return PrognosticIsentropicForwardEuler(flux_scheme, grid, moist_on, backend, 
-													physics_dynamics_coupling_on, sedimentation_on)
+													physics_dynamics_coupling_on, sedimentation_on, 
+													sedimentation_flux_type, sedimentation_substeps)
 		elif time_scheme == 'centered':
 			from tasmania.dycore.prognostic_isentropic_centered import PrognosticIsentropicCentered
 			return PrognosticIsentropicCentered(flux_scheme, grid, moist_on, backend,
-												physics_dynamics_coupling_on, sedimentation_on)
+												physics_dynamics_coupling_on, sedimentation_on, 
+												sedimentation_flux_type, sedimentation_substeps)
 		else:
 			raise ValueError('Unknown time integration scheme.')
 
-	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self, mi, mj):
+	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self, mi, mj, tendencies):
 		"""
 		Allocate the attributes which serve as inputs to the GT4Py stencils which step the solution
 		disregarding the vertical advection.
@@ -440,6 +482,12 @@ class PrognosticIsentropic:
 			:math:`x`-extent of an input array representing an :math:`x`-unstaggered field.
 		mj : int
 			:math:`y`-extent of an input array representing a :math:`y`-unstaggered field.
+		tendencies : obj
+			:class:`~storages.grid_data.GridData` storing the following tendencies:
+
+			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_precipitation_water_in_air (unstaggered).
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -455,7 +503,8 @@ class PrognosticIsentropic:
 		li = mi if not self._physics_dynamics_coupling_on else max(mi, nx)
 		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
 
-		# Allocate the input Numpy arrays which may be shared with the stencil in charge of coupling physics with dynamics
+		# Allocate the input Numpy arrays which may be shared with the stencil 
+		# in charge of coupling physics with dynamics
 		self._in_s = np.zeros((li, lj, nz), dtype = datatype)
 		self._in_U = np.zeros((li, lj, nz), dtype = datatype)
 		self._in_V = np.zeros((li, lj, nz), dtype = datatype)
@@ -464,7 +513,8 @@ class PrognosticIsentropic:
 			self._in_Qc = np.zeros((li, lj, nz), dtype = datatype)
 
 			# The array which will store the input mass fraction of precipitation water may be shared
-			# either with stencil in charge of coupling physics with dynamics, or the stencil taking care of sedimentation
+			# either with stencil in charge of coupling physics with dynamics, or the stencil taking 
+			# care of sedimentation
 			li = mi if not (self._sedimentation_on and self._physics_dynamics_coupling_on) else max(mi, nx)
 			lj = mj if not (self._sedimentation_on and self._physics_dynamics_coupling_on) else max(mj, ny)
 			self._in_Qr = np.zeros((li, lj, nz), dtype = datatype)
@@ -473,6 +523,13 @@ class PrognosticIsentropic:
 		self._in_u   = np.zeros((mi+1,   mj, nz), dtype = datatype)
 		self._in_v   = np.zeros((  mi, mj+1, nz), dtype = datatype)
 		self._in_mtg = np.zeros((  mi,   mj, nz), dtype = datatype)
+		if tendencies is not None:
+			if tendencies['tendency_of_mass_fraction_of_water_vapor_in_air'] is not None:
+				self._in_qv_tnd = np.zeros((mi, mj, nz), dtype = datatype)
+			if tendencies['tendency_of_mass_fraction_of_cloud_liquid_water_in_air'] is not None:
+				self._in_qc_tnd = np.zeros((mi, mj, nz), dtype = datatype)
+			if tendencies['tendency_of_mass_fraction_of_precipitation_water_in_air'] is not None:
+				self._in_qr_tnd = np.zeros((mi, mj, nz), dtype = datatype)
 
 	def _stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(self, mi, mj):
 		"""
@@ -494,7 +551,8 @@ class PrognosticIsentropic:
 		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
 		nz = self._grid.nz
 
-		# Allocate the output Numpy arrays which may be shared with the stencil in charge of coupling physics with dynamics
+		# Allocate the output Numpy arrays which may be shared with the stencil in charge 
+		# of coupling physics with dynamics
 		self._out_s = np.zeros((li, lj, nz), dtype = datatype)
 		self._out_U = np.zeros((li, lj, nz), dtype = datatype)
 		self._out_V = np.zeros((li, lj, nz), dtype = datatype)
@@ -503,12 +561,13 @@ class PrognosticIsentropic:
 			self._out_Qc = np.zeros((li, lj, nz), dtype = datatype)
 
 			# The array which will store the output mass fraction of precipitation water may be shared
-			# either with stencil in charge of coupling physics with dynamics, or the stencil taking care of sedimentation
+			# either with stencil in charge of coupling physics with dynamics, or the stencil taking 
+			# care of sedimentation
 			li = mi if not (self._sedimentation_on and self._physics_dynamics_coupling_on) else max(mi, nx)
 			lj = mj if not (self._sedimentation_on and self._physics_dynamics_coupling_on) else max(mj, ny)
 			self._out_Qr = np.zeros((li, lj, nz), dtype = datatype)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(self, dt, state):
+	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(self, dt, state, tendencies):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencils which step the solution
 		disregarding the vertical advection.
@@ -530,6 +589,13 @@ class PrognosticIsentropic:
 			* water_vapor_isentropic_density (unstaggered, optional);
 			* cloud_liquid_water_isentropic_density (unstaggered, optional);
 			* precipitation_water_isentropic_density (unstaggered, optional).
+
+		tendencies : obj
+			:class:`~storages.grid_data.GridData` storing the following tendencies:
+
+			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
+			* tendency_of_mass_fraction_of_precipitation_water_in_air (unstaggered).
 		"""
 		# Shortcuts
 		mi, mj = self._mi, self._mj
@@ -548,6 +614,13 @@ class PrognosticIsentropic:
 			Qv = state['water_vapor_isentropic_density'].values[:,:,:,0]
 			Qc = state['cloud_liquid_water_isentropic_density'].values[:,:,:,0]
 			Qr = state['precipitation_water_isentropic_density'].values[:,:,:,0]
+		if tendencies is not None:
+			if tendencies['tendency_of_mass_fraction_of_water_vapor_in_air'] is not None:
+				qv_tnd = tendencies['tendency_of_mass_fraction_of_water_vapor_in_air'].values[:,:,:,0]
+			if tendencies['tendency_of_mass_fraction_of_cloud_liquid_water_in_air'] is not None:
+				qc_tnd = tendencies['tendency_of_mass_fraction_of_cloud_liquid_water_in_air'].values[:,:,:,0]
+			if tendencies['tendency_of_mass_fraction_of_precipitation_water_in_air'] is not None:
+				qr_tnd = tendencies['tendency_of_mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 		
 		# Update the Numpy arrays which serve as inputs to the GT4Py stencils
 		self._in_s  [  :mi,   :mj, :] = self.boundary.from_physical_to_computational_domain(s)
@@ -560,6 +633,13 @@ class PrognosticIsentropic:
 			self._in_Qv[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(Qv)
 			self._in_Qc[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(Qc)
 			self._in_Qr[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(Qr)
+		if tendencies is not None:
+			if tendencies['tendency_of_mass_fraction_of_water_vapor_in_air'] is not None:
+				self._in_qv_tnd[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(qv_tnd)
+			if tendencies['tendency_of_mass_fraction_of_cloud_liquid_water_in_air'] is not None:
+				self._in_qc_tnd[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(qc_tnd)
+			if tendencies['tendency_of_mass_fraction_of_precipitation_water_in_air'] is not None:
+				self._in_qr_tnd[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(qr_tnd)
 
 	def _stencil_stepping_by_coupling_physics_with_dynamics_initialize(self, state_now):
 		"""
@@ -658,7 +738,7 @@ class PrognosticIsentropic:
 				self._out_Qc = np.zeros((nx, ny, nz), dtype = datatype)
 				self._out_Qr = np.zeros((nx, ny, nz), dtype = datatype)
 
-	def _stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(self, dt, state_now, state_prv, diagnostics):
+	def _stencil_stepping_by_coupling_physics_with_dynamics_set_inputs(self, dt, state_now, state_prv, tendencies):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencil which steps the solution
 		by integrating the vertical advection, i.e., by accounting for the change over time in potential temperature.
@@ -692,10 +772,10 @@ class PrognosticIsentropic:
 
 			This may be the output of 
 			:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
-		diagnostics : obj
-			:class:`~storages.grid_data.GridData` collecting the following variables:
+		tendencies : obj
+			:class:`~storages.grid_data.GridData` collecting the following tendencies:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered).
+			* tendency_of_air_potential_temperature (unstaggered).
 		"""
 		# Shortcuts
 		nx, ny = self._grid.nx, self._grid.ny
@@ -704,7 +784,7 @@ class PrognosticIsentropic:
 		self._dt.value = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 
 		# Update the Numpy array representing the vertical velocity
-		self._in_w[:,:,:] = diagnostics['change_over_time_in_air_potential_temperature'].values[:,:,:,0]
+		self._in_w[:,:,:] = tendencies['tendency_of_air_potential_temperature'].values[:,:,:,0]
 
 		# Update the Numpy arrays representing the current time model variables
 		# Recall: these arrays may be shared with the stencil stepping the solution by neglecting vertical advection

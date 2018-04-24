@@ -319,13 +319,15 @@ class PrognosticIsentropicNonconservative:
 			self._out_qr[:,:,:nb], self._out_qr[:,:,-nb:] = self._in_qr_prv[:,:,:nb], self._in_qr_prv[:,:,-nb:]
 
 		# Update the output state
-		state_new.add(air_isentropic_density = self._out_s, 
-					  x_velocity             = self._out_u, 
-					  y_velocity             = self._out_v)
+		state_new.add_variables(time_now + dt,
+								air_isentropic_density = self._out_s, 
+					  			x_velocity             = self._out_u, 
+					  			y_velocity             = self._out_v)
 		if self._moist_on:
-			state_new.add(mass_fraction_of_water_vapor_in_air         = self._out_qv, 
-					  	  mass_fraction_of_cloud_liquid_water_in_air  = self._out_qc,
-					  	  mass_fraction_of_precipitation_water_in_air = self._out_qr)
+			state_new.add_variables(time_now + dt,
+									mass_fraction_of_water_vapor_in_air         = self._out_qv, 
+					  	  			mass_fraction_of_cloud_liquid_water_in_air  = self._out_qc,
+					  	  			mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
 		return state_new
 
