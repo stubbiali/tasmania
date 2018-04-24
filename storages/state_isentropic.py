@@ -208,11 +208,17 @@ class StateIsentropic(GridData):
 			zv[1:-1, :] = 0.5 * (z[:-1, :] + z[1:, :])
 			zv[0, :], zv[-1, :] = zv[1, :], zv[-2, :]
 
-		# The topography height
-		topography = self.grid.topography_height[:, y_level]
+		# The underlying topography
+		topography_ = self._vars['height'].values[:, y_level, -1, time_level]
+		if ni == nx:
+			topography = topography_
+		else:
+			topography = np.zeros((nx + 1), dtype = datatype)
+			topography[1:-1] = 0.5 * (topography_[:-1] + topography_[1:])
+			topography[0], topography[-1] = topography[1], topography[-2]
 
 		# Plot
-		utils_plot.contour_xz(xv, zv, topography, var, **kwargs)
+		utils_plot.contour_xz(xv, zv, var, topography, **kwargs)
 	
 	def contourf_xz(self, field_to_plot, y_level, time_level, **kwargs):
 		"""
@@ -297,11 +303,17 @@ class StateIsentropic(GridData):
 			zv[1:-1, :] = 0.5 * (z[:-1, :] + z[1:, :])
 			zv[0, :], zv[-1, :] = zv[1, :], zv[-2, :]
 
-		# The topography height
-		topography = self.grid.topography_height[:, y_level]
+		# The underlying topography
+		topography_ = self._vars['height'].values[:, y_level, -1, time_level]
+		if ni == nx:
+			topography = topography_
+		else:
+			topography = np.zeros((nx + 1), dtype = datatype)
+			topography[1:-1] = 0.5 * (topography_[:-1] + topography_[1:])
+			topography[0], topography[-1] = topography[1], topography[-2]
 
 		# Plot
-		utils_plot.contourf_xz(xv, zv, topography, var, **kwargs)
+		utils_plot.contourf_xz(xv, zv, var, topography, **kwargs)
 
 	def animation_contourf_xz(self, field_to_plot, y_level, destination, **kwargs):
 		"""
@@ -361,8 +373,17 @@ class StateIsentropic(GridData):
 			zv[1:-1, :, :] = 0.5 * (z[:-1, :, :] + z[1:, :, :])
 			zv[0, :, :], zv[-1, :, :] = zv[1, :, :], zv[-2, :, :]
 
+		# The underlying topography
+		topography_ = self._vars['height'].values[:, y_level, -1, :]
+		if ni == nx:
+			topography = topography_
+		else:
+			topography = np.zeros((nx + 1, nt), dtype = datatype)
+			topography[1:-1,:] = 0.5 * (topography_[:-1,:] + topography_[1:,:])
+			topography[0,:], topography[-1,:] = topography[1,:], topography[-2,:]
+
 		# Plot
-		utils_plot.animation_contourf_xz(time, xv, zv, var, destination, **kwargs)
+		utils_plot.animation_contourf_xz(destination, time, xv, zv, var, topography, **kwargs)
 
 	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
 		"""
