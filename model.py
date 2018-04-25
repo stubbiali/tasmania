@@ -3,7 +3,8 @@ from datetime import timedelta
 import numpy as np
 
 from tasmania.parameterizations.adjustments import AdjustmentMicrophysics
-from tasmania.parameterizations.tendencies import TendencyMicrophysics
+from tasmania.parameterizations.fast_tendencies import FastTendencyMicrophysics
+from tasmania.parameterizations.slow_tendencies import SlowTendencyMicrophysics
 from tasmania.storages.grid_data import GridData
 import tasmania.utils.utils as utils
 
@@ -13,20 +14,25 @@ class Model:
 	A model is made up of:
 
 	* a dynamical core (mandatory);
-	* a set of *tendency-providing* parameterizations, i.e., physical parameterization schemes which, within a timestep, \
-		are performed *before* the dynamical core; they are intended to supply the dynamical core with physical tendencies;
-	* a set of *adjustment-performing* parameterizations, i.e., physical parametrization schemes which, within a timestep, \
-		are performed *after* the dynamical core; they are intended to perform physical adjustements on the state variables \
-		and possibly provide some diagnostics.
+	* a set of parameterizations providing *slow-varying tendencies*, i.e., physical parameterization	\
+		schemes which, within a timestep, are evaluated *before* the dynamical core; they are intended 	\
+		to supply the dynamical core with physical tendencies;
+	* a set of parameterizations providing *fast-varying tendencies*, i.e., physical parameterization	\
+		schemes which, within a timestep, are evaluated *within* the dynamical core; they are intended 	\
+		to supply the dynamical core with physical tendencies;
+	* a set of *adjustment-performing* parameterizations, i.e., physical parametrization schemes which,		\
+		within a timestep, are performed *after* the dynamical core; they are intended to perform physical	\
+		adjustements on the state variables and possibly provide some diagnostics.
 	"""
 	def __init__(self):
 		"""
 		Default constructor.
 		"""
 		# Initialize the dycore, the list of tendencies, and the list of adjustments
-		self._dycore      		= None
-		self._tendency_params  	= []
-		self._adjustment_params = []
+		self._dycore      		   = None
+		self._slow_tendency_params = []
+		self._fast_tendency_params = []
+		self._adjustment_params    = []
 
 	def set_dynamical_core(self, dycore):
 		"""
@@ -35,42 +41,47 @@ class Model:
 		Parameters
 		----------
 		dycore : obj
-			Instance of a derived class of :class:`~tasmania.dycore.dycore.DynamicalCore` representing the dynamical core.
+			Instance of a derived class of :class:`~tasmania.dycore.dycore.DynamicalCore` 
+			representing the dynamical core.
 		"""
 		self._dycore = dycore
 
 		# Update the parameterizations
-		for tendency_param in self._tendency_params:
-			tendency_param.time_levels = dycore.time_levels
+		for slow_tendency_param in self._slow_tendency_params:
+			slow_tendency_param.time_levels = dycore.time_levels
 		for adjustment_param in self._adjustment_params:
 			adjustment_param.time_levels = dycore.time_levels
 
 		# Update the dycore by setting the microphysics scheme
-		done = False
-		for tendency_param in self._tendency_params:
-			if isinstance(tendency_param, TendencyMicrophysics) and not done:
-				self._dycore.microphysics = tendency_param
-				done = True
+		for slow_tendency_param in self._slow_tendency_params:
+			if isinstance(slow_tendency_param, SlowTendencyMicrophysics) and not done:
+				self._dycore.microphysics = slow_tendency_param
+		for fast_tendency_param in self._fast_tendency_params:
+			if isinstance(fast_tendency_param, FastTendencyMicrophysics) and not done:
+				self._dycore.microphysics = fast_tendency_param
 		for adjustment_param in self._adjustment_params:
 			if isinstance(adjustment_param, AdjustmentMicrophysics) and not done:
 				self._dycore.microphysics = adjustment_param
-				done = True
 
-	def add_tendency(self, tendency):
+		# Update the dycore by setting the list of parameterizations providing fast-varying tendencies
+		self._dycore.fast_tendency_parameterizations = self._fast_tendency_params
+
+	def add_slow_tendency_parameterization(self, tendency):
 		"""
-		Add a *tendency-providing* parameterization to the model.
+		Add to the model a parameterization providing slow-varying tendencies.
 
 		Parameters
 		----------
 		tendency : obj
-			Instance of a derived class of :class:`~tasmania.parameterizations.tendency.Tendency` representing a 
-			tendency-providing parameterization.
+			Instance of a derived class of :class:`~tasmania.parameterizations.slow_tendencies.SlowTendency` 
+			representing a parameterization providing slow-varying tendencies.
 
 		Note
 		----
-		In a simulation, tendency-providing parameterizations will be executed in the same order they have been added to the model.
+		In a simulation, parameterizations calculating slow-varying tendencies will be executed in the same 
+		order they have been added to the model.
 		"""
-		self._tendency_params.append(tendency)
+		self._slow_tendency_params.append(tendency)
 		
 		#
 		# Set dependencies
@@ -78,23 +89,49 @@ class Model:
 		if self._dycore is not None:
 			tendency.time_levels = self._dycore.time_levels
 
-		if isinstance(tendency, TendencyMicrophysics) and self._dycore is not None:
+		if isinstance(tendency, SlowTendencyMicrophysics) and self._dycore is not None:
 			self._dycore.microphysics = tendency
 
-	def add_adjustment(self, adjustment):
+	def add_fast_tendency_parameterization(self, tendency):
+		"""
+		Add to the model a parameterization providing fast-varying tendencies.
+
+		Parameters
+		----------
+		tendency : obj
+			Instance of a derived class of :class:`~tasmania.parameterizations.fast_tendencies.FastTendency` 
+			representing a parameterization providing fast-varying tendencies.
+
+		Note
+		----
+		In a simulation, parameterizations calculating fast-varying tendencies will be executed in the same 
+		order they have been added to the model.
+		"""
+		self._fast_tendency_params.append(tendency)
+		
+		#
+		# Set dependencies
+		#
+		if isinstance(tendency, FastTendencyMicrophysics) and self._dycore is not None:
+			self._dycore.microphysics = tendency
+
+		if self._dycore is not None:
+			self._dycore.fast_tendency_parameterizations = self._fast_tendency_params
+
+	def add_adjustment_parameterization(self, adjustment):
 		"""
 		Add an *adjustment-performing* parameterization to the model.
 
 		Parameters
 		----------
 		adjustment : obj
-			Instance of a derived class of :class:`~tasmania.parameterizations.adjustment.Adjustment` representing an 
-			adjustment-performing parameterization.
+			Instance of a derived class of :class:`~tasmania.parameterizations.adjustments.Adjustment` 
+			representing an adjustment-performing parameterization.
 
 		Note
 		----
-		In a simulation, adjustment-performing parameterizations will be executed in the same order they have been added 
-		to the model.
+		In a simulation, adjustment-performing parameterizations will be executed in the same order 
+		they have been added to the model.
 		"""
 		self._adjustment_params.append(adjustment)
 
@@ -138,7 +175,7 @@ class Model:
 		dt_          = copy.deepcopy(dt)
 
 		# Initialize storages collecting tendencies and diagnostics
-		time        = utils.convert_datetime64_to_datetime(state[state.variable_names[0]].coords['time'].values[0])
+		time        = state.time
 		tendencies  = GridData(time, state.grid)
 		diagnostics = GridData(time, state.grid)
 
@@ -160,20 +197,21 @@ class Model:
 		self._dycore.update_topography(elapsed_time)
 
 		# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
-		for tendency_param in self._tendency_params: 
-			tendencies_, diagnostics_ = tendency_param(dt_, state_out)
-			tendencies.extend(tendencies_)
+		for slow_tendency_param in self._slow_tendency_params: 
+			tendencies_, diagnostics_ = slow_tendency_param(dt_, state_out)
+			tendencies += tendencies_
 			diagnostics.extend(diagnostics_)
 
 		# Run the dynamical core, then update the state and the diagnostics
-		state_out_, diagnostics_ = self._dycore(dt_, state_out, diagnostics, tendencies)
+		state_out_, diagnostics_ = self._dycore(dt_, state_out, tendencies, diagnostics)
 		state_out.extend(state_out_)
 		diagnostics.extend(diagnostics_)
 
 		# Run the adjustment-performing parameterizations; after each parameterization, 
 		# update the state and collect diagnostics
 		for adjustment_param in self._adjustment_params:
-			state_out_, diagnostics_ = adjustment_param(dt_, state_out)
+			state_out_, tendencies_, diagnostics_ = adjustment_param(dt_, state_out)
+			tendencies += tendencies_
 			state_out.update(state_out_)
 			diagnostics.extend(diagnostics_)
 
@@ -189,13 +227,10 @@ class Model:
 			state_save.grid.update_topography(elapsed_time)
 			state_save.append(state_out)
 
-			if first_save: 
-				diagnostics_save = copy.deepcopy(diagnostics)
-				diagnostics_save.grid.update_topography(elapsed_time)
-				first_save = 0
-			else:
-				diagnostics_save.grid.update_topography(elapsed_time)
-				diagnostics_save.append(diagnostics)
+			diagnostics_save = copy.deepcopy(diagnostics)
+			diagnostics_save.grid.update_topography(elapsed_time)
+
+			first_save = 0
 
 			print('Step %6.i saved' % (steps))
 
@@ -214,20 +249,21 @@ class Model:
 			self._dycore.update_topography(elapsed_time)
 
 			# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
-			for tendency_param in self._tendency_params: 
-				tendencies_, diagnostics_ = tendency_param(dt_, state_out)
-				tendencies.update(tendencies_)
+			for slow_tendency_param in self._slow_tendency_params: 
+				tendencies_, diagnostics_ = slow_tendency_param(dt_, state_out)
+				tendencies += tendencies_
 				diagnostics.update(diagnostics_)
 
 			# Run the dynamical core, then update the state and the diagnostics
-			state_out_, diagnostics_ = self._dycore(dt_, state_out, diagnostics, tendencies)
+			state_out_, diagnostics_ = self._dycore(dt_, state_out, tendencies, diagnostics)
 			state_out.update(state_out_)
 			diagnostics.update(diagnostics_)
 
 			# Run the adjustment-performing parameterizations; after each parameterization, 
 			# update the state and collect diagnostics
 			for adjustment_param in self._adjustment_params:
-				state_out_, diagnostics_ = adjustment_param(dt_, state_out)
+				state_out_, tendencies_, diagnostics_ = adjustment_param(dt_, state_out)
+				tendencies += tendencies_
 				state_out.update(state_out_)
 				diagnostics.update(diagnostics_)
 

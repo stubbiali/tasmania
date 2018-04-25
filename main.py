@@ -22,6 +22,7 @@ from tasmania.dycore.dycore import DynamicalCore
 from tasmania.model import Model
 import tasmania.namelist as nl
 from tasmania.parameterizations.adjustments import AdjustmentMicrophysics
+from tasmania.parameterizations.slow_tendencies import SlowTendencyMicrophysics
 
 #
 # Instantiate the grid
@@ -88,30 +89,39 @@ dycore = DynamicalCore.factory(model                        = nl.model,
 							   smooth_moist_coeff           = nl.smooth_moist_coeff, 
 							   smooth_moist_coeff_max       = nl.smooth_moist_coeff_max,
 							   physics_dynamics_coupling_on = nl.physics_dynamics_coupling_on, 
-							   sedimentation_on             = nl.sedimentation_on)
+							   sedimentation_on             = nl.sedimentation_on,
+							   sedimentation_flux_type      = nl.sedimentation_flux_type,
+							   sedimentation_substeps       = nl.sedimentation_substeps)
 model.set_dynamical_core(dycore)
 
 stop = time.time()
 print('Dycore instantiated in {} ms.\n'.format((stop-start) * 1000.))
 
 #
-# Instantiate the microphysical tendency-providing parameterization, then add it to the model
+# Instantiate the parameterization calculating slow-varying cloud microphysics tendencies, 
+# then add it to the model
 #
-if nl.tendency_microphysics_on:
-	print('Instantiate the microphysical tendency-providing parameterization class ...')
+if nl.slow_tendency_microphysics_on:
+	print('Instantiate the class calculating slow-varying cloud microphysics tendencies ...')
 	start = time.time()
 
-	### TODO ###
+	slow_tendency_microphysics = SlowTendencyMicrophysics.factory(micro_scheme        = nl.slow_tendency_microphysics_type, 
+													 		 	  grid                = grid, 
+													 		 	  rain_evaporation_on = nl.rain_evaporation_on, 
+													 		 	  backend             = nl.backend, 
+													 		 	  **nl.slow_tendency_microphysics_kwargs)
+	model.add_slow_tendency_parameterization(slow_tendency_microphysics)
 
 	stop = time.time()
-	print('Microphysical tendency-providing parameterization class instantiated in %5.5f ms.\n' %
+	print('Class calculating slow-varying cloud microphysics tendencies instantiated in %5.5f ms.\n' %
 		  ((stop-start) * 1000.))
 
 #
-# Instantiate the microphysical adjustment-performing parameterization, then add it to the model
+# Instantiate the parameterization performing cloud microphysical adjustments, 
+# then add it to the model
 #
 if nl.adjustment_microphysics_on:
-	print('Instantiate the microphysical adjustment-performing parameterization class ...')
+	print('Instantiate the class performing cloud microphysics adjustments ...')
 	start = time.time()
 
 	adjustment_microphysics = AdjustmentMicrophysics.factory(micro_scheme        = nl.adjustment_microphysics_type, 
@@ -119,10 +129,10 @@ if nl.adjustment_microphysics_on:
 													 		 rain_evaporation_on = nl.rain_evaporation_on, 
 													 		 backend             = nl.backend, 
 													 		 **nl.adjustment_microphysics_kwargs)
-	model.add_adjustment(adjustment_microphysics)
+	model.add_adjustment_parameterization(adjustment_microphysics)
 
 	stop = time.time()
-	print('Microphysical adjustment-performing parameterization class instantiated in %5.5f ms.\n' %
+	print('Class performing cloud microphysics adjustments instantiated in %5.5f ms.\n' %
 		  ((stop-start) * 1000.))
 
 #
