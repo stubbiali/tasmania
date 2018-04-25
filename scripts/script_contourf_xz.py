@@ -32,7 +32,7 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/nmwc_model_check_leapfrog.pickle')
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_first_order_sedimentation_maccormack.pickle')
 field = 'x_velocity'
 y_level = 0
 time_level = -1
@@ -41,9 +41,9 @@ time_level = -1
 # Optional settings
 #
 show			 = True
-destination		 = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180308_phd_meeting/img/isentropic_convergence_maccormack_u10_lx400_nz300_ray05_diff_8km_relaxed_horizontal_velocity_perturbation')
+destination		 = os.path.join(os.environ['TASMANIA_ROOT'], 'results/figures/nmwc_model_check_maccormack_x_velocity')
 fontsize         = 16
-figsize          = [7,8]
+figsize          = [8,7]
 title            = '$x$-velocity [m s$^{-1}$]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
@@ -52,7 +52,7 @@ z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,10]
 field_factor     = 1.
-plot_height		 = True
+draw_z_isolines	 = True
 cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 12
 cbar_ticks_step  = 1
@@ -61,7 +61,7 @@ cbar_half_width  = 11.
 cbar_x_label     = ''
 cbar_y_label     = ''
 cbar_title       = ''
-cbar_orientation = 'horizontal'
+cbar_orientation = 'vertical'
 text			 = None #'$t = \dfrac{L}{\overline{u}}$'
 text_loc		 = 'upper right'
 
@@ -86,7 +86,7 @@ with open(filename, 'rb') as data:
 							   z_factor         = z_factor,
 							   z_lim            = z_lim,
 							   field_factor     = field_factor,
-							   plot_height		= plot_height,
+							   draw_z_isolines	= draw_z_isolines,
 							   cmap_name        = cmap_name, 
 							   cbar_levels      = cbar_levels,
 							   cbar_ticks_step  = cbar_ticks_step,
@@ -122,7 +122,7 @@ with open(filename, 'rb') as data:
 							   z_factor         = z_factor,
 							   z_lim            = z_lim,
 							   field_factor     = 1.e-4,
-							   plot_height		= plot_height,
+							   draw_z_isolines	= draw_z_isolines,
 							   cmap_name        = cmap_name, 
 							   cbar_levels      = cbar_levels,
 							   cbar_ticks_step  = cbar_ticks_step,

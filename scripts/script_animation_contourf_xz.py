@@ -34,11 +34,11 @@ import tasmania.utils.utils_plot as utils_plot
 # Mandatory settings
 #
 filename    = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   'data/verification_kessler_wrf_sedimentation_evaporation_leapfrog.pickle')
+						   'data/slow_tendency_kessler_wrf_sedimentation_maccormack.pickle')
 field       = 'mass_fraction_of_precipitation_water_in_air'
 y_level     = 0
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   'results/movies/kessler_sedimentation_evaporation/verification_kessler_wrf_sedimentation_evaporation_leapfrog_precipitation_water.mp4')
+						   'results/movies/kessler_sedimentation/slow_tendency_kessler_wrf_sedimentation_maccormack_precipitation_water.mp4')
 
 #
 # Optional settings
@@ -53,7 +53,7 @@ z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,10]
 field_factor     = 1.e3
-plot_height		 = True
+draw_z_isolines	 = True
 cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 18
 cbar_ticks_step  = 4
@@ -85,7 +85,7 @@ with open(filename, 'rb') as data:
 								     z_factor         = z_factor,
 								     z_lim            = z_lim,
 								     field_factor     = field_factor,
-								     plot_height	  = plot_height,
+								     draw_z_isolines  = draw_z_isolines,
 								     cmap_name        = cmap_name, 
 								     cbar_levels      = cbar_levels,
 								     cbar_ticks_step  = cbar_ticks_step,
