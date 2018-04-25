@@ -304,7 +304,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* precipitation (unstaggered, only if rain sedimentation is switched on);
 			* accumulated_precipitation (unstaggered, only if rain sedimentation is switched on);
 		"""
-		return self._step(dt, state, diagnostics, tendencies)
+		return self._step(dt, state, tendencies, diagnostics)
 
 	def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 		"""
