@@ -679,7 +679,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			else:
 				out_Qv[i, j, k] = in_Qv_old[i, j, k] - \
 								  2. * dt * ((flux_Qv_x[i, j, k] - flux_Qv_x[i-1, j, k]) / self._grid.dx +
-						 					 (flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy +
+						 					 (flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy -
 											 in_s[i, j, k] * in_qv_tnd[i, j, k])
 
 			# Advance the isentropic density of cloud liquid water
@@ -690,7 +690,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			else:
 				out_Qc[i, j, k] = in_Qc_old[i, j, k] - \
 								  2. * dt * ((flux_Qc_x[i, j, k] - flux_Qc_x[i-1, j, k]) / self._grid.dx +
-						 					 (flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy +
+						 					 (flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy -
 											 in_s[i, j, k] * in_qc_tnd[i, j, k])
 
 			# Advance the isentropic density of precipitation water
@@ -701,7 +701,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			else:
 				out_Qr[i, j, k] = in_Qr_old[i, j, k] - \
 								  2. * dt * ((flux_Qr_x[i, j, k] - flux_Qr_x[i-1, j, k]) / self._grid.dx +
-						 					 (flux_Qr_y[i, j, k] - flux_Qr_y[i, j-1, k]) / self._grid.dy +
+						 					 (flux_Qr_y[i, j, k] - flux_Qr_y[i, j-1, k]) / self._grid.dy -
 											 in_s[i, j, k] * in_qr_tnd[i, j, k])
 
 		if not self._moist_on:
