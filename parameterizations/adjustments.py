@@ -162,7 +162,9 @@ class AdjustmentMicrophysics(Adjustment):
 		micro_scheme : str
 			String specifying the microphysics parameterization scheme to implement. Either:
 
-			* 'kessler_wrf', for the WRF version of the Kessler scheme.
+			* 'kessler_wrf', for the WRF version of the Kessler scheme;
+			* 'kessler_wrf_saturation', for the WRF version of the Kessler scheme, performing only
+				the saturation adjustment.
 
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
@@ -174,7 +176,12 @@ class AdjustmentMicrophysics(Adjustment):
 			Keyword arguments to be forwarded to the derived class.
 		"""
 		if micro_scheme == 'kessler_wrf':
-			from tasmania.parameterizations.adjustment_microphysics_kessler_wrf import AdjustmentMicrophysicsKesslerWRF
+			from tasmania.parameterizations.adjustment_microphysics_kessler_wrf \
+				import AdjustmentMicrophysicsKesslerWRF
 			return AdjustmentMicrophysicsKesslerWRF(grid, rain_evaporation_on, backend, **kwargs)
+		elif micro_scheme == 'kessler_wrf_saturation':
+			from tasmania.parameterizations.adjustment_microphysics_kessler_wrf_saturation \
+				import AdjustmentMicrophysicsKesslerWRFSaturation
+			return AdjustmentMicrophysicsKesslerWRFSaturation(grid, rain_evaporation_on, backend, **kwargs)
 		else:
 			raise ValueError('Unknown microphysics parameterization scheme.')
