@@ -37,6 +37,12 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 	Attributes
 	----------
+	inputs : tuple of str
+		The variables required in the input state when the object is called.
+	diagnostics : tuple of str
+		The diagnostic variables output by the object.
+	outputs : tuple of str
+		The variables which gets adjusted by the object.
 	a : float
 		Autoconversion threshold, in units of [:math:`g ~ kg^{-1}`].
 	k1 : float
@@ -72,7 +78,23 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		:meth:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics.factory` of 
 		:class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
 		"""
+		# Call parent's constructor
 		super().__init__(grid, rain_evaporation_on, backend)
+
+		# Set attributes inherited from sympl's Implicit
+		inputs      = ('air_density', 
+				       'air_pressure', 
+				       'exner_function', 
+				       'air_temperature',
+				       'mass_fraction_of_water_vapor_in_air', 
+				       'mass_fraction_of_cloud_liquid_water_in_air',
+				       'mass_fraction_of_precipitation_water_in_air')
+		diagnostics = ('raindrop_fall_velocity')
+		outputs     = ('mass_fraction_of_water_vapor_in_air', 
+				       'mass_fraction_of_cloud_liquid_water_in_air',
+				       'mass_fraction_of_precipitation_water_in_air')
+
+		# Keep track of input arguments
 		self.a, self.k1, self.k2 = a, k1, k2
 
 		# Constants for Tetens formula
@@ -91,14 +113,12 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		self._stencil_adjustment = None
 		self._stencil_raindrop_fall_velocity = None
 
-	def __call__(self, dt, state):
+	def __call__(self, state, dt):
 		"""
-		Entry-point method performing microphysics adjustments and computing microphysics tendencies.
+		Entry-point method performing microphysics adjustments.
 
 		Parameters
 		----------
-		dt : obj
-			:class:`datetime.timedelta` representing the timestep.
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
@@ -111,8 +131,14 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 
+		dt : obj
+			:class:`datetime.timedelta` representing the timestep.
+
 		Returns
 		-------
+		diagnostics : obj
+			Empty :class:`~storages.grid_data.GridData`, as no diagnostics are computed.
+
 		state_new : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes representing the adjusted state.
 			It contains the following updated variables:
@@ -120,14 +146,6 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered).
-
-		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
-			
-			* tendency_of_air_potential_temperature (unstaggered).
-
-		diagnostics : obj
-			Empty :class:`~storages.grid_data.GridData`, as no diagnostics are computed.
 		"""
 		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil_adjustment is None:
@@ -159,13 +177,10 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 					  			mass_fraction_of_cloud_liquid_water_in_air  = self._out_qc,
 					  			mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
-		# Collect the tendencies
-		tendencies = GridData(time, self._grid, tendency_of_air_potential_temperature = self._out_w)
-
 		# Instantiate an empty GridData, acting as the output diagnostic
 		diagnostics = GridData(time, self._grid)
 
-		return state_new, tendencies, diagnostics
+		return diagnostics, state_new
 
 	def get_raindrop_fall_velocity(self, state):
 		"""
@@ -226,7 +241,6 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		self._out_qv = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qc = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qr = np.zeros((nx, ny, nz), dtype = datatype)
-		self._out_w  = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Initialize the stencil
 		self._stencil_adjustment = gt.NGStencil(
@@ -235,15 +249,13 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 					  'in_exn': self._in_exn, 'in_T': self._in_T,
 					  'in_qv': self._in_qv, 'in_qc': self._in_qc, 'in_qr': self._in_qr}, 
 			global_inputs = {'dt': self._dt},
-			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr, 
-					   'out_w': self._out_w},
+			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr}, 
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode = self._backend)
 
 	def _stencil_adjustment_defs(self, dt, in_rho, in_p, in_ps, in_exn, in_T, in_qv, in_qc, in_qr):
 		"""
-		GT4Py stencil carrying out the microphysical adjustments and computing the change over time 
-		in potential temperature.
+		GT4Py stencil carrying out the microphysical adjustments.
 
 		Parameters
 		----------
@@ -272,8 +284,6 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 			:class:`gridtools.Equation` representing the adjusted mass fraction of cloud liquid water.
 		out_qr : obj
 			:class:`gridtools.Equation` representing the adjusted mass fraction of precipitation water.
-		out_w : obj
-			:class:`gridtools.Equation` representing the change over time in potential temperature.
 
 		References
 		----------
@@ -308,7 +318,6 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		out_qv = gt.Equation()
 		out_qc = gt.Equation()
 		out_qr = gt.Equation()
-		out_w  = gt.Equation()
 
 		# Interpolate the pressure at the model main levels
 		tmp_p[i, j, k] = 0.5 * (in_p[i, j, k] + in_p[i, j, k+1])
@@ -373,13 +382,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 			out_qv[i, j, k] = tmp_qv[i, j, k] + tmp_dlt[i, j, k]
 			out_qc[i, j, k] = tmp_qc[i, j, k] - tmp_dlt[i, j, k]
 
-		# Compute the change over time in potential temperature
-		if not self._rain_evaporation_on:
-			out_w[i, j, k] = - L / (.5 * (in_exn[i, j, k] + in_exn[i, j, k+1])) * tmp_dlt[i, j, k]
-		else:
-			out_w[i, j, k] = - L / (.5 * (in_exn[i, j, k] + in_exn[i, j, k+1])) * (tmp_dlt[i, j, k] + tmp_Er[i, j, k])
-
-		return out_qv, out_qc, out_qr, out_w
+		return out_qv, out_qc, out_qr
 
 	def _stencil_raindrop_fall_velocity_initialize(self):
 		"""

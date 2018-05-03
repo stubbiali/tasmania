@@ -105,9 +105,6 @@ class SlowTendencyMicrophysics(SlowTendency):
 
 	* the raindrop fall speed ([:math:`m \, s^{-1}`]).
 
-	Note
-	----
-	Unless specified, none of the derived classes carries out the saturation adjustment.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -160,7 +157,10 @@ class SlowTendencyMicrophysics(SlowTendency):
 		micro_scheme : str
 			String specifying the microphysics parameterization scheme to implement. Either:
 
-			* 'kessler_wrf', for the WRF version of the Kessler scheme.
+			* 'kessler_wrf', for the WRF version of the Kessler scheme, with the calculated tendencies which
+				do not include the source terms deriving from the saturation adjustment;
+			* 'kessler_wrf'_saturation, for the WRF version of the Kessler scheme, with the calculated tendencies which
+				do include the source terms deriving from the saturation adjustment.
 
 		grid : obj
 			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
@@ -172,7 +172,12 @@ class SlowTendencyMicrophysics(SlowTendency):
 			Keyword arguments to be forwarded to the derived class.
 		"""
 		if micro_scheme == 'kessler_wrf':
-			from tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf import SlowTendencyMicrophysicsKesslerWRF
+			from tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf \
+				import SlowTendencyMicrophysicsKesslerWRF
 			return SlowTendencyMicrophysicsKesslerWRF(grid, rain_evaporation_on, backend, **kwargs)
+		elif micro_scheme == 'kessler_wrf_saturation':
+			from tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf_saturation \
+				import SlowTendencyMicrophysicsKesslerWRFSaturation
+			return SlowTendencyMicrophysicsKesslerWRFSaturation(grid, rain_evaporation_on, backend, **kwargs)
 		else:
 			raise ValueError('Unknown microphysics parameterization scheme.')
