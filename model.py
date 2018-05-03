@@ -210,8 +210,7 @@ class Model:
 		# Run the adjustment-performing parameterizations; after each parameterization, 
 		# update the state and collect diagnostics
 		for adjustment_param in self._adjustment_params:
-			state_out_, tendencies_, diagnostics_ = adjustment_param(dt_, state_out)
-			tendencies += tendencies_
+			diagnostics_, state_out_ = adjustment_param(state_out, dt_)
 			state_out.update(state_out_)
 			diagnostics.extend(diagnostics_)
 
@@ -262,8 +261,7 @@ class Model:
 			# Run the adjustment-performing parameterizations; after each parameterization, 
 			# update the state and collect diagnostics
 			for adjustment_param in self._adjustment_params:
-				state_out_, tendencies_, diagnostics_ = adjustment_param(dt_, state_out)
-				tendencies += tendencies_
+				diagnostics_, state_out_ = adjustment_param(state_out, dt_)
 				state_out.update(state_out_)
 				diagnostics.update(diagnostics_)
 

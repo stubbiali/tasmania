@@ -12,6 +12,15 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 	"""
 	This class inherits :class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics` 
 	to implement the saturation adjustment as predicted by the WRF version of the Kessler scheme.
+
+	Attributes
+	----------
+	inputs : tuple of str
+		The variables required in the input state when the object is called.
+	diagnostics : tuple of str
+		The diagnostic variables output by the object.
+	outputs : tuple of str
+		The variables which gets adjusted by the object.
 	"""
 	def __init__(self, grid, rain_evaporation_on, backend, **kwargs):
 		"""
@@ -32,7 +41,19 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		:meth:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics.factory` of 
 		:class:`~tasmania.parameterizations.adjustments.AdjustmentMicrophysics`.
 		"""
+		# Call parent's constructor
 		super().__init__(grid, rain_evaporation_on, backend)
+
+		# Set attributes inherited from sympl's Implicit
+		inputs      = ('air_density', 
+				       'air_pressure', 
+				       'exner_function', 
+				       'air_temperature',
+				       'mass_fraction_of_water_vapor_in_air', 
+				       'mass_fraction_of_cloud_liquid_water_in_air')
+		diagnostics = ('raindrop_fall_velocity')
+		outputs     = ('mass_fraction_of_water_vapor_in_air', 
+				       'mass_fraction_of_cloud_liquid_water_in_air')
 
 		# Constants for Tetens formula
 		self._p0 = 610.78
@@ -50,14 +71,12 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		self._stencil_adjustment = None
 		self._stencil_raindrop_fall_velocity = None
 
-	def __call__(self, dt, state):
+	def __call__(self, state, dt):
 		"""
-		Entry-point method performing the saturation adjustment adjustment and computing microphysics tendencies.
+		Entry-point method performing the saturation adjustment.
 
 		Parameters
 		----------
-		dt : obj
-			:class:`datetime.timedelta` representing the timestep.
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
@@ -69,22 +88,19 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
 
+		dt : obj
+			:class:`datetime.timedelta` representing the timestep.
+
 		Returns
 		-------
+		diagnostics : obj
+			Empty :class:`~storages.grid_data.GridData`, as no diagnostics are computed.
 		state_new : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes representing the adjusted state.
 			It contains the following updated variables:
 
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
-
-		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
-			
-			* tendency_of_air_potential_temperature (unstaggered).
-
-		diagnostics : obj
-			Empty :class:`~storages.grid_data.GridData`, as no diagnostics are computed.
 		"""
 		# The first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil_adjustment is None:
@@ -113,13 +129,10 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 								mass_fraction_of_water_vapor_in_air         = self._out_qv,
 					  			mass_fraction_of_cloud_liquid_water_in_air  = self._out_qc)
 
-		# Collect the tendencies
-		tendencies = GridData(time, self._grid, tendency_of_air_potential_temperature = self._out_w)
-
 		# Instantiate an empty GridData, acting as the output diagnostic
 		diagnostics = GridData(time, self._grid)
 
-		return state_new, tendencies, diagnostics
+		return diagnostics, state_new
 
 	def get_raindrop_fall_velocity(self, state):
 		"""
@@ -176,7 +189,6 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		# Allocate the Numpy arrays which will serve as stencil outputs
 		self._out_qv = np.zeros((nx, ny, nz), dtype = datatype)
 		self._out_qc = np.zeros((nx, ny, nz), dtype = datatype)
-		self._out_w  = np.zeros((nx, ny, nz), dtype = datatype)
 
 		# Initialize the stencil
 		self._stencil_adjustment = gt.NGStencil(
@@ -184,14 +196,13 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 			inputs = {'in_p': self._in_p, 'in_ps': self._in_ps, 'in_exn': self._in_exn, 
 					  'in_T': self._in_T, 'in_qv': self._in_qv, 'in_qc': self._in_qc}, 
 			global_inputs = {'dt': self._dt},
-			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_w': self._out_w},
+			outputs = {'out_qv': self._out_qv, 'out_qc': self._out_qc},
 			domain = gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, nz - 1)),
 			mode = self._backend)
 
 	def _stencil_adjustment_defs(self, dt, in_p, in_ps, in_exn, in_T, in_qv, in_qc):
 		"""
-		GT4Py stencil carrying out the saturation adjustment and computing the change over time 
-		in potential temperature.
+		GT4Py stencil carrying out the saturation adjustment.
 
 		Parameters
 		----------
@@ -214,8 +225,6 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 			:class:`gridtools.Equation` representing the adjusted mass fraction of water vapor.
 		out_qc : obj
 			:class:`gridtools.Equation` representing the adjusted mass fraction of cloud liquid water.
-		out_w : obj
-			:class:`gridtools.Equation` representing the change over time in potential temperature.
 
 		References
 		----------
@@ -239,7 +248,6 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		# Instantiate the output fields
 		out_qv = gt.Equation()
 		out_qc = gt.Equation()
-		out_w  = gt.Equation()
 
 		# Interpolate the pressure at the model main levels
 		tmp_p[i, j, k] = 0.5 * (in_p[i, j, k] + in_p[i, j, k+1])
@@ -262,10 +270,7 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		out_qv[i, j, k] = in_qv[i, j, k] + tmp_dlt[i, j, k]
 		out_qc[i, j, k] = in_qc[i, j, k] - tmp_dlt[i, j, k]
 
-		# Compute the change over time in potential temperature
-		out_w[i, j, k] = - L / (.5 * (in_exn[i, j, k] + in_exn[i, j, k+1])) * tmp_dlt[i, j, k]
-
-		return out_qv, out_qc, out_w
+		return out_qv, out_qc
 
 	def _stencil_raindrop_fall_velocity_initialize(self):
 		"""

@@ -1,8 +1,10 @@
 import abc
+from sympl import Implicit
 
-class Adjustment:
+class Adjustment(Implicit):
 	"""
-	Abstract base class whose derived classes implement different ajustment schemes.
+	Abstract base class whose derived classes implement different physical adjustment schemes.
+	The hierarchy lays on top of :class:`sympl.Implicit`.
 
 	Note
 	----
@@ -54,26 +56,24 @@ class Adjustment:
 		self._time_levels = value
 
 	@abc.abstractmethod
-	def __call__(self, dt, state):
+	def __call__(self, state, dt):
 		"""
 		Entry-point method applying the parameterization scheme.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
 		----------
-		dt : obj
-			:class:`datetime.timedelta` representing the timestep.
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+		dt : obj
+			:class:`datetime.timedelta` representing the timestep.
 
 		Return
 		------
-		state_new : obj
-			:class:`~storages.grid_data.GridData` storing the output, adjusted state.
-		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing possible output tendencies.
 		diagnostics : obj
 			:class:`~storages.grid_data.GridData` storing possible output diagnostics.
+		state_new : obj
+			:class:`~storages.grid_data.GridData` storing the output, adjusted state.
 		"""
 
 class AdjustmentMicrophysics(Adjustment):
