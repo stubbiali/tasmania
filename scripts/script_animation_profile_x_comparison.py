@@ -40,9 +40,9 @@ import tasmania.utils.utils_plot as utils_plot
 #
 filename    = [
 			   os.path.join(os.environ['TASMANIA_ROOT'], 
-			   				'data/verification_kessler_wrf_second_order_sedimentation_evaporation_maccormack.pickle'),
+			   				'data/verification_kessler_wrf_second_order_sedimentation_maccormack.pickle'),
 			   os.path.join(os.environ['TASMANIA_ROOT'], 
-			   				'data/slow_tendency_kessler_wrf_sedimentation_evaporation_maccormack.pickle'),
+			   				'data/slow_tendency_kessler_wrf_saturation_sedimentation_maccormack.pickle'),
 			   #os.path.join(os.environ['TASMANIA_ROOT'], 
 			   #			'data/verification_kessler_wrf_second_order_sedimentation_maccormack.pickle'),
 			   #os.path.join(os.environ['TASMANIA_ROOT'], 
@@ -57,7 +57,7 @@ field       = [
 y_level     = [0, 0, 0, 0]
 z_level     = [-1, -1, -1, -1]
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   'results/movies/kessler_sedimentation_evaporation/kessler_sedimentation_evaporation_slow_tendency_adjustment_precipitation.mp4')
+						   '../meetings_and_presentations/20180504_talk/movies/kessler_saturation_sedimentation_slow_tendency_adjustment_precipitation.mp4')
 
 #
 # Animation settings
@@ -76,7 +76,7 @@ linestyle		 = ['-', '--', '-', '-.']
 linewidth        = [1.5, 1.5, 1.5, 1.5]
 grid_on			 = True
 fps				 = 6
-legend			 = ['MC ADJ', 'MC ST', 'MC, evap. OFF', 'MC, evap. ON']
+legend			 = ['DYN, then PHYS', 'PHYS, then DYN', 'MC, evap. OFF', 'MC, evap. ON']
 legend_location  = 'upper right'
 
 #
