@@ -35,6 +35,10 @@ class SlowTendencyMicrophysicsKesslerWRF(SlowTendencyMicrophysics):
 	This class inherits :class:`~tasmania.parameterizations.slow_tendencies.SlowTendencyMicrophysics` 
 	to implement the WRF version of the Kessler scheme.
 
+	Note
+	----
+	The calculated tendencies do not include the source terms deriving from the saturation adjustment.
+
 	Attributes
 	----------
 	a : float
