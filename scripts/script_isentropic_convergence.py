@@ -7,7 +7,7 @@ import numpy as np
 import os
 import pickle
 
-import utils.utils_meteo as utils
+import tasmania.utils.utils_meteo as utils
 
 #
 # Mandatory settings
@@ -93,15 +93,16 @@ label = \
 #
 # Optional settings
 #
+fontsize        = 16
 figsize         = [8,8]
-title           = ''
+title           = 'Horizontal velocity perturbation'
 x_factor        = 1.e-3
 x_label         = '$\Delta x$ [km]'
 x_lim           = [8./13.*0.5, 13]
 x_ticks         = np.arange(1,9)
 y_factor        = 1.e-3
 y_label			= 'RMSE [m s$^{-1}$]'
-y_lim           = None #[7e-5, 1e-2]
+y_lim           = [7e-5, 1e-2]
 
 #
 # Run
@@ -144,7 +145,7 @@ for key in keys[:2]:
 		uex, wex = utils.get_isentropic_isothermal_analytical_solution(state_save.grid, x_velocity_initial_, temperature_initial_, 
 																	   mountain_height_, mountain_width_,
 																	   x_staggered = False, z_staggered = False)
-		u_ref, w_ref = uex[320:481, :], wex[320:481, :]
+		#u_ref, w_ref = u_ref[320:481, :], w_ref[320:481, :]
 
 	for i in range(len(filenames_list)):
 		with open(filenames_list[i], 'rb') as data:
@@ -185,7 +186,8 @@ for key in keys[:2]:
 #				 markerfacecolor = 'None', markeredgecolor = 'blue', markeredgewidth = 1.5,
 #				 linestyle = '-', linewidth = 1.5, basex = 2, label = 'MacCormack')
 
-ax.set(title = title)
+mpl.rcParams['font.size'] = fontsize
+ax.set_title(title, loc = 'left', fontsize = fontsize - 1)
 plt.grid(True)
 	
 ax.set(xlabel = x_label)
@@ -202,7 +204,7 @@ if y_lim is not None:
 # Extra plottings
 #
 if True:
-	ax.loglog(np.array([0.5, 1., 2., 4.]), 2e-3 * np.array([0.5, 1., 2., 4.]), 
+	ax.loglog(np.array([0.5, 1., 2., 4.]), 2.e-3 * np.array([0.5, 1., 2., 4.]), 
 			  color = 'black', linestyle = '--', basex = 2)
 	plt.text(0.5, 1e-3, '  $\mathcal{O}(\Delta x$)', horizontalalignment = 'left', verticalalignment = 'bottom')
 	ax.loglog(np.array([1., 2., 4.]), 1e-4 * np.array([1., 4., 16.]), 
