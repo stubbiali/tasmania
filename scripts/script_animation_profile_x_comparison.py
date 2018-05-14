@@ -95,14 +95,14 @@ for m in range(len(filename)):
 			var_ = state_save[field[m]].values[:, y_level[m], z_level[m], :]
 			var.append(var_)
 			x_   = state_save.grid.x.values if var_.shape[0] == state_save.grid.nx \
-				   else state_save.grid.x_half_levels.values
+				   else state_save.grid.x_at_u_locations.values
 			x.append(x_)
 		else:  # The field to plot is a diagnostic
 			time = diagnostics_save[field[m]].coords['time'].values 
 			var_ = diagnostics_save[field[m]].values[:, y_level[m], z_level[m], :]
 			var.append(var_)
 			x_   = diagnostics_save.grid.x.values if var_.shape[0] == diagnostics_save.grid.nx \
-				   else diagnostics_save.grid.x_half_levels.values
+				   else diagnostics_save.grid.x_at_u_locations.values
 			x.append(x_)
 
 #
