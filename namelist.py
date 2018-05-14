@@ -224,7 +224,7 @@ rho_water = 1000.
 # Grid settings
 #
 domain_x        = [0, 500.e3]
-nx              = 101
+nx              = 501
 domain_y        = [-1., 1.]
 ny              = 1
 domain_z        = [280. + 60., 280.]
@@ -275,8 +275,8 @@ sedimentation_on	           		= True
 sedimentation_flux_type		   		= 'second_order_upwind'
 sedimentation_substeps		   		= 2
 rain_evaporation_on			   		= True
-slow_tendency_microphysics_on       = True
-slow_tendency_microphysics_type     = 'kessler_wrf'
+slow_tendency_microphysics_on       = False
+slow_tendency_microphysics_type     = 'kessler_wrf_saturation'
 slow_tendency_microphysics_kwargs	= {
 								  	   'a' : .0001,
 								  	   'k1': .001,
@@ -286,7 +286,7 @@ fast_tendency_microphysics_on       = False
 fast_tendency_microphysics_type     = ''
 fast_tendency_microphysics_kwargs	= {}
 adjustment_microphysics_on     		= True
-adjustment_microphysics_type   		= 'kessler_wrf_saturation'
+adjustment_microphysics_type   		= 'kessler_wrf'
 adjustment_microphysics_kwargs 		= {
 								  	   'a' : .0001,
 								  	   'k1': .001,
@@ -296,7 +296,7 @@ adjustment_microphysics_kwargs 		= {
 #
 # Simulation settings
 #
-dt                    = timedelta(seconds = 10)
+dt                    = timedelta(seconds = 2)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
 simulation_time       = timedelta(hours = 6)
 initial_state_type    = 0
@@ -307,7 +307,7 @@ initial_state_kwargs  = {
 						 'temperature'          : 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = np.arange(30, 2161, 30)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/slow_tendency_kessler_wrf_sedimentation_evaporation_maccormack.pickle')
+save_iterations		  = np.arange(150, 10800, 150)
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], '../kessler_wrf_saturation_sedimentation_evaporation_maccormack_reference.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float64

@@ -23,7 +23,7 @@
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import griddata, RectBivariateSpline
 import xarray as xr
 
 from tasmania.namelist import cp, datatype, g, p_ref, Rd
@@ -147,6 +147,9 @@ class StateIsentropic(GridData):
 
 		return cfl
 
+	#
+	# Plotting utilities
+	#
 	def contour_xz(self, field_to_plot, y_level, time_level, **kwargs):
 		"""
 		Generate the contour plot of a field at a cross-section parallel to the :math:`xz`-plane.
@@ -241,7 +244,76 @@ class StateIsentropic(GridData):
 
 		# Plot
 		utils_plot.contour_xz(xv, zv, var, topography, **kwargs)
-	
+
+	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
+		"""
+		Generate the contourf plot of a field at a cross-section parallel to the :math:`xy`-plane.
+
+		Parameters
+		----------
+		field_to_plot : str 
+			String specifying the field to plot. This might be:
+
+			* the name of a variable stored in the current object;
+			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the 
+				following variables:
+			
+				- air_isentropic_density;
+				- x_momentum_isentropic;
+				- y_momentum_isentropic.
+
+		z_level : int 
+			:math:`z`-index identifying the cross-section.
+		time_level : int 
+			The time level.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. 
+			See :func:`tasmania.utils.utils_plot.contourf_xy` for the complete list.
+		"""
+		# Extract, compute, or interpolate the field to plot
+		if field_to_plot in self._vars:
+			var = self._vars[field_to_plot].values[:, :, z_level, time_level]
+		elif field_to_plot == 'horizontal_velocity':
+			u = self._vars['x_momentum_isentropic'].values[:, :, z_level, time_level] / \
+				self._vars['air_isentropic_density'].values[:, :, z_level, time_level] 
+			v = self._vars['y_momentum_isentropic'].values[:, :, z_level, time_level] / \
+				self._vars['air_isentropic_density'].values[:, :, z_level, time_level] 
+			var = np.sqrt(u ** 2 + v ** 2)
+		else:
+			raise RuntimeError('Unknown field to plot.')
+
+		# Shortcuts
+		nx, ny = self.grid.nx, self.grid.ny
+		ni, nj = var.shape
+
+		# The underlying x-grid
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		xv = np.repeat(x[:, np.newaxis], nj, axis = 1)
+
+		# The underlying y-grid
+		y  = self.grid.y.values[:] if nj == ny else self.grid.y_half_levels.values[:]
+		yv = np.repeat(y[np.newaxis, :], ni, axis = 0)
+
+		# The topography height
+		topography_ = np.copy(self.grid.topography_height)
+		topography  = np.zeros((ni, nj), dtype = datatype) 
+		if ni == nx and nj == ny:
+			topography[:,:] = topography_[:,:]
+		elif ni == nx + 1 and nj == ny:
+			topography[1:-1,:] = 0.5 * (topography_[:-1,:] + topography_[1:,:])
+			topography[0,:], topography[-1,:] = topography[1,:], topography[-2,:]
+		elif ni == nx and nj == ny + 1:
+			topography[:,1:-1] = 0.5 * (topography_[:,:-1] + topography_[:,1:])
+			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
+		else:
+			topography[1:-1,1:-1] = 0.25 * (topography_[:-1,:-1] + topography_[1:,:-1] +
+											topography_[:-1,:1]  + topography_[1:,1:])
+			topography[0,1:-1], topography[-1,1:-1] = topography[1,1:-1], topography[-2,1:-1]
+			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
+
+		# Plot
+		utils_plot.contourf_xy(xv, yv, topography, var, **kwargs)
+
 	def contourf_xz(self, field_to_plot, y_level, time_level, **kwargs):
 		"""
 		Generate the contourf plot of a field at a cross-section parallel to the :math:`xz`-plane.
@@ -337,6 +409,217 @@ class StateIsentropic(GridData):
 		# Plot
 		utils_plot.contourf_xz(xv, zv, var, topography, **kwargs)
 
+	def quiver_xy(self, field_to_plot, z_level, time_level, **kwargs):
+		"""
+		Generate the quiver plot of a vector field at a cross section parallel to the :math:`xy`-plane.
+
+		Parameters
+		----------
+		field_to_plot : str 
+			String specifying the field to plot. This might be:
+
+			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the 
+				following variables:
+
+				- air_isentropic_density;
+				- x_momentum_isentropic;
+				- y_momentum_isentropic.
+
+		z_level : int 
+			:math:`z`-level identifying the cross-section.
+		time_level : int 
+			The time level.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. 
+			See :func:`tasmania.utils.utils_plot.quiver_xy` for the complete list.
+		"""
+		# Extract, compute, or interpolate the field to plot
+		if field_to_plot == 'horizontal_velocity':
+			vx = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				 self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
+			vy = self._vars['y_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				 self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
+			scalar = np.sqrt(vx ** 2 + vy ** 2)
+		else:
+			raise RuntimeError('Unknown field to plot.')
+
+		# Shortcuts
+		nx, ny = self.grid.nx, self.grid.ny
+		ni, nj = scalar.shape
+
+		# The underlying x-grid
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		xv = np.repeat(x[:, np.newaxis], nj, axis = 1)
+
+		# The underlying y-grid
+		y  = self.grid.y.values[:] if nj == ny else self.grid.y_half_levels.values[:]
+		yv = np.repeat(y[np.newaxis, :], ni, axis = 0)
+
+		# The topography height
+		topography_ = np.copy(self.grid.topography_height)
+		topography  = np.zeros((ni, nj), dtype = datatype) 
+		if ni == nx and nj == ny:
+			topography[:,:] = topography_[:,:]
+		elif ni == nx + 1 and nj == ny:
+			topography[1:-1,:] = 0.5 * (topography_[:-1,:] + topography_[1:,:])
+			topography[0,:], topography[-1,:] = topography[1,:], topography[-2,:]
+		elif ni == nx and nj == ny + 1:
+			topography[:,1:-1] = 0.5 * (topography_[:,:-1] + topography_[:,1:])
+			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
+		else:
+			topography[1:-1,1:-1] = 0.25 * (topography_[:-1,:-1] + topography_[1:,:-1] +
+											topography_[:-1,:1]  + topography_[1:,1:])
+			topography[0,1:-1], topography[-1,1:-1] = topography[1,1:-1], topography[-2,1:-1]
+			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
+
+		# Plot
+		utils_plot.quiver_xy(xv, yv, topography, vx, vy, scalar, **kwargs)
+
+	def quiver_xz(self, field_to_plot, y_level, time_level, **kwargs):
+		"""
+		Generate the quiver plot of a vector field at a cross section parallel to the :math:`xz`-plane.
+
+		Parameters
+		----------
+		field_to_plot : str 
+			String specifying the field to plot. This might be:
+
+			* 'velocity', for the velocity field; the current object must contain the following variables:
+
+				- air_isentropic_density;
+				- x_momentum_isentropic;
+				- height.
+
+		y_level : int 
+			:math:`y`-level identifying the cross-section.
+		time_level : int 
+			The time level.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. 
+			See :func:`tasmania.utils.utils_plot.quiver_xz` for the complete list.
+		"""
+		# Extract, compute, or interpolate the field to plot
+		if field_to_plot == 'velocity':
+			# Extract the x-velocity
+			vx = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				 self._vars['air_isentropic_density'].values[:, y_level, :, time_level]
+
+			# Compute the (Cartesian) vertical velocity
+			z = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
+					   self._vars['height'].values[:, y_level, 1:, time_level])
+			h = 0.5 * (z[:-1, :] + z[1:, :])
+			height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
+			vz = vx * (height[1:, :] - height[:-1, :]) / self.grid.dx
+
+			# Compute the velocity magnitude
+			scalar = np.sqrt(vx ** 2 + vz ** 2)
+		else:
+			raise RuntimeError('Unknown field to plot.')
+
+		# Shortcuts
+		nx, nz = self.grid.nx, self.grid.nz
+		ni, nk = scalar.shape
+
+		# The underlying x-grid
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
+
+		# The underlying z-grid
+		zv = self._vars['height'].values[:, y_level, :, time_level]
+		if ni == nx + 1:
+			zv_ = 0.5 * (zv[:-1,:] + zv[1:,:])
+			zv  = np.concatenate((zv_[0:1,:], zv_, zv_[-1:,:]), axis = 0)
+		if nk == nz:
+			zv = 0.5 * (zv[:,:-1] + zv[:,1:])
+
+		# The topography height
+		topography = self.grid.topography_height[:, y_level]
+		if ni == nx + 1:
+			tp_ = 0.5 * (topography[:-1] + topography[1:])
+			topography  = np.concatenate((tp_[:1], tp_, tp_[-1:]), axis = 0)
+
+		# Plot
+		utils_plot.quiver_xz(xv, zv, topography, vx, vz, scalar, **kwargs)
+
+	def streamplot_xz(self, y_level, time_level, **kwargs):
+		"""
+		Generate the streamplot of the velocity field at a cross-section parallel to the :math:`xz`-plane.
+
+		Note
+		----
+		The current object should contain the following variables:
+
+			* air_isentropic_density (unstaggered);
+			* x_momentum_isentropic (unstaggered);
+			* height (:math:`z`-staggered).
+
+		Parameters
+		----------
+		y_level : int 
+			:math:`y`-index identifying the cross-section.
+		time_level : int 
+			The time level.
+		**kwargs :
+			Keyword arguments to specify different plotting settings. 
+			See :func:`tasmania.utils.utils_plot.streamplot_xz` for the complete list.
+		"""
+		assert self.grid.ny == 1
+
+		# Shortcuts
+		nx, nz = self.grid.nx, self.grid.nz
+
+		# Extract the horizontal velocity
+		u = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+			self._vars['air_isentropic_density'].values[:, y_level, :, time_level]
+
+		# Compute the (Cartesian) vertical velocity
+		z = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
+				   self._vars['height'].values[:, y_level, 1:, time_level])
+		h = 0.5 * (z[:-1, :] + z[1:, :])
+		height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
+		w = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
+
+		# Interpolation points
+		x  = np.repeat(self.grid.x.values[:, np.newaxis], nz, axis = 1)
+		xi = x.T.ravel()
+		zi = z.T.ravel()
+		pi = np.concatenate((xi[:, np.newaxis], zi[:, np.newaxis]), axis = 1)
+
+		# Interpolation values
+		ui = u.T.ravel() 
+		wi = w.T.ravel()
+
+		# Evaluation points
+		m = 1000
+		hb, ht = min(z[:,-1]), min(z[:,0])
+		xv_ = self.grid.x.values
+		zv_ = np.linspace(hb, ht, m)[::-1]
+		xv, zv = np.meshgrid(xv_, zv_)
+		pv = np.concatenate((xv.T.ravel()[:, np.newaxis], zv.T.ravel()[:, np.newaxis]), axis = 1)
+
+		# Interpolate
+		U = np.reshape(griddata(pi, ui, pv), (nx, m))
+		W = np.reshape(griddata(pi, wi, pv), (nx, m))
+
+		# Velocity magnitude
+		color = np.sqrt(U ** 2 + W ** 2)
+
+		# The underlying topography
+		topography = self._vars['height'].values[:, y_level, -1, time_level]
+
+		for i in range(nx):
+			for k in range(m):
+				if zv[k,i] < topography[i]:
+					U[i,k]     = None
+					W[i,k]     = None
+					color[i,k] = None
+
+		# Plot
+		utils_plot.streamplot_xz(xv_, zv_, U.T, W.T, color.T, topography, **kwargs)
+
+	#
+	# Animation utilities
+	#
 	def animation_contourf_xz(self, field_to_plot, y_level, destination, **kwargs):
 		"""
 		Generate an animation showing the time evolution of the contourf of a field at a cross-section 
@@ -406,139 +689,4 @@ class StateIsentropic(GridData):
 
 		# Plot
 		utils_plot.animation_contourf_xz(destination, time, xv, zv, var, topography, **kwargs)
-
-	def contourf_xy(self, field_to_plot, z_level, time_level, **kwargs):
-		"""
-		Generate the contourf plot of a field at a cross-section parallel to the :math:`xy`-plane.
-
-		Parameters
-		----------
-		field_to_plot : str 
-			String specifying the field to plot. This might be:
-
-			* the name of a variable stored in the current object;
-			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the 
-				following variables:
-			
-				- air_isentropic_density;
-				- x_momentum_isentropic;
-				- y_momentum_isentropic.
-
-		z_level : int 
-			:math:`z`-index identifying the cross-section.
-		time_level : int 
-			The time level.
-		**kwargs :
-			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.contourf_xy` for the complete list.
-		"""
-		# Extract, compute, or interpolate the field to plot
-		if field_to_plot in self._vars:
-			var = self._vars[field_to_plot].values[:, :, z_level, time_level]
-		elif field_to_plot == 'horizontal_velocity':
-			u = self._vars['x_momentum_isentropic'].values[:, :, z_level, time_level] / \
-				self._vars['air_isentropic_density'].values[:, :, z_level, time_level] 
-			v = self._vars['y_momentum_isentropic'].values[:, :, z_level, time_level] / \
-				self._vars['air_isentropic_density'].values[:, :, z_level, time_level] 
-			var = np.sqrt(u ** 2 + v ** 2)
-		else:
-			raise RuntimeError('Unknown field to plot.')
-
-		# Shortcuts
-		nx, ny = self.grid.nx, self.grid.ny
-		ni, nj = var.shape
-
-		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
-		xv = np.repeat(x[:, np.newaxis], nj, axis = 1)
-
-		# The underlying y-grid
-		y  = self.grid.y.values[:] if nj == ny else self.grid.y_half_levels.values[:]
-		yv = np.repeat(y[np.newaxis, :], ni, axis = 0)
-
-		# The topography height
-		topography_ = np.copy(self.grid.topography_height)
-		topography  = np.zeros((ni, nj), dtype = datatype) 
-		if ni == nx and nj == ny:
-			topography[:,:] = topography_[:,:]
-		elif ni == nx + 1 and nj == ny:
-			topography[1:-1,:] = 0.5 * (topography_[:-1,:] + topography_[1:,:])
-			topography[0,:], topography[-1,:] = topography[1,:], topography[-2,:]
-		elif ni == nx and nj == ny + 1:
-			topography[:,1:-1] = 0.5 * (topography_[:,:-1] + topography_[:,1:])
-			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
-		else:
-			topography[1:-1,1:-1] = 0.25 * (topography_[:-1,:-1] + topography_[1:,:-1] +
-											topography_[:-1,:1]  + topography_[1:,1:])
-			topography[0,1:-1], topography[-1,1:-1] = topography[1,1:-1], topography[-2,1:-1]
-			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
-
-		# Plot
-		utils_plot.contourf_xy(xv, yv, topography, var, **kwargs)
-
-	def quiver_xy(self, field_to_plot, z_level, time_level, **kwargs):
-		"""
-		Generate the quiver plot of a vector field at a cross section parallel to the :math:`xy`-plane.
-
-		Parameters
-		----------
-		field_to_plot : str 
-			String specifying the field to plot. This might be:
-
-			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the 
-				following variables:
-
-				- air_isentropic_density;
-				- x_momentum_isentropic;
-				- y_momentum_isentropic.
-
-		z_level : int 
-			:math:`z`-level identifying the cross-section.
-		time_level : int 
-			The time level.
-		**kwargs :
-			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.quiver_xy` for the complete list.
-		"""
-		# Extract, compute, or interpolate the field to plot
-		if field_to_plot == 'horizontal_velocity':
-			vx = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				 self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
-			vy = self._vars['y_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				 self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
-			scalar = np.sqrt(vx ** 2 + vy ** 2)
-		else:
-			raise RuntimeError('Unknown field to plot.')
-
-		# Shortcuts
-		nx, ny = self.grid.nx, self.grid.ny
-		ni, nj = scalar.shape
-
-		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
-		xv = np.repeat(x[:, np.newaxis], nj, axis = 1)
-
-		# The underlying y-grid
-		y  = self.grid.y.values[:] if nj == ny else self.grid.y_half_levels.values[:]
-		yv = np.repeat(y[np.newaxis, :], ni, axis = 0)
-
-		# The topography height
-		topography_ = np.copy(self.grid.topography_height)
-		topography  = np.zeros((ni, nj), dtype = datatype) 
-		if ni == nx and nj == ny:
-			topography[:,:] = topography_[:,:]
-		elif ni == nx + 1 and nj == ny:
-			topography[1:-1,:] = 0.5 * (topography_[:-1,:] + topography_[1:,:])
-			topography[0,:], topography[-1,:] = topography[1,:], topography[-2,:]
-		elif ni == nx and nj == ny + 1:
-			topography[:,1:-1] = 0.5 * (topography_[:,:-1] + topography_[:,1:])
-			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
-		else:
-			topography[1:-1,1:-1] = 0.25 * (topography_[:-1,:-1] + topography_[1:,:-1] +
-											topography_[:-1,:1]  + topography_[1:,1:])
-			topography[0,1:-1], topography[-1,1:-1] = topography[1,1:-1], topography[-2,1:-1]
-			topography[:,0], topography[:,-1] = topography[:,1], topography[:,-2]
-
-		# Plot
-		utils_plot.quiver_xy(xv, yv, topography, vx, vy, scalar, **kwargs)
 

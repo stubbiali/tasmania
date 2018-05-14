@@ -33,8 +33,8 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/isentropic_convergence_upwind_u10_lx400_nz300_05km_relaxed.pickle')
-field = 'x_velocity'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], '../kessler_wrf_saturation_sedimentation_evaporation_maccormack_reference.pickle')
+field = 'mass_fraction_of_precipitation_water_in_air'
 y_level = 0
 time_level = -1
 
@@ -45,19 +45,19 @@ show			 = True
 destination		 = os.path.join(os.environ['TASMANIA_ROOT'], 'results/figures/nmwc_model_check_maccormack_x_velocity')
 fontsize         = 16
 figsize          = [7,8]
-title            = '$u'' = u - \overline{u}$ [$10^{-4}$ m s$^{-1}$]'
+title            = 'Cloud liquid water [g kg$^{-1}$]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
-x_lim			 = [-40,40]
+x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
-z_lim            = [0,7.5]
-field_factor     = 1.e4
+z_lim            = [0,10]
+field_factor     = 1.e3
 draw_z_isolines	 = True
-cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
-cbar_levels      = 12
-cbar_ticks_step  = 1
-cbar_center      = 0.
+cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cbar_levels      = 18
+cbar_ticks_step  = 4
+cbar_center      = None #15.
 cbar_half_width  = None #11.
 cbar_x_label     = ''
 cbar_y_label     = ''
@@ -73,7 +73,7 @@ with open(filename, 'rb') as data:
 	state_save = pickle.load(data)
 
 	# Plot the specified field
-	if False:
+	if True:
 		state_save.contourf_xz(field, y_level, time_level, 
 							   show            = show,
 							   destination      = destination,
@@ -102,7 +102,7 @@ with open(filename, 'rb') as data:
 							  )
 
 	# Plot the analytical isothermal and isentropic flow over an isolated "Switch of Agnesi" mountain
-	if True:
+	if False:
 		grid = state_save.grid
 		nx, nz = grid.nx, grid.nz
 		xv = grid.x.values[:]

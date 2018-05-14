@@ -43,7 +43,58 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		The diagnostic variables output by the object.
 	outputs : tuple of str
 		The variables which gets adjusted by the object.
+	input_properties : dict
+		A dictionary whose keys are variables required in the state when the object is called, 
+		and values are dictionaries which indicate 'dims' and 'units'.
+	diagnostic_properties : dict
+		 A dictionary whose keys are diagnostics output by the object,
+		 and values are dictionaries which indicate 'dims' and 'units'.
+	output_properties : dict
+		A dictionary whose keys are variables adjusted when the object is called, 
+		and values are dictionaries which indicate 'dims' and 'units'.
 	"""
+	# Set attributes inherited from sympl's Implicit
+	inputs      = ('air_density'                               , 
+				   'air_pressure'                              , 
+				   'exner_function'                            , 
+				   'air_temperature'                           ,
+				   'mass_fraction_of_water_vapor_in_air'       , 
+				   'mass_fraction_of_cloud_liquid_water_in_air')
+	diagnostics = ('raindrop_fall_velocity')
+	outputs     = ('mass_fraction_of_water_vapor_in_air'       , 
+				   'mass_fraction_of_cloud_liquid_water_in_air')
+	input_properties = {'air_density': 
+							{'dims': '*',
+							 'units': 'kg m-3'},
+						'air_pressure': 
+							{'dims': '*',
+							 'units': 'Pa'},
+						'exner_function': 
+							{'dims': '*',
+							 'units': 'm2 s-2 K-2',
+							 'match_dims_like': ['air_pressure']},
+						'air_temperature': 
+							{'dims': '*',
+							 'units': 'K',
+							 'match_dims_like': ['air_density']}, 
+						'mass_fraction_of_water_vapor_in_air': 
+							{'dims': '*',
+							 'units': 'kg kg-1',
+							 'match_dims_like': ['air_density']},
+						'mass_fraction_of_cloud_liquid_water_in_air': 
+							{'dims': '*',
+							 'units': 'kg kg-1',
+							 'match_dims_like': ['air_density']}}
+	diagnostic_properties = {'raindrop_fall_velocity': 
+								{'dims': '*',
+								 'units': 'm s-1'}}
+	output_properties = {'mass_fraction_of_water_vapor_in_air': 
+							{'dims': '*',
+							 'units': 'kg kg-1'},
+						 'mass_fraction_of_cloud_liquid_water_in_air': 
+						 	{'dims': '*',
+							 'units': 'kg kg-1'}}
+
 	def __init__(self, grid, rain_evaporation_on, backend, **kwargs):
 		"""
 		Constructor.
@@ -65,17 +116,6 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		"""
 		# Call parent's constructor
 		super().__init__(grid, rain_evaporation_on, backend)
-
-		# Set attributes inherited from sympl's Implicit
-		inputs      = ('air_density', 
-				       'air_pressure', 
-				       'exner_function', 
-				       'air_temperature',
-				       'mass_fraction_of_water_vapor_in_air', 
-				       'mass_fraction_of_cloud_liquid_water_in_air')
-		diagnostics = ('raindrop_fall_velocity')
-		outputs     = ('mass_fraction_of_water_vapor_in_air', 
-				       'mass_fraction_of_cloud_liquid_water_in_air')
 
 		# Constants for Tetens formula
 		self._p0 = 610.78
