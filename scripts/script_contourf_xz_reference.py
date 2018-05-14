@@ -80,7 +80,7 @@ with np.load(filename) as data:
 	ni, nk = field.shape
 
 	# Create the underlying x-grid
-	x  = grid.x.values[:] if ni == nx else grid.x_half_levels.values[:]
+	x  = grid.x.values[:] if ni == nx else grid.x_at_u_locations.values[:]
 	xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 	# Create the underlying z-grid

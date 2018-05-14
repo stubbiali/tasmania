@@ -353,7 +353,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		z, z_hl, dz = self._grid.z.values, self._grid.z_half_levels.values, self._grid.dz
+		z, z_hl, dz = self._grid.z.values, self._grid.z_on_interface_levels.values, self._grid.dz
 		topo = self._grid.topography_height
 
 		#
@@ -412,7 +412,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 				p_ml  = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
 				theta = np.tile(self._grid.z.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
 				#T_ml  = theta * (p_ml / p_ref) ** (Rd / cp)
-				theta_hl = np.tile(self._grid.z_half_levels.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
+				theta_hl = np.tile(self._grid.z_on_interface_levels.values[np.newaxis, np.newaxis, :], (nx, ny, 1))
 				T_ml = 0.5 * (theta_hl[:, :, :-1] * exn[:, :, :-1] + theta_hl[:, :, 1:] * exn[:, :, 1:]) / cp
 
 				# Convert relative humidity to water vapor

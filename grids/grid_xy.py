@@ -16,7 +16,7 @@ class GridXY:
 	----------
 	x : obj
 		:class:`~grids.axis.Axis` representing the :math:`x` main levels.
-	x_half_levels : obj
+	x_at_u_locations : obj
 		:class:`~grids.axis.Axis` representing the :math:`x` half levels.
 	nx : int
 		Number of grid points along :math:`x`.
@@ -24,7 +24,7 @@ class GridXY:
 		The :math:`x`-spacing.
 	y : obj
 		:class:`~grids.axis.Axis` representing the :math:`y` main levels.
-	y_half_levels : obj
+	y_at_v_locations : obj
 		:class:`~grids.axis.Axis` representing the :math:`y` half levels.
 	ny : int
 		Number of grid points along :math:`y`.
@@ -64,7 +64,7 @@ class GridXY:
 		self.x = Axis(xv, dims_x, attrs = {'units': units_x}) 
 		self.nx = int(nx)
 		self.dx = 1. if nx == 1 else (domain_x[1] - domain_x[0]) / (nx - 1.)
-		self.x_half_levels = Axis(
+		self.x_at_u_locations = Axis(
 			np.linspace(domain_x[0] - 0.5 * self.dx, domain_x[1] + 0.5 * self.dx, nx + 1, dtype = datatype),
 			dims_x, attrs = {'units': units_x})
 
@@ -73,6 +73,6 @@ class GridXY:
 		self.y = Axis(yv, dims_y, attrs = {'units': units_y})
 		self.ny = int(ny)
 		self.dy = 1. if ny == 1 else (domain_y[1] - domain_y[0]) / (ny - 1.)
-		self.y_half_levels = Axis(
+		self.y_at_v_locations = Axis(
 			np.linspace(domain_y[0] - 0.5 * self.dy, domain_y[1] + 0.5 * self.dy, ny + 1, dtype = datatype),
 			dims_y, attrs = {'units': units_y})

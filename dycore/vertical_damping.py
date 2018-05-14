@@ -177,7 +177,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		ni, nj, nk = self._dims
-		za, zt = self._damp_lb, self._grid.z_half_levels[0]
+		za, zt = self._damp_lb, self._grid.z_on_interface_levels[0]
 
 		if nk == nz:
 			# Compute the damping matrix which should be used in case of a z-unstaggered field
@@ -186,7 +186,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 			self._rmat = np.tile(r[np.newaxis, np.newaxis, :], (ni, nj, 1))
 		else:
 			# Compute the damping matrix which should be used in case of a z-staggered field
-			z = self._grid.z_half_levels.values
+			z = self._grid.z_on_interface_levels.values
 			r = ge(z, za) * self._damp_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
 			self._rmat = np.tile(r[np.newaxis, np.newaxis, :], (ni, nj, 1))
 

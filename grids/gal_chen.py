@@ -38,7 +38,7 @@ class GalChen2d(GridXZ):
 		The :math:`x`-spacing.
 	z : obj 
 		:class:`~grids.axis.Axis` representing the :math:`\mu`-main levels.
-	z_half_levels : obj
+	z_on_interface_levels : obj
 		:class:`~grids.axis.Axis` representing the :math:`\mu`-half levels.
 	nz : int
 		Number of vertical main levels.
@@ -167,7 +167,7 @@ class GalChen2d(GridXZ):
 		"""
 		# Shortcuts
 		hs = np.repeat(self.topography.topo.values[:,np.newaxis], self.nz+1, axis = 1)
-		zv = np.reshape(self.z_half_levels.values[:,np.newaxis], (1, self.nz+1))
+		zv = np.reshape(self.z_on_interface_levels.values[:,np.newaxis], (1, self.nz+1))
 		zt = zv[0,0]
 		zf = self.z_interface
 		
@@ -177,8 +177,8 @@ class GalChen2d(GridXZ):
 		b = np.repeat(b, self.nx, axis = 0)
 		z_hl = a + b * hs
 
-		self.height_half_levels = xr.DataArray(z_hl, coords = [self.x.values, self.z_half_levels.values],
-											   dims = [self.x.dims, self.z_half_levels.dims], 
+		self.height_half_levels = xr.DataArray(z_hl, coords = [self.x.values, self.z_on_interface_levels.values],
+											   dims = [self.x.dims, self.z_on_interface_levels.dims], 
 											   attrs = {'units': 'm'})
 
 		# Reference pressure at half levels
@@ -189,8 +189,8 @@ class GalChen2d(GridXZ):
 			        (1. - np.sqrt(1. - 2. * nl.beta * nl.g * z_hl / (nl.Rd * nl.T_sl**2))))
 
 		self.reference_pressure_half_levels = xr.DataArray \
-			(p0_hl, coords = [self.x.values, self.z_half_levels.values],
-			 dims = [self.x.dims, self.z_half_levels.dims], attrs = {'units': 'Pa'})
+			(p0_hl, coords = [self.x.values, self.z_on_interface_levels.values],
+			 dims = [self.x.dims, self.z_on_interface_levels.dims], attrs = {'units': 'Pa'})
 
 		# Reference pressure at main levels
 		self.reference_pressure = xr.DataArray(0.5 * (p0_hl[:,:-1] + p0_hl[:,1:]), 
@@ -219,7 +219,7 @@ class GalChen3d(GridXYZ):
 		:class:`~grids.grid_xy.GridXY` representing the horizontal grid.
 	z : obj
 		:class:`~grids.axis.Axis` representing the :math:`z`-main levels.
-	z_half_levels : obj
+	z_on_interface_levels : obj
 		:class:`~grids.axis.Axis` representing the :math:`z`-half levels.
 	nz : int
 		Number of vertical main levels.
@@ -323,7 +323,7 @@ class GalChen3d(GridXYZ):
 		"""
 		# Shortcuts
 		hs = np.repeat(self.topography.topo.values[:,:,np.newaxis], self.nz+1, axis = 2)
-		zv = np.reshape(self.z_half_levels.values[:,np.newaxis,np.newaxis], (1, 1, self.nz+1))
+		zv = np.reshape(self.z_on_interface_levels.values[:,np.newaxis,np.newaxis], (1, 1, self.nz+1))
 		zt = zv[0,0]
 		zf = self.z_interface
 
@@ -334,8 +334,8 @@ class GalChen3d(GridXYZ):
 		z_hl = a + b * hs
 		
 		self.height_half_levels = xr.DataArray(z_hl,
-			coords = [self.x.values, self.y.values, self.z_half_levels.values],
-			dims = [self.x.dims, self.y.dims, self.z_half_levels.dims], attrs = {'units': 'm'})
+			coords = [self.x.values, self.y.values, self.z_on_interface_levels.values],
+			dims = [self.x.dims, self.y.dims, self.z_on_interface_levels.dims], attrs = {'units': 'm'})
 
 		# Reference pressure at half levels
 		if eq(nl.beta, 0.):
@@ -345,8 +345,8 @@ class GalChen3d(GridXYZ):
 					(1. - np.sqrt(1. - 2. * nl.beta * nl.g * z_hl / (nl.Rd * nl.T_sl**2))))
 
 		self.reference_pressure_half_levels = xr.DataArray(p0_hl,
-			coords = [self.x.values, self.y.values, self.z_half_levels.values],
-			dims = [self.x.dims, self.y.dims, self.z_half_levels.dims], attrs = {'units': 'Pa'})
+			coords = [self.x.values, self.y.values, self.z_on_interface_levels.values],
+			dims = [self.x.dims, self.y.dims, self.z_on_interface_levels.dims], attrs = {'units': 'Pa'})
 
 		# Reference pressure at main levels
 		self.reference_pressure = xr.DataArray(0.5 * (p0_hl[:,:,:-1] + p0_hl[:,:,1:]), 

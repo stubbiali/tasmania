@@ -54,15 +54,15 @@ def get_isentropic_isothermal_analytical_solution(grid, x_velocity_initial, temp
 	l = np.sqrt((g ** 2) / (cp * T  * (u_bar ** 2)) - (g ** 2) / (4. * (Rd ** 2) * (T ** 2)))
 
 	# Build the underlying x-z grid
-	xv = grid.x_half_levels.values if x_staggered else grid.x.values
-	zv = grid.z_half_levels.values if z_staggered else grid.z.values
+	xv = grid.x_at_u_locations.values if x_staggered else grid.x.values
+	zv = grid.z_on_interface_levels.values if z_staggered else grid.z.values
 	x, theta = np.meshgrid(xv, zv, indexing = 'ij')
 	
 	# The topography
 	zs = h * (a ** 2) / ((x ** 2) + (a ** 2))
 
 	# The geometric height
-	theta_s = grid.z_half_levels.values[-1]
+	theta_s = grid.z_on_interface_levels.values[-1]
 	z = zs + cp * T / g * np.log(theta / theta_s)
 	dz_dx = - 2. * h * (a ** 2) * x / (((x ** 2) + (a ** 2)) ** 2)
 	dz_dtheta = cp * T / (g * theta)
