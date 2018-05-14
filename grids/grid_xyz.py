@@ -51,7 +51,7 @@ class GridXYZ:
 		`~grids.grid_xy.GridXY` representing the horizontal grid..
 	z : obj
 		:class:`~grids.axis.Axis` representing the :math:`z`-main levels. 
-	z_half_levels : obj
+	z_on_interface_levels : obj
 		:class:`~grids.axis.Axis` representing the :math:`z`-half levels. 
 	nz : int
 		Number of vertical main levels.
@@ -121,7 +121,7 @@ class GridXYZ:
 		self.xy_grid = GridXY(domain_x, nx, domain_y, ny, units_x, dims_x, units_y, dims_y)
 
 		z_hl = np.linspace(domain_z[0], domain_z[1], nz+1, dtype = datatype)
-		self.z_half_levels = Axis(z_hl, dims_z + '_half_levels', attrs = {'units': units_z})
+		self.z_on_interface_levels = Axis(z_hl, dims_z + '_half_levels', attrs = {'units': units_z})
 		self.z = Axis(0.5 * (z_hl[:-1] + z_hl[1:]), dims_z, attrs = {'units': units_z})
 		self.nz = int(nz)
 		self.dz = math.fabs(domain_z[1] - domain_z[0]) / float(nz)
@@ -151,7 +151,7 @@ class GridXYZ:
 		return self.xy_grid.x
 
 	@property
-	def x_half_levels(self):
+	def x_at_u_locations(self):
 		"""
 		Get the :math:`x`-half levels.
 
@@ -160,7 +160,7 @@ class GridXYZ:
 		obj :
 			:class:`~grids.axis.Axis` representing the :math:`x`-half levels.
 		"""
-		return self.xy_grid.x_half_levels
+		return self.xy_grid.x_at_u_locations
 
 	@property
 	def nx(self):
@@ -199,7 +199,7 @@ class GridXYZ:
 		return self.xy_grid.y
 
 	@property
-	def y_half_levels(self):
+	def y_at_v_locations(self):
 		"""
 		Get the :math:`y`-half levels.
 
@@ -208,7 +208,7 @@ class GridXYZ:
 		obj :
 			:class:`~grids.axis.Axis` representing the :math:`y`-half levels.
 		"""
-		return self.xy_grid.y_half_levels
+		return self.xy_grid.y_at_v_locations
 
 	@property
 	def ny(self):

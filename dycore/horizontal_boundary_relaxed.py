@@ -376,7 +376,7 @@ class RelaxedXZ(HorizontalBoundary):
 		nb = self.nb
 		x, nx, dx = self.grid.x, self.grid.nx, self.grid.dx
 		y, ny, dy = self.grid.y, self.grid.ny, self.grid.dy
-		z, nz, dz = self.grid.z_half_levels, self.grid.nz, self.grid.dz
+		z, nz, dz = self.grid.z_on_interface_levels, self.grid.nz, self.grid.dz
 		_z_interface = self.grid.z_interface
 		_topo_type   = self.grid.topo_type
 		_topo_time   = self.grid.topo_time
@@ -551,7 +551,7 @@ class RelaxedYZ(HorizontalBoundary):
 		nb = self.nb
 		x, nx, dx = self.grid.x, self.grid.nx, self.grid.dx
 		y, ny, dy = self.grid.y, self.grid.ny, self.grid.dy
-		z, nz, dz = self.grid.z_half_levels, self.grid.nz, self.grid.dz
+		z, nz, dz = self.grid.z_on_interface_levels, self.grid.nz, self.grid.dz
 		_z_interface = self.grid.z_interface
 		_topo_type   = self.grid.topo_type
 		_topo_time   = self.grid.topo_time
@@ -682,7 +682,7 @@ class RelaxedSymmetricXZ(Relaxed):
 		nb = self.nb
 		x, nx, dx = self.grid.x, self.grid.nx, self.grid.dx
 		y, ny, dy = self.grid.y, self.grid.ny, self.grid.dy
-		z, nz, dz = self.grid.z_half_levels, self.grid.nz, self.grid.dz
+		z, nz, dz = self.grid.z_on_interface_levels, self.grid.nz, self.grid.dz
 		_z_interface = self.grid.z_interface
 		_topo_type   = self.grid.topo_type
 		_topo_time   = self.grid.topo_time
@@ -812,7 +812,7 @@ class RelaxedSymmetricYZ(Relaxed):
 		nb = self.nb
 		x, nx, dx = self.grid.x, self.grid.nx, self.grid.dx
 		y, ny, dy = self.grid.y, self.grid.ny, self.grid.dy
-		z, nz, dz = self.grid.z_half_levels, self.grid.nz, self.grid.dz
+		z, nz, dz = self.grid.z_on_interface_levels, self.grid.nz, self.grid.dz
 		_z_interface = self.grid.z_interface
 		_topo_type   = self.grid.topo_type
 		_topo_time   = self.grid.topo_time

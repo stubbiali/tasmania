@@ -99,21 +99,21 @@ class GridData:
 			var = kwargs[key]
 			if var is not None:
 				# Distinguish between horizontally staggered and unstaggered fields
-				x = grid.x if var.shape[0] == grid.nx else grid.x_half_levels
-				y = grid.y if var.shape[1] == grid.ny else grid.y_half_levels
+				x = grid.x if var.shape[0] == grid.nx else grid.x_at_u_locations
+				y = grid.y if var.shape[1] == grid.ny else grid.y_at_v_locations
 
 				# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
 				# A notable example of a two-dimensional field is the accumulated precipitation
 				if len(var.shape) == 2:
 					var = var[:, :, np.newaxis]
 				if var.shape[2] == 1:
-					z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
+					z = Axis(np.array([grid.z_on_interface_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
 				elif var.shape[2] == 1:
-					z = Axis(np.array([grid.z_half_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
+					z = Axis(np.array([grid.z_on_interface_levels[-1]]), grid.z.dims, attrs = grid.z.attrs)
 				elif var.shape[2] == grid.nz:
 					z = grid.z 
 				elif var.shape[2] == grid.nz + 1:
-					z = grid.z_half_levels
+					z = grid.z_on_interface_levels
 
 				_var = xr.DataArray(var[:, :, :, np.newaxis], 
 									coords = [x.values, y.values, z.values, [time]],
@@ -181,19 +181,19 @@ class GridData:
 			var = kwargs[key]
 			if var is not None:
 				# Distinguish between horizontally staggered and unstaggered fields
-				x = self.grid.x if var.shape[0] == self.grid.nx else self.grid.x_half_levels
-				y = self.grid.y if var.shape[1] == self.grid.ny else self.grid.y_half_levels
+				x = self.grid.x if var.shape[0] == self.grid.nx else self.grid.x_at_u_locations
+				y = self.grid.y if var.shape[1] == self.grid.ny else self.grid.y_at_v_locations
 
 				# Properly treat the vertical axis, so that either two- and three-dimensional arrays can be stored
 				# A notable example of a two-dimensional field is the accumulated precipitation
 				if len(var.shape) == 2:
 					var = var[:, :, np.newaxis]
 				if var.shape[2] == 1:
-					z = Axis(np.array([self.grid.z_half_levels[-1]]), self.grid.z.dims, attrs = self.grid.z.attrs)
+					z = Axis(np.array([self.grid.z_on_interface_levels[-1]]), self.grid.z.dims, attrs = self.grid.z.attrs)
 				elif var.shape[2] == self.grid.nz:
 					z = self.grid.z 
 				elif var.shape[2] == self.grid.nz + 1:
-					z = self.grid.z_half_levels
+					z = self.grid.z_on_interface_levels
 
 				_var = xr.DataArray(var[:, :, :, np.newaxis], 
 									coords = [x.values, y.values, z.values, [time]],
@@ -379,7 +379,7 @@ class GridData:
 			raise RuntimeError('Unknown field to plot.')
 
 		# Infer the underlying x-grid
-		x = self.grid.x.values if var.shape[0] == nx else self.grid.x_half_levels.values
+		x = self.grid.x.values if var.shape[0] == nx else self.grid.x_at_u_locations.values
 
 		# Plot
 		utils_plot.animation_profile_x(time, x, var, destination, **kwargs)

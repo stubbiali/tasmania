@@ -206,7 +206,7 @@ class StateIsentropic(GridData):
 
 			var = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
 		elif field_to_plot == 'temperature': # in case temperature is not a stored variable
-			z = self.grid.z_half_levels.values
+			z = self.grid.z_on_interface_levels.values
 			p = self._vars['pressure'].values[:, y_level, :, time_level]
 			exn = self._vars['exner_function'].values[:, y_level, :, time_level]
 
@@ -220,7 +220,7 @@ class StateIsentropic(GridData):
 		ni, nk = var.shape
 
 		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_at_u_locations.values[:]
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid
@@ -287,11 +287,11 @@ class StateIsentropic(GridData):
 		ni, nj = var.shape
 
 		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_at_u_locations.values[:]
 		xv = np.repeat(x[:, np.newaxis], nj, axis = 1)
 
 		# The underlying y-grid
-		y  = self.grid.y.values[:] if nj == ny else self.grid.y_half_levels.values[:]
+		y  = self.grid.y.values[:] if nj == ny else self.grid.y_at_v_locations.values[:]
 		yv = np.repeat(y[np.newaxis, :], ni, axis = 0)
 
 		# The topography height
@@ -370,7 +370,7 @@ class StateIsentropic(GridData):
 
 			var = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
 		elif field_to_plot == 'temperature':
-			z = self.grid.z_half_levels.values
+			z = self.grid.z_on_interface_levels.values
 			p = self._vars['pressure'].values[:, y_level, :, time_level]
 			exn = self._vars['exner_function'].values[:, y_level, :, time_level]
 
@@ -384,7 +384,7 @@ class StateIsentropic(GridData):
 		ni, nk = var.shape
 
 		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_at_u_locations.values[:]
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid
@@ -448,11 +448,11 @@ class StateIsentropic(GridData):
 		ni, nj = scalar.shape
 
 		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_at_u_locations.values[:]
 		xv = np.repeat(x[:, np.newaxis], nj, axis = 1)
 
 		# The underlying y-grid
-		y  = self.grid.y.values[:] if nj == ny else self.grid.y_half_levels.values[:]
+		y  = self.grid.y.values[:] if nj == ny else self.grid.y_at_v_locations.values[:]
 		yv = np.repeat(y[np.newaxis, :], ni, axis = 0)
 
 		# The topography height
@@ -521,7 +521,7 @@ class StateIsentropic(GridData):
 		ni, nk = scalar.shape
 
 		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_at_u_locations.values[:]
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid
@@ -648,7 +648,7 @@ class StateIsentropic(GridData):
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, y_level, :, :] 
 		elif field_to_plot == 'air_temperature':
-			z = self.grid.z_half_levels.values
+			z = self.grid.z_on_interface_levels.values
 			p = self._vars['pressure'].values[:, y_level, :, :]
 			exn = self._vars['exner_function'].values[:, y_level, :, :]
 
@@ -665,7 +665,7 @@ class StateIsentropic(GridData):
 		time = self._vars[list(self._vars.keys())[0]].coords['time'].values 
 
 		# The underlying x-grid
-		x  = self.grid.x.values[:] if ni == nx else self.grid.x_half_levels.values[:]
+		x  = self.grid.x.values[:] if ni == nx else self.grid.x_at_u_locations.values[:]
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid

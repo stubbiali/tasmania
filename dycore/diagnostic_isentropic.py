@@ -64,7 +64,7 @@ class DiagnosticIsentropic:
 
 		# Assign the corresponding z-level to each z-staggered grid point
 		# This is required to diagnose the geometrical height at the half levels
-		theta_1d = np.reshape(grid.z_half_levels.values[:, np.newaxis, np.newaxis], (1, 1, grid.nz + 1))
+		theta_1d = np.reshape(grid.z_on_interface_levels.values[:, np.newaxis, np.newaxis], (1, 1, grid.nz + 1))
 		self._theta = np.tile(theta_1d, (grid.nx, grid.ny, 1))
 	
 	@property
@@ -310,7 +310,7 @@ class DiagnosticIsentropic:
 		self._out_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp) 
 
 		# Compute Montgomery potential at the lower main level
-		mtg_s = self._grid.z_half_levels.values[-1] * self._out_exn[:, :, -1] + g * self._grid.topography_height
+		mtg_s = self._grid.z_on_interface_levels.values[-1] * self._out_exn[:, :, -1] + g * self._grid.topography_height
 		self._out_mtg[:, :, -1] = mtg_s + 0.5 * self._grid.dz * self._out_exn[:, :, -1]
 
 		# Compute Montgomery potential at all other locations

@@ -53,7 +53,7 @@ class GridXZ():
 		The :math:`x`-spacing.
 	z : obj
 		:class:`~grids.axis.Axis` representing the :math:`z`-main levels.
-	z_half_levels : obj
+	z_on_interface_levels : obj
 		:class:`~grids.axis.Axis` representing the :math:`z`-half levels.
 	nz : int
 		Number of vertical main levels.
@@ -115,7 +115,7 @@ class GridXZ():
 		self.dx = (domain_x[1] - domain_x[0]) / (nx - 1.)
 
 		z_hl = np.linspace(domain_z[0], domain_z[1], nz+1, dtype = datatype)
-		self.z_half_levels = Axis(z_hl, dims_z + '_half_levels', attrs = {'units': units_z})
+		self.z_on_interface_levels = Axis(z_hl, dims_z + '_half_levels', attrs = {'units': units_z})
 		self.z = Axis(0.5 * (z_hl[:-1] + z_hl[1:]), dims_z, attrs = {'units': units_z})
 		self.nz = int(nz)
 		self.dz = math.fabs(domain_z[1] - domain_z[0]) / float(nz)
