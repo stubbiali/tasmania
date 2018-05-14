@@ -12,30 +12,30 @@ import tasmania.utils.utils_plot as utils_plot
 # Mandatory settings
 #
 filename    = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   'data/slow_tendency_kessler_wrf_saturation_maccormack.pickle')
+						   '../kessler_wrf_saturation_sedimentation_evaporation_maccormack_reference.pickle')
 field       = 'mass_fraction_of_cloud_liquid_water_in_air'
 y_level     = 0
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   'results/movies/kessler/slow_tendency_kessler_wrf_saturation_maccormack_cloud_liquid_water.mp4')
+						   '../meetings_and_presentations/20180508_phd_interview/movies/reference_x_velocity.mp4')
 
 #
 # Optional settings
 #
 fontsize         = 16
 figsize          = [7,8]
-title            = 'Cloud liquid water [g kg$^{-1}$]'
+title            = '$x$-velocity [m s$^{-1}$]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
 z_factor         = 1.e-3
 z_label			 = '$z$ [km]'
 z_lim            = [0,10]
-field_factor     = 1.e3
+field_factor     = 1.
 draw_z_isolines	 = True
-cmap_name        = 'Blues' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
+cmap_name        = 'BuRd' # Alternatives: Blues, BuRd, jet, RdBu, RdYlBu, RdYlGn
 cbar_levels      = 18
 cbar_ticks_step  = 4
-cbar_center      = None #15.
+cbar_center      = 15.
 cbar_half_width  = None #9.5
 cbar_x_label     = None
 cbar_y_label     = None

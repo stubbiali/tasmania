@@ -99,7 +99,7 @@ class GridXYZ:
 		self.xy_grid = GridXY(domain_x, nx, domain_y, ny, units_x, dims_x, units_y, dims_y)
 
 		z_hl = np.linspace(domain_z[0], domain_z[1], nz+1, dtype = datatype)
-		self.z_half_levels = Axis(z_hl, dims_z, attrs = {'units': units_z})
+		self.z_half_levels = Axis(z_hl, dims_z + '_half_levels', attrs = {'units': units_z})
 		self.z = Axis(0.5 * (z_hl[:-1] + z_hl[1:]), dims_z, attrs = {'units': units_z})
 		self.nz = int(nz)
 		self.dz = math.fabs(domain_z[1] - domain_z[0]) / float(nz)

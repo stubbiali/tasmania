@@ -30,10 +30,13 @@ class GridData:
 		'air_density'												: 'kg m-3'		 	,
 		'air_isentropic_density'									: 'kg m-2 K-1'    	,
 		'air_pressure'												: 'Pa'            	,
+		'air_pressure_on_interface_levels'							: 'Pa'            	,
 		'air_temperature'											: 'K'             	,
 		'cloud_liquid_water_isentropic_density'						: 'kg m-2 K-1'    	,
 		'exner_function'											: 'm2 s-2 K-2'    	,
+		'exner_function_on_interface_levels'						: 'm2 s-2 K-2'    	,
 		'height'													: 'm'             	,
+		'height_on_interface_levels'								: 'm'             	,
 		'mass_fraction_of_cloud_liquid_water_in_air'				: 'kg kg-1'       	,
 		'mass_fraction_of_precipitation_water_in_air'				: 'kg kg-1'       	,
 		'mass_fraction_of_water_vapor_in_air'						: 'kg kg-1'       	,
@@ -52,7 +55,6 @@ class GridData:
 		'y_momentum_isentropic'										: 'kg m-1 s-1 K-1'	,
 		'y_velocity'												: 'm s-1'         	,
 		'y_velocity_unstaggered'									: 'm s-1'         	,
-		'change_over_time_in_air_potential_temperature'				: 'K s-1'		 	,	# to be removed
 	}
 
 	def __init__(self, time, grid, **kwargs):

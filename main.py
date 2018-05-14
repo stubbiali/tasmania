@@ -48,7 +48,7 @@ grid = Grid(domain_x    = nl.domain_x,
 			**nl.topo_kwargs)
 
 stop = time.time()
-print('Grid created in {} ms.\n'.format((stop-start) * 1000.))
+print('Grid created in %5.5f ms.\n' % ((stop-start) * 1000.))
 
 #
 # Instantiate the model
@@ -59,7 +59,7 @@ start = time.time()
 model = Model()
 
 stop = time.time()
-print('Model instantiated in {} ms.\n'.format((stop-start) * 1000.))
+print('Model instantiated in %5.5f ms.\n' % ((stop-start) * 1000.))
 
 #
 # Instantiate the dycore, then add it to the model
@@ -95,7 +95,7 @@ dycore = DynamicalCore.factory(model                        = nl.model,
 model.set_dynamical_core(dycore)
 
 stop = time.time()
-print('Dycore instantiated in {} ms.\n'.format((stop-start) * 1000.))
+print('Dycore instantiated in %5.5f ms.\n' % ((stop-start) * 1000.))
 
 #
 # Instantiate the parameterization calculating slow-varying cloud microphysics tendencies, 

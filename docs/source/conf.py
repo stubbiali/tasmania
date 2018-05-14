@@ -36,7 +36,6 @@ extensions = ['sphinx.ext.mathjax',
 			  'sphinx.ext.autodoc',
 			  'sphinx.ext.intersphinx',
 			  'sphinxcontrib.napoleon',
-			  'sphinx_pyreverse',
 			 ]
 
 # Intersphinx mapping.

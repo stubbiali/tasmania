@@ -18,81 +18,70 @@ import tasmania.utils.utils_plot as utils_plot
 #
 filename    = [
 			   os.path.join(os.environ['TASMANIA_ROOT'], 
-			   				'data/verification_kessler_wrf_second_order_sedimentation_maccormack.pickle'),
+			   				'data/verification_kessler_wrf_second_order_sedimentation_evaporation_leapfrog.pickle'),
 			   os.path.join(os.environ['TASMANIA_ROOT'], 
-			   				'data/slow_tendency_kessler_wrf_saturation_sedimentation_maccormack.pickle'),
-			   #os.path.join(os.environ['TASMANIA_ROOT'], 
-			   #			'data/verification_kessler_wrf_second_order_sedimentation_maccormack.pickle'),
+			   				'data/verification_kessler_wrf_second_order_sedimentation_evaporation_maccormack.pickle'),
+			   os.path.join(os.environ['TASMANIA_ROOT'], 
+			   				'../kessler_wrf_saturation_sedimentation_evaporation_maccormack_reference.pickle'),
 			   #os.path.join(os.environ['TASMANIA_ROOT'], 
 			   #			'data/verification_kessler_wrf_second_order_sedimentation_evaporation_maccormack.pickle'),
 			   ]
 field       = [
-			   'precipitation',
-			   'precipitation',
-			   'precipitation',
+			   'accumulated_precipitation',
+			   'accumulated_precipitation',
+			   'accumulated_precipitation',
 			   'precipitation',
 			  ]
 y_level     = [0, 0, 0, 0]
 z_level     = [-1, -1, -1, -1]
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   '../meetings_and_presentations/20180504_talk/movies/kessler_saturation_sedimentation_slow_tendency_adjustment_precipitation.mp4')
+						   '../meetings_and_presentations/20180508_phd_interview/movies/kessler_comparison_accumulated_precipitation.mp4')
 
 #
 # Animation settings
 #
 fontsize         = 16
 figsize          = [7,8]
-title            = 'Precipitation [mm h$^{-1}$]'
+title            = 'Accumulated precipitation [mm]'
 x_factor         = 1.e-3
 x_label          = '$x$ [km]'
 x_lim			 = None #[-40,40]
 y_label			 = '' #'$z$ [km]'
 y_lim            = [0,0.7]
 field_factor     = [1., 1., 1., 1.]
-color            = ['blue', 'orange', 'blue', 'blue']
-linestyle		 = ['-', '--', '-', '-.']
+color            = ['green', 'blue', 'black', 'blue']
+linestyle		 = ['-', '-', '-', '-.']
 linewidth        = [1.5, 1.5, 1.5, 1.5]
 grid_on			 = True
 fps				 = 6
-legend			 = ['DYN, then PHYS', 'PHYS, then DYN', 'MC, evap. OFF', 'MC, evap. ON']
+legend			 = ['LF, $\Delta x = 5$ km', 'MC, $\Delta x = 5$ km', 'MC, $\Delta x = 1$ km', 'MC, evap. ON']
 legend_location  = 'upper right'
 
 #
 # Load the fields
 #
+x   = []
+var = []
+
 for m in range(len(filename)):
 	with open(filename[m], 'rb') as data:
 		state_save = pickle.load(data)
 		diagnostics_save = pickle.load(data)
 
 		if state_save[field[m]] is not None: # The field to plot is a state variable
-			if m == 0:
-				time = state_save[field[m]].coords['time'].values 
-				var_ = state_save[field[m]].values[:, y_level[m], z_level[m], :]
-				var  = var_[np.newaxis, :, :]
-				x_   = state_save.grid.x.values if var_.shape[0] == state_save.grid.nx \
-				 	   else state_save.grid.x_half_levels.values
-				x    = x_[np.newaxis, :]
-			else:
-				var_ = state_save[field[m]].values[:, y_level[m], z_level[m], :]
-				var  = np.concatenate((var, var_[np.newaxis, :, :]), axis = 0)
-				x_   = state_save.grid.x.values if var_.shape[0] == state_save.grid.nx \
-				 	   else state_save.grid.x_half_levels.values
-				x    = np.concatenate((x, x_[np.newaxis, :]), axis = 0)
+			time = state_save[field[m]].coords['time'].values 
+			var_ = state_save[field[m]].values[:, y_level[m], z_level[m], :]
+			var.append(var_)
+			x_   = state_save.grid.x.values if var_.shape[0] == state_save.grid.nx \
+				   else state_save.grid.x_half_levels.values
+			x.append(x_)
 		else:  # The field to plot is a diagnostic
-			if m == 0:
-				time = diagnostics_save[field[m]].coords['time'].values 
-				var_ = diagnostics_save[field[m]].values[:, y_level[m], z_level[m], :]
-				var  = var_[np.newaxis, :, :]
-				x_   = diagnostics_save.grid.x.values if var_.shape[0] == diagnostics_save.grid.nx \
-				 	   else diagnostics_save.grid.x_half_levels.values
-				x    = x_[np.newaxis, :]
-			else:
-				var_ = diagnostics_save[field[m]].values[:, y_level[m], z_level[m], :]
-				var  = np.concatenate((var, var_[np.newaxis, :, :]), axis = 0)
-				x_   = diagnostics_save.grid.x.values if var_.shape[0] == diagnostics_save.grid.nx \
-				 	   else diagnostics_save.grid.x_half_levels.values
-				x    = np.concatenate((x, x_[np.newaxis, :]), axis = 0)
+			time = diagnostics_save[field[m]].coords['time'].values 
+			var_ = diagnostics_save[field[m]].values[:, y_level[m], z_level[m], :]
+			var.append(var_)
+			x_   = diagnostics_save.grid.x.values if var_.shape[0] == diagnostics_save.grid.nx \
+				   else diagnostics_save.grid.x_half_levels.values
+			x.append(x_)
 
 #
 # Generate animation
