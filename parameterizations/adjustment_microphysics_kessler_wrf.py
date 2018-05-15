@@ -157,7 +157,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 		# Initialize pointers to the underlying GT4Py stencils
 		# They will be properly re-directed the first time the entry point method is invoked
-		self._stencil_adjustment = None
+		self._stencil_adjustment             = None
 		self._stencil_raindrop_fall_velocity = None
 
 	def __call__(self, state, dt):
@@ -171,8 +171,8 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 			It should contain the following variables:
 
 			* air_density (unstaggered);
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
+			* air_pressure (unstaggered) or air_pressure_on_interface_levels (:math:`z`-staggered);
+			* exner_function (unstaggered) or exner_function_on_interface_levels (:math:`z`-staggered);
 			* air_temperature (unstaggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -203,8 +203,10 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 		# Extract the required model variables
 		self._in_rho[:,:,:] = state['air_density'].values[:,:,:,0]
-		self._in_p[:,:,:]   = state['air_pressure'].values[:,:,:,0]
-		self._in_exn[:,:,:] = state['exner_function'].values[:,:,:,0]
+		self._in_p[:,:,:]   = state['air_pressure'].values[:,:,:,0] if state['air_pressure'] is not None else \
+							  0.5 * (state['air_pressure_on_interface_levels'].values[:,:,:-1,0] +
+							  		 state['air_pressure_on_interface_levels'].values[:,:, 1:,0])
+		#self._in_exn[:,:,:] = state['exner_function'].values[:,:,:,0]
 		self._in_T[:,:,:]	= state['air_temperature'].values[:,:,:,0]
 		self._in_qv[:,:,:]  = state['mass_fraction_of_water_vapor_in_air'].values[:,:,:,0]
 		self._in_qc[:,:,:]  = state['mass_fraction_of_cloud_liquid_water_in_air'].values[:,:,:,0]
@@ -274,7 +276,7 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 
 		# Allocate the Numpy arrays which will serve as stencil inputs
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		self._in_p   = np.zeros((nx, ny, nz+1), dtype = datatype)
+		self._in_p   = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_ps  = np.zeros((nx, ny, nz), dtype = datatype)
 		self._in_exn = np.zeros((nx, ny, nz+1), dtype = datatype)
 		self._in_T   = np.zeros((nx, ny, nz), dtype = datatype)
@@ -346,7 +348,6 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		k = gt.Index()
 
 		# Instantiate the temporary fields
-		tmp_p	     = gt.Equation()
 		tmp_p_mbar   = gt.Equation()
 		tmp_rho_gcm3 = gt.Equation()
 		tmp_qvs      = gt.Equation()
@@ -366,15 +367,12 @@ class AdjustmentMicrophysicsKesslerWRF(AdjustmentMicrophysics):
 		out_qc = gt.Equation()
 		out_qr = gt.Equation()
 
-		# Interpolate the pressure at the model main levels
-		tmp_p[i, j, k] = 0.5 * (in_p[i, j, k] + in_p[i, j, k+1])
-
 		# Perform units conversion
 		tmp_rho_gcm3[i, j, k] = 1.e3 * in_rho[i, j, k]
-		tmp_p_mbar[i, j, k] = 1.e-2 * tmp_p[i, j, k]
+		tmp_p_mbar[i, j, k] = 1.e-2 * in_p[i, j, k]
 
 		# Compute the saturation mixing ratio of water vapor
-		tmp_qvs[i, j, k] = self._beta * in_ps[i, j, k] / (tmp_p[i, j, k] - self._beta_c * in_ps[i, j, k])
+		tmp_qvs[i, j, k] = self._beta * in_ps[i, j, k] / (in_p[i, j, k] - self._beta_c * in_ps[i, j, k])
 
 		# Compute the contribution of autoconversion to rain development
 		tmp_Ar[i, j, k] = self.k1 * (in_qc[i, j, k] > self.a) * (in_qc[i, j, k] - self.a)

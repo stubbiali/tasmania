@@ -440,16 +440,15 @@ class DiagnosticIsentropic:
 			* air_temperature (unstaggered).
 		"""
 		# Extract the Exner function
-		exn_ = state['exner_function'] if state['exner_function'] is not None \
-			   else state['exner_function_on_interface_levels']
-		exn  = exn_.values[:, :, :, -1]
+		exn_name = 'exner_function' if state['exner_function'] is not None else 'exner_function_on_interface_levels'
+		exn      = state[exn_name].values[:, :, :, -1]
 
 		# Diagnose the temperature at the mass grid points (not via a GT4Py stencil)
 		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:]) / cp
 
 		# Set the output
-		time = utils.convert_datetime64_to_datetime(state['exner_function'].coords['time'].values[0])
-		out = GridData(time, self._grid, air_temperature = T)
+		time = utils.convert_datetime64_to_datetime(state[exn_name].coords['time'].values[0])
+		out  = GridData(time, self._grid, air_temperature = T)
 
 		return out
 
