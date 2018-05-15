@@ -141,24 +141,24 @@ class GridXYZ:
 	@property
 	def x(self):
 		"""
-		Get the :math:`x`-axis.
+		Get the :math:`x`-coordinates of the mass points.
 
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` representing the :math:`x`-axis.
+			:class:`~grids.axis.Axis` storing the :math:`x`-coordinates of the mass points.
 		"""
 		return self.xy_grid.x
 
 	@property
 	def x_at_u_locations(self):
 		"""
-		Get the :math:`x`-half levels.
+		Get the :math:`x`-coordinates at the :math:`u`-locations.
 
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` representing the :math:`x`-half levels.
+			:class:`~grids.axis.Axis` storing the :math:`x`-coordinates at the :math:`u`-locations.
 		"""
 		g = self.xy_grid
 		return g.x_at_u_locations if hasattr(g, 'x_at_u_locations') else g.x_half_levels
@@ -190,24 +190,24 @@ class GridXYZ:
 	@property
 	def y(self):
 		"""
-		Get the :math:`y`-axis.
+		Get the :math:`y`-coordinates of the mass points.
 
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` representing the :math:`y`-axis.
+			:class:`~grids.axis.Axis` storing the :math:`y`-coordinates of the mass points.
 		"""
 		return self.xy_grid.y
 
 	@property
 	def y_at_v_locations(self):
 		"""
-		Get the :math:`y`-half levels.
+		Get the :math:`y`-coordinates at the :math:`v`-locations.
 
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` representing the :math:`y`-half levels.
+			:class:`~grids.axis.Axis` storing the :math:`y`-coordinates at the :math:`v`-locations.
 		"""
 		g = self.xy_grid
 		return g.y_at_v_locations if hasattr(g, 'y_at_v_locations') else g.y_half_levels
