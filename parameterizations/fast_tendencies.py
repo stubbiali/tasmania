@@ -27,7 +27,8 @@ class FastTendency:
 	"""
 	Abstract base class whose derived classes implement different parameterization schemes 
 	providing fast-varying tendencies. Here, *fast-varying* refers to those tendencies which
-	should be calculated on the smallest model timestep.
+	should be calculated on the smallest model timestep. Hence, these classes should be ideally
+	called *within* the dynamical core.
 
 	Note
 	----

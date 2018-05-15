@@ -26,8 +26,9 @@ import warnings
 class SlowTendency:
 	"""
 	Abstract base class whose derived classes implement different parameterization schemes 
-	providing tendencies for prognostic variables.
-	The class hierarchy lays on top of :class:`sympl.Prognostic`.
+	providing slow-varying tendencies. Here, *slow-varying* refers to those tendencies which
+	should be calculated on the largest model timestep. Hence, these classes should be ideally
+	called *outside* the dynamical core.
 
 	Note
 	----
