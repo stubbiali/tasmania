@@ -4,7 +4,7 @@ A script to generate a xz-contour of a field.
 import os
 import pickle
 
-import utils.utils_meteo as utils_meteo
+import tasmania.utils.utils_meteo as utils_meteo
 
 #
 # Mandatory settings

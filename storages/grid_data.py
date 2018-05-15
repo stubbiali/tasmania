@@ -315,6 +315,24 @@ class GridData:
 
 	def __iadd__(self, other):
 		"""
+		In-place addition operator. In detail:
+
+		* if the incoming object contains a variable which is not contained in the current object: the variable is
+			deep-copied in the current object;
+		* if the incoming object contains a variable which is contained in the current object, but defined
+			at a different time level: the internal variable is set equal to the incoming one;
+		* if the incoming object contains a variable which is contained in the current object and both are defined
+			at the same time level: the internal variable is augmented by the incoming one.
+
+		Parameters
+		----------
+		other : obj
+			Another :class:`~tasmania.storages.grid_data.GridData`, or one of its derived classes.
+
+		Return
+		------
+		obj :
+			Updated version of the current object.
 		"""
 		for key in other._vars:
 			if self._vars.get(key, None) is None:

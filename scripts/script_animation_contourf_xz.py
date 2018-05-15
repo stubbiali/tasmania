@@ -13,10 +13,10 @@ import tasmania.utils.utils_plot as utils_plot
 #
 filename    = os.path.join(os.environ['TASMANIA_ROOT'], 
 						   '../kessler_wrf_saturation_sedimentation_evaporation_maccormack_reference.pickle')
-field       = 'mass_fraction_of_cloud_liquid_water_in_air'
+field       = 'x_velocity'
 y_level     = 0
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   '../meetings_and_presentations/20180508_phd_interview/movies/reference_x_velocity.mp4')
+						   '../meetings_presentations/20180508_phd_interview/movies/reference_x_velocity.mp4')
 
 #
 # Optional settings

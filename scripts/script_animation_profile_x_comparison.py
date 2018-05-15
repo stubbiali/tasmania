@@ -35,7 +35,7 @@ field       = [
 y_level     = [0, 0, 0, 0]
 z_level     = [-1, -1, -1, -1]
 destination = os.path.join(os.environ['TASMANIA_ROOT'], 
-						   '../meetings_and_presentations/20180508_phd_interview/movies/kessler_comparison_accumulated_precipitation.mp4')
+						   '../foo.mp4')
 
 #
 # Animation settings

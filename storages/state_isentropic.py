@@ -21,10 +21,10 @@ class StateIsentropic(GridData):
 	* y_velocity (:math:`y`-staggered);
 	* x_momentum_isentropic (unstaggered);
 	* y_momentum_isentropic (unstaggered);
-	* air_pressure (:math:`z`-staggered);
-	* exner_function (:math:`z`-staggered);
+	* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
+	* exner_function or exner_function_on_interface_levels (:math:`z`-staggered);
 	* montgomery_potential (unstaggered);
-	* height (:math:`z`-staggered);
+	* height or height_on_interface_levels (:math:`z`-staggered);
 	* air_temperature (unstaggered);
 	* mass_fraction_water_vapor_in_air (unstaggered);
 	* water_vapor_isentropic_density (unstaggered);
@@ -68,13 +68,13 @@ class StateIsentropic(GridData):
 			:class:`numpy.ndarray` representing the (isentropic) :math:`x`-momentum.
 		y_momentum_isentropic : array_like
 			:class:`numpy.ndarray` representing the (isentropic) :math:`y`-momentum.
-		air_pressure : array_like
+		air_pressure or air_pressure_on_interface_levels : array_like
 			:class:`numpy.ndarray` representing the pressure.
-		exner_function : array_like
+		exner_function or exner_function_on_interface_levels: array_like
 			:class:`numpy.ndarray` representing the Exner function.
 		montgomery_potential : array_like
 			:class:`numpy.ndarray` representing the Montgomery potential.
-		height : array_like
+		height or height_on_interface_levels: array_like
 			:class:`numpy.ndarray` representing the geometrical height of the half-levels.
 		air_temperature : array_like
 			:class:`numpy.ndarray` representing the temperature.
@@ -144,12 +144,12 @@ class StateIsentropic(GridData):
 				- air_isentropic_density;
 				- x_momentum_isentropic;
 
-			* 'vertical_velocity', for the vertical velocity; only for steady-state flows; the current object must 
-				contain the following variables:
+			* 'vertical_velocity', for the vertical velocity; only for two-dimensional steady-state flows; 
+				the current object must contain the following variables:
 
 				- air_isentropic_density;
 				- x_momentum_isentropic;
-				- height.
+				- height or height_on_interface_levels.
 
 		y_level : int 
 			:math:`y`-index identifying the cross-section.
@@ -175,22 +175,14 @@ class StateIsentropic(GridData):
 		elif field_to_plot == 'vertical_velocity':
 			assert self.grid.ny == 1
 
-			u = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
-			h = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
-					   self._vars['height'].values[:, y_level, 1:, time_level])
-			h = 0.5 * (h[:-1, :] + h[1:, :])
+			u      = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				   	 self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
+			h_da   = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+			h      = 0.5 * (h_da.values[:, y_level, :-1, time_level] + h_da.values[:, y_level, 1:, time_level])
+			h      = 0.5 * (h[:-1, :] + h[1:, :])
 			height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
 
-			var = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
-		elif field_to_plot == 'temperature': # in case temperature is not a stored variable
-			z = self.grid.z_on_interface_levels.values
-			p = self._vars['pressure'].values[:, y_level, :, time_level]
-			exn = self._vars['exner_function'].values[:, y_level, :, time_level]
-
-			var = np.zeros((nx, nz + 1), dtype = datatype)
-			for k in range(nz + 1):
-				var[:, k] = exn[:, k] * z[k] / cp 
+			var    = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
 		else:
 			raise RuntimeError('Unknown field to plot.')
 
@@ -202,9 +194,10 @@ class StateIsentropic(GridData):
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid
-		z_ = np.copy(self._vars['height'].values[:, y_level, :, time_level])
-		z  = z_ if nk == nz + 1 else 0.5 * (z_[:,:-1] + z_[:,1:])
-		zv = np.zeros((ni, nk), dtype = datatype)
+		z_da = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+		z_   = np.copy(z_da.values[:, y_level, :, time_level])
+		z    = z_ if nk == nz + 1 else 0.5 * (z_[:,:-1] + z_[:,1:])
+		zv   = np.zeros((ni, nk), dtype = datatype)
 		if ni == nx:
 			zv[:, :] = z[:, :]
 		else:
@@ -212,7 +205,7 @@ class StateIsentropic(GridData):
 			zv[0, :], zv[-1, :] = zv[1, :], zv[-2, :]
 
 		# The underlying topography
-		topography_ = self._vars['height'].values[:, y_level, -1, time_level]
+		topography_ = z_da.values[:, y_level, -1, time_level]
 		if ni == nx:
 			topography = topography_
 		else:
@@ -308,12 +301,12 @@ class StateIsentropic(GridData):
 				- air_isentropic_density;
 				- x_momentum_isentropic;
 
-			* 'vertical_velocity', for the vertical velocity; only for steady-state flows; the current object must 
-				contain the following variables:
+			* 'vertical_velocity', for the vertical velocity; only for two-dimensional steady-state flows; 
+				the current object must contain the following variables:
 
 				- air_isentropic_density;
 				- x_momentum_isentropic;
-				- height.
+				- height or height_on_interface_levels.
 
 		y_level : int 
 			:math:`y`-index identifying the cross-section.
@@ -339,22 +332,14 @@ class StateIsentropic(GridData):
 		elif field_to_plot == 'vertical_velocity':
 			assert self.grid.ny == 1
 
-			u = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
-				self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
-			h = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
-					   self._vars['height'].values[:, y_level, 1:, time_level])
-			h = 0.5 * (h[:-1, :] + h[1:, :])
+			u      = self._vars['x_momentum_isentropic'].values[:, y_level, :, time_level] / \
+				     self._vars['air_isentropic_density'].values[:, y_level, :, time_level] 
+			h_da   = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+			h      = 0.5 * (h_da.values[:, y_level, :-1, time_level] + h_da.values[:, y_level, 1:, time_level])
+			h 	   = 0.5 * (h[:-1, :] + h[1:, :])
 			height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
 
 			var = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
-		elif field_to_plot == 'temperature':
-			z = self.grid.z_on_interface_levels.values
-			p = self._vars['pressure'].values[:, y_level, :, time_level]
-			exn = self._vars['exner_function'].values[:, y_level, :, time_level]
-
-			var = np.zeros((nx, nz + 1), dtype = datatype)
-			for k in range(nz + 1):
-				var[:, k] = exn[:, k] * z[k] / cp 
 		else:
 			raise RuntimeError('Unknown field to plot.')
 
@@ -366,8 +351,9 @@ class StateIsentropic(GridData):
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid
-		z_ = np.copy(self._vars['height'].values[:, y_level, :, time_level])
-		z  = z_ if nk == nz + 1 else 0.5 * (z_[:,:-1] + z_[:,1:])
+		h_da = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+		z_   = np.copy(h_da.values[:, y_level, :, time_level])
+		z    = z_ if nk == nz + 1 else 0.5 * (z_[:,:-1] + z_[:,1:])
 		zv = np.zeros((ni, nk), dtype = datatype)
 		if ni == nx:
 			zv[:, :] = z[:, :]
@@ -376,7 +362,7 @@ class StateIsentropic(GridData):
 			zv[0, :], zv[-1, :] = zv[1, :], zv[-2, :]
 
 		# The underlying topography
-		topography_ = self._vars['height'].values[:, y_level, -1, time_level]
+		topography_ = h_da.values[:, y_level, -1, time_level]
 		if ni == nx:
 			topography = topography_
 		else:
@@ -466,7 +452,7 @@ class StateIsentropic(GridData):
 
 				- air_isentropic_density;
 				- x_momentum_isentropic;
-				- height.
+				- height or height_on_interface_levels.
 
 		y_level : int 
 			:math:`y`-level identifying the cross-section.
@@ -483,11 +469,11 @@ class StateIsentropic(GridData):
 				 self._vars['air_isentropic_density'].values[:, y_level, :, time_level]
 
 			# Compute the (Cartesian) vertical velocity
-			z = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
-					   self._vars['height'].values[:, y_level, 1:, time_level])
-			h = 0.5 * (z[:-1, :] + z[1:, :])
+			z_da   = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+			z      = 0.5 * (z_da.values[:, y_level, :-1, time_level] + z_da.values[:, y_level, 1:, time_level])
+			h      = 0.5 * (z[:-1, :] + z[1:, :])
 			height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
-			vz = vx * (height[1:, :] - height[:-1, :]) / self.grid.dx
+			vz     = vx * (height[1:, :] - height[:-1, :]) / self.grid.dx
 
 			# Compute the velocity magnitude
 			scalar = np.sqrt(vx ** 2 + vz ** 2)
@@ -521,15 +507,15 @@ class StateIsentropic(GridData):
 
 	def streamplot_xz(self, y_level, time_level, **kwargs):
 		"""
-		Generate the streamplot of the velocity field at a cross-section parallel to the :math:`xz`-plane.
+		Generate the streamplot of a two-dimensional velocity field.
 
 		Note
 		----
 		The current object should contain the following variables:
 
-			* air_isentropic_density (unstaggered);
-			* x_momentum_isentropic (unstaggered);
-			* height (:math:`z`-staggered).
+			* air_isentropic_density;
+			* x_momentum_isentropic;
+			* height or height_on_interface_levels.
 
 		Parameters
 		----------
@@ -541,6 +527,7 @@ class StateIsentropic(GridData):
 			Keyword arguments to specify different plotting settings. 
 			See :func:`tasmania.utils.utils_plot.streamplot_xz` for the complete list.
 		"""
+		# Make sure the state is two-dimensional
 		assert self.grid.ny == 1
 
 		# Shortcuts
@@ -551,11 +538,11 @@ class StateIsentropic(GridData):
 			self._vars['air_isentropic_density'].values[:, y_level, :, time_level]
 
 		# Compute the (Cartesian) vertical velocity
-		z = 0.5 * (self._vars['height'].values[:, y_level, :-1, time_level] +
-				   self._vars['height'].values[:, y_level, 1:, time_level])
-		h = 0.5 * (z[:-1, :] + z[1:, :])
+		z_da   = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+		z      = 0.5 * (z_da.values[:, y_level, :-1, time_level] + z_da.values[:, y_level, 1:, time_level])
+		h      = 0.5 * (z[:-1, :] + z[1:, :])
 		height = np.concatenate((h[0:1, :], h, h[-1:, :]), axis = 0)
-		w = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
+		w      = u * (height[1:, :] - height[:-1, :]) / self.grid.dx
 
 		# Interpolation points
 		x  = np.repeat(self.grid.x.values[:, np.newaxis], nz, axis = 1)
@@ -583,8 +570,9 @@ class StateIsentropic(GridData):
 		color = np.sqrt(U ** 2 + W ** 2)
 
 		# The underlying topography
-		topography = self._vars['height'].values[:, y_level, -1, time_level]
+		topography = z_da.values[:, y_level, -1, time_level]
 
+		# The evaluation points below the topography are set to nan
 		for i in range(nx):
 			for k in range(m):
 				if zv[k,i] < topography[i]:
@@ -600,7 +588,7 @@ class StateIsentropic(GridData):
 	#
 	def animation_contourf_xz(self, field_to_plot, y_level, destination, **kwargs):
 		"""
-		Generate an animation showing the time evolution of the contourf of a field at a cross-section 
+		Generate an animation showing the time evolution of the contourfs of a field at a cross-section 
 		parallel to the :math:`xz`-plane.
 
 		Parameters
@@ -625,14 +613,6 @@ class StateIsentropic(GridData):
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
 			var = self._vars[field_to_plot].values[:, y_level, :, :] 
-		elif field_to_plot == 'air_temperature':
-			z = self.grid.z_on_interface_levels.values
-			p = self._vars['pressure'].values[:, y_level, :, :]
-			exn = self._vars['exner_function'].values[:, y_level, :, :]
-
-			var = np.zeros((nx, nz + 1, nt), dtype = datatype)
-			for k in range(nz + 1):
-				var[:, k, :] = exn[:, k, :] * z[k] / cp 
 		else:
 			raise RuntimeError('Unknown field to plot.')
 
@@ -647,9 +627,10 @@ class StateIsentropic(GridData):
 		xv = np.repeat(x[:, np.newaxis], nk, axis = 1)
 
 		# The underlying z-grid
-		z_ = np.copy(self._vars['height'].values[:, y_level, :, :])
-		z  = z_ if nk == nz + 1 else 0.5 * (z_[:, :-1, :] + z_[:, 1:, :])
-		zv = np.zeros((ni, nk, nt), dtype = datatype)
+		z_da = self._vars['height'] if self._vars['height'] is not None else self._vars['height_on_interface_levels']
+		z_   = np.copy(z_da.values[:, y_level, :, :])
+		z    = z_ if nk == nz + 1 else 0.5 * (z_[:, :-1, :] + z_[:, 1:, :])
+		zv   = np.zeros((ni, nk, nt), dtype = datatype)
 		if ni == nx:
 			zv[:, :, :] = z[:, :, :]
 		else:
@@ -657,7 +638,7 @@ class StateIsentropic(GridData):
 			zv[0, :, :], zv[-1, :, :] = zv[1, :, :], zv[-2, :, :]
 
 		# The underlying topography
-		topography_ = self._vars['height'].values[:, y_level, -1, :]
+		topography_ = z_da.values[:, y_level, -1, :]
 		if ni == nx:
 			topography = topography_
 		else:

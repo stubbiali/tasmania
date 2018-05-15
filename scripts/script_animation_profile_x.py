@@ -14,7 +14,7 @@ filename    = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessl
 field       = 'precipitation'
 y_level     = 0
 z_level     = -1
-destination = os.path.join(os.environ['TASMANIA_ROOT'], '../meetings/20180410_status_meeting/movie/kessler_sedimentation/verification_kessler_wrf_sedimentation_maccormack_precipitation.mp4')
+destination = os.path.join(os.environ['TASMANIA_ROOT'], '../foo.mp4')
 
 #
 # Optional settings
