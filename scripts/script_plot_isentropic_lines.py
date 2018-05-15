@@ -69,7 +69,8 @@ with open(filename, 'rb') as data:
 	x = state_save.grid.x.values[:]
 
 	# Extract height of the lines of constant potential temperature
-	z  = state_save['height'].values[:, y_level, :, time_level]
+	z_ = state_save['height'] if state_save['height'] is not None else state_save['height_on_interface_levels']
+	z  = z_.values[:, y_level, :, time_level]
 	nk = z.shape[1]
 
 	# Global settings

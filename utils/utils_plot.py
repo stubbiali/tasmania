@@ -267,12 +267,8 @@ def contourf_xy(x, y, topography, field, **kwargs):
 		String specifying the location where the text box should be placed. Default is 'upper right'; 
 		please see :class:`matplotlib.offsetbox.AnchoredText` for all the available options.
 	"""
-	# Shortcuts
-	nx, ny = grid.nx, grid.ny
-	ni, nj = field.shape
-
 	# Get keyword arguments
-	show            = kwargs.get('show', True)
+	show             = kwargs.get('show', True)
 	destination      = kwargs.get('destination', None)
 	fontsize         = kwargs.get('fontsize', 12)
 	figsize			 = kwargs.get('figsize', [8,8])

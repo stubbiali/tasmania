@@ -160,7 +160,8 @@ class GridXYZ:
 		obj :
 			:class:`~grids.axis.Axis` representing the :math:`x`-half levels.
 		"""
-		return self.xy_grid.x_at_u_locations
+		g = self.xy_grid
+		return g.x_at_u_locations if hasattr(g, 'x_at_u_locations') else g.x_half_levels
 
 	@property
 	def nx(self):
@@ -208,7 +209,8 @@ class GridXYZ:
 		obj :
 			:class:`~grids.axis.Axis` representing the :math:`y`-half levels.
 		"""
-		return self.xy_grid.y_at_v_locations
+		g = self.xy_grid
+		return g.y_at_v_locations if hasattr(g, 'y_at_v_locations') else g.y_half_levels
 
 	@property
 	def ny(self):
