@@ -191,7 +191,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
@@ -217,10 +217,10 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
+			* air_pressure_on_interface_levels (:math:`z`-staggered);
+			* exner_function_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
-			* height (:math:`z`-staggered);
+			* height_on_interface_levels (:math:`z`-staggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered);
@@ -291,10 +291,10 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
+			* air_pressure_on_interface_levels (:math:`z`-staggered);
+			* exner_function_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
-			* height (:math:`z`-staggered);
+			* height_on_interface_levels (:math:`z`-staggered);
 			* air_temperature (unstaggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
@@ -472,13 +472,13 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 
 		# Assemble the initial state
 		state = StateIsentropic(initial_time, self._grid, 
-								air_isentropic_density = s, 
-								x_velocity             = u, 
-								y_velocity             = v, 
-								air_pressure           = p, 
-								exner_function         = exn, 
-								montgomery_potential   = mtg, 
-								height                 = h)
+								air_isentropic_density             = s, 
+								x_velocity                         = u, 
+								y_velocity                         = v, 
+								air_pressure_on_interface_levels   = p, 
+								exner_function_on_interface_levels = exn, 
+								montgomery_potential               = mtg, 
+								height_on_interface_levels         = h)
 
 		# Diagnose the air density and temperature
 		state.extend(self._diagnostic.get_air_density(state)),
@@ -508,7 +508,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered).
 
 		diagnostics : `obj`, optional 
@@ -527,10 +527,10 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
+			* air_pressure_on_interface_levels (:math:`z`-staggered);
+			* exner_function_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
-			* height (:math:`z`-staggered).
+			* height_on_interface_levels (:math:`z`-staggered).
 
 		diagnostics_out : obj
 			Empty :class:`~tasmania.storages.grid_data.GridData`, as no diagnostics are computed. 	
@@ -584,7 +584,8 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			self._boundary.apply(v_new, v_now)
 
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
-		state_new.extend(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
+		p_ = state['air_pressure'] if state['air_pressure'] is not None else state['air_pressure_on_interface_levels']
+		state_new.extend(self._diagnostic.get_diagnostic_variables(state_new, p_.values[0,0,0,0]))
 
 		return state_new, diagnostics_out
 
@@ -603,7 +604,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -629,10 +630,10 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
+			* air_pressure_on_interface_levels (:math:`z`-staggered);
+			* exner_function_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
-			* height (:math:`z`-staggered);
+			* height_on_interface_levels (:math:`z`-staggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered);
@@ -732,7 +733,8 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			self._boundary.apply(qr_new, qr_now)
 
 		# Diagnose the pressure, the Exner function, the Montgomery potential and the geometric height of the half levels
-		state_new.extend(self._diagnostic.get_diagnostic_variables(state_new, state['air_pressure'].values[0,0,0,0]))
+		p_ = state['air_pressure'] if state['air_pressure'] is not None else state['air_pressure_on_interface_levels']
+		state_new.extend(self._diagnostic.get_diagnostic_variables(state_new, p_.values[0,0,0,0]))
 
 		if self.microphysics is not None:
 			# Diagnose the density
