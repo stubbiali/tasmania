@@ -206,7 +206,7 @@ class PrognosticIsentropicNonconservative:
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* air_pressure (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
@@ -348,7 +348,7 @@ class PrognosticIsentropicNonconservative:
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
-			* height (:math:`z`-staggered);
+			* height or height_on_interface_levels (:math:`z`-staggered);
 			* mass_fraction_of_precipitation_water_in air (unstaggered).
 
 		state_prv : obj
