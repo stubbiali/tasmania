@@ -15,17 +15,17 @@ class GridXY:
 	Attributes
 	----------
 	x : obj
-		:class:`~grids.axis.Axis` representing the :math:`x` main levels.
+		:class:`~grids.axis.Axis` storing the :math:`x`-coordinates of the mass points.
 	x_at_u_locations : obj
-		:class:`~grids.axis.Axis` representing the :math:`x` half levels.
+		:class:`~grids.axis.Axis` storing the :math:`x`-coordinates at the :math:`u`-locations.
 	nx : int
 		Number of grid points along :math:`x`.
 	dx : float
 		The :math:`x`-spacing.
 	y : obj
-		:class:`~grids.axis.Axis` representing the :math:`y` main levels.
+		:class:`~grids.axis.Axis` storing the :math:`y`-coordinates of the mass points.
 	y_at_v_locations : obj
-		:class:`~grids.axis.Axis` representing the :math:`y` half levels.
+		:class:`~grids.axis.Axis` storing the :math:`y`-coordinates at the :math:`v`-locations.
 	ny : int
 		Number of grid points along :math:`y`.
 	dy : float
