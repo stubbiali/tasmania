@@ -283,10 +283,10 @@ class DiagnosticIsentropic:
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
-			* air_pressure (:math:`z`-staggered);
-			* exner_function (:math:`z`-staggered);
+			* air_pressure_on_interface_levels (:math:`z`-staggered);
+			* exner_function_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (unstaggered);
-			* height (:math:`z`-staggered).
+			* height_on_interface_levels (:math:`z`-staggered).
 		"""
 		# Extract the required variables
 		s  = state['air_isentropic_density'].values[:,:,:,0]
@@ -323,10 +323,10 @@ class DiagnosticIsentropic:
 		# Set the output
 		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
 		out = GridData(time, self._grid, 
-					   air_pressure = self._out_p, 
-					   exner_function = self._out_exn,
-					   montgomery_potential = self._out_mtg, 
-					   height = self._out_h)
+					   air_pressure_on_interface_levels   = self._out_p, 
+					   exner_function_on_interface_levels = self._out_exn,
+					   montgomery_potential               = self._out_mtg, 
+					   height_on_interface_levels         = self._out_h)
 
 		return out
 
@@ -349,7 +349,7 @@ class DiagnosticIsentropic:
 		obj :
 			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
-			* height (:math:`z`-staggered).
+			* height_on_interface_levels (:math:`z`-staggered).
 		"""
 		# Extract the required variables
 		s  = state['air_isentropic_density'].values[:,:,:,0]
@@ -377,7 +377,7 @@ class DiagnosticIsentropic:
 
 		# Set the output
 		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
-		out = GridData(time, self._grid, height = self._out_h)
+		out = GridData(time, self._grid, height_on_interface_levels = self._out_h)
 
 		return out
 
@@ -391,7 +391,7 @@ class DiagnosticIsentropic:
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered);
-			* height (:math:`z`-staggered).
+			* height or height_on_interface_levels (:math:`z`-staggered).
 
 		Return
 		------
@@ -401,8 +401,9 @@ class DiagnosticIsentropic:
 			* air_density (unstaggered).
 		"""
 		# Extract the required variables
-		s = state['air_isentropic_density'].values[:,:,:,0]
-		h = state['height'].values[:,:,:,0]
+		s  = state['air_isentropic_density'].values[:,:,:,0]
+		h_ = state['height'] if state['height'] is not None else state['height_on_interface_levels']
+		h  = h_.values[:,:,:,0]
 
 		# If it is the first time this method is invoked, initialize the GT4Py stencil
 		if self._stencil_diagnosing_air_density is None:
@@ -429,7 +430,7 @@ class DiagnosticIsentropic:
 		state : obj
 			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
-			* exner_function (:math:`z`-staggered).
+			* exner_function or exner_function_on_interface_levels (:math:`z`-staggered).
 
 		Return
 		------
@@ -439,7 +440,9 @@ class DiagnosticIsentropic:
 			* air_temperature (unstaggered).
 		"""
 		# Extract the Exner function
-		exn = state['exner_function'].values[:, :, :, -1]
+		exn_ = state['exner_function'] if state['exner_function'] is not None \
+			   else state['exner_function_on_interface_levels']
+		exn  = exn_.values[:, :, :, -1]
 
 		# Diagnose the temperature at the mass grid points (not via a GT4Py stencil)
 		T = .5 * (self._theta[:, :, :-1] * exn[:, :, :-1] + self._theta[:, :, 1:] * exn[:, :, 1:]) / cp

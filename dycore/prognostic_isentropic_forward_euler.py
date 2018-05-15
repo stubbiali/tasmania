@@ -72,8 +72,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		sedimentation_flux_type : str
 			String specifying the method used to compute the numerical sedimentation flux. Available options are:
 
-			- 'first_order_upwind', for the first-order upwind scheme;
-			- 'second_order_upwind', for the second-order upwind scheme.
+			* 'first_order_upwind', for the first-order upwind scheme;
+			* 'second_order_upwind', for the second-order upwind scheme.
 
 		sedimentation_substeps : int
 			Number of sub-timesteps to perform in order to integrate the sedimentation flux. 
@@ -124,7 +124,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* y_velocity (:math:`y`-staggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
-			* air_pressure (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
@@ -195,7 +195,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		# Diagnose the Montgomery potential from the provisional isentropic density
 		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
 		state_prov = StateIsentropic(time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
-		gd = self.diagnostic.get_diagnostic_variables(state_prov, state['air_pressure'].values[0,0,0,0])
+		p_ = state['air_pressure'] if state['air_pressure'] is not None else state['air_pressure_on_interface_levels']
+		gd = self.diagnostic.get_diagnostic_variables(state_prov, p_.values[0,0,0,0])
 
 		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
 		self._in_s_prv[:mi, :mj, :]   = self.boundary.from_physical_to_computational_domain(s_prov)
@@ -251,8 +252,8 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 
 			* air_density (unstaggered);
 			* air_isentropic_density (unstaggered);
-			* air_pressure (:math:`z`-staggered);
-			* height (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
+			* height or height_on_interface_levels (:math:`z`-staggered);
 			* mass_fraction_of_precipitation_water_in air (unstaggered).
 
 		state_prv : obj
@@ -285,6 +286,11 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* accumulated_precipitation (unstaggered, two-dimensional);
 			* precipitation (unstaggered, two-dimensional).
 		"""
+		# Shortcuts
+		p_ = state_now['air_pressure'] if state_now['air_pressure'] is not None \
+			 else state_now['air_pressure_on_interface_levels']
+		h_ = state_now['height'] if state_now['height'] is not None else state_now['height_on_interface_levels']
+
 		# The first time this method is invoked, initialize the underlying GT4Py stencils
 		if self._stencil_stepping_by_integrating_sedimentation_flux is None:
 			self._stencils_stepping_by_integrating_sedimentation_flux_initialize()
@@ -299,7 +305,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		self._in_rho[:,:,:]       = state_now['air_density'].values[:,:,:,0]
 		self._in_s[:nx,:ny,:]     = state_now['air_isentropic_density'].values[:,:,:,0]
 		self._in_s_prv[:nx,:ny,:] = state_prv['air_isentropic_density'].values[:,:,:,0]
-		self._in_h[:,:,:]         = state_now['height'].values[:,:,:,0]
+		self._in_h[:,:,:]         = h_.values[:,:,:,0]
 		self._in_qr[:,:,:] 	   	  = state_now['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0] 
 		self._in_qr_prv[:,:,:] 	  = state_prv['mass_fraction_of_precipitation_water_in_air'].values[:,:,:,0]
 
@@ -350,7 +356,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
 
 			# Diagnose the geometric height and the air density
-			state_new.update(self.diagnostic.get_height(state_new, pt = state_now['air_pressure'].values[0,0,0,0]))
+			state_new.update(self.diagnostic.get_height(state_new, pt = p_.values[0,0,0,0]))
 			state_new.update(self.diagnostic.get_air_density(state_new))
 
 			# Advance the solution

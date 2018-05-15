@@ -127,7 +127,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* x_momentum_isentropic (unstaggered);
 			* y_velocity (:math:`y`-staggered);
 			* y_momentum_isentropic (unstaggered);
-			* air_pressure (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
 			* montgomery_potential (isentropic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
@@ -254,8 +254,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 
 			* air_density (unstaggered);
 			* air_isentropic_density (unstaggered);
-			* air_pressure (:math:`z`-staggered);
-			* height (:math:`z`-staggered);
+			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
+			* height or height_on_interface_levels (:math:`z`-staggered);
 			* mass_fraction_of_precipitation_water_in air (unstaggered).
 
 		state_prv : obj
@@ -316,7 +316,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		state_new = StateIsentropic(time_now + dt, self._grid,
 									air_density									= self._in_rho,
 									air_isentropic_density						= self._out_s[:nx,:ny,:],
-									height										= self._in_h,
+									height_on_interface_levels					= self._in_h,
 									mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
 		# Initialize the arrays storing the precipitation and the accumulated precipitation
@@ -339,10 +339,14 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		self._in_qr[:,:,:nb]    = state_now['mass_fraction_of_precipitation_water_in_air'].values[:,:,:nb,0]
 		self._in_qr[:,:,nb:]    = self._out_qr[:,:,nb:]
 
+		# Shortcuts
+		p_ = state_now['air_pressure'] if state_now['air_pressure'] is not None \
+			 else state_now['air_pressure_on_interface_levels']
+
 		# Perform the time-splitting procedure
 		for n in range(self._sedimentation_substeps):
 			# Diagnose the geometric height and the air density
-			state_new.update(self.diagnostic.get_height(state_new, pt = state_now['air_pressure'].values[0,0,0,0]))
+			state_new.update(self.diagnostic.get_height(state_new, pt = p_.values[0,0,0,0]))
 			state_new.update(self.diagnostic.get_air_density(state_new))
 
 			# Compute the raindrop fall velocity
@@ -369,7 +373,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		# Pop out useless variables from output state
 		state_new.pop('air_density')
 		state_new.pop('air_isentropic_density')
-		state_new.pop('height')
+		state_new.pop('height_on_interface_levels')
 
 		# Diagnose the isentropic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
