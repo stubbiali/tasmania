@@ -321,7 +321,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		state_new = StateIsentropic(time_now + dt, self._grid,
 									air_density                                 = self._in_rho,
 									air_isentropic_density						= self._out_s[:nx,:ny,:],
-									height                                      = self._in_h,
+									height_on_interface_levels                  = self._in_h,
 									mass_fraction_of_precipitation_water_in_air = self._out_qr)
 
 		# Initialize the arrays storing the precipitation and the accumulated precipitation
