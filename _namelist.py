@@ -253,8 +253,8 @@ sedimentation_on	           		= True
 sedimentation_flux_type		   		= 'second_order_upwind'
 sedimentation_substeps		   		= 2
 rain_evaporation_on			   		= True
-slow_tendency_microphysics_on       = False
-slow_tendency_microphysics_type     = 'kessler_wrf_saturation'
+slow_tendency_microphysics_on       = True
+slow_tendency_microphysics_type     = 'kessler_wrf'
 slow_tendency_microphysics_kwargs	= {
 								  	   'a' : .0001,
 								  	   'k1': .001,
@@ -264,7 +264,7 @@ fast_tendency_microphysics_on       = False
 fast_tendency_microphysics_type     = ''
 fast_tendency_microphysics_kwargs	= {}
 adjustment_microphysics_on     		= True
-adjustment_microphysics_type   		= 'kessler_wrf'
+adjustment_microphysics_type   		= 'kessler_wrf_saturation'
 adjustment_microphysics_kwargs 		= {
 								  	   'a' : .0001,
 								  	   'k1': .001,
@@ -285,7 +285,7 @@ initial_state_kwargs  = {
 						 'temperature'          : 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = np.arange(150, 10800, 150)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/kessler_wrf_saturation_sedimentation_evaporation_maccormack.pickle')
+save_iterations		  = np.arange(30, 2160, 30)
+save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/kessler_wrf_saturation_sedimentation_evaporation_maccormack.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float64
