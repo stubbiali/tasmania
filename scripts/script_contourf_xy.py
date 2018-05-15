@@ -29,8 +29,8 @@ import pickle
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_1_leapfrog.pickle')
-field = 'pressure'
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/slow_tendency_kessler_wrf_saturation_sedimentation_maccormack.pickle')
+field = 'air_pressure'
 z_level = -1
 time_level = -1
 
