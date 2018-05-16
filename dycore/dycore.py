@@ -49,7 +49,7 @@ class DynamicalCore(TimeStepper):
 		self._microphysics = None
 
 		# Initialize the list of parameterizations calculating fast-varying tendencies
-		self._fast_tendency_params = []
+		self._fast_tendencies = []
 
 	@property
 	@abc.abstractmethod
@@ -100,7 +100,7 @@ class DynamicalCore(TimeStepper):
 
 	@property
 	@abc.abstractmethod
-	def fast_tendency_parameterizations(self):
+	def fast_tendencies(self):
 		"""
 		Get the list of parameterizations calculating fast-varying tendencies.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
@@ -113,16 +113,16 @@ class DynamicalCore(TimeStepper):
 			calculating fast-varying tendencies.
 		"""
 
-	@fast_tendency_parameterizations.setter
+	@fast_tendencies.setter
 	@abc.abstractmethod
-	def fast_tendency_parameterizations(self, fast_tendency_params):
+	def fast_tendencies(self, fast_tendencies):
 		"""
 		Set the list of parameterizations calculating fast-varying tendencies.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
 		----------
-		fast_tendency_paras : list
+		fast_tendencies : list
 			List containing instances of derived classes of 
 			:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
 			calculating fast-varying tendencies.
