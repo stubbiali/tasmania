@@ -177,7 +177,7 @@ class Model:
 		simulation_time : obj
 			:class:`datetime.timedelta` representing the simulation time.
 		state : obj
-			The initial state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+			The initial state, as an instance of :class:`~tasmania.storages.grid_data.GridData` or one of its derived classes.
 		save_freq : `tuple`, optional
 			The iterations at which the state should be saved. Default is empty, meaning that only the initial and 
 			final states are saved.

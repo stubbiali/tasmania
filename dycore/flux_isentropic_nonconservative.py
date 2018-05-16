@@ -37,7 +37,7 @@ class FluxIsentropicNonconservative:
 		Parameters
 		----------
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		"""
@@ -47,7 +47,7 @@ class FluxIsentropicNonconservative:
 	def get_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, 
 							  in_qv = None, in_qc = None, in_qr = None):
 		"""
-		Method returning the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes 
+		Method returning the :class:`gridtools.Equation`\s representing the :math:`x`- and :math:`y`-fluxes 
 		for all the prognostic model variables.
 
 		Parameters
@@ -123,7 +123,7 @@ class FluxIsentropicNonconservative:
 							in_qc = None, in_qc_prv = None,	
 							in_qr = None, in_qr_prv = None):
 		"""
-		Method returning the :class:`gridtools.Equation`~s representing the :math:`\\theta`-flux for all 
+		Method returning the :class:`gridtools.Equation`\s representing the :math:`\\theta`-flux for all 
 		the prognostic model variables.
 
 		Parameters
@@ -206,7 +206,7 @@ class FluxIsentropicNonconservative:
 			* 'centered', for a second-order centered scheme.
 
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
@@ -222,8 +222,8 @@ class FluxIsentropicNonconservative:
 	@abc.abstractmethod
 	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_qv, in_qc, in_qr):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes for 
-		all the prognostic variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`\s representing the :math:`x`- and :math:`y`-fluxes for 
+		all the prognostic variables. The :class:`gridtools.Equation`\s are then set as instance attributes.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters
@@ -256,8 +256,8 @@ class FluxIsentropicNonconservative:
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`\\theta`-fluxes for all the 
-		prognostic model variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`\s representing the :math:`\\theta`-fluxes for all the 
+		prognostic model variables. The :class:`gridtools.Equation`\s are then set as instance attributes.
 		As this method is marked as abstract, its implementation is delegated to the derived classes.
 
 		Parameters

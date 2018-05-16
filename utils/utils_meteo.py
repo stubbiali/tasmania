@@ -37,7 +37,7 @@ def get_isentropic_isothermal_analytical_solution(grid, x_velocity_initial, temp
 	Parameters
 	----------
 	grid : obj
-		:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid. It must consist of only one points in :math:`y`-direction.
+		:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid. It must consist of only one points in :math:`y`-direction.
 	x_velocity_initial : float
 		The initial :math:`x`-velocity, in units of [:math:`m \, s^{-1}`].
 	temperature : float

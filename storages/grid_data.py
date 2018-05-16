@@ -44,7 +44,7 @@ class GridData:
 	Attributes
 	----------
 	grid : obj
-		The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+		The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 	"""
 	# Specify the units in which variables should be expressed
 	units = {
@@ -88,7 +88,7 @@ class GridData:
 		time : obj
 			:class:`datetime.datetime` representing the time instant at which the variables are defined.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		**kwargs : array_like
 			:class:`numpy.ndarray` representing a gridded variable.
 		"""
@@ -133,7 +133,8 @@ class GridData:
 		Return
 		------
 		obj :
-			Shallow copy of the :class:`xarray.DataArray` representing the variable, or :obj:`None` if the variable is not found.
+			Shallow copy of the :class:`xarray.DataArray` representing the variable, 
+			or :obj:`None` if the variable is not found.
 		"""
 		return self._vars.get(key, None)
 
@@ -213,14 +214,15 @@ class GridData:
 		Parameters
 		----------
 		other : obj 
-			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
+			Another :class:`~tasmania.storages.grid_data.GridData` (or a derived class) 
+			with which the current object will be synced.
 		"""
 		for key in other._vars:
 			self._vars[key] = copy.deepcopy(other._vars[key])
 
 	def update(self, other):
 		"""
-		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
+		Sync the current object with another :class:`~tasmania.storages.grid_data.GridData` (or a derived class).
 		
 		Notes
 		-----
@@ -230,7 +232,8 @@ class GridData:
 		Parameters
 		----------
 		other : obj 
-			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
+			Another :class:`~tasmania.storages.grid_data.GridData` (or a derived class) 
+			with which the current object will be synced.
 		"""
 		for key in other._vars:
 			self._vars[key].values[:,:,:,:] = other._vars[key].values[:,:,:,:]
@@ -238,7 +241,7 @@ class GridData:
 
 	def extend_and_update(self, other):
 		"""
-		Sync the current object with another :class:`~storages.grid_data.GridData` (or a derived class).
+		Sync the current object with another :class:`~tasmania.storages.grid_data.GridData` (or a derived class).
 		This implies that, for each variable stored in the incoming object:
 
 		* if the current object contains a variable with the same name, that variable is updated;
@@ -252,7 +255,8 @@ class GridData:
 		Parameters
 		----------
 		other : obj 
-			Another :class:`~storages.grid_data.GridData` (or a derived class) with which the current object will be synced.
+			Another :class:`~tasmania.storages.grid_data.GridData` (or a derived class) 
+			with which the current object will be synced.
 		"""
 		for key in other._vars:
 			try:
@@ -273,7 +277,8 @@ class GridData:
 		Return
 		------
 		obj :
-			Shallow copy of the :class:`xarray.DataArray` representing the variable, or :obj:`None` if the variable is not found.
+			Shallow copy of the :class:`xarray.DataArray` representing the variable, 
+			or :obj:`None` if the variable is not found.
 		"""
 		try:
 			return self._vars.pop(key, None)
@@ -287,7 +292,7 @@ class GridData:
 		Parameters
 		----------
 		other : obj 
-			Another :class:`~storages.grid_data.GridData` (or a derived class), whose :class:`xarray.DataArray`\s 
+			Another :class:`~tasmania.storages.grid_data.GridData` (or a derived class), whose :class:`xarray.DataArray`\s 
 			will be concatenated along the temporal axis to the corresponding ones in the current object.
 
 		Note
@@ -339,11 +344,11 @@ class GridData:
 		"""
 		In-place addition operator. In detail:
 
-		* if the incoming object contains a variable which is not contained in the current object: the variable is
+		* if the incoming object contains a variable which is not contained in the current object: the variable is \
 			deep-copied in the current object;
-		* if the incoming object contains a variable which is contained in the current object, but defined
+		* if the incoming object contains a variable which is contained in the current object, but defined \
 			at a different time level: the internal variable is set equal to the incoming one;
-		* if the incoming object contains a variable which is contained in the current object and both are defined
+		* if the incoming object contains a variable which is contained in the current object and both are defined \
 			at the same time level: the internal variable is augmented by the incoming one.
 
 		Parameters
@@ -384,7 +389,7 @@ class GridData:
 			Note that the string should include the extension as well.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.animation_profile_x` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.animation_profile_x` for the complete list.
 		"""
 		# Shortcuts
 		nx = self.grid.nx

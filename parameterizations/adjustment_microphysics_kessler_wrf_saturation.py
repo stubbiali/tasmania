@@ -102,7 +102,7 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 
@@ -118,10 +118,10 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		super().__init__(grid, rain_evaporation_on, backend)
 
 		# Constants for Tetens formula
-		self._p0 = 610.78
+		self._p0    = 610.78
 		self._alpha = 17.27
-		self._Tr = 273.15
-		self._bw = 35.85
+		self._Tr    = 273.15
+		self._bw    = 35.85
 		
 		# Shortcuts
 		self._beta   = Rd / Rv
@@ -140,7 +140,7 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
 
 			* air_density (unstaggered);
@@ -156,9 +156,9 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		Returns
 		-------
 		diagnostics : obj
-			Empty :class:`~storages.grid_data.GridData`, as no diagnostics are computed.
+			Empty :class:`~tasmania.storages.grid_data.GridData`, as no diagnostics are computed.
 		state_new : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the adjusted state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the adjusted state.
 			It contains the following updated variables:
 
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
@@ -205,7 +205,7 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
 
 			* air_density (unstaggered);
@@ -293,7 +293,7 @@ class AdjustmentMicrophysicsKesslerWRFSaturation(AdjustmentMicrophysics):
 		References
 		----------
 		Doms, G., et al. (2015). *A description of the nonhydrostatic regional COSMO-model. \
-			Part II: Physical parameterization.* Retrieved from `http://www.cosmo-model.org`_. \
+			Part II: Physical parameterization.* Retrieved from `COSMO <http://www.cosmo-model.org>`_. \
 		Mielikainen, J., B. Huang, J. Wang, H. L. A. Huang, and M. D. Goldberg. (2013). \
 			*Compute Unified Device Architecture (CUDA)-based parallelization of WRF Kessler \
 			cloud microphysics scheme*. Computer \& Geosciences, 52:292-299.

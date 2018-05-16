@@ -31,7 +31,7 @@ from tasmania.namelist import datatype
 
 class Periodic(HorizontalBoundary):
 	"""
-	This class inherits :class:`~tasmania.horizontal_boundarty.HorizontalBoundary` to implement horizontally 
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` to implement horizontally 
 	periodic boundary conditions.
 
 	Attributes
@@ -218,7 +218,7 @@ class Periodic(HorizontalBoundary):
 		Return
 		------
 		obj :
-			Instance of the same class of :obj:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary.grid` 
+			Instance of the same class of :obj:`tasmania.dycore.horizontal_boundary.HorizontalBoundary.grid` 
 			representing the underlying computational grid.
 		"""
 		# Shortcuts
@@ -260,8 +260,9 @@ class Periodic(HorizontalBoundary):
 
 class PeriodicXZ(HorizontalBoundary):
 	"""
-	This class inherits :class:`HorizontalBoundary` to implement horizontally periodic boundary conditions for fields 
-	defined on a computational domain consisting of only one grid point in the :math:`y`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` to implement horizontally 
+	periodic boundary conditions for fields defined on a computational domain consisting of only one grid 
+	point in the :math:`y`-direction.
 
 	Attributes
 	----------
@@ -277,7 +278,7 @@ class PeriodicXZ(HorizontalBoundary):
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""
@@ -445,8 +446,9 @@ class PeriodicXZ(HorizontalBoundary):
 
 class PeriodicYZ(HorizontalBoundary):
 	"""
-	This class inherits :class:`HorizontalBoundary` to implement horizontally periodic boundary conditions for fields 
-	defined on a computational domain consisting of only one grid point in the :math:`x`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` to implement horizontally 
+	periodic boundary conditions for fields defined on a computational domain consisting of only one grid 
+	point in the :math:`x`-direction.
 
 	Attributes
 	----------
@@ -462,7 +464,7 @@ class PeriodicYZ(HorizontalBoundary):
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""

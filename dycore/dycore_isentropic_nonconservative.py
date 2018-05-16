@@ -67,7 +67,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			String specifying the horizontal boundary conditions. 
 			See :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` for the available options.
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
@@ -207,7 +207,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state :obj 
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -220,20 +220,18 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics, namely:
 			
-			* change_over_time_in_air_potential_temperature (unstaggered, required when coupling between 
-				physics and dynamics is switched on);
 			* accumulated_precipitation (unstaggered).
 
 			Default is :obj:`None`.
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing tendencies. Default is obj:`None`.
+			:class:`~tasmania.storages.grid_data.GridData` storing tendencies. Default is obj:`None`.
 
 		Return
 		------
 		state_new : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -306,7 +304,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic.StateIsentropic` representing the initial state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the initial state.
 			It contains the following variables:
 
 			* air_density (unstaggered);
@@ -524,7 +522,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state :obj 
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -534,16 +532,16 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* montgomery_potential (unstaggered).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics.
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics.
 			For the time being, this is not actually used. 
 		tendencies : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing tendencies.
+			:class:`~tasmania.storages.grid_data.GridData` storing tendencies.
 			For the time being, this is not actually used. 
 
 		Return
 		------
 		state_new : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -555,7 +553,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* height_on_interface_levels (:math:`z`-staggered).
 
 		diagnostics_out : obj
-			Empty :class:`~tasmania.storages.grid_data.GridData`, as no diagnostics are computed. 	
+			Empty :class:`~tasmania.tasmania.storages.grid_data.GridData`, as no diagnostics are computed. 	
 		"""
 		# Initialize the empty GridData to return
 		time_now = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
@@ -620,7 +618,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state :obj 
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -633,20 +631,20 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered).
 
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics, namely:
 			
 			* change_over_time_in_air_potential_temperature (unstaggered, required only if coupling \
 				between physics and dynamics is switched on);
 			* accumulated_precipitation (unstaggered).
 
 		tendencies : `obj`, optional 
-			:class:`~storages.grid_data.GridData` possibly storing tendencies.
+			:class:`~tasmania.storages.grid_data.GridData` possibly storing tendencies.
 			For the time being, this is not actually used.
 
 		Return
 		------
 		state_new : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -663,7 +661,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			* air_temperature (unstaggered, only if cloud microphysics is switched on).
 
 		diagnostics_out : obj
-			:class:`~tasmania.storages.grid_data.GridData` collecting output diagnostics, namely:
+			:class:`~tasmania.tasmania.storages.grid_data.GridData` collecting output diagnostics, namely:
 
 			* precipitation (unstaggered, only if rain sedimentation is switched on);
 			* accumulated_precipitation (unstaggered, only if rain sedimentation is switched on).

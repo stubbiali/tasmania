@@ -98,7 +98,7 @@ class Topography1d:
 		Parameters
 		----------
 		x : obj
-			:class:`~grids.axis.Axis` representing the underlying horizontal axis.
+			:class:`~tasmania.grids.axis.Axis` representing the underlying horizontal axis.
 		topo_type : `str`, optional
 			Topography type. Either: 
 			
@@ -204,7 +204,7 @@ class Topography2d:
 		Parameters
 		----------
 		grid : obj
-			:class:`~grids.grid_xy.GridXY` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xy.GridXY` representing the underlying grid.
 		topo_type : `str`, optional
 			Topography type. Either:
 			
@@ -347,7 +347,7 @@ class Topography2d:
 		Parameters
 		----------
 		grid : obj
-			:class:`~grids.grid_xy.GridXY` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xy.GridXY` representing the underlying grid.
 
 		Keyword arguments
 		-----------------

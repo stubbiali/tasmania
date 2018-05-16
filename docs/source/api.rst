@@ -4,7 +4,7 @@ API Documentation
 Axis
 ----
 
-.. autoclass:: grids.axis.Axis
+.. autoclass:: tasmania.grids.axis.Axis
    :members:  
 
 
@@ -14,100 +14,133 @@ Dynamics
 Diagnostics
 ^^^^^^^^^^^
 
-.. autoclass:: dycore.diagnostic_isentropic.DiagnosticIsentropic
+.. autoclass:: tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic
    :members:
 
 Dynamical cores
 ^^^^^^^^^^^^^^^
 
-.. autoclass:: dycore.dycore.DynamicalCore
+.. autoclass:: tasmania.dycore.dycore.DynamicalCore
    :members:
 
-.. autoclass:: dycore.dycore_isentropic.DynamicalCoreIsentropic
+.. autoclass:: tasmania.dycore.dycore_isentropic.DynamicalCoreIsentropic
+   :members:
+
+.. autoclass:: tasmania.dycore.dycore_isentropic_nonconservative.DynamicalCoreIsentropicNonconservative
    :members:
 
 Lateral boundary conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: dycore.horizontal_boundary.HorizontalBoundary
+.. autoclass:: tasmania.dycore.horizontal_boundary.HorizontalBoundary
    :members:
 
-.. autoclass:: dycore.horizontal_boundary.Periodic
+.. autoclass:: tasmania.dycore.horizontal_boundary_periodic.Periodic
    :members:
 
-.. autoclass:: dycore.horizontal_boundary.PeriodicXZ
+.. autoclass:: tasmania.dycore.horizontal_boundary_periodic.PeriodicXZ
    :members:
 
-.. autoclass:: dycore.horizontal_boundary.PeriodicYZ
+.. autoclass:: tasmania.dycore.horizontal_boundary_periodic.PeriodicYZ
    :members:
 
-.. autoclass:: dycore.horizontal_boundary.Relaxed
+.. autoclass:: tasmania.dycore.horizontal_boundary_relaxed.Relaxed
    :members:
 
-.. autoclass:: dycore.horizontal_boundary.RelaxedSymmetricXZ
+.. autoclass:: tasmania.dycore.horizontal_boundary_relaxed.RelaxedXZ
    :members:
 
-.. autoclass:: dycore.horizontal_boundary.RelaxedSymmetricYZ
+.. autoclass:: tasmania.dycore.horizontal_boundary_relaxed.RelaxedYZ
+   :members:
+
+.. autoclass:: tasmania.dycore.horizontal_boundary_relaxed.RelaxedSymmetricXZ
+   :members:
+
+.. autoclass:: tasmania.dycore.horizontal_boundary_relaxed.RelaxedSymmetricYZ
    :members:
 
 Horizontal smoothing
 ^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothing
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothing
    :members:
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderXYZ
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderXYZ
    :members:
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderXZ
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderXZ
    :members:
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderYZ
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothingFirstOrderYZ
    :members:
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderXYZ
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderXYZ
    :members:
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderXZ
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderXZ
    :members:
 
-.. autoclass:: dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderYZ
+.. autoclass:: tasmania.dycore.horizontal_smoothing.HorizontalSmoothingSecondOrderYZ
    :members:
 
 Numerical fluxes
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: dycore.flux_isentropic.FluxIsentropic
+.. autoclass:: tasmania.dycore.flux_isentropic.FluxIsentropic
    :members:
 
-.. autoclass:: dycore.flux_isentropic_upwind.FluxIsentropicUpwind
+.. autoclass:: tasmania.dycore.flux_isentropic_upwind.FluxIsentropicUpwind
    :members:
 
-.. autoclass:: dycore.flux_isentropic_centered.FluxIsentropicCentered
+.. autoclass:: tasmania.dycore.flux_isentropic_centered.FluxIsentropicCentered
    :members:
 
-.. autoclass:: dycore.flux_isentropic_maccormack.FluxIsentropicMacCormack
+.. autoclass:: tasmania.dycore.flux_isentropic_maccormack.FluxIsentropicMacCormack
+   :members:
+
+.. autoclass:: tasmania.dycore.flux_isentropic_nonconservative.FluxIsentropicNonconservative
+   :members:
+
+.. autoclass:: tasmania.dycore.flux_isentropic_nonconservative_centered.FluxIsentropicNonconservativeCentered
    :members:
 
 Prognostics
 ^^^^^^^^^^^
 
-.. autoclass:: dycore.prognostic_isentropic.PrognosticIsentropic
+.. autoclass:: tasmania.dycore.prognostic_isentropic.PrognosticIsentropic
    :members:
 
-.. autoclass:: dycore.prognostic_isentropic_forward_euler.PrognosticIsentropicForwardEuler
+.. autoclass:: tasmania.dycore.prognostic_isentropic_centered.PrognosticIsentropicCentered
    :members:
 
-.. autoclass:: dycore.prognostic_isentropic_centered.PrognosticIsentropicCentered
+.. autoclass:: tasmania.dycore.prognostic_isentropic_forward_euler.PrognosticIsentropicForwardEuler
+   :members:
+
+.. autoclass:: tasmania.dycore.prognostic_isentropic_nonconservative.PrognosticIsentropicNonconservative
+   :members:
+
+.. autoclass:: tasmania.dycore.prognostic_isentropic_nonconservative_centered.PrognosticIsentropicNonconservativeCentered
+   :members:
+
+Sedimentation flux
+^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: tasmania.dycore.flux_sedimentation.FluxSedimentation
+   :members:
+
+.. autoclass:: tasmania.dycore.flux_sedimentation.FluxSedimentationUpwindFirstOrder
+   :members:
+
+.. autoclass:: tasmania.dycore.flux_sedimentation.FluxSedimentationUpwindSecondOrder
    :members:
 
 Wave absorber
 ^^^^^^^^^^^^^
 
-.. autoclass:: dycore.vertical_damping.VerticalDamping
+.. autoclass:: tasmania.dycore.vertical_damping.VerticalDamping
    :members:
 
-.. autoclass:: dycore.vertical_damping.VerticalDampingRayleigh
+.. autoclass:: tasmania.dycore.vertical_damping.VerticalDampingRayleigh
    :members:
 
 
@@ -117,100 +150,120 @@ Grids
 Two-dimensional grids
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: grids.grid_xy.GridXY
+.. autoclass:: tasmania.grids.grid_xy.GridXY
    :members:
 
-.. autoclass:: grids.grid_xz.GridXZ
+.. autoclass:: tasmania.grids.grid_xz.GridXZ
    :members:
 
-.. autoclass:: grids.sigma.Sigma2d
+.. autoclass:: tasmania.grids.sigma.Sigma2d
    :members:
 
-.. autoclass:: grids.gal_chen.GalChen2d
+.. autoclass:: tasmania.grids.gal_chen.GalChen2d
    :members:
 
-.. autoclass:: grids.sleve.SLEVE2d
+.. autoclass:: tasmania.grids.sleve.SLEVE2d
    :members:
 
 Three-dimensional grids
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: grids.grid_xyz.GridXYZ
+.. autoclass:: tasmania.grids.grid_xyz.GridXYZ
    :members:
 
-.. autoclass:: grids.sigma.Sigma3d
+.. autoclass:: tasmania.grids.sigma.Sigma3d
    :members:
 
-.. autoclass:: grids.gal_chen.GalChen3d
+.. autoclass:: tasmania.grids.gal_chen.GalChen3d
    :members:
 
-.. autoclass:: grids.sleve.SLEVE3d
+.. autoclass:: tasmania.grids.sleve.SLEVE3d
    :members:
 
 
 Model
 -----
 
-.. autoclass:: model.Model
+.. autoclass:: tasmania.model.Model
    :members:
 
 
 Namelist
 --------
 
-.. automodule:: namelist
+.. automodule:: tasmania.namelist
    :members:
 
 
 Parameterizations
 -----------------
 
-.. autoclass:: parameterizations.adjustment.Adjustment
+.. autoclass:: tasmania.parameterizations.adjustments.Adjustment
    :members:
 
-.. autoclass:: parameterizations.tendency.Tendency
+.. autoclass:: tasmania.parameterizations.slow_tendencies.SlowTendency
+   :members:
+
+.. autoclass:: tasmania.parameterizations.fast_tendencies.FastTendency
    :members:
 
 Microphysics
 ^^^^^^^^^^^^
 
-.. autoclass:: parameterizations.adjustment_microphysics.AdjustmentMicrophysics
+.. autoclass:: tasmania.parameterizations.adjustments.AdjustmentMicrophysics
    :members:
 
-.. autoclass:: parameterizations.adjustment_microphysics.AdjustmentMicrophysicsKessler
+.. autoclass:: tasmania.parameterizations.adjustment_microphysics_kessler_wrf.AdjustmentMicrophysicsKesslerWRF
    :members:
 
+.. autoclass:: tasmania.parameterizations.adjustment_microphysics_kessler_wrf_saturation.AdjustmentMicrophysicsKesslerWRFSaturation
+   :members:
+
+.. autoclass:: tasmania.parameterizations.slow_tendencies.SlowTendencyMicrophysics
+   :members:
+
+.. autoclass:: tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf.SlowTendencyMicrophysicsKesslerWRF
+   :members:
+
+.. autoclass:: tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf_saturation.SlowTendencyMicrophysicsKesslerWRFSaturation
+   :members:
 
 Storages
 --------
 
-.. autoclass:: storages.grid_data.GridData
+.. autoclass:: tasmania.storages.grid_data.GridData
    :members:
 
-.. autoclass:: storages.state_isentropic.StateIsentropic
+.. autoclass:: tasmania.storages.state_isentropic.StateIsentropic
    :members:
 
 
 Topography
 ----------
 
-.. automodule:: grids.topography
+.. automodule:: tasmania.grids.topography
    :members:
 
 Parsers
 ^^^^^^^
 
-.. autoclass:: grids.parser.parser_1d.Parser1d
+.. autoclass:: tasmania.grids.parser.parser_1d.Parser1d
    :members: __cinit__, evaluate
 
-.. autoclass:: grids.parser.parser_2d.Parser2d
+.. autoclass:: tasmania.grids.parser.parser_2d.Parser2d
    :members: __cinit__, evaluate
 
 
 Utilities
 ---------
 
+General-purpose utilities
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. automodule:: tasmania.utils.utils
+   :members:
+
+.. automodule:: tasmania.set_namelist
    :members:
 
 Meteo utilities

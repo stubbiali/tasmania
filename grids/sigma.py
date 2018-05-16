@@ -40,7 +40,7 @@ from tasmania.utils.utils import smaller_or_equal_than as le
 
 class Sigma2d(GridXZ):
 	"""
-	This class inherits :class:`~grids.grid_xz.GridXZ` to represent a rectangular and regular
+	This class inherits :class:`~tasmania.grids.grid_xz.GridXZ` to represent a rectangular and regular
 	two-dimensional grid embedded in a reference system whose coordinates are
 		* the horizontal coordinate :math:`x`; 
 		* the pressure-based terrain-following coordinate :math:`\sigma = p / p_{SL}`, \
@@ -52,15 +52,15 @@ class Sigma2d(GridXZ):
 	Attributes
 	----------
 	x : obj
-		:class:`~grids.axis.Axis` representing the :math:`x`-axis.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`x`-axis.
 	nx : int
 		Number of grid points along :math:`x`.
 	dx : float
 		The :math:`x`-spacing.
 	z : obj
-		:class:`~grids.axis.Axis` representing the :math:`\sigma`-main levels.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`\sigma`-main levels.
 	z_on_interface_levels : obj
-		:class:`~grids.axis.Axis` representing the :math:`\sigma`-half levels.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`\sigma`-half levels.
 	nz : int
 		Number of vertical main levels.
 	dz : float
@@ -95,7 +95,7 @@ class Sigma2d(GridXZ):
 			Number of vertical main levels.
 		units_x : `str`, optional
 			Units for the :math:`x`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
-			(see also :meth:`grids.axis.Axis.__init__`).
+			(see also :meth:`~tasmania.grids.axis.Axis.__init__`).
 		dims_x : `str`, optional
 			Label for the :math:`x`-coordinate.
 		z_interface : `float`, optional
@@ -103,16 +103,16 @@ class Sigma2d(GridXZ):
 			with :math:`\sigma_T` the value of :math:`\sigma` at the top of the domain. In other words, a fully 
 			terrain-following coordinate system is supposed.
 		topo_type : `str`, optional
-			Topography type. Default is 'flat_terrain'. See :mod:`grids.topography` for further details.
+			Topography type. Default is 'flat_terrain'. See :mod:`~tasmania.grids.topography` for further details.
 		topo_time : `obj`, optional
 			:class:`datetime.timedelta` representing the simulation time after which the topography should stop 
-			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. See :mod:`grids.topography` 
-			for further details.
+			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. 
+			See :mod:`~tasmania.grids.topography` for further details.
 
 		Keyword arguments
 		-----------------
 		**kwargs : 
-			Keyword arguments to be forwarded to the constructor of :class:`~grids.topography.Topography1d`.
+			Keyword arguments to be forwarded to the constructor of :class:`~tasmania.grids.topography.Topography1d`.
 		"""
 		# Preliminary checks
 		if not (le(0., domain_z[0]) or eq(domain_z[1], 1.)):
@@ -233,7 +233,7 @@ class Sigma2d(GridXZ):
 
 class Sigma3d(GridXYZ):
 	"""
-	This class inherits :class:`~grids.grid_xyz.GridXYZ` to represent a rectangular and regular computational grid 
+	This class inherits :class:`~tasmania.grids.grid_xyz.GridXYZ` to represent a rectangular and regular computational grid 
 	embedded in a three-dimensional terrain-following reference system, whose coordinates are:
 		* first horizontal coordinate :math:`x`, e.g., the longitude;
 		* second horizontal coordinate :math:`y`, e.g., the latitude;
@@ -246,11 +246,11 @@ class Sigma3d(GridXYZ):
 	Attributes
 	----------
 	xy_grid : obj
-		:class:`~grids.grid_xy.GridXY` representing the horizontal grid.
+		:class:`~tasmania.grids.grid_xy.GridXY` representing the horizontal grid.
 	z : obj
-		:class:`~grids.axis.Axis` representing the :math:`\sigma`-main levels.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`\sigma`-main levels.
 	z_on_interface_levels : obj
-		:class:`~grids.axis.Axis` representing the :math:`\sigma`-half levels.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`\sigma`-half levels.
 	nz : int
 		Number of vertical main levels.
 	dz : float
@@ -292,12 +292,12 @@ class Sigma3d(GridXYZ):
 			Number of vertical main levels.
 		units_x : `str`, optional
 			Units for the :math:`x`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
-			(see also :meth:`grids.axis.Axis.__init__`).
+			(see also :meth:`~tasmania.grids.axis.Axis.__init__`).
 		dims_x : `str`, optional
 			Label for the :math:`x`-coordinate.
 		units_y : `str`, optional
 			Units for the :math:`y`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
-			(see also :meth:`grids.axis.Axis.__init__`).
+			(see also :meth:`~tasmania.grids.axis.Axis.__init__`).
 		dims_y : `str`, optional
 			Label for the :math:`y`-coordinate.
 		z_interface : `float`, optional
@@ -305,16 +305,16 @@ class Sigma3d(GridXYZ):
 			with :math:`\sigma_T` the value of  :math:`\sigma` at the top of the domain. In other words, a fully 
 			terrain-following coordinate system is supposed.
 		topo_type : `str`, optional
-			Topography type. Default is 'flat_terrain'. See :mod:`grids.topography` for further details.
+			Topography type. Default is 'flat_terrain'. See :mod:`~tasmania.grids.topography` for further details.
 		topo_time : `obj`, optional
 			:class:`datetime.timedelta` representing the simulation time after which the topography should stop 
 			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. 
-			See :mod:`grids.topography` for further details.
+			See :mod:`~tasmania.grids.topography` for further details.
 
 		Keyword arguments
 		-----------------
 		**kwargs : 
-			Keyword arguments to be forwarded to the constructor of :class:`~grids.topography.Topography2d`.
+			Keyword arguments to be forwarded to the constructor of :class:`~tasmania.grids.topography.Topography2d`.
 		"""
 		# Preliminary checks
 		if not (le(0., domain_z[0]) or eq(domain_z[1], 1.)):

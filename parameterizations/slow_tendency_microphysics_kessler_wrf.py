@@ -55,7 +55,7 @@ class SlowTendencyMicrophysicsKesslerWRF(SlowTendencyMicrophysics):
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 
@@ -177,7 +177,7 @@ class SlowTendencyMicrophysicsKesslerWRF(SlowTendencyMicrophysics):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
 
 			* air_density (unstaggered);
@@ -287,7 +287,7 @@ class SlowTendencyMicrophysicsKesslerWRF(SlowTendencyMicrophysics):
 		References
 		----------
 		Doms, G., et al. (2015). *A description of the nonhydrostatic regional COSMO-model. \
-			Part II: Physical parameterization.* Retrieved from `http://www.cosmo-model.org`_. \
+			Part II: Physical parameterization.* Retrieved from `COSMO <http://www.cosmo-model.org>`_. \
 		Mielikainen, J., B. Huang, J. Wang, H. L. A. Huang, and M. D. Goldberg. (2013). \
 			*Compute Unified Device Architecture (CUDA)-based parallelization of WRF Kessler \
 			cloud microphysics scheme*. Computer \& Geosciences, 52:292-299.
