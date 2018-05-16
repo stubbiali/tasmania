@@ -22,7 +22,7 @@ class FastTendency:
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		"""
 		self._grid = grid
 
@@ -67,14 +67,14 @@ class FastTendency:
 		dt : obj
 			:class:`datetime.timedelta` representing the timestep.
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 
 		Return
 		------
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the output tendencies.
+			:class:`~tasmania.storages.grid_data.GridData` storing the output tendencies.
 		diagnostics : obj
-			:class:`~storages.grid_data.GridData` storing possible output diagnostics.
+			:class:`~tasmania.storages.grid_data.GridData` storing possible output diagnostics.
 		"""
 
 class FastTendencyMicrophysics(FastTendency):
@@ -98,7 +98,7 @@ class FastTendencyMicrophysics(FastTendency):
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 
@@ -116,7 +116,7 @@ class FastTendencyMicrophysics(FastTendency):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
 
 			* air_density (unstaggered);
@@ -142,7 +142,7 @@ class FastTendencyMicrophysics(FastTendency):
 			* 'kessler_wrf', for the WRF version of the Kessler scheme.
 
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 

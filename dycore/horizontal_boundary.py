@@ -24,7 +24,7 @@ class HorizontalBoundary:
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""
@@ -151,7 +151,7 @@ class HorizontalBoundary:
 				* 'relaxed_symmetric_yz', for relaxed boundary conditions for a :math:`yz`-symmetric field.
 
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 

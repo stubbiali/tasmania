@@ -1,6 +1,6 @@
 """
 Script for building and simulating a three-dimensional moist isentropic model, according 
-to the model, physical and numerical settings specified in the :mod:`namelist` module.
+to the model, physical and numerical settings specified in the :mod:`~tasmania.namelist` module.
 
 Warning
 -------

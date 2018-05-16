@@ -18,7 +18,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
@@ -54,7 +54,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
+			:class:`~tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
 			three-dimensional moist isentropic dynamical core.
 		"""
 		if self._diagnostic is None:
@@ -70,7 +70,7 @@ class DiagnosticIsentropic:
 		Parameter
 		---------
 		value : obj
-			:class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
+			:class:`~tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
 			three-dimensional moist isentropic dynamical core.
 		"""
 		self._diagnostic = value
@@ -82,7 +82,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
@@ -92,7 +92,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* water_vapor_isentropic_density (unstaggered);
 			* cloud_liquid_water_isentropic_density (unstaggered);
@@ -130,14 +130,14 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered).
 
 		state_old : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables,
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables,
 			defined at the previous time level:
 
 			* x_velocity (:math:`x`-staggered);
@@ -146,7 +146,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered).
@@ -198,7 +198,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* water_vapor_isentropic_density (unstaggered);
@@ -208,7 +208,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* mass_fraction_of_water_vapor_in_air (unstaggered);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -249,7 +249,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered).
 
@@ -259,7 +259,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* air_pressure_on_interface_levels (:math:`z`-staggered);
 			* exner_function_on_interface_levels (:math:`z`-staggered);
@@ -315,7 +315,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered).
 
@@ -325,7 +325,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* height_on_interface_levels (:math:`z`-staggered).
 		"""
@@ -366,7 +366,7 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* air_isentropic_density (unstaggered);
 			* height or height_on_interface_levels (:math:`z`-staggered).
@@ -374,7 +374,7 @@ class DiagnosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* air_density (unstaggered).
 		"""
@@ -406,14 +406,14 @@ class DiagnosticIsentropic:
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes containing the following variables:
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes containing the following variables:
 
 			* exner_function or exner_function_on_interface_levels (:math:`z`-staggered).
 
 		Return
 		------
 		obj :
-			:class:`~storages.grid_data.GridData` collecting the diagnosed variables, namely:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the diagnosed variables, namely:
 
 			* air_temperature (unstaggered).
 		"""

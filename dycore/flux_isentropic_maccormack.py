@@ -3,7 +3,7 @@ from tasmania.dycore.flux_isentropic import FluxIsentropic
 
 class FluxIsentropicMacCormack(FluxIsentropic):
 	"""
-	Class which inherits :class:`~dycore.flux_isentropic.FluxIsentropic` to implement the MacCormack scheme to compute 
+	Class which inherits :class:`~tasmania.dycore.flux_isentropic.FluxIsentropic` to implement the MacCormack scheme to compute 
 	the numerical fluxes for the governing equations expressed in conservative form using isentropic coordinates.
 
 	Attributes
@@ -20,7 +20,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		Parameters
 		----------
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		"""
@@ -31,9 +31,9 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr, 
 								   in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the MacCormack :math:`x`- 
+		Method computing the :class:`gridtools.Equation`\s representing the MacCormack :math:`x`- 
 		and :math:`y`-fluxes for all the conservative prognostic variables. 
-		The :class:`gridtools.Equation`~s are then set as instance attributes.
+		The :class:`gridtools.Equation`\s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -116,9 +116,9 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the MacCormack :math:`z`-flux 
+		Method computing the :class:`gridtools.Equation`\s representing the MacCormack :math:`\\theta`-flux 
 		for all the conservative model variables. 
-		The :class:`gridtools.Equation`~s are then set as instance attributes.
+		The :class:`gridtools.Equation`\s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -530,7 +530,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 
 	def _get_maccormack_flux_z(self, i, j, k, in_w, in_phi, in_phi_prv, tmp_phi_prd):
 		"""
-		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`z`-direction for a 
+		Get the :class:`gridtools.Equation` representing the MacCormack flux in :math:`\\theta`-direction for a 
 		generic prognostic variable :math:`\phi`.
 
 		Parameters
@@ -555,7 +555,7 @@ class FluxIsentropicMacCormack(FluxIsentropic):
 		Return
 		------
 		obj :
-			:class:`gridtools.Equation` representing the MacCormack flux in :math:`z`-direction for :math:`\phi`.
+			:class:`gridtools.Equation` representing the MacCormack flux in :math:`\\theta`-direction for :math:`\phi`.
 		"""
 		in_phi_name = in_phi.get_name()
 		flux_name = 'flux_' + in_phi_name + '_z'

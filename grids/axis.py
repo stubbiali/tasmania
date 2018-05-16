@@ -13,7 +13,8 @@ class Axis:
 		One-dimensional :class:`numpy.ndarray` storing axis coordinates, wrapped within a list.
 	values : array_like
 		One-dimensional :class:`numpy.ndarray` storing axis coordinates. This attrribute is semantically identical 
-		to :attr:`coords` and it is introduced only for the sake of compliancy with :class:`xarray.DataArray`'s API.
+		to :py:attr:`~tasmania.grids.axis.Axis.coords` and it is introduced only for the sake of compliancy with 
+		:class:`xarray.DataArray`'s API.
 	dims : str 
 		Axis dimension, i.e., label.
 	attrs : dict
@@ -51,7 +52,7 @@ class Axis:
 
 		Parameters
 		----------
-		i : `int` or `array_like
+		i : `int` or `array_like`
 			The index, or a sequence of indices.
 
 		Return

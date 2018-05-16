@@ -3,7 +3,7 @@ from tasmania.dycore.flux_isentropic_nonconservative import FluxIsentropicNoncon
 
 class FluxIsentropicNonconservativeCentered(FluxIsentropicNonconservative):
 	"""
-	Class which inherits :class:`~dycore.flux_isentropic.FluxIsentropicNonconservative` to implement a 
+	Class which inherits :class:`~tasmania.dycore.flux_isentropic.FluxIsentropicNonconservative` to implement a 
 	centered scheme to compute the numerical fluxes for the prognostic model variables. 
 	The nonconservative form of the governing equations, expressed using isentropic coordinates, is used.
 
@@ -31,8 +31,8 @@ class FluxIsentropicNonconservativeCentered(FluxIsentropicNonconservative):
 
 	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_qv, in_qc, in_qr):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes for 
-		all the prognostic variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`\s representing the :math:`x`- and :math:`y`-fluxes for 
+		all the prognostic variables. The :class:`gridtools.Equation`\s are then set as instance attributes.
 
 		Parameters
 		----------
@@ -79,8 +79,8 @@ class FluxIsentropicNonconservativeCentered(FluxIsentropicNonconservative):
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`\\theta`-fluxes for all the 
-		prognostic model variables. The :class:`gridtools.Equation`~s are then set as instance attributes.
+		Method computing the :class:`gridtools.Equation`\s representing the :math:`\\theta`-fluxes for all the 
+		prognostic model variables. The :class:`gridtools.Equation`\s are then set as instance attributes.
 
 		Parameters
 		----------

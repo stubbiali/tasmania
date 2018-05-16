@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# gt4ess documentation build configuration file, created by
+# tasmania documentation build configuration file, created by
 # sphinx-quickstart on Wed Jan 10 08:32:12 2018.
 #
 # This file is execfile()d with the current directory set to its
@@ -64,7 +64,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'gt4ess'
+project = 'tasmania'
 copyright = '2018, Stefano Ubbiali'
 author = 'Stefano Ubbiali'
 
@@ -140,7 +140,7 @@ html_sidebars = {
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'gt4essdoc'
+htmlhelp_basename = 'tasmaniadoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -167,7 +167,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'gt4ess.tex', 'gt4ess Documentation',
+    (master_doc, 'tasmania.tex', 'tasmania Documentation',
      'Stefano Ubbiali', 'manual'),
 ]
 
@@ -177,7 +177,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'gt4ess', 'gt4ess Documentation',
+    (master_doc, 'tasmania', 'tasmania Documentation',
      [author], 1)
 ]
 
@@ -188,8 +188,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'gt4ess', 'gt4ess Documentation',
-     author, 'gt4ess', 'One line description of project.',
+    (master_doc, 'tasmania', 'tasmania Documentation',
+     author, 'tasmania', 'A Python library for building, configuring and simulating Earth system science models using GridTools4Py.',
      'Miscellaneous'),
 ]
 

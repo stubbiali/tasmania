@@ -2,9 +2,9 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+SPHINXOPTS    = -w warnings.txt
 SPHINXBUILD   = sphinx-build
-SPHINXPROJ    = gt4ess
+SPHINXPROJ    = tasmania
 SOURCEDIR     = source
 BUILDDIR      = build
 

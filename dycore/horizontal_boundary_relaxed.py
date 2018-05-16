@@ -10,7 +10,7 @@ from tasmania.namelist import datatype
 
 class Relaxed(HorizontalBoundary):
 	"""
-	This class inherits :class:`~tasmania.horizontal_boundary.HorizontalBoundary` to implement horizontally 
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` to implement horizontally 
 	relaxed boundary conditions.
 
 	Attributes
@@ -29,7 +29,7 @@ class Relaxed(HorizontalBoundary):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""
@@ -162,8 +162,8 @@ class Relaxed(HorizontalBoundary):
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
-		Set the outermost layers of :obj:`phi_new` in the :obj:`x`-direction equal to the corresponding 
-		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :obj:`x`-direction.
+		Set the outermost layers of :obj:`phi_new` in the :math:`x`-direction equal to the corresponding 
+		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :math:`x`-direction.
 
 		Parameters
 		----------
@@ -181,8 +181,8 @@ class Relaxed(HorizontalBoundary):
 
 	def set_outermost_layers_y(self, phi_new, phi_now):
 		"""
-		Set the outermost layers of :obj:`phi_new` in the :obj:`y`-direction equal to the corresponding 
-		layers of :obj:`phi_now`. In other words, apply Dirichelt conditions in :obj:`y`-direction.
+		Set the outermost layers of :obj:`phi_new` in the :math:`y`-direction equal to the corresponding 
+		layers of :obj:`phi_now`. In other words, apply Dirichelt conditions in :math:`y`-direction.
 
 		Parameters
 		----------
@@ -213,8 +213,9 @@ class Relaxed(HorizontalBoundary):
 
 class RelaxedXZ(HorizontalBoundary):
 	"""
-	This class inherits :class:`HorizontalBoundary` to implement horizontally relaxed boundary conditions for fields defined
-	on a computational domain consisting of only one grid point in the :math:`y`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` to implement horizontally 
+	relaxed boundary conditions for fields defined on a computational domain consisting of only one grid point 
+	in the :math:`y`-direction.
 
 	Attributes
 	----------
@@ -232,7 +233,7 @@ class RelaxedXZ(HorizontalBoundary):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""
@@ -269,7 +270,7 @@ class RelaxedXZ(HorizontalBoundary):
 
 	def from_computational_to_physical_domain(self, phi_, out_dims = None, change_sign = True):
 		"""
-		Remove the :data:`nb` outermost :data:`xz`-slices from the input field :obj:`phi_`.
+		Remove the :data:`nb` outermost :math:`xz`-slices from the input field :obj:`phi_`.
 
 		Parameters
 		----------
@@ -323,8 +324,8 @@ class RelaxedXZ(HorizontalBoundary):
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
-		Set the outermost layers of :obj:`phi_new` in the :obj:`x`-direction equal to the corresponding 
-		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :obj:`x`-direction.
+		Set the outermost layers of :obj:`phi_new` in the :math:`x`-direction equal to the corresponding 
+		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :math:`x`-direction.
 
 		Parameters
 		----------
@@ -389,8 +390,9 @@ class RelaxedXZ(HorizontalBoundary):
 
 class RelaxedYZ(HorizontalBoundary):
 	"""
-	This class inherits :class:`HorizontalBoundary` to implement horizontally relaxed boundary conditions for fields defined
-	on a computational domain consisting of only one grid point in the :math:`x`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` to implement horizontally 
+	relaxed boundary conditions for fields defined on a computational domain consisting of only one grid point 
+	in the :math:`x`-direction.
 
 	Attributes
 	----------
@@ -408,7 +410,7 @@ class RelaxedYZ(HorizontalBoundary):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""
@@ -498,8 +500,8 @@ class RelaxedYZ(HorizontalBoundary):
 
 	def set_outermost_layers_y(self, phi_new, phi_now):
 		"""
-		Set the outermost layers of :obj:`phi_new` in the :obj:`y`-direction equal to the corresponding 
-		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :obj:`y`-direction.
+		Set the outermost layers of :obj:`phi_new` in the :math:`y`-direction equal to the corresponding 
+		layers of :obj:`phi_now`. In other words, apply Dirichlet conditions in :math:`y`-direction.
 
 		Parameters
 		----------
@@ -564,8 +566,8 @@ class RelaxedYZ(HorizontalBoundary):
 
 class RelaxedSymmetricXZ(Relaxed):
 	"""
-	This class inherits :class:`Relaxed` to implement horizontally relaxed boundary conditions
-	for fields symmetric with respect to the :math:`xz`-plane :math:`y = y_c = 0.5 (a_y + b_y)`,
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary_relaxed.Relaxed` to implement horizontally 
+	relaxed boundary conditions for fields symmetric with respect to the :math:`xz`-plane :math:`y = y_c = 0.5 (a_y + b_y)`,
 	where :math:`a_y` and :math:`b_y` denote the extremes of the domain in the :math:`y`-direction.
 
 	Attributes
@@ -584,7 +586,7 @@ class RelaxedSymmetricXZ(Relaxed):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""
@@ -696,8 +698,8 @@ class RelaxedSymmetricXZ(Relaxed):
 
 class RelaxedSymmetricYZ(Relaxed):
 	"""
-	This class inherits :class:`Relaxed` to implement horizontally relaxed boundary conditions
-	for fields symmetric with respect to the :math:`yz`-plane :math:`x = x_c = 0.5 (a_x + b_x)`,
+	This class inherits :class:`~tasmania.dycore.horizontal_boundary_relaxed.Relaxed` to implement horizontally 
+	relaxed boundary conditions for fields symmetric with respect to the :math:`yz`-plane :math:`x = x_c = 0.5 (a_x + b_x)`,
 	where :math:`a_x` and :math:`b_x` denote the extremes of the domain in the :math:`x`-direction.
 
 	Attributes
@@ -716,7 +718,7 @@ class RelaxedSymmetricYZ(Relaxed):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		nb : int 
 			Number of boundary layers.
 		"""

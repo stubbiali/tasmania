@@ -12,7 +12,7 @@ import tasmania.utils.utils_plot as utils_plot
 
 class StateIsentropic(GridData):
 	"""
-	This class inherits :class:`~storages.grid_data.GridData` to represent the state of the three-dimensional 
+	This class inherits :class:`~tasmania.storages.grid_data.GridData` to represent the state of the three-dimensional 
 	(moist) isentropic model. The stored variables might be:
 
 	* air_density (unstaggered);
@@ -41,7 +41,7 @@ class StateIsentropic(GridData):
 	Attributes
 	----------
 	grid : obj
-		:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+		:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 	"""
 	def __init__(self, time, grid, **kwargs):
 		"""
@@ -52,7 +52,7 @@ class StateIsentropic(GridData):
 		time : obj
 			:class:`datetime.timedelta` representing the time instant at which the state is defined.
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 
 		Keyword arguments
 		-----------------
@@ -138,13 +138,13 @@ class StateIsentropic(GridData):
 			String specifying the field to plot. This might be:
 
 			* the name of a variable stored in the current object;
-			* 'x_velocity_unstaggered_perturbation', for the discrepancy of the :math:`x`-velocity with respect to 
+			* 'x_velocity_unstaggered_perturbation', for the discrepancy of the :math:`x`-velocity with respect to \
 				the initial condition; the current object must contain the following variables:
 
 				- air_isentropic_density;
 				- x_momentum_isentropic;
 
-			* 'vertical_velocity', for the vertical velocity; only for two-dimensional steady-state flows; 
+			* 'vertical_velocity', for the vertical velocity; only for two-dimensional steady-state flows; \
 				the current object must contain the following variables:
 
 				- air_isentropic_density;
@@ -157,7 +157,7 @@ class StateIsentropic(GridData):
 			The time level.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.contour_xz` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.contour_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz
@@ -226,7 +226,7 @@ class StateIsentropic(GridData):
 			String specifying the field to plot. This might be:
 
 			* the name of a variable stored in the current object;
-			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the 
+			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the \
 				following variables:
 			
 				- air_isentropic_density;
@@ -239,7 +239,7 @@ class StateIsentropic(GridData):
 			The time level.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.contourf_xy` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.contourf_xy` for the complete list.
 		"""
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot in self._vars:
@@ -295,13 +295,13 @@ class StateIsentropic(GridData):
 			String specifying the field to plot. This might be:
 
 			* the name of a variable stored in the current object;
-			* 'x_velocity_unstaggered_perturbation', for the discrepancy of the :math:`x`-velocity with respect to 
+			* 'x_velocity_unstaggered_perturbation', for the discrepancy of the :math:`x`-velocity with respect to \
 				the initial condition; the current object must contain the following variables:
 
 				- air_isentropic_density;
 				- x_momentum_isentropic;
 
-			* 'vertical_velocity', for the vertical velocity; only for two-dimensional steady-state flows; 
+			* 'vertical_velocity', for the vertical velocity; only for two-dimensional steady-state flows; \
 				the current object must contain the following variables:
 
 				- air_isentropic_density;
@@ -314,7 +314,7 @@ class StateIsentropic(GridData):
 			The time level.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.contourf_xz` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.contourf_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz
@@ -382,7 +382,7 @@ class StateIsentropic(GridData):
 		field_to_plot : str 
 			String specifying the field to plot. This might be:
 
-			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the 
+			* 'horizontal_velocity', for the horizontal velocity; the current object must contain the \
 				following variables:
 
 				- air_isentropic_density;
@@ -395,7 +395,7 @@ class StateIsentropic(GridData):
 			The time level.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.quiver_xy` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.quiver_xy` for the complete list.
 		"""
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot == 'horizontal_velocity':
@@ -460,7 +460,7 @@ class StateIsentropic(GridData):
 			The time level.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.quiver_xz` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.quiver_xz` for the complete list.
 		"""
 		# Extract, compute, or interpolate the field to plot
 		if field_to_plot == 'velocity':
@@ -525,7 +525,7 @@ class StateIsentropic(GridData):
 			The time level.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.streamplot_xz` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.streamplot_xz` for the complete list.
 		"""
 		# Make sure the state is two-dimensional
 		assert self.grid.ny == 1
@@ -605,7 +605,7 @@ class StateIsentropic(GridData):
 			Note that the string should include the extension as well.
 		**kwargs :
 			Keyword arguments to specify different plotting settings. 
-			See :func:`tasmania.utils.utils_plot.animation_contourf_xz` for the complete list.
+			See :func:`~tasmania.utils.utils_plot.animation_contourf_xz` for the complete list.
 		"""
 		# Shortcuts
 		nx, nz = self.grid.nx, self.grid.nz

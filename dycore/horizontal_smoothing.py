@@ -25,7 +25,7 @@ class HorizontalSmoothing:
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : int
 			Depth of the damping region, i.e., number of vertical layers in the damping region.
 		smooth_coeff : float
@@ -98,7 +98,7 @@ class HorizontalSmoothing:
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : int
 			Depth of the damping region, i.e., number of vertical layers in the damping region.
 		smooth_coeff : float
@@ -132,8 +132,8 @@ class HorizontalSmoothing:
 
 class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 	"""
-	This class inherits :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` to apply first-order numerical smoothing to 
-	three-dimensional fields with at least three elements in each direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing` to apply first-order 
+	numerical smoothing to three-dimensional fields with at least three elements in each direction.
 
 	Note
 	----
@@ -149,7 +149,7 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
 			Depth of the damping region, i.e., number of vertical layers in the damping region. Default is 10.
 		smooth_coeff : `float`, optional
@@ -163,8 +163,9 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 
 		Note
 		----
-		To instantiate the class, please prefer the static method :meth:`~dycore.horizontal_smoothing.HorizontalSmoothing.factor`
-		of :class:`~dycore.horizontal_smoothing.HorizontalSmoothing`.
+		To instantiate the class, please prefer the static method 
+		:meth:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing.factory`
+		of :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 
@@ -254,8 +255,8 @@ class HorizontalSmoothingFirstOrderXYZ(HorizontalSmoothing):
 
 class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 	"""
-	This class inherits :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` to apply first-order numerical smoothing to 
-	three-dimensional fields with only one element in the :math:`y`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing` to apply first-order 
+	numerical smoothing to three-dimensional fields with only one element in the :math:`y`-direction.
 
 	Note
 	----
@@ -271,7 +272,7 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
 			Depth of the damping region, i.e., number of vertical layers in the damping region. Default is 10.
 		smooth_coeff : `float`, optional
@@ -282,6 +283,12 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
+
+		Note
+		----
+		To instantiate the class, please prefer the static method 
+		:meth:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing.factory`
+		of :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 
@@ -369,8 +376,8 @@ class HorizontalSmoothingFirstOrderXZ(HorizontalSmoothing):
 
 class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 	"""
-	This class inherits :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` to apply first-order numerical smoothing to 
-	three-dimensional fields with only one element in the :math:`x`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing` to apply first-order 
+	numerical smoothing to three-dimensional fields with only one element in the :math:`x`-direction.
 
 	Note
 	----
@@ -386,7 +393,7 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : int
 			Depth of the damping region, i.e., number of vertical layers in the damping region. Default is 10.
 		smooth_coeff : float
@@ -397,6 +404,12 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 		backend : obj
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
+
+		Note
+		----
+		To instantiate the class, please prefer the static method 
+		:meth:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing.factory`
+		of :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 
@@ -484,8 +497,8 @@ class HorizontalSmoothingFirstOrderYZ(HorizontalSmoothing):
 
 class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 	"""
-	This class inherits :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` to apply second-order numerical smoothing to 
-	three-dimensional fields.
+	This class inherits :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing` to apply second-order 
+	numerical smoothing to three-dimensional fields.
 
 	Note
 	----
@@ -501,7 +514,7 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
 			Depth of the damping region, i.e., number of vertical layers in the damping region. Default is 10.
 		smooth_coeff : `float`, optional
@@ -512,6 +525,12 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
+
+		Note
+		----
+		To instantiate the class, please prefer the static method 
+		:meth:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing.factory`
+		of :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 
@@ -608,8 +627,8 @@ class HorizontalSmoothingSecondOrderXYZ(HorizontalSmoothing):
 		
 class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 	"""
-	This class inherits :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` to apply second-order numerical smoothing to 
-	three-dimensional fields with only one element in the :math:`y`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing` to apply second-order 
+	numerical smoothing to three-dimensional fields with only one element in the :math:`y`-direction.
 
 	Note
 	----
@@ -625,7 +644,7 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
 			Depth of the damping region, i.e., number of vertical layers in the damping region. Default is 10.
 		smooth_coeff : `float`, optional
@@ -636,6 +655,12 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
+
+		Note
+		----
+		To instantiate the class, please prefer the static method 
+		:meth:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing.factory`
+		of :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 
@@ -726,8 +751,8 @@ class HorizontalSmoothingSecondOrderXZ(HorizontalSmoothing):
 
 class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 	"""
-	This class inherits :class:`~dycore.horizontal_smoothing.HorizontalSmoothing` to apply second-order numerical smoothing to 
-	three-dimensional fields with only one element in the :math:`x`-direction.
+	This class inherits :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing` to apply second-order 
+	numerical smoothing to three-dimensional fields with only one element in the :math:`x`-direction.
 
 	Note
 	----
@@ -743,7 +768,7 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply numerical smoothing.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		smooth_damp_depth : `int`, optional
 			Depth of the damping region, i.e., number of vertical layers in the damping region. Default is 10.
 		smooth_coeff : `float`, optional
@@ -754,6 +779,12 @@ class HorizontalSmoothingSecondOrderYZ(HorizontalSmoothing):
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencil implementing numerical 
 			smoothing. Default is :class:`gridtools.mode.NUMPY`.
+
+		Note
+		----
+		To instantiate the class, please prefer the static method 
+		:meth:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing.factory`
+		of :class:`~tasmania.dycore.horizontal_smoothing.HorizontalSmoothing`.
 		"""
 		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend)
 

@@ -20,7 +20,7 @@ class Adjustment(Implicit):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		"""
 		self._grid = grid
 		self._time_levels = None
@@ -64,16 +64,16 @@ class Adjustment(Implicit):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 		dt : obj
 			:class:`datetime.timedelta` representing the timestep.
 
 		Return
 		------
 		diagnostics : obj
-			:class:`~storages.grid_data.GridData` storing possible output diagnostics.
+			:class:`~tasmania.storages.grid_data.GridData` storing possible output diagnostics.
 		state_new : obj
-			:class:`~storages.grid_data.GridData` storing the output, adjusted state.
+			:class:`~tasmania.storages.grid_data.GridData` storing the output, adjusted state.
 		"""
 
 class AdjustmentMicrophysics(Adjustment):
@@ -99,7 +99,7 @@ class AdjustmentMicrophysics(Adjustment):
 		Parameters
 		----------
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 
@@ -117,7 +117,7 @@ class AdjustmentMicrophysics(Adjustment):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.grid_data.GridData` or one of its derived classes representing the current state.
+			:class:`~tasmania.storages.grid_data.GridData` or one of its derived classes representing the current state.
 			It should contain the following variables:
 
 			* air_density (unstaggered);
@@ -141,11 +141,11 @@ class AdjustmentMicrophysics(Adjustment):
 			String specifying the microphysics parameterization scheme to implement. Either:
 
 			* 'kessler_wrf', for the WRF version of the Kessler scheme;
-			* 'kessler_wrf_saturation', for the WRF version of the Kessler scheme, performing only
+			* 'kessler_wrf_saturation', for the WRF version of the Kessler scheme, performing only \
 				the saturation adjustment.
 
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		rain_evaporation_on : bool
 			:obj:`True` if the evaporation of raindrops should be taken into account, :obj:`False` otherwise.
 		backend : obj 

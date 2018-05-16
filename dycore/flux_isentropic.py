@@ -15,7 +15,7 @@ class FluxIsentropic:
 		Parameters
 		----------
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		"""
@@ -26,7 +26,7 @@ class FluxIsentropic:
 							  in_Qv = None, in_Qc = None, in_Qr = None,
 							  in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		Method returning the :class:`gridtools.Equation`~s representing the :math:`x`- and :math:`y`-fluxes 
+		Method returning the :class:`gridtools.Equation`\s representing the :math:`x`- and :math:`y`-fluxes 
 		for all the conservative model variables.
 
 		Parameters
@@ -109,7 +109,7 @@ class FluxIsentropic:
 	def get_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 							in_Qv = None, in_Qv_prv = None, in_Qc = None, in_Qc_prv = None,	in_Qr = None, in_Qr_prv = None):
 		"""
-		Method returning the :class:`gridtools.Equation`~s representing the :math:`z`-flux for all the conservative 
+		Method returning the :class:`gridtools.Equation`\s representing the :math:`\\theta`-fluxes for all the conservative 
 		model variables.
 
 		Parameters
@@ -159,17 +159,17 @@ class FluxIsentropic:
 		Returns
 		-------
 		flux_s_z : obj
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density.
+			:class:`gridtools.Equation` representing the :math:`\\theta`-flux for the isentropic density.
 		flux_U_z : obj
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the :math:`x`-momentum.
+			:class:`gridtools.Equation` representing the :math:`\\theta`-flux for the :math:`x`-momentum.
 		flux_V_z : obj
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the :math:`y`-momentum.
+			:class:`gridtools.Equation` representing the :math:`\\theta`-flux for the :math:`y`-momentum.
 		flux_Qv_z : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density of water vapor.
+			:class:`gridtools.Equation` representing the :math:`\\theta`-flux for the isentropic density of water vapor.
 		flux_Qc_z : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density of cloud water.
+			:class:`gridtools.Equation` representing the :math:`\\theta`-flux for the isentropic density of cloud water.
 		flux_Qr_z : `obj`, optional
-			:class:`gridtools.Equation` representing the :math:`z`-flux for the isentropic density of precipitation water.
+			:class:`gridtools.Equation` representing the :math:`\\theta`-flux for the isentropic density of precipitation water.
 		"""
 		self._compute_vertical_fluxes(i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 									  in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv)
@@ -194,7 +194,7 @@ class FluxIsentropic:
 			* 'maccormack', for the MacCormack scheme.
 
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
@@ -217,9 +217,9 @@ class FluxIsentropic:
 	def _compute_horizontal_fluxes(self, i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, in_Qv, in_Qc, in_Qr, 
 								   in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`x`- and 
+		Method computing the :class:`gridtools.Equation`\s representing the :math:`x`- and 
 		:math:`y`-fluxes for all the conservative prognostic variables. 
-		The :class:`gridtools.Equation`~s are then set as instance attributes.
+		The :class:`gridtools.Equation`\s are then set as instance attributes.
 		As this method is marked as abstract, the implementation is delegated to the derived classes.
 
 		Parameters
@@ -262,8 +262,8 @@ class FluxIsentropic:
 	def _compute_vertical_fluxes(self, i, j, k, dt, in_w, in_s, in_s_prv, in_U, in_U_prv, in_V, in_V_prv, 
 								 in_Qv, in_Qv_prv, in_Qc, in_Qc_prv, in_Qr, in_Qr_prv):
 		"""
-		Method computing the :class:`gridtools.Equation`~s representing the :math:`z`-flux 
-		for all the conservative model variables. The :class:`gridtools.Equation`~s are then 
+		Method computing the :class:`gridtools.Equation`\s representing the :math:`\\theta`-flux 
+		for all the conservative model variables. The :class:`gridtools.Equation`\s are then 
 		set as instance attributes.
 		As this method is marked as abstract, the implementation is delegated to the derived classes.
 

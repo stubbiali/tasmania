@@ -44,7 +44,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			String specifying the horizontal boundary conditions. 
 			See :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` for the available options.
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
@@ -225,7 +225,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state :obj 
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -240,7 +240,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing tendencies, namely:
+			:class:`~tasmania.storages.grid_data.GridData` storing tendencies, namely:
 			
 			* tendency_of_air_potential_temperature (unstaggered);
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
@@ -249,7 +249,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			
 			Default is obj:`None`.
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics, namely:
 			
 			* accumulated_precipitation (unstaggered).
 
@@ -258,7 +258,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		Return
 		------
 		state_new : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -333,7 +333,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic.StateIsentropic` representing the initial state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the initial state.
 			It contains the following variables:
 
 			* air_density (unstaggered);
@@ -567,7 +567,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state :obj 
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -579,16 +579,16 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* montgomery_potential (unstaggered);
 
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing tendencies.
+			:class:`~tasmania.storages.grid_data.GridData` storing tendencies.
 			For the time being, this is not used. 
 		diagnostics : obj
-			:class:`~storages.grid_data.GridData` storing diagnostics.
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics.
 			For the time being, this is not used. 
 
 		Return
 		------
 		state_new : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -669,7 +669,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state :obj 
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -684,7 +684,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing tendencies, namely:
+			:class:`~tasmania.storages.grid_data.GridData` storing tendencies, namely:
 			
 			* tendency_of_air_potential_temperature (unstaggered);
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
@@ -693,7 +693,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			
 			Default is obj:`None`.
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics, namely:
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics, namely:
 			
 			* accumulated_precipitation (unstaggered).
 
@@ -702,7 +702,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		Return
 		------
 		state_new : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the state at the next time level.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the state at the next time level.
 			It contains the following variables:
 
 			* air_isentropic_density (unstaggered);

@@ -25,7 +25,7 @@ class VerticalDamping:
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply vertical damping.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		damp_depth : int
 			Number of vertical layers in the damping region.
 		damp_max : float
@@ -87,7 +87,7 @@ class VerticalDamping:
 				* 'rayleigh', for a Rayleigh damper.
 
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		damp_depth : int
 			Number of vertical layers in the damping region. Default is 15.
 		damp_max : float
@@ -108,7 +108,7 @@ class VerticalDamping:
 
 class VerticalDampingRayleigh(VerticalDamping):
 	"""
-	This class inherits :class:`VerticalDamping` to implement a Rayleigh absorber.
+	This class inherits :class:`~tasmania.dycore.vertical_damping.VerticalDamping` to implement a Rayleigh absorber.
 	"""
 	def __init__(self, dims, grid, damp_depth, damp_max, backend):
 		"""
@@ -119,7 +119,7 @@ class VerticalDampingRayleigh(VerticalDamping):
 		dims : tuple
 			Tuple of the dimension of the (three-dimensional) arrays on which to apply vertical damping.
 		grid : obj
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		damp_depth : int
 			Number of vertical layers in the damping region.
 		damp_max : float

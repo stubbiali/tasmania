@@ -12,7 +12,7 @@ import tasmania.utils.utils as utils
 
 class PrognosticIsentropicCentered(PrognosticIsentropic):
 	"""
-	This class inherits :class:`~dycore.prognostic_isentropic.PrognosticIsentropic` to implement 
+	This class inherits :class:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic` to implement 
 	a centered time-integration scheme to carry out the prognostic step of the three-dimensional 
 	moist isentropic dynamical core.
 
@@ -38,7 +38,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* 'maccormack', for the MacCormack flux.
 
 		grid : obj
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj
@@ -60,8 +60,8 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Note
 		----
 		To instantiate an object of this class, one should prefer the static method
-		:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.factory` of
-		:class:`~dycore.prognostic_isentropic.PrognosticIsentropic`.
+		:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.factory` of
+		:class:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic`.
 		"""
 		super().__init__(flux_scheme, grid, moist_on, backend, coupling_physics_dynamics_on, 
 						 sedimentation_on, sedimentation_flux_type, sedimentation_substeps)
@@ -97,7 +97,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state. 
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state. 
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -112,7 +112,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the old state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -123,7 +123,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 			
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -134,7 +134,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
@@ -368,13 +368,13 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		Parameters
 		----------
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state. 
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state. 
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered).
 
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -436,7 +436,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		mj : int
 			:math:`y`-extent of an input array representing a :math:`y`-unstaggered field.
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -477,7 +477,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 		dt : obj 
 			A :class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state. 
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state. 
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -491,7 +491,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the old state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -502,7 +502,7 @@ class PrognosticIsentropicCentered(PrognosticIsentropic):
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);

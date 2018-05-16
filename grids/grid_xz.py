@@ -24,15 +24,15 @@ class GridXZ():
 	Attributes
 	----------
 	x : obj
-		:class:`~grids.axis.Axis` representing the :math:`x`-axis.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`x`-axis.
 	nx : int
 		Number of grid points along :math:`x`.
 	dx : float
 		The :math:`x`-spacing.
 	z : obj
-		:class:`~grids.axis.Axis` representing the :math:`z`-main levels.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`z`-main levels.
 	z_on_interface_levels : obj
-		:class:`~grids.axis.Axis` representing the :math:`z`-half levels.
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`z`-half levels.
 	nz : int
 		Number of vertical main levels.
 	dz : float
@@ -63,12 +63,12 @@ class GridXZ():
 			Number of vertical main levels.
 		units_x : `str`, optional
 			Units for the :math:`x`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
-			(see also :meth:`grids.axis.Axis.__init__`).
+			(see also :meth:`~tasmania.grids.axis.Axis.__init__`).
 		dims_x : `str`, optional
 			Label for the :math:`x`-coordinate.
 		units_z : `str`, optional
 			Units for the :math:`z`-coordinate. Must be compliant with the `CF Conventions <http://cfconventions.org>`_ 
-			(see also :meth:`grids.axis.Axis.__init__`).
+			(see also :meth:`~tasmania.grids.axis.Axis.__init__`).
 		dims_z : `str`, optional
 			Label for the :math:`z`-coordinate.
 		z_interface : `float`, optional
@@ -76,16 +76,16 @@ class GridXZ():
 			value of :math:`z` at the top of the domain. In other words, a fully terrain-following coordinate system is 
 			supposed.
 		topo_type : `str`, optional
-			Topography type. See :mod:`grids.topography` for further details.
+			Topography type. See :mod:`~tasmania.grids.topography` for further details.
 		topo_time : `obj`, optional
 			:class:`datetime.timedelta` representing the simulation time after which the topography should stop 
 			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. See 
-			:mod:`grids.topography` for further details.
+			:mod:`~tasmania.grids.topography` for further details.
 
 		Keyword arguments
 		-----------------
 		kwargs : 
-			Keyword arguments to be forwarded to the constructor of :class:`~grids.topography.Topography1d`.
+			Keyword arguments to be forwarded to the constructor of :class:`~tasmania.grids.topography.Topography1d`.
 		"""
 		self.x = Axis(np.linspace(domain_x[0], domain_x[1], nx, dtype = datatype),
 					  dims_x, attrs = {'units': units_x}) 

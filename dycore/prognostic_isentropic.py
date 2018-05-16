@@ -40,7 +40,7 @@ class PrognosticIsentropic:
 			* 'maccormack', for the MacCormack flux.
 
 		grid : obj 
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
@@ -99,7 +99,7 @@ class PrognosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
+			:class:`~tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
 			three-dimensional moist isentropic dynamical core.
 		"""
 		if self._diagnostic is None:
@@ -115,7 +115,7 @@ class PrognosticIsentropic:
 		Parameter
 		---------
 		value : obj
-			:class:`~dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
+			:class:`~tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
 			three-dimensional moist isentropic dynamical core.
 		"""
 		self._diagnostic = value
@@ -129,7 +129,7 @@ class PrognosticIsentropic:
 		Return
 		------
 		obj :
-			Instance of the derived class of :class:`~dycore.horizontal_boundary.HorizontalBoundary` implementing
+			Instance of the derived class of :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` implementing
 			the horizontal boundary conditions.
 		"""
 		if self._boundary is None:
@@ -145,7 +145,7 @@ class PrognosticIsentropic:
 		Parameter
 		---------
 		value : obj
-			Instance of the derived class of :class:`~dycore.horizontal_boundary.HorizontalBoundary` implementing the 
+			Instance of the derived class of :class:`~tasmania.dycore.horizontal_boundary.HorizontalBoundary` implementing the 
 			horizontal boundary conditions.
 		"""
 		self._boundary = value
@@ -207,7 +207,7 @@ class PrognosticIsentropic:
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -222,7 +222,7 @@ class PrognosticIsentropic:
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		state_old : `obj`, optional
-			:class:`~storages.state_isentropic.StateIsentropic` representing the old state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the old state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -233,7 +233,7 @@ class PrognosticIsentropic:
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
 
 		tendencies : `obj`, optional
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -244,7 +244,7 @@ class PrognosticIsentropic:
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
@@ -264,7 +264,7 @@ class PrognosticIsentropic:
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		state_now : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -275,7 +275,7 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
 		state_prv : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the provisional state, i.e.,
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the provisional state, i.e.,
 			the state stepped taking only the horizontal derivatives into account. 
 			It should contain the following variables:
 
@@ -287,16 +287,16 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
 			This may be the output of 
-			:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
+			:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` collecting the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the following tendencies:
 			
 			* tendency_of_air_potential_temperature (unstaggered).
 
 		Return
 		------
 		obj :
-			:class:`~storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` containing the updated prognostic variables, i.e.,
 
 			* air_isentropic_density (unstaggered);
 			* x_momentum_isentropic (unstaggered);
@@ -412,7 +412,7 @@ class PrognosticIsentropic:
 			* 'maccormack', for the MacCormack flux.
 
 		grid : obj 
-			:class:`~grids.grid_xyz.GridXYZ` representing the underlying grid.
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		backend : obj 
@@ -461,7 +461,7 @@ class PrognosticIsentropic:
 		mj : int
 			:math:`y`-extent of an input array representing a :math:`y`-unstaggered field.
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -569,7 +569,7 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` storing the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` storing the following tendencies:
 
 			* tendency_of_mass_fraction_of_water_vapor_in_air (unstaggered);
 			* tendency_of_mass_fraction_of_cloud_liquid_water_in_air (unstaggered);
@@ -726,7 +726,7 @@ class PrognosticIsentropic:
 		dt : obj 
 			A :class:`datetime.timedelta` representing the time step.
 		state_now : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the current state.
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the current state.
 			It should contain the following variables:
 
 			* air_isentropic_density (unstaggered);
@@ -737,7 +737,7 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
 		state_prv : obj
-			:class:`~storages.state_isentropic.StateIsentropic` representing the provisional state, i.e.,
+			:class:`~tasmania.storages.state_isentropic.StateIsentropic` representing the provisional state, i.e.,
 			the state stepped taking only the horizontal derivatives into account. 
 			It should contain the following variables:
 
@@ -749,9 +749,9 @@ class PrognosticIsentropic:
 			* precipitation_water_isentropic_density (unstaggered, optional).
 
 			This may be the output of 
-			:meth:`~dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
+			:meth:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic.step_neglecting_vertical_advection`.
 		tendencies : obj
-			:class:`~storages.grid_data.GridData` collecting the following tendencies:
+			:class:`~tasmania.storages.grid_data.GridData` collecting the following tendencies:
 			
 			* tendency_of_air_potential_temperature (unstaggered).
 		"""
