@@ -132,7 +132,7 @@ if nl.slow_tendency_microphysics_on:
 													 		 	  rain_evaporation_on = nl.rain_evaporation_on, 
 													 		 	  backend             = nl.backend, 
 													 		 	  **nl.slow_tendency_microphysics_kwargs)
-	model.add_slow_tendency_parameterization(slow_tendency_microphysics)
+	model.add_slow_tendency(slow_tendency_microphysics)
 
 	stop = time.time()
 	print('Class calculating slow-varying cloud microphysics tendencies instantiated in %5.5f ms.\n' %
@@ -151,7 +151,7 @@ if nl.adjustment_microphysics_on:
 													 		 rain_evaporation_on = nl.rain_evaporation_on, 
 													 		 backend             = nl.backend, 
 													 		 **nl.adjustment_microphysics_kwargs)
-	model.add_adjustment_parameterization(adjustment_microphysics)
+	model.add_adjustment(adjustment_microphysics)
 
 	stop = time.time()
 	print('Class performing cloud microphysics adjustments instantiated in %5.5f ms.\n' %

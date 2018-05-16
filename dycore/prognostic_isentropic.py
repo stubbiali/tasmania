@@ -39,7 +39,7 @@ class PrognosticIsentropic:
 
 	Attributes
 	----------
-	fast_tendency_parameterizations : list
+	fast_tendencies : list
 		List containing instances of derived classes of 
 		:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
 		calculating fast-varying tendencies.
@@ -106,7 +106,7 @@ class PrognosticIsentropic:
 		self._microphysics = None
 
 		# Initialize the list of parameterizations providing fast-varying cloud microphysical tendencies
-		self.fast_tendency_parameterizations = []
+		self.fast_tendencies = []
 
 		# Initialize the pointer to the compute function of the stencil in charge of coupling physics with dynamics
 		# This will be properly re-directed the first time the corresponding forward method is invoked
