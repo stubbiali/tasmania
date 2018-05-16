@@ -39,7 +39,7 @@ class DynamicalCore(TimeStepper):
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~grids.grid_xyz.GridXYZ` or one of its derived classes.
+			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		"""
@@ -139,18 +139,18 @@ class DynamicalCore(TimeStepper):
 		dt : obj
 			:class:`datetime.timedelta` object representing the time step.
 		state : obj 
-			The current state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+			The current state, as an instance of :class:`~tasmania.storages.grid_data.GridData` or one of its derived classes.
 		tendencies : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing tendencies. Default is :obj:`None`.
+			:class:`~tasmania.storages.grid_data.GridData` storing tendencies. Default is :obj:`None`.
 		diagnostics : `obj`, optional 
-			:class:`~storages.grid_data.GridData` storing diagnostics. Default is :obj:`None`.
+			:class:`~tasmania.storages.grid_data.GridData` storing diagnostics. Default is :obj:`None`.
 
 		Return
 		------
 		state_new : obj
 			The state at the next time level. This is of the same class of :data:`state`.
 		diagnostics_out : obj
-			:class:`~storages.grid_data.GridData` storing output diagnostics.
+			:class:`~tasmania.storages.grid_data.GridData` storing output diagnostics.
 		"""
 
 	@abc.abstractmethod
@@ -167,7 +167,7 @@ class DynamicalCore(TimeStepper):
 		Return
 		------
 		obj :
-			The initial state, as an instance of :class:`~storages.grid_data.GridData` or one of its derived classes.
+			The initial state, as an instance of :class:`~tasmania.storages.grid_data.GridData` or one of its derived classes.
 		"""
 
 	def update_topography(self, time):
@@ -191,10 +191,10 @@ class DynamicalCore(TimeStepper):
 		model : str
 			String specifying the dynamical core to implement. Either:
 
-			* 'isentropic_conservative', for the isentropic dynamical core based on the conservative form of 
-				the governing equations;
-			* 'isentropic_nonconservative', for the isentropic dynamical core based on the nonconservative form of 
-				the governing equations.
+				* 'isentropic_conservative', for the isentropic dynamical core based on the conservative form of \
+					the governing equations;
+				* 'isentropic_nonconservative', for the isentropic dynamical core based on the nonconservative form of \
+					the governing equations.
 
 		*args :
 			Positional arguments to forward to the derived class.

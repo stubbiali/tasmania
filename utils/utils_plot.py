@@ -570,7 +570,7 @@ def quiver_xy(x, y, topography, vx, vy, scalar = None, **kwargs):
 		Sequence representing the interval of the :math:`y`-axis to visualize. 
 		By default, the entire domain is shown.
 	y_step : int
-		Maximum distance between the :math:`y`-index of a drawn point, and the :math:`y-index of any 
+		Maximum distance between the :math:`y`-index of a drawn point, and the :math:`y`-index of any 
 		of its neighbours. Default is 2, i.e., only half of the points will be drawn.
 	field_factor : float
 		Scaling factor for the field. Default is 1.
@@ -744,7 +744,7 @@ def quiver_xz(x, z, topography, vx, vz, scalar = None, **kwargs):
 		Sequence representing the interval of the :math:`z`-axis to visualize. 
 		By default, the entire domain is shown.
 	z_step : int
-		Maximum distance between the :math:`z`-index of a drawn point, and the :math:`z-index of any 
+		Maximum distance between the :math:`z`-index of a drawn point, and the :math:`z`-index of any 
 		of its neighbours. Default is 2, i.e., only half of the points will be drawn.
 	field_factor : float
 		Scaling factor for the field. Default is 1.
@@ -1055,7 +1055,7 @@ def animation_contourf_xz(destination, time, x, z, field, topography, **kwargs):
 		String specifying the path to the location where the movie will be saved. 
 		Note that the string should include the extension as well.
 	time : array_like
-		Array of :class:`datetime.datetime`~s representing the time instants of the frames.
+		Array of :class:`datetime.datetime`\s representing the time instants of the frames.
 	x : array_like
 		Two-dimensional :class:`numpy.ndarray` representing the underlying :math:`x`-grid.
 		This is assumed to be time-independent.
@@ -1253,7 +1253,7 @@ def animation_profile_x(time, x, field, destination, **kwargs):
 	Parameters
 	----------
 	time : array_like 
-		Array of :class:`datetime.datetime`~s representing the time instants of the frames.
+		Array of :class:`datetime.datetime`\s representing the time instants of the frames.
 	x : array_like
 		One-dimensional :class:`numpy.ndarray` representing the underlying :math:`x`-grid.
 	field : array_like
@@ -1379,7 +1379,7 @@ def animation_profile_x_comparison(time, x, field, destination, **kwargs):
 	Parameters
 	----------
 	time : array_like 
-		Array of :class:`datetime.datetime`~s representing the time instants of the frames.
+		Array of :class:`datetime.datetime`\s representing the time instants of the frames.
 	x : list
 		Two-dimensional :class:`numpy.ndarray` storing the :math:`x`-grids underlying each field.
 		It is assumed that:

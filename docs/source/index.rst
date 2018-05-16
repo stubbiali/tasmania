@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to gt4ess's documentation!
-==================================
+Welcome to tasmania's documentation!
+====================================
 
 .. toctree::
    :maxdepth: 2

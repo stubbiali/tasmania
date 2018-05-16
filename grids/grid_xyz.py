@@ -48,11 +48,11 @@ class GridXYZ:
 	Attributes
 	----------
 	xy_grid : obj
-		`~grids.grid_xy.GridXY` representing the horizontal grid..
+		:class:`~tasmania.grids.grid_xy.GridXY` representing the horizontal grid..
 	z : obj
-		:class:`~grids.axis.Axis` representing the :math:`z`-main levels. 
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`z`-main levels. 
 	z_on_interface_levels : obj
-		:class:`~grids.axis.Axis` representing the :math:`z`-half levels. 
+		:class:`~tasmania.grids.axis.Axis` representing the :math:`z`-half levels. 
 	nz : int
 		Number of vertical main levels.
 	dz : float
@@ -107,16 +107,16 @@ class GridXYZ:
 			the value of :math:`z` at the top of the domain. In other words, a fully terrain-following coordinate
 			system is supposed.
 		topo_type : `str`, optional
-			Topography type. Default is 'flat_terrain'. See :mod:`grids.topography` for further details.
+			Topography type. Default is 'flat_terrain'. See :mod:`~tasmania.grids.topography` for further details.
 		topo_time : `obj`, optional
 			:class:`datetime.timedelta` representing the simulation time after which the topography should stop 
 			increasing. Default is 0, corresponding to a time-invariant terrain surface-height. See 
-			:mod:`grids.topography` for further details.
+			:mod:`~tasmania.grids.topography` for further details.
 
 		Keyword arguments
 		-----------------
 		kwargs : 
-			Keyword arguments to be forwarded to the constructor of :class:`~grids.topography.Topography2d`.
+			Keyword arguments to be forwarded to the constructor of :class:`~tasmania.grids.topography.Topography2d`.
 		"""
 		self.xy_grid = GridXY(domain_x, nx, domain_y, ny, units_x, dims_x, units_y, dims_y)
 
@@ -146,7 +146,7 @@ class GridXYZ:
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` storing the :math:`x`-coordinates of the mass points.
+			:class:`~tasmania.grids.axis.Axis` storing the :math:`x`-coordinates of the mass points.
 		"""
 		return self.xy_grid.x
 
@@ -158,7 +158,7 @@ class GridXYZ:
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` storing the :math:`x`-coordinates at the :math:`u`-locations.
+			:class:`~tasmania.grids.axis.Axis` storing the :math:`x`-coordinates at the :math:`u`-locations.
 		"""
 		g = self.xy_grid
 		return g.x_at_u_locations if hasattr(g, 'x_at_u_locations') else g.x_half_levels
@@ -195,7 +195,7 @@ class GridXYZ:
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` storing the :math:`y`-coordinates of the mass points.
+			:class:`~tasmania.grids.axis.Axis` storing the :math:`y`-coordinates of the mass points.
 		"""
 		return self.xy_grid.y
 
@@ -207,7 +207,7 @@ class GridXYZ:
 		Return
 		------
 		obj :
-			:class:`~grids.axis.Axis` storing the :math:`y`-coordinates at the :math:`v`-locations.
+			:class:`~tasmania.grids.axis.Axis` storing the :math:`y`-coordinates at the :math:`v`-locations.
 		"""
 		g = self.xy_grid
 		return g.y_at_v_locations if hasattr(g, 'y_at_v_locations') else g.y_half_levels
