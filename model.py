@@ -29,10 +29,10 @@ class Model:
 		Default constructor.
 		"""
 		# Initialize the dycore, the list of tendencies, and the list of adjustments
-		self._dycore      		   = None
-		self._slow_tendency_params = []
-		self._fast_tendency_params = []
-		self._adjustment_params    = []
+		self._dycore      	  = None
+		self._slow_tendencies = []
+		self._fast_tendencies = []
+		self._adjustments     = []
 
 	def set_dynamical_core(self, dycore):
 		"""
@@ -47,26 +47,26 @@ class Model:
 		self._dycore = dycore
 
 		# Update the parameterizations
-		for slow_tendency_param in self._slow_tendency_params:
-			slow_tendency_param.time_levels = dycore.time_levels
-		for adjustment_param in self._adjustment_params:
-			adjustment_param.time_levels = dycore.time_levels
+		for slow_tendency in self._slow_tendencies:
+			slow_tendency.time_levels = dycore.time_levels
+		for adjustment in self._adjustments:
+			adjustment.time_levels = dycore.time_levels
 
 		# Update the dycore by setting the microphysics scheme
-		for slow_tendency_param in self._slow_tendency_params:
-			if isinstance(slow_tendency_param, SlowTendencyMicrophysics) and not done:
-				self._dycore.microphysics = slow_tendency_param
-		for fast_tendency_param in self._fast_tendency_params:
-			if isinstance(fast_tendency_param, FastTendencyMicrophysics) and not done:
-				self._dycore.microphysics = fast_tendency_param
-		for adjustment_param in self._adjustment_params:
-			if isinstance(adjustment_param, AdjustmentMicrophysics) and not done:
-				self._dycore.microphysics = adjustment_param
+		for slow_tendency in self._slow_tendencies:
+			if isinstance(slow_tendency, SlowTendencyMicrophysics) and not done:
+				self._dycore.microphysics = slow_tendency
+		for fast_tendency in self._fast_tendencies:
+			if isinstance(fast_tendency, FastTendencyMicrophysics) and not done:
+				self._dycore.microphysics = fast_tendency
+		for adjustment in self._adjustments:
+			if isinstance(adjustment, AdjustmentMicrophysics) and not done:
+				self._dycore.microphysics = adjustment
 
 		# Update the dycore by setting the list of parameterizations providing fast-varying tendencies
-		self._dycore.fast_tendency_parameterizations = self._fast_tendency_params
+		self._dycore.fast_tendencies = self._fast_tendencies
 
-	def add_slow_tendency_parameterization(self, tendency):
+	def add_slow_tendency(self, tendency):
 		"""
 		Add to the model a parameterization providing slow-varying tendencies.
 
@@ -81,7 +81,7 @@ class Model:
 		In a simulation, parameterizations calculating slow-varying tendencies will be executed in the same 
 		order they have been added to the model.
 		"""
-		self._slow_tendency_params.append(tendency)
+		self._slow_tendencies.append(tendency)
 		
 		#
 		# Set dependencies
@@ -92,7 +92,7 @@ class Model:
 		if isinstance(tendency, SlowTendencyMicrophysics) and self._dycore is not None:
 			self._dycore.microphysics = tendency
 
-	def add_fast_tendency_parameterization(self, tendency):
+	def add_fast_tendency(self, tendency):
 		"""
 		Add to the model a parameterization providing fast-varying tendencies.
 
@@ -107,7 +107,7 @@ class Model:
 		In a simulation, parameterizations calculating fast-varying tendencies will be executed in the same 
 		order they have been added to the model.
 		"""
-		self._fast_tendency_params.append(tendency)
+		self._fast_tendencies.append(tendency)
 		
 		#
 		# Set dependencies
@@ -116,9 +116,9 @@ class Model:
 			self._dycore.microphysics = tendency
 
 		if self._dycore is not None:
-			self._dycore.fast_tendency_parameterizations = self._fast_tendency_params
+			self._dycore.fast_tendencies = self._fast_tendencies
 
-	def add_adjustment_parameterization(self, adjustment):
+	def add_adjustment(self, adjustment):
 		"""
 		Add an *adjustment-performing* parameterization to the model.
 
@@ -133,7 +133,7 @@ class Model:
 		In a simulation, adjustment-performing parameterizations will be executed in the same order 
 		they have been added to the model.
 		"""
-		self._adjustment_params.append(adjustment)
+		self._adjustments.append(adjustment)
 
 		#
 		# Set dependencies
@@ -197,8 +197,8 @@ class Model:
 		self._dycore.update_topography(elapsed_time)
 
 		# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
-		for slow_tendency_param in self._slow_tendency_params: 
-			tendencies_, diagnostics_ = slow_tendency_param(dt_, state_out)
+		for slow_tendency in self._slow_tendencies: 
+			tendencies_, diagnostics_ = slow_tendency(dt_, state_out)
 			tendencies += tendencies_
 			diagnostics.extend(diagnostics_)
 
@@ -209,8 +209,8 @@ class Model:
 
 		# Run the adjustment-performing parameterizations; after each parameterization, 
 		# update the state and collect diagnostics
-		for adjustment_param in self._adjustment_params:
-			diagnostics_, state_out_ = adjustment_param(state_out, dt_)
+		for adjustment in self._adjustments:
+			diagnostics_, state_out_ = adjustment(state_out, dt_)
 			state_out.update(state_out_)
 			diagnostics.extend(diagnostics_)
 
@@ -248,8 +248,8 @@ class Model:
 			self._dycore.update_topography(elapsed_time)
 
 			# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
-			for slow_tendency_param in self._slow_tendency_params: 
-				tendencies_, diagnostics_ = slow_tendency_param(dt_, state_out)
+			for slow_tendency in self._slow_tendencies: 
+				tendencies_, diagnostics_ = slow_tendency(dt_, state_out)
 				tendencies += tendencies_
 				diagnostics.update(diagnostics_)
 
@@ -260,8 +260,8 @@ class Model:
 
 			# Run the adjustment-performing parameterizations; after each parameterization, 
 			# update the state and collect diagnostics
-			for adjustment_param in self._adjustment_params:
-				diagnostics_, state_out_ = adjustment_param(state_out, dt_)
+			for adjustment in self._adjustments:
+				diagnostics_, state_out_ = adjustment(state_out, dt_)
 				state_out.update(state_out_)
 				diagnostics.update(diagnostics_)
 
@@ -288,6 +288,3 @@ class Model:
 				print('Step %6.i saved' % (steps))
 
 		return state_out, state_save, diagnostics_save
-
-
-

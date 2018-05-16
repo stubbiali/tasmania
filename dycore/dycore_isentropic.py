@@ -185,7 +185,7 @@ class DynamicalCoreIsentropic(DynamicalCore):
 		self._prognostic.microphysics = micro
 
 	@property
-	def fast_tendency_parameterizations(self):
+	def fast_tendencies(self):
 		"""
 		Get the list of parameterizations calculating fast-varying tendencies.
 
@@ -196,10 +196,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			:class:`~tasmania.parameterizations.fast_tendencies.FastTendency` which are in charge of
 			calculating fast-varying tendencies.
 		"""
-		return self._fast_tendency_params
+		return self._fast_tendencies
 
-	@fast_tendency_parameterizations.setter
-	def fast_tendency_parameterizations(self, fast_tendency_params):
+	@fast_tendencies.setter
+	def fast_tendencies(self, fast_tendencies):
 		"""
 		Set the list of parameterizations calculating fast-varying tendencies.
 
@@ -211,10 +211,10 @@ class DynamicalCoreIsentropic(DynamicalCore):
 			calculating fast-varying tendencies.
 		"""
 		# Set attribute
-		self._fast_tendency_params = fast_tendency_params
+		self._fast_tendencies = fast_tendencies
 
 		# Update prognostic class
-		self._prognostic.fast_tendency_parameterizations = fast_tendency_params
+		self._prognostic.fast_tendencies = fast_tendencies
 
 	def __call__(self, dt, state, tendencies = None, diagnostics = None):
 		"""
