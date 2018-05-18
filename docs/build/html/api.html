@@ -199,7 +199,7 @@
 <dt id="tasmania.grids.axis.Axis">
 <em class="property">class </em><code class="descclassname">tasmania.grids.axis.</code><code class="descname">Axis</code><span class="sig-paren">(</span><em>coords</em>, <em>dims</em>, <em>attrs=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.grids.axis.Axis" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class representing a one-dimensional axis. The class API is designed to be similar to
-that provided by <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>.</p>
+that provided by <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -208,7 +208,7 @@ that provided by <a class="reference external" href="http://xarray.pydata.org/en
 <li><strong>coords</strong> (<em>list</em>) – One-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> storing axis coordinates, wrapped within a list.</li>
 <li><strong>values</strong> (<em>array_like</em>) – One-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> storing axis coordinates. This attrribute is semantically identical
 to <code class="xref py py-attr docutils literal"><span class="pre">coords</span></code> and it is introduced only for the sake of compliancy with
-<a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>’s API.</li>
+<a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>’s API.</li>
 <li><strong>dims</strong> (<em>str</em>) – Axis dimension, i.e., label.</li>
 <li><strong>attrs</strong> (<em>dict</em>) – Axis attributes, e.g., the units.</li>
 </ul>
@@ -8619,11 +8619,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\sigma\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\sigma_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\sigma = \sigma_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -8735,11 +8735,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\mu\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\mu_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -8851,11 +8851,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>nz</strong> (<em>int</em>) – Number of vertical main levels.</li>
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\mu\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\mu_F\)</span>.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -9213,11 +9213,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(\sigma\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(\sigma_F\)</span>.</li>
 <li><a class="reference internal" href="#module-tasmania.grids.topography" title="tasmania.grids.topography"><strong>topography</strong></a> (<em>obj</em>) – <a class="reference internal" href="#tasmania.grids.topography.Topography2d" title="tasmania.grids.topography.Topography2d"><code class="xref py py-class docutils literal"><span class="pre">Topography2d</span></code></a> representing the underlying topography.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\sigma = \sigma_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> storing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -9315,11 +9315,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(z\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(z_F\)</span>.</li>
 <li><a class="reference internal" href="#module-tasmania.grids.topography" title="tasmania.grids.topography"><strong>topography</strong></a> (<em>obj</em>) – <a class="reference internal" href="#tasmania.grids.topography.Topography2d" title="tasmania.grids.topography.Topography2d"><code class="xref py py-class docutils literal"><span class="pre">Topography2d</span></code></a> representing the underlying topography.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -9417,11 +9417,11 @@ with terrain-following coordinate lines between the surface terrain-height and <
 <li><strong>dz</strong> (<em>float</em>) – The <span class="math">\(z\)</span>-spacing.</li>
 <li><strong>z_interface</strong> (<em>float</em>) – The interface coordinate <span class="math">\(z_F\)</span>.</li>
 <li><a class="reference internal" href="#module-tasmania.grids.topography" title="tasmania.grids.topography"><strong>topography</strong></a> (<em>obj</em>) – <a class="reference internal" href="#tasmania.grids.topography.Topography2d" title="tasmania.grids.topography.Topography2d"><code class="xref py py-class docutils literal"><span class="pre">Topography2d</span></code></a> representing the underlying topography.</li>
-<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
-<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
+<li><strong>height</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the main levels.</li>
+<li><strong>height_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the geometric height of the half levels.</li>
 <li><strong>height_interface</strong> (<em>float</em>) – Geometric height corresponding to <span class="math">\(\mu = \mu_F\)</span>.</li>
-<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
-<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
+<li><strong>reference_pressure</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the main levels.</li>
+<li><strong>reference_pressure_half_levels</strong> (<em>obj</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the reference pressure at the half levels.</li>
 </ul>
 </td>
 </tr>
@@ -11028,7 +11028,7 @@ It should contain the following variables:</p>
 <dd><p>Class storing and handling time-dependent variables defined on a grid. Ideally, this class should be used to
 represent the state, or a sequence of states at different time levels, of a <em>generic</em> climate or meteorological model.
 The model variables, in the shape of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s, are passed to the constructor as keyword arguments.
-After conversion to <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s, the variables are packed in a dictionary whose keys are the input keywords.
+After conversion to <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s, the variables are packed in a dictionary whose keys are the input keywords.
 The class attribute <code class="xref py py-data docutils literal"><span class="pre">units</span></code> lists, for any admissible keyword, the units in which the associated field should
 be expressed. Any variable can be accessed via the accessor operator by specifying the corresponding
 keyword. Other methods are provided to update the state, or to create a sequence of states (useful for animation purposes).
@@ -11053,7 +11053,7 @@ derived classes, each one representing the state of a <em>specific</em> model.</
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>str</em>) – The name of the variable to return.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Shallow copy of the <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the variable,
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Shallow copy of the <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the variable,
 or <code class="xref py py-obj docutils literal"><span class="pre">None</span></code> if the variable is not found.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">obj</td>
@@ -11153,7 +11153,7 @@ See <a class="reference internal" href="#tasmania.utils.utils_plot.animation_pro
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<em>obj</em>) – Another <a class="reference internal" href="#tasmania.storages.grid_data.GridData" title="tasmania.storages.grid_data.GridData"><code class="xref py py-class docutils literal"><span class="pre">GridData</span></code></a> (or a derived class), whose <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<em>obj</em>) – Another <a class="reference internal" href="#tasmania.storages.grid_data.GridData" title="tasmania.storages.grid_data.GridData"><code class="xref py py-class docutils literal"><span class="pre">GridData</span></code></a> (or a derived class), whose <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a>s
 will be concatenated along the temporal axis to the corresponding ones in the current object.</td>
 </tr>
 </tbody>
@@ -11254,7 +11254,7 @@ with which the current object will be synced.</td>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<em>str</em>) – The name of the variable to return and remove.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Shallow copy of the <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the variable,
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Shallow copy of the <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the variable,
 or <code class="xref py py-obj docutils literal"><span class="pre">None</span></code> if the variable is not found.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">obj</td>
@@ -11715,7 +11715,7 @@ fully C++-compliant.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
+<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
 <li><strong>topo_type</strong> (<em>str</em>) – <p>Topography type. Either:</p>
 <ul>
 <li>’flat_terrain’;</li>
@@ -11795,7 +11795,7 @@ Must be fully C++-compliant.</li>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.3)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
+<li><strong>topo</strong> (<em>array_like</em>) – <a class="reference external" href="http://xarray.pydata.org/en/stable/generated/xarray.DataArray.html#xarray.DataArray" title="(in xarray v0.10.4)"><code class="xref py py-class docutils literal"><span class="pre">xarray.DataArray</span></code></a> representing the topography (in meters).</li>
 <li><strong>topo_type</strong> (<em>str</em>) – <p>Topography type. Either:</p>
 <ul>
 <li>’flat_terrain’;</li>
