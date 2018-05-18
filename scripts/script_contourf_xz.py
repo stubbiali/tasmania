@@ -11,7 +11,7 @@ import tasmania.utils.utils_plot as utils_plot
 #
 # Mandatory settings
 #
-filename = os.path.join(os.environ['TASMANIA_ROOT'], '../kessler_wrf_saturation_sedimentation_evaporation_maccormack_reference.pickle')
+filename = os.path.join(os.environ['TASMANIA_ROOT'], 'data/verification_kessler_wrf_first_order_sedimentation_maccormack.pickle')
 field = 'mass_fraction_of_precipitation_water_in_air'
 y_level = 0
 time_level = -1
