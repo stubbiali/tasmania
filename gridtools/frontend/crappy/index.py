@@ -5,8 +5,8 @@ import math
 class Index:
 	_current_id = itertools.count(0)
 
-	def __init__(self, index_id=None, name=None, offset=0):
-		self._index_id = next(self._current_id) if index_id is None else index_id
+	def __init__(self, axis=None, name=None, offset=0):
+		self._index_id = next(self._current_id) if axis is None else axis
 		self._name = name
 		self._offset = offset
 
@@ -29,7 +29,7 @@ class Index:
 		is applied to the scalar before the addition is performed.
 		"""
 		new_offset = self._offset + math.floor(other)
-		return Index(index_id=self._index_id, name=self._name, offset=new_offset)
+		return Index(axis=self._index_id, name=self._name, offset=new_offset)
 
 	def __sub__(self, other):
 		"""
@@ -38,7 +38,7 @@ class Index:
 		is applied to the scalar before the subtraction is performed.
 		"""
 		new_offset = self._offset - math.ceil(other)
-		return Index(index_id=self._index_id, name=self._name, offset=new_offset)
+		return Index(axis=self._index_id, name=self._name, offset=new_offset)
 
 
 class IndicesTransformation:

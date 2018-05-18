@@ -16,6 +16,7 @@ RUN apt-get update && \
 					   cmake                \
                    	   libfreetype6-dev     \
                    	   libpng12-dev         \
+					   graphviz				\
                    	   pkg-config           \
 				   	   qt-sdk				\
 				   	   vim					\
