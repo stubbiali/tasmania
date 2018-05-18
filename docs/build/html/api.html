@@ -224,7 +224,7 @@ to <code class="xref py py-attr docutils literal"><span class="pre">coords</span
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>i</strong> (<cite>int</cite> or <a href="#id1"><span class="problematic" id="id2">`</span></a>array_like) – The index, or a sequence of indices.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>i</strong> (<cite>int</cite> or <cite>array_like</cite>) – The index, or a sequence of indices.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The coordinate(s).</td>
 </tr>
@@ -1039,8 +1039,8 @@ As this method is marked as abstract, its implementation is delegated to the der
 </dd></dl>
 
 <dl class="attribute">
-<dt id="tasmania.dycore.dycore.DynamicalCore.fast_tendency_parameterizations">
-<code class="descname">fast_tendency_parameterizations</code><a class="headerlink" href="#tasmania.dycore.dycore.DynamicalCore.fast_tendency_parameterizations" title="Permalink to this definition">¶</a></dt>
+<dt id="tasmania.dycore.dycore.DynamicalCore.fast_tendencies">
+<code class="descname">fast_tendencies</code><a class="headerlink" href="#tasmania.dycore.dycore.DynamicalCore.fast_tendencies" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the list of parameterizations calculating fast-varying tendencies.
 As this method is marked as abstract, its implementation is delegated to the derived classes.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1395,8 +1395,8 @@ It contains the following variables:<ul>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="tasmania.dycore.dycore_isentropic.DynamicalCoreIsentropic.fast_tendency_parameterizations">
-<code class="descname">fast_tendency_parameterizations</code><a class="headerlink" href="#tasmania.dycore.dycore_isentropic.DynamicalCoreIsentropic.fast_tendency_parameterizations" title="Permalink to this definition">¶</a></dt>
+<dt id="tasmania.dycore.dycore_isentropic.DynamicalCoreIsentropic.fast_tendencies">
+<code class="descname">fast_tendencies</code><a class="headerlink" href="#tasmania.dycore.dycore_isentropic.DynamicalCoreIsentropic.fast_tendencies" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the list of parameterizations calculating fast-varying tendencies.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -5509,7 +5509,7 @@ the three-dimensional moist isentropic dynamical core. The conservative form of 
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><a class="reference internal" href="#tasmania.dycore.dycore.DynamicalCore.fast_tendency_parameterizations" title="tasmania.dycore.dycore.DynamicalCore.fast_tendency_parameterizations"><strong>fast_tendency_parameterizations</strong></a> (<em>list</em>) – List containing instances of derived classes of
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><a class="reference internal" href="#tasmania.dycore.dycore.DynamicalCore.fast_tendencies" title="tasmania.dycore.dycore.DynamicalCore.fast_tendencies"><strong>fast_tendencies</strong></a> (<em>list</em>) – List containing instances of derived classes of
 <a class="reference internal" href="#tasmania.parameterizations.fast_tendencies.FastTendency" title="tasmania.parameterizations.fast_tendencies.FastTendency"><code class="xref py py-class docutils literal"><span class="pre">FastTendency</span></code></a> which are in charge of
 calculating fast-varying tendencies.</td>
 </tr>
@@ -9547,8 +9547,8 @@ final states are saved.</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="tasmania.model.Model.add_adjustment_parameterization">
-<code class="descname">add_adjustment_parameterization</code><span class="sig-paren">(</span><em>adjustment</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.add_adjustment_parameterization" title="Permalink to this definition">¶</a></dt>
+<dt id="tasmania.model.Model.add_adjustment">
+<code class="descname">add_adjustment</code><span class="sig-paren">(</span><em>adjustment</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.add_adjustment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add an <em>adjustment-performing</em> parameterization to the model.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -9567,8 +9567,8 @@ they have been added to the model.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="tasmania.model.Model.add_fast_tendency_parameterization">
-<code class="descname">add_fast_tendency_parameterization</code><span class="sig-paren">(</span><em>tendency</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.add_fast_tendency_parameterization" title="Permalink to this definition">¶</a></dt>
+<dt id="tasmania.model.Model.add_fast_tendency">
+<code class="descname">add_fast_tendency</code><span class="sig-paren">(</span><em>tendency</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.add_fast_tendency" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add to the model a parameterization providing fast-varying tendencies.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -9587,8 +9587,8 @@ order they have been added to the model.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="tasmania.model.Model.add_slow_tendency_parameterization">
-<code class="descname">add_slow_tendency_parameterization</code><span class="sig-paren">(</span><em>tendency</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.add_slow_tendency_parameterization" title="Permalink to this definition">¶</a></dt>
+<dt id="tasmania.model.Model.add_slow_tendency">
+<code class="descname">add_slow_tendency</code><span class="sig-paren">(</span><em>tendency</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.add_slow_tendency" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add to the model a parameterization providing slow-varying tendencies.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -12386,7 +12386,7 @@ to the <span class="math">\(yz\)</span>-plane.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>time</strong> (<em>array_like</em>) – Array of :class:<a href="#id27"><span class="problematic" id="id28">`</span></a>datetime.datetime`~s representing the time instants of the frames.</li>
+<li><strong>time</strong> (<em>array_like</em>) – Array of <code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span></code>s representing the time instants of the frames.</li>
 <li><strong>x</strong> (<em>array_like</em>) – One-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the underlying <span class="math">\(x\)</span>-grid.</li>
 <li><strong>field</strong> (<em>array_like</em>) – <p>Two-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field to plot.
 It is assumed that:</p>
@@ -12437,7 +12437,7 @@ to the <span class="math">\(yz\)</span>-plane.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>time</strong> (<em>array_like</em>) – Array of :class:<a href="#id29"><span class="problematic" id="id30">`</span></a>datetime.datetime`~s representing the time instants of the frames.</li>
+<li><strong>time</strong> (<em>array_like</em>) – Array of <code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span></code>s representing the time instants of the frames.</li>
 <li><strong>x</strong> (<em>list</em>) – <p>Two-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> storing the <span class="math">\(x\)</span>-grids underlying each field.
 It is assumed that:</p>
 <ul>
@@ -12683,7 +12683,7 @@ of its neighbours. Default is 2, i.e., only half of the points will be drawn.</l
 <li><strong>y_factor</strong> (<em>float</em>) – Scaling factor for the <span class="math">\(y\)</span>-axis. Default is 1.</li>
 <li><strong>y_lim</strong> (<em>sequence</em>) – Sequence representing the interval of the <span class="math">\(y\)</span>-axis to visualize.
 By default, the entire domain is shown.</li>
-<li><strong>y_step</strong> (<em>int</em>) – Maximum distance between the <span class="math">\(y\)</span>-index of a drawn point, and the :math:<a href="#id31"><span class="problematic" id="id32">`</span></a>y-index of any
+<li><strong>y_step</strong> (<em>int</em>) – Maximum distance between the <span class="math">\(y\)</span>-index of a drawn point, and the <span class="math">\(y\)</span>-index of any
 of its neighbours. Default is 2, i.e., only half of the points will be drawn.</li>
 <li><strong>field_factor</strong> (<em>float</em>) – Scaling factor for the field. Default is 1.</li>
 <li><strong>cmap_name</strong> (<em>str</em>) – Name of the Matplotlib’s color map to be used. All the color maps provided by Matplotlib,
@@ -12748,7 +12748,7 @@ of its neighbours. Default is 2, i.e., only half of the points will be drawn.</l
 <li><strong>z_factor</strong> (<em>float</em>) – Scaling factor for the <span class="math">\(z\)</span>-axis. Default is 1.</li>
 <li><strong>z_lim</strong> (<em>sequence</em>) – Sequence representing the interval of the <span class="math">\(z\)</span>-axis to visualize.
 By default, the entire domain is shown.</li>
-<li><strong>z_step</strong> (<em>int</em>) – Maximum distance between the <span class="math">\(z\)</span>-index of a drawn point, and the :math:<a href="#id33"><span class="problematic" id="id34">`</span></a>z-index of any
+<li><strong>z_step</strong> (<em>int</em>) – Maximum distance between the <span class="math">\(z\)</span>-index of a drawn point, and the <span class="math">\(z\)</span>-index of any
 of its neighbours. Default is 2, i.e., only half of the points will be drawn.</li>
 <li><strong>field_factor</strong> (<em>float</em>) – Scaling factor for the field. Default is 1.</li>
 <li><strong>cmap_name</strong> (<em>str</em>) – Name of the Matplotlib’s color map to be used. All the color maps provided by Matplotlib,
