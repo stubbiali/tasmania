@@ -1,0 +1,190 @@
+\section{Introduction}
+\subsection{Problem statement}
+The overarching problem addressed in this thesis is the decomposition of the computational domain for stencil based simulations.
+Domain decomposition is necessary to distribute and balance the computational load among distributed processing units.
+Additionally, including heterogeneous processing units adds further complications to the domain decomposition problem.
+
+Solutions to the domain decomposition problem should be automatic, i.e. require a minimal amount of manual input.
+Automating domain decomposition helps separating concerns between domain scientists and computer scientists.
+
+Therefore, the thesis focuses on the creation of an automatic domain decomposition library addressing these problems.
+
+\subsection{Background}
+Most scientific or engineering codes that model and simulate natural phenomena require more computational resources than a single processing unit can provide.
+Distributed systems, such as high performance clusters, are a common way to provide the necessary resources for complex simulations.
+However, porting such codes from their usually serial form to codes that run in parallel on distributed systems creates several challenges.
+These challenges are generally outside the scope of the domain specific developers.
+
+Decomposing the computational domain and distributing it to the processing units is one of these challenges.
+
+\subsubsection{Distributed heterogeneous systems}
+Distributed systems have been used for decades in high performance computing (HPC) to compute simulations for various scientific fields.
+A more recent development is the introduction of accelerator devices e.g. graphics processing units (GPU) to the nodes in HPC clusters.
+These accelerator devices bring enormous computational power with their large number of cores for throughput-critical computations.
+But their architecture is different compared to CPUs for latency-critical applications.
+
+Therefore, some HPC systems have a hybrid configuration of CPUs and GPUs to combine the advantages of both architectures.
+However, this also means that nodes in HPC clusters no longer have homogeneous processing units, which makes the distribution of the computational domain ever more complex.
+\citet{mittal2015survey} provide a more detailed description of the evolution and motivation behind heterogeneous computing.
+
+\subsubsection{Stencil codes}
+Domain decomposition is used in various type of simulations.
+This thesis focuses on domain decomposition for stencil codes.
+
+Stencil codes are a family of codes commonly used in various scientific computing applications.
+The name "stencil codes" refers to computations using a fixed pattern of values from points on a mesh.
+
+These fixed patterns often originate from explicit finite difference approximations on structured meshes.
+Structured meshes guarantee that every point in the mesh, except points on the boundary, has the same number of neighboring points.
+Explicit finite difference approximations use the values on the mesh at a given point in time to compute the values for the next small time step.
+Finite difference approximations are one common way to solve partial differential equations (PDEs).
+Numerous scientific fields - such as fluid dynamics or climate dynamics - model the natural phenomena of their studies as PDEs.
+
+A single time step in a stencil code consists of iterating through every point on the mesh according to the fixed pattern, gathering values from other points, and using these values to compute the value for the next time step.
+Simulations of complex natural phenomena usually require very fine spatial and temporal resolutions as well as computations involving multiple different quantities on every grid point.
+Therefore, even theoretically simple stencil codes are in practice frequently more intricate.
+
+Complex stencil codes usually require their large mesh to be decomposed into computational sub-domains for each processing unit to be solved in a reasonable amount of time.
+Therefore, domain decomposition is an important part of stencil codes.
+
+\subsubsection{Domain decomposition / graph partitioning}
+Domain decomposition can be seen as a specific form of load balancing for codes in which the load is roughly equal for each point in a domain.
+Stencil codes fulfill this characteristic.
+
+The sub-domains that result from domain decomposition for stencil codes need to synchronize the values across their boundaries to be consistent.
+This synchronization requires communication between the different processing units.
+
+The quality of a given domain decomposition is determined by the balance of computational load among all processors and the reduction of communication among different processors.
+
+A common way to model and solve domain decomposition is through graph partitioning.
+When using this strategy, the elements of the discrete domain are represented by the vertices of a graph, with edges representing the connections between neighboring elements.
+The sum of all values on the edges between two sub-domains is called the edge cut.
+The edge cut in this model represents the total amount of communication between the two sub-domains.
+
+Therefore, graph partitioning algorithms that use a cost function to minimize such an edge cut, while maintaining an approximate uniformity of sub-domain size, provide domain decompositions that minimize the communication cost.
+
+\subsection{Related works}
+\label{sec:relwork}
+In literature, the process of creating sub-domains from a larger domain is referred to by different names: domain decomposition, static mapping, (graph) partitioning, topology mapping, or sometimes more general as a form of load balancing.
+
+Domain decomposition is used to account for different computational load imbalances in various simulations.
+Common sources for such imbalances are irregular grids (e.g. finite element method), task-based applications, or heterogeneous communication costs.
+In \citet{saxena2015architecture} it is stated that heterogeneous architectures have not received as much attention as a source of imbalance.
+Nevertheless, heterogeneous architectures are a source of imbalance even for simulations that do not have any other source of imbalance.
+
+However, even for different sources of imbalance, most often the problem is modeled as a graph, and a graph partitioning algorithm is used to solve for a domain decomposition.
+
+In the general case, graph partitioning has been proven to be NP-complete (\citet{feldmann2015balanced}).
+However, relaxing the constraint to roughly equal instead of exactly equal partitions allows various different heuristics to generate a sub-optimal solution in reasonable time.
+
+A general overview and comparison between different graph partitioning algorithms can be found in \citet{karypis1998fast}.
+Specifically, Table 9 illustrates different criteria for useful graph partitioning and how each algorithm ranks in them.
+Even though this paper is a few years old, both of the most common graph partitioning libraries, METIS \footnote[1]{\href{http://glaros.dtc.umn.edu/gkhome/views/metis}{http://glaros.dtc.umn.edu/gkhome/views/metis}} and SCOTCH \footnote[2]{\href{https://gforge.inria.fr/projects/SCOTCH/}{https://gforge.inria.fr/projects/SCOTCH/}}, are based on the basic algorithms described in the paper.
+
+While conceptually very similar the algorithms in these libraries differ in their mathematical description and their modeling approach.
+
+\subsubsection{SCOTCH library}
+The SCOTCH library models the problem as a set of two graphs:
+a valuated, undirected source graph $S(V, E)$ representing the parallel processes (vertices) and communication channels (edges). And a not-valuated target graph $T(V, E)$ representing the topology of the target machine.
+The target graph is not valuated because it assumes an homogeneous architecture.
+
+To solve the graph partitioning on these two graphs, the SCOTCH library employs a dual recursive bipartitioning algorithm.
+This algorithm is formulated by \citet{pellegrini1994static} in the following way:
+
+The goal of a mapping is then defined as:
+$\varphi : V\left(S\right) \rightarrow V\left(T\right)$ such that $\varphi\left(v_s\right) = v_t $ if $v_s$ is mapped onto processor $v_t$.
+\\
+And $\psi : E\left(S\right) \rightarrow E\left(T\right)$ such that $\psi\left(e_S\right) = \left\{ e_T^1, e_T^2, \dots, e_T^n \right\}$ with $\left| \psi\left(e_S\right) \right|$ as the number of edges in the target graph that are used.
+\\
+With these definitions, the cost function to be minimized is defined as the edge cut function $f_c$:
+\begin{equation}
+f_c\left(\varphi, \psi \right) = \sum_{e_s \in \text{cut} \left(E\left(S\right)\right)} \left(c\left(e_S\right) \cdot \left| \psi\left(e_S\right) \right| \right)
+\end{equation}
+where $c\left(e_S\right)$ is the value of the edge (i.e. the communication cost) and $\text{cut} \left(E\left(S\right)\right)$ contains all edges belonging to the two subsets of the bipartition for which the cost function is computed.
+
+\subsubsection{METIS library}
+The older METIS library was developed on the basis of a multilevel bipartitioning algorithm.
+In their model, a single valuated, undirected source graph is partitioned, assuming that the target architecture has uniform cost for any communication between two processes.
+However, the graph partitioning algorithm in the METIS library has been expanded, as explained in \citet{karypis1998multilevel}, to allow multiple constraints to be balanced.
+
+\subsection{Source graph generation for stencil codes}
+For graph partitioning to be used for domain decomposition, a source graph representing the domain is required.
+
+Simple one and two dimensional stencils are often either visualized as points connected with lines or written in matrix form. For example the well known stencil used in the computation of the Laplace equation can be expressed as
+\begin{bmatrix}
+& 1 &  \\
+1 & -4 & 1 \\
+& 1 & \\ 
+\end{bmatrix}
+, which is equivalent to writing the formula as $u_{i+1, j} + u_{i-1, j} + u_{i, j+1} +u_{i, j-1} - 4 u_{i, j}$.
+
+The matrix form also illustrates the communication pattern needed by the stencil.
+The position in the middle of the matrix represents the grid point itself.
+The other non-zero entries in the matrix represent the other grid points needed in the computation.
+
+The computational cost can be approximated by the number of non-zero entries in the matrix e.g. the Laplace stencil requires 4 additions and one multiplication with a scalar constant.
+
+A source graph to partition a given domain could be built by creating a vertex in the source graph for every grid point in the domain.
+In such a source graph, each vertex would have edges based on the communication patterns and a vertex weight based computational cost approximations of a stencil as previously described.
+However, even for simple stencils, like the one used in the Laplace equation, it becomes impractical to partition such a built source graph for meshes with several millions of elements due to the size of such a source graph.
+
+Thus we will investigate models and methods to achieve the generation of a practical source graph to partition the domain.
+
+\subsection{Context}
+Domain decomposition is not the only concern that separates scientific models from well performing HPC code.
+
+Complex scientific codes, like numerical weather prediction and climate simulation models, have grown over years to multiple hundred thousands lines of code written by a large community of scientific developers.
+Maintaining such large codes for the ever-changing HPC environment is challenging.
+
+The GridTools library provides a domain specific language (DSL) designed to reduce this effort for stencil codes.
+The main method of the GridTools DSL is to separate the concerns of the scientific model developers (domain experts) from the concerns of the computer scientists (HPC experts).
+Separation is accomplished by letting the domain experts use the DSL in their model development process without the need to think about performance.
+At the same time, computer scientist no longer need to understand the complete details of the model but instead can focus on optimizing the core computations used in stencil codes for different programming models and architectures as separate back-end of the GridTools DSL.
+
+The GridTools DSL is written in C++, while domain scientist are often more familiar with higher level languages or simple Fortran as a language close to the mathematical formulations of their models.
+An additional DSL for Python (GT4Py) aims to overcome this programming language barrier for domain scientist.
+GT4Py adds an additional abstraction layer on top of the GridTools DSL so that domain scientists can use the simple and expressive Python syntax for model development without losing the advantages of the low-level optimizations of the GridTools back-end.
+
+Within this context, the focus of this thesis is on the automation of the domain decomposition.
+The resulting automatic domain decomposition library will be part of the larger effort to separate HPC concerns from scientific modeling concerns.
+
+\subsection{Implementation and libraries}
+The focus of this thesis is the implementation of an automatic domain decomposition library to solve the problems described in the previous sections.
+The next few sections will describe some implementation aspects and existing libraries that will be used.
+
+\subsubsection{Implementation details}
+The implementation language will be Python.
+Python provides simple and expressive syntax and is increasingly used in the scientific community.
+Also, in the context of GT4Py, Python is the natural choice for the automatic domain decomposition library.
+
+Standard practices for software development and testing will be employed.
+This includes unit tests, continuous integration (CI), version control system, code documentation, and adhering to standard style guide conventions.
+
+\subsubsection{Communication library}
+The communication between processors is a significant part of computations involving domain decomposition.
+Using a high quality communication library is therefore important.
+Message Passing Interface (MPI) is the leading standard for distributed systems.
+The communication model of MPI matches very well with finite difference computations and has been used in various finite difference implementations.
+
+In the context of Python, this thesis will make use of the MPI for Python (MPI4Py) library, which provides bindings for MPI in Python.
+MPI4Py is open source, and as described in \cite{dalcin2005mpi} supports the most important MPI communications, namely point-to-point, as well as collective communications of general Python objects.
+
+Furthermore MPI4Py supports one-sided MPI.
+One-sided MPI is the remote memory access (RMA) communication model of MPI.
+One-sided MPI allows processes to expose part of their memory to other processes, in order for them to directly write or read from this memory.
+In contrast to the two-sided communication model, this allows the decoupling of data movement and process synchronization.
+
+Since one-sided communication models are a new trend in HPC, this thesis will explore the use of one-sided MPI in the context of domain decomposition and stencil computations.
+
+\subsubsection{Graph partitioning library}
+Solving the graph partitioning problem to determine a domain decomposition is a fundamental part of the proposed work.
+However, the focus of this thesis is automating the process and modeling heterogeneous systems.
+Therefore the automatic domain decomposition library will use another library to solve the underlying graph partitioning problem.
+
+The reason for building on top of existing libraries is two-fold.
+Firstly, it saves time from implementing methods to solve the underlying basic graph partitioning problem.
+Secondly, building on top of popular libraries can make it easier in the future to keep up to date with the latest graph partitioning methods.
+
+As mentioned in the state of the art review section \ref{sec:relwork} the two most popular graph partitioning libraries at the moment are METIS and SCOTCH.
+
+\subsection{Structure of the thesis}

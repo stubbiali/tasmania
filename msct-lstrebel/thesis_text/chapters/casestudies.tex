@@ -1,0 +1,56 @@
+\section{Case study}
+
+To show the functionality and applicability of the automatic domain decomposition library a few case studies were carried out.
+This chapter and the following sections will outline each case study and the corresponding experimental results.
+
+\subsection{Case 1: Burger's equation}
+Burger's equation is a well-known nonlinear partial differential equation.
+It is widely used to test numerical schemes since it has analytical solutions for a set of initial conditions.
+Burger's equation can be used to model various physical phenomena.
+Most commonly it is used as a model for traffic flow or shock waves in a fluid.
+
+\subsubsection{Case description}
+
+The two-dimensional, viscid Burger's equation is given by the following system of equations as described in \citet{zhao2011new}:
+
+\begin{equation}
+\begin{split}
+\pdv{u}{t} + u \pdv{u}{x} + v \pdv{u}{y} = \epsilon \left( \pdv{^2 u}{x^2} + \pdv{^2 u}{y^2} \right) \\
+\pdv{v}{t} + u \pdv{v}{x} + v \pdv{v}{y} = \epsilon \left( \pdv{^2 v}{x^2} + \pdv{^2 v}{y^2} \right) \\
+\text{with } \left(x, y, t\right) \in D \cross \left(0,T\right]
+\end{split}
+\end{equation}
+
+With the following set of initial and boundary conditions: 
+
+\begin{equation}
+\begin{split}
+\text{Initial conditions: } \\
+u\left(x, y, 0\right) = u_0\left(x, y\right), \left(x, y\right) \in D \\
+v\left(x, y, 0\right) = u_0\left(x, y\right), \left(x, y\right) \in D \\
+\text{Boundary conditions: } \\
+u\left(x, y, t\right) = f\left(x, y, t\right), \left(x, y, t\right) \in \partial D \cross \left(0, T\right] \\
+v\left(x, y, t\right) = g\left(x, y, t\right), \left(x, y, t\right) \in \partial D \cross \left(0, T\right]
+\end{split}
+\end{equation}
+
+The first set of initial and boundary conditions are the ones used by Shankar. \footnote{https://ch.mathworks.com/matlabcentral/fileexchange/38087-burgers-equation-in-1d-and-2d}
+
+The second set of initial and boundary conditions are the same as used in \citet{zhao2011new}:
+
+\subsubsection{Implementation details}
+
+\subsubsection{Experimental setup}
+
+\subsubsection{Experimental results}
+
+
+\subsection{Case 2: Shallow water equation}
+
+\subsubsection{Case description}
+
+\subsubsection{Implementation details}
+
+\subsubsection{Experimental setup}
+
+\subsubsection{Experimental results}

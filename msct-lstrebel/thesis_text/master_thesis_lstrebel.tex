@@ -1,0 +1,148 @@
+%--------------------------------------------------------------------------------
+% Master thesis 2018 Lukas Strebel
+%--------------------------------------------------------------------------------
+
+\documentclass[11pt, a4paper]{article}
+
+%--------------------------------------------------------------------------------
+% Packages
+%--------------------------------------------------------------------------------
+\usepackage{a4}
+\usepackage[a4paper]{geometry}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage[hidelinks]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tcolorbox}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{pdfpages}
+\usepackage{natbib}
+
+%--------------------------------------------------------------------------------
+% Commands
+%--------------------------------------------------------------------------------
+
+% Graphics path
+\graphicspath{{figure/}}
+
+\newgeometry{left=3cm,bottom=3.0cm}
+\setlength{\headheight}{14.49998pt}
+\onehalfspacing
+
+% Page Style
+\pagestyle{fancy}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\fancyhead{}
+
+%This labels the page
+\rhead{\thepage}
+\lhead{\nouppercase{\rightmark}}
+\fancyfoot{}
+
+% Tables
+\newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
+
+% partial derivatives
+\newcommand{\pdv}[2]{\frac{\partial #1}{\partial #2}}
+
+%--------------------------------------------------------------------------------
+% Title page
+%--------------------------------------------------------------------------------
+\newcommand{\mytitlepage}
+{
+    \newpage
+    \thispagestyle{empty}
+    \begin{spacing}{1}
+    \begin{center}
+        {\large Master thesis}\\
+        \vspace{\stretch{1}}\doublespacing
+        {\LARGE\bf Automatic domain decomposition for HPC stencil codes in heterogeneous systems}\\
+        \vspace{\stretch{1}}
+        {\large\bf Lukas Strebel}\\
+        {lstrebel@ethz.ch}\\
+        \vspace{\stretch{4}}
+        {\small Supervisor}\\
+        Prof. Thomas Schulthess \\
+        Dr. Lucas Benedicic \\
+        \vspace{1.5\baselineskip}
+        Swiss National Supercomputing Centre (CSCS)\\
+        Swiss Federal Institute of Technology Zürich (ETH)\\
+        \vspace{\stretch{2}}
+        {\large \monthyeardate\today}\\
+        \vspace{\stretch{2}}
+        \begin{tabular*}{\linewidth}{l@{\extracolsep{\fill}}r}
+            \includegraphics[height=13mm]{CSCS_logo.png} & 
+            \includegraphics[height=13mm]{ETHlogo.png}
+        \end{tabular*}
+    \end{center}
+    \end{spacing}
+    \clearpage
+    \thispagestyle{empty}
+    \setcounter{page}{1}
+    \null
+    %\newpage
+}
+%---------------------------------------------------------------------
+% Document body
+%---------------------------------------------------------------------
+\begin{document}
+
+% === Title ===
+\pagenumbering{roman}
+\mytitlepage
+
+% === Abstract ===
+\addcontentsline{toc}{section}{\protect\numberline{}{Abstract}}
+\markright{Abstract}
+\include{chapters/abstract}
+
+
+%% Start ToC on right page
+\clearpage
+\thispagestyle{empty}
+\null
+\newpage
+
+% === Table of contents ===
+\newpage
+\tableofcontents
+\addtocontents{toc}{\vspace{.5\baselineskip}}
+
+% label pages in arabic
+\pagenumbering{arabic}
+\setcounter{page}{6}
+
+\cleardoublepage
+
+% === Chapters ===
+\include{chapters/introduction}
+\include{chapters/domaindecomposition}
+\include{chapters/library}
+\include{chapters/casestudies}
+%\include{chapters/conclusion}
+%\include{chapters/thanks}
+
+
+\newpage
+% === Bibliography ===
+\bibliographystyle{plainnat}
+\bibliography{bibl_conf}
+
+
+% === Appendices ===
+\pagebreak
+\section{Appendix}
+The appendix contains:
+\begin{itemize}
+\item 1
+\end{itemize}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+%\include{chapter/appendix}
+
+\end{document}

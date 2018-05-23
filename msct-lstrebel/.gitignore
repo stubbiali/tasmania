@@ -1,0 +1,51 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Python cache
+__pycache__
+*.pyo
+
+
+# Data files
+*.md5
+*.dat
+*.mp4
+*.pickle
+
+# IDE files
+.idea
+.project
+.cproject
+.settings
+
+
+# Project specific folders
+# Virtualenvironment folder:
+gtenv/*
+
