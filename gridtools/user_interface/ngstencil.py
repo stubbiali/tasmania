@@ -96,6 +96,12 @@ class NGStencil:
 			self._compute_func = self._driver.compile(self._configs)
 		return self._compute_func()
 
+	def get_extent(self):
+		if self._driver is None:
+			self._driver = self._factory.create_compiler()
+			self._compute_func = self._driver.compile(self._configs)
+		return self._driver.get_extent()
+
 
 class NGStencilConfigs:
 	"""

@@ -70,7 +70,7 @@ class HelloNeighbor:
         self.comm_size = self.comm.Get_size()
         self.comm_rank = self.comm.Get_rank()
 
-        assert(self.comm_size == 2)
+#        assert(self.comm_size == 2)
 
         if self.comm_rank == 0:
             print("{} processes are communicating.".format(self.comm_size))
