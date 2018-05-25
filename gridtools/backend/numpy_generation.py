@@ -18,7 +18,7 @@ class NumpyGeneration:
 
 		:param ir	Stencil's intermediate representation
 
-		:return Stencil's intermediate representation update with the associated computation function
+		:return Stencil's intermediate representation updated with the associated computation function
 		"""
 		# Generate source code
 		python_code = self._render_python_code(ir)
@@ -33,7 +33,6 @@ class NumpyGeneration:
 		ir.computation_func = self._generate_numpy_stub_function(ir, numpy_func)
 		
 		return ir
-
 
 	def _render_python_code(self, ir):
 		"""
@@ -58,7 +57,6 @@ class NumpyGeneration:
 										  stencil_temporaries,
 										  temporaries_shape)
 
-
 	def _import_numpy_function(self, ir, python_code):
 		"""
 		Import the Numpy function implementing the stencil.
@@ -75,7 +73,6 @@ class NumpyGeneration:
 		#exec("from {} import {}".format("tmpyfhc8zm2", function_name))
 		return locals()[function_name]
 
-
 	def _generate_stencil_name(self, ir):
 		"""
 		Deduce stencil's name from definitions function.
@@ -85,7 +82,6 @@ class NumpyGeneration:
 		:return String with stencil's name
 		"""
 		return ir.stencil_configs.definitions_func.__name__
-
 
 	def _generate_stages_properties(self, ir):
 		"""
@@ -134,7 +130,6 @@ class NumpyGeneration:
 										  "expression": stage_src})
 		return stages_properties
 
-
 	def _generate_stencil_arguments(self, ir):
 		"""
 		Deduce stencil's arguments, i.e., inputs and outputs.
@@ -148,7 +143,6 @@ class NumpyGeneration:
 			   [arg for arg in ir.stencil_configs.inputs] + \
 			   [arg for arg in ir.stencil_configs.outputs]
 		return args
-
 
 	def _generate_stencil_temporaries(self, ir):
 		"""
@@ -186,7 +180,6 @@ class NumpyGeneration:
 
 		return temporaries, shape
 
-
 	def _generate_python_code(self, stages_properties, stencil_name, stencil_arguments, stencil_temporaries, temporaries_shape):
 		"""
 		Generate source file implementing the stencil.
@@ -212,7 +205,6 @@ class NumpyGeneration:
 											  stages = stages_properties)
 		return python_code
 
-
 	def _dump_python_code_into_temporary_file(self, python_code):
 		"""
 		Write Python code in a temporary file.
@@ -229,7 +221,6 @@ class NumpyGeneration:
 		# Extract module's name
 		module_name = os.path.splitext(os.path.basename(name))[0]
 		return module_name
-
 
 	def _check_domain_type_and_outputs_shapes(self, ir):
 		"""
@@ -248,7 +239,6 @@ class NumpyGeneration:
 		# Only support for rectangular domains
 		if type(ir.stencil_configs.domain) is not Rectangle:
 			raise NotImplementedError("Handling for domains other then Rectangle is not implemented yet")
-
 
 	def _generate_numpy_stub_function(self, ir, numpy_func):
 		"""
