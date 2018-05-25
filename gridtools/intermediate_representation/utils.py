@@ -46,6 +46,10 @@ def get_out_edge(g, node):
 	return key
 
 
+def get_out_edges(g, node):
+	return [edge[2] for edge in g.out_edges(node, keys=True)]
+
+
 def get_out_edge_left(g, node):
 	edges = g.out_edges(node, keys=True)
 	for _, _, key in edges:

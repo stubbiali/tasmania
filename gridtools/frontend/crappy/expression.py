@@ -1,7 +1,8 @@
 import numbers
 import inspect
+import copy
 
-from gridtools.frontend.crappy.index import IndicesTransformation
+from gridtools.frontend.crappy.index import Index, IndicesTransformation
 from gridtools.user_interface.globals import Global
 
 
@@ -220,9 +221,12 @@ class Equation:
 		return code_context[0].strip().split("=")[0].strip()
 
 	def __setitem__(self, indices, expression):
+		indices = (indices,) if isinstance(indices, Index) else indices 
 		self.expression.set_rank(len(indices))
 		self.expression.add_edge(_make_expression_if_necessary(expression))
 		self._compute_indices_transformations_dfs(self.expression, indices)
+		indices_ids = self._fill_indices_transformations_with_omitted_indices(indices)
+		self._set_expressions_rank_dfs(expression, len(indices_ids))
 
 	def __getitem__(self, indices):
 		return ExpressionTemporarilyHoldingIndicesInformation(self.expression, indices)
@@ -243,3 +247,72 @@ class Equation:
 				indices_transformation = IndicesTransformation(source_indices=indices, target_indices=indices)
 				edge.set_indices_transformation(indices_transformation)
 				self._compute_indices_transformations_dfs(edge.get_expression_target(), indices)
+
+	def _fill_indices_transformations_with_omitted_indices(self, indices):
+		"""
+		Detect the indices that the user may have omitted when dereferencing the equations,
+		and add them to the IndicesTransformation attribute of each edge.
+
+		Parameters
+		----------
+		indices : tuple
+			Tuple of Index's used by the user to dereference the Equation on the lhs.
+
+		Return
+		------
+		set :
+			Set collecting the identifiers of all the indices involved in the stage.
+		"""
+		indices_ids = set((index.get_id() for index in indices))
+		omitted_indices_ids = copy.deepcopy(indices_ids)
+		while len(omitted_indices_ids) > 0:
+			indices_ids.update(omitted_indices_ids)
+			omitted_indices_ids = set()
+			self._fill_indices_transformations_with_omitted_indices_dfs(self.expression, indices_ids, omitted_indices_ids)
+		return indices_ids
+
+	def _fill_indices_transformations_with_omitted_indices_dfs(self, expression, indices_ids, omitted_indices_ids):
+		edges = expression.get_edges()
+		for edge in edges:
+			indices_transformation = edge.get_indices_transformation()
+			source_indices_ids = set((source_index.get_id() for source_index in indices_transformation.get_source_indices()))
+
+			if source_indices_ids.issubset(indices_ids):
+				# An equation occurring on the rhs has been dereferenced in a previous stage by omitting some indices
+				missing_ids = indices_ids.difference(source_indices_ids)
+				self._fill_indices_transformation_with_omitted_indices(indices_transformation, missing_ids)
+				expression_target = edge.get_expression_target()
+				self._fill_indices_transformations_with_omitted_indices_dfs(expression_target, indices_ids, omitted_indices_ids)
+			else:
+				# The equation on the lhs has been dereferenced by omitting some indices
+				omitted_indices_ids.update(source_indices_ids.difference(indices_ids))
+
+	def _fill_indices_transformation_with_omitted_indices(self, indices_transformation, missing_ids):
+		source_indices_ids = set((source_index.get_id() for source_index in indices_transformation.get_source_indices()))
+		for missing_id in missing_ids:
+			missing_index = Index(axis=missing_id, offset=0)
+			for pos, source_index_id in enumerate(source_indices_ids):
+				if missing_id < source_index_id:
+					indices_transformation.add_source_index(missing_index, position=pos)
+					break
+			else:
+				# The id of the index to add is greater than any other index
+				indices_transformation.add_source_index(missing_index)
+
+	def _set_expressions_rank_dfs(self, expression, rank):
+		"""
+		Set the rank of each ExpressionNamed involved in the current stage.
+
+		Parameters
+		----------
+		expression : obj
+			An Expression.
+		rank : int
+			The rank.
+		"""
+		if type(expression) is ExpressionNamed:
+			expression.set_rank(rank)
+		edges = expression.get_edges()
+		for edge in edges:
+			expression_target = edge.get_expression_target()
+			self._set_expressions_rank_dfs(expression_target, rank)
