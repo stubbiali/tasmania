@@ -1,3 +1,105 @@
 \section{Domain decomposition}
-
+% TODO short section description
 \subsection{Domain decomposition model for stencil codes}
+As mentioned in the introduction (sec. \ref{sec:intro_source_graph}) domain decomposition using graph partitioning algorithms requires a source graph.
+For finite element codes the source graph is usually the same as the mesh file describing the physical domain infused with additional information about communication costs.
+However, for finite difference codes running on regular grids with large amount of grid elements this would be an impractically large source graph.
+Instead the following section will describe a model to be used to simplify the source graph generation process.
+
+\subsubsection{Subdivision model}
+As mentioned before source graphs where every source graph node represents a single physical domain grid point would be impractical for large domains.
+Therefore, any alternative has to combine some of these domain grid points into separate divisions even before the domain decomposition occurs.
+
+The simplest method of subdividing a regular grid is by splitting it across each dimension separately, i.e. creating a number of uniform subdivisions.
+
+This guarantees that every subdivision has the same amount of neighbors, with the exception of sections at the boundary of the physical domain if the boundary is not periodic.
+Also every subdivision has the same size and therefore distributing them equally during the graph partitioning also means distributing the grid points equally.
+
+Also for this kind of subdivisions it is simple to define the interior and boundary between subdivisions.
+
+One limit to the minimal size of a subdivision in any direction is given by the corresponding stencil extend.
+Meaning a stencil can not extend into multiple subdivisions, but only the direct neighbor, otherwise subdivision would have multiple neighbors in the same direction.
+This should not be a problem, since usually stencils are not as large as any reasonable sized subdivision.
+
+\subsubsection{Communication cost}
+The communication cost between subdivisions is the main criteria being minimized in the graph partitioning algorithm.
+Splitting the domain into uniform subdivisions keeps the communication cost computation simple.
+
+The communication cost for each neighbor of the subdivision is determined by the size of the boundary between the two and the extent of the stencil in the corresponding direction.
+
+For three dimensional domains the communication cost can therefore be computed from the following formula:
+\begin{equation}
+cc\left(i\right) = sds\left(\left(\floor[\Big]{\frac{i}{2}} - 1\right) \% 3 \right) \cdot sds\left(\left(\floor[\Big]{\frac{i}{2}} + 1\right) \% 3 \right) \cdot se\left(i\right)
+\end{equation}
+where $cc\left(i\right)$ is the communication cost for side $i$.
+The index $i \in \left[0, 1, 2, 3, 4, 5\right]$ is combination of side and dimension, i.e. $0$ is negative x direction, $1$ is positive x-direction, $2$ is negative y-direction and so on.
+$sds\left(j\right)$ is the subdivision size of dimension $j \in \left[0,1,2]$.
+Lastly $se\left(i\right)$ is the stencil extend of side and dimension $i$.
+The division, rounding and modulo in the formula is simply a short version of selecting the index of the other two dimensions for the computation of the area between two subdivisions.
+
+\subsubsection{Computational cost}
+
+The computational cost, corresponding also to the vertex weight in the source graph, is even easier to compute, since it is proportional to the number of grid points inside the subdivision.
+
+\subsubsection{Example subdivision and domain decomposition}
+The following example should highlight some aspects of the discussed subdivision and domain decomposition.
+
+All the following figures in this section use the same domain and stencil.
+The domain has size $2048 \times 1024 \times 1$ and the stencil extends are given as $\left[1, 1, 1, 1, 0, 0\right]$ meaning in negative x-, positive x-, negative y-, and positive y-direction the stencil uses $1$ neighboring grid point.
+The boundary of the domain is also periodic in x-direction and non-periodic in y- and z- direction.
+
+The figures \ref{fig:metis1}, \ref{fig:pymetis1}, and \ref{fig:scotch1} show the results if the domain is split into $16 \times 8 \times 1$ subdivisions.
+This means every square in the figures represents $128 \times 128 \times 1$ grid points.
+
+For comparison the figures \ref{fig:metis2}, \ref{fig:pymetis2}, and \ref{fig:scotch2} show the results if the domain is split into $32 \times 16 \times 1$ subdivisions.
+This means every square in the figures represents $32 \times 32 \times 1$ grid points and 4 of these squares correspond to one square in the other figures.
+
+This comparison should highlight the balance between the number of subdivisions and their size.
+%For example the partitioning by PyMetis shown in fig. \ref{fig:pymetis1}, partitions the domain in the following way:
+%green 26, orange 27, blue 24, and gray 51 subdivisions.
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.6\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{metis_rectangular.png}
+  \caption{Partitioned by Metis.}
+  \label{fig:metis1}
+\end{subfigure}%
+\begin{subfigure}{0.6\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{metis_rectangular2.png}
+  \caption{Partitioned by Metis.}
+  \label{fig:metis2}
+\end{subfigure}
+
+\begin{subfigure}{0.6\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{pymetis_rectangular.png}
+  \caption{Partitioned by PyMetis}
+  \label{fig:pymetis1}
+\end{subfigure}%
+\begin{subfigure}{0.6\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{pymetis_rectangular2.png}
+  \caption{Partitioned by PyMetis}
+  \label{fig:pymetis2}
+\end{subfigure}
+
+\begin{subfigure}{0.6\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{scotch_rectangular.png}
+  \caption{Partitioned by Scotch}
+  \label{fig:scotch1}
+\end{subfigure}%
+\begin{subfigure}{0.6\textwidth}
+  \centering
+  \includegraphics[width=0.9\linewidth]{scotch_rectangular2.png}
+  \caption{Partitioned by Scotch}
+  \label{fig:scotch2}
+\end{subfigure}
+
+\caption{Domain subdivision and domain decomposition into 5 partitions. Each square represents one subdivision of grid points. Each color represents one partition.}
+\label{fig:rectangular1}
+\end{figure}
+

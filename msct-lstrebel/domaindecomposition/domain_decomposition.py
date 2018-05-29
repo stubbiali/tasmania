@@ -244,8 +244,8 @@ class DomainDecomposition:
 
 
 if __name__ == "__main__":
-    domain = np.array([2048, 2048, 1])
-    slices = np.array([16, 16, 1])
+    domain = np.array([2048, 1024, 1])
+    slices = np.array([32, 16, 1])
     stencil = np.array([1, 1, 1, 1, 0, 0])
     periodic = np.array([1, 0, 0])
 
@@ -258,7 +258,7 @@ if __name__ == "__main__":
 
     ddc.prepare_for_pymetis()
 
-    with open("pymetis_test.dat.part.4", "w") as f:
-        partitioning = part_graph(4, xadj=ddc.xadj, adjncy=ddc.adjncy, vweights=ddc.vweights, eweights=ddc.eweights)
+    with open("pymetis_test.dat.part.5", "w") as f:
+        partitioning = part_graph(5, xadj=ddc.xadj, adjncy=ddc.adjncy, vweights=ddc.vweights, eweights=ddc.eweights)
         for i in partitioning[1]:
             f.write(str(i) + "\n")

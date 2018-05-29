@@ -56,7 +56,7 @@ class VisualizeDomainDecomposition2D:
 
     def plot(self):
         fig, ax = plt.subplots()
-        image = ax.imshow(self.values.T)
+        image = ax.imshow(self.values.T, cmap='tab20c')
 
         ax.set_title("Domain decomposition of \n{0:d}x{1:d} subdivisions "
                      "into {2:d} partitions".format(self.domain[0], self.domain[1],

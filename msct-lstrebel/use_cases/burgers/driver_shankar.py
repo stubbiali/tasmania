@@ -43,7 +43,7 @@ import stencils
 # dt				Timestep [s]
 # nt				Number of integration steps
 # eps				Diffusion coefficient
-# method			Method to use; options: 'forward_backward', 'upwind'
+# method			Method to use; options: 'forward_backward', 'upwind', 'upwind_third_order'
 # datatype			Data type to use in computations
 # save_freq			Save frequency; if 1, the solution is saved at each iteration
 # print_freq		Print frequency; if 1, info about the solution are printed at each iteration
@@ -52,13 +52,13 @@ import stencils
 domain 		= [(0,0), (2,2)]		
 nx     		= 161				
 ny     		= 161			
-dt     		= 0.0025	
-nt     		= 200	
-eps    		= 0.1	
+dt     		= 0.001	
+nt     		= 600
+eps    		= 0.01	
 method 		= 'upwind_third_order'
 datatype	= np.float64	
-save_freq	= -1			
-print_freq	= 1		
+save_freq	= 10
+print_freq	= 10
 filename	= 'test_shankar_' + str(method) + '.pickle' 
 
 #
@@ -82,9 +82,9 @@ vnew = np.zeros((nx, ny, 1), dtype = datatype)
 for i in range(nx):
 	for j in range(ny):
 		if (0.5 <= x[i] and x[i] <= 1.0) and (0.5 <= y[j] and y[j] <= 1.0):
-			unew[i, j, 0], vnew[i, j, 0] = 4.0, 1.0
+			unew[i, j, 0], vnew[i, j, 0] = 0.0, 1.0
 		else:
-			unew[i, j, 0], vnew[i, j, 0] = 1.0, 2.0
+			unew[i, j, 0], vnew[i, j, 0] = 1.0, 0.0
 
 # Apply the boundary conditions
 unew[ 0,  :, 0], vnew[ 0,  :, 0] = 0., 0.
@@ -101,6 +101,10 @@ elif method == 'upwind':
 	definitions_func_ = stencils.stencil_burgers_upwind
 	domain_ = gt.domain.Rectangle((1, 1, 0), (nx-2, ny-2, 0))
 	nb = 1
+elif method == 'upwind_third_order':
+	definitions_func_ = stencils.stencil_burgers_upwind_third_order
+	domain_ = gt.domain.Rectangle((2, 2, 0), (nx-3, ny-3, 0))
+	nb = 1
 
 # Convert global inputs to GT4Py Global's
 dt_  = gt.Global(dt)
@@ -116,6 +120,8 @@ stencil = gt.NGStencil(
 	outputs = {'out_u': unew, 'out_v': vnew},
 	domain = domain_,
 	mode = gt.mode.NUMPY)
+
+#print(stencil.get_extent())
 
 # Time integration
 tsave = [timedelta(0),]

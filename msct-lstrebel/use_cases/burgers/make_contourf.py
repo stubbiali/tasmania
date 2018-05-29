@@ -59,18 +59,19 @@ import utils
 # text			 		Text to anchor to the figure
 # text_loc		 		Text location
 #
-filename 			= 'test_zhao_upwind.pickle'
-field 				= 'u'				
+testname = 'test_shankar_upwind_third_order'
+filename 			= testname +'.pickle'
+field 				= 'u'
 time_level			= -1
 fontsize         	= 16			
 figsize			 	= [7,8]		
 title            	= '$x$-velocity [m s$^{-1}$]'
 x_label          	= '$x$'		
 x_factor         	= 1.	
-x_lim			 	= [0,1]
+x_lim			 	= [0,2]
 y_label          	= '$y$'
 y_factor         	= 1.
-y_lim			 	= [0,1]
+y_lim			 	= [0,2]
 field_factor     	= 1.
 cmap_name        	= 'BuRd'
 cbar_levels      	= 18
@@ -149,6 +150,9 @@ else:
 # Plot the field
 surf = plt.contourf(x, y, var, color_scale, cmap = cm)
 
+# Plot without interpolation artifacts (only for Shakar IC)
+#surf = plt.imshow(var.T, extent=(0,2,0,2), origin='lower', cmap=cm, interpolation='none')
+
 # Set axis labels
 ax.set(xlabel = x_label, ylabel = y_label)
 
@@ -182,5 +186,6 @@ if text is not None:
 plt.title(title, loc = 'left', fontsize = fontsize - 1)
 plt.title(str(t[time_level]), loc = 'right', fontsize = fontsize - 1)
 
+plt.savefig(testname + "_field_" + field + "_at_" + str(t[time_level]) +".png")
 # Show
-plt.show()
+#plt.show()

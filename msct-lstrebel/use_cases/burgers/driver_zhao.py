@@ -53,9 +53,9 @@ import stencils
 domain 		= [(0,0), (1,1)]		
 nx     		= 101				
 ny     		= 101			
-dt     		= 0.01	
+dt     		= 0.001
 nt     		= 1000	
-eps    		= 0.001	
+eps    		= 0.01
 method 		= 'upwind_third_order'
 datatype	= np.float64	
 save_freq	= 10			

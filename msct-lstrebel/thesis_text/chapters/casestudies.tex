@@ -7,9 +7,9 @@ The base implementation of each test case was provided by Stefano Ubbiali writte
 
 \subsection{Case 1: Burger's equation}
 Burger's equation is a well-known nonlinear partial differential equation.
-It is widely used to test numerical schemes since it has analytical solutions for a set of initial conditions.
 Burger's equation can be used to model various physical phenomena.
 Most commonly it is used as a model for traffic flow or shock waves in a fluid.
+Additionally it is widely used to test numerical schemes since it has analytical solutions for a set of initial conditions.
 
 \subsubsection{Case description}
 
@@ -41,8 +41,6 @@ v\left(x, y, t\right) = g\left(x, y, t\right), \left(x, y, t\right) \in \partial
 \end{split}
 \end{equation}
 
-% TODO FOOTNOTE CHECK CORRECT NUMBERING
-
 \paragraph{Shankar conditions:}
 
 The first set of initial and boundary conditions are the ones used by Shankar. \footnote{https://ch.mathworks.com/matlabcentral/fileexchange/38087-burgers-equation-in-1d-and-2d}
@@ -50,31 +48,36 @@ The first set of initial and boundary conditions are the ones used by Shankar. \
 The following equations describe the Shankar test case fully and fig. \ref{fig:shankar_ic1} and fig. \ref{fig:shankar_ic2} visualizes the initial condition.
 
 \begin{equation}
-\begin{split}
-\text{\textbf{Boundary conditions: }} \\
-f\left(x, y, t\right) = 0 \\
-g\left(x, y, t\right) = 0 \\
+\begin{tabular}{l l}
+\text{\textbf{Boundary conditions: }} 
+& 
+\text{\textbf{Initial conditions: }} 
 \\
-\text{\textbf{Other parameters: }} \\
-\text{Viscosity: } \varepsilon = 0.01
-\end{split}
-\quad
-\begin{split}
-\text{\textbf{Initial conditions: }} \\
+f\left(x, y, t\right) = 0 
+&
 u_0\left(x, y\right) = \begin{cases}
 0, \text{ in } \left[0.5, 1.0\right] \times \left[0.5, 1.0\right] \\
 1, \text{ otherwise}
 \end{cases}
 \\
+g\left(x, y, t\right) = 0 
+&
 v_0\left(x, y\right) =  \begin{cases}
 1, \text{ in } \left[0.5, 1.0\right] \times \left[0.5, 1.0\right] \\
 0, \text{ otherwise}
 \end{cases}
 \\
-\text{\textbf{Domain: }} \\
-D = \left[0,2\right] \times \left[0,2\right] \\
-T = 0.6 \\
-\end{split}
+\text{\textbf{Other parameters: }} 
+&
+\text{\textbf{Domain: }}
+\\
+\text{Viscosity: } \varepsilon = 0.01
+&
+D = \left[0,2\right] \times \left[0,2\right] 
+\\
+&
+T = 0.6
+\end{tabular}
 \end{equation}
 
 \begin{figure}
@@ -95,20 +98,22 @@ T = 0.6 \\
 \label{fig:shankar_ic}
 \end{figure}
 
-
+\newpage
 \paragraph{Zhao conditions:}
 
 The second set of initial and boundary conditions are the same as used as example 1 in \citet{zhao2011new}:
 
 \begin{equation}
-\begin{split}
-\text{\textbf{Boundary conditions: }} \\
+\begin{tabular}{l l}
+\text{\textbf{Boundary conditions: }} & \text{\textbf{Initial conditions: }} \\
 f\left(x, y, t\right) = \begin{cases}
 -2 \varepsilon \pi \exp^{-5 \pi^2 \varepsilon t} \sin\left(\pi y\right) \text{, for } x = 0, y \in \left[0, 1\right] \\
 -2 \varepsilon \pi \exp^{-5 \pi^2 \varepsilon t} \sin\left(\pi y\right) \text{, for } x = 1, y \in \left[0, 1\right] \\
 0 \text{, for } x \in \left[0, 1\right], y = 0 \\
 0 \text{, for } x \in \left[0, 1\right], y = 1 \\
 \end{cases}
+& 
+u_0\left(x, y\right) = \frac{-4 \varepsilon \pi \cos \left(2 \pi x\right) \sin \left(\pi y\right)}{2 + \sin \left(2 \pi x \right) \sin \left(\pi y\right)}
 \\
 g\left(x, y, t\right) = \begin{cases}
 0 \text{, for } x = 0, y \in \left[0, 1\right] \\
@@ -116,21 +121,16 @@ g\left(x, y, t\right) = \begin{cases}
 -\varepsilon \pi \exp^{-5 \pi^2 \varepsilon t} \sin\left(2 \pi x\right) \text{, for } x \in \left[0, 1\right], y = 0 \\
 \varepsilon \pi \exp^{-5 \pi^2 \varepsilon t} \sin\left(2 \pi x\right) \text{, for } x \in \left[0, 1\right], y = 1 \\
 \end{cases}
-\\
-\text{\textbf{Other parameters: }} \\
-\text{Viscosity: } \varepsilon = 0.01
-\end{split}
-\quad
-\begin{split}
-\text{\textbf{Initial conditions: }} \\
-u_0\left(x, y\right) = \frac{-4 \varepsilon \pi \cos \left(2 \pi x\right) \sin \left(\pi y\right)}{2 + \sin \left(2 \pi x \right) \sin \left(\pi y\right)}
-\\
+&
 v_0\left(x, y\right) = \frac{-2 \varepsilon \pi \sin \left(2 \pi x\right) \cos \left(\pi y\right)}{2 + \sin \left(2 \pi x \right) \sin \left(\pi y\right)}
 \\
-\text{\textbf{Domain: }} \\
-D = \left[0,1\right] \times \left[0,1\right] \\
-T = 1 \\
-\end{split}
+\text{\textbf{Other parameters: }} & \text{\textbf{Domain: }}
+\\
+\text{Viscosity: } \varepsilon = 0.01
+& D = \left[0,1\right] \times \left[0,1\right]
+\\
+ & T = 1
+\end{tabular}
 \end{equation}
 
 \begin{figure}
@@ -163,6 +163,7 @@ v\left(x,y,t\right) = -2\varepsilon \frac{\pi \exp^{-5 \pi^2 \varepsilon t} \sin
 \end{equation}
 
 \subsubsection{Implementation details}
+\paragraph{Stencil details: }
 Both the Shankar and Zhao conditions can be solved using different numerical stencils for the computation.
 To show some variance and flexibility three stencils can be used to solve the test case.
 
@@ -201,6 +202,7 @@ See fig. \ref{fig:upwind_third_stencil} for a visual representation of this sten
 \label{fig:burger_stencils}
 \end{figure}
 
+\paragraph{Domain decomposition details: }
 
 \subsubsection{Experimental setup}
 

@@ -79,7 +79,7 @@ However, relaxing the constraint to roughly equal instead of exactly equal parti
 
 A general overview and comparison between different graph partitioning algorithms can be found in \citet{karypis1998fast}.
 Specifically, Table 9 illustrates different criteria for useful graph partitioning and how each algorithm ranks in them.
-Even though this paper is a few years old, both of the most common graph partitioning libraries, METIS \footnote[1]{\href{http://glaros.dtc.umn.edu/gkhome/views/metis}{http://glaros.dtc.umn.edu/gkhome/views/metis}} and SCOTCH \footnote[2]{\href{https://gforge.inria.fr/projects/SCOTCH/}{https://gforge.inria.fr/projects/SCOTCH/}}, are based on the basic algorithms described in the paper.
+Even though this paper is a few years old, both of the most common graph partitioning libraries, METIS \footnote{\href{http://glaros.dtc.umn.edu/gkhome/views/metis}{http://glaros.dtc.umn.edu/gkhome/views/metis}} and SCOTCH \footnote{\href{https://gforge.inria.fr/projects/SCOTCH/}{https://gforge.inria.fr/projects/SCOTCH/}}, are based on the basic algorithms described in the paper.
 
 While conceptually very similar the algorithms in these libraries differ in their mathematical description and their modeling approach.
 
@@ -108,6 +108,7 @@ In their model, a single valuated, undirected source graph is partitioned, assum
 However, the graph partitioning algorithm in the METIS library has been expanded, as explained in \citet{karypis1998multilevel}, to allow multiple constraints to be balanced.
 
 \subsection{Source graph generation for stencil codes}
+\label{sec:intro_source_graph}
 For graph partitioning to be used for domain decomposition, a source graph representing the domain is required.
 
 Simple one and two dimensional stencils are often either visualized as points connected with lines or written in matrix form. For example the well known stencil used in the computation of the Laplace equation can be expressed as

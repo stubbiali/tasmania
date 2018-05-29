@@ -172,21 +172,21 @@ class HelloNeighbor:
         self.yminusboundary = MPI.DOUBLE.Create_contiguous(count=self.lx)
         self.yminusboundary.Commit()
 
-        if self.comm_rank == 0:
-            self.win_ym = MPI.Win.Allocate_shared(self.ly * MPI.DOUBLE.Get_size(), MPI.DOUBLE.Get_size(), comm=self.comm)
-        else:
-            self.win_ym = MPI.Win.Allocate_shared(0, MPI.DOUBLE.Get_size())
+#        if self.comm_rank == 0:
+#            self.win_ym = MPI.Win.Allocate_shared(self.ly * MPI.DOUBLE.Get_size(), MPI.DOUBLE.Get_size(), comm=self.comm)
+#        else:
+#            self.win_ym = MPI.Win.Allocate_shared(0, MPI.DOUBLE.Get_size())
 
-        self.ymbuf, itemsize = self.win_ym.Shared_query(0)
-        self.ymbufary = np.ndarray(buffer=self.ymbuf, dtype=self.datatype, shape=(self.ly,))
+#        self.ymbuf, itemsize = self.win_ym.Shared_query(0)
+#        self.ymbufary = np.ndarray(buffer=self.ymbuf, dtype=self.datatype, shape=(self.ly,))
 
-        if self.comm_rank == 0:
-            self.win_yp = MPI.Win.Allocate_shared(self.ly * MPI.DOUBLE.Get_size(), MPI.DOUBLE.Get_size(), comm=self.comm)
-        else:
-            self.win_yp = MPI.Win.Allocate_shared(0, MPI.DOUBLE.Get_size())
+#        if self.comm_rank == 0:
+#            self.win_yp = MPI.Win.Allocate_shared(self.ly * MPI.DOUBLE.Get_size(), MPI.DOUBLE.Get_size(), comm=self.comm)
+#        else:
+#            self.win_yp = MPI.Win.Allocate_shared(0, MPI.DOUBLE.Get_size())
 
-        self.ypbuf, itemsize = self.win_yp.Shared_query(0)
-        self.ypbufary = np.ndarray(buffer=self.ypbuf, dtype=self.datatype, shape=(self.ly,))
+#        self.ypbuf, itemsize = self.win_yp.Shared_query(0)
+#        self.ypbufary = np.ndarray(buffer=self.ypbuf, dtype=self.datatype, shape=(self.ly,))
 
         self.reqs = []
 
