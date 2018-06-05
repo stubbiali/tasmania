@@ -72,8 +72,8 @@ class DomainDecomposition:
         self.subdivisions = []
 
         self.adjncy = []
-        self.xadj = [] #np.zeros(total_subdivisions, dtype=np.int)
-        self.vweights = [] #np.zeros(total_subdivisions, dtype=np.int)
+        self.xadj = []
+        self.vweights = []
         self.eweights = []
         self.edgecounter = 0
         self.alist = []
@@ -85,7 +85,8 @@ class DomainDecomposition:
                     # End of Domain in negative X direction
                     if i == 0:
                         if periodic[0]:
-                            negx = ((self.subdiv_per_dim[0] - 1) * self.subdiv_per_dim[1] + j) * self.subdiv_per_dim[2] + k
+                            negx = (((self.subdiv_per_dim[0] - 1) * self.subdiv_per_dim[1] + j)
+                                    * self.subdiv_per_dim[2] + k)
                         else:
                             negx = None
                     else:
@@ -103,7 +104,8 @@ class DomainDecomposition:
                     # End of Domain in negative Y direction
                     if j == 0:
                         if periodic[1]:
-                            negy = (i * self.subdiv_per_dim[1] + self.subdiv_per_dim[1] - 1) * self.subdiv_per_dim[2] + k
+                            negy = ((i * self.subdiv_per_dim[1] + self.subdiv_per_dim[1] - 1)
+                                    * self.subdiv_per_dim[2] + k)
                         else:
                             negy = None
                     else:
@@ -121,7 +123,8 @@ class DomainDecomposition:
                     # End of Domain in negative Z direction
                     if k == 0:
                         if periodic[2]:
-                            negz = (i * self.subdiv_per_dim[1] + j) * self.subdiv_per_dim[2] + self.subdiv_per_dim[2] - 1
+                            negz = ((i * self.subdiv_per_dim[1] + j)
+                                    * self.subdiv_per_dim[2] + self.subdiv_per_dim[2] - 1)
                         else:
                             negz = None
                     else:
@@ -156,18 +159,6 @@ class DomainDecomposition:
                             self.adjncy.append(int(nindex[e]))
                             self.eweights.append(int(border_sizes[e]))
 
-                    # templist = []
-                    #
-                    # for e in range(len(nindex)):
-                    #     if nindex[e] is not None:
-                    #         templist.append(int(nindex[e]))
-                    #
-                    # self.alist.append(np.asarray(templist))
-
-        # print(self.alist)
-
-        # print(self.adjncy, self.xadj, self.vweights, self.eweights, self.edgecounter)
-
         self.write_to_file_metis_format(self.adjncy,
                                         self.xadj,
                                         self.vweights,
@@ -180,9 +171,6 @@ class DomainDecomposition:
                                         self.eweights,
                                         self.edgecounter,
                                         "test")
-        #
-        # for i in self.subdivisions:
-        #     print(i.id, i.size, i.border, i.gridpoints, i.neighbors)
 
     def prepare_for_pymetis(self):
         self.adjncy.append(int(self.total_subdivisions))
@@ -244,17 +232,15 @@ class DomainDecomposition:
 
 
 if __name__ == "__main__":
-    domain = np.array([2048, 1024, 1])
-    slices = np.array([32, 16, 1])
-    stencil = np.array([1, 1, 1, 1, 0, 0])
-    periodic = np.array([1, 0, 0])
+    domain = np.array([2048, 1024, 512])
+    slices = np.array([16, 8, 8])
+    stencil = np.array([1, 1, 1, 1, 1, 1])
+    periodic = np.array([0, 0, 0])
 
     ddc = DomainDecomposition(domain, periodic, slices, stencil)
 
     # def part_graph(nparts, adjacency=None, xadj=None, adjncy=None,
                    # vweights=None, eweights=None, recursive=None)
-
-    # print(part_graph(parts, adjacency=ddc.alist))
 
     ddc.prepare_for_pymetis()
 

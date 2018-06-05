@@ -1,12 +1,9 @@
 \section{Domain decomposition}
-% TODO short section description
-\subsection{Domain decomposition model for stencil codes}
 As mentioned in the introduction (sec. \ref{sec:intro_source_graph}) domain decomposition using graph partitioning algorithms requires a source graph.
 For finite element codes the source graph is usually the same as the mesh file describing the physical domain infused with additional information about communication costs.
 However, for finite difference codes running on regular grids with large amount of grid elements this would be an impractically large source graph.
 Instead the following section will describe a model to be used to simplify the source graph generation process.
-
-\subsubsection{Subdivision model}
+\subsection{Subdivision model for source graph generation}
 As mentioned before source graphs where every source graph node represents a single physical domain grid point would be impractical for large domains.
 Therefore, any alternative has to combine some of these domain grid points into separate divisions even before the domain decomposition occurs.
 
@@ -54,9 +51,9 @@ This means every square in the figures represents $128 \times 128 \times 1$ grid
 For comparison the figures \ref{fig:metis2}, \ref{fig:pymetis2}, and \ref{fig:scotch2} show the results if the domain is split into $32 \times 16 \times 1$ subdivisions.
 This means every square in the figures represents $32 \times 32 \times 1$ grid points and 4 of these squares correspond to one square in the other figures.
 
-This comparison should highlight the balance between the number of subdivisions and their size.
-%For example the partitioning by PyMetis shown in fig. \ref{fig:pymetis1}, partitions the domain in the following way:
-%green 26, orange 27, blue 24, and gray 51 subdivisions.
+This comparison should highlight the difference the number of subdivisions and their size can make for the overall domain decomposition.
+Also the difference the graph partitioning can make is shown in fig. \ref{fig:rectangular1}.
+
 
 \begin{figure}[!htbp]
 \centering
@@ -99,7 +96,7 @@ This comparison should highlight the balance between the number of subdivisions 
   \label{fig:scotch2}
 \end{subfigure}
 
-\caption{Domain subdivision and domain decomposition into 5 partitions. Each square represents one subdivision of grid points. Each color represents one partition.}
+\caption{Domain subdivision and domain decomposition into 5 partitions. Each square represents one subdivision of grid points. Each color represents one partition. The domain has the size 2048 x 1024 x 1 and a periodic boundary in x-direction.}
 \label{fig:rectangular1}
 \end{figure}
 
