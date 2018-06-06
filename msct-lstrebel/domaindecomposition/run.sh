@@ -38,14 +38,21 @@
 
 
 # 3D Example
-#python domain_decomposition.py 
 
-#/home/lst/Documents/masterthesis/scotch_6.0.4/src/scotch/gpart 5 test_scotch.src test_scotch.map
+# SETUP:
+#    domain = np.array([2048, 1024, 40])
+#    slices = np.array([16, 8, 1])
+#    stencil = np.array([1, 1, 1, 1, 0, 0])
+#    periodic = np.array([1, 0, 0])
 
-#/home/lst/Documents/masterthesis/parmetis/metis-5.1.0/build/Linux-x86_64/programs/gpmetis test_metis.dat 5 -contig
+python domain_decomposition.py 
 
-python visualize_domain_decomposition.py -i "test_metis.dat.part.5" -gp metis -d 16 8 8 -o metis
+/home/lst/Documents/masterthesis/scotch_6.0.4/src/scotch/gpart 5 test_scotch.src test_scotch.map
 
-python visualize_domain_decomposition.py -i "test_scotch.map" -gp scotch -d 16 8 8 -o scotch
+/home/lst/Documents/masterthesis/parmetis/metis-5.1.0/build/Linux-x86_64/programs/gpmetis test_metis.dat 5 -contig
 
-python visualize_domain_decomposition.py -i "pymetis_test.dat.part.5" -gp metis -d 16 8 8 -o pymetis
+python visualize_domain_decomposition.py -i "test_metis.dat.part.5" -gp metis -d 16 8 1 -o metis
+
+python visualize_domain_decomposition.py -i "test_scotch.map" -gp scotch -d 16 8 1 -o scotch
+
+python visualize_domain_decomposition.py -i "pymetis_test.dat.part.5" -gp metis -d 16 8 1 -o pymetis

@@ -35,6 +35,7 @@ import pickle
 
 import gridtools as gt
 import stencils
+import timer
 
 #
 # User-defined settings:
@@ -50,16 +51,22 @@ import stencils
 # print_freq		Print frequency; if 1, info about the solution are printed at each iteration
 # filename			Path to the location where the solution will be saved
 #
+
+timer = timer.Timings(name="Burger's equation - Zhao setup")
+timer.start(name="Overall Zhao time", level=1)
+timer.start(name="Initialization", level=2)
+
 domain 		= [(0,0), (1,1)]		
-nx     		= 101				
-ny     		= 101			
+nx     		= 101
+ny     		= 101
 dt     		= 0.001
-nt     		= 1000	
+nt     		= 100
 eps    		= 0.01
 method 		= 'upwind_third_order'
 datatype	= np.float64	
-save_freq	= 10			
-print_freq	= 10		
+save_freq	= 10
+print_freq	= 10
+file_output     = False
 filename	= 'test_zhao_' + str(method) + '.pickle'
 
 #
@@ -116,6 +123,9 @@ stencil = gt.NGStencil(
 	domain = domain_,
 	mode = gt.mode.NUMPY)
 
+timer.stop(name="Initialization")
+timer.start(name="Time integration", level=2)
+
 # Time integration
 tsave = [timedelta(0),]
 usave = np.copy(unew)
@@ -138,10 +148,11 @@ for n in range(nt):
 	vnew[:,  :nb, 0] = - eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:,  :nb])
 	vnew[:, -nb:, 0] =   eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, -nb:])
  
+	timer.start(name="Checkpointing during time integration", level=3)
 	# Check point
 	if (print_freq > 0) and (n % print_freq == 0):
-		print('Step %5.i, u max = %5.5f, u min = %5.5f, v max = %5.5f, v min = %5.5f, ||u|| max = %12.12f'
-			  % (n+1, unew.max(), unew.min(), vnew.max(), vnew.min(), np.sqrt(unew**2 + vnew**2).max()))
+		print('Step %5.i, u max = %5.5f, u min = %5.5f, v max = %5.5f, v min = %5.5f, ||u|| max = %12.12f, CFL = %5.5f'
+			  % (n+1, unew.max(), unew.min(), vnew.max(), vnew.min(), np.sqrt(unew**2 + vnew**2).max(), unew.max()*dt/dx + vnew.max()*dt/dy))
 
 	# Save
 	if ((save_freq > 0) and (n % save_freq == 0)) or (n+1 == nt):
@@ -149,11 +160,26 @@ for n in range(nt):
 		usave = np.concatenate((usave, unew), axis = 2)
 		vsave = np.concatenate((vsave, vnew), axis = 2)
 
-# Dump solution to a binary file
-with open(filename, 'wb') as outfile:
-	pickle.dump(tsave, outfile)
-	pickle.dump(x, outfile)
-	pickle.dump(y, outfile)
-	pickle.dump(usave, outfile)
-	pickle.dump(vsave, outfile)
-	pickle.dump(eps, outfile)
+	timer.stop(name="Checkpointing during time integration")
+
+timer.stop(name="Time integration")
+
+if file_output:
+	timer.start(name="Writing to file", level=2)
+
+	# Dump solution to a binary file
+	with open(filename, 'wb') as outfile:
+		pickle.dump(tsave, outfile)
+		pickle.dump(x, outfile)
+		pickle.dump(y, outfile)
+		pickle.dump(usave, outfile)
+		pickle.dump(vsave, outfile)
+		pickle.dump(eps, outfile)
+
+	timer.stop(name="Writing to file")
+
+timer.stop(name="Overall Zhao time")
+
+timer.list_timings()
+
+

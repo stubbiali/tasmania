@@ -232,10 +232,10 @@ class DomainDecomposition:
 
 
 if __name__ == "__main__":
-    domain = np.array([2048, 1024, 512])
-    slices = np.array([16, 8, 8])
-    stencil = np.array([1, 1, 1, 1, 1, 1])
-    periodic = np.array([0, 0, 0])
+    domain = np.array([2048, 1024, 40])
+    slices = np.array([16, 8, 1])
+    stencil = np.array([1, 1, 1, 1, 0, 0])
+    periodic = np.array([1, 0, 0])
 
     ddc = DomainDecomposition(domain, periodic, slices, stencil)
 

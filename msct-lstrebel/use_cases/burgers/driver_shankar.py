@@ -34,6 +34,7 @@ import pickle
 
 import gridtools as gt
 import stencils
+import timer
 
 #
 # User-defined settings:
@@ -49,6 +50,11 @@ import stencils
 # print_freq		Print frequency; if 1, info about the solution are printed at each iteration
 # filename			Path to the location where the solution will be saved
 #
+
+timer = timer.Timings(name="Burger's equation - Shankar setup")
+timer.start(name="Overall Shankar time", level=1)
+timer.start(name="Initialization", level=2)
+
 domain 		= [(0,0), (2,2)]		
 nx     		= 161				
 ny     		= 161			
@@ -59,7 +65,8 @@ method 		= 'upwind_third_order'
 datatype	= np.float64	
 save_freq	= 10
 print_freq	= 10
-filename	= 'test_shankar_' + str(method) + '.pickle' 
+file_output     = False
+filename	= 'test_shankar_' + str(method) + '.pickle'
 
 #
 # Driver
@@ -121,7 +128,8 @@ stencil = gt.NGStencil(
 	domain = domain_,
 	mode = gt.mode.NUMPY)
 
-#print(stencil.get_extent())
+timer.stop(name="Initialization")
+timer.start(name="Time integration", level=2)
 
 # Time integration
 tsave = [timedelta(0),]
@@ -140,6 +148,8 @@ for n in range(nt):
 	unew[  1:-1,   1:nb, 0], vnew[  1:-1,   1:nb, 0] = unow[  1:-1,   1:nb, 0], vnow[  1:-1,   1:nb, 0]
 	unew[  1:-1, -nb:-1, 0], vnew[  -nb:, -nb:-1, 0] = unow[  1:-1, -nb:-1, 0], vnow[  -nb:, -nb:-1, 0]
 
+	timer.start(name="Checkpointing during time integration", level=3)
+
 	# Check point
 	if (print_freq > 0) and (n % print_freq == 0):
 		print('Step %5.i, u max = %5.5f, u min = %5.5f, v max = %5.5f, v min = %5.5f, ||u|| max = %12.12f'
@@ -151,11 +161,26 @@ for n in range(nt):
 		usave = np.concatenate((usave, unew), axis = 2)
 		vsave = np.concatenate((vsave, vnew), axis = 2)
 
-# Dump solution to a binary file
-with open(filename, 'wb') as outfile:
-	pickle.dump(tsave, outfile)
-	pickle.dump(x, outfile)
-	pickle.dump(y, outfile)
-	pickle.dump(usave, outfile)
-	pickle.dump(vsave, outfile)
-	pickle.dump(eps, outfile)
+	timer.stop(name="Checkpointing during time integration")
+
+timer.stop(name="Time integration")
+
+if file_output:
+	timer.start(name="Writing to file", level=2)
+
+	# Dump solution to a binary file
+	with open(filename, 'wb') as outfile:
+		pickle.dump(tsave, outfile)
+		pickle.dump(x, outfile)
+		pickle.dump(y, outfile)
+		pickle.dump(usave, outfile)
+		pickle.dump(vsave, outfile)
+		pickle.dump(eps, outfile)
+
+	timer.stop(name="Writing to file")
+
+timer.stop(name="Overall Shankar time")
+
+timer.list_timings()
+
+

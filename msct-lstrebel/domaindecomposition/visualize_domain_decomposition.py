@@ -31,7 +31,6 @@ import types
 
 # BEGIN: monkeypatch for internal faces in 3D plot:
 # Source: https://stackoverflow.com/questions/48672663/matplotlib-render-all-internal-voxels-with-alpha
-
 def voxels(self, *args, **kwargs):
 
     if len(args) >= 3:
@@ -230,19 +229,28 @@ class VisualizeDomainDecomposition:
                     partition = self.values[i, j, k]
                     colors[i, j, k] = cmap(partition / self.values.max())
                     if partition == 1:
-                        colors[i, j, k, 3] = 0.9
+                        colors[i, j, k, 3] = 0.8
                     else:
-                        colors[i, j, k, 3] = 0.0
+                        colors[i, j, k, 3] = 0.8
 
         ax.voxels = types.MethodType(voxels, ax)
-        ax.voxels(filled, facecolors=colors, edgecolors=colors, internal_faces=True)
+        ax.voxels(filled, facecolors=colors, edgecolors='k', internal_faces=True, linewidth=0.5)
 
-        # for i in range(self.domain[0]):
-        #     for j in range(self.domain[1]):
-        #         for k in range(self.domain[2]):
-        #             partition = self.values[i, j, k]
-        #             if partition == 0:
-        #                 ax.scatter(i, j, k, c=cmap(partition/self.values.max()))
+        ax.set_title("Domain decomposition of \n{0:d}x{1:d}x{2:d} subdivisions "
+                     "into {3:d} partitions".format(self.domain[0], self.domain[1], self.domain[2],
+                                                    1 + int(np.max(self.values))), loc="left")
+
+        ax.grid(which='major', axis='both', linestyle='-', color='k', linewidth=1.5)
+
+        # ax.set_xticks(np.arange(0.0, self.domain[0], 1))
+        # ax.set_xticklabels(np.arange(0, self.domain[0], 1), size='small')
+        #
+        # ax.set_yticks(np.arange(0.0, self.domain[1], 1))
+        # ax.set_yticklabels(np.arange(0, self.domain[1], 1), size='small')
+        #
+        ax.set_zticks(np.arange(0, self.domain[2]+1, 1))
+        ax.set_zticklabels(np.arange(0, self.domain[2]+1, 1))
+        ax.set_zlim(0, 1.5)
 
         if self.outfile is not None:
             plt.savefig(self.outfile + ".png")
