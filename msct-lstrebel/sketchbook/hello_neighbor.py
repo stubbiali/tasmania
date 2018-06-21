@@ -154,7 +154,7 @@ class HelloNeighbor:
         self.domain = [(0, 0), (2, 2)]
         self.nx = 8
         self.ny = 5
-        self.nt = 4
+        self.nt = 8
         self.const = 1.0
         self.datatype = np.float64
         self.filename = 'hello_neighbor_output.pickle'
@@ -416,16 +416,30 @@ class HelloNeighbor:
             else:
                 self.reqs[0] = self.comm.Irecv([self.unow, self.ydirection], 0, 0)
         elif id == 3:
+            # self.reqs = [None, None, None, None, None, None, None, None]
             # Send from Processor 0 to Processor 1
             # Along x-direction:
-            # self.reqs = [None]
-            # if self.comm_rank == 0:
-            #     self.reqs[0] = self.comm.Isend([self.unew.reshape((self.lx*self.ly*1))[(self.ly - 1):], 1, self.xplusboundary], 1, 0)
-            # else:
-            #     self.reqs[0] = self.comm.Irecv([self.unow.reshape((self.lx*self.ly*1))[0:], 1, self.xminusboundary], 0, 0)
-
-            # # Along y-direction:
             self.reqs = [None, None, None, None]
+            self.unew = self.unew.reshape((self.lx * self.ly * 1))
+            if self.comm_rank == 0:
+                self.reqs[0] = self.comm.Isend([self.unew[(self.ly - 2):], 1, self.xminusboundary], 1, 0)
+                self.reqs[1] = self.comm.Irecv([self.unew[(self.ly - 1):], 1, self.xminusboundary], 1, 0)
+                self.reqs[2] = self.comm.Isend([self.unew[1:], 1, self.xplusboundary], 1, 0)
+                self.reqs[3] = self.comm.Irecv([self.unew[0:], 1, self.xplusboundary], 1, 0)
+
+            else:
+                self.reqs[0] = self.comm.Irecv([self.unew[0:], 1, self.xplusboundary], 0, 0)
+                self.reqs[1] = self.comm.Isend([self.unew[1:], 1, self.xplusboundary], 0, 0)
+                self.reqs[2] = self.comm.Irecv([self.unew[(self.ly - 1):], 1, self.xminusboundary], 0, 0)
+                self.reqs[3] = self.comm.Isend([self.unew[(self.ly - 2):], 1, self.xminusboundary], 0, 0)
+
+            self.unew = self.unew.reshape((self.lx, self.ly, 1))
+
+            MPI.Request.waitall(self.reqs[:])
+
+            # self.reqs = [None, None, None, None]
+            # # Along y-direction:
+            # self.reqs = [None, None, None, None]
             if self.comm_rank == 0:
                 self.reqs[0] = self.comm.Isend([self.unew[-2, :, :], 1, self.yminusboundary], 1, 0)
                 self.reqs[1] = self.comm.Irecv([self.unew[-1, :, :], 1, self.yminusboundary], 1, 0)

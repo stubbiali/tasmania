@@ -26,13 +26,13 @@
 
 #python domain_decomposition.py 
 
-#/home/lst/Documents/masterthesis/scotch_6.0.4/src/scotch/gpart 5 test_scotch.src test_scotch.map
+#/home/lst/Documents/masterthesis/scotch_6.0.4/src/scotch/gpart 5 subdomains_scotch.src subdomains_scotch.map
 
-#/home/lst/Documents/masterthesis/parmetis/metis-5.1.0/build/Linux-x86_64/programs/gpmetis test_metis.dat 5 -contig
+#/home/lst/Documents/masterthesis/parmetis/metis-5.1.0/build/Linux-x86_64/programs/gpmetis subdomains_metis.dat 5 -contig
 
-#python visualize_domain_decomposition.py -i "test_metis.dat.part.5" -gp metis -d 16 8 -o metis
+#python visualize_domain_decomposition.py -i "subdomains_metis.dat.part.5" -gp metis -d 16 8 -o metis
 
-#python visualize_domain_decomposition.py -i "test_scotch.map" -gp scotch -d 16 8 -o scotch
+#python visualize_domain_decomposition.py -i "subdomains_scotch.map" -gp scotch -d 16 8 -o scotch
 
 #python visualize_domain_decomposition.py -i "pymetis_test.dat.part.5" -gp metis -d 16 8 -o pymetis
 
@@ -47,12 +47,12 @@
 
 python domain_decomposition.py 
 
-/home/lst/Documents/masterthesis/scotch_6.0.4/src/scotch/gpart 5 test_scotch.src test_scotch.map
+/home/lst/Documents/masterthesis/scotch_6.0.4/src/scotch/gpart 5 subdomains_scotch.src subdomains_scotch.map
 
-/home/lst/Documents/masterthesis/parmetis/metis-5.1.0/build/Linux-x86_64/programs/gpmetis test_metis.dat 5 -contig
+/home/lst/Documents/masterthesis/parmetis/metis-5.1.0/build/Linux-x86_64/programs/gpmetis subdomains_metis.dat 5 -contig
 
-python visualize_domain_decomposition.py -i "test_metis.dat.part.5" -gp metis -d 16 8 1 -o metis
+python visualize_domain_decomposition.py -i "subdomains_metis.dat.part.5" -gp metis -d 16 8 1 -o metis
 
-python visualize_domain_decomposition.py -i "test_scotch.map" -gp scotch -d 16 8 1 -o scotch
+python visualize_domain_decomposition.py -i "subdomains_scotch.map" -gp scotch -d 16 8 1 -o scotch
 
-python visualize_domain_decomposition.py -i "pymetis_test.dat.part.5" -gp metis -d 16 8 1 -o pymetis
+python visualize_domain_decomposition.py -i "subdomains_pymetis.dat.part.5" -gp metis -d 16 8 1 -o pymetis
