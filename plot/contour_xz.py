@@ -24,8 +24,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tasmania.namelist import datatype
-import tasmania.utils.utils as utils
+from tasmania.utils import utils
 
 
 def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
@@ -69,8 +68,8 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 	out_ax : axes
 		The :class:`matplotlib.axes.Axes` enclosing the plot.
 
-	Raise
-	-----
+	Raises
+	------
 	ValueError :
 		If neither the grid, nor the model state, contains `height` or
 		`height_on_interface_levels`.
@@ -135,7 +134,7 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 		z = 0.5 * (z[:, :-1] + z[:, 1:])
 
 	# The underlying z-grid
-	zv = np.zeros((ni, nk), dtype=datatype)
+	zv = np.zeros((ni, nk), dtype=z.dtype)
 	if ni == nx:
 		zv[:, :] = z[:, :]
 	else:
@@ -146,7 +145,7 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 	if ni == nx:
 		topo = topo_
 	else:
-		topo = np.zeros((nx + 1), dtype=datatype)
+		topo = np.zeros((nx + 1), dtype=topo_.dtype)
 		topo[1:-1] = 0.5 * (topo_[:-1] + topo_[1:])
 		topo[0], topo[-1] = topo[1], topo[-2]
 

@@ -58,8 +58,8 @@ def plot_grid_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 	ax : axes
 		The :class:`matplotlib.axes.Axes` enclosing the plot.
 
-	Raise
-	-----
+	Raises
+	------
 	ValueError :
 		If neither the grid, nor the model state, contains `height` nor
 		`height_on_interface_levels`.
@@ -127,8 +127,8 @@ def plot_grid_yz(grid, state, field_to_plot, x_level, fig, ax, **kwargs):
 	ax : axes
 		The :class:`matplotlib.axes.Axes` enclosing the plot.
 
-	Raise
-	-----
+	Raises
+	------
 	ValueError :
 		If neither the grid, nor the model state, contains `height` nor
 		`height_on_interface_levels`.
