@@ -2,16 +2,15 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tasmania.namelist import datatype
-import tasmania.plot.utils as plot_utils
+from tasmania.utils import plot_utils
 from tasmania.utils.utils import get_numpy_arrays, equal_to as eq, \
 								 smaller_or_equal_than as lt
 
 
 def make_contourf_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 	"""
-	Given an input model state, generate the contourf plot of a specified field at a cross-section
-	parallel to the :math:`xy`-plane.
+	Given an input model state, generate the contourf plot of a specified field
+	at a cross-section parallel to the :math:`xy`-plane.
 
 	Parameters
 	----------
@@ -99,7 +98,7 @@ def make_contourf_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 
 	# The topography height
 	topo_ = np.copy(grid.topography_height)
-	topo  = np.zeros((ni, nj), dtype=datatype) 
+	topo  = np.zeros((ni, nj), dtype=topo_.dtype)
 	if ni == nx and nj == ny:
 		topo[:, :] = topo_[:, :]
 	elif ni == nx + 1 and nj == ny:

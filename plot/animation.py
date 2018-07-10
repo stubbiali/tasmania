@@ -13,6 +13,25 @@ class Animation:
 	:class:`~tasmania.plot.assemblers.PlotsAssembler`,
 	or :class:`~tasmania.plot.plot_monitors.SubplotsAssembler` object
 	on a list of model states, and grabbing the so-generated frames.
+
+	Attributes
+	----------
+    fontsize : int
+        The fontsize to be used.
+    figsize : tuple
+        The size which the figure should have.
+    tight_layout : bool
+        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
+    print_time : str
+        String specifying if time should be printed above the plot,
+        flush with the right edge. Options are:
+
+            * 'elapsed', to print the time elapsed from the first snapshot stored;
+            * 'absolute', to print the absolute time of the snapshot.
+            * anything else, not to print anything.
+
+    fps : int
+        Frames per second.
 	"""
 	def __init__(self, artist, fontsize=16, figsize=(8, 8), tight_layout=True,
 				 print_time=None, fps=15):

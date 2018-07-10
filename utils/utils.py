@@ -1,6 +1,3 @@
-""" 
-Some useful utilities. 
-"""
 from datetime import datetime
 import math
 import numpy as np
@@ -9,7 +6,7 @@ import shutil
 
 from tasmania.namelist import tol as _tol
 
-def equal_to(a, b, tol = None):
+def equal_to(a, b, tol=None):
 	"""
 	Compare floating point numbers (or arrays of floating point numbers), properly accounting for round-off errors.
 
@@ -31,7 +28,7 @@ def equal_to(a, b, tol = None):
 		tol = _tol
 	return math.fabs(a - b) <= tol
 
-def smaller_than(a, b, tol = None):
+def smaller_than(a, b, tol=None):
 	"""
 	Compare floating point numbers (or arrays of floating point numbers), properly accounting for round-off errors.
 
@@ -53,7 +50,7 @@ def smaller_than(a, b, tol = None):
 		tol = _tol
 	return a < (b - tol)
 
-def smaller_or_equal_than(a, b, tol = None):
+def smaller_or_equal_than(a, b, tol=None):
 	"""
 	Compare floating point numbers (or arrays of floating point numbers), properly accounting for round-off errors.
 
@@ -75,7 +72,7 @@ def smaller_or_equal_than(a, b, tol = None):
 		tol = _tol
 	return a <= (b + tol)
 
-def greater_than(a, b, tol = None):
+def greater_than(a, b, tol=None):
 	"""
 	Compare floating point numbers (or arrays of floating point numbers), properly accounting for round-off errors.
 
@@ -97,7 +94,7 @@ def greater_than(a, b, tol = None):
 		tol = _tol
 	return a > (b + tol)
 
-def greater_or_equal_than(a, b, tol = None):
+def greater_or_equal_than(a, b, tol=None):
 	"""
 	Compare floating point numbers (or arrays of floating point numbers), properly accounting for round-off errors.
 
@@ -202,6 +199,64 @@ def convert_datetime64_to_datetime(time):
 	if type(time) == datetime:
 		return time
 
-	ts = (time - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+	ts = (time - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'s')
 	return datetime.utcfromtimestamp(ts)
 
+def get_numpy_arrays(state, indices, *args):
+	"""
+	Given a dictionary of :class:`xarray.DataArray`\s and a set of keys, extract the corresponding 
+	:class:`numpy.ndarray`\s.
+
+	Parameters
+	----------
+	state : dict
+		A dictionary of :class:`xarray.DataArray`\s.
+	indices : tuple
+		Tuple of indices or slices identifying the portion of each :class:`xarray.DataArray` to be extracted.
+	*args : `str` or `tuple of str`
+		Each optional positional argument may be either a strings, specifying the variable to extract,
+		or a tuple of aliases for the variable.
+
+	Return
+	------
+	array_like or list:
+		The desired :class:`numpy.ndarray`, or a list collecting the desired :class:`numpy.ndarray`\s.
+
+	Raises
+	------
+	KeyError :
+		If a variable which should be extracted is not included in the input dictionary.
+	"""
+	raw_state = []
+
+	for key in args:
+		if type(key) is str: 				# key represents the name of the variable
+			if key not in state.keys():
+				raise KeyError('Variable {} not included in the input dictionary.'.format(key))
+			raw_state.append(state[key].values[indices])
+		elif type(key) in [tuple, list]: 	# key represents a set of aliases for the variable
+			for i, alias in enumerate(key):
+				if state.get(alias) is not None:
+					raw_state.append(state[alias].values[indices])
+					break
+				elif i == len(key)-1:
+					raise KeyError('Neither of the aliases {} is included in the input dictionary.'.format(key))
+	
+	return raw_state if len(raw_state) > 1 else raw_state[0]
+
+def assert_sequence(seq, reflen=None, reftype=None):
+	if reflen is not None:
+		assert len(seq) == reflen, \
+			'The input sequence has length {}, but {} was expected.'.format(len(seq), reflen)
+
+	if reftype is not None:
+		if type(reftype) not in (list, tuple):
+			reftype = [reftype,]
+		for item in seq:
+			error_msg = 'An item of the input sequence is of type ' + str(type(item)) \
+						+ ', but one of [ '
+			for reftype_ in reftype:
+				error_msg += str(reftype_) + ' '
+			error_msg += '] was expected.'
+
+			assert type(item) in reftype, error_msg

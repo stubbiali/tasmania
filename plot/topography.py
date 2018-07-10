@@ -2,7 +2,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-import tasmania.plot.utils as plot_utils
+from tasmania.utils import plot_utils
 from tasmania.utils.utils import equal_to as eq, smaller_than as lt
 
 

@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import os
 
 from tasmania.plot.plot_monitors import Plot1d, Plot2d, Plot3d
-import tasmania.plot.utils as plot_utils
-import tasmania.utils.utils as utils
+from tasmania.utils import plot_utils
+from tasmania.utils import utils
 
 
 class PlotsAssembler:
@@ -21,6 +21,20 @@ class PlotsAssembler:
 	For instance, the composer does not check that all the artists use 
 	the same units for the axes. Ultimately, it is up to the user to ensure
 	that everything is coherent.
+
+	Attributes
+	----------
+    interactive : bool
+        :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+    fontsize : int
+        The fontsize to be used.
+    figsize : tuple
+        The size which the figure should have.
+    tight_layout : bool
+        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
+    plot_properties : dict
+        Plot properties which are forwarded to and thereby set by
+        :func:`~tasmania.utils.plot_utils.set_plot_properties`.
 	"""
 	def __init__(self, artists, interactive=True, fontsize=16, figsize=(8, 8),
 				 tight_layout=True, plot_properties=None):
@@ -43,8 +57,9 @@ class PlotsAssembler:
             :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
             Default is :obj:`True`.
 		plot_properties : `dict`, optional
-			Plot properties which are forwarded and thereby set by
-			:func:`~tasmania.plot.utils.set_plot_properties`. Default is :obj:`None`.
+			Plot properties which are forwarded to and thereby set by
+			:func:`~tasmania.utils.plot_utils.set_plot_properties`.
+			Default is :obj:`None`.
 		"""
 		# Assert the list of artists
 		utils.assert_sequence(artists, reftype=(Plot1d, Plot2d, Plot3d))
@@ -73,8 +88,8 @@ class PlotsAssembler:
 		str :
 			The projection used by each artist.
 
-		Raise
-		-----
+		Raises
+		------
 		RuntimeError :
 			If the artists use different projections.
 		AttributeError :
@@ -210,6 +225,22 @@ class SubplotsAssembler:
 	:class:`~tasmania.plot.plot_monitors.Plot2d`,
 	:class:`~tasmania.plot.plot_monitors.Plot3d`, or
 	:class:`~tasmania.plot.assemblers.PlotsAssembler` object.
+
+	Attributes
+	----------
+    artists : sequence
+        Sequence of :class:`~tasmania.plot.plot_monitors.Plot1d`,
+        :class:`~tasmania.plot.plot_monitors.Plot2d`,
+        :class:`~tasmania.plot.plot_monitors.Plot3d`, or
+        :class:`~tasmania.plot.assemblers.PlotsAssembler` objects.
+    interactive : bool
+        :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+    fontsize : int
+        The fontsize to be used.
+    figsize : tuple
+        The size which the figure should have.
+    tight_layout : bool
+        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
 	"""
 	def __init__(self, nrows, ncols, artists, interactive=True,
 				 fontsize=16, figsize=(8, 8), tight_layout=True):
