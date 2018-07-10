@@ -25,13 +25,29 @@ import matplotlib.pyplot as plt
 import os
 from sympl import Monitor
 
-import tasmania.plot.utils as plot_utils
+from tasmania.utils import plot_utils
 
 
 class Plot1d(Monitor):
 	"""
 	A :class:`sympl.Monitor` visualizing a model state field along a line
 	orthogonal to one of the coordinate planes.
+
+	Attributes
+	----------
+    interactive : bool
+        :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+    fontsize : int
+        Font size to use in the plot. Default is 16.
+    figsize : tuple
+        Tuple specifying the dimensions which the figure should have.
+    tight_layout : bool
+        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
+    plot_properties : dict
+        Plot properties which are forwarded to and thereby set by
+        :func:`~tasmania.utils.plot_utils.set_plot_properties`.
+    plot_function_kwargs : dict
+        Plot settings which are forwarded to the plot function as keywords arguments.
 	"""
 	def __init__(self, grid, plot_function, field_to_plot, levels, interactive=True,
 				 fontsize=16, figsize=(8, 8), tight_layout=True,
@@ -67,7 +83,8 @@ class Plot1d(Monitor):
             Default is :obj:`True`.
 		plot_properties : `dict`, optional
 			Plot properties which are forwarded and thereby set by
-			:func:`~tasmania.plot.utils.set_plot_properties`. Default is :obj:`None`.
+			:func:`~tasmania.utils.plot_utils.set_plot_properties`.
+			Default is :obj:`None`.
 		plot_function_kwargs : `dict`, optional
 			Plot settings which are forwarded to the plot function as keywords arguments.
 			Default is :obj:`None`.
@@ -175,6 +192,24 @@ class Plot2d(Monitor):
 	"""
 	A :class:`sympl.Monitor` visualizing a model state field in a cross section
 	parallel to one of the coordinate planes.
+
+	Attributes
+	----------
+    interactive : bool
+        :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+    fontsize : int
+        Font size to use in the plot. Default is 16.
+    figsize : tuple
+        Tuple specifying the dimensions which the figure should have.
+    projection : `str`, optional
+        Projection for the plot axes.
+    tight_layout : bool
+        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
+    plot_properties : dict
+        Plot properties which are forwarded to and thereby set by
+        :func:`~tasmania.utils.plot_utils.set_plot_properties`.
+    plot_function_kwargs : dict
+        Plot settings which are forwarded to the plot function as keywords arguments.
 	"""
 	def __init__(self, grid, plot_function, field_to_plot, level, interactive=True,
 				 fontsize=16, figsize=(8, 8), projection=None, tight_layout=True,
@@ -215,8 +250,9 @@ class Plot2d(Monitor):
             :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
             Default is :obj:`True`.
 		plot_properties : `dict`, optional
-			Plot properties which are forwarded and thereby set by
-			:func:`~tasmania.plot.utils.set_plot_properties`. Default is :obj:`None`.
+			Plot properties which are forwarded to and thereby set by
+			:func:`~tasmania.utils.plot_utils.set_plot_properties`.
+			Default is :obj:`None`.
 		plot_function_kwargs : `dict`, optional
 			Plot settings which are forwarded to the plot function as keywords arguments.
 			Default is :obj:`None`.
@@ -330,6 +366,24 @@ class Plot3d(Monitor):
 	"""
 	A :class:`sympl.Monitor` visualizing a three-dimensional field.
 	This class may be used, e.g., to plot the underlying topography.
+
+	Attributes
+	----------
+    interactive : bool
+        :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+    fontsize : int
+        Font size to use in the plot. Default is 16.
+    figsize : tuple
+        Tuple specifying the dimensions which the figure should have.
+    projection : `str`, optional
+        Projection for the plot axes.
+    tight_layout : bool
+        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
+    plot_properties : dict
+        Plot properties which are forwarded to and thereby set by
+        :func:`~tasmania.utils.plot_utils.set_plot_properties`.
+    plot_function_kwargs : dict
+        Plot settings which are forwarded to the plot function as keywords arguments.
 	"""
 	def __init__(self, grid, plot_function, field_to_plot, interactive=True,
 				 fontsize=16, figsize=(8, 8), projection='3d', tight_layout=True,
@@ -364,8 +418,9 @@ class Plot3d(Monitor):
             :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
             Default is :obj:`True`.
 		plot_properties : `dict`, optional
-			Plot properties which are forwarded and thereby set by
-			:func:`~tasmania.plot.utils.set_plot_properties`. Default is :obj:`None`.
+			Plot properties which are forwarded to and thereby set by
+			:func:`~tasmania.utils.plot_utils.set_plot_properties`.
+			Default is :obj:`None`.
 		plot_function_kwargs : `dict`, optional
 			Plot settings which are forwarded to the plot function as keywords arguments.
 			Default is :obj:`None`.

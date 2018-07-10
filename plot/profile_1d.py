@@ -22,7 +22,7 @@
 #
 import matplotlib as mpl
 
-import tasmania.utils.utils as utils
+from tasmania.utils import utils
 
 
 def plot_horizontal_profile(grid, state, field_to_plot, levels, fig, ax, **kwargs):
@@ -44,8 +44,8 @@ def plot_horizontal_profile(grid, state, field_to_plot, levels, fig, ax, **kwarg
 		* the name of a variable stored in the input model state.
 
 	levels : dict
-		Dictionary whose keys are the ids of the two axes orthogonal to the cross line, and whose
-		values are the corresponding indices identifying the cross line itself.
+		Dictionary whose keys are the ids of the two axes orthogonal to the cross line,
+		and whose values are the corresponding indices identifying the cross line itself.
 		Note that one of the keys must necessarily be :obj:`2`.
 	fig : figure
 		A :class:`matplotlib.pyplot.figure`.
@@ -62,8 +62,8 @@ def plot_horizontal_profile(grid, state, field_to_plot, levels, fig, ax, **kwarg
 	ax : axes
 		The :class:`matplotlib.axes.Axes` enclosing the plot.
 
-	Raise
-	-----
+	Raises
+	------
 	ValueError :
 		If the length of :obj:`levels` is not 2.
 	KeyError :
@@ -135,8 +135,8 @@ def plot_vertical_profile(grid, state, field_to_plot, levels, fig, ax, **kwargs)
 	ax : axes
 		The :class:`matplotlib.axes.Axes` enclosing the plot.
 
-	Raise
-	-----
+	Raises
+	------
 	ValueError :
 		If the length of :obj:`levels` is not 2.
 	KeyError :
@@ -209,8 +209,8 @@ def plot_vertical_profile_with_respect_to_vertical_height(grid, state, field_to_
 	----
 	Either the grid or the model state must contain `height` or `height_on_interface_levels`.
 
-	Raise
-	-----
+	Raises
+	------
 	ValueError :
 		If the length of :obj:`levels` is not 2.
 	KeyError :

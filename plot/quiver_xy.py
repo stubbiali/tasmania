@@ -24,8 +24,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tasmania.namelist import datatype
-import tasmania.plot.utils as plot_utils
+from tasmania.utils import plot_utils
 from tasmania.utils.utils import get_numpy_arrays, equal_to as eq, \
 								 smaller_or_equal_than as lt
 
@@ -45,7 +44,8 @@ def make_quiver_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 	field_to_plot : str 
 		String specifying the field to plot. This might be:
 
-		* 'horizontal_velocity', for the horizontal velocity; the current object must contain either:
+		* 'horizontal_velocity', for the horizontal velocity; the current object must \
+			contain either:
 		
 			- `x_velocity` and `y_velocity`;
 			- `x_velocity_at_u_locations` and `y_velocity_at_v_locations`;
@@ -117,7 +117,7 @@ def make_quiver_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 
 	# The topography height
 	topo_ = np.copy(grid.topography_height)
-	topo  = np.zeros((ni, nj), dtype=datatype) 
+	topo  = np.zeros((ni, nj), dtype=topo_.dtype)
 	if ni == nx and nj == ny:
 		topo[:, :] = topo_[:, :]
 	elif ni == nx + 1 and nj == ny:
