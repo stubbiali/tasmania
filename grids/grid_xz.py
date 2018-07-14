@@ -26,9 +26,12 @@ import numpy as np
 import sympl
 
 from tasmania.grids.topography import Topography1d
-from tasmania.namelist import datatype
-from tasmania.utils.utils import smaller_than as lt, \
-								 smaller_or_equal_than as le
+from tasmania.utils.utils import smaller_than as lt, smaller_or_equal_than as le
+
+try:
+	from tasmania.namelist import datatype
+except ImportError:
+	datatype = np.float32
 
 
 class GridXZ:
@@ -56,18 +59,18 @@ class GridXZ:
 		the :math:`x`-staggered points.
 	nx : int
 		Number of mass points in the :math:`x`-direction.
-	dx : float
-		The :math:`x`-spacing.
+	dx : dataarray_like
+		The :math:`x`-spacing, in the same units of the :math:`x`-axis.
 	z : dataarray_like
 		:class:`sympl.DataArray` storing the :math:`z`-main levels.
 	z_on_interface_levels : dataarray_like
 		:class:`sympl.DataArray` storing the :math:`z`-half levels.
 	nz : int
 		Number of vertical main levels.
-	dz : float
-		The :math:`z`-spacing.
+	dz : dataarray_like
+		The :math:`z`-spacing, in the same units of the :math:`z`-axis.
 	z_interface : float
-		The interface coordinate :math:`z_F`.
+		The interface coordinate :math:`z_F` in the same units of the :math:`z`-axis.
 	topography : topography
 		:class:`~tasmania.grids.topography.Topography1d` representing
 		the underlying topography.
@@ -77,45 +80,32 @@ class GridXZ:
 	For the sake of compliancy with the `COSMO model <http://www.cosmo-model.org>`_,
 	the vertical grid points are ordered from the top of the domain to the surface.
 	"""
-	def __init__(self, domain_x, nx, domain_z, nz, 
-				 dims_x='x', units_x='m', dims_z='z', units_z='m',
-				 z_interface=None, dtype=datatype,
-				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None):
+	def __init__(self, domain_x, nx, domain_z, nz, z_interface=None,
+				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None,
+				 dtype=datatype):
 		""" 
 		Constructor.
 
 		Parameters
 		----------
-		domain_x : tuple
-			The interval which the domain includes along the :math:`x`-axis.
+		domain_x : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`x`-axis, as well as the axis
+			dimension and units.
 		nx : int
 			Number of mass points in the :math:`x`-direction.
-		domain_z : tuple
-			The interval which the domain includes along the :math:`z`-axis.
-			This should be specified in the form :math:`(z_{top}, ~ z_{surface})`.
+		domain_z : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`z`-axis, as well as the axis
+			dimension and units. The interval should be specified in the form
+			:math:`(z_{top}, ~ z_{surface})`.
 		nz : int
 			Number of vertical main levels.
-		dims_x : `str`, optional
-			Label for the :math:`x`-coordinate. Defaults to 'x'.
-		units_x : `str`, optional
-			Units for the :math:`x`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'm'.
-		dims_z : `str`, optional
-			Label for the :math:`z`-coordinate. Defaults to 'z'.
-		units_z : `str`, optional
-			Units for the :math:`z`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'm'.
-		z_interface : `float`, optional
+		z_interface : `dataarray_like`, optional
 			Interface value :math:`z_F`. If not specified, it is assumed that
 			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the top
 			of the domain. In other words, the coordinate system is supposed
 			fully terrain-following.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`.
 		topo_type : `str`, optional
 			Topography type. Defaults to 'flat_terrain'.
 			See :class:`~tasmania.grids.topography.Topography1d` for further details.
@@ -127,15 +117,24 @@ class GridXZ:
 		topo_kwargs : `dict`, optional
 			Keyword arguments to be forwarded to the constructor of
 			:class:`~tasmania.grids.topography.Topography1d`.
+		dtype : `obj`, optional
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+			Defaults to :obj:`~tasmania.namelist.datatype`.
 
 		Raises
 		------
 		ValueError :
 			If :obj:`z_interface` is outside the domain.
 		"""
+		# Extract x-axis properties
+		values_x = domain_x.values
+		dims_x   = domain_x.dims
+		units_x  = domain_x.attrs['units']
+
 		# x-coordinates of the mass points
-		xv = np.array([0.5 * (domain_x[0]+domain_x[1])], dtype=dtype) if nx == 1 \
-			 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
+		xv = np.array([0.5 * (values_x[0]+values_x[1])], dtype=dtype) if nx == 1 \
+			else np.linspace(values_x[0], values_x[1], nx, dtype=dtype)
 		self.x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x',
 								 attrs={'units': units_x})
 
@@ -143,19 +142,26 @@ class GridXZ:
 		self.nx = int(nx)
 
 		# x-spacing
-		self.dx = (domain_x[1]-domain_x[0]) / (nx-1.)
+		dx_v = 1. if nx == 1 else (values_x[1]-values_x[0]) / (nx-1.)
+		self.dx = sympl.DataArray(dx_v, name='dx', attrs={'units': units_x})
 
 		# x-coordinates of the x-staggered points
-		xv_u = np.linspace(domain_x[0] - 0.5*self.dx, domain_x[1] + 0.5*self.dx,
+		xv_u = np.linspace(values_x[0] - 0.5*dx_v, values_x[1] + 0.5*dx_v,
 						   nx+1, dtype=dtype)
 		self.x_at_u_locations = sympl.DataArray(xv_u, coords=[xv_u], dims=dims_x,
 												name='x_at_u_locations',
 												attrs={'units': units_x})
 
+		# Extract z-axis properties
+		values_z = domain_z.values
+		dims_z = domain_z.dims
+		dims_z_hl = domain_z.dims[0] + '_on_interface_levels'
+		units_z  = domain_z.attrs['units']
+
 		# z-coordinates of the half-levels
-		zv_hl = np.linspace(domain_z[0], domain_z[1], nz+1, dtype=dtype)
+		zv_hl = np.linspace(values_z[0], values_z[1], nz+1, dtype=dtype)
 		self.z_on_interface_levels = sympl.DataArray(zv_hl, coords=[zv_hl],
-													 dims=dims_z,
+													 dims=dims_z_hl,
 													 name='z_on_interface_levels',
 													 attrs={'units': units_z})
 
@@ -168,23 +174,24 @@ class GridXZ:
 		self.nz = int(nz)
 
 		# z-spacing
-		self.dz = math.fabs(domain_z[1] - domain_z[0]) / float(nz)
+		dz_v = math.fabs(values_z[1] - values_z[0]) / float(nz)
+		self.dz = sympl.DataArray(dz_v, name='dz', attrs={'units': units_z})
 
 		# z-interface
 		if z_interface is None:
-			self.z_interface = domain_z[0]
+			self.z_interface = values_z[0]
 		else:
-			self.z_interface = z_interface
-		if lt(domain_z[0], domain_z[1]):
-			if not (le(domain_z[0], self.z_interface) and
-					le(self.z_interface, domain_z[1])):
+			self.z_interface = z_interface.to_units(units_z).values.item()
+		if lt(values_z[0], values_z[1]):
+			if not (le(values_z[0], self.z_interface) and
+					le(self.z_interface, values_z[1])):
 				raise ValueError('z_interface should be in the range '
-								 '({}, {}).'.format(domain_z[0], domain_z[1]))
+								 '({}, {}).'.format(values_z[0], values_z[1]))
 		else:
-			if not (le(domain_z[1], self.z_interface) and
-					le(self.z_interface, domain_z[0])):
+			if not (le(values_z[1], self.z_interface) and
+					le(self.z_interface, values_z[0])):
 				raise ValueError('z_interface should be in the range '
-								 '({}, {}).'.format(domain_z[1], domain_z[0]))
+								 '({}, {}).'.format(values_z[1], values_z[0]))
 
 		# Underlying topography
 		if topo_kwargs is None or not isinstance(topo_kwargs, dict):
