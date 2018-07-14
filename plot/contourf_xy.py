@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from tasmania.utils import plot_utils
-from tasmania.utils.utils import get_numpy_arrays, equal_to as eq, \
-								 smaller_or_equal_than as lt
+from tasmania.utils.data_utils import get_numpy_arrays
+from tasmania.utils.utils import equal_to as eq, smaller_or_equal_than as lt
 
 
 def make_contourf_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
@@ -89,9 +89,9 @@ def make_contourf_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 			pass
 
 		try:
-			rho, ru, rv = get_numpy_arrays(state, (slice(0, None), slice(0, None), z_level),
+			r, ru, rv = get_numpy_arrays(state, (slice(0, None), slice(0, None), z_level),
 				'air_density', 'x_momentum', 'y_momentum')
-			u, v = ru / rho, rv / rho
+			u, v = ru / r, rv / r
 		except KeyError:
 			pass
 

@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from tasmania.utils import plot_utils
-from tasmania.utils.utils import get_numpy_arrays, equal_to as eq, \
-								 smaller_or_equal_than as lt
+from tasmania.utils.data_utils import get_numpy_arrays
+from tasmania.utils.utils import equal_to as eq, smaller_or_equal_than as lt
 
 
 def make_quiver_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
@@ -50,7 +50,8 @@ def make_quiver_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 			- `x_velocity` and `y_velocity`;
 			- `x_velocity_at_u_locations` and `y_velocity_at_v_locations`;
 			- `air_density`, `x_momentum`, and `y_momentum`;
-			- `air_isentropic_density`, `x_momentum_isentropic`, and `y_momentum_isentropic`.
+			- `air_isentropic_density`, `x_momentum_isentropic`, and \
+				`y_momentum_isentropic`.
 
 	z_level : int 
 		:math:`z`-level identifying the cross-section.
@@ -86,9 +87,9 @@ def make_quiver_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 			pass
 
 		try:
-			rho, ru, rv = get_numpy_arrays(state, (slice(0, None), slice(0, None), z_level),
+			r, ru, rv = get_numpy_arrays(state, (slice(0, None), slice(0, None), z_level),
 				'air_density', 'x_momentum', 'y_momentum')
-			vx, vy = ru / rho, rv / rho
+			vx, vy = ru / r, rv / r
 		except KeyError:
 			pass
 

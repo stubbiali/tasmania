@@ -22,7 +22,7 @@
 #
 import matplotlib as mpl
 
-from tasmania.utils import utils
+from tasmania.utils.data_utils import get_numpy_arrays
 
 
 def plot_horizontal_profile(grid, state, field_to_plot, levels, fig, ax, **kwargs):
@@ -236,8 +236,8 @@ def plot_vertical_profile_with_respect_to_vertical_height(grid, state, field_to_
 		raise ValueError('Unknown field to plot {}.'.format(field_to_plot))
 
 	try:
-		z = utils.get_numpy_arrays(state, (x_slice, y_slice, z_slice),
-								   ('height_on_interface_levels', 'height'))
+		z = get_numpy_arrays(state, (x_slice, y_slice, z_slice),
+						     ('height_on_interface_levels', 'height'))
 	except KeyError:
 		try:
 			z = grid.height_on_interface_levels[:]
