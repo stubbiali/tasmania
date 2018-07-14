@@ -50,5 +50,17 @@ def test_to_units():
 	assert x_to_units[-1] == 50.e3
 
 
+def test_constants():
+	from sympl import get_constant
+	assert get_constant('gravitational_acceleration', 'm s^-2') == 9.80665
+
+	from sympl import set_constant
+	set_constant('beta', 42., 'K m^-1')
+	assert get_constant('beta', 'K m^-1') == 42.0
+
+	from sympl import reset_constants
+	reset_constants()
+
+
 if __name__ == '__main__':
 	pytest.main([__file__])
