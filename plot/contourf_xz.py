@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from tasmania.utils import plot_utils
-from tasmania.utils.utils import get_numpy_arrays, equal_to as eq, \
-								 smaller_or_equal_than as lt
+from tasmania.utils.data_utils import get_numpy_arrays
+from tasmania.utils.utils import equal_to as eq, smaller_or_equal_than as lt
 
 
 def make_contourf_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
@@ -63,10 +63,12 @@ def make_contourf_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 		assert grid.ny == 1, \
 			'The input grid should consist of only one point in the y-direction.'
 		assert y_level == 0, \
-			'As the grid consists of only one point in the y-direction, y_level must be 0.'
+			'As the grid consists of only one point in the y-direction, ' \
+			'y_level must be 0.'
 
 		s, su, h = get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
-			'air_isentropic_density', 'x_momentum_isentropic', 'height_on_interface_levels')
+									'air_isentropic_density', 'x_momentum_isentropic',
+									'height_on_interface_levels')
 
 		u = su / s
 		h_mid  = 0.5 * (h[:, :-1] + h[:, 1:])

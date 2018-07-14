@@ -2,7 +2,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tasmania.utils import utils
+from tasmania.utils.data_utils import get_numpy_arrays
 
 
 def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
@@ -59,10 +59,12 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 		assert grid.ny == 1, \
 			'The input grid should consist of only one point in the y-direction.'
 		assert y_level == 0, \
-			'As the grid consists of only one point in the y-direction, y_level must be 0.'
+			'As the grid consists of only one point in the y-direction, ' \
+			'y_level must be 0.'
 
-		s, su, h = utils.get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
-			'air_isentropic_density', 'x_momentum_isentropic', 'height_on_interface_levels')
+		s, su, h = get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
+									'air_isentropic_density', 'x_momentum_isentropic',
+									'height_on_interface_levels')
 
 		u = su / s
 		h_mid  = 0.5 * (h[:, :-1] + h[:, 1:])
@@ -84,8 +86,8 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 
 	# Extract the geometric height at the main or interface levels, and the topography
 	try:
-		z = utils.get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
-							 	   'height_on_interface_levels')
+		z = get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
+							 'height_on_interface_levels')
 		topo_ = z[:, -1]
 	except KeyError:
 		try:
@@ -93,8 +95,8 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 			topo_ = z[:, -1]
 		except AttributeError:
 			try:
-				z = utils.get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
-									 	   'height')
+				z = get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
+									 'height')
 				topo_ = grid.topography_height
 			except KeyError:
 				try:

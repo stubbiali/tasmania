@@ -1,31 +1,41 @@
-""" 
-Configuration and global variables used throughout the package. 
-
+"""
+Configuration variables, physical constants, and numerical settings used
+throughout the library. Particularly, any physical constant defined here
+would overwrite the value set in sympl's :obj:`~sympl._core.constants.default_constants`.
+Therefore, any constant could be safely omitted here, provided that it
+is contained in :obj:`~sympl._core.constants.default_constants`.
+When units matters, variables are wrapped within a :class:`sympl.DataArray`.
+"""
+"""
 Physical constants:
-	* :data:`~tasmania.namelist.p_ref`: Reference pressure ([:math:`Pa`]).
-	* :data:`~tasmania.namelist.p_sl`: Reference pressure at sea level ([:math:`Pa`]).
-	* :data:`~tasmania.namelist.T_sl`: Reference temperature at sea level ([:math:`K`]).
-	* :data:`~tasmania.namelist.beta`: Rate of increase in reference temperature with the logarithm \
-		of reference pressure ([:math:`K ~ Pa^{-1}`]).
-	* :data:`~tasmania.namelist.Rd`: Gas constant for dry air ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
-	* :data:`~tasmania.namelist.Rv`: Gas constant for water vapor ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
-	* :data:`~tasmania.namelist.cp`: Specific heat of dry air at constant pressure ([:math:`J ~ K^{-1} ~ Kg^{-1}`]).
-	* :data:`~tasmania.namelist.g`: Mean gravitational acceleration ([:math:`m ~ s^{-2}`]). 
-	* :data:`~tasmania.namelist.L`: Specific latent heat of condensation of water ([:math:`J ~ kg^{-1}`]).
-	* :data:`~tasmania.namelist.rho_water`: Water density ([:math:`kg ~ m^{-3}`]).
+
+	* :data:`~tasmania.namelist.reference_air_pressure`;
+	* :data:`~tasmania.namelist.air_pressure_at_sea_level`;
+	* :data:`~tasmania.namelist.air_temperature_at_sea_level`;
+	* :data:`~tasmania.namelist.beta` (rate of increase in reference temperature \
+		with the logarithm of reference pressure);
+	* :data:`~tasmania.namelist.gas_constant_of_dry_air`;
+	* :data:`~tasmania.namelist.gas_constant_of_water_vapor`;
+	* :data:`~tasmania.namelist.specific_heat_of_dry_air_at_constant_pressure`;
+	* :data:`~tasmania.namelist.gravitational_acceleration`; 
+	* :data:`~tasmania.namelist.latent_heat_of_vaporization_of_water`;
+	* :data:`~tasmania.namelist.density_of_water`.
 
 Grid settings:
-	* :data:`~tasmania.namelist.domain_x`: Tuple storing the boundaries of the domain in the \
-		:math:`x`-direction in the form (:math:`x_{west}`, :math:`x_{east}`).
-	* :data:`~tasmania.namelist.nx`: Number of grid points in the :math:`x`-direction.
-	* :data:`~tasmania.namelist.domain_y`: Tuple storing the boundaries of the domain in the \
-		:math:`y`-direction in the form (:math:`y_{south}`, :math:`y_{north}`).
-	* :data:`~tasmania.namelist.ny`: Number of grid points in the :math:`y`-direction.
-	* :data:`~tasmania.namelist.domain_z`: Tuple storing the boundaries of the domain in the \
-		:math:`z`-direction in the form (:math:`z_{top}`, :math:`z_{bottom}`).
-	* :data:`~tasmania.namelist.nz`: Number of grid points in the :math:`z`-direction.
-	* :data:`~tasmania.namelist.z_interface`: For a hybrid coordinate system, interface level \
-		at which terrain-following :math:`z`-coordinate lines get back to horizontal lines.
+
+	* :data:`~tasmania.namelist.domain_x`: The interval contained in the domain \
+		in the :math:`x`-direction;
+	* :data:`~tasmania.namelist.nx`: Number of mass points in the :math:`x`-direction;
+	* :data:`~tasmania.namelist.domain_y`: The interval contained in the domain \
+		in the :math:`y`-direction;
+	* :data:`~tasmania.namelist.ny`: Number of mass points in the :math:`y`-direction;
+	* :data:`~tasmania.namelist.domain_z`: The interval contained in the domain \
+		in the vertical :math:`z`-direction, in the form \
+		(:math:`z_{top}`, :math:`z_{bottom}`);
+	* :data:`~tasmania.namelist.nz`: Number of vertical main levels;
+	* :data:`~tasmania.namelist.z_interface`: For a hybrid coordinate system, \
+		interface level at which terrain-following :math:`z`-coordinate lines \
+		get back to horizontal lines;
 	* :data:`~tasmania.namelist.topo_type`: Topography type. Available options are:
 
 			- 'flat_terrain';
@@ -33,10 +43,11 @@ Grid settings:
 			- 'schaer';
 			- 'user_defined'.
 
-	* :data:`~tasmania.namelist.topo_time`: :class:`datetime.timedelta` object representing the elapsed \
-		simulation time after which the topography should stop increasing.
-	* :data:`~tasmania.namelist.topo_max_height`: When :data:`~tasmania.namelist.topo_type` is 'gaussian', \
-		maximum mountain height ([:math:`m`]).
+	* :data:`~tasmania.namelist.topo_time`: :class:`datetime.timedelta` object \
+		representing the elapsed simulation time after which the topography should \
+		stop increasing.
+	* :data:`~tasmania.namelist.topo_max_height`: When :data:`~tasmania.namelist.topo_type` \
+		is 'gaussian', maximum mountain height ([:math:`m`]).
 	* :data:`~tasmania.namelist.topo_width_x`: When :data:`~tasmania.namelist.topo_type` is 'gaussian', mountain \
 		half-width in :math:`x`-direction ([:math:`m`]).
 	* :data:`~tasmania.namelist.topo_width_y`: When :data:`~tasmania.namelist.topo_type` is 'gaussian', mountain \
@@ -187,7 +198,7 @@ import gridtools as gt
 #
 # Physical constants
 #
-p_ref     = 1.e5
+reference_pressure     = 1.e5
 p_sl      = 1.e5
 T_sl      = 288.15
 beta      = 42.
@@ -202,17 +213,17 @@ rho_water = 1000.
 # Grid settings
 #
 domain_x        = [0, 500.e3]
-nx              = 101
-domain_y        = [-1., 1.]
-ny              = 1
-domain_z        = [280. + 60., 280.]
-nz              = 60
+nx              = 51
+domain_y        = [-250.e3, 250.e3]
+ny              = 51
+domain_z        = [300. + 100., 300.]
+nz              = 50
 z_interface     = None
 topo_type       = 'gaussian'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
 				   'topo_max_height': 1000.,
-				   'topo_width_x'   : 25.e3,
+				   'topo_width_x'   : 50.e3,
 				   'topo_width_y'   : 50.e3,
 				   'topo_str'       : '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
 				   'topo_smooth'    : False,
@@ -222,7 +233,7 @@ topo_kwargs     = {
 # Model settings
 #
 model                    = 'isentropic_conservative' 
-moist_on				 = True
+moist_on				 = False
 horizontal_boundary_type = 'relaxed'
 
 #
@@ -232,13 +243,13 @@ time_scheme             = 'forward_euler'
 flux_scheme             = 'maccormack'
 damp_on	                = False
 damp_type               = 'rayleigh'
-damp_depth              = 30
+damp_depth              = 15
 damp_max                = .0002
 smooth_on               = True
 smooth_type             = 'first_order'
 smooth_damp_depth       = 0
-smooth_coeff            = .05
-smooth_coeff_max        = .25
+smooth_coeff            = .03
+smooth_coeff_max        = .03
 smooth_moist_on		    = False
 smooth_moist_type       = 'first_order'
 smooth_moist_damp_depth = 30
@@ -253,7 +264,7 @@ sedimentation_on	           		= True
 sedimentation_flux_type		   		= 'second_order_upwind'
 sedimentation_substeps		   		= 2
 rain_evaporation_on			   		= True
-slow_tendency_microphysics_on       = True
+slow_tendency_microphysics_on       = False
 slow_tendency_microphysics_type     = 'kessler_wrf'
 slow_tendency_microphysics_kwargs	= {
 								  	   'a' : .0001,
@@ -263,7 +274,7 @@ slow_tendency_microphysics_kwargs	= {
 fast_tendency_microphysics_on       = False
 fast_tendency_microphysics_type     = ''
 fast_tendency_microphysics_kwargs	= {}
-adjustment_microphysics_on     		= True
+adjustment_microphysics_on     		= False
 adjustment_microphysics_type   		= 'kessler_wrf_saturation'
 adjustment_microphysics_kwargs 		= {
 								  	   'a' : .0001,
@@ -274,9 +285,9 @@ adjustment_microphysics_kwargs 		= {
 #
 # Simulation settings
 #
-dt                    = timedelta(seconds = 10)
+dt                    = timedelta(seconds = 24)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = timedelta(hours = 6)
+simulation_time       = timedelta(hours = 12)
 initial_state_type    = 0
 initial_state_kwargs  = {
 						 'x_velocity_initial'   : 15.,
@@ -285,7 +296,7 @@ initial_state_kwargs  = {
 						 'temperature'          : 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = np.arange(30, 2160, 30)
-save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/kessler_wrf_saturation_sedimentation_evaporation_maccormack.pickle')
+save_iterations		  = np.arange(30, 1801, 30)
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/old_datasets/verification_1_maccormack.pickle')
 tol      		      = 1.e-8		
-datatype 		      = np.float64
+datatype 		      = np.float32
