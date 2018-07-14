@@ -1,0 +1,2 @@
+class ConstantNotFoundError(Exception):
+	pass
