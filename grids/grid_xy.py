@@ -23,7 +23,10 @@
 import numpy as np
 import sympl
 
-from tasmania.namelist import datatype
+try:
+	from tasmania.namelist import datatype
+except ImportError:
+	datatype = np.float32
 
 
 class GridXY:
@@ -45,8 +48,8 @@ class GridXY:
 		the :math:`staggered` points.
 	nx : int
 		Number of mass points in the :math:`x`-direction.
-	dx : float
-		The :math:`x`-spacing.
+	dx : dataarray_like
+		The :math:`x`-spacing, in the same units of the :math:`x`-axis.
 	y : dataarray_like
 		:class:`sympl.DataArray` storing the :math:`y`-coordinates of
 		the mass points.
@@ -55,34 +58,27 @@ class GridXY:
 		the :math:`y`-staggered points.
 	ny : int
 		Number of mass points in the :math:`y`-direction.
-	dy : float
-		The :math:`y`-spacing.
+	dy : dataarray_like
+		The :math:`y`-spacing, in the same units of the :math:`y`-axis.
 	"""
-	def __init__(self, domain_x, nx, domain_y, ny, 
-				 dims_x='longitude', units_x='degrees_east',
-				 dims_y='latitude', units_y='degrees_north',
-				 dtype=datatype):
+	def __init__(self, domain_x, nx, domain_y, ny, dtype=datatype):
 		""" 
 		Constructor.
 
 		Parameters
 		----------
-		domain_x : tuple
-			The interval which the domain includes along the :math:`x`-axis.
+		domain_x : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`x`-axis, as well as the axis
+			dimension and units.
 		nx : int
 			Number of mass points in the :math:`x`-direction.
-		domain_y : tuple
-			The interval which the domain includes along the :math:`y`-axis.
+		domain_y : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`y`-axis, as well as the axis
+			dimension and units.
 		ny : int
-			Number of mass points along :math:`y`.
-		dims_x : `str`, optional
-			Label for the :math:`x`-coordinate. Defaults to 'longitude'.
-		units_x : `str`, optional
-			Units for the :math:`x`-coordinate. Defaults to 'degrees_east'.
-		dims_y : `str`, optional
-			Label for the :math:`y`-coordinate. Defaults to 'latitude'.
-		units_y : `str`, optional
-			Units for the :math:`y`-coordinate. Defaults to 'degrees_north'.
+			Number of mass points in the :math:`y`-direction.
 		dtype : `obj`, optional
 			Instance of :class:`numpy.dtype` specifying the data type for
 			any :class:`numpy.ndarray` used within this class.
@@ -92,9 +88,14 @@ class GridXY:
 		----
 		Axes labels should use the `CF Conventions <http://cfconventions.org>`_.
 		"""
+		# Extract x-axis properties
+		values_x = domain_x.values
+		dims_x   = domain_x.dims
+		units_x  = domain_x.attrs['units']
+
 		# x-coordinates of the mass points
-		xv = np.array([0.5 * (domain_x[0]+domain_x[1])], dtype=dtype) if nx == 1 \
-			 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
+		xv = np.array([0.5 * (values_x[0]+values_x[1])], dtype=dtype) if nx == 1 \
+			 else np.linspace(values_x[0], values_x[1], nx, dtype=dtype)
 		self.x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x',
 								 attrs={'units': units_x})
 
@@ -102,18 +103,24 @@ class GridXY:
 		self.nx = int(nx)
 
 		# x-spacing
-		self.dx = 1. if nx == 1 else (domain_x[1]-domain_x[0]) / (nx-1.)
+		dx_v = 1. if nx == 1 else (values_x[1]-values_x[0]) / (nx-1.)
+		self.dx = sympl.DataArray(dx_v, name='dx', attrs={'units': units_x})
 
 		# x-coordinates of the x-staggered points
-		xv_u = np.linspace(domain_x[0] - 0.5*self.dx, domain_x[1] + 0.5*self.dx,
+		xv_u = np.linspace(values_x[0] - 0.5*dx_v, values_x[1] + 0.5*dx_v,
 						   nx+1, dtype=dtype)
 		self.x_at_u_locations = sympl.DataArray(xv_u, coords=[xv_u], dims=dims_x,
 												name='x_at_u_locations',
 												attrs={'units': units_x})
 
+		# Extract y-axis properties
+		values_y = domain_y.values
+		dims_y   = domain_y.dims
+		units_y  = domain_y.attrs['units']
+
 		# y-coordinates of the mass points
-		yv = np.array([0.5 * (domain_y[0]+domain_y[1])], dtype=dtype) if ny == 1 \
-			 else np.linspace(domain_y[0], domain_y[1], ny, dtype=dtype)
+		yv = np.array([0.5 * (values_y[0]+values_y[1])], dtype=dtype) if ny == 1 \
+			 else np.linspace(values_y[0], values_y[1], ny, dtype=dtype)
 		self.y = sympl.DataArray(yv, coords=[yv], dims=dims_y, name='y',
 								 attrs={'units': units_y})
 
@@ -121,10 +128,11 @@ class GridXY:
 		self.ny = int(ny)
 
 		# y-spacing
-		self.dy = 1. if ny == 1 else (domain_y[1]-domain_y[0]) / (ny-1.)
+		dy_v = 1. if ny == 1 else (values_y[1]-values_y[0]) / (ny-1.)
+		self.dy = sympl.DataArray(dy_v, name='dy', attrs={'units': units_y})
 
 		# y-coordinates of the y-staggered points
-		yv_v = np.linspace(domain_y[0] - 0.5*self.dy, domain_y[1] + 0.5*self.dy,
+		yv_v = np.linspace(values_y[0] - 0.5*dy_v, values_y[1] + 0.5*dy_v,
 						   ny+1, dtype=dtype)
 		self.y_at_v_locations = sympl.DataArray(yv_v, coords=[yv_v], dims=dims_y,
 												name='y_at_v_locations',

@@ -20,12 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from datetime import timedelta
 import numpy as np
-import sympl
+from sympl import DataArray
 
-from tasmania.namelist import datatype
 from tasmania.utils.utils import smaller_than as lt
+
+try:
+	from namelist import datatype
+except ImportError:
+	datatype = np.float32
 
 
 class Topography1d:
@@ -56,7 +61,7 @@ class Topography1d:
 	Attributes
 	----------
 	topo : dataarray_like
-		:class:`sympl.DataArray` representing the topography (in meters).
+		1-D :class:`sympl.DataArray` representing the topography ([m]).
 	topo_type : str
 		Topography type. Either:
 
@@ -82,7 +87,7 @@ class Topography1d:
 		Parameters
 		----------
 		x : dataarray_like
-			:class:`sympl.DataArray` representing the underlying horizontal axis.
+			1-D :class:`sympl.DataArray` representing the underlying horizontal axis.
 		topo_type : `str`, optional
 			Topography type. Either: 
 			
@@ -100,15 +105,21 @@ class Topography1d:
 
 		Keyword arguments
 		-----------------
-		topo_max_height : float
-			When :data:`topo_type` is 'gaussian', maximum mountain height (in meters).
-			Default is 500.
-		topo_width_x : float
-			When :data:`topo_type` is 'gaussian', mountain half-width (in meters).
-			Default is 10000.
+		topo_max_height : dataarray_like
+			1-item :class:`sympl.DataArray` representing the maximum mountain height.
+			Defaults to 500 m. Effective only when :data:`topo_type` is 'gaussian'.
+		topo_center_x : dataarray_like
+			1-item :class:`sympl.DataArray` representing the :math:`x`-coordinate of
+			the mountain center. By default, the mountain center is placed in the center
+			of the domain. Effective only when :data:`topo_type` is 'gaussian'.
+		topo_width_x : dataarray_like
+			1-item :class:`sympl.DataArray` representing the mountain half-width.
+			Defaults to 1, in the same units of :data:`x`. Effective only when
+			:data:`topo_type` is 'gaussian'.
 		topo_str : str
-			When :data:`topo_type` is 'user_defined', terrain profile expression
-			in the independent variable :math:`x`. Must be fully C++-compliant.
+			Terrain profile expression in the independent variable :math:`x`.
+			Must be fully C++-compliant. Effective only when :data:`topo_type`
+			is 'user_defined'.
 		topo_smooth : bool
 			:obj:`True` to smooth the topography out, :obj:`False` otherwise.
 			Default is :obj:`False`.
@@ -129,22 +140,37 @@ class Topography1d:
 		self.topo_type   = topo_type
 		self.topo_time   = topo_time
 		self.topo_fact   = float(self.topo_time == timedelta())
-		self.topo_kwargs = kwargs
+		self.topo_kwargs = deepcopy(kwargs)
 
-		# Convert the input axis in meters, if necessary
-		_x = x.to_units('m')
+		xv = x.values
 
 		if self.topo_type == 'flat_terrain':
 			self._topo_final = np.zeros((x.values.shape[0]), dtype=dtype)
 		elif self.topo_type == 'gaussian':
-			topo_max_height = kwargs.get('topo_max_height', 500.)
-			topo_width_x = kwargs.get('topo_width_x', 10000.)
-			xv = _x.values
-			c = 0.5 * (xv[0] + xv[-1])
+			topo_max_height_ = kwargs.get('topo_max_height',
+										  DataArray(500.0, attrs={'units': 'm'}))
+			topo_max_height = topo_max_height_.to_units('m').values.item()
 
-			self._topo_final = topo_max_height * np.exp(-((xv-c) / topo_width_x)**2)
+			topo_width_x_ = kwargs.get('topo_width_x',
+									  DataArray(1.0, attrs={'units': x.attrs['units']}))
+			topo_width_x = topo_width_x_.to_units(x.attrs['units']).values.item()
+
+			cx = 0.5 * (xv[0] + xv[-1])
+			topo_center_x = cx if kwargs.get('topo_center_x') is None else \
+				kwargs['topo_center_x'].to_units_(x.attrs['units']).values.item()
+
+			self.topo_kwargs['topo_max_height'] = \
+				DataArray(topo_max_height, attrs={'units': 'm'})
+			self.topo_kwargs['topo_width_x'] = \
+				DataArray(topo_width_x, attrs={'units': x.attrs['units']})
+			self.topo_kwargs['topo_center_x'] = \
+				DataArray(topo_center_x, attrs={'units': x.attrs['units']})
+
+			self._topo_final = topo_max_height * np.exp(- ((xv-cx) / topo_width_x)**2)
 		elif self.topo_type == 'user_defined':
 			topo_str = kwargs.get('topo_str', 'x').encode('UTF-8')
+
+			self.topo_kwargs['topo_str'] = topo_str
 			
 			try:
 				from tasmania.grids.parser.parser_1d import Parser1d
@@ -152,7 +178,7 @@ class Topography1d:
 				print('Hint: did you compile the parser?')
 				raise
 				
-			parser = Parser1d(topo_str, _x.values)
+			parser = Parser1d(topo_str, xv)
 			self._topo_final = parser.evaluate()
 			
 		# Smooth the topography out
@@ -161,8 +187,8 @@ class Topography1d:
 											  2.*self._topo_final[1:-1] +
 											  self._topo_final[2:])
 
-		self.topo = sympl.DataArray(self.topo_fact*self._topo_final,
-									coords=x.coords, dims=x.dims, attrs={'units': 'm'})
+		self.topo = DataArray(self.topo_fact*self._topo_final,
+							  coords=x.coords, dims=x.dims, attrs={'units': 'm'})
 		
 	def update(self, time):
 		"""
@@ -217,7 +243,7 @@ class Topography2d:
 	Attributes
 	----------
 	topo : dataarray_like
-		:class:`sympl.DataArray` representing the topography (in meters).
+		2-D :class:`sympl.DataArray` representing the topography ([m]).
 	topo_type : str
 		Topography type. Either: 
 		
@@ -260,27 +286,29 @@ class Topography2d:
 
 		Keyword arguments
 		-----------------
-		topo_max_height : float
-			When :data:`topo_type` is either 'gaussian' or 'schaer',
-			maximum mountain height (in meters). Default is 500.
-		topo_center_x : float
-			When :data:`topo_type` is either 'gaussian' or 'schaer',
-			:math:`x`-coordinate of the mountain center (in meters).
-			By default, the mountain center is placed in the center of the domain.
-		topo_center_y : float
-			When :data:`topo_type` is either 'gaussian' or 'schaer',
-			:math:`y`-coordinate of the mountain center (in meters).
-			By default, the mountain center is placed in the center of the domain.
-		topo_width_x : float
-			When :data:`topo_type` is either 'gaussian' or 'schaer',
-			mountain half-width in :math:`x`-direction (in meters). Default is 10000.
-		topo_width_y : float
-			When :data:`topo_type` is either 'gaussian' or 'schaer',
-			mountain half-width in	:math:`y`-direction (in meters). Default is 10000.
+		topo_max_height : dataarray_like
+			1-item :class:`sympl.DataArray` representing the maximum mountain height.
+			Defaults to 500. Effective when :data:`topo_type` is either 'gaussian' or 'schaer'.
+		topo_center_x : dataarray_like
+			1-item :class:`sympl.DataArray` representing the :math:`x`-coordinate of
+			the mountain center. By default, the mountain center is placed in the center
+			of the domain. Effective when :data:`topo_type` is either 'gaussian' or 'schaer'.
+		topo_center_y : dataarray_like
+			1-item :class:`sympl.DataArray` representing the :math:`y`-coordinate of
+			the mountain center. By default, the mountain center is placed in the center
+			of the domain. Effective when :data:`topo_type` is either 'gaussian' or 'schaer'.
+		topo_width_x : dataarray_like
+			1-item :class:`sympl.DataArray` representing the mountain half-width in
+			the :math:`x`-direction. Defaults to 1, in the same units of the :data:`x`-axis.
+			Effective when :data:`topo_type` is either 'gaussian' or 'schaer'.
+		topo_width_y : dataarray_like
+			1-item :class:`sympl.DataArray` representing the mountain half-width in
+			the :math:`y`-direction. Defaults to 1, in the same units of the :data:`y`-axis.
+			Effective when :data:`topo_type` is either 'gaussian' or 'schaer'.
 		topo_str : str
-			When :data:`topo_type` is 'user_defined', terrain profile expression
-			in the independent variables :math:`x` and :math:`y`.
-			Must be fully C++-compliant.
+			Terrain profile expression in the independent variables :math:`x` and :math:`y`.
+			Must be fully C++-compliant. Effective only when :data:`topo_type`
+			is 'user_defined'.
 		topo_smooth : bool
 			:obj:`True` to smooth the topography out, :obj:`False` otherwise.
 			Default is :obj:`False`.
@@ -302,80 +330,89 @@ class Topography2d:
 		self.topo_type   = topo_type
 		self.topo_time   = topo_time
 		self.topo_fact   = float(self.topo_time == timedelta())
-		self.topo_kwargs = kwargs
+		self.topo_kwargs = deepcopy(kwargs)
+
+		x, y = grid.x, grid.y
+		xv, yv = grid.x.values, grid.y.values
 
 		if self.topo_type == 'flat_terrain':
 			self._topo_final = np.zeros((grid.nx, grid.ny), dtype=dtype)
 		elif self.topo_type == 'gaussian':
-			# Convert axes into meters, if necessary
-			_x, _y = grid.x.to_units('m'), grid.y.to_units('m')
+			topo_max_height_ = kwargs.get('topo_max_height',
+										  DataArray(500.0, attrs={'units': 'm'}))
+			topo_max_height = topo_max_height_.to_units('m').values.item()
 
-			# Shortcuts
-			xv, yv = _x.values, _y.values
-			cx, cy = 0.5 * (xv[0]+xv[-1]), 0.5 * (yv[0]+yv[-1])
+			topo_width_x_ = kwargs.get('topo_width_x',
+									   DataArray(1.0, attrs={'units': x.attrs['units']}))
+			topo_width_x = topo_width_x_.to_units(x.attrs['units']).values.item()
 
-			# Set topography settings
-			topo_max_height = 500. if kwargs.get('topo_max_height') is None \
-							  else kwargs['topo_max_height']
-			topo_center_x   = cx if kwargs.get('topo_center_x') is None \
-							  else kwargs['topo_center_x']
-			topo_center_y   = cy if kwargs.get('topo_center_y') is None \
-							  else kwargs['topo_center_y']
-			topo_width_x    = 10000. if kwargs.get('topo_width_x') is None \
-							  else kwargs['topo_width_x']
-			topo_width_y    = 10000. if kwargs.get('topo_width_y') is None \
-							  else kwargs['topo_width_y']
+			topo_width_y_ = kwargs.get('topo_width_y',
+									   DataArray(1.0, attrs={'units': y.attrs['units']}))
+			topo_width_y = topo_width_y_.to_units(y.attrs['units']).values.item()
 
-			# Update settings list
-			self.topo_kwargs['topo_max_height'] = topo_max_height
-			self.topo_kwargs['topo_center_x']   = topo_center_x
-			self.topo_kwargs['topo_center_y']   = topo_center_y
-			self.topo_kwargs['topo_width_x']    = topo_width_x
-			self.topo_kwargs['topo_width_y']    = topo_width_y
+			cx = 0.5 * (xv[0] + xv[-1])
+			topo_center_x = cx if kwargs.get('topo_center_x') is None else \
+							kwargs['topo_center_x'].to_units_(x.attrs['units']).values.item()
 
-			# Compute topography profile
-			x, y = np.meshgrid(xv, yv, indexing='ij')
+			cy = 0.5 * (yv[0] + yv[-1])
+			topo_center_y = cy if kwargs.get('topo_center_y') is None else \
+				kwargs['topo_center_y'].to_units_(y.attrs['units']).values.item()
+
+			self.topo_kwargs['topo_max_height'] = \
+				DataArray(topo_max_height, attrs={'units': 'm'})
+			self.topo_kwargs['topo_width_x'] = \
+				DataArray(topo_width_x, attrs={'units': x.attrs['units']})
+			self.topo_kwargs['topo_width_y'] = \
+				DataArray(topo_width_y, attrs={'units': y.attrs['units']})
+			self.topo_kwargs['topo_center_x'] = \
+				DataArray(topo_center_x, attrs={'units': x.attrs['units']})
+			self.topo_kwargs['topo_center_y'] = \
+				DataArray(topo_center_y, attrs={'units': y.attrs['units']})
+
+			xv_, yv_ = np.meshgrid(xv, yv, indexing='ij')
 			self._topo_final = topo_max_height * \
-							   np.exp(- ((x-topo_center_x) / topo_width_x)**2
-									  - ((y-topo_center_y) / topo_width_y)**2)
+							   np.exp(- ((xv_ - topo_center_x) / topo_width_x)**2
+									  - ((yv_ - topo_center_y) / topo_width_y)**2)
 		elif self.topo_type == 'schaer':
-			# Convert axes into meters, if necessary
-			_x, _y = grid.x.to_units('m'), grid.y.to_units('m')
+			topo_max_height_ = kwargs.get('topo_max_height',
+										  DataArray(500.0, attrs={'units': 'm'}))
+			topo_max_height = topo_max_height_.to_units('m').values.item()
 
-			# Shortcuts
-			xv, yv = _x.values, _y.values
-			cx, cy = 0.5 * (xv[0]+xv[-1]), 0.5 * (yv[0]+yv[-1])
+			topo_width_x_ = kwargs.get('topo_width_x',
+									   DataArray(1.0, attrs={'units': x.attrs['units']}))
+			topo_width_x = topo_width_x_.to_units(x.attrs['units']).values.item()
 
-			# Set topography settings
-			topo_max_height = 500. if kwargs.get('topo_max_height') is None \
-							  else kwargs['topo_max_height']
-			topo_center_x   = cx if kwargs.get('topo_center_x') is None \
-							  else kwargs['topo_center_x']
-			topo_center_y   = cy if kwargs.get('topo_center_y') is None \
-							  else kwargs['topo_center_y']
-			topo_width_x    = 10000. if kwargs.get('topo_width_x') is None \
-							  else kwargs['topo_width_x']
-			topo_width_y    = 10000. if kwargs.get('topo_width_y') is None \
-							  else kwargs['topo_width_y']
+			topo_width_y_ = kwargs.get('topo_width_y',
+									   DataArray(1.0, attrs={'units': y.attrs['units']}))
+			topo_width_y = topo_width_y_.to_units(y.attrs['units']).values.item()
 
-			# Update settings list
-			self.topo_kwargs['topo_max_height'] = topo_max_height
-			self.topo_kwargs['topo_center_x']   = topo_center_x
-			self.topo_kwargs['topo_center_y']   = topo_center_y
-			self.topo_kwargs['topo_width_x']    = topo_width_x
-			self.topo_kwargs['topo_width_y']    = topo_width_y
+			cx = 0.5 * (xv[0] + xv[-1])
+			topo_center_x = cx if kwargs.get('topo_center_x') is None else \
+				kwargs['topo_center_x'].to_units_(x.attrs['units']).values.item()
 
-			# Compute topography profile
-			x, y = np.meshgrid(xv, yv, indexing='ij')
+			cy = 0.5 * (yv[0] + yv[-1])
+			topo_center_y = cy if kwargs.get('topo_center_y') is None else \
+				kwargs['topo_center_y'].to_units_(y.attrs['units']).values.item()
+
+			self.topo_kwargs['topo_max_height'] = \
+				DataArray(topo_max_height, attrs={'units': 'm'})
+			self.topo_kwargs['topo_width_x'] = \
+				DataArray(topo_width_x, attrs={'units': x.attrs['units']})
+			self.topo_kwargs['topo_width_y'] = \
+				DataArray(topo_width_y, attrs={'units': y.attrs['units']})
+			self.topo_kwargs['topo_center_x'] = \
+				DataArray(topo_center_x, attrs={'units': x.attrs['units']})
+			self.topo_kwargs['topo_center_y'] = \
+				DataArray(topo_center_y, attrs={'units': y.attrs['units']})
+
+			xv_, yv_ = np.meshgrid(xv, yv, indexing='ij')
 			self._topo_final = topo_max_height / \
-							   ((1 + ((x-topo_center_x) / topo_width_x)**2 +
-									 ((y-topo_center_y) / topo_width_y)**2) ** 1.5)
+							   ((1 + ((xv_ - topo_center_x) / topo_width_x)**2 +
+									 ((yv_ - topo_center_y) / topo_width_y)**2) ** 1.5)
 		elif self.topo_type == 'user_defined':
-			# Set topography expression
 			topo_str = 'x + y'.encode('UTF-8') if kwargs.get('topo_str') is None \
 					   else kwargs['topo_str'].encode('UTF-8')
 
-			# Update settings list
 			self.topo_kwargs['topo_str'] = topo_str
 			
 			# Import the parser
@@ -398,10 +435,9 @@ class Topography2d:
 													 self._topo_final[1:-1, 2:] -
 													 4.*self._topo_final[1:-1, 1:-1]) 
 
-		self.topo = sympl.DataArray(self.topo_fact*self._topo_final,
-									coords=[grid.x.values, grid.y.values],
-								 	dims=[grid.x.dims[0], grid.y.dims[0]],
-									attrs={'units': 'm'})
+		self.topo = DataArray(self.topo_fact*self._topo_final,
+							  coords=[xv, yv], dims=[x.dims[0], y.dims[0]],
+							  attrs={'units': 'm'})
 		
 	def update(self, time):
 		"""

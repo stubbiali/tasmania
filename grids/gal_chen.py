@@ -24,11 +24,26 @@ from datetime import timedelta
 import numpy as np
 import sympl
 
-import tasmania.namelist as nl
 from tasmania.grids.grid_xyz import GridXYZ
 from tasmania.grids.grid_xz import GridXZ
+from tasmania.utils.data_utils import get_physical_constants
 from tasmania.utils.utils import equal_to as eq, smaller_than as lt, \
 								 smaller_or_equal_than as le, greater_than as gt
+
+try:
+	from tasmania.namelist import datatype
+except ImportError:
+	datatype = np.float32
+
+
+# Default values for the physical constants used in the module
+_d_physical_constants = {
+	'air_pressure_at_sea_level': sympl.DataArray(1e5, attrs={'units': 'Pa'}),
+	'air_temperature_at_sea_level': sympl.DataArray(288.15, attrs={'units': 'K'}),
+	'beta': sympl.DataArray(42.0, attrs={'units': 'K Pa^-1'}),
+	'gas_constant_of_dry_air': sympl.DataArray(287.05, attrs={'units': 'J K^-1 kg^-1'}),
+	'gravitational_acceleration': sympl.DataArray(9.80665, attrs={'units': 'm s^-2'}),
+}
 
 
 class GalChen2d(GridXZ):
@@ -49,52 +64,46 @@ class GalChen2d(GridXZ):
 	----------
 	height : dataarray_like
 		2-D :class:`sympl.DataArray` representing the geometric height
-		of the main levels.
+		of the main levels (in [m]).
 	height_on_interface_levels : dataarray_like
 		2-D :class:`sympl.DataArray` representing the geometric height
-		of the half levels.
+		of the half levels (in [m]).
 	height_interface : float 
-		Geometric height corresponding to :math:`\mu = \mu_F`.
+		Geometric height corresponding to :math:`\mu = \mu_F` (in [m]).
 	reference_pressure : dataarray_like
 		2-D :class:`sympl.DataArray` representing the reference pressure
-		at the main levels.
+		at the main levels (in [m]).
 	reference_pressure_on_interface_levels : dataarray_like
 		2-D :class:`sympl.DataArray` representing the reference pressure
-		at the half levels.
+		at the half levels (in [m]).
 	"""
-	def __init__(self, domain_x, nx, domain_z, nz,
-				 units_x='m', dims_x='x', z_interface=None, dtype=nl.datatype,
+
+	def __init__(self, domain_x, nx, domain_z, nz, z_interface=None,
 				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None,
-				 physical_constants=None):
+				 physical_constants=None, dtype=datatype):
 		""" 
 		Constructor.
 
 		Parameters
 		----------
-		domain_x : tuple
-			The interval which the domain includes along the :math:`x`-axis.
+		domain_x : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`x`-axis, as well as the axis
+			dimension and units.
 		nx : int
 			Number of mass points in the :math:`x`-direction.
-		domain_z : tuple
-			The interval which the domain includes along the :math:`z`-axis.
-			This should be specified in the form :math:`(z_{top}, ~ z_{surface})`.
+		domain_z : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`z`-axis, as well as the axis
+			dimension and units. The interval should be specified in the form
+			:math:`(z_{top}, ~ z_{surface})`.
 		nz : int
 			Number of vertical main levels.
-		dims_x : `str`, optional
-			Label for the :math:`x`-coordinate. Defaults to 'x'.
-		units_x : `str`, optional
-			Units for the :math:`x`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'm'.
-		z_interface : `float`, optional
+		z_interface : `dataarray_like`, optional
 			Interface value :math:`z_F`. If not specified, it is assumed that
-			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the top
-			of the domain. In other words, the coordinate system is supposed
+			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
+			top of the domain. In other words, the coordinate system is supposed
 			fully terrain-following.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`.
 		topo_type : `str`, optional
 			Topography type. Defaults to 'flat_terrain'.
 			See :class:`~tasmania.grids.topography.Topography1d` for further details.
@@ -107,22 +116,27 @@ class GalChen2d(GridXZ):
 			Keyword arguments to be forwarded to the constructor of
 			:class:`~tasmania.grids.topography.Topography1d`.
 		physical_constants : `dict`, optional
-			Dictionary whose keys are the names of the physical constants used
-			within this object, and whose values are the physical constants themselves.
-			These are:
+			Dictionary whose keys are strings indicating physical constants used
+			within this object, and whose values are :class:`sympl.DataArray`\s
+			storing the values and units of those constants. The constants might be:
 
-				* 'beta', the rate of increase in reference temperature with the \
-					logarithm of reference pressure ([K ~ Pa:math:`^{-1}`]), \
-					which defaults to :obj:`~tasmania.namelist.beta`;
-				* 'g', the gravitational acceleration ([m s:math:`^{-2}`]), \
-					which defaults to :obj:`~tasmania.namelist.g`;
-				* 'p_sl', the reference pressure at sea level ([Pa]), \
-					which defaults to :obj:`~tasmania.namelist.p_sl`;
-				* 'Rd', the gas constant for dry air \
-					([J K:math:`^{-1}` Kg:math:`^{-1}`]), \
-					which defaults to :obj:`~tasmania.namelist.Rd`;
-				* 'T_sl', the reference temperature at sea level ([K]), \
-					which defaults to :obj:`~tasmania.namelist.T_sl`.
+				* 'air_pressure_at_sea_level', in units compatible with [Pa];
+				* 'air_temperature_at_sea_level', in units compatible with [K];
+				* 'beta' (the rate of increase in reference temperature with the \
+					logarithm of reference pressure), in units compatible with \
+					([K ~ Pa:math:`^{-1}`]);
+				* 'gas_constant_of_dry_air', in units compatible with \
+					([J K:math:`^{-1}` Kg:math:`^{-1}`]);
+				* 'gravitational acceleration', in units compatible with [m s:math:`^{-2}`].
+
+			Please refer to
+			:func:`tasmania.utils.data_utils.get_physical_constants` and
+			:obj:`tasmania.grids.gal_chen._d_physical_constants`
+			for the default values.
+		dtype : `obj`, optional
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+			Defaults to :obj:`~tasmania.namelist.datatype`.
 
 		Raises
 		------
@@ -132,27 +146,27 @@ class GalChen2d(GridXZ):
 		ValueError :
 			If :obj:`z_interface` is outside the domain.
 		"""
+		# Ensure th vertical axis is expressed in meters
+		domain_z_conv = sympl.DataArray(domain_z.to_units('m').values,
+										dims='atmosphere_hybrid_height_coordinate',
+										attrs={'units': 'm'})
+
 		# Preliminary checks
-		if not (eq(domain_z[1], 0.) and gt(domain_z[0], 0.)):
+		if not (eq(domain_z_conv.values[1], 0.) and gt(domain_z_conv.values[0], 0.)):
 			raise ValueError('Gal-Chen vertical coordinate should be positive '
 							 'and vanish at the terrain surface.')
 
 		# Call parent's constructor
-		super().__init__(domain_x, nx, domain_z, nz,
-						 units_x=units_x, dims_x=dims_x,
-						 units_z='1', dims_z='atmosphere_hybrid_height_coordinate',
-						 z_interface=z_interface, dtype=dtype,
+		super().__init__(domain_x, nx, domain_z_conv, nz, z_interface=z_interface,
 						 topo_type=topo_type, topo_time=topo_time,
-						 topo_kwargs=topo_kwargs)
+						 topo_kwargs=topo_kwargs, dtype=dtype)
 		
 		# Interface height
 		self.height_interface = self.z_interface
 
 		# Keep track of the physical constants to use
-		if physical_constants is None or not isinstance(physical_constants, dict):
-			self._physical_constants = {}
-		else:
-			self._physical_constants = physical_constants
+		self._physical_constants = get_physical_constants(_d_physical_constants,
+														  physical_constants)
 
 		# Compute geometric height and reference pressure
 		self._update_metric_terms()
@@ -176,14 +190,12 @@ class GalChen2d(GridXZ):
 		a logarithmic vertical profile of reference pressure is assumed.
 		This method should be called every time the topography is updated or changed.
 		"""
-		# Extract the physical constants to use
-		beta = self._physical_constants.get('beta', nl.beta)
-		g    = self._physical_constants.get('g', nl.g)
-		p_sl = self._physical_constants.get('p_sl', nl.p_sl)
-		Rd   = self._physical_constants.get('Rd', nl.Rd)
-		T_sl = self._physical_constants.get('T_sl', nl.T_sl)
-
 		# Shortcuts
+		p_sl = self._physical_constants['air_pressure_at_sea_level']
+		T_sl = self._physical_constants['air_temperature_at_sea_level']
+		beta = self._physical_constants['beta']
+		Rd   = self._physical_constants['gas_constant_of_dry_air']
+		g    = self._physical_constants['gravitational_acceleration']
 		hs = np.repeat(self.topography_height[:, np.newaxis], self.nz+1, axis=1)
 		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis], (1, self.nz+1))
 		zf = self.z_interface
@@ -247,92 +259,84 @@ class GalChen3d(GridXYZ):
 	----------
 	height : dataarray_like
 		3-D :class:`sympl.DataArray` representing the geometric height
-		of the main levels.
+		of the main levels (in [m]).
 	height_on_interface_levels : dataarray_like
 		3-D :class:`sympl.DataArray` representing the geometric height
-		of the half levels.
+		of the half levels (in [m]).
 	height_interface : float
-		Geometric height corresponding to :math:`\mu = \mu_F`.
+		Geometric height corresponding to :math:`\mu = \mu_F` (in [m]).
 	reference_pressure : dataarray_like
 		3-D :class:`sympl.DataArray` representing the reference pressure
-		at the main levels.
+		at the main levels (in [m]).
 	reference_pressure_on_interface_levels : dataarray_like
 		3-D :class:`sympl.DataArray` representing the reference pressure
-		at the half levels.
+		at the half levels (in [m]).
 	"""
-	def __init__(self, domain_x, nx, domain_y, ny, domain_z, nz, 
-				 units_x='degrees_east', dims_x='longitude',
-				 units_y='degrees_north', dims_y='latitude',
-				 z_interface=None, dtype=nl.datatype,
+	def __init__(self, domain_x, nx, domain_y, ny, domain_z, nz, z_interface=None,
 				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None,
-				 physical_constants=None):
+				 physical_constants=None, dtype=datatype):
 		""" 
 		Constructor.
 
 		Parameters
 		----------
-		domain_x : tuple
-			The interval which the domain includes along the :math:`x`-axis.
+		domain_x : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`x`-axis, as well as the axis
+			dimension and units.
 		nx : int
 			Number of mass points in the :math:`x`-direction.
-		domain_y : tuple
-			The interval which the domain includes along the :math:`y`-axis.
+		domain_y : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`y`-axis, as well as the axis
+			dimension and units.
 		ny : int
-			Number of mass points along :math:`y`.
-		domain_z : tuple
-			The interval which the domain includes along the :math:`z`-axis.
-			This should be specified in the form :math:`(z_{top}, ~ z_{surface})`.
+			Number of mass points in the :math:`y`-direction.
+		domain_z : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`z`-axis, as well as the axis
+			dimension and units. The interval should be specified in the form
+			:math:`(z_{top}, ~ z_{surface})`.
 		nz : int
 			Number of vertical main levels.
-		dims_x : `str`, optional
-			Label for the :math:`x`-coordinate. Defaults to 'longitude'.
-		units_x : `str`, optional
-			Units for the :math:`x`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'degrees_east'.
-		dims_y : `str`, optional
-			Label for the :math:`y`-coordinate. Defaults to 'latitude'.
-		units_y : `str`, optional
-			Units for the :math:`y`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'degrees_north'.
-		z_interface : `float`, optional
+		z_interface : `dataarray_like`, optional
 			Interface value :math:`z_F`. If not specified, it is assumed that
 			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
 			top of the domain. In other words, the coordinate system is supposed
 			fully terrain-following.
+		topo_type : `str`, optional
+			Topography type. Defaults to 'flat_terrain'.
+			See :class:`~tasmania.grids.topography.Topography1d` for further details.
+		topo_time : `timedelta`, optional
+			:class:`datetime.timedelta` representing the simulation time after
+			which the topography should stop increasing. Default is 0, corresponding
+			to a time-invariant terrain surface-height. See
+			:mod:`~tasmania.grids.topography.Topography1d` for further details.
+		topo_kwargs : `dict`, optional
+			Keyword arguments to be forwarded to the constructor of
+			:class:`~tasmania.grids.topography.Topography1d`.
+		physical_constants : `dict`, optional
+			Dictionary whose keys are strings indicating physical constants used
+			within this object, and whose values are :class:`sympl.DataArray`\s
+			storing the values and units of those constants. The constants might be:
+
+				* 'air_pressure_at_sea_level', in units compatible with [Pa];
+				* 'air_temperature_at_sea_level', in units compatible with [K];
+				* 'beta' (the rate of increase in reference temperature with the \
+					logarithm of reference pressure), in units compatible with \
+					([K ~ Pa:math:`^{-1}`]);
+				* 'gas_constant_of_dry_air', in units compatible with \
+					([J K:math:`^{-1}` Kg:math:`^{-1}`]);
+				* 'gravitational acceleration', in units compatible with [m s:math:`^{-2}`].
+
+			Please refer to
+			:func:`tasmania.utils.data_utils.get_physical_constants` and
+			:obj:`tasmania.grids.gal_chen._d_physical_constants`
+			for the default values.
 		dtype : `obj`, optional
 			Instance of :class:`numpy.dtype` specifying the data type for
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`.
-		topo_type : `str`, optional
-			Topography type. Defaults to 'flat_terrain'.
-			See :class:`~tasmania.grids.topography.Topography2d` for further details.
-		topo_time : `timedelta`, optional
-			:class:`datetime.timedelta` representing the simulation time after
-			which the topography should stop increasing. Default is 0, corresponding
-			to a time-invariant terrain surface-height.
-			See :class:`~tasmania.grids.topography.Topography2d` for further details.
-		topo_kwargs : `dict`, optional
-			Keyword arguments to be forwarded to the constructor of
-			:class:`~tasmania.grids.topography.Topography2d`.
-		physical_constants : `dict`, optional
-			Dictionary whose keys are the names of the physical constants used
-			within this object, and whose values are the physical constants themselves.
-			These are:
-
-				* 'beta', the rate of increase in reference temperature with the \
-					logarithm of reference pressure ([K ~ Pa:math:`^{-1}`]), \
-					which defaults to :obj:`~tasmania.namelist.beta`;
-				* 'g', the gravitational acceleration ([m s:math:`^{-2}`]), \
-					which defaults to :obj:`~tasmania.namelist.g`;
-				* 'p_sl', the reference pressure at sea level ([Pa]), \
-					which defaults to :obj:`~tasmania.namelist.p_sl`;
-				* 'Rd', the gas constant for dry air \
-					([J K:math:`^{-1}` Kg:math:`^{-1}`]), \
-					which defaults to :obj:`~tasmania.namelist.Rd`;
-				* 'T_sl', the reference temperature at sea level ([K]), \
-					which defaults to :obj:`~tasmania.namelist.T_sl`.
 
 		Raises
 		------
@@ -342,28 +346,28 @@ class GalChen3d(GridXYZ):
 		ValueError :
 			If :obj:`z_interface` is outside the domain.
 		"""
+		# Ensure th vertical axis is expressed in meters
+		domain_z_conv = sympl.DataArray(domain_z.to_units('m').values,
+										dims='atmosphere_hybrid_height_coordinate',
+										attrs={'units': 'm'})
+
 		# Preliminary checks
-		if not (eq(domain_z[1], 0.) and gt(domain_z[0], 0.)):
+		if not (eq(domain_z_conv.values[1], 0.) and gt(domain_z_conv.values[0], 0.)):
 			raise ValueError('Gal-Chen vertical coordinate should be positive '
 							 'and vanish at the terrain surface.')
 
 		# Call parent's constructor
-		super().__init__(domain_x, nx, domain_y, ny, domain_z, nz,
-						 units_x=units_x, dims_x=dims_x,
-						 units_y=units_y, dims_y=dims_y,
-						 units_z='1', dims_z='atmosphere_hybrid_height_coordinate',
-						 z_interface=z_interface, dtype=dtype,
+		super().__init__(domain_x, nx, domain_y, ny, domain_z_conv, nz,
+						 z_interface=z_interface,
 						 topo_type=topo_type, topo_time=topo_time,
-						 topo_kwargs=topo_kwargs)
-		
+						 topo_kwargs=topo_kwargs, dtype=dtype)
+
 		# Interface height
 		self.height_interface = self.z_interface
 
 		# Keep track of the physical constants to use
-		if physical_constants is None or not isinstance(physical_constants, dict):
-			self._physical_constants = {}
-		else:
-			self._physical_constants = physical_constants
+		self._physical_constants = get_physical_constants(_d_physical_constants,
+														  physical_constants)
 
 		# Compute geometric height and reference pressure
 		self._update_metric_terms()
@@ -387,14 +391,12 @@ class GalChen3d(GridXYZ):
 		a logarithmic vertical profile of reference pressure is assumed.
 		This method should be called every time the topography is updated or changed.
 		"""
-		# Extract the physical constants to use
-		beta = self._physical_constants.get('beta', nl.beta)
-		g    = self._physical_constants.get('g', nl.g)
-		p_sl = self._physical_constants.get('p_sl', nl.p_sl)
-		Rd   = self._physical_constants.get('Rd', nl.Rd)
-		T_sl = self._physical_constants.get('T_sl', nl.T_sl)
-
 		# Shortcuts
+		p_sl = self._physical_constants['air_pressure_at_sea_level']
+		T_sl = self._physical_constants['air_temperature_at_sea_level']
+		beta = self._physical_constants['beta']
+		Rd   = self._physical_constants['gas_constant_of_dry_air']
+		g    = self._physical_constants['gravitational_acceleration']
 		hs = np.repeat(self.topography_height[:, :, np.newaxis], self.nz+1, axis=2)
 		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
 						(1, 1, self.nz+1))
