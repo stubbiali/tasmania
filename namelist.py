@@ -219,22 +219,24 @@ cp        = 1004.
 g         = 9.81
 L	      = 2.5e6
 rho_water = 1000.
+from sympl import DataArray
+pippo = DataArray(10., attrs={'units': '1'})
 
 #
 # Grid settings
 #
 domain_x        = [0, 500.e3]
-nx              = 101
-domain_y        = [-1., 1.]
-ny              = 1
-domain_z        = [280. + 60., 280.]
-nz              = 60
+nx              = 51
+domain_y        = [-250.e3, 250.e3]
+ny              = 51
+domain_z        = [300. + 100., 300.]
+nz              = 50
 z_interface     = None
 topo_type       = 'gaussian'
 topo_time       = timedelta(seconds = 1800.)
 topo_kwargs     = {
 				   'topo_max_height': 1000.,
-				   'topo_width_x'   : 25.e3,
+				   'topo_width_x'   : 50.e3,
 				   'topo_width_y'   : 50.e3,
 				   'topo_str'       : '1. * 10000. * 10000. / (x * x + 10000. * 10000.)',
 				   'topo_smooth'    : False,
@@ -244,7 +246,7 @@ topo_kwargs     = {
 # Model settings
 #
 model                    = 'isentropic_conservative' 
-moist_on				 = True
+moist_on				 = False
 horizontal_boundary_type = 'relaxed'
 
 #
@@ -254,13 +256,13 @@ time_scheme             = 'forward_euler'
 flux_scheme             = 'maccormack'
 damp_on	                = False
 damp_type               = 'rayleigh'
-damp_depth              = 30
+damp_depth              = 15
 damp_max                = .0002
 smooth_on               = True
 smooth_type             = 'first_order'
 smooth_damp_depth       = 0
-smooth_coeff            = .05
-smooth_coeff_max        = .25
+smooth_coeff            = .03
+smooth_coeff_max        = .03
 smooth_moist_on		    = False
 smooth_moist_type       = 'first_order'
 smooth_moist_damp_depth = 30
@@ -275,7 +277,7 @@ sedimentation_on	           		= True
 sedimentation_flux_type		   		= 'second_order_upwind'
 sedimentation_substeps		   		= 2
 rain_evaporation_on			   		= True
-slow_tendency_microphysics_on       = True
+slow_tendency_microphysics_on       = False
 slow_tendency_microphysics_type     = 'kessler_wrf'
 slow_tendency_microphysics_kwargs	= {
 								  	   'a' : .0001,
@@ -285,7 +287,7 @@ slow_tendency_microphysics_kwargs	= {
 fast_tendency_microphysics_on       = False
 fast_tendency_microphysics_type     = ''
 fast_tendency_microphysics_kwargs	= {}
-adjustment_microphysics_on     		= True
+adjustment_microphysics_on     		= False
 adjustment_microphysics_type   		= 'kessler_wrf_saturation'
 adjustment_microphysics_kwargs 		= {
 								  	   'a' : .0001,
@@ -296,9 +298,9 @@ adjustment_microphysics_kwargs 		= {
 #
 # Simulation settings
 #
-dt                    = timedelta(seconds = 10)
+dt                    = timedelta(seconds = 24)
 initial_time          = datetime(year = 1992, month = 2, day = 20)
-simulation_time       = timedelta(hours = 6)
+simulation_time       = timedelta(hours = 12)
 initial_state_type    = 0
 initial_state_kwargs  = {
 						 'x_velocity_initial'   : 15.,
@@ -307,7 +309,7 @@ initial_state_kwargs  = {
 						 'temperature'          : 250.,
 						}
 backend  		      = gt.mode.NUMPY
-save_iterations		  = np.arange(30, 2160, 30)
-save_dest		      = None #os.path.join(os.environ['TASMANIA_ROOT'], 'data/kessler_wrf_saturation_sedimentation_evaporation_maccormack.pickle')
+save_iterations		  = np.arange(30, 1801, 30)
+save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/old_datasets/verification_1_maccormack.pickle')
 tol      		      = 1.e-8		
-datatype 		      = np.float64
+datatype 		      = np.float32

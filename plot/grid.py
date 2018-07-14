@@ -23,7 +23,7 @@
 import matplotlib as mpl
 import numpy as np
 
-from tasmania.utils.utils import get_numpy_arrays
+from tasmania.utils.data_utils import get_numpy_arrays
 
 
 def plot_grid_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
@@ -40,7 +40,8 @@ def plot_grid_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 	field_to_plot : str
 		String specifying the field to plot. This is actually a dummy parameter,
 		since it is not used within the function. Nevertheless, it is retained in
-		the function signature for compliancy with :class:`~tasmania.plot.plot_monitors.Plot2d`.
+		the function signature for compliancy with
+		:class:`~tasmania.plot.plot_monitors.Plot2d`.
 	y_level : int
 		:math:`y`-index identifying the cross-section.
 	fig : figure
