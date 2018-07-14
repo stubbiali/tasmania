@@ -5,9 +5,12 @@ import sympl
 
 from tasmania.grids.topography import Topography2d
 from tasmania.grids.grid_xy import GridXY
-from tasmania.namelist import datatype
-from tasmania.utils.utils import smaller_than as lt, \
-								 smaller_or_equal_than as le
+from tasmania.utils.utils import smaller_than as lt, smaller_or_equal_than as le
+
+try:
+	from tasmania.namelist import datatype
+except ImportError:
+	datatype = np.float32
 
 
 class GridXYZ:
@@ -39,7 +42,7 @@ class GridXYZ:
 	dz : float
 		The :math:`z`-spacing.
 	z_interface : float
-		The interface coordinate :math:`z_F`.
+		The interface coordinate :math:`z_F`, in the same units of the :math:`z`-axis.
 	topography : topography
 		:class:`~tasmania.grids.topography.Topography2d` representing the
 		underlying topography.
@@ -49,56 +52,38 @@ class GridXYZ:
 	For the sake of compliancy with the `COSMO model <http://cosmo-model.org>`_,
 	the vertical grid points are ordered from the top of the domain to the surface.
 	"""
-	def __init__(self, domain_x, nx, domain_y, ny, domain_z, nz, 
-				 dims_x='longitude', units_x='degrees_east', 				 
-				 dims_y='latitude', units_y='degrees_north', 
-				 dims_z='z', units_z='m', z_interface=None, dtype=datatype,
-				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None):
+	def __init__(self, domain_x, nx, domain_y, ny, domain_z, nz, z_interface=None,
+				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None,
+				 dtype=datatype):
 		""" 
 		Constructor.
 
 		Parameters
 		----------
-		domain_x : tuple
-			The interval which the domain includes along the :math:`x`-axis.
+		domain_x : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`x`-axis, as well as the axis
+			dimension and units.
 		nx : int
 			Number of mass points in the :math:`x`-direction.
-		domain_y : tuple
-			The interval which the domain includes along the :math:`y`-axis.
+		domain_y : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`y`-axis, as well as the axis
+			dimension and units.
 		ny : int
-			Number of mass points along :math:`y`.
-		domain_z : tuple
-			The interval which the domain includes along the :math:`z`-axis.
-			This should be specified in the form :math:`(z_{top}, ~ z_{surface})`.
+			Number of mass points in the :math:`y`-direction.
+		domain_z : dataarray_like
+			2-items :class:`sympl.DataArray` storing the end-points of the interval
+			which the domain includes along the :math:`z`-axis, as well as the axis
+			dimension and units. The interval should be specified in the form
+			:math:`(z_{top}, ~ z_{surface})`.
 		nz : int
 			Number of vertical main levels.
-		dims_x : `str`, optional
-			Label for the :math:`x`-coordinate. Defaults to 'longitude'.
-		units_x : `str`, optional
-			Units for the :math:`x`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'degrees_east'.
-		dims_y : `str`, optional
-			Label for the :math:`y`-coordinate. Defaults to 'latitude'.
-		units_y : `str`, optional
-			Units for the :math:`y`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'degrees_north'.
-		dims_z : `str`, optional
-			Label for the :math:`z`-coordinate. Defaults to 'z'.
-		units_z : `str`, optional
-			Units for the :math:`z`-coordinate.
-			Should be compliant with the `CF Conventions <http://cfconventions.org>`_.
-			Defaults to 'm'.
-		z_interface : `float`, optional
+		z_interface : `dataarray_like`, optional
 			Interface value :math:`z_F`. If not specified, it is assumed that
 			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
 			top of the domain. In other words, the coordinate system is supposed
 			fully terrain-following.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`.
 		topo_type : `str`, optional
 			Topography type. Defaults to 'flat_terrain'.
 			See :class:`~tasmania.grids.topography.Topography2d` for further details.
@@ -110,6 +95,10 @@ class GridXYZ:
 		topo_kwargs : `dict`, optional
 			Keyword arguments to be forwarded to the constructor of
 			:class:`~tasmania.grids.topography.Topography2d`.
+		dtype : `obj`, optional
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+			Defaults to :obj:`~tasmania.namelist.datatype`.
 
 		Raises
 		------
@@ -117,18 +106,22 @@ class GridXYZ:
 			If :obj:`z_interface` is outside the domain.
 		"""
 		# xy-grid
-		self.xy_grid = GridXY(domain_x, nx, domain_y, ny,
-							  dims_x=dims_x, units_x=units_x,
-							  dims_y=dims_y, units_y=units_y)
+		self.xy_grid = GridXY(domain_x, nx, domain_y, ny)
+
+		# Extract z-axis properties
+		values_z  = domain_z.values
+		dims_z    = domain_z.dims
+		dims_z_hl = domain_z.dims[0] + '_on_interface_levels'
+		units_z   = domain_z.attrs['units']
 
 		# z-coordinates of the half-levels
-		zv_hl = np.linspace(domain_z[0], domain_z[1], nz+1, dtype=dtype)
-		self.z_on_interface_levels = sympl.DataArray(zv_hl,
-													 coords=[zv_hl], dims=dims_z,
+		zv_hl = np.linspace(values_z[0], values_z[1], nz+1, dtype=dtype)
+		self.z_on_interface_levels = sympl.DataArray(zv_hl, coords=[zv_hl],
+													 dims=dims_z_hl,
 													 name='z_on_interface_levels',
 													 attrs={'units': units_z})
 
-		# z-coordinates of main-levels
+		# z-coordinates of the main-levels
 		zv = 0.5 * (zv_hl[:-1] + zv_hl[1:])
 		self.z = sympl.DataArray(zv, coords=[zv], dims=dims_z, name='z',
 								 attrs={'units': units_z})
@@ -137,20 +130,24 @@ class GridXYZ:
 		self.nz = int(nz)
 
 		# z-spacing
-		self.dz = math.fabs(domain_z[1] - domain_z[0]) / float(nz)
+		dz_v = math.fabs(values_z[1] - values_z[0]) / float(nz)
+		self.dz = sympl.DataArray(dz_v, name='dz', attrs={'units': units_z})
 
 		# z-interface
 		if z_interface is None:
-			z_interface = domain_z[0]
-		if lt(domain_z[0], domain_z[1]):
-			if not (le(domain_z[0], z_interface) and le(z_interface, domain_z[1])):
-				raise ValueError('z_interface should be in the range '
-								 '({}, {}).'.format(domain_z[0], domain_z[1]))
+			self.z_interface = values_z[0]
 		else:
-			if not (le(domain_z[1], z_interface) and le(z_interface, domain_z[0])):
+			self.z_interface = z_interface.to_units(units_z).values.item()
+		if lt(values_z[0], values_z[1]):
+			if not (le(values_z[0], self.z_interface) and
+					le(self.z_interface, values_z[1])):
 				raise ValueError('z_interface should be in the range '
-								 '({}, {}).'.format(domain_z[1], domain_z[0]))
-		self.z_interface = z_interface
+								 '({}, {}).'.format(values_z[0], values_z[1]))
+		else:
+			if not (le(values_z[1], self.z_interface) and
+					le(self.z_interface, values_z[0])):
+				raise ValueError('z_interface should be in the range '
+								 '({}, {}).'.format(values_z[1], values_z[0]))
 
 		# Underlying topography
 		if topo_kwargs is None or not isinstance(topo_kwargs, dict):
