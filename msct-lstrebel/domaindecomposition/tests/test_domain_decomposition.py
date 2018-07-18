@@ -521,8 +521,8 @@ class TestDD(unittest.TestCase):
         for sd in slist:
             sd.communicate(fieldname="unow")
 
-        # for sd in st_list:
-        #     sd.compute()
+        for sd in st_list:
+            sd.compute()
         #
         # for sd in slist:
         #     sd.swap_fields("unow", "unew")

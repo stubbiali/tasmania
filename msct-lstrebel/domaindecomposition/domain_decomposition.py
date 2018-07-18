@@ -265,6 +265,7 @@ class DomainSubdivision:
             self.communicate_field(fieldname)
 
     def communicate_field(self, fieldname):
+        requests = [None] * 2 * len(self.neighbors_id)
         # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
             # Check if neighbor in current direction is the global boundary:
@@ -278,10 +279,31 @@ class DomainSubdivision:
                                            self.get_slices[fieldname][d],
                                            d)
                 else:
-                    self.communicate_external(fieldname,
-                                              self.recv_slices[fieldname][d],
-                                              self.get_slices[fieldname][d],
-                                              d)
+                    if MPI.COMM_WORLD.Get_rank() % 2 == 0:
+                            requests[2 * d] = self.communicate_external_send(
+                                fieldname,
+                                self.get_slices[fieldname][d],
+                                DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                            )
+
+                            requests[2 * d + 1] = self.communicate_external_recv(
+                                fieldname,
+                                self.recv_slices[fieldname][d],
+                                DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                            )
+                    else:
+                        requests[2 * d] = self.communicate_external_recv(
+                            fieldname,
+                            self.recv_slices[fieldname][d],
+                            DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                        )
+                        requests[2 * d + 1] = self.communicate_external_send(
+                            fieldname,
+                            self.get_slices[fieldname][d],
+                            DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                        )
+        # print(requests)
+        # MPI.Request.waitall(requests)
 
         # # Check if negx neighbor is local or external
         # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[0]]:
@@ -626,14 +648,33 @@ class DomainSubdivision:
     #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
     #     #       -(self.halos[fieldname][5] + self.halos[fieldname][5]):-self.halos[fieldname][5]]
 
-    def communicate_external(self, fieldname, recv_slice, get_slice, neighbor_id):
-        print("TODO comm extern")
+    def communicate_external_send(self, fieldname, send_slice, send_id):
+        # temp_buffer = self.fields[fieldname][send_slice].copy()
+        # print(temp_buffer)
+        # req = MPI.COMM_WORLD.Isend(temp_buffer, dest=send_id)
+        # print(MPI.COMM_WORLD.Get_rank(), send_id)
+        req = MPI.COMM_WORLD.Send(np.ascontiguousarray(self.fields[fieldname][send_slice]), dest=send_id)
+        # print(self.fields[fieldname][send_slice], send_id)
+        return req
+
+    def communicate_external_recv(self, fieldname, recv_slice, recv_id):
+        temp_buffer = np.zeros_like(self.fields[fieldname][recv_slice])
+        req = MPI.COMM_WORLD.Recv(temp_buffer, source=recv_id)
+        self.fields[fieldname][recv_slice] = temp_buffer.copy()
+        # MPI.Request.wait(req)
+        # print(MPI.COMM_WORLD.Get_rank(), temp_buffer)
+        # print(MPI.COMM_WORLD.Get_rank(), recv_id)
+        # req = MPI.COMM_WORLD.Recv(np.ascontiguousarray(self.fields[fieldname][recv_slice]), source=recv_id)
+        # MPI.Request.wait(req)
+        # print(self.fields[fieldname][recv_slice], recv_id)
+        return req
 
     def check_local(self, direction):
         return self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[direction]]
 
     def check_global_boundary(self, direction):
         return self.neighbors_id[direction] is None
+
 
 class DomainPreprocess:
     def __init__(self, domain, periodic, subdivs_per_dim, fileoutput=""):
