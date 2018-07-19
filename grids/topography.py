@@ -20,13 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+Classes:
+	Topography{1d, 2d}
+"""
 from copy import deepcopy
 from datetime import timedelta
 import numpy as np
 from sympl import DataArray
 
 from tasmania.utils.utils import smaller_than as lt
-
 try:
 	from namelist import datatype
 except ImportError:
@@ -157,7 +160,7 @@ class Topography1d:
 
 			cx = 0.5 * (xv[0] + xv[-1])
 			topo_center_x = cx if kwargs.get('topo_center_x') is None else \
-				kwargs['topo_center_x'].to_units_(x.attrs['units']).values.item()
+				kwargs['topo_center_x'].to_units(x.attrs['units']).values.item()
 
 			self.topo_kwargs['topo_max_height'] = \
 				DataArray(topo_max_height, attrs={'units': 'm'})
@@ -352,11 +355,11 @@ class Topography2d:
 
 			cx = 0.5 * (xv[0] + xv[-1])
 			topo_center_x = cx if kwargs.get('topo_center_x') is None else \
-							kwargs['topo_center_x'].to_units_(x.attrs['units']).values.item()
+							kwargs['topo_center_x'].to_units(x.attrs['units']).values.item()
 
 			cy = 0.5 * (yv[0] + yv[-1])
 			topo_center_y = cy if kwargs.get('topo_center_y') is None else \
-				kwargs['topo_center_y'].to_units_(y.attrs['units']).values.item()
+				kwargs['topo_center_y'].to_units(y.attrs['units']).values.item()
 
 			self.topo_kwargs['topo_max_height'] = \
 				DataArray(topo_max_height, attrs={'units': 'm'})
@@ -388,11 +391,11 @@ class Topography2d:
 
 			cx = 0.5 * (xv[0] + xv[-1])
 			topo_center_x = cx if kwargs.get('topo_center_x') is None else \
-				kwargs['topo_center_x'].to_units_(x.attrs['units']).values.item()
+				kwargs['topo_center_x'].to_units(x.attrs['units']).values.item()
 
 			cy = 0.5 * (yv[0] + yv[-1])
 			topo_center_y = cy if kwargs.get('topo_center_y') is None else \
-				kwargs['topo_center_y'].to_units_(y.attrs['units']).values.item()
+				kwargs['topo_center_y'].to_units(y.attrs['units']).values.item()
 
 			self.topo_kwargs['topo_max_height'] = \
 				DataArray(topo_max_height, attrs={'units': 'm'})
