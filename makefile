@@ -1,9 +1,9 @@
 PYSRC := $(shell find $(shell pwd) -name '*.py')
 PYTMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
 PYTMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__')
-DOCDIR := docs
+DOCDIR := doc
 DOCSRC := $(DOCDIR)/source/conf.py $(DOCDIR)/source/api.rst
-PARSERDIR := grids/parser
+PARSERDIR := tasmania/grids/parser
 UMLDIR := $(DOCDIR)/uml
 
 all: clean parser html
@@ -17,12 +17,12 @@ html: parser
 	@echo "OK."
 
 latex: parser
-	@echo -n "Building LaTeX documentation ..."
+	@echo -n "Building LaTeX documentation ... "
 	@cd $(DOCDIR) && $(MAKE) latex > /dev/null 2>&1
 	@echo "OK."
 
 latexpdf: parser
-	@echo -n "Building LaTeX documentation ..."
+	@echo -n "Building LaTeX documentation ... "
 	@cd $(DOCDIR) && $(MAKE) latexpdf > /dev/null
 	@echo "OK."
 
