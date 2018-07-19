@@ -366,7 +366,7 @@ def test_plot_2d_one_row_two_columns():
 	from tasmania.plot.plot_monitors import Plot2d as Plot
 	from tasmania.plot.contourf_xz import make_contourf_xz as plot_function
 	monitor1 = Plot(grid, plot_function, field_to_plot, y_level,
-					interactive=True, plot_properties=plot_properties,
+					interactive=False, plot_properties=plot_properties,
 					plot_function_kwargs=plot_function_kwargs)
 
 	#
@@ -412,7 +412,7 @@ def test_plot_2d_one_row_two_columns():
 
 	# Instantiate the monitor
 	monitor2 = Plot(grid, plot_function, field_to_plot, y_level,
-					interactive=True, plot_properties=plot_properties,
+					interactive=False, plot_properties=plot_properties,
 					plot_function_kwargs=plot_function_kwargs)
 
 	#
@@ -482,7 +482,7 @@ def test_plot_2d_two_rows_two_columns():
 	# Instantiate the monitor
 	from tasmania.plot.plot_monitors import Plot2d as Plot
 	from tasmania.plot.contourf_xz import make_contourf_xz as plot_function
-	monitor1 = Plot(grid, plot_function, field_to_plot, y_level, interactive=True,
+	monitor1 = Plot(grid, plot_function, field_to_plot, y_level, interactive=False,
 					plot_properties=plot_properties, plot_function_kwargs=plot_function_kwargs)
 
 	#
@@ -527,7 +527,7 @@ def test_plot_2d_two_rows_two_columns():
 	}
 
 	# Instantiate the monitor
-	monitor2 = Plot(grid, plot_function, field_to_plot, y_level, interactive=True,
+	monitor2 = Plot(grid, plot_function, field_to_plot, y_level, interactive=False,
 					plot_properties=plot_properties,
 					plot_function_kwargs=plot_function_kwargs)
 
@@ -562,7 +562,7 @@ def test_plot_2d_two_rows_two_columns():
 	}
 
 	# Instantiate the monitor
-	monitor3 = Plot(grid, plot_function, field_to_plot, y_level, interactive=True,
+	monitor3 = Plot(grid, plot_function, field_to_plot, y_level, interactive=False,
 					plot_properties=plot_properties, plot_function_kwargs=plot_function_kwargs)
 
 	#

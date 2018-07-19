@@ -66,7 +66,7 @@ def test_quiver_xy_velocity():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot2d as Plot
 	from tasmania.plot.quiver_xy import make_quiver_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
@@ -126,7 +126,7 @@ def test_quiver_xy_velocity_bw():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot2d as Plot
 	from tasmania.plot.quiver_xy import make_quiver_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
 				   fontsize=16, figsize=[8, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)

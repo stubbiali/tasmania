@@ -64,7 +64,7 @@ def test_contourf_xy_velocity():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot2d as Plot
 	from tasmania.plot.contourf_xy import make_contourf_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
@@ -131,7 +131,7 @@ def test_contourf_xy_pressure():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot2d as Plot
 	from tasmania.plot.contourf_xy import make_contourf_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)

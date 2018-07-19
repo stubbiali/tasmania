@@ -55,7 +55,7 @@ def test_profile_1d_x():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot1d as Plot
 	from tasmania.plot.profile_1d import plot_horizontal_profile as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
@@ -112,7 +112,7 @@ def test_profile_1d_y():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot1d as Plot
 	from tasmania.plot.profile_1d import plot_horizontal_profile as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
@@ -169,7 +169,7 @@ def test_profile_1d_z():
 	# Plot
 	from tasmania.plot.plot_monitors import Plot1d as Plot
 	from tasmania.plot.profile_1d import plot_vertical_profile as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
@@ -227,7 +227,7 @@ def test_profile_1d_height():
 	from tasmania.plot.plot_monitors import Plot1d as Plot
 	from tasmania.plot.profile_1d import \
 		plot_vertical_profile_with_respect_to_vertical_height as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=True,
+	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
 				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
