@@ -1,3 +1,7 @@
+"""
+Classes:
+	GridXYZ
+"""
 from datetime import timedelta
 import math
 import numpy as np
@@ -39,9 +43,9 @@ class GridXYZ:
 		:class:`sympl.DataArray` storing the :math:`z`-half levels.
 	nz : int
 		Number of vertical main levels.
-	dz : float
+	dz : dataarray_like
 		The :math:`z`-spacing.
-	z_interface : float
+	z_interface : dataarray_like
 		The interface coordinate :math:`z_F`, in the same units of the :math:`z`-axis.
 	topography : topography
 		:class:`~tasmania.grids.topography.Topography2d` representing the
@@ -135,17 +139,20 @@ class GridXYZ:
 
 		# z-interface
 		if z_interface is None:
-			self.z_interface = values_z[0]
+			self.z_interface = sympl.DataArray(values_z[0], attrs={'units': units_z})
 		else:
-			self.z_interface = z_interface.to_units(units_z).values.item()
+			self.z_interface = z_interface.to_units(units_z)
+
+		# Checks
+		z_interface_v = self.z_interface.values.item()
 		if lt(values_z[0], values_z[1]):
-			if not (le(values_z[0], self.z_interface) and
-					le(self.z_interface, values_z[1])):
+			if not (le(values_z[0], z_interface_v) and
+					le(z_interface_v, values_z[1])):
 				raise ValueError('z_interface should be in the range '
 								 '({}, {}).'.format(values_z[0], values_z[1]))
 		else:
-			if not (le(values_z[1], self.z_interface) and
-					le(self.z_interface, values_z[0])):
+			if not (le(values_z[1], z_interface_v) and
+					le(z_interface_v, values_z[0])):
 				raise ValueError('z_interface should be in the range '
 								 '({}, {}).'.format(values_z[1], values_z[0]))
 

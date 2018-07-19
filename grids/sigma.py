@@ -48,7 +48,7 @@ class Sigma2d(GridXZ):
 	height_on_interface_levels : dataarray_like
 		2-D :class:`sympl.DataArray` representing the geometric height
 		of the half levels (in [m]).
-	height_interface : float
+	height_interface : dataarray_like
 		Geometric height corresponding to :math:`\sigma = \sigma_F` (in [m]).
 	reference_pressure : dataarray_like
 		2-D :class:`sympl.DataArray` representing the reference pressure
@@ -104,10 +104,10 @@ class Sigma2d(GridXZ):
 				* 'air_temperature_at_sea_level', in units compatible with [K];
 				* 'beta' (the rate of increase in reference temperature with the \
 					logarithm of reference pressure), in units compatible with \
-					([K ~ Pa:math:`^{-1}`]);
+					([K ~ Pa^-1]);
 				* 'gas_constant_of_dry_air', in units compatible with \
-					([J K:math:`^{-1}` Kg:math:`^{-1}`]);
-				* 'gravitational acceleration', in units compatible with [m s:math:`^{-2}`].
+					([J K^-1 Kg:math:`^{-1}`]);
+				* 'gravitational acceleration', in units compatible with [m s^-2].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
@@ -154,8 +154,11 @@ class Sigma2d(GridXZ):
 		g    = self._physical_constants['gravitational_acceleration']
 
 		# Interface height
-		self.height_interface = Rd / g * np.log(1 / self.z_interface) * \
-				  				(T_sl - 0.5 * beta * np.log(1 / self.z_interface))
+		z_interface_v = self.z_interface.values.item()
+		height_interface_v = Rd / g * np.log(1 / z_interface_v) * \
+				  			 (T_sl - 0.5 * beta * np.log(1 / z_interface_v))
+		self.height_interface = sympl.DataArray(height_interface_v,
+												attrs=self.z_interface.attrs)
 
 		# Compute geometric height and reference pressure
 		self._update_metric_terms()
@@ -188,7 +191,7 @@ class Sigma2d(GridXZ):
 		hs = self.topography.topo.values
 		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis], (1, self.nz+1))
 		zt = zv[0, 0]
-		zf = self.z_interface
+		zf = self.z_interface.values.item()
 		
 		# Reference pressure at the terrain surface
 		if eq(beta, 0.):
@@ -265,7 +268,7 @@ class Sigma3d(GridXYZ):
 	height_on_interface_levels : dataarray_like
 		3-D :class:`sympl.DataArray` representing the geometric height
 		of the half levels (in [m]).
-	height_interface : float
+	height_interface : dataarray_like
 		Geometric height corresponding to :math:`\mu = \mu_F` (in [m]).
 	reference_pressure : dataarray_like
 		3-D :class:`sympl.DataArray` representing the reference pressure
@@ -326,10 +329,10 @@ class Sigma3d(GridXYZ):
 				* 'air_temperature_at_sea_level', in units compatible with [K];
 				* 'beta' (the rate of increase in reference temperature with the \
 					logarithm of reference pressure), in units compatible with \
-					([K ~ Pa:math:`^{-1}`]);
+					([K ~ Pa^-1]);
 				* 'gas_constant_of_dry_air', in units compatible with \
-					([J K:math:`^{-1}` Kg:math:`^{-1}`]);
-				* 'gravitational acceleration', in units compatible with [m s:math:`^{-2}`].
+					([J K^-1 Kg:math:`^{-1}`]);
+				* 'gravitational acceleration', in units compatible with [m s^-2].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
@@ -377,8 +380,11 @@ class Sigma3d(GridXYZ):
 		g    = self._physical_constants['gravitational_acceleration']
 
 		# Interface height
-		self.height_interface = Rd / g * np.log(1 / self.z_interface) * \
-								(T_sl - 0.5 * beta * np.log(1 / self.z_interface))
+		z_interface_v = self.z_interface.values.item()
+		height_interface_v = Rd / g * np.log(1 / z_interface_v) * \
+							 (T_sl - 0.5 * beta * np.log(1 / z_interface_v))
+		self.height_interface = sympl.DataArray(height_interface_v,
+												attrs=self.z_interface.attrs)
 
 		# Compute geometric height and reference pressure
 		self._update_metric_terms()
@@ -412,7 +418,7 @@ class Sigma3d(GridXYZ):
 		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
 						(1, 1, self.nz+1))
 		zt = zv[0, 0]
-		zf = self.z_interface
+		zf = self.z_interface.values.item()
 
 		# Reference pressure at the terrain surface
 		if eq(beta, 0.):
