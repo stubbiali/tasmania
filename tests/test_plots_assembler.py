@@ -119,7 +119,7 @@ def test_plot_1d_x():
 
 	# Plot
 	from tasmania.plot.assemblers import PlotsAssembler as Assembler
-	assembler = Assembler([monitor1, monitor2], interactive=True,
+	assembler = Assembler([monitor1, monitor2], interactive=False,
 						  figsize=[8, 8], plot_properties=plot_properties)
 	assembler.store([state1, state2], save_dest=save_dest, show=False)
 
@@ -216,7 +216,7 @@ def test_plot_1d_z():
 
 	# Plot
 	from tasmania.plot.assemblers import PlotsAssembler as Assembler
-	assembler = Assembler([monitor1, monitor2], interactive=True,
+	assembler = Assembler([monitor1, monitor2], interactive=False,
 						  figsize=[8, 8], plot_properties=plot_properties)
 	assembler.store([state1, state2], save_dest=save_dest, show=False)
 
@@ -309,7 +309,7 @@ def test_plot_2d():
 
 	# Plot
 	from tasmania.plot.assemblers import PlotsAssembler as Assembler
-	assembler = Assembler([monitor1, monitor2], interactive=True,
+	assembler = Assembler([monitor1, monitor2], interactive=False,
 						  figsize=[7, 8], plot_properties=plot_properties)
 	assembler.store([state1, state1], save_dest=save_dest, show=False)
 

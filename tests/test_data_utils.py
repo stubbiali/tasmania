@@ -20,39 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import timedelta
 import numpy as np
 import pytest
 from sympl import DataArray
 
 from tasmania.utils import data_utils as du
 from tasmania.utils.exceptions import ConstantNotFoundError
-
-
-@pytest.fixture
-def grid_xz():
-	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 101
-	domain_z, nz = DataArray([400., 300.], dims='z', attrs={'units': 'K'}), 25
-
-	from tasmania.grids.grid_xz import GridXZ as Grid
-	return Grid(domain_x, nx, domain_z, nz,
-				topo_type='gaussian', topo_time=timedelta(seconds=0),
-				topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
-
-
-@pytest.fixture
-def grid():
-	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 101
-	domain_y, ny = DataArray([-250., 250.], dims='y', attrs={'units': 'km'}), 51
-	domain_z, nz = DataArray([400., 300.], dims='z', attrs={'units': 'K'}), 25
-
-	from tasmania.grids.grid_xyz import GridXYZ as Grid
-	return Grid(domain_x, nx, domain_y, ny, domain_z, nz,
-				topo_type='gaussian', topo_time=timedelta(seconds=0),
-				topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'}),
-							 'topo_width_y': DataArray(15.0, attrs={'units': 'km'})})
 
 
 def test_get_constant():
@@ -136,38 +109,38 @@ def test_make_dataarray_xy(grid):
 	assert array_d.attrs['units'] == '1'
 
 
-def test_make_dataarray_xz(grid_xz):
-	nx, nz = grid_xz.nx, grid_xz.nz
+def test_make_dataarray_xz(grid_xz_2d):
+	nx, nz = grid_xz_2d.nx, grid_xz_2d.nz
 
 	raw_array_a, units_a = np.random.rand(nx, nz), 'mm h^-1'
 	raw_array_b, units_b = np.random.rand(nx+1, nz), 'm s^-1'
 	raw_array_c, units_c = np.random.rand(nx, nz+1), 'm s^-1'
 	raw_array_d, units_d = np.random.rand(nx+1, nz+1), '1'
 
-	array_a = du.make_dataarray_2d(raw_array_a, grid_xz, units_a)
-	array_b = du.make_dataarray_2d(raw_array_b, grid_xz, units_b)
-	array_c = du.make_dataarray_2d(raw_array_c, grid_xz, units_c)
-	array_d = du.make_dataarray_2d(raw_array_d, grid_xz, units_d)
+	array_a = du.make_dataarray_2d(raw_array_a, grid_xz_2d, units_a)
+	array_b = du.make_dataarray_2d(raw_array_b, grid_xz_2d, units_b)
+	array_c = du.make_dataarray_2d(raw_array_c, grid_xz_2d, units_c)
+	array_d = du.make_dataarray_2d(raw_array_d, grid_xz_2d, units_d)
 
 	assert array_a.shape == (nx, nz)
 	assert np.allclose(raw_array_a, array_a.values)
-	assert array_a.dims == (grid_xz.x.dims[0], grid_xz.z.dims[0])
+	assert array_a.dims == (grid_xz_2d.x.dims[0], grid_xz_2d.z.dims[0])
 	assert array_a.attrs['units'] == 'mm h^-1'
 
 	assert array_b.shape == (nx+1, nz)
 	assert np.allclose(raw_array_b, array_b.values)
-	assert array_b.dims == (grid_xz.x_at_u_locations.dims[0], grid_xz.z.dims[0])
+	assert array_b.dims == (grid_xz_2d.x_at_u_locations.dims[0], grid_xz_2d.z.dims[0])
 	assert array_b.attrs['units'] == 'm s^-1'
 
 	assert array_c.shape == (nx, nz+1)
 	assert np.allclose(raw_array_c, array_c.values)
-	assert array_c.dims == (grid_xz.x.dims[0], grid_xz.z_on_interface_levels.dims[0])
+	assert array_c.dims == (grid_xz_2d.x.dims[0], grid_xz_2d.z_on_interface_levels.dims[0])
 	assert array_c.attrs['units'] == 'm s^-1'
 
 	assert array_d.shape == (nx+1, nz+1)
 	assert np.allclose(raw_array_d, array_d.values)
-	assert array_d.dims == (grid_xz.x_at_u_locations.dims[0],
-							grid_xz.z_on_interface_levels.dims[0])
+	assert array_d.dims == (grid_xz_2d.x_at_u_locations.dims[0],
+							grid_xz_2d.z_on_interface_levels.dims[0])
 	assert array_d.attrs['units'] == '1'
 
 

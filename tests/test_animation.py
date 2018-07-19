@@ -180,7 +180,6 @@ def test_animation_plots_assembler():
 	# PlotsAssembler
 	#
 	# Plot properties
-	# Plot properties
 	plot_properties = {
 		'fontsize': 16,
 		'title_left': 'Accumulated precipitation [mm]',
@@ -194,7 +193,7 @@ def test_animation_plots_assembler():
 
 	# Instantiate the artist which generates the frames
 	from tasmania.plot.assemblers import PlotsAssembler
-	assembler = PlotsAssembler([monitor1, monitor2], interactive=True,
+	assembler = PlotsAssembler([monitor1, monitor2], interactive=False,
 							   plot_properties=plot_properties)
 
 	# Create the animation
