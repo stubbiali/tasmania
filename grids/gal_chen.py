@@ -68,7 +68,7 @@ class GalChen2d(GridXZ):
 	height_on_interface_levels : dataarray_like
 		2-D :class:`sympl.DataArray` representing the geometric height
 		of the half levels (in [m]).
-	height_interface : float 
+	height_interface : dataarray_like
 		Geometric height corresponding to :math:`\mu = \mu_F` (in [m]).
 	reference_pressure : dataarray_like
 		2-D :class:`sympl.DataArray` representing the reference pressure
@@ -124,10 +124,10 @@ class GalChen2d(GridXZ):
 				* 'air_temperature_at_sea_level', in units compatible with [K];
 				* 'beta' (the rate of increase in reference temperature with the \
 					logarithm of reference pressure), in units compatible with \
-					([K ~ Pa:math:`^{-1}`]);
+					([K ~ Pa^-1]);
 				* 'gas_constant_of_dry_air', in units compatible with \
-					([J K:math:`^{-1}` Kg:math:`^{-1}`]);
-				* 'gravitational acceleration', in units compatible with [m s:math:`^{-2}`].
+					([J K^-1 Kg:math:`^{-1}`]);
+				* 'gravitational acceleration', in units compatible with [m s^-2].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
@@ -162,7 +162,7 @@ class GalChen2d(GridXZ):
 						 topo_kwargs=topo_kwargs, dtype=dtype)
 		
 		# Interface height
-		self.height_interface = self.z_interface
+		self.height_interface = self.z_interface.to_units('m')
 
 		# Keep track of the physical constants to use
 		self._physical_constants = get_physical_constants(_d_physical_constants,
@@ -198,7 +198,7 @@ class GalChen2d(GridXZ):
 		g    = self._physical_constants['gravitational_acceleration']
 		hs = np.repeat(self.topography_height[:, np.newaxis], self.nz+1, axis=1)
 		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis], (1, self.nz+1))
-		zf = self.z_interface
+		zf = self.z_interface.values.item()
 		
 		# Geometric height of the interface levels
 		a = np.repeat(zv, self.nx, axis=0)
@@ -263,7 +263,7 @@ class GalChen3d(GridXYZ):
 	height_on_interface_levels : dataarray_like
 		3-D :class:`sympl.DataArray` representing the geometric height
 		of the half levels (in [m]).
-	height_interface : float
+	height_interface : dataarray_like
 		Geometric height corresponding to :math:`\mu = \mu_F` (in [m]).
 	reference_pressure : dataarray_like
 		3-D :class:`sympl.DataArray` representing the reference pressure
@@ -324,10 +324,10 @@ class GalChen3d(GridXYZ):
 				* 'air_temperature_at_sea_level', in units compatible with [K];
 				* 'beta' (the rate of increase in reference temperature with the \
 					logarithm of reference pressure), in units compatible with \
-					([K ~ Pa:math:`^{-1}`]);
+					([K ~ Pa^-1]);
 				* 'gas_constant_of_dry_air', in units compatible with \
-					([J K:math:`^{-1}` Kg:math:`^{-1}`]);
-				* 'gravitational acceleration', in units compatible with [m s:math:`^{-2}`].
+					([J K^-1 Kg:math:`^{-1}`]);
+				* 'gravitational acceleration', in units compatible with [m s^-2].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
@@ -363,7 +363,7 @@ class GalChen3d(GridXYZ):
 						 topo_kwargs=topo_kwargs, dtype=dtype)
 
 		# Interface height
-		self.height_interface = self.z_interface
+		self.height_interface = self.z_interface.to_units('m')
 
 		# Keep track of the physical constants to use
 		self._physical_constants = get_physical_constants(_d_physical_constants,
@@ -400,7 +400,7 @@ class GalChen3d(GridXYZ):
 		hs = np.repeat(self.topography_height[:, :, np.newaxis], self.nz+1, axis=2)
 		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
 						(1, 1, self.nz+1))
-		zf = self.z_interface
+		zf = self.z_interface.values.item()
 
 		# Geometric height at the interface levels
 		a = np.tile(zv, (self.nx, self.ny, 1))
