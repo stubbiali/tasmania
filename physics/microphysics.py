@@ -75,13 +75,13 @@ class Kessler(Prognostic):
 			:obj:`True` if the evaporation of raindrops should be taken
 			into account, :obj:`False` otherwise. Defaults to :obj:`True`.
 		autoconversion_threshold : `dataarray_like`, optional
-			Autoconversion threshold, in units compatible with [g g:math:`^{-1}`].
+			Autoconversion threshold, in units compatible with [g g^-1].
 			Defaults to :attr:`~tasmania.physics.microphysics.Kessler._d_a`.
 		rate_of_autoconversion : `dataarray_like`, optional
-			Rate of autoconversion, in units compatible with [s:math:`^{-1}`].
+			Rate of autoconversion, in units compatible with [s^-1].
 			Defaults to :attr:`~tasmania.physics.microphysics.Kessler._d_k1`.
 		rate_of_collection : `dataarray_like`, optional
-			Rate of collection, in units compatible with [s:math:`^{-1}`].
+			Rate of collection, in units compatible with [s^-1].
 			Defaults to :attr:`~tasmania.physics.microphysics.Kessler._d_k2`.
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
@@ -92,13 +92,13 @@ class Kessler(Prognostic):
 			storing the values and units of those constants. The constants might be:
 
 				* 'gas_constant_of_dry_air', in units compatible with \
-					[J K:math:`^{-1}` Kg:math:`^{-1}`];
+					[J K^-1 Kg^-1];
 				* 'gas_constant_of_water_vapor', in units compatible with \
-					[J K:math:`^{-1}` Kg:math:`^{-1}`];
+					[J K^-1 Kg^-1];
 				* 'latent_heat_of_vaporization_of_water', in units compatible with \
-					[J kg:math:`^{-1}`];
+					[J kg^-1];
 				* 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-					with [J K:math:`^{-1}` Kg:math:`^{-1}`].
+					with [J K^-1 Kg^-1].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
@@ -473,13 +473,13 @@ class SaturationAdjustmentKessler(Diagnostic):
 			storing the values and units of those constants. The constants might be:
 
 				* 'gas_constant_of_dry_air', in units compatible with \
-					[J K:math:`^{-1}` Kg:math:`^{-1}`];
+					[J K^-1 Kg^-1];
 				* 'gas_constant_of_water_vapor', in units compatible with \
-					[J K:math:`^{-1}` Kg:math:`^{-1}`];
+					[J K^-1 Kg^-1];
 				* 'latent_heat_of_vaporization_of_water', in units compatible with \
-					[J kg:math:`^{-1}`];
+					[J kg^-1];
 				* 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-					with [J K:math:`^{-1}` Kg:math:`^{-1}`].
+					with [J K^-1 Kg^-1].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
