@@ -30,6 +30,7 @@ This module contains
 import numpy as np
 import warnings
 import pickle
+import os
 
 from mpi4py import MPI
 from pymetis import part_graph
@@ -65,12 +66,11 @@ class DomainPartitions:
 
 
 class DomainSubdivision:
-    def __init__(self, id, pid, size, global_coords, gridpoints, neighbors_id):
+    def __init__(self, id, pid, size, global_coords, neighbors_id):
         self.id = id
         self.partitions_id = pid
         self.global_coords = global_coords
         self.size = size
-        self.gridpoints = gridpoints
         self.neighbors_id = neighbors_id
         self.neighbor_list = None
         self.fields = {}
@@ -79,6 +79,8 @@ class DomainSubdivision:
         self.recv_slices = {}
         self.get_slices = {}
         self.get_global = {}
+
+        # print(self.size, self.global_coords)
 
     def check_globalcoords(self, i, j, k):
         return (self.global_coords[0] <= i < self.global_coords[1]
@@ -196,19 +198,31 @@ class DomainSubdivision:
                   self.halos[fieldname][4]:(None if self.halos[fieldname][4] == 0
                                       else self.halos[fieldname][4] + self.halos[fieldname][4])]
         ]
-        # print(self.recv_slices[fieldname], self.get_slices[fieldname])
+        # print(self.recv_slices[fieldname], self.get_slices[fieldname], self.get_global[fieldname])
 
-    def save_fields(self):
-        for k in self.fields.keys():
-            filename = (str(k) + "_from_"
-                        + "x" + str(self.global_coords[0])
-                        + "y" + str(self.global_coords[2])
-                        + "z" + str(self.global_coords[4])
-                        + "_to_"
-                        + "x" + str(self.global_coords[1] - 1)
-                        + "y" + str(self.global_coords[3] - 1)
-                        + "z" + str(self.global_coords[5] - 1))
-            np.save(filename, self.get_interior_field(k))
+    def save_fields(self, fieldnames=None):
+        if fieldnames is None:
+            for k in self.fields.keys():
+                filename = (str(k) + "_from_"
+                            + "x" + str(self.global_coords[0])
+                            + "y" + str(self.global_coords[2])
+                            + "z" + str(self.global_coords[4])
+                            + "_to_"
+                            + "x" + str(self.global_coords[1] - 1)
+                            + "y" + str(self.global_coords[3] - 1)
+                            + "z" + str(self.global_coords[5] - 1))
+                np.save(filename, self.get_interior_field(k))
+        else:
+            for k in fieldnames:
+                filename = (str(k) + "_from_"
+                            + "x" + str(self.global_coords[0])
+                            + "y" + str(self.global_coords[2])
+                            + "z" + str(self.global_coords[4])
+                            + "_to_"
+                            + "x" + str(self.global_coords[1] - 1)
+                            + "y" + str(self.global_coords[3] - 1)
+                            + "z" + str(self.global_coords[5] - 1))
+                np.save(filename, self.get_interior_field(k))
 
     def register_stencil(self, **kwargs):
         # Set default values
@@ -267,9 +281,10 @@ class DomainSubdivision:
             ulz = max(ulz, self.halos[k][4])
             drz = max(drz, self.halos[k][5])
 
-        drx = self.size[0] + ulx - drx + 1
-        dry = self.size[1] + uly - dry + 1
-        drz = self.size[2] + ulz - drz + 1
+        # endpoint = self.size + lower halo - 1 (because index starts at 0 but size does not)
+        drx = self.size[0] + ulx - 1
+        dry = self.size[1] + uly - 1
+        drz = self.size[2] + ulz - 1
 
         domain = gt.domain.Rectangle((ulx, uly, ulz), (drx, dry, drz))
         # print(domain.up_left, domain.down_right)
@@ -301,7 +316,7 @@ class DomainSubdivision:
                self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]]
 
     def swap_fields(self, field1, field2):
-        self.fields[field1], self.fields[field2] = self.fields[field2], self.fields[field1]
+        self.fields[field1][:], self.fields[field2][:] = self.fields[field2][:], self.fields[field1][:]
 
     def communicate(self, fieldname=None):
         if fieldname is None:
@@ -316,20 +331,26 @@ class DomainSubdivision:
         # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
             temp_buffer[d] = np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
-
             # Check if neighbor in current direction is the global boundary:
             if self.check_global_boundary(d):
                 # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
                 requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
+                # print("Hi i am proc " + str(MPI.COMM_WORLD.Get_rank())
+                #       + " and I hit the global boundary with my subdivision " + str(self.id)
+                #       + " in direction " + str(d)
+                #       + " my global coordinates are " + str(self.global_coords))
                 # Put global boundary file values into the halo region of the subdivision
-                if self.global_bc[fieldname] is not None:
-                    self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
-                        self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
-                else:
-                    warnings.warn("No boundary condition file provided.", RuntimeWarning)
+                # if self.global_bc[fieldname] is not None:
+                #     # print(self.recv_slices[fieldname][d], self.get_global[fieldname][d])
+                #     self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
+                #         self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
+                # else:
+                #     warnings.warn("No boundary condition file provided.", RuntimeWarning)
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
-                if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]:
+                if (self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                        or MPI.COMM_WORLD.Get_size() == 1):
+                    requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
                     if self.halos[fieldname][d] != 0:
                         self.communicate_local(fieldname,
                                                self.recv_slices[fieldname][d],
@@ -337,7 +358,6 @@ class DomainSubdivision:
                                                d)
                 else:
                     if self.halos[fieldname][d] != 0:
-
                         if MPI.COMM_WORLD.Get_rank() % 2 == 0:
                                 requests[2 * d] = self.communicate_external_send(
                                     fieldname,
@@ -364,50 +384,19 @@ class DomainSubdivision:
                                 self.get_slices[fieldname][d],
                                 DomainPartitions.domain_partitions[self.neighbors_id[d]]
                             )
+                    else:
+                        requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
 
-        # print(requests)
-        MPI.Request.waitall(requests)
+        if MPI.COMM_WORLD.Get_size() > 1:
+            # print(requests)
+            MPI.Request.waitall(requests)
 
-        for d in range(len(self.neighbors_id)):
-            # Check if neighbor in current direction is the global boundary:
-            if not self.check_global_boundary(d):
-                self.fields[fieldname][self.recv_slices[fieldname][d]] = temp_buffer[d].copy()
-#
-        # # Check if negx neighbor is local or external
-        # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[0]]:
-        #     self.communicate_local_negx(fieldname)
-        # else:
-        #     pass
-        #
-        # # Check if posx neighbor is local or external
-        # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[1]]:
-        #     self.communicate_local_posx(fieldname)
-        # else:
-        #     pass
-        #
-        # # Check if negy neighbor is local or external
-        # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[2]]:
-        #     self.communicate_local_negy(fieldname)
-        # else:
-        #     pass
-        #
-        # # Check if posy neighbor is local or external
-        # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[3]]:
-        #     self.communicate_local_posy(fieldname)
-        # else:
-        #     pass
-        #
-        # # Check if negz neighbor is local or external
-        # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[4]]:
-        #     self.communicate_local_negz(fieldname)
-        # else:
-        #     pass
-        #
-        # # Check if posz neighbor is local or external
-        # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[5]]:
-        #     self.communicate_local_posz(fieldname)
-        # else:
-        #     pass
+            for d in range(len(self.neighbors_id)):
+                # Check if neighbor in current direction is the global boundary:
+                if not self.check_global_boundary(d):
+                    # Check if neighbor subdivision is in the same partition
+                    if not self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]:
+                        self.fields[fieldname][self.recv_slices[fieldname][d]] = temp_buffer[d].copy()
 
     def communicate_local(self, fieldname, recv_slice, get_slice, neighbor_id):
         # Numpy view of the halo region
@@ -418,303 +407,6 @@ class DomainSubdivision:
         get = neighbor_sd.fields[fieldname][get_slice]
         # Transfer overlap region into halo region
         recv[:] = get[:]
-
-    # def communicate_local_negx(self, fieldname):
-    #     recv_negx = self.fields[fieldname][
-    #                 0:self.halos[fieldname][0],
-    #                 self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                 self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     negx_sd = self.get_local_neighbor(self.neighbors_id[0])
-    #
-    #     get_posx = negx_sd.fields[fieldname][
-    #                -(self.halos[fieldname][1]+self.halos[fieldname][1]):-self.halos[fieldname][1],
-    #                self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     recv_negx[:] = get_posx[:]
-    #
-    # def communicate_local_posx(self, fieldname):
-    #     recv_posx = self.fields[fieldname][
-    #                 -self.halos[fieldname][1]:,
-    #                 self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                 self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     posx_sd = self.get_local_neighbor(self.neighbors_id[1])
-    #
-    #     get_negx = posx_sd.fields[fieldname][
-    #                self.halos[fieldname][0]:self.halos[fieldname][0]+self.halos[fieldname][0],
-    #                self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     recv_posx[:] = get_negx[:]
-    #
-    # def communicate_local_negy(self, fieldname):
-    #     recv_negy = self.fields[fieldname][
-    #                 self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                 0:self.halos[fieldname][2],
-    #                 self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     negy_sd = self.get_local_neighbor(self.neighbors_id[2])
-    #
-    #     get_posy = negy_sd.fields[fieldname][
-    #                self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                -(self.halos[fieldname][3]+self.halos[fieldname][3]):-self.halos[fieldname][3],
-    #                self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     recv_negy[:] = get_posy[:]
-    #
-    # def communicate_local_posy(self, fieldname):
-    #     recv_posy = self.fields[fieldname][
-    #                 self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                 -self.halos[fieldname][3]:,
-    #                 self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     posy_sd = self.get_local_neighbor(self.neighbors_id[3])
-    #
-    #     get_negy = posy_sd.fields[fieldname][
-    #                self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                self.halos[fieldname][2]:self.halos[fieldname][2]+self.halos[fieldname][2],
-    #                self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #
-    #     recv_posy[:] = get_negy[:]
-    #
-    # def communicate_local_negz(self, fieldname):
-    #     recv_negz = self.fields[fieldname][
-    #                 self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                 self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                 0:self.halos[fieldname][4]]
-    #
-    #     negz_sd = self.get_local_neighbor(self.neighbors_id[4])
-    #
-    #     get_posz = negz_sd.fields[fieldname][
-    #                self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                -(self.halos[fieldname][5] + self.halos[fieldname][5]):-self.halos[fieldname][5]]
-    #
-    #     recv_negz[:] = get_posz[:]
-    #
-    # def communicate_local_posz(self, fieldname):
-    #     recv_posz = self.fields[fieldname][
-    #                 self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                 self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                 -self.halos[fieldname][5]:]
-    #
-    #     posz_sd = self.get_local_neighbor(self.neighbors_id[5])
-    #
-    #     get_negz = posz_sd.fields[fieldname][
-    #                self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #                self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #                self.halos[fieldname][4]:self.halos[fieldname][4]+self.halos[fieldname][4]]
-    #
-    #     recv_posz[:] = get_negz[:]
-    #
-    # def communicate_field_old(self, fieldname):
-    #     reqs = [None, None, None, None, None, None, None, None, None, None, None, None]
-    #     original_shape = self.fields[fieldname].shape
-    #     self.fields[fieldname] = self.fields[fieldname].reshape(-1)
-    #
-    #     halo0 = MPI.DOUBLE.Create_vector(count=original_shape[0]*self.halos[fieldname][0], blocklength=1,
-    #                                      stride=original_shape[1] * original_shape[2])
-    #     halo0.Commit()
-    #
-    #     halo1 = MPI.DOUBLE.Create_vector(count=original_shape[0]*self.halos[fieldname][1], blocklength=1,
-    #                                      stride=original_shape[1] * original_shape[2])
-    #     halo1.Commit()
-    #
-    #     halo2 = MPI.DOUBLE.Create_vector(count=original_shape[1]*self.halos[fieldname][2], blocklength=1,
-    #                                      stride=original_shape[2])
-    #     halo2.Commit()
-    #
-    #     halo3 = MPI.DOUBLE.Create_vector(count=original_shape[1]*self.halos[fieldname][3], blocklength=1,
-    #                                      stride=original_shape[2])
-    #     halo3.Commit()
-    #
-    #     halo4 = MPI.DOUBLE.Create_vector(count=original_shape[2]*self.halos[fieldname][4], blocklength=1,
-    #                                      stride=1)
-    #     halo4.Commit()
-    #
-    #     halo5 = MPI.DOUBLE.Create_vector(count=original_shape[2]*self.halos[fieldname][5], blocklength=1,
-    #                                      stride=1)
-    #     halo5.Commit()
-    #     # Isend(self, buf, int dest, int tag=0)
-    #
-    #     if MPI.COMM_WORLD.Get_rank() % 2 == 0:
-    #         # Send neg x halo to neighbor
-    #         start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #                       + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #
-    #         reqs[0] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo0],
-    #                                            dest=self.neighbors[0])
-    #
-    #         # Receive pos x halo from neighbor
-    #         start_ind = (((self.halos[fieldname][0]) * original_shape[1]
-    #                       + original_shape[1] - self.halos[fieldname][2])
-    #                      * original_shape[2] + self.halos[fieldname][4])
-    #
-    #         reqs[1] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo1],
-    #                                            source=self.neighbors[1])
-    #
-    #         # Send pos x halo to neighbor
-    #         start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #                       + original_shape[1] - self.halos[fieldname][2] - self.halos[fieldname][3])
-    #                      * original_shape[2] + self.halos[fieldname][4])
-    #         reqs[2] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo1],
-    #                                            dest=self.neighbors[0])
-    #
-    #         # Receive neg x halo from neighbor
-    #         start_ind = ((self.halos[fieldname][0] * original_shape[1]) * original_shape[2] + self.halos[fieldname][4])
-    #         reqs[3] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo0],
-    #                                            source=self.neighbors[1])
-    #
-    #         # # Send neg y halo to neighbor
-    #         # start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #         #               + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #         #
-    #         # reqs[4] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo2],
-    #         #                                    dest=self.neighbors[0])
-    #         #
-    #         # # Receive pos y halo from neighbor
-    #         # start_ind = (((original_shape[0] - self.halos[fieldname][0]) * original_shape[1]
-    #         #               + self.halos[fieldname][2])
-    #         #              * original_shape[2] + self.halos[fieldname][4])
-    #         # reqs[5] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo3],
-    #         #                                source=self.neighbors[1])
-    #         #
-    #         # # Send pos y halo to neighbor
-    #         # start_ind = (((original_shape[0] - self.halos[fieldname][0] - self.halos[fieldname][1]) * original_shape[1]
-    #         #               + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #         #
-    #         # reqs[6] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo3],
-    #         #                                    dest=self.neighbors[0])
-    #         #
-    #         # # Receive neg y halo from neighbor
-    #         # start_ind = ((0 * original_shape[1]
-    #         #               + self.halos[fieldname][2])
-    #         #              * original_shape[2] + self.halos[fieldname][4])
-    #         # reqs[7] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo2],
-    #         #                                source=self.neighbors[1])
-    #         # # Send neg z halo to neighbor
-    #         # start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #         #               + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #         #
-    #         # reqs[8] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo4],
-    #         #                                    dest=self.neighbors[0])
-    #     else:
-    #         # Receive pos x halo from neighbor
-    #         start_ind = (((self.halos[fieldname][0]) * original_shape[1]
-    #                       + original_shape[1] - self.halos[fieldname][2])
-    #                      * original_shape[2] + self.halos[fieldname][4])
-    #         reqs[0] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo1],
-    #                                        source=self.neighbors[1])
-    #
-    #         # Send neg x halo to neighbor
-    #         start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #                       + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #         reqs[1] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo0],
-    #                                            dest=self.neighbors[0])
-    #
-    #         # Receive neg x halo from neighbor
-    #         start_ind = ((self.halos[fieldname][0] * original_shape[1]) * original_shape[2] + self.halos[fieldname][4])
-    #         reqs[2] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo0],
-    #                                            source=self.neighbors[1])
-    #
-    #         # Send pos x halo to neighbor
-    #         start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #                       + original_shape[1] - self.halos[fieldname][2] - self.halos[fieldname][3])
-    #                      * original_shape[2] + self.halos[fieldname][4])
-    #         reqs[3] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo1],
-    #                                            dest=self.neighbors[0])
-    #
-    #         # # Receive pos y halo from neighbor
-    #         # start_ind = (((original_shape[0] - self.halos[fieldname][0]) * original_shape[1]
-    #         #               + self.halos[fieldname][2])
-    #         #              * original_shape[2] + self.halos[fieldname][4])
-    #         # reqs[4] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo3],
-    #         #                                source=self.neighbors[1])
-    #         #
-    #         # # Send neg y halo to neighbor
-    #         # start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #         #               + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #         #
-    #         # reqs[5] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo2],
-    #         #                                    dest=self.neighbors[0])
-    #         #
-    #         # # Receive neg y halo from neighbor
-    #         # start_ind = ((0 * original_shape[1]
-    #         #               + self.halos[fieldname][2])
-    #         #              * original_shape[2] + self.halos[fieldname][4])
-    #         # reqs[6] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo2],
-    #         #                                source=self.neighbors[1])
-    #         #
-    #         # # Send pos y halo to neighbor
-    #         # start_ind = (((original_shape[0] - self.halos[fieldname][0] - self.halos[fieldname][1]) * original_shape[1]
-    #         #               + self.halos[fieldname][2]) * original_shape[2] + self.halos[fieldname][4])
-    #         #
-    #         # reqs[7] = MPI.COMM_WORLD.Isend([self.fields[fieldname][start_ind:], 1, halo3],
-    #         #                                    dest=self.neighbors[0])
-    #
-    #         # # Receive pos z halo from neighbor
-    #         # start_ind = ((self.halos[fieldname][0] * original_shape[1]
-    #         #               + original_shape[1] - self.halos[fieldname][2])
-    #         #              * original_shape[2])
-    #         # reqs[8] = MPI.COMM_WORLD.Irecv([self.fields[fieldname][start_ind:], 1, halo5],
-    #         #                                source=self.neighbors[1])
-    #
-    #
-    #     MPI.Request.waitall(reqs[:4])
-    #     print(MPI.COMM_WORLD.Get_rank(), self.fields[fieldname][:].reshape(original_shape).transpose(), "\n")
-    #
-    #
-    #     # # These are the halos to receive: neg x, pos x, neg y, pos y, neg z, pos z
-    #     # self.fields[fieldname][0:self.halos[fieldname][0],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][-self.halos[fieldname][1]:,
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       0:self.halos[fieldname][2],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       -self.halos[fieldname][3]:,
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       0:self.halos[fieldname][4]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       -self.halos[fieldname][5]:]
-    #     #
-    #     # # # These are the halos to send:neg x, pos x, neg y, pos y, neg z, pos z
-    #     # self.fields[fieldname][self.halos[fieldname][0]:self.halos[fieldname][0]+self.halos[fieldname][0],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][-(self.halos[fieldname][1]+self.halos[fieldname][1]):-self.halos[fieldname][1],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       self.halos[fieldname][2]:self.halos[fieldname][2]+self.halos[fieldname][2],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       -(self.halos[fieldname][3]+self.halos[fieldname][3]):-self.halos[fieldname][3],
-    #     #       self.halos[fieldname][4]:-self.halos[fieldname][5]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       self.halos[fieldname][4]:self.halos[fieldname][4]+self.halos[fieldname][4]]
-    #     #
-    #     # self.fields[fieldname][self.halos[fieldname][0]:-self.halos[fieldname][1],
-    #     #       self.halos[fieldname][2]:-self.halos[fieldname][3],
-    #     #       -(self.halos[fieldname][5] + self.halos[fieldname][5]):-self.halos[fieldname][5]]
 
     def communicate_external_send(self, fieldname, send_slice, send_id):
         # temp_buffer = self.fields[fieldname][send_slice].copy()
@@ -910,10 +602,9 @@ class DomainPreprocess:
                     nindex = [negx, posx, negy, posy, negz, posz]
 
                     self.subdivisions.append(DomainSubdivision(id=ind,
-                                                               pid=ind,
+                                                               pid=0,
                                                                size=subdiv_size,
                                                                global_coords=global_range,
-                                                               gridpoints=subdiv_gridpoints,
                                                                neighbors_id=nindex))
 
                     self.vweights.append(int(comp_cost))
@@ -1030,6 +721,43 @@ class DomainPreprocess:
             print(partitioning[1])
 
 
+class DomainPostprocess:
+    def __init__(self):
+        with open("subdivisions.pkl", "rb") as f:
+            self.subdivisions = pickle.load(f)
+
+    def combine_output_files(self, size, fieldname, cleanup=False):
+        field = np.zeros((size[0], size[1], size[2]))
+        for sd in self.subdivisions:
+            filename = (str(fieldname) + "_from_"
+                        + "x" + str(sd.global_coords[0])
+                        + "y" + str(sd.global_coords[2])
+                        + "z" + str(sd.global_coords[4])
+                        + "_to_"
+                        + "x" + str(sd.global_coords[1] - 1)
+                        + "y" + str(sd.global_coords[3] - 1)
+                        + "z" + str(sd.global_coords[5] - 1)
+                        + ".npy")
+            field[sd.global_coords[0]:sd.global_coords[1],
+                  sd.global_coords[2]:sd.global_coords[3],
+                  sd.global_coords[4]:sd.global_coords[5]] = np.load(filename, mmap_mode='r')[:, :, :]
+
+        np.save(fieldname, field)
+
+        if cleanup:
+            for sd in self.subdivisions:
+                filename = (str(fieldname) + "_from_"
+                            + "x" + str(sd.global_coords[0])
+                            + "y" + str(sd.global_coords[2])
+                            + "z" + str(sd.global_coords[4])
+                            + "_to_"
+                            + "x" + str(sd.global_coords[1] - 1)
+                            + "y" + str(sd.global_coords[3] - 1)
+                            + "z" + str(sd.global_coords[5] - 1)
+                            + ".npy")
+                os.remove(filename)
+
+
 class DomainDecompositionStencil:
     def __init__(self):
         self.subdiv_stencil_list = []
@@ -1048,18 +776,19 @@ class DomainDecomposition:
 
         DomainPartitions.load_partitions(fileinput, fileinputformat)
 
-        for s in range(len(self.subdivisions)):
-            self.subdivisions[s].partitions_id = DomainPartitions.domain_partitions[s]
+        # If there are more than one MPI processors:
+        # Change the partitions id of the subdivision to the one given by the domain decomposition from the preprocess
+        if MPI.COMM_WORLD.Get_size() > 1:
+            for s in range(len(self.subdivisions)):
+                self.subdivisions[s].partitions_id = DomainPartitions.domain_partitions[s]
 
-
-        # Remove subdivisions of other partitions from list
-        # TODO This needs to be modified for MPI
-        # this_partition = 0
-        # temp_list = []
-        # for sd in self.subdivisions:
-        #     if sd.partitions_id == this_partition:
-        #         temp_list.append(sd)
-        # self.subdivisions = temp_list
+        # If there are more than one MPI processors: remove subdivisions of other partitions from list
+        if MPI.COMM_WORLD.Get_size() > 1:
+            temp_list = []
+            for sd in self.subdivisions:
+                if sd.partitions_id == MPI.COMM_WORLD.Get_rank():
+                    temp_list.append(sd)
+            self.subdivisions = temp_list
 
         for sd in self.subdivisions:
             sd.neighbor_list = self.subdivisions
@@ -1082,9 +811,9 @@ class DomainDecomposition:
         for sd in self.subdivisions:
             sd.communicate(fieldname)
 
-    def save_fields(self):
+    def save_fields(self, fieldnames=None):
         for sd in self.subdivisions:
-            sd.save_fields()
+            sd.save_fields(fieldnames)
 
     def swap_fields(self, field1, field2):
         for sd in self.subdivisions:

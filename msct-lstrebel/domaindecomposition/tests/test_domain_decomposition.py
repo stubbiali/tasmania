@@ -197,7 +197,7 @@ class TestDD(unittest.TestCase):
     def test_check_globalcoords(self):
         print("---------------TEST check global coords----------------------")
         dsubdiv = DomainSubdivision(id=0, pid=0, size=np.array([16, 8, 1]),
-                                    global_coords=np.array([1, 8, 1, 8, 1, 8]), gridpoints=128,
+                                    global_coords=np.array([1, 8, 1, 8, 1, 8]),
                                     neighbors_id=[2, 1, 6, 3, None, None])
 
         assert (dsubdiv.check_globalcoords(2, 2, 2))
@@ -216,11 +216,11 @@ class TestDD(unittest.TestCase):
 
         # Generate dummy classes
         subdiv0 = DomainSubdivision(id=0, pid=0, size=np.array([25, 20, 1]),
-                                    global_coords=np.array([0, 25, 0, 20, 0, 1]), gridpoints=500,
+                                    global_coords=np.array([0, 25, 0, 20, 0, 1]),
                                     neighbors_id=[1, 1, None, None, None, None])
 
         subdiv1 = DomainSubdivision(id=1, pid=0, size=np.array([25, 20, 1]),
-                                    global_coords=np.array([25, 50, 0, 20, 0, 1]), gridpoints=500,
+                                    global_coords=np.array([25, 50, 0, 20, 0, 1]),
                                     neighbors_id=[0, 0, None, None, None, None])
 
         # register test field with ic
@@ -243,7 +243,7 @@ class TestDD(unittest.TestCase):
     def test_register_stencil(self):
         print("---------------TEST register stencil----------------------")
         dummy_subdiv = DomainSubdivision(id=0, pid=0, size=np.array([16, 8, 1]),
-                                         global_coords=np.array([0, 16, 0, 8, 0, 1]), gridpoints=128,
+                                         global_coords=np.array([0, 16, 0, 8, 0, 1]),
                                          neighbors_id=[2, 1, 6, 3, None, None])
 
         dummy_subdiv.register_field(fieldname="unow", halo=[0, 0, 0, 0, 0, 0])
@@ -287,11 +287,11 @@ class TestDD(unittest.TestCase):
     def test_compute_local_subdivs(self):
         print("---------------TEST compute local subdivs----------------------")
         subdiv0 = DomainSubdivision(id=0, pid=0, size=np.array([8, 8, 1]),
-                                    global_coords=np.array([0, 8, 0, 8, 0, 1]), gridpoints=64,
+                                    global_coords=np.array([0, 8, 0, 8, 0, 1]),
                                     neighbors_id=np.array([None, 1, None, None, None]))
 
         subdiv1 = DomainSubdivision(id=1, pid=0, size=np.array([8, 8, 1]),
-                                    global_coords=np.array([8, 16, 8, 16, 0, 1]), gridpoints=64,
+                                    global_coords=np.array([8, 16, 8, 16, 0, 1]),
                                     neighbors_id=np.array([0, None, None, None, None]))
 
         DomainPartitions.domain_partitions = np.array([0, 0])
@@ -353,7 +353,7 @@ class TestDD(unittest.TestCase):
 
         # if MPI.COMM_WORLD.Get_rank() % 2 == 0:
         #     subdiv0 = DomainSubdivision(id=0, pid=0, size=np.array([5, 5, 2]),
-        #                                 global_coords=np.array([0, 5, 0, 5, 0, 1]), gridpoints=50,
+        #                                 global_coords=np.array([0, 5, 0, 5, 0, 1]),
         #                                 neighbors_id=np.array([1, 1, None, None, None, None]))
         #     slist = [subdiv0]
         #     subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])
@@ -374,7 +374,7 @@ class TestDD(unittest.TestCase):
         #     subdiv0.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
         # else:
         #     subdiv1 = DomainSubdivision(id=1, pid=0, size=np.array([5, 5, 2]),
-        #                                 global_coords=np.array([5, 10, 5, 10, 0, 1]), gridpoints=50,
+        #                                 global_coords=np.array([5, 10, 5, 10, 0, 1]),
         #                                 neighbors_id=np.array([0, 0, None, None, None, None]))
         #     slist = [subdiv1]
         #     subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])
@@ -383,7 +383,7 @@ class TestDD(unittest.TestCase):
         #     subdiv1.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
 
         subdiv0 = DomainSubdivision(id=0, pid=0, size=np.array([5, 5, 2]),
-                                    global_coords=np.array([0, 5, 0, 5, 0, 1]), gridpoints=50,
+                                    global_coords=np.array([0, 5, 0, 5, 0, 1]),
                                     neighbors_id=np.array([1, 1, 1, 1, 1, 1]))
         subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])
         subdiv0.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
@@ -402,7 +402,7 @@ class TestDD(unittest.TestCase):
         subdiv0.fields["unow"][:, :, -1] = -12
         subdiv0.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
         subdiv1 = DomainSubdivision(id=1, pid=0, size=np.array([5, 5, 2]),
-                                    global_coords=np.array([5, 10, 5, 10, 0, 1]), gridpoints=50,
+                                    global_coords=np.array([5, 10, 5, 10, 0, 1]),
                                     neighbors_id=np.array([0, 0, 0, 0, 0, 0]))
         subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])
         subdiv1.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
@@ -474,7 +474,6 @@ class TestDD(unittest.TestCase):
                                         pid=0,
                                         size=np.array([5, 5, 2]),
                                         global_coords=np.array([0, 5, 0, 5, 0, 1]),
-                                        gridpoints=50,
                                         neighbors_id=np.array([None, 1, 1, 1, 1, 1]))
             slist = [subdiv0]
             subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])#,
@@ -499,7 +498,6 @@ class TestDD(unittest.TestCase):
                                         pid=1,
                                         size=np.array([5, 5, 2]),
                                         global_coords=np.array([5, 10, 5, 10, 0, 1]),
-                                        gridpoints=50,
                                         neighbors_id=np.array([0, None, 0, 0, 0, 0]))
             slist = [subdiv1]
             subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])#,
