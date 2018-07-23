@@ -75,15 +75,17 @@ class DomainSubdivision:
         self.neighbor_list = None
         self.fields = {}
         self.halos = {}
+        self.global_bc = {}
         self.recv_slices = {}
         self.get_slices = {}
+        self.get_global = {}
 
     def check_globalcoords(self, i, j, k):
         return (self.global_coords[0] <= i < self.global_coords[1]
                 and self.global_coords[2] <= j < self.global_coords[3]
                 and self.global_coords[4] <= k < self.global_coords[5])
 
-    def register_field(self, fieldname, halo, field_ic_file=None):
+    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None):
         self.halos[fieldname] = halo
         self.fields[fieldname] = np.zeros((self.size[0] + halo[0] + halo[1],
                                            self.size[1] + halo[2] + halo[3],
@@ -96,62 +98,105 @@ class DomainSubdivision:
                                               self.global_coords[2]:self.global_coords[3],
                                               self.global_coords[4]:self.global_coords[5]]
 
+        self.global_bc[fieldname] = field_bc_file
         self.setup_slices(fieldname)
 
     def setup_slices(self, fieldname):
         self.recv_slices[fieldname] = [
             # Halo region in negative x direction
             np.s_[0:self.halos[fieldname][0],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Halo region in positive x direction
             np.s_[-self.halos[fieldname][1]:,
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Halo region in negative y direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  0:self.halos[fieldname][2],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  0:None if self.halos[fieldname][2] == 0 else self.halos[fieldname][2],
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Halo region in positive y direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
                   -self.halos[fieldname][3]:,
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Halo region in negative z direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
                   0:self.halos[fieldname][4]],
             # Halo region in positive z direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
                   -self.halos[fieldname][5]:]
         ]
 
         self.get_slices[fieldname] = [
             # Overlap region in neighboring, positive x direction
-            np.s_[-(self.halos[fieldname][1]+self.halos[fieldname][1]):-self.halos[fieldname][1],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+            np.s_[-(self.halos[fieldname][1] + self.halos[fieldname][1]):(None if self.halos[fieldname][1] == 0
+                                                                          else -self.halos[fieldname][1]),
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Overlap region in neighboring, negative x direction
-            np.s_[self.halos[fieldname][0]:self.halos[fieldname][0]+self.halos[fieldname][0],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+            np.s_[self.halos[fieldname][0]:(None if self.halos[fieldname][0] == 0
+                                            else self.halos[fieldname][0] + self.halos[fieldname][0]),
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Overlap region in neighboring, positive y direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  -(self.halos[fieldname][3]+self.halos[fieldname][3]):-self.halos[fieldname][3],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  -(self.halos[fieldname][3] + self.halos[fieldname][3]):(None if self.halos[fieldname][3] == 0
+                                                                          else -self.halos[fieldname][3]),
+                  self.halos[fieldname][4]::None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Overlap region in neighboring, negative y direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  self.halos[fieldname][2]:self.halos[fieldname][2]+self.halos[fieldname][2],
-                  self.halos[fieldname][4]:-self.halos[fieldname][5]],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  self.halos[fieldname][2]:(None if self.halos[fieldname][2] == 0
+                                            else self.halos[fieldname][2] + self.halos[fieldname][2]),
+                  self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Overlap region in neighboring, positive z direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
-                  -(self.halos[fieldname][5] + self.halos[fieldname][5]):-self.halos[fieldname][5]],
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+                  -(self.halos[fieldname][5] + self.halos[fieldname][5]):(None if self.halos[fieldname][5] == 0
+                                                                          else -self.halos[fieldname][5])],
             # Overlap region in neighboring, negative z direction
-            np.s_[self.halos[fieldname][0]:-self.halos[fieldname][1],
-                  self.halos[fieldname][2]:-self.halos[fieldname][3],
-                  self.halos[fieldname][4]:self.halos[fieldname][4]+self.halos[fieldname][4]]
+            np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+                  self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+                  self.halos[fieldname][4]:(None if self.halos[fieldname][4] == 0
+                                            else self.halos[fieldname][4] + self.halos[fieldname][4])]
         ]
+
+        self.get_global[fieldname] = [
+            # Overlap region in global boundary, positive x direction
+            np.s_[-(self.halos[fieldname][1] + self.halos[fieldname][1]):(None if self.halos[fieldname][1] == 0
+                                                                          else -self.halos[fieldname][1]),
+                  self.halos[fieldname][2]:self.halos[fieldname][2] + self.size[1],
+                  self.halos[fieldname][4]:self.halos[fieldname][4] + self.size[2]
+            ],
+            # Overlap region in global boundary, negative x direction
+            np.s_[self.halos[fieldname][0]:(None if self.halos[fieldname][0] == 0
+                                            else self.halos[fieldname][0] + self.halos[fieldname][0]),
+                  self.halos[fieldname][2]:self.halos[fieldname][2] + self.size[1],
+                  self.halos[fieldname][4]: self.halos[fieldname][4] + self.size[2]
+            ],
+            # Overlap region in global boundary, positive y direction
+            np.s_[self.halos[fieldname][0]:self.halos[fieldname][0] + self.size[0],
+                  -(self.halos[fieldname][3] + self.halos[fieldname][3]):(None if self.halos[fieldname][3] == 0
+                                                                    else -self.halos[fieldname][3]),
+                  self.halos[fieldname][4]:self.halos[fieldname][4] + self.size[2]],
+            # Overlap region in global boundary, negative y direction
+            np.s_[self.halos[fieldname][0]:self.halos[fieldname][0] + self.size[0],
+                  self.halos[fieldname][2]:(None if self.halos[fieldname][2] == 0
+                                      else self.halos[fieldname][2] + self.halos[fieldname][2]),
+                  self.halos[fieldname][4]:self.halos[fieldname][4] + self.size[2]],
+            # Overlap region in global boundary, positive z direction
+            np.s_[self.halos[fieldname][0]:self.halos[fieldname][0] + self.size[0],
+                  self.halos[fieldname][2]:self.halos[fieldname][2] + self.size[1],
+                  -(self.halos[fieldname][5] + self.halos[fieldname][5]):(None if self.halos[fieldname][5] == 0
+                                                                    else -self.halos[fieldname][5])],
+            # Overlap region in global boundary, negative z direction
+            np.s_[self.halos[fieldname][0]:self.halos[fieldname][0] + self.size[0],
+                  self.halos[fieldname][2]:self.halos[fieldname][2] + self.size[1],
+                  self.halos[fieldname][4]:(None if self.halos[fieldname][4] == 0
+                                      else self.halos[fieldname][4] + self.halos[fieldname][4])]
+        ]
+        # print(self.recv_slices[fieldname], self.get_slices[fieldname])
 
     def save_fields(self):
         for k in self.fields.keys():
@@ -216,10 +261,10 @@ class DomainSubdivision:
 
         for k in self.fields.keys():
             ulx = max(ulx, self.halos[k][0])
-            uly = max(uly, self.halos[k][1])
-            ulz = max(ulz, self.halos[k][2])
-            drx = max(drx, self.halos[k][3])
-            dry = max(dry, self.halos[k][4])
+            drx = max(drx, self.halos[k][1])
+            uly = max(uly, self.halos[k][2])
+            dry = max(dry, self.halos[k][3])
+            ulz = max(ulz, self.halos[k][4])
             drz = max(drz, self.halos[k][5])
 
         drx = self.size[0] + ulx - drx + 1
@@ -227,6 +272,7 @@ class DomainSubdivision:
         drz = self.size[2] + ulz - drz + 1
 
         domain = gt.domain.Rectangle((ulx, uly, ulz), (drx, dry, drz))
+        # print(domain.up_left, domain.down_right)
 
         # Instantiate the stencil with the changed subdivision inputs
         stencil = gt.NGStencil(
@@ -250,9 +296,9 @@ class DomainSubdivision:
 
     def get_interior_field(self, fieldname):
         return self.fields[fieldname][
-               self.halos[fieldname][0]:-self.halos[fieldname][1],
-               self.halos[fieldname][2]:-self.halos[fieldname][3],
-               self.halos[fieldname][4]:-self.halos[fieldname][5]]
+               self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
+               self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
+               self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]]
 
     def swap_fields(self, field1, field2):
         self.fields[field1], self.fields[field2] = self.fields[field2], self.fields[field1]
@@ -266,45 +312,65 @@ class DomainSubdivision:
 
     def communicate_field(self, fieldname):
         requests = [None] * 2 * len(self.neighbors_id)
+        temp_buffer = [None] * len(self.neighbors_id)
         # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
+            temp_buffer[d] = np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
+
             # Check if neighbor in current direction is the global boundary:
             if self.check_global_boundary(d):
-                pass
+                # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
+                requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
+                # Put global boundary file values into the halo region of the subdivision
+                self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
+                    self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
+
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
                 if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]:
-                    self.communicate_local(fieldname,
-                                           self.recv_slices[fieldname][d],
-                                           self.get_slices[fieldname][d],
-                                           d)
+                    if self.halos[fieldname][d] != 0:
+                        self.communicate_local(fieldname,
+                                               self.recv_slices[fieldname][d],
+                                               self.get_slices[fieldname][d],
+                                               d)
                 else:
-                    if MPI.COMM_WORLD.Get_rank() % 2 == 0:
-                            requests[2 * d] = self.communicate_external_send(
+                    if self.halos[fieldname][d] != 0:
+
+                        if MPI.COMM_WORLD.Get_rank() % 2 == 0:
+                                requests[2 * d] = self.communicate_external_send(
+                                    fieldname,
+                                    self.get_slices[fieldname][d],
+                                    DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                                )
+                                requests[2 * d + 1] = self.communicate_external_recv(
+                                    temp_buffer[d],
+                                    fieldname,
+                                    self.recv_slices[fieldname][d],
+                                    DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                                )
+
+                        else:
+                            requests[2 * d] = self.communicate_external_recv(
+                                temp_buffer[d],
+                                fieldname,
+                                self.recv_slices[fieldname][d],
+                                DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                            )
+
+                            requests[2 * d + 1] = self.communicate_external_send(
                                 fieldname,
                                 self.get_slices[fieldname][d],
                                 DomainPartitions.domain_partitions[self.neighbors_id[d]]
                             )
 
-                            requests[2 * d + 1] = self.communicate_external_recv(
-                                fieldname,
-                                self.recv_slices[fieldname][d],
-                                DomainPartitions.domain_partitions[self.neighbors_id[d]]
-                            )
-                    else:
-                        requests[2 * d] = self.communicate_external_recv(
-                            fieldname,
-                            self.recv_slices[fieldname][d],
-                            DomainPartitions.domain_partitions[self.neighbors_id[d]]
-                        )
-                        requests[2 * d + 1] = self.communicate_external_send(
-                            fieldname,
-                            self.get_slices[fieldname][d],
-                            DomainPartitions.domain_partitions[self.neighbors_id[d]]
-                        )
         # print(requests)
-        # MPI.Request.waitall(requests)
+        MPI.Request.waitall(requests)
 
+        for d in range(len(self.neighbors_id)):
+            # Check if neighbor in current direction is the global boundary:
+            if not self.check_global_boundary(d):
+                self.fields[fieldname][self.recv_slices[fieldname][d]] = temp_buffer[d].copy()
+#
         # # Check if negx neighbor is local or external
         # if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[0]]:
         #     self.communicate_local_negx(fieldname)
@@ -653,14 +719,14 @@ class DomainSubdivision:
         # print(temp_buffer)
         # req = MPI.COMM_WORLD.Isend(temp_buffer, dest=send_id)
         # print(MPI.COMM_WORLD.Get_rank(), send_id)
-        req = MPI.COMM_WORLD.Send(np.ascontiguousarray(self.fields[fieldname][send_slice]), dest=send_id)
-        # print(self.fields[fieldname][send_slice], send_id)
+        req = MPI.COMM_WORLD.Isend(np.ascontiguousarray(self.fields[fieldname][send_slice]), dest=send_id)
+        # print(self.fields[fieldname][send_slice], self.fields[fieldname].shape, send_slice, send_id)
         return req
 
-    def communicate_external_recv(self, fieldname, recv_slice, recv_id):
-        temp_buffer = np.zeros_like(self.fields[fieldname][recv_slice])
-        req = MPI.COMM_WORLD.Recv(temp_buffer, source=recv_id)
-        self.fields[fieldname][recv_slice] = temp_buffer.copy()
+    def communicate_external_recv(self, temp_buffer, fieldname, recv_slice, recv_id):
+        # temp_buffer = np.zeros_like(self.fields[fieldname][recv_slice])
+        req = MPI.COMM_WORLD.Irecv(temp_buffer[:], source=recv_id)
+        # self.fields[fieldname][recv_slice] = temp_buffer.copy()
         # MPI.Request.wait(req)
         # print(MPI.COMM_WORLD.Get_rank(), temp_buffer)
         # print(MPI.COMM_WORLD.Get_rank(), recv_id)
@@ -1000,9 +1066,9 @@ class DomainDecomposition:
         with open("subdivisions.pkl", "rb") as f:
             return pickle.load(f)
 
-    def register_field(self, fieldname, halo, field_ic_file=None):
+    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None):
         for sd in self.subdivisions:
-            sd.register_field(fieldname, halo, field_ic_file)
+            sd.register_field(fieldname, halo, field_ic_file, field_bc_file)
 
     def register_stencil(self, **kwargs):
         dds = DomainDecompositionStencil()

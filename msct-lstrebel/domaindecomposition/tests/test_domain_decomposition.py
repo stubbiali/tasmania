@@ -212,7 +212,7 @@ class TestDD(unittest.TestCase):
         print("---------------TEST register field----------------------")
         # Generate initial conditions file:
         ic = np.linspace(0, 999, 1000).reshape((50, 20, 1))
-        np.save("test_numpy_save", ic)
+        np.save("test_initial_conditions", ic)
 
         # Generate dummy classes
         subdiv0 = DomainSubdivision(id=0, pid=0, size=np.array([25, 20, 1]),
@@ -225,7 +225,7 @@ class TestDD(unittest.TestCase):
 
         # register test field with ic
         for sd in [subdiv0, subdiv1]:
-            sd.register_field(fieldname="unow", halo=[1, 1, 1, 1, 0, 0], field_ic_file="test_numpy_save.npy")
+            sd.register_field(fieldname="unow", halo=[1, 1, 1, 1, 0, 0], field_ic_file="test_initial_conditions.npy")
 
         # register test field without ic
         for sd in [subdiv0, subdiv1]:
@@ -467,15 +467,18 @@ class TestDD(unittest.TestCase):
 
     def test_communicate_two_way(self):
         print("---------------TEST communicate two way----------------------")
-
         DomainPartitions.domain_partitions = np.array([0, 1])
 
         if MPI.COMM_WORLD.Get_rank() % 2 == 0:
-            subdiv0 = DomainSubdivision(id=0, pid=0, size=np.array([5, 5, 2]),
-                                        global_coords=np.array([0, 5, 0, 5, 0, 1]), gridpoints=50,
-                                        neighbors_id=np.array([1, 1, 1, 1, 1, 1]))
+            subdiv0 = DomainSubdivision(id=0,
+                                        pid=0,
+                                        size=np.array([5, 5, 2]),
+                                        global_coords=np.array([0, 5, 0, 5, 0, 1]),
+                                        gridpoints=50,
+                                        neighbors_id=np.array([None, 1, 1, 1, 1, 1]))
             slist = [subdiv0]
-            subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])
+            subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2],
+                                   field_bc_file="test_boundary_condition_12x12x6.npy")
             subdiv0.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
             subdiv0.fields["unow"][2:-2, 2:-2, 2:-2] = np.linspace(0, 49, 50).reshape((5, 5, 2))
             subdiv0.fields["unow"][0, :, :] = -1
@@ -492,11 +495,15 @@ class TestDD(unittest.TestCase):
             subdiv0.fields["unow"][:, :, -1] = -12
             subdiv0.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
         else:
-            subdiv1 = DomainSubdivision(id=1, pid=1, size=np.array([5, 5, 2]),
-                                        global_coords=np.array([5, 10, 5, 10, 0, 1]), gridpoints=50,
-                                        neighbors_id=np.array([0, 0, 0, 0, 0, 0]))
+            subdiv1 = DomainSubdivision(id=1,
+                                        pid=1,
+                                        size=np.array([5, 5, 2]),
+                                        global_coords=np.array([5, 10, 5, 10, 0, 1]),
+                                        gridpoints=50,
+                                        neighbors_id=np.array([0, None, 0, 0, 0, 0]))
             slist = [subdiv1]
-            subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])
+            subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2],
+                                   field_bc_file="test_boundary_condition_12x12x6.npy")
             subdiv1.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
             subdiv1.fields["unow"][2:-2, 2:-2, 2:-2] = np.linspace(50, 99, 50).reshape((5, 5, 2))
             subdiv1.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
