@@ -322,9 +322,11 @@ class DomainSubdivision:
                 # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
                 requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
                 # Put global boundary file values into the halo region of the subdivision
-                self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
-                    self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
-
+                if self.global_bc[fieldname] is not None:
+                    self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
+                        self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
+                else:
+                    warnings.warn("No boundary condition file provided.", RuntimeWarning)
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
                 if self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]:

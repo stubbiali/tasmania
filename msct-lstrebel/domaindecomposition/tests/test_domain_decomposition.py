@@ -477,8 +477,8 @@ class TestDD(unittest.TestCase):
                                         gridpoints=50,
                                         neighbors_id=np.array([None, 1, 1, 1, 1, 1]))
             slist = [subdiv0]
-            subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2],
-                                   field_bc_file="test_boundary_condition_12x12x6.npy")
+            subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])#,
+                                   # field_bc_file="test_boundary_condition_12x12x6.npy")
             subdiv0.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
             subdiv0.fields["unow"][2:-2, 2:-2, 2:-2] = np.linspace(0, 49, 50).reshape((5, 5, 2))
             subdiv0.fields["unow"][0, :, :] = -1
@@ -502,8 +502,8 @@ class TestDD(unittest.TestCase):
                                         gridpoints=50,
                                         neighbors_id=np.array([0, None, 0, 0, 0, 0]))
             slist = [subdiv1]
-            subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2],
-                                   field_bc_file="test_boundary_condition_12x12x6.npy")
+            subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])#,
+                                   # field_bc_file="test_boundary_condition_12x12x6.npy")
             subdiv1.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
             subdiv1.fields["unow"][2:-2, 2:-2, 2:-2] = np.linspace(50, 99, 50).reshape((5, 5, 2))
             subdiv1.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
