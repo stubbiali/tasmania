@@ -40,7 +40,7 @@ def run_shankar():
     nx = 100
     ny = 100
     dt = 0.001
-    nt = 1 #600
+    nt = 1000
     eps = 0.01
     method = 'forward_backward'
     datatype = np.float64

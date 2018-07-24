@@ -465,52 +465,196 @@ class TestDD(unittest.TestCase):
         #     for k in sd.fields.keys():
         #         print(k, sd.get_interior_field(k).transpose())
 
+    def test_communicate_local(self):
+        print("---------------TEST communicate two way----------------------")
+        DomainPartitions.domain_partitions = np.array([0, 0])
+
+        size_x = 2
+        size_y = 2
+        size_z = 1
+        tot_size = size_x * size_y * size_z
+        # print(tot_size)
+        hxm = 1
+        hxp = 1
+        hym = 1
+        hyp = 1
+        hzm = 1
+        hzp = 1
+
+        # Prepare boundary condition file:
+        bc = -1.0 * np.arange((size_x + size_x + hxm + hxp) * (size_y + hym + hyp) * (size_z + hzm + hzp)).reshape(
+            (size_x + size_x + hxm + hxp), (size_y + hym + hyp), (size_z + hzm + hzp)
+        )
+        np.save("test_boundary_condition.npy", bc)
+
+        subdiv0 = DomainSubdivision(id=0,
+                                    pid=0,
+                                    size=np.array([size_x, size_y, size_z]),
+                                    global_coords=np.array([0, size_x, 0, size_y, 0, size_z]),
+                                    neighbors_id=np.array([None, 1, None, None, None, None]))
+        slist = [subdiv0]
+        subdiv0.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp],
+                               field_bc_file="test_boundary_condition.npy")
+        subdiv0.register_field(fieldname="unew", halo=[hxm, hxp, hym, hyp, hzm, hzp])
+        subdiv0.fields["unow"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.linspace(0, tot_size - 1, tot_size).reshape(
+            (size_x, size_y, size_z))
+        # subdiv0.fields["unow"][0, :, :] = -1
+        # subdiv0.fields["unow"][1, :, :] = -2i
+        # subdiv0.fields["unow"][-2, :, :] = -3
+        # subdiv0.fields["unow"][-1, :, :] = -4
+        # subdiv0.fields["unow"][:, 0, :] = -5
+        # subdiv0.fields["unow"][:, 1, :] = -6
+        # subdiv0.fields["unow"][:, -2, :] = -7
+        # subdiv0.fields["unow"][:, -1, :] = -8
+        # subdiv0.fields["unow"][:, :, 0] = -9
+        # subdiv0.fields["unow"][:, :, 1] = -10
+        # subdiv0.fields["unow"][:, :, -2] = -11
+        # subdiv0.fields["unow"][:, :, -1] = -12
+        subdiv0.fields["unew"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.zeros(tot_size).reshape((size_x, size_y, size_z))
+
+        subdiv1 = DomainSubdivision(id=1,
+                                    pid=0,
+                                    size=np.array([size_x, size_y, size_z]),
+                                    global_coords=np.array([size_x, size_x+size_x, 0, size_y, 0, size_z]),
+                                    neighbors_id=np.array([0, None, None, None, None, None]))
+
+        subdiv1.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp],
+                               field_bc_file="test_boundary_condition.npy")
+        subdiv1.register_field(fieldname="unew", halo=[hxm, hxp, hym, hyp, hzm, hzp])
+        subdiv1.fields["unow"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.linspace(tot_size,
+                                                                           tot_size + tot_size - 1,
+                                                                           tot_size).reshape(
+            (size_x, size_y, size_z)
+        )
+        subdiv1.fields["unew"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.zeros(tot_size).reshape((size_x, size_y, size_z))
+
+        slist = [subdiv0, subdiv1]
+        subdiv0.neighbor_list = slist
+        subdiv1.neighbor_list = slist
+
+        domain_ = gt.domain.Rectangle((hxm, hym, hzm), (size_x+size_x, size_y, size_z))
+
+        st_list = []
+        for sd in slist:
+            st_list.append(sd.register_stencil(definitions_func=test_stencil_5point,
+                                               inputs={"in_u": "unow"},
+                                               outputs={"out_u": "unew"},
+                                               domain=domain_,
+                                               mode=gt.mode.NUMPY))
+
+        # for sd in slist:
+        #     for k, v in sd.fields.items():
+        #         print(k, v.reshape((7, 7, 3)).transpose())
+        #
+        # for sd in st_list:
+        #     sd.compute()
+
+        for sd in slist:
+            sd.communicate(fieldname="unow")
+
+        for sd in st_list:
+            sd.compute()
+        #
+        # for sd in slist:
+        #     sd.swap_fields("unow", "unew")
+        #
+        # subdiv0.fields["unow"][:], subdiv1.fields["unow"][:] = subdiv0.fields["unew"][:], subdiv1.fields["unew"][:]
+        #
+        # for sd in slist:
+        #     sd.communicate(new_fieldname="unow", old_fieldname="unow")
+        #
+        # for sd in st_list:
+        #     sd.compute()
+
+        # print("-------------------------------------")
+        #
+        # subdiv0.fields["unow"][:], subdiv1.fields["unow"][:] = subdiv0.fields["unew"][:], subdiv1.fields["unew"][:]
+        #
+        # for sd in st_list:
+        #     sd.compute()
+        #
+        for sd in slist:
+            for k, v in sd.fields.items():
+                print(sd.id, k, v.transpose())
+
+        # for sd in slist:
+        #     print("id = " + str(sd.id))
+        #     for k in sd.fields.keys():
+        #         print(k, sd.get_interior_field(k).transpose())
+
+
     def test_communicate_two_way(self):
         print("---------------TEST communicate two way----------------------")
         DomainPartitions.domain_partitions = np.array([0, 1])
 
+        size_x = 2
+        size_y = 2
+        size_z = 1
+        tot_size = size_x * size_y * size_z
+        # print(tot_size)
+        hxm = 1
+        hxp = 1
+        hym = 1
+        hyp = 1
+        hzm = 1
+        hzp = 1
+
+        if MPI.COMM_WORLD.Get_rank() % 2 == 0:
+            # Prepare boundary condition file:
+            bc = -1.0 * np.arange((size_x + size_x + hxm + hxp) * (size_y + hym + hyp) * (size_z + hzm + hzp)).reshape(
+                (size_x + size_x + hxm + hxp), (size_y + hym + hyp), (size_z + hzm + hzp)
+            )
+            np.save("test_boundary_condition.npy", bc)
+
+        MPI.COMM_WORLD.Barrier()
+
         if MPI.COMM_WORLD.Get_rank() % 2 == 0:
             subdiv0 = DomainSubdivision(id=0,
                                         pid=0,
-                                        size=np.array([5, 5, 2]),
-                                        global_coords=np.array([0, 5, 0, 5, 0, 1]),
-                                        neighbors_id=np.array([None, 1, 1, 1, 1, 1]))
+                                        size=np.array([size_x, size_y, size_z]),
+                                        global_coords=np.array([0, size_x, 0, size_y, 0, size_z]),
+                                        neighbors_id=np.array([None, 1, None, None, None, None]))
             slist = [subdiv0]
-            subdiv0.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])#,
-                                   # field_bc_file="test_boundary_condition_12x12x6.npy")
-            subdiv0.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
-            subdiv0.fields["unow"][2:-2, 2:-2, 2:-2] = np.linspace(0, 49, 50).reshape((5, 5, 2))
-            subdiv0.fields["unow"][0, :, :] = -1
-            subdiv0.fields["unow"][1, :, :] = -2
-            subdiv0.fields["unow"][-2, :, :] = -3
-            subdiv0.fields["unow"][-1, :, :] = -4
-            subdiv0.fields["unow"][:, 0, :] = -5
-            subdiv0.fields["unow"][:, 1, :] = -6
-            subdiv0.fields["unow"][:, -2, :] = -7
-            subdiv0.fields["unow"][:, -1, :] = -8
-            subdiv0.fields["unow"][:, :, 0] = -9
-            subdiv0.fields["unow"][:, :, 1] = -10
-            subdiv0.fields["unow"][:, :, -2] = -11
-            subdiv0.fields["unow"][:, :, -1] = -12
-            subdiv0.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
+            subdiv0.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp],
+                                   field_bc_file="test_boundary_condition.npy")
+            subdiv0.register_field(fieldname="unew", halo=[hxm, hxp, hym, hyp, hzm, hzp])
+            subdiv0.fields["unow"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.linspace(0, tot_size - 1, tot_size).reshape(
+                (size_x, size_y, size_z))
+            # subdiv0.fields["unow"][0, :, :] = -1
+            # subdiv0.fields["unow"][1, :, :] = -2i
+            # subdiv0.fields["unow"][-2, :, :] = -3
+            # subdiv0.fields["unow"][-1, :, :] = -4
+            # subdiv0.fields["unow"][:, 0, :] = -5
+            # subdiv0.fields["unow"][:, 1, :] = -6
+            # subdiv0.fields["unow"][:, -2, :] = -7
+            # subdiv0.fields["unow"][:, -1, :] = -8
+            # subdiv0.fields["unow"][:, :, 0] = -9
+            # subdiv0.fields["unow"][:, :, 1] = -10
+            # subdiv0.fields["unow"][:, :, -2] = -11
+            # subdiv0.fields["unow"][:, :, -1] = -12
+            subdiv0.fields["unew"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.zeros(tot_size).reshape((size_x, size_y, size_z))
         else:
             subdiv1 = DomainSubdivision(id=1,
                                         pid=1,
-                                        size=np.array([5, 5, 2]),
-                                        global_coords=np.array([5, 10, 5, 10, 0, 1]),
-                                        neighbors_id=np.array([0, None, 0, 0, 0, 0]))
+                                        size=np.array([size_x, size_y, size_z]),
+                                        global_coords=np.array([size_x, size_x+size_x, 0, size_y, 0, size_z]),
+                                        neighbors_id=np.array([0, None, None, None, None, None]))
             slist = [subdiv1]
-            subdiv1.register_field(fieldname="unow", halo=[2, 2, 2, 2, 2, 2])#,
-                                   # field_bc_file="test_boundary_condition_12x12x6.npy")
-            subdiv1.register_field(fieldname="unew", halo=[2, 2, 2, 2, 2, 2])
-            subdiv1.fields["unow"][2:-2, 2:-2, 2:-2] = np.linspace(50, 99, 50).reshape((5, 5, 2))
-            subdiv1.fields["unew"][2:-2, 2:-2, 2:-2] = np.zeros(50).reshape((5, 5, 2))
+            subdiv1.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp],
+                                   field_bc_file="test_boundary_condition.npy")
+            subdiv1.register_field(fieldname="unew", halo=[hxm, hxp, hym, hyp, hzm, hzp])
+            subdiv1.fields["unow"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.linspace(tot_size,
+                                                                               tot_size + tot_size - 1,
+                                                                               tot_size).reshape(
+                (size_x, size_y, size_z)
+            )
+            subdiv1.fields["unew"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.zeros(tot_size).reshape((size_x, size_y, size_z))
 
-        domain_ = gt.domain.Rectangle((2, 2, 2), (10, 10, 4))
+        domain_ = gt.domain.Rectangle((hxm, hym, hzm), (size_x+size_x, size_y, size_z))
 
         st_list = []
         for sd in slist:
-            st_list.append(sd.register_stencil(definitions_func=test_stencil_9point,
+            st_list.append(sd.register_stencil(definitions_func=test_stencil_5point,
                                                inputs={"in_u": "unow"},
                                                outputs={"out_u": "unew"},
                                                domain=domain_,

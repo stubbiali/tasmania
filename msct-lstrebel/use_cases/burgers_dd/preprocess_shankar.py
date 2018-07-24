@@ -77,12 +77,12 @@ def prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye):
         np.save("shankar_initial_conditions_unew.npy", unew)
         np.save("shankar_initial_conditions_vnew.npy", vnew)
 
-def prepare_boundary_condition(nx, ny, nz):
+def prepare_boundary_condition(nx, ny, nz, hxm, hxp, hym, hyp, hzm, hzp):
     datatype = np.float64
 
     # Instatiate the arrays representing the boundary conditions
-    unew = np.zeros((nx, ny, nz), dtype=datatype)
-    vnew = np.zeros((nx, ny, nz), dtype=datatype)
+    unew = np.zeros((nx + hxm + hxp, ny + hym + hyp, nz + hzm + hzp), dtype=datatype)
+    vnew = np.zeros((nx + hxm + hxp, ny + hym + hyp, nz + hzm + hzp), dtype=datatype)
 
     np.save("shankar_boundary_conditions_unew.npy", unew)
     np.save("shankar_boundary_conditions_vnew.npy", vnew)
@@ -107,5 +107,5 @@ if __name__ == "__main__":
 
     prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, px, py, pz)
     prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye)
-    prepare_boundary_condition(nx, ny, nz)
+    prepare_boundary_condition(nx, ny, nz, 1, 1, 1, 1, 0, 0)
 
