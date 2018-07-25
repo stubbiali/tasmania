@@ -32,10 +32,15 @@ from mpi4py import MPI
 
 import gridtools as gt
 import stencils
+import timer as ti
 from domain_decomposition import DomainDecomposition, DomainPostprocess
 
 
 def run_shankar():
+    timer = ti.Timings(name="Burger's equation - Shankar setup")
+    timer.start(name="Overall Shankar time", level=1)
+    timer.start(name="Initialization", level=2)
+
     domain = [(0, 0), (2, 2)]
     nx = 100
     ny = 100
@@ -46,7 +51,7 @@ def run_shankar():
     datatype = np.float64
     save_freq = 10
     print_freq = 10
-    file_output = False
+    file_output = True
     filename = 'test_shankar_' + str(method) + '.pickle'
 
     # Driver
@@ -89,6 +94,9 @@ def run_shankar():
         outputs={'out_u': "unew", 'out_v': "vnew"},
         mode=gt.mode.NUMPY)
 
+    timer.stop(name="Initialization")
+    timer.start(name="Time integration", level=2)
+
 
     # Time integration
     for n in range(nt):
@@ -96,28 +104,36 @@ def run_shankar():
         prepared_domain.swap_fields("unow", "unew")
         prepared_domain.swap_fields("vnow", "vnew")
 
-        # for sd in prepared_domain.subdivisions:
-        #     print("----------------sd = %5i ---------------------" % sd.id)
-        #     # print(sd.get_interior_field("unew").transpose())
-        #     print('Step %5.i, u max = %5.5f, u min = %5.5f, v max = %5.5f, v min = %5.5f, ||u|| max = %12.12f'
-        #           % (n+1, sd.fields["unew"].max(), sd.fields["unew"].min(),
-        #              sd.fields["vnew"].max(), sd.fields["vnew"].min(),
-        #              np.sqrt(sd.fields["unew"] ** 2 + sd.fields["vnew"] ** 2).max()))
-
+        timer.start(name="Compute during time integration", level=3)
         # Step the solution
         stencil.compute()
-
+        timer.stop(name="Compute during time integration")
+        timer.start(name="Communication during time integration", level=3)
         # Communicate partition boundaries
         prepared_domain.communicate("unew")
         prepared_domain.communicate("vnew")
+        timer.stop(name="Communication during time integration")
 
-    # Dump solution to a binary file
-    prepared_domain.save_fields(["unew", "vnew"])
+    timer.stop(name="Time integration")
+
+    if file_output:
+        timer.start(name="Writing to file", level=2)
+
+        # Dump solution to a binary file
+        prepared_domain.save_fields(["unew", "vnew"])
+
+        timer.stop(name="Writing to file")
+
+    timer.stop(name="Overall Shankar time")
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        timer.list_timings()
+
 
 def postprocess_shankar():
     postproc = DomainPostprocess()
-    postproc.combine_output_files(size=[100, 100, 1], fieldname="unew", cleanup=False)
-    postproc.combine_output_files(size=[100, 100, 1], fieldname="vnew", cleanup=False)
+    postproc.combine_output_files(size=[100, 100, 1], fieldname="unew", cleanup=True)
+    postproc.combine_output_files(size=[100, 100, 1], fieldname="vnew", cleanup=True)
 
     unew = np.load("unew.npy")
     vnew = np.load("vnew.npy")
