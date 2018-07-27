@@ -26,6 +26,7 @@ import pickle
 
 from tasmania.utils.utils import convert_datetime64_to_datetime as cd64td
 
+
 def convert_variable_name(name):
 	if name == 'isentropic_density':
 		return 'air_isentropic_density'
@@ -43,6 +44,7 @@ def convert_variable_name(name):
 		return 'y_velocity_at_v_locations'
 	else:
 		return name
+
 
 def convert_dataset(filename, filename_new = None, apply_name_conversion = True):
 	root, ext = os.path.splitext(filename)
@@ -88,6 +90,7 @@ def convert_dataset(filename, filename_new = None, apply_name_conversion = True)
 		pickle.dump(states_new, output)
 
 	return filename_new
+
 
 if __name__ == '__main__':
 	path_old = os.path.join(os.environ['TASMANIA_ROOT'], 'data/old_datasets')

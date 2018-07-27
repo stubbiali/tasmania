@@ -33,6 +33,7 @@ import numpy as np
 from sympl import DataArray
 
 from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
+
 try:
 	from tasmania.namelist import datatype
 except ImportError:
@@ -60,12 +61,20 @@ class _Periodic(HorizontalBoundary):
 		"""
 		super().__init__(grid, nb)
 
+	@property
+	def mi(self):
+		return self._grid.nx + 2*self.nb
+
+	@property
+	def mj(self):
+		return self._grid.ny + 2*self.nb
+
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		Periodically extend the field :obj:`phi` with :attr:`nb` extra layers.
 		"""
 		# Shortcuts
-		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self._nb
+		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
 		ni, nj, nk = phi.shape
 
 		# Decorate the input field
@@ -87,7 +96,7 @@ class _Periodic(HorizontalBoundary):
 		Shrink the field :obj:`phi_` by removing the :attr:`nb` outermost layers.
 		"""
 		# Shortcuts
-		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self._nb
+		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
 		ni, nj, nk = phi_.shape
 
 		# Check
@@ -184,7 +193,7 @@ class _Periodic(HorizontalBoundary):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx.values.item()
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy.values.item()
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz.values.item()
@@ -239,6 +248,14 @@ class _PeriodicXZ(HorizontalBoundary):
 		"""
 		super().__init__(grid, nb)
 
+	@property
+	def mi(self):
+		return self._grid.nx + 2*self.nb
+
+	@property
+	def mj(self):
+		return self._grid.ny + 2*self.nb
+
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		Periodically extend the field :obj:`phi` with :attr:`nb`
@@ -246,7 +263,7 @@ class _PeriodicXZ(HorizontalBoundary):
 		ghost layers in the :math:`y`-direction.
 		"""
 		# Shortcuts
-		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self._nb
+		nx, ny, nz, nb = self._grid.nx, self._grid.ny, self._grid.nz, self.nb
 		ni, nj, nk = phi.shape
 
 		# Decorate the input field
@@ -273,7 +290,7 @@ class _PeriodicXZ(HorizontalBoundary):
 		by the implementation, yet they are retained as optional arguments for
 		compliancy with the class hierarchy interface.
 		"""
-		nb = self._nb
+		nb = self.nb
 		return phi_[nb:-nb, nb:-nb, :]
 
 	def enforce(self, phi_new, phi_now=None):
@@ -329,7 +346,7 @@ class _PeriodicXZ(HorizontalBoundary):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz
@@ -384,6 +401,14 @@ class _PeriodicYZ(HorizontalBoundary):
 		"""
 		super().__init__(grid, nb)
 
+	@property
+	def mi(self):
+		return self._grid.nx + 2*self.nb
+
+	@property
+	def mj(self):
+		return self._grid.ny + 2*self.nb
+
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		Periodically extend the field :obj:`phi` with :attr:`nb`
@@ -391,7 +416,7 @@ class _PeriodicYZ(HorizontalBoundary):
 		ghost layers in the :math:`x`-direction.
 		"""
 		# Shortcuts
-		nx, ny, nb = self._grid.nx, self._grid.ny, self._nb
+		nx, ny, nb = self._grid.nx, self._grid.ny, self.nb
 		ni, nj, nk = phi.shape
 
 		# Decorate the input field
@@ -418,7 +443,7 @@ class _PeriodicYZ(HorizontalBoundary):
 		by the implementation, yet they are retained as optional arguments for
 		compliancy with the class hierarchy interface.
 		"""
-		nb = self._nb
+		nb = self.nb
 		return phi_[nb:-nb, nb:-nb, :]
 
 	def enforce(self, phi_new, phi_now=None):
@@ -475,7 +500,7 @@ class _PeriodicYZ(HorizontalBoundary):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx.values.item()
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy.values.item()
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz.values.item()
@@ -572,6 +597,14 @@ class _Relaxed(HorizontalBoundary):
 		self._stgy_w = np.repeat(self._stgy_w[:, :, np.newaxis], grid.nz+1, axis=2)
 		self._stgy_e = np.repeat(self._stgy_e[:, :, np.newaxis], grid.nz+1, axis=2)
 
+	@property
+	def mi(self):
+		return self._grid.nx
+
+	@property
+	def mj(self):
+		return self._grid.ny
+
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		As no extension is required to apply relaxed boundary conditions,
@@ -604,7 +637,7 @@ class _Relaxed(HorizontalBoundary):
 		"""
 		# Shortcuts
 		nx, ny = self._grid.nx, self._grid.ny
-		nb, nr = self._nb, self.nr
+		nb, nr = self.nb, self.nr
 		ni, nj, nk = phi_now.shape
 
 		# The boundary values
@@ -723,13 +756,21 @@ class _RelaxedXZ(HorizontalBoundary):
 		self._stg_e = np.repeat(self._rrel[:, np.newaxis, np.newaxis],
 								grid.nz+1, axis=2)
 
+	@property
+	def mi(self):
+		return self._grid.nx
+
+	@property
+	def mj(self):
+		return self._grid.ny + 2*self.nb
+
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		While no extension is required to apply relaxed boundary
 		conditions along the :math:`x`-direction, :data:`nb` ghost
 		layers are appended in the :math:`y`-direction.
 		"""
-		nb = self._nb
+		nb = self.nb
 		return np.concatenate((np.repeat(phi[:, 0:1, :], nb, axis=1),
 							   phi,
 							   np.repeat(phi[:, -1:, :], nb, axis=1)), axis=1)
@@ -745,7 +786,7 @@ class _RelaxedXZ(HorizontalBoundary):
 		required by the implementation, yet they are retained as optional
 		arguments for compliancy with the class hierarchy interface.
 		"""
-		nb = self._nb
+		nb = self.nb
 		return phi_[:, nb:-nb, :]
 
 	def enforce(self, phi_new, phi_now):
@@ -796,7 +837,7 @@ class _RelaxedXZ(HorizontalBoundary):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx.values.item()
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy.values.item()
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz.values.item()
@@ -868,13 +909,21 @@ class _RelaxedYZ(HorizontalBoundary):
 		self._stg_n = np.repeat(self._rrel[np.newaxis, :, np.newaxis],
 								grid.nz+1, axis=2)
 
+	@property
+	def mi(self):
+		return self._grid.nx + 2*self.nb
+
+	@property
+	def mj(self):
+		return self._grid.ny
+
 	def from_physical_to_computational_domain(self, phi):
 		"""
 		While no extension is required to apply relaxed boundary
 		conditions along the :math:`y`-direction, :data:`nb` ghost
 		layers are appended in the :math:`x`-direction.
 		"""
-		nb = self._nb
+		nb = self.nb
 		return np.concatenate((np.repeat(phi[0:1, :, :], nb, axis=0),
 							   phi,
 							   np.repeat(phi[-1:, :, :], nb, axis=0)), axis=0)
@@ -890,7 +939,7 @@ class _RelaxedYZ(HorizontalBoundary):
 		required by the implementation, yet they are retained as optional
 		arguments for compliancy with the class hierarchy interface.
 		"""
-		nb = self._nb
+		nb = self.nb
 		return phi_[nb:-nb, :, :]
 
 	def enforce(self, phi_new, phi_now):
@@ -941,7 +990,7 @@ class _RelaxedYZ(HorizontalBoundary):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx.values.item()
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy.values.item()
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz.values.item()
@@ -1005,7 +1054,7 @@ class _RelaxedSymmetricXZ(_Relaxed):
 		:attr:`nb` additional layers in the positive direction of
 		the :math:`y`-axis.
 		"""
-		ny, nj, nb = self._grid.ny, phi.shape[1], self._nb
+		ny, nj, nb = self._grid.ny, phi.shape[1], self.nb
 		half = int((nj + 1) / 2)
 		return phi[:, :half + nb, :]
 
@@ -1014,7 +1063,7 @@ class _RelaxedSymmetricXZ(_Relaxed):
 		Mirror the computational domain with respect to the
 		:math:`xz`-plane :math:`y = y_c`.
 		"""
-		nb = self._nb
+		nb = self.nb
 		half = phi_.shape[1] - nb
 
 		phi = np.zeros(out_dims, dtype=phi_.dtype)
@@ -1034,7 +1083,7 @@ class _RelaxedSymmetricXZ(_Relaxed):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx.values.item()
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy.values.item()
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz.values.item()
@@ -1099,7 +1148,7 @@ class _RelaxedSymmetricYZ(_Relaxed):
 		:attr:`nb` additional layers in the positive direction of
 		the :math:`x`-axis.
 		"""
-		nx, ni, nb = self._grid.nx, phi.shape[0], self._nb
+		nx, ni, nb = self._grid.nx, phi.shape[0], self.nb
 		half = int((ni + 1) / 2)
 		return np.copy(phi[:half + nb, :, :])
 
@@ -1108,7 +1157,7 @@ class _RelaxedSymmetricYZ(_Relaxed):
 		Mirror the computational domain with respect to the
 		:math:`yz`-axis :math:`x = x_c`.
 		"""
-		nb = self._nb
+		nb = self.nb
 		half = phi_.shape[0] - nb
 
 		phi = np.zeros(out_dims, dtype=phi_.dtype)
@@ -1128,7 +1177,7 @@ class _RelaxedSymmetricYZ(_Relaxed):
 		Get the *computational* grid underlying the computational domain.
 		"""
 		# Shortcuts
-		nb = self._nb
+		nb = self.nb
 		x, nx, dx = self._grid.x, self._grid.nx, self._grid.dx.values.item()
 		y, ny, dy = self._grid.y, self._grid.ny, self._grid.dy.values.item()
 		z, nz, dz = self._grid.z, self._grid.nz, self._grid.dz.values.item()
