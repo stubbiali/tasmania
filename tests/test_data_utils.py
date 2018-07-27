@@ -73,7 +73,7 @@ def test_get_physical_constants():
 	assert raw_constants['foo_constant'] == 1.0
 
 
-def test_make_dataarray_xy(grid):
+def test_make_data_array_xy(grid):
 	grid_xy = grid.xy_grid
 	nx, ny = grid_xy.nx, grid_xy.ny
 
@@ -82,10 +82,10 @@ def test_make_dataarray_xy(grid):
 	raw_array_c, units_c = np.random.rand(nx, ny+1), 'm s^-1'
 	raw_array_d, units_d = np.random.rand(nx+1, ny+1), '1'
 
-	array_a = du.make_dataarray_2d(raw_array_a, grid_xy, units_a)
-	array_b = du.make_dataarray_2d(raw_array_b, grid_xy, units_b)
-	array_c = du.make_dataarray_2d(raw_array_c, grid_xy, units_c)
-	array_d = du.make_dataarray_2d(raw_array_d, grid_xy, units_d)
+	array_a = du.make_data_array_2d(raw_array_a, grid_xy, units_a)
+	array_b = du.make_data_array_2d(raw_array_b, grid_xy, units_b)
+	array_c = du.make_data_array_2d(raw_array_c, grid_xy, units_c)
+	array_d = du.make_data_array_2d(raw_array_d, grid_xy, units_d)
 
 	assert array_a.shape == (nx, ny)
 	assert np.allclose(raw_array_a, array_a.values)
@@ -109,7 +109,7 @@ def test_make_dataarray_xy(grid):
 	assert array_d.attrs['units'] == '1'
 
 
-def test_make_dataarray_xz(grid_xz_2d):
+def test_make_data_array_xz(grid_xz_2d):
 	nx, nz = grid_xz_2d.nx, grid_xz_2d.nz
 
 	raw_array_a, units_a = np.random.rand(nx, nz), 'mm h^-1'
@@ -117,10 +117,10 @@ def test_make_dataarray_xz(grid_xz_2d):
 	raw_array_c, units_c = np.random.rand(nx, nz+1), 'm s^-1'
 	raw_array_d, units_d = np.random.rand(nx+1, nz+1), '1'
 
-	array_a = du.make_dataarray_2d(raw_array_a, grid_xz_2d, units_a)
-	array_b = du.make_dataarray_2d(raw_array_b, grid_xz_2d, units_b)
-	array_c = du.make_dataarray_2d(raw_array_c, grid_xz_2d, units_c)
-	array_d = du.make_dataarray_2d(raw_array_d, grid_xz_2d, units_d)
+	array_a = du.make_data_array_2d(raw_array_a, grid_xz_2d, units_a)
+	array_b = du.make_data_array_2d(raw_array_b, grid_xz_2d, units_b)
+	array_c = du.make_data_array_2d(raw_array_c, grid_xz_2d, units_c)
+	array_d = du.make_data_array_2d(raw_array_d, grid_xz_2d, units_d)
 
 	assert array_a.shape == (nx, nz)
 	assert np.allclose(raw_array_a, array_a.values)
@@ -144,7 +144,7 @@ def test_make_dataarray_xz(grid_xz_2d):
 	assert array_d.attrs['units'] == '1'
 
 
-def test_make_dataarray_3d(grid):
+def test_make_data_array_3d(grid):
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
 
 	raw_array_a, units_a = np.random.rand(nx, ny, nz), 'm'
@@ -153,11 +153,11 @@ def test_make_dataarray_3d(grid):
 	raw_array_d, units_d = np.random.rand(nx, ny, nz+1), 'Pa'
 	raw_array_e, units_e = np.random.rand(nx+1, ny, nz+1), 'Pa'
 
-	array_a = du.make_dataarray_3d(raw_array_a, grid, units_a)
-	array_b = du.make_dataarray_3d(raw_array_b, grid, units_b)
-	array_c = du.make_dataarray_3d(raw_array_c, grid, units_c)
-	array_d = du.make_dataarray_3d(raw_array_d, grid, units_d)
-	array_e = du.make_dataarray_3d(raw_array_e, grid, units_e)
+	array_a = du.make_data_array_3d(raw_array_a, grid, units_a)
+	array_b = du.make_data_array_3d(raw_array_b, grid, units_b)
+	array_c = du.make_data_array_3d(raw_array_c, grid, units_c)
+	array_d = du.make_data_array_3d(raw_array_d, grid, units_d)
+	array_e = du.make_data_array_3d(raw_array_e, grid, units_e)
 
 	assert array_a.shape == (nx, ny, nz)
 	assert np.allclose(raw_array_a, array_a.values)
@@ -185,6 +185,9 @@ def test_make_dataarray_3d(grid):
 	assert array_e.dims == (grid.x_at_u_locations.dims[0], grid.y.dims[0],
 							grid.z_on_interface_levels.dims[0])
 	assert array_e.attrs['units'] == 'Pa'
+
+	raw_array_e[0, 0, 0] = 200
+	assert np.allclose(raw_array_e, array_e.values)
 
 
 if __name__ == '__main__':
