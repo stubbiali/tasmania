@@ -1,11 +1,13 @@
 import numpy as np
-from sympl import DataArray, Diagnostic, Prognostic
+from sympl import DataArray, \
+				  DiagnosticComponent as Diagnostic, \
+				  PrognosticComponent as Tendency
 
 import gridtools as gt
 from tasmania.utils.data_utils import get_physical_constants
 
 
-class Kessler(Prognostic):
+class Kessler(Tendency):
 	"""
 	This class inherits :class:`sympl.Prognostic` to implement the WRF
 	version of the Kessler microphysics scheme.
@@ -70,13 +72,13 @@ class Kessler(Prognostic):
 			storing the values and units of those constants. The constants might be:
 
 				* 'gas_constant_of_dry_air', in units compatible with \
-					[J K^-1 Kg^-1];
+					[J K^-1 kg^-1];
 				* 'gas_constant_of_water_vapor', in units compatible with \
-					[J K^-1 Kg^-1];
+					[J K^-1 kg^-1];
 				* 'latent_heat_of_vaporization_of_water', in units compatible with \
 					[J kg^-1];
 				* 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-					with [J K^-1 Kg^-1].
+					with [J K^-1 kg^-1].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
@@ -451,13 +453,13 @@ class SaturationAdjustmentKessler(Diagnostic):
 			storing the values and units of those constants. The constants might be:
 
 				* 'gas_constant_of_dry_air', in units compatible with \
-					[J K^-1 Kg^-1];
+					[J K^-1 kg^-1];
 				* 'gas_constant_of_water_vapor', in units compatible with \
-					[J K^-1 Kg^-1];
+					[J K^-1 kg^-1];
 				* 'latent_heat_of_vaporization_of_water', in units compatible with \
 					[J kg^-1];
 				* 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-					with [J K^-1 Kg^-1].
+					with [J K^-1 kg^-1].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
