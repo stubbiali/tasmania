@@ -128,7 +128,7 @@ class Sigma2d(GridXZ):
 					logarithm of reference pressure), in units compatible with \
 					([K ~ Pa^-1]);
 				* 'gas_constant_of_dry_air', in units compatible with \
-					([J K^-1 Kg:math:`^{-1}`]);
+					([J K^-1 kg:math:`^{-1}`]);
 				* 'gravitational acceleration', in units compatible with [m s^-2].
 
 			Please refer to
@@ -353,7 +353,7 @@ class Sigma3d(GridXYZ):
 					logarithm of reference pressure), in units compatible with \
 					([K ~ Pa^-1]);
 				* 'gas_constant_of_dry_air', in units compatible with \
-					([J K^-1 Kg:math:`^{-1}`]);
+					([J K^-1 kg:math:`^{-1}`]);
 				* 'gravitational acceleration', in units compatible with [m s^-2].
 
 			Please refer to

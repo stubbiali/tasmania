@@ -55,8 +55,7 @@ class IsentropicDiagnostics:
 			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 	}
 
-	def __init__(self, grid, backend=gt.mode.NUMPY, physical_constants=None,
-				 dtype=datatype):
+	def __init__(self, grid, backend=gt.mode.NUMPY, dtype=dtype, physical_constants=None):
 		"""
 		Constructor.
 
@@ -68,6 +67,11 @@ class IsentropicDiagnostics:
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 			Defaults to :class:`gridtools.mode.NUMPY`.
+		dtype : `obj`, optional
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
+			if :obj:`~tasmania.namelist.datatype` is not defined.
         physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
@@ -75,20 +79,15 @@ class IsentropicDiagnostics:
 
 				* 'air_pressure_at_sea_level', in units compatible with [Pa];
 				* 'gas_constant_of_dry_air', in units compatible with \
-					[J K^-1 Kg^-1];
+					[J K^-1 kg^-1];
 				* 'gravitational acceleration', in units compatible with [m s^-2].
 				* 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-					with [J K^-1 Kg^-1].
+					with [J K^-1 kg^-1].
 
 			Please refer to
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
 			:obj:`tasmania.dynamics.diagnostics.IsentropicDiagnostics_d_physical_constants`
 			for the default values.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
 		# Store the input arguments
 		self._grid    = grid
@@ -170,12 +169,12 @@ class IsentropicDiagnostics:
 		self._stencil_diagnosing_air_pressure.compute()
 	
 		# Compute the Exner function (not via a GT4Py stencils)
-		self._out_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp)
+		self._in_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp)
 
 		# Compute Montgomery potential at the lower main level
-		mtg_s = self._grid.z_on_interface_levels.values[-1] * self._out_exn[:, :, -1] \
+		mtg_s = self._grid.z_on_interface_levels.values[-1] * self._in_exn[:, :, -1] \
 				+ g * self._grid.topography_height
-		self._out_mtg[:, :, -1] = mtg_s + 0.5 * dz * self._out_exn[:, :, -1]
+		self._out_mtg[:, :, -1] = mtg_s + 0.5 * dz * self._in_exn[:, :, -1]
 
 		# Compute Montgomery potential at all other locations
 		self._stencil_diagnosing_montgomery.compute()
@@ -184,7 +183,7 @@ class IsentropicDiagnostics:
 		self._out_h[:, :, -1] = self._grid.topography_height
 		self._stencil_diagnosing_height.compute()
 
-		return self._out_p, self._out_exn, self._out_mtg, self._out_h
+		return self._out_p, self._in_exn, self._out_mtg, self._out_h
 
 	def get_height(self, s, pt):
 		"""
@@ -228,7 +227,7 @@ class IsentropicDiagnostics:
 		self._stencil_diagnosing_air_pressure.compute()
 
 		# Compute the Exner function (not via a GT4Py stencils)
-		self._out_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp)
+		self._in_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp)
 
 		# Compute geometrical height of the isentropes
 		self._out_h[:, :, -1] = self._grid.topography_height
@@ -359,14 +358,15 @@ class IsentropicDiagnostics:
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
-		self._out_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
+		if not hasattr(self, 'in_exn'):
+			self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
 		self._out_mtg = np.zeros((nx, ny, nz), dtype=self._dtype)
 		self._in_mtg = self._out_mtg
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_montgomery = gt.NGStencil( 
 			definitions_func=self._stencil_diagnosing_montgomery_defs,
-			inputs={'in_exn': self._out_exn, 'in_mtg': self._in_mtg},
+			inputs={'in_exn': self._in_exn, 'in_mtg': self._in_mtg},
 			outputs={'out_mtg': self._out_mtg},
 			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-2)),
 			mode=self._backend,
@@ -412,13 +412,15 @@ class IsentropicDiagnostics:
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
+		if not hasattr(self, '_in_exn'):
+			self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
 		self._out_h = np.zeros((nx, ny, nz+1), dtype=self._dtype)
 		self._in_h = self._out_h
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_height = gt.NGStencil( 
 			definitions_func=self._stencil_diagnosing_height_defs,
-			inputs={'in_theta': self._theta, 'in_exn': self._out_exn,
+			inputs={'in_theta': self._theta, 'in_exn': self._in_exn,
 					'in_p': self._out_p, 'in_h': self._in_h},
 			outputs={'out_h': self._out_h},
 			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
@@ -530,7 +532,8 @@ class IsentropicDiagnostics:
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
 		# Allocate the Numpy arrays which will serve as stencil's inputs
-		self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
+		if not hasattr(self, '_in_exn'):
+			self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
 
 		# Allocate the Numpy array which will serve as stencil's output
 		self._out_temp = np.zeros((nx, ny, nz), dtype=self._dtype)

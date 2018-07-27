@@ -188,3 +188,24 @@ def assert_sequence(seq, reflen=None, reftype=None):
 			error_msg += '] was expected.'
 
 			assert type(item) in reftype, error_msg
+
+
+def check_property_compatibility(property_1, property_2, name=None):
+	from sympl._core.util import combine_dims, units_are_compatible, \
+								 InvalidPropertyDictError
+
+	if 'dims' not in property_1.keys() or 'units' not in property_1.keys() or \
+	   'dims' not in property_2.keys() or 'units' not in property_2.keys():
+		raise InvalidPropertyDictError()
+
+	try:
+		_ = combine_dims(property_1['dims'], property_2['dims'])
+	except InvalidPropertyDictError:
+		raise InvalidPropertyDictError('Incompatibility between dims {} and {} '
+									   'of quantity {}.'
+									   .format(property_1['dims'], property_2['dims'], name))
+
+	if not units_are_compatible(property_1['units'], property_2['units']):
+		raise InvalidPropertyDictError('Incompatibility between units {} and {} '
+									   'for quantity {}.'
+									   .format(property_1['units'], property_2['units'], name))
