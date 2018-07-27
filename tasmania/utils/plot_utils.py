@@ -4,7 +4,7 @@ from matplotlib.offsetbox import AnchoredText
 import matplotlib.pyplot as plt
 
 
-def reverse_colormap(cmap, name = None):
+def reverse_colormap(cmap, name=None):
 	"""
 	Reverse a Matplotlib colormap.
 

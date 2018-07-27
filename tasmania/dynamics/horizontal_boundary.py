@@ -29,10 +29,66 @@ class HorizontalBoundary:
 			The underlying grid, as an instance of
 			:class:`~tasmania.grids.grid_xyz.GridXYZ`
 			or one of its derived classes.
-		nb : int 
+		nb : int
 			Number of boundary layers.
 		"""
 		self._grid, self._nb = grid, nb
+
+	@property
+	def nb(self):
+		"""
+		Return
+		------
+		int :
+			Return the number of boundary layers.
+
+		Raises
+		------
+		ValueError :
+			If the number of boundary layers has not been set.
+		"""
+		if self._nb is None:
+			raise ValueError('Number of boundary layers not set.')
+		else:
+			return self._nb
+
+	@nb.setter
+	def nb(self, val):
+		"""
+		Parameters
+		----------
+		val : int
+			Number of boundary layers.
+		"""
+		self._nb = val
+
+	@property
+	@abc.abstractmethod
+	def mi(self):
+		"""
+		Get the extent of the computational domain in the :math:`x`-direction.
+		As this method is marked as abstract, its implementation is delegated
+		to the derived classes.
+
+		Return
+		------
+		int :
+			The extent of the computational domain in the :math:`x`-direction.
+		"""
+
+	@property
+	@abc.abstractmethod
+	def mj(self):
+		"""
+		Get the extent of the computational domain in the :math:`y`-direction.
+		As this method is marked as abstract, its implementation is delegated
+		to the derived classes.
+
+		Return
+		------
+		int :
+			The extent of the computational domain in the :math:`y`-direction.
+		"""
 
 	@abc.abstractmethod
 	def from_physical_to_computational_domain(self, phi):
@@ -162,7 +218,7 @@ class HorizontalBoundary:
 		"""
 
 	@staticmethod
-	def factory(horizontal_boundary_type, grid, nb):
+	def factory(horizontal_boundary_type, grid, nb=None):
 		"""
 		Static method which returns an instance of the derived
 		class which implements the boundary conditions specified by
@@ -183,7 +239,7 @@ class HorizontalBoundary:
 		grid : obj
 			The underlying grid, as an instance of
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
-		nb : int 
+		nb : `int`, optional
 			Number of boundary layers.
 
 		Return

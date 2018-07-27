@@ -1,7 +1,88 @@
+"""
+Functions:
+	add
+	get_constant
+	get_numpy_arrays
+	get_physical_constants
+	get_raw_state
+	get_state
+	make_data_array_2d
+	make_data_array_3d
+"""
 from sympl import DataArray
 
 from tasmania.grids.grid_xy import GridXY
 from tasmania.grids.grid_xz import GridXZ
+from tasmania.utils.exceptions import TimeInconsistencyError
+
+
+def add(state_1, state_2, units=None):
+	"""
+	Sum up two model states.
+
+	Parameters
+	----------
+	state_1 : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the first model state, and values are
+        :class:`sympl.DataArray`\s containing the data for those variables.
+	state_2 : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the second model state, and values are
+        :class:`sympl.DataArray`\s containing the data for those variables.
+	units : `dict`, optional
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are strings indicating
+        the units in which those variables should be expressed.
+        If not specified, a variable is included in the output state
+        in the same units used in the first state, or the second state
+        if the variable is not present in the first state.
+
+	Return
+	------
+	dict :
+        Dictionary whose keys are strings indicating the variables
+        included in either the first or second model state, and values are
+        :class:`sympl.DataArray`\s containing the data for those variables.
+        If a variable is present in both states, the corresponding values
+        are summed up.
+
+    Raises
+    ------
+    TimeInconsistencyError :
+    	If the two passed states are defined at two different time instants.
+	"""
+	if state_1['time'] != state_2['time']:
+		raise TimeInconsistencyError('Input states should be defined at '
+                                     'the same time instant.')
+
+	units = {} if units is None else units
+
+	out_state = {'time': state_1['time']}
+
+	for key in set().union(state_1.keys(), state_2.keys()):
+		if key != 'time':
+			if (state_1.get(key, None) is not None) and (state_2.get(key, None) is not None):
+				if units.get(key, None) is not None:
+					out_state[key] = state_1[key].to_units(units[key]) + \
+									 state_2[key].to_units(units[key])
+				else:
+					out_state[key] = state_1[key] + \
+									 state_2[key].to_units(state_1[key].attrs['units'])
+
+			if (state_1.get(key, None) is not None) and (state_2.get(key, None) is None):
+				if units.get(key, None) is not None:
+					out_state[key] = state_1[key].to_units(units[key])
+				else:
+					out_state[key] = state_1[key]
+
+			if (state_1.get(key, None) is None) and (state_2.get(key, None) is not None):
+				if units.get(key, None) is not None:
+					out_state[key] = state_2[key].to_units(units[key])
+				else:
+					out_state[key] = state_2[key]
+
+	return out_state
 
 
 def get_numpy_arrays(state, indices, *args):
@@ -136,7 +217,7 @@ def get_physical_constants(default_physical_constants, physical_constants=None):
 	return raw_physical_constants
 
 
-def make_dataarray_2d(raw_array, grid, units, name=None):
+def make_data_array_2d(raw_array, grid, units, name=None):
 	"""
 	Create a :class:`sympl.DataArray` out of a 2-D :class:`numpy.ndarray`.
 
@@ -175,15 +256,15 @@ def make_dataarray_2d(raw_array, grid, units, name=None):
 		raise ValueError('raw_array should be 2-D.')
 
 	if isinstance(grid, GridXY):
-		return _make_dataarray_xy(raw_array, grid, units, name)
+		return _make_data_array_xy(raw_array, grid, units, name)
 	elif isinstance(grid, GridXZ):
-		return _make_dataarray_xz(raw_array, grid, units, name)
+		return _make_data_array_xz(raw_array, grid, units, name)
 	else:
 		raise TypeError('grid should be an instance of GridXY, GridXZ, '
 						'or one of their derived classes.')
 
 
-def make_dataarray_3d(raw_array, grid, units, name=None):
+def make_data_array_3d(raw_array, grid, units, name=None):
 	"""
 	Create a :class:`sympl.DataArray` out of a 3-D :class:`numpy.ndarray`.
 
@@ -213,10 +294,88 @@ def make_dataarray_3d(raw_array, grid, units, name=None):
 	"""
 	if len(raw_array.shape) != 3:
 		raise ValueError('raw_array should be 3-D.')
-	return _make_dataarray_xyz(raw_array, grid, units, name)
+	return _make_data_array_xyz(raw_array, grid, units, name)
 
 
-def _make_dataarray_xy(raw_array, grid, units, name):
+def get_state(raw_state, grid, units):
+	"""
+	Parameters
+	----------
+	raw_state : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`numpy.ndarray`\s
+        containing the data for those variables.
+	grid : grid
+		The underlying computational grid.
+	units : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are strings indicating
+        the units in which those variables should be expressed.
+
+	Return
+	------
+	dict :
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`sympl.DataArray`\s
+        containing the data for those variables.
+	"""
+	try:
+		state = {'time': raw_state['time']}
+	except KeyError:
+		print('Input raw state dictionary must contain the keyword ''time''.')
+
+	for key in raw_state.keys():
+		if key != 'time':
+			try:
+				state[key] = make_data_array_3d(raw_state[key], grid, units[key], name=key)
+			except ValueError:
+				state[key] = make_data_array_2d(raw_state[key], grid, units[key], name=key)
+
+	return state
+
+
+def get_raw_state(state, units=None):
+	"""
+	Parameters
+	----------
+	state : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`sympl.DataArray`\s
+        containing the data for those variables.
+	units : `dict`, optional
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are strings indicating
+        the units in which those variables should be expressed.
+
+	Return
+	------
+	dict :
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`numpy.ndarray`\s
+        containing the data for those variables.
+	"""
+	units = {} if units is None else units
+
+	try:
+		raw_state = {'time': state['time']}
+	except KeyError:
+		print('Input state dictionary must contain the keyword ''time''.')
+
+	for key in state.keys():
+		if key != 'time':
+			try:
+				data_array = state[key].to_units(units.get(key, state[key].attrs['units']))
+			except KeyError:
+				print('Units not specified for {}.'.format(key))
+
+			raw_state[key] = data_array.values
+
+	return raw_state
+
+
+
+
+def _make_data_array_xy(raw_array, grid, units, name):
 	nx, ny = grid.nx, grid.ny
 	ni, nj = raw_array.shape
 
@@ -244,7 +403,7 @@ def _make_dataarray_xy(raw_array, grid, units, name):
 					 attrs={'units': units})
 
 
-def _make_dataarray_xz(raw_array, grid, units, name):
+def _make_data_array_xz(raw_array, grid, units, name):
 	nx, nz = grid.nx, grid.nz
 	ni, nk = raw_array.shape
 
@@ -272,7 +431,7 @@ def _make_dataarray_xz(raw_array, grid, units, name):
 					 attrs={'units': units})
 
 
-def _make_dataarray_xyz(raw_array, grid, units, name):
+def _make_data_array_xyz(raw_array, grid, units, name):
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
 	ni, nj, nk = raw_array.shape
 
