@@ -6,7 +6,7 @@ from sympl import DataArray
 
 from tasmania.grids.grid_xyz import GridXYZ as Grid
 from tasmania.grids.grid_xz import GridXZ
-from tasmania.utils.data_utils import make_dataarray_3d
+from tasmania.utils.data_utils import make_data_array_3d
 
 
 @pytest.fixture(scope='module')
@@ -97,46 +97,46 @@ def grid_and_state():
 	state = {
 		'time': state_['time'],
 		'air_density':
-			make_dataarray_3d(state_['air_density'].values,
+			make_data_array_3d(state_['air_density'].values,
 							  g, 'kg m^-3'),
 		'air_isentropic_density':
-			make_dataarray_3d(state_['air_isentropic_density'].values,
+			make_data_array_3d(state_['air_isentropic_density'].values,
 							  g, 'kg m^-2 K^-1'),
 		'air_pressure_on_interface_levels':
-			make_dataarray_3d(state_['air_pressure_on_interface_levels'].values,
+			make_data_array_3d(state_['air_pressure_on_interface_levels'].values,
 							  g, 'Pa'),
 		'air_temperature':
-			make_dataarray_3d(state_['air_temperature'].values,
+			make_data_array_3d(state_['air_temperature'].values,
 							  g, 'K'),
 		'exner_function_on_interface_levels':
-			make_dataarray_3d(state_['exner_function_on_interface_levels'].values,
+			make_data_array_3d(state_['exner_function_on_interface_levels'].values,
 							  g, 'J K^-1 kg^-1'),
 		'height_on_interface_levels':
-			make_dataarray_3d(state_['height_on_interface_levels'].values,
+			make_data_array_3d(state_['height_on_interface_levels'].values,
 							  g, 'm'),
 		'mass_fraction_of_water_vapor_in_air':
-			make_dataarray_3d(state_['mass_fraction_of_water_vapor_in_air'].values,
+			make_data_array_3d(state_['mass_fraction_of_water_vapor_in_air'].values,
 							  g, 'g g^-1'),
 		'mass_fraction_of_cloud_liquid_water_in_air':
-			make_dataarray_3d(1e3 * state_['mass_fraction_of_cloud_liquid_water_in_air'].values,
+			make_data_array_3d(1e3 * state_['mass_fraction_of_cloud_liquid_water_in_air'].values,
 							  g, 'g kg^-1'),
 		'mass_fraction_of_precipitation_water_in_air':
-			make_dataarray_3d(state_['mass_fraction_of_precipitation_water_in_air'].values,
+			make_data_array_3d(state_['mass_fraction_of_precipitation_water_in_air'].values,
 							  g, 'kg kg^-1'),
 		'montgomery_potential':
-			make_dataarray_3d(state_['montgomery_potential'].values,
+			make_data_array_3d(state_['montgomery_potential'].values,
 							  g, 'J kg^-1'),
 		'x_momentum_isentropic':
-			make_dataarray_3d(state_['x_momentum_isentropic'].values,
+			make_data_array_3d(state_['x_momentum_isentropic'].values,
 							  g, 'kg m^-1 K^-1 s^-1'),
 		'x_velocity_at_u_locations':
-			make_dataarray_3d(state_['x_velocity_at_u_locations'].values,
+			make_data_array_3d(state_['x_velocity_at_u_locations'].values,
 							  g, 'm s^-1'),
 		'y_momentum_isentropic':
-			make_dataarray_3d(state_['y_momentum_isentropic'].values,
+			make_data_array_3d(state_['y_momentum_isentropic'].values,
 							  g, 'kg m^-1 K^-1 s^-1'),
 		'y_velocity_at_v_locations':
-			make_dataarray_3d(state_['y_velocity_at_v_locations'].values,
+			make_data_array_3d(state_['y_velocity_at_v_locations'].values,
 							  g, 'm s^-1'),
 	}
 
