@@ -23,7 +23,7 @@
 import numpy as np
 from sympl import DataArray, \
 				  DiagnosticComponent as Diagnostic, \
-				  PrognosticComponent as Tendency
+				  TendencyComponent as Tendency
 
 import gridtools as gt
 from tasmania.utils.data_utils import get_physical_constants

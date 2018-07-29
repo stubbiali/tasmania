@@ -22,15 +22,15 @@
 #
 """
 Classes:
-    HorizontalFlux
-    VerticalFlux
-    HorizontalNonconservativeFlux
-    VerticalNonconservativeFlux
+    IsentropicHorizontalFlux
+    IsentropicVerticalFlux
+    NonconservativeIsentropicHorizontalFlux
+    NonconservativeIsentropicVerticalFlux
 """
 import abc
 
 
-class HorizontalFlux:
+class IsentropicHorizontalFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the horizontal numerical fluxes for the three-dimensional isentropic
@@ -175,14 +175,14 @@ class HorizontalFlux:
 		"""
 		import tasmania.dynamics._isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._UpwindHorizontalFlux(grid, moist_on)
+			return module._UpwindIsentropicHorizontalFlux(grid, moist_on)
 		elif scheme == 'centered':
-			return module._CenteredHorizontalFlux(grid, moist_on)
+			return module._CenteredIsentropicHorizontalFlux(grid, moist_on)
 		else:
-			return module._MacCormackHorizontalFlux(grid, moist_on)
+			return module._MacCormackIsentropicHorizontalFlux(grid, moist_on)
 
 
-class VerticalFlux:
+class IsentropicVerticalFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
@@ -323,14 +323,14 @@ class VerticalFlux:
 		"""
 		import tasmania.dynamics._isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._UpwindVerticalFlux(grid, moist_on)
+			return module._UpwindIsentropicVerticalFlux(grid, moist_on)
 		elif scheme == 'centered':
-			return module._CenteredVerticalFlux(grid, moist_on)
+			return module._CenteredIsentropicVerticalFlux(grid, moist_on)
 		else:
-			return module._MacCormackVerticalFlux(grid, moist_on)
+			return module._MacCormackIsentropicVerticalFlux(grid, moist_on)
 
 
-class HorizontalNonconservativeFlux:
+class NonconservativeIsentropicHorizontalFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the numerical fluxes for the three-dimensional isentropic
@@ -458,10 +458,10 @@ class HorizontalNonconservativeFlux:
 		"""
 		import tasmania.dynamics._isentropic_fluxes as module
 		if scheme == 'centered':
-			return module._CenteredHorizontalNonconservativeFlux(grid, moist_on)
+			return module._CenteredNonconservativeIsentropicHorizontalFlux(grid, moist_on)
 
 
-class VerticalNonconservativeFlux:
+class NonconservativeIsentropicVerticalFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
@@ -600,4 +600,4 @@ class VerticalNonconservativeFlux:
 		"""
 		import tasmania.dynamics._isentropic_fluxes as module
 		if scheme == 'centered':
-			return module._CenteredVerticalNonconservativeFlux(grid, moist_on)
+			return module._CenteredNonconservativeIsentropicVerticalFlux(grid, moist_on)

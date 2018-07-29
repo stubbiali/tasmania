@@ -55,7 +55,7 @@ class IsentropicDiagnostics:
 			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 	}
 
-	def __init__(self, grid, backend=gt.mode.NUMPY, dtype=dtype, physical_constants=None):
+	def __init__(self, grid, backend=gt.mode.NUMPY, dtype=datatype, physical_constants=None):
 		"""
 		Constructor.
 

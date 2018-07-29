@@ -106,8 +106,9 @@ def make_grid(filename):
 
 @pytest.fixture
 def grid_and_state():
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
+	#filename = os.path.join(os.environ['TASMANIA_ROOT'],
+	#						'tests/baseline_datasets/verification_moist.pickle')
+	filename = 'baseline_datasets/verification_moist.pickle'
 
 	g = make_grid(filename)
 

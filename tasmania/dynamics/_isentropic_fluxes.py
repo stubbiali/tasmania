@@ -22,23 +22,23 @@
 #
 """
 Classes:
-	_{Upwind, Centered, MacCormack}HorizontalFlux
-	_{Upwind, Centered, MacCormack}VerticalFlux
-	_{Upwind}HorizontalNonconservativeFlux
-	_{Upwind}VerticalNonconservativeFlux
+	_{Upwind, Centered, MacCormack}IsentropicHorizontalFlux
+	_{Upwind, Centered, MacCormack}IsentropicVerticalFlux
+	_{Centered}NonconservativeIsentropicHorizontalFlux
+	_{Centered}NonconservativeIsentropicVerticalFlux
 """
-from tasmania.dynamics.isentropic_fluxes import HorizontalFlux, \
-												VerticalFlux, \
-												HorizontalNonconservativeFlux, \
-												VerticalNonconservativeFlux
+from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux, \
+												IsentropicVerticalFlux, \
+												NonconservativeIsentropicHorizontalFlux, \
+												NonconservativeIsentropicVerticalFlux
 
 import gridtools as gt
 
 
-class _UpwindHorizontalFlux(HorizontalFlux):
+class _UpwindIsentropicHorizontalFlux(IsentropicHorizontalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.HorizontalFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux`
 	to implement the upwind scheme to compute the horizontal
 	numerical fluxes for the governing equations expressed in
 	conservative form using isentropic coordinates.
@@ -143,10 +143,10 @@ class _UpwindHorizontalFlux(HorizontalFlux):
 		return flux
 
 
-class _CenteredHorizontalFlux(HorizontalFlux):
+class _CenteredIsentropicHorizontalFlux(IsentropicHorizontalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.HorizontalFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux`
 	to implement the centered scheme to compute the horizontal
 	numerical fluxes for the governing equations expressed in
 	conservative form using isentropic coordinates.
@@ -242,10 +242,10 @@ class _CenteredHorizontalFlux(HorizontalFlux):
 		return flux
 
 
-class _MacCormackHorizontalFlux(HorizontalFlux):
+class _MacCormackIsentropicHorizontalFlux(IsentropicHorizontalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.HorizontalFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux`
 	to implement the MacCormack scheme to compute the horizontal
 	numerical fluxes for the governing equations expressed in
 	conservative form using isentropic coordinates.
@@ -471,10 +471,10 @@ class _MacCormackHorizontalFlux(HorizontalFlux):
 		return flux_s_y
 
 
-class _UpwindVerticalFlux(VerticalFlux):
+class _UpwindIsentropicVerticalFlux(IsentropicVerticalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.VerticalFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
 	to implement the upwind scheme to compute the vertical
 	numerical fluxes for the governing equations expressed
 	in conservative form using isentropic coordinates.
@@ -546,10 +546,10 @@ class _UpwindVerticalFlux(VerticalFlux):
 		return flux
 
 
-class _CenteredVerticalFlux(VerticalFlux):
+class _CenteredIsentropicVerticalFlux(IsentropicVerticalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.VerticalFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
 	to implement the centered scheme to compute the vertical
 	numerical fluxes for the governing equations expressed in
 	conservative form using isentropic coordinates.
@@ -619,10 +619,10 @@ class _CenteredVerticalFlux(VerticalFlux):
 		return flux
 
 
-class _MacCormackVerticalFlux(VerticalFlux):
+class _MacCormackIsentropicVerticalFlux(IsentropicVerticalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.VerticalFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
 	to implement the MacCormack scheme to compute the vertical
 	numerical fluxes for the governing equations expressed in
 	conservative form using isentropic coordinates.
@@ -724,10 +724,10 @@ class _MacCormackVerticalFlux(VerticalFlux):
 		return flux
 
 
-class _CenteredHorizontalNonconservativeFlux(HorizontalNonconservativeFlux):
+class _CenteredNonconservativeIsentropicHorizontalFlux(NonconservativeIsentropicHorizontalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.HorizontalNonconservativeFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.NonconservativeIsentropicHorizontalFlux`
 	to implement a centered scheme to compute the horizontal
 	numerical fluxes for the prognostic model variables.
 	The nonconservative form of the governing equations,
@@ -852,10 +852,10 @@ class _CenteredHorizontalNonconservativeFlux(HorizontalNonconservativeFlux):
 		return flux
 
 
-class _CenteredVerticalNonconservativeFlux(VerticalNonconservativeFlux):
+class _CenteredNonconservativeIsentropicVerticalFlux(NonconservativeIsentropicVerticalFlux):
 	"""
 	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.VerticalNonconservativeFlux`
+	:class:`~tasmania.dynamics.isentropic_fluxes.NonconservativeIsentropicVerticalFlux`
 	to implement a centered scheme to compute the horizontal
 	numerical fluxes for the prognostic model variables.
 	The nonconservative form of the governing equations,
