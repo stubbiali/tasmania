@@ -24,7 +24,7 @@ class _Centered(IsentropicPrognostic):
 	"""
 	def __init__(self, grid, moist_on, backend, diagnostics,
 				 horizontal_boundary_conditions, horizontal_flux_scheme,
-				 physics_dynamics_coupling_on=False, vertical_flux_scheme=None,
+				 adiabatic_flow=True, vertical_flux_scheme=None,
 				 sedimentation_on=False, sedimentation_flux_scheme=None,
 				 sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
 				 dtype=datatype, physical_constants=None):
@@ -32,16 +32,15 @@ class _Centered(IsentropicPrognostic):
 		Constructor.
 		"""
 		arg_list = [grid, moist_on, backend, diagnostics, horizontal_boundary_conditions,
-					horizontal_flux_scheme, physics_dynamics_coupling_on,
-					vertical_flux_scheme, sedimentation_on, sedimentation_flux_scheme,
-					sedimentation_substeps, raindrop_fall_velocity_diagnostic, dtype,
-					physical_constants]
+					horizontal_flux_scheme, adiabatic_flow,	vertical_flux_scheme,
+					sedimentation_on, sedimentation_flux_scheme, sedimentation_substeps,
+					raindrop_fall_velocity_diagnostic, dtype, physical_constants]
 		super().__init__(*arg_list)
 
 		# Initialize the pointers to the underlying GT4Py stencils
 		# These will be re-directed when the corresponding forward methods
 		# are invoked for the first time
-		self._stencil_stepping_by_neglecting_vertical_advection = None
+		self._stencil_stepping_by_neglecting_vertical_motion = None
 		self._stencil_computing_slow_tendencies = None
 		self._stencil_ensuring_vertical_cfl_is_obeyed = None
 		self._stencil_stepping_by_integrating_sedimentation_flux = None
@@ -56,23 +55,23 @@ class _Centered(IsentropicPrognostic):
 		"""
 		return 1
 
-	def step_neglecting_vertical_advection(self, substep, dt, raw_state, raw_tendencies=None):
+	def step_neglecting_vertical_motion(self, substep, dt, raw_state, raw_tendencies=None):
 		"""
 		Method advancing the conservative, prognostic model variables
 		one substep forward in time. Only horizontal derivatives are considered;
 		possible vertical derivatives are disregarded.
 		"""
 		# The first time this method is invoked, initialize the GT4Py stencil
-		if self._stencil_stepping_by_neglecting_vertical_advection is None:
-			self._stencil_stepping_by_neglecting_vertical_advection_initialize(
+		if self._stencil_stepping_by_neglecting_vertical_motion is None:
+			self._stencil_stepping_by_neglecting_vertical_motion_initialize(
 				raw_state, raw_tendencies)
 
 		# Update the attributes which serve as inputs to the GT4Py stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(
+		self._stencils_stepping_by_neglecting_vertical_motion_set_inputs(
 			dt, raw_state, raw_tendencies)
 
 		# Run the stencil's compute function
-		self._stencil_stepping_by_neglecting_vertical_advection.compute()
+		self._stencil_stepping_by_neglecting_vertical_motion.compute()
 
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -133,10 +132,10 @@ class _Centered(IsentropicPrognostic):
 
 		return raw_state_new
 
-	def step_coupling_physics_with_dynamics(self, substep, dt, raw_state_now, raw_state_prv):
+	def step_integrating_vertical_advection(self, substep, dt, raw_state_now, raw_state_prv):
 		"""
 		Method advancing the conservative, prognostic model variables
-		one substep forward in time by coupling physics with dynamics, i.e.,
+		one substep forward in time by integrating the vertical advection, i.e.,
 		by accounting for the change over time in potential temperature.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
@@ -258,17 +257,17 @@ class _Centered(IsentropicPrognostic):
 
 		return raw_state_out
 
-	def _stencil_stepping_by_neglecting_vertical_advection_initialize(
+	def _stencil_stepping_by_neglecting_vertical_motion_initialize(
 		self, raw_state, raw_tendencies):
 		"""
 		Initialize the GT4Py stencil implementing a time-integration centered scheme
 		to step the solution by neglecting vertical advection.
 		"""
 		# Allocate the attributes which will serve as inputs to the stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(raw_tendencies)
+		self._stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(raw_tendencies)
 
 		# Allocate the Numpy arrays which will store the output fields
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs()
+		self._stencils_stepping_by_neglecting_vertical_motion_allocate_outputs()
 
 		# Set the stencil's inputs and outputs
 		_inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v,
@@ -302,8 +301,8 @@ class _Centered(IsentropicPrognostic):
 		_mode = self._backend
 
 		# Instantiate the stencil
-		self._stencil_stepping_by_neglecting_vertical_advection = gt.NGStencil(
-			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_defs,
+		self._stencil_stepping_by_neglecting_vertical_motion = gt.NGStencil(
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_motion_defs,
 			inputs           = _inputs,
 			global_inputs    = {'dt': self._dt},
 			outputs          = _outputs,
@@ -311,7 +310,7 @@ class _Centered(IsentropicPrognostic):
 			mode             = _mode,
 		)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self,
+	def _stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(self,
 																			raw_tendencies):
 		"""
 		Allocate the attributes which will serve as inputs to the GT4Py
@@ -324,13 +323,13 @@ class _Centered(IsentropicPrognostic):
 
 		# Instantiate a GT4Py Global representing the time step, and the Numpy arrays
 		# which represent the solution at the current time step
-		super()._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(raw_tendencies)
+		super()._stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(raw_tendencies)
 
 		# Determine the size of the arrays which will serve as stencils'
 		# inputs and outputs. These arrays may be shared with the stencil
-		# in charge of coupling physics with dynamics
-		li = mi if not self._physics_dynamics_coupling_on else max(mi, nx)
-		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
+		# in charge of integrating the vertical advection
+		li = mi if self._adiabatic_flow else max(mi, nx)
+		lj = mj if self._adiabatic_flow else max(mj, ny)
 
 		# Allocate the Numpy arrays which represent the solution at the previous time step,
 		# and which may be shared among different stencils
@@ -345,7 +344,7 @@ class _Centered(IsentropicPrognostic):
 			self._in_sqv_old = np.zeros((mi, mj, nz), dtype=dtype)
 			self._in_sqc_old = np.zeros((mi, mj, nz), dtype=dtype)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(
+	def _stencils_stepping_by_neglecting_vertical_motion_set_inputs(
 		self, dt, raw_state, raw_tendencies):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencils
@@ -353,7 +352,7 @@ class _Centered(IsentropicPrognostic):
 		"""
 		# Update the time step, and the Numpy arrays representing
 		# the current solution
-		super()._stencils_stepping_by_neglecting_vertical_advection_set_inputs(
+		super()._stencils_stepping_by_neglecting_vertical_motion_set_inputs(
 			dt, raw_state, raw_tendencies)
 
 		# At the first iteration, update the Numpy arrays representing
@@ -374,7 +373,7 @@ class _Centered(IsentropicPrognostic):
 				self._in_sqr_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
 					raw_state['isentropic_density_of_precipitation_water'])
 
-	def _stencil_stepping_by_neglecting_vertical_advection_defs(
+	def _stencil_stepping_by_neglecting_vertical_motion_defs(
 		self, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
 		in_s_old, in_su_old, in_sv_old,
 		in_sqv=None, in_sqc=None, in_sqr=None,
@@ -757,7 +756,7 @@ class _ForwardEuler(IsentropicPrognostic):
 	"""
 	def __init__(self, grid, moist_on, backend, diagnostics,
 				 horizontal_boundary_conditions, horizontal_flux_scheme,
-				 physics_dynamics_coupling_on=False, vertical_flux_scheme=None,
+				 adiabatic_flow=True, vertical_flux_scheme=None,
 				 sedimentation_on=False, sedimentation_flux_scheme=None,
 				 sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
 				 dtype=datatype, physical_constants=None):
@@ -765,17 +764,16 @@ class _ForwardEuler(IsentropicPrognostic):
 		Constructor.
 		"""
 		arg_list = [grid, moist_on, backend, diagnostics, horizontal_boundary_conditions,
-					horizontal_flux_scheme, physics_dynamics_coupling_on,
-					vertical_flux_scheme, sedimentation_on, sedimentation_flux_scheme,
-					sedimentation_substeps, raindrop_fall_velocity_diagnostic, dtype,
-					physical_constants]
+					horizontal_flux_scheme, adiabatic_flow,	vertical_flux_scheme,
+					sedimentation_on, sedimentation_flux_scheme, sedimentation_substeps,
+					raindrop_fall_velocity_diagnostic, dtype, physical_constants]
 		super().__init__(*arg_list)
 
 		# Initialize the pointers to the underlying GT4Py stencils
 		# These will be re-directed when the corresponding forward methods
 		# are invoked for the first time
-		self._stencil_stepping_by_neglecting_vertical_advection_first = None
-		self._stencil_stepping_by_neglecting_vertical_advection_second = None
+		self._stencil_stepping_by_neglecting_vertical_motion_first = None
+		self._stencil_stepping_by_neglecting_vertical_motion_second = None
 		self._stencil_computing_slow_tendencies = None
 		self._stencil_ensuring_vertical_cfl_is_obeyed = None
 		self._stencil_stepping_by_integrating_sedimentation_flux = None
@@ -787,24 +785,24 @@ class _ForwardEuler(IsentropicPrognostic):
 		"""
 		return 1
 
-	def step_neglecting_vertical_advection(self, substep, dt, raw_state, raw_tendencies=None):
+	def step_neglecting_vertical_motion(self, substep, dt, raw_state, raw_tendencies=None):
 		"""
 		Method advancing the conservative, prognostic model variables
 		one substep forward in time. Only horizontal derivatives are considered;
 		possible vertical derivatives are disregarded.
 		"""
 		# The first time this method is invoked, initialize the GT4Py stencil
-		if self._stencil_stepping_by_neglecting_vertical_advection_first is None:
-			self._stencils_stepping_by_neglecting_vertical_advection_initialize(
+		if self._stencil_stepping_by_neglecting_vertical_motion_first is None:
+			self._stencils_stepping_by_neglecting_vertical_motion_initialize(
 				raw_state, raw_tendencies)
 
 		# Update the attributes which serve as inputs to the GT4Py stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(
+		self._stencils_stepping_by_neglecting_vertical_motion_set_inputs(
 			dt, raw_state, raw_tendencies)
 
 		# Run the compute function of the stencil stepping the isentropic density
 		# and the water constituents, and providing provisional values for the momenta
-		self._stencil_stepping_by_neglecting_vertical_advection_first.compute()
+		self._stencil_stepping_by_neglecting_vertical_motion_first.compute()
 
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -854,7 +852,7 @@ class _ForwardEuler(IsentropicPrognostic):
 			self._hboundary.from_physical_to_computational_domain(mtg_prv)
 
 		# Run the compute function of the stencil stepping the momenta
-		self._stencil_stepping_by_neglecting_vertical_advection_second.compute()
+		self._stencil_stepping_by_neglecting_vertical_motion_second.compute()
 
 		# Bring the updated momenta back to the original dimensions
 		# Note: let's forget about symmetric conditions...
@@ -881,10 +879,10 @@ class _ForwardEuler(IsentropicPrognostic):
 
 		return raw_state_new
 
-	def step_coupling_physics_with_dynamics(self, substep, dt, raw_state_now, raw_state_prv):
+	def step_integrating_vertical_advection(self, substep, dt, raw_state_now, raw_state_prv):
 		"""
 		Method advancing the conservative, prognostic model variables
-		one substep forward in time by coupling physics with dynamics, i.e.,
+		one substep forward in time by integrating the vertical advection, i.e.,
 		by accounting for the change over time in potential temperature.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
@@ -1000,20 +998,20 @@ class _ForwardEuler(IsentropicPrognostic):
 
 		return raw_state_out
 
-	def _stencils_stepping_by_neglecting_vertical_advection_initialize(
+	def _stencils_stepping_by_neglecting_vertical_motion_initialize(
 		self, raw_state, raw_tendencies):
 		"""
 		Initialize the GT4Py stencil implementing a time-integration centered scheme
 		to step the solution by neglecting vertical advection.
 		"""
 		# Allocate the attributes which will serve as inputs to the stencil
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(raw_tendencies)
+		self._stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(raw_tendencies)
 
 		# Allocate the Numpy arrays which will store provisional (i.e., temporary) fields
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries()
+		self._stencils_stepping_by_neglecting_vertical_motion_allocate_temporaries()
 
 		# Allocate the Numpy arrays which will store the output fields
-		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs()
+		self._stencils_stepping_by_neglecting_vertical_motion_allocate_outputs()
 
 		# Set the stencils' computational domain and backend
 		nz, nb = self._grid.nz, self.nb
@@ -1044,8 +1042,8 @@ class _ForwardEuler(IsentropicPrognostic):
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
 
 		# Instantiate the first stencil
-		self._stencil_stepping_by_neglecting_vertical_advection_first = gt.NGStencil(
-			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_first_defs,
+		self._stencil_stepping_by_neglecting_vertical_motion_first = gt.NGStencil(
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_motion_first_defs,
 			inputs 			 = _inputs,
 			global_inputs 	 = {'dt': self._dt},
 			outputs 		 = _outputs,
@@ -1054,8 +1052,8 @@ class _ForwardEuler(IsentropicPrognostic):
 		)
 
 		# Instantiate the second stencil
-		self._stencil_stepping_by_neglecting_vertical_advection_second = gt.NGStencil(
-			definitions_func = self._stencil_stepping_by_neglecting_vertical_advection_second_defs,
+		self._stencil_stepping_by_neglecting_vertical_motion_second = gt.NGStencil(
+			definitions_func = self._stencil_stepping_by_neglecting_vertical_motion_second_defs,
 			inputs 			 = {'in_s': self._in_s_prv, 'in_mtg': self._in_mtg_prv,
 					  			'in_su': self._tmp_su, 'in_sv': self._tmp_sv},
 			global_inputs 	 = {'dt': self._dt},
@@ -1064,7 +1062,7 @@ class _ForwardEuler(IsentropicPrognostic):
 			mode 			 = _mode,
 		)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_allocate_temporaries(self):
+	def _stencils_stepping_by_neglecting_vertical_motion_allocate_temporaries(self):
 		"""
 		Allocate the Numpy arrays which will store temporary fields to be shared
 		between the stencils stepping the solution by neglecting vertical advection.
@@ -1075,9 +1073,9 @@ class _ForwardEuler(IsentropicPrognostic):
 
 		# Determine the size of the arrays
 		# Even if these arrays will not be shared with the stencil in charge
-		# of coupling physics with dynamics, they should be treated as they were
-		li = mi if not self._physics_dynamics_coupling_on else max(mi, nx)
-		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
+		# of integrating the vertical advection, they should be treated as they were
+		li = mi if self._adiabatic_flow else max(mi, nx)
+		lj = mj if self._adiabatic_flow else max(mj, ny)
 
 		# Allocate the arrays
 		self._tmp_su     = np.zeros((li, lj, nz), dtype=self._dtype)
@@ -1085,7 +1083,7 @@ class _ForwardEuler(IsentropicPrognostic):
 		self._in_s_prv   = np.zeros((li, lj, nz), dtype=self._dtype)
 		self._in_mtg_prv = np.zeros((li, lj, nz), dtype=self._dtype)
 
-	def _stencil_stepping_by_neglecting_vertical_advection_first_defs(
+	def _stencil_stepping_by_neglecting_vertical_motion_first_defs(
 		self, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
 		in_sqv=None, in_sqc=None, in_sqr=None, in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
@@ -1235,7 +1233,7 @@ class _ForwardEuler(IsentropicPrognostic):
 		else:
 			return out_s, out_su, out_sv, out_sqv, out_sqc, out_sqr
 
-	def _stencil_stepping_by_neglecting_vertical_advection_second_defs(
+	def _stencil_stepping_by_neglecting_vertical_motion_second_defs(
 		self, dt, in_s, in_mtg, in_su, in_sv):
 		"""
 		GT4Py stencil stepping the momenta via a one-time-level scheme.

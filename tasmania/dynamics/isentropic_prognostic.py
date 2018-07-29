@@ -8,7 +8,7 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.dynamics.diagnostics import WaterConstituent
-from tasmania.dynamics.isentropic_fluxes import HorizontalFlux, VerticalFlux
+from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux, IsentropicVerticalFlux
 from tasmania.dynamics.sedimentation_flux import SedimentationFlux
 from tasmania.physics.microphysics import RaindropFallVelocity
 from tasmania.utils.data_utils import get_physical_constants
@@ -37,7 +37,7 @@ class IsentropicPrognostic:
 
 	def __init__(self, grid, moist_on, backend, diagnostics,
 				 horizontal_boundary_conditions, horizontal_flux_scheme,
-				 physics_dynamics_coupling_on=False, vertical_flux_scheme=None,
+				 adiabatic_flow=True, vertical_flux_scheme=None,
 				 sedimentation_on=False, sedimentation_flux_scheme=None,
 				 sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
 				 dtype=datatype, physical_constants=None):
@@ -62,15 +62,14 @@ class IsentropicPrognostic:
 			This is modified in-place by setting the number of boundary layers.
 		horizontal_flux_scheme : str
 			String specifying the numerical horizontal flux scheme to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalFlux`
+			See :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux`
 			for the complete list of the available options.
-		physics_dynamics_coupling_on : `bool`, optional
-			:obj:`True` to couple physics with dynamics, i.e., to account for the
-			change over time in potential temperature, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
+		adiabatic_flow : `bool`, optional
+			:obj:`True` for an adiabatic atmosphere, in which the potential temperature
+			is conserved, :obj:`False` otherwise. Defaults to :obj:`True`.
 		vertical_flux_scheme : `str`, optional
 			String specifying the numerical vertical flux scheme to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.VerticalFlux`
+			See :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
 			for the complete list of the available options. Defaults to :obj:`None`.
 		sedimentation_on : `bool`, optional
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
@@ -111,7 +110,7 @@ class IsentropicPrognostic:
 		self._diagnostics				   = diagnostics
 		self._hboundary					   = horizontal_boundary_conditions
 		self._hflux_scheme                 = horizontal_flux_scheme
-		self._physics_dynamics_coupling_on = physics_dynamics_coupling_on
+		self._adiabatic_flow 			   = adiabatic_flow
 		self._vflux_scheme                 = vertical_flux_scheme
 		self._sedimentation_on             = sedimentation_on
 		self._sedimentation_flux_scheme    = sedimentation_flux_scheme
@@ -126,10 +125,10 @@ class IsentropicPrognostic:
 														  physical_constants)
 
 		# Instantiate the classes computing the numerical horizontal and vertical fluxes
-		self._hflux = HorizontalFlux.factory(self._hflux_scheme, grid, moist_on)
+		self._hflux = IsentropicHorizontalFlux.factory(self._hflux_scheme, grid, moist_on)
 		self._hboundary.nb = self._hflux.nb
-		if physics_dynamics_coupling_on:
-			self._vflux = VerticalFlux.factory(self._vflux_scheme, grid, moist_on)
+		if not adiabatic_flow:
+			self._vflux = IsentropicVerticalFlux.factory(self._vflux_scheme, grid, moist_on)
 
 		# Instantiate the classes computing the vertical derivative of the sedimentation flux
 		# and diagnosing the mass fraction of precipitation water
@@ -172,7 +171,7 @@ class IsentropicPrognostic:
 		return self._hboundary
 
 	@abc.abstractmethod
-	def step_neglecting_vertical_advection(self, substep, dt, raw_state, raw_tendencies=None):
+	def step_neglecting_vertical_motion(self, substep, dt, raw_state, raw_tendencies=None):
 		"""
 		Method advancing the conservative, prognostic model variables
 		one substep forward in time. Only horizontal derivatives are considered;
@@ -183,7 +182,7 @@ class IsentropicPrognostic:
 		Parameters
 		----------
 		substep : int
-			The substep to perform.
+			Index of the substep to perform.
 		dt : timedelta
 			:class:`datetime.timedelta` representing the time step.
 		raw_state : dict
@@ -230,10 +229,10 @@ class IsentropicPrognostic:
 		"""
 
 	@abc.abstractmethod
-	def step_coupling_physics_with_dynamics(self, substep, dt, raw_state_now, raw_state_prv):
+	def step_integrating_vertical_advection(self, substep, dt, raw_state_now, raw_state_prv):
 		"""
 		Method advancing the conservative, prognostic model variables
-		one substep forward in time by coupling physics with dynamics, i.e.,
+		one substep forward in time by integrating the vertical advection, i.e.,
 		by accounting for the change over time in potential temperature.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
@@ -276,7 +275,7 @@ class IsentropicPrognostic:
             	* y_momentum_isentropic [kg m^-1 K^-1 s^-1].
 
 			This may be the output of 
-			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_advection`.
+			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_motion`.
 
 		Return
 		------
@@ -331,9 +330,9 @@ class IsentropicPrognostic:
             	* isentropic_density_of_precipitation_water [kg m^-2 K^-1].
 
 			This may be the output of
-			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_advection`
+			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_motion`
 			or
-			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_coupling_physics_with_dynamics`.
+			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_integrating_vertical_advection`.
 
 		Return
 		------
@@ -350,7 +349,7 @@ class IsentropicPrognostic:
 	@staticmethod
 	def factory(scheme, grid, moist_on, backend, diagnostics,
 				horizontal_boundary_conditions, horizontal_flux_scheme,
-				physics_dynamics_coupling_on=False, vertical_flux_scheme=None,
+				adiabatic_flow=True, vertical_flux_scheme=None,
 				sedimentation_on=False, sedimentation_flux_scheme=None,
 				sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
 				dtype=datatype, physical_constants=None):
@@ -383,10 +382,9 @@ class IsentropicPrognostic:
 			String specifying the numerical horizontal flux scheme to use.
 			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalFlux`
 			for the complete list of the available options.
-		physics_dynamics_coupling_on : `bool`, optional
-			:obj:`True` to couple physics with dynamics, i.e., to account for the
-			change over time in potential temperature, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
+		adiabatic_flow : `bool`, optional
+			:obj:`True` for an adiabatic atmosphere, in which the potential temperature
+			is conserved, :obj:`False` otherwise. Defaults to :obj:`True`.
 		vertical_flux_scheme : `str`, optional
 			String specifying the numerical vertical flux scheme to use.
 			See :class:`~tasmania.dynamics.isentropic_fluxes.VerticalFlux`
@@ -431,10 +429,9 @@ class IsentropicPrognostic:
 		"""
 		import tasmania.dynamics._isentropic_prognostic as module
 		arg_list = [grid, moist_on, backend, diagnostics, horizontal_boundary_conditions,
-					horizontal_flux_scheme, physics_dynamics_coupling_on,
-					vertical_flux_scheme, sedimentation_on, sedimentation_flux_scheme,
-					sedimentation_substeps, raindrop_fall_velocity_diagnostic, dtype,
-					physical_constants]
+					horizontal_flux_scheme, adiabatic_flow, vertical_flux_scheme,
+					sedimentation_on, sedimentation_flux_scheme, sedimentation_substeps,
+					raindrop_fall_velocity_diagnostic, dtype, physical_constants]
 
 		if scheme == 'forward_euler':
 			return module._ForwardEuler(*arg_list)
@@ -443,11 +440,10 @@ class IsentropicPrognostic:
 		else:
 			raise ValueError('Unknown time integration scheme.')
 
-	def _stencils_stepping_by_neglecting_vertical_advection_allocate_inputs(self,
-																			raw_tendencies):
+	def _stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(self, raw_tendencies):
 		"""
 		Allocate the attributes which serve as inputs to the GT4Py stencils
-		which step the solution disregarding the vertical advection.
+		which step the solution disregarding any vertical motion.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -460,13 +456,13 @@ class IsentropicPrognostic:
 
 		# Determine the size of the arrays which will serve as stencils'
 		# inputs and outputs. These arrays may be shared with the stencil
-		# in charge of coupling physics with dynamics
-		li = mi if not self._physics_dynamics_coupling_on else max(mi, nx)
-		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
+		# in charge of integrating the vertical advection
+		li = mi if self._adiabatic_flow else max(mi, nx)
+		lj = mj if self._adiabatic_flow else max(mj, ny)
 
 		# Allocate the Numpy arrays which will serve as stencils' inputs
-		# and which may be shared with the stencil in charge of coupling
-		# physics with dynamics
+		# and which may be shared with the stencil in charge of integrating
+		# the vertical advection
 		self._in_s = np.zeros((li, lj, nz), dtype=dtype)
 		self._in_su = np.zeros((li, lj, nz), dtype=dtype)
 		self._in_sv = np.zeros((li, lj, nz), dtype=dtype)
@@ -476,11 +472,11 @@ class IsentropicPrognostic:
 
 			# The array which will store the input mass fraction of
 			# precipitation water may be shared either with stencil in
-			# charge of coupling physics with dynamics, or the stencil
+			# charge of integrating the vertical advection, or the stencil
 			# taking care of sedimentation
-			li = mi if not (self._sedimentation_on and self._physics_dynamics_coupling_on) \
+			li = mi if (not self._sedimentation_on and self._adiabatic_flow) \
 				 else max(mi, nx)
-			lj = mj if not (self._sedimentation_on and self._physics_dynamics_coupling_on) \
+			lj = mj if (not self._sedimentation_on and self._adiabatic_flow) \
 				 else max(mj, ny)
 			self._in_sqr = np.zeros((li, lj, nz), dtype=dtype)
 
@@ -496,11 +492,11 @@ class IsentropicPrognostic:
 			if 'tendency_of_mass_fraction_of_precipitation_water_in_air' in tendency_names:
 				self._in_qr_tnd = np.zeros((mi, mj, nz), dtype=dtype)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(self):
+	def _stencils_stepping_by_neglecting_vertical_motion_allocate_outputs(self):
 		"""
 		Allocate the Numpy arrays which will serve as outputs for
-		the GT4Py stencils stepping the solution by neglecting the
-		vertical advection.
+		the GT4Py stencils stepping the solution by neglecting any
+		vertical motion.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -508,14 +504,14 @@ class IsentropicPrognostic:
 		dtype = self._dtype
 
 		# Determine the size of the output arrays; these arrays may be shared
-		# with the stencil in charge of coupling physics with dynamics
-		li = mi if not self._physics_dynamics_coupling_on else max(mi, nx)
-		lj = mj if not self._physics_dynamics_coupling_on else max(mj, ny)
+		# with the stencil in charge of integrating the vertical advection
+		li = mi if self._adiabatic_flow else max(mi, nx)
+		lj = mj if self._adiabatic_flow else max(mj, ny)
 		nz = self._grid.nz
 
 		# Allocate the output Numpy arrays which will serve as stencil's
 		# outputs; these may be shared with the stencil in charge
-		# of coupling physics with dynamics
+		# of integrating the vertical advection
 		self._out_s = np.zeros((li, lj, nz), dtype=dtype)
 		self._out_su = np.zeros((li, lj, nz), dtype=dtype)
 		self._out_sv = np.zeros((li, lj, nz), dtype=dtype)
@@ -524,19 +520,19 @@ class IsentropicPrognostic:
 			self._out_sqc = np.zeros((li, lj, nz), dtype=dtype)
 
 			# The array which will store the output mass fraction of precipitation
-			# water may be shared either with stencil in charge of coupling physics
-			# with dynamics, or the stencil taking care of sedimentation
-			li = mi if not (self._sedimentation_on and self._physics_dynamics_coupling_on) \
+			# water may be shared either with stencil in charge of integrating the
+			# vertical advection, or the stencil taking care of sedimentation
+			li = mi if (not self._sedimentation_on and self._adiabatic_flow) \
 				 else max(mi, nx)
-			lj = mj if not (self._sedimentation_on and self._physics_dynamics_coupling_on) \
+			lj = mj if (not self._sedimentation_on and self._adiabatic_flow) \
 				 else max(mj, ny)
 			self._out_sqr = np.zeros((li, lj, nz), dtype=dtype)
 
-	def _stencils_stepping_by_neglecting_vertical_advection_set_inputs(
+	def _stencils_stepping_by_neglecting_vertical_motion_set_inputs(
 		self, dt, raw_state, raw_tendencies):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencils
-		which step the solution disregarding the vertical advection.
+		which step the solution disregarding any vertical motion.
 		"""
 		# Shortcuts
 		mi, mj = self._hboundary.mi, self._hboundary.mj

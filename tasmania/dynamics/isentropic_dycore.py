@@ -1,4 +1,3 @@
-import math
 import numpy as np
 
 import gridtools as gt
@@ -296,7 +295,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 			sv_now = np.copy(raw_state['y_momentum_isentropic'].values[:,:,:,0])
 
 		# Perform the prognostic step
-		raw_state_new = self._prognostic.step_neglecting_vertical_advection(
+		raw_state_new = self._prognostic.step_neglecting_vertical_motion(
 			timestep, raw_state, raw_tendencies)
 
 		if self._damp_on:

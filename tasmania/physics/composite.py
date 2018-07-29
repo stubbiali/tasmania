@@ -1,5 +1,5 @@
 from sympl import DiagnosticComponent as Diagnostic, \
-				  PrognosticComponent as Tendency, \
+				  TendencyComponent as Tendency, \
 				  AdamsBashforth as TendencyStepper, \
 				  combine_component_properties
 

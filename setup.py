@@ -1,14 +1,11 @@
 import os
 import sys
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, Extension
 
 
-version = '0.2'
+version = '0.2.0'
 
 
-#
-# This interface is Python 3.x only
-#
 if sys.version_info.major < 3:
 	print('Python 3.x is required.')
 	sys.exit(1)
@@ -33,10 +30,10 @@ def read_file(fname):
 
 setup(
 	name			 = 'tasmania',
-	description		 = 'Python library for Earth system science',
+	description		 = 'A Python library for building Earth system models.',
 	long_description = read_file('README.md'),
 	version			 = version,
-	keywords		 = '',
+	keywords		 = 'tasmania',
 	author			 = 'Stefano Ubbiali',
 	author_email	 = 'subbiali@phys.ethz.ch',
 	url				 = 'https://github.com/eth-cscs/tasmania',
