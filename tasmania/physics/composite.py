@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from sympl import DiagnosticComponent as Diagnostic, \
-				  PrognosticComponent as Tendency, \
+				  TendencyComponent as Tendency, \
 				  AdamsBashforth as TendencyStepper, \
 				  combine_component_properties
 
