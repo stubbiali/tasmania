@@ -107,5 +107,5 @@ if __name__ == "__main__":
 
     prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, px, py, pz)
     prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye)
-    prepare_boundary_condition(nx, ny, nz, 1, 1, 1, 1, 0, 0)
+    # prepare_boundary_condition(nx, ny, nz, 1, 1, 1, 1, 0, 0)
 

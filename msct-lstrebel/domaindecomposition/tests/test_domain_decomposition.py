@@ -615,8 +615,8 @@ class TestDD(unittest.TestCase):
                                         global_coords=np.array([0, size_x, 0, size_y, 0, size_z]),
                                         neighbors_id=np.array([None, 1, None, None, None, None]))
             slist = [subdiv0]
-            subdiv0.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp],
-                                   field_bc_file="test_boundary_condition.npy")
+            subdiv0.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp]) #,
+                                   # field_bc_file="test_boundary_condition.npy")
             subdiv0.register_field(fieldname="unew", halo=[hxm, hxp, hym, hyp, hzm, hzp])
             subdiv0.fields["unow"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.linspace(0, tot_size - 1, tot_size).reshape(
                 (size_x, size_y, size_z))
@@ -640,8 +640,8 @@ class TestDD(unittest.TestCase):
                                         global_coords=np.array([size_x, size_x+size_x, 0, size_y, 0, size_z]),
                                         neighbors_id=np.array([0, None, None, None, None, None]))
             slist = [subdiv1]
-            subdiv1.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp],
-                                   field_bc_file="test_boundary_condition.npy")
+            subdiv1.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp]) #,
+                                   # field_bc_file="test_boundary_condition.npy")
             subdiv1.register_field(fieldname="unew", halo=[hxm, hxp, hym, hyp, hzm, hzp])
             subdiv1.fields["unow"][hxm:-hxp, hym:-hyp, hzm:-hzp] = np.linspace(tot_size,
                                                                                tot_size + tot_size - 1,
@@ -666,6 +666,24 @@ class TestDD(unittest.TestCase):
         #
         # for sd in st_list:
         #     sd.compute()
+
+        westboundary = -1.0 * np.ones((hxm, size_y, size_z))
+        eastboundary = -2.0 * np.ones((hxp, size_y, size_z))
+        northboundary = -3.0 * np.ones((size_x, hym, size_z))
+        southboundary = -4.0 * np.ones((size_x, hyp, size_z))
+        lowerboundary = -5.0 * np.ones((size_x, size_y, hzm))
+        upperboundary = -6.0 * np.ones((size_x, size_y, hzp))
+
+        for sd in slist:
+            sd.set_boundary_condition("unow", 0, westboundary)
+            sd.set_boundary_condition("unow", 1, eastboundary)
+            sd.set_boundary_condition("unow", 2, northboundary)
+            sd.set_boundary_condition("unow", 3, southboundary)
+            sd.set_boundary_condition("unow", 4, lowerboundary)
+            sd.set_boundary_condition("unow", 5, upperboundary)
+
+        for sd in slist:
+            sd.apply_boundary_condition("unow")
 
         for sd in slist:
             sd.communicate(fieldname="unow")

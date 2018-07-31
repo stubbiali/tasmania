@@ -31,6 +31,7 @@ import numpy as np
 import warnings
 import pickle
 import os
+from datetime import timedelta
 
 from mpi4py import MPI
 from pymetis import part_graph
@@ -76,6 +77,7 @@ class DomainSubdivision:
         self.fields = {}
         self.halos = {}
         self.global_bc = {}
+        self.global_bc_arr = {}
         self.recv_slices = {}
         self.send_slices = {}
         self.get_local = {}
@@ -83,10 +85,31 @@ class DomainSubdivision:
 
         # print(self.size, self.global_coords)
 
-    def check_globalcoords(self, i, j, k):
-        return (self.global_coords[0] <= i < self.global_coords[1]
-                and self.global_coords[2] <= j < self.global_coords[3]
-                and self.global_coords[4] <= k < self.global_coords[5])
+    # def check_globalcoords(self, i, j, k):
+    #     return (self.global_coords[0] <= i < self.global_coords[1]
+    #             and self.global_coords[2] <= j < self.global_coords[3]
+    #             and self.global_coords[4] <= k < self.global_coords[5])
+    #
+    # def globalcoords_to_local(self, i, j, k, fieldname):
+    #     il = i - self.global_coords[0] + self.halos[fieldname][0]
+    #     jl = j - self.global_coords[2] + self.halos[fieldname][2]
+    #     kl = k - self.global_coords[4] + self.halos[fieldname][4]
+    #     return il, jl, kl
+    #
+    # def set_value(self, i, j, k, fieldname, value):
+    #     if self.check_globalcoords(i, j, k):
+    #         il, jl, kl = self.globalcoords_to_local(i, j, k, fieldname=fieldname)
+    #         self.fields[fieldname][il, jl, kl] = value
+    #
+    # def get_value(self, i, j, k, fieldname):
+    #     if self.check_globalcoords(i, j, k):
+    #         il, jl, kl = self.globalcoords_to_local(i, j, k, fieldname=fieldname)
+    #         return(self.fields[fieldname][il, jl, kl])
+    #     else:
+    #         return None
+
+    def set_boundary_condition(self, fieldname, direction, array):
+        self.global_bc_arr[fieldname][direction] = array
 
     def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None):
         self.halos[fieldname] = halo
@@ -102,6 +125,7 @@ class DomainSubdivision:
                                               self.global_coords[4]:self.global_coords[5]]
 
         self.global_bc[fieldname] = field_bc_file
+        self.global_bc_arr[fieldname] = [None, None, None, None, None, None]
         self.setup_slices(fieldname)
 
     def setup_slices(self, fieldname):
@@ -242,7 +266,7 @@ class DomainSubdivision:
         # print(self.recv_slices[fieldname], self.send_slices[fieldname], self.get_global[fieldname])
         # print(self.get_global[fieldname])
 
-    def save_fields(self, fieldnames=None):
+    def save_fields(self, fieldnames=None, postfix=None):
         if fieldnames is None:
             for k in self.fields.keys():
                 filename = (str(k) + "_from_"
@@ -253,6 +277,8 @@ class DomainSubdivision:
                             + "x" + str(self.global_coords[1] - 1)
                             + "y" + str(self.global_coords[3] - 1)
                             + "z" + str(self.global_coords[5] - 1))
+                if postfix is not None:
+                    filename += "_" + str(postfix)
                 np.save(filename, self.get_interior_field(k))
         else:
             for k in fieldnames:
@@ -264,6 +290,8 @@ class DomainSubdivision:
                             + "x" + str(self.global_coords[1] - 1)
                             + "y" + str(self.global_coords[3] - 1)
                             + "z" + str(self.global_coords[5] - 1))
+                if postfix is not None:
+                    filename += "_" + str(postfix)
                 np.save(filename, self.get_interior_field(k))
 
     def register_stencil(self, **kwargs):
@@ -352,13 +380,36 @@ class DomainSubdivision:
         return temp_sd
 
     def get_interior_field(self, fieldname):
-        return self.fields[fieldname][
-               self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
-               self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
-               self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]]
+        xneg = self.halos[fieldname][0]
+        xpos = None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1]
+        yneg = self.halos[fieldname][2]
+        ypos = None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3]
+        zneg = self.halos[fieldname][4]
+        zpos = None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]
+        return self.fields[fieldname][xneg:xpos, yneg:ypos, zneg:zpos]
 
     def swap_fields(self, field1, field2):
         self.fields[field1][:], self.fields[field2][:] = self.fields[field2][:], self.fields[field1][:]
+
+    def apply_boundary_condition(self, fieldname):
+        # Iterate over all neighbors i.e. all directions:
+        for d in range(len(self.neighbors_id)):
+            # Check if neighbor in current direction is the global boundary:
+            if self.check_global_boundary(d):
+                if self.halos[fieldname][d] != 0:
+                    # Load boundary condition from global file
+                    if self.global_bc[fieldname] is not None:
+                        self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
+                            self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
+                    # Load boundary condition from set array
+                    elif self.global_bc_arr[fieldname][d] is not None:
+                        # print(self.fields[fieldname][self.recv_slices[fieldname][d]].shape)
+                        # print(self.global_bc_arr[fieldname][d].shape, fieldname, d)
+                        # print(self.global_coords[:])
+                        self.fields[fieldname][self.recv_slices[fieldname][d]] = self.global_bc_arr[fieldname][d]
+                    else:
+                        warnings.warn("No boundary condition file or set_boundary_condition() provided in direction "
+                                      + str(d) + " for field " + str(fieldname), RuntimeWarning)
 
     def communicate(self, fieldname=None):
         if fieldname is None:
@@ -377,24 +428,6 @@ class DomainSubdivision:
             if self.check_global_boundary(d):
                 # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
                 requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
-                if self.halos[fieldname][d] != 0:
-                    # print("Hi i am proc " + str(MPI.COMM_WORLD.Get_rank())
-                    #       + " and I hit the global boundary with my subdivision " + str(self.id)
-                    #       + " in direction " + str(d)
-                    #       + " my global coordinates are " + str(self.global_coords))
-                    # Put global boundary file values into the halo region of the subdivision
-                    if self.global_bc[fieldname] is not None:
-                        # print(self.recv_slices[fieldname][d], self.get_global[fieldname][d])
-                        # print(self.fields[fieldname][self.recv_slices[fieldname][d]].shape)
-                        # print(self.get_global[fieldname][d])
-                        # test = np.load(self.global_bc[fieldname], mmap_mode='r')#[self.get_global[fieldname][d]]
-                        # print(test.shape)
-                        # if test.shape == (2, 2, 2):
-                        #     print(str(self.id), str(d), str(self.global_coords))
-                        self.fields[fieldname][self.recv_slices[fieldname][d]] = np.load(
-                            self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
-                    else:
-                        warnings.warn("No boundary condition file provided.", RuntimeWarning)
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
                 if (self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]
@@ -775,7 +808,37 @@ class DomainPostprocess:
         with open("subdivisions.pkl", "rb") as f:
             self.subdivisions = pickle.load(f)
 
-    def combine_output_files(self, size, fieldname, cleanup=False):
+    def create_pickle_dump(self, nx, ny, nz, nt, domain, dt, eps, save_freq, filename, cleanup=False):
+        # Create the grid
+        x = np.linspace(domain[0][0], domain[1][0], nx)
+        y = np.linspace(domain[0][1], domain[1][1], ny)
+
+        tsave = [timedelta(0), ]
+        usave = self.combine_output_files(size=[nx, ny, nz], fieldname="unew", postfix="t_"+str(0),
+                                          save=False, cleanup=cleanup)
+        vsave = self.combine_output_files(size=[nx, ny, nz], fieldname="vnew", postfix="t_"+str(0),
+                                          save=False, cleanup=cleanup)
+        for n in range(1, nt):
+            # Save
+            if ((save_freq > 0) and (n % save_freq == 0)) or (n + 1 == nt):
+                unew = self.combine_output_files(size=[nx, ny, nz], fieldname="unew", postfix="t_"+str(n),
+                                                 save=False, cleanup=cleanup)
+                vnew = self.combine_output_files(size=[nx, ny, nz], fieldname="vnew", postfix="t_"+str(n),
+                                                 save=False, cleanup=cleanup)
+                tsave.append(timedelta(seconds=(n + 1) * dt))
+                usave = np.concatenate((usave, unew), axis=2)
+                vsave = np.concatenate((vsave, vnew), axis=2)
+
+        # Dump solution to a binary file
+        with open(filename, 'wb') as outfile:
+            pickle.dump(tsave, outfile)
+            pickle.dump(x, outfile)
+            pickle.dump(y, outfile)
+            pickle.dump(usave, outfile)
+            pickle.dump(vsave, outfile)
+            pickle.dump(eps, outfile)
+
+    def combine_output_files(self, size, fieldname, postfix=None, save=True, cleanup=False):
         field = np.zeros((size[0], size[1], size[2]))
         for sd in self.subdivisions:
             filename = (str(fieldname) + "_from_"
@@ -785,13 +848,17 @@ class DomainPostprocess:
                         + "_to_"
                         + "x" + str(sd.global_coords[1] - 1)
                         + "y" + str(sd.global_coords[3] - 1)
-                        + "z" + str(sd.global_coords[5] - 1)
-                        + ".npy")
+                        + "z" + str(sd.global_coords[5] - 1))
+            if postfix is not None:
+                filename += "_" + str(postfix) + ".npy"
+            else:
+                filename += ".npy"
+
             field[sd.global_coords[0]:sd.global_coords[1],
                   sd.global_coords[2]:sd.global_coords[3],
                   sd.global_coords[4]:sd.global_coords[5]] = np.load(filename, mmap_mode='r')[:, :, :]
-
-        np.save(fieldname, field)
+        if save:
+            np.save(fieldname, field)
 
         if cleanup:
             for sd in self.subdivisions:
@@ -802,9 +869,13 @@ class DomainPostprocess:
                             + "_to_"
                             + "x" + str(sd.global_coords[1] - 1)
                             + "y" + str(sd.global_coords[3] - 1)
-                            + "z" + str(sd.global_coords[5] - 1)
-                            + ".npy")
+                            + "z" + str(sd.global_coords[5] - 1))
+                if postfix is not None:
+                    filename += "_" + str(postfix) + ".npy"
+                else:
+                    filename += ".npy"
                 os.remove(filename)
+        return field
 
 
 class DomainDecompositionStencil:
@@ -850,6 +921,16 @@ class DomainDecomposition:
         for sd in self.subdivisions:
             sd.register_field(fieldname, halo, field_ic_file, field_bc_file)
 
+    # def set_value(self, i, j, k, fieldname, value):
+    #     for sd in self.subdivisions:
+    #         sd.set_value(i, j, k, fieldname, value)
+    #
+    # def get_value(self, i, j, k, fieldname):
+    #     tmp = None
+    #     for sd in self.subdivisions:
+    #         tmp = sd.get_value(i, j, k, fieldname) if sd.get_value(i, j, k, fieldname) is not None else tmp
+    #     return tmp
+
     def register_stencil(self, **kwargs):
         dds = DomainDecompositionStencil()
         for sd in self.subdivisions:
@@ -860,9 +941,24 @@ class DomainDecomposition:
         for sd in self.subdivisions:
             sd.communicate(fieldname)
 
-    def save_fields(self, fieldnames=None):
+    def set_boundary_condition(self, fieldname, direction, halo, array):
         for sd in self.subdivisions:
-            sd.save_fields(fieldnames)
+            if (direction == 0 or direction == 1):
+                slice = np.s_[:halo, sd.global_coords[2]:sd.global_coords[3], sd.global_coords[4]:sd.global_coords[5]]
+            elif (direction == 2 or direction == 3):
+                slice = np.s_[sd.global_coords[0]:sd.global_coords[1], :halo, sd.global_coords[4]:sd.global_coords[5]]
+            elif (direction == 4 or direction == 5):
+                slice = np.s_[sd.global_coords[0]:sd.global_coords[1], sd.global_coords[2]:sd.global_coords[3], :halo]
+
+            sd.set_boundary_condition(fieldname, direction, array[slice])
+
+    def apply_boundary_condition(self, fieldname):
+        for sd in self.subdivisions:
+            sd.apply_boundary_condition(fieldname)
+
+    def save_fields(self, fieldnames=None, postfix=None):
+        for sd in self.subdivisions:
+            sd.save_fields(fieldnames, postfix=postfix)
 
     def swap_fields(self, field1, field2):
         for sd in self.subdivisions:

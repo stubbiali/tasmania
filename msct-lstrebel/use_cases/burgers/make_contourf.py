@@ -59,7 +59,7 @@ import utils
 # text			 		Text to anchor to the figure
 # text_loc		 		Text location
 #
-testname = 'test_shankar_upwind_third_order'
+testname = 'test_zhao_upwind_third_order'
 filename 			= testname +'.pickle'
 field 				= 'u'
 time_level			= -1
