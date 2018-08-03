@@ -109,11 +109,11 @@ def make_quiver_xy(grid, state, field_to_plot, z_level, fig, ax, **kwargs):
 	ni, nj = scalar.shape
 
 	# The underlying x-grid
-	x  = grid.x[:] if ni == nx else grid.x_at_u_locations[:]
+	x  = grid.x.values[:] if ni == nx else grid.x_at_u_locations.values[:]
 	xv = np.repeat(x[:, np.newaxis], nj, axis=1)
 
 	# The underlying y-grid
-	y  = grid.y[:] if nj == ny else grid.y_at_v_locations[:]
+	y  = grid.y.values[:] if nj == ny else grid.y_at_v_locations.values[:]
 	yv = np.repeat(y[np.newaxis, :], ni, axis=0)
 
 	# The topography height

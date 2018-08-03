@@ -40,7 +40,7 @@ class Kessler(Tendency):
 	from the saturation adjustment.
 	"""
 	# Default values for the physical parameters used in the class
-	_d_a  = DataArray(0.5, attrs={'units': 'g kg^-1'})
+	_d_a  = DataArray(0.001, attrs={'units': 'g g^-1'})
 	_d_k1 = DataArray(0.001, attrs={'units': 's^-1'})
 	_d_k2 = DataArray(2.2, attrs={'units': 's^-1'})
 
@@ -226,22 +226,22 @@ class Kessler(Tendency):
 			self._stencil_initialize(state['air_density'].dtype)
 
 		# Extract the required model variables
-		self._in_rho[:, :, :] = state['air_density'][:, :, :]
-		self._in_T[:, :, :]	  = state['air_temperature'][:, :, :]
-		self._in_qv[:, :, :]  = state['mass_fraction_of_water_vapor_in_air'][:, :, :]
-		self._in_qc[:, :, :]  = state['mass_fraction_of_cloud_liquid_water_in_air'][:, :, :]
-		self._in_qr[:, :, :]  = state['mass_fraction_of_precipitation_water_in_air'][:, :, :]
+		self._in_rho[...] = state['air_density'][...]
+		self._in_T[...]	  = state['air_temperature'][...]
+		self._in_qv[...]  = state['mass_fraction_of_water_vapor_in_air'][...]
+		self._in_qc[...]  = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
+		self._in_qr[...]  = state['mass_fraction_of_precipitation_water_in_air'][...]
 		if self._pressure_on_interface_levels:
-			self._in_p[:, :, :]   = state['air_pressure_on_interface_levels'][:, :, :]
-			self._in_exn[:, :, :] = state['exner_function_on_interface_levels'][:, :, :]
+			self._in_p[...]   = state['air_pressure_on_interface_levels'][...]
+			self._in_exn[...] = state['exner_function_on_interface_levels'][...]
 		else:
-			self._in_p[:, :, :]   = state['air_pressure'][:, :, :]
-			self._in_exn[:, :, :] = state['exner_function'][:, :, :]
+			self._in_p[...]   = state['air_pressure'][...]
+			self._in_exn[...] = state['exner_function'][...]
 
 		# Compute the saturation water vapor pressure via Tetens' formula
-		self._in_ps[:, :, :] = self._p0 * np.exp(self._alpha *
-												 (self._in_T[:, :, :] - self._Tr) /
-											   	 (self._in_T[:, :, :] - self._bw))
+		self._in_ps[...] = self._p0 * np.exp(self._alpha *
+											 (self._in_T[...] - self._Tr) /
+											 (self._in_T[...] - self._bw))
 
 		# Run the stencil
 		self._stencil.compute()
@@ -305,11 +305,11 @@ class Kessler(Tendency):
 
 		# Initialize the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs=_outputs,
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = _inputs,
+			outputs			 = _outputs,
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	def _stencil_defs(self, in_rho, in_p, in_ps, in_exn, in_qv, in_qc, in_qr):
 		"""
@@ -584,18 +584,18 @@ class SaturationAdjustmentKessler(Diagnostic):
 			self._stencil_initialize(state['air_temperature'].dtype)
 
 		# Extract the required model variables
-		self._in_T[:, :, :]	  = state['air_temperature'][:, :, :]
-		self._in_qv[:, :, :]  = state['mass_fraction_of_water_vapor_in_air'][:, :, :]
-		self._in_qc[:, :, :]  = state['mass_fraction_of_cloud_liquid_water_in_air'][:, :, :]
+		self._in_T[...]	  = state['air_temperature'][...]
+		self._in_qv[...]  = state['mass_fraction_of_water_vapor_in_air'][...]
+		self._in_qc[...]  = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
 		if self._pressure_on_interface_levels:
-			self._in_p[:, :, :]   = state['air_pressure_on_interface_levels'][:, :, :]
+			self._in_p[...]   = state['air_pressure_on_interface_levels'][...]
 		else:
-			self._in_p[:, :, :]   = state['air_pressure'][:, :, :]
+			self._in_p[...]   = state['air_pressure'][...]
 
 		# Compute the saturation water vapor pressure via Tetens' formula
-		self._in_ps[:, :, :] = self._p0 * np.exp(self._alpha *
-												 (self._in_T[:, :, :] - self._Tr) /
-												 (self._in_T[:, :, :] - self._bw))
+		self._in_ps[...] = self._p0 * np.exp(self._alpha *
+											 (self._in_T[...] - self._Tr) /
+											 (self._in_T[...] - self._bw))
 
 		# Run the stencil
 		self._stencil.compute()
@@ -630,12 +630,12 @@ class SaturationAdjustmentKessler(Diagnostic):
 
 		# Initialize the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_p': self._in_p, 'in_ps': self._in_ps, 'in_T': self._in_T,
-					'in_qv': self._in_qv, 'in_qc': self._in_qc},
-			outputs={'out_qv': self._out_qv, 'out_qc': self._out_qc},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_p': self._in_p, 'in_ps': self._in_ps, 'in_T': self._in_T,
+								'in_qv': self._in_qv, 'in_qc': self._in_qc},
+			outputs			 = {'out_qv': self._out_qv, 'out_qc': self._out_qc},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	def _stencil_defs(self, in_p, in_ps, in_T, in_qv, in_qc):
 		"""
@@ -692,7 +692,7 @@ class SaturationAdjustmentKessler(Diagnostic):
 
 		# Interpolate the pressure at the vertical main levels
 		if self._pressure_on_interface_levels:
-			tmp_p[k]   = 0.5 * (in_p[k] + in_p[k+1])
+			tmp_p[k] = 0.5 * (in_p[k] + in_p[k+1])
 
 		# Set the pointer to the equation representing the pressure
 		p = tmp_p if self._pressure_on_interface_levels else in_p
@@ -800,12 +800,12 @@ class RaindropFallVelocity(Diagnostic):
 			self._stencil_initialize(state['air_density'].dtype)
 
 		# Extract the needed model variables
-		self._in_rho[:, :, :] = state['air_density'][:, :, :]
-		self._in_qr[:, :, :]  = state['mass_fraction_of_precipitation_water_in_air'][:, :, :]
+		self._in_rho[...] = state['air_density'][...]
+		self._in_qr[...]  = state['mass_fraction_of_precipitation_water_in_air'][...]
 
 		# Extract the surface density
 		rho_s = self._in_rho[:, :, -1:]
-		self._in_rho_s[:, :, :] = np.repeat(rho_s, self._grid.nz, axis=2)
+		self._in_rho_s[...] = np.repeat(rho_s, self._grid.nz, axis=2)
 
 		# Call the stencil's compute function
 		self._stencil.compute()
@@ -832,12 +832,12 @@ class RaindropFallVelocity(Diagnostic):
 
 		# Initialize the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_rho': self._in_rho, 'in_rho_s': self._in_rho_s,
-					'in_qr': self._in_qr},
-			outputs={'out_vt': self._out_vt},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_rho': self._in_rho, 'in_rho_s': self._in_rho_s,
+								'in_qr': self._in_qr},
+			outputs			 = {'out_vt': self._out_vt},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_rho, in_rho_s, in_qr):
