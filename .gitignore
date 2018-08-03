@@ -22,6 +22,9 @@ Interactive.ipynb
 projectFilesBackup/
 .idea/
 
+# Baseline images for tests
+result_images/
+
 # Varia
 .eggs/
 
