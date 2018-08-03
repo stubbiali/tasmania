@@ -19,7 +19,7 @@ jupyter-latex-envs==1.4.4
 jupyter-nbextensions-configurator==0.4.0
 jupyterhub==0.8.1
 MarkupSafe==1.0
-matplotlib>=2.1.2
+matplotlib>=2.2.2
 nbconvert==5.3.1
 nbformat==4.4.0
 netCDF4==1.3.1
