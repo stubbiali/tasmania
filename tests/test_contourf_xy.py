@@ -25,13 +25,11 @@ import os
 import pickle
 import pytest
 
+from conftest import isentropic_dry_data
+
 
 @image_comparison(baseline_images=['test_contourf_xy_velocity'], extensions=['eps'])
 def test_contourf_xy_velocity():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Field to plot
 	field_to_plot = 'horizontal_velocity'
 
@@ -46,10 +44,9 @@ def test_contourf_xy_velocity():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	z_level = -1
@@ -94,10 +91,6 @@ def test_contourf_xy_velocity():
 
 @image_comparison(baseline_images=['test_contourf_xy_pressure'], extensions=['eps'])
 def test_contourf_xy_pressure():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Field to plot
 	field_to_plot = 'air_pressure_on_interface_levels'
 
@@ -112,10 +105,9 @@ def test_contourf_xy_pressure():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grad data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	z_level = -1

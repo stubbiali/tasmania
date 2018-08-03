@@ -22,15 +22,13 @@
 #
 from matplotlib.testing.decorators import image_comparison
 import os
-import pickle
 import pytest
+
+from conftest import isentropic_dry_data
 
 
 @image_comparison(baseline_images=['test_plot_topography_3d'], extensions=['eps'], tol=0.15)
 def test_plot_topography_3d():
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Make sure the folder tests/baseline_images/test_plot_topography does exist
 	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
 								'tests/baseline_images/test_plot_topography')
@@ -42,10 +40,9 @@ def test_plot_topography_3d():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Load and grab data
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Plot properties
 	plot_properties = {
