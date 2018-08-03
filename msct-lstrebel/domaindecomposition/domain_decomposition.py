@@ -30,11 +30,8 @@ This module contains
 import numpy as np
 import warnings
 import pickle
-import os
-from datetime import timedelta
 
 from mpi4py import MPI
-from pymetis import part_graph
 
 import gridtools as gt
 from gridtools.user_interface.mode import Mode
@@ -82,31 +79,6 @@ class DomainSubdivision:
         self.send_slices = {}
         self.get_local = {}
         self.get_global = {}
-
-        # print(self.size, self.global_coords)
-
-    # def check_globalcoords(self, i, j, k):
-    #     return (self.global_coords[0] <= i < self.global_coords[1]
-    #             and self.global_coords[2] <= j < self.global_coords[3]
-    #             and self.global_coords[4] <= k < self.global_coords[5])
-    #
-    # def globalcoords_to_local(self, i, j, k, fieldname):
-    #     il = i - self.global_coords[0] + self.halos[fieldname][0]
-    #     jl = j - self.global_coords[2] + self.halos[fieldname][2]
-    #     kl = k - self.global_coords[4] + self.halos[fieldname][4]
-    #     return il, jl, kl
-    #
-    # def set_value(self, i, j, k, fieldname, value):
-    #     if self.check_globalcoords(i, j, k):
-    #         il, jl, kl = self.globalcoords_to_local(i, j, k, fieldname=fieldname)
-    #         self.fields[fieldname][il, jl, kl] = value
-    #
-    # def get_value(self, i, j, k, fieldname):
-    #     if self.check_globalcoords(i, j, k):
-    #         il, jl, kl = self.globalcoords_to_local(i, j, k, fieldname=fieldname)
-    #         return(self.fields[fieldname][il, jl, kl])
-    #     else:
-    #         return None
 
     def set_boundary_condition(self, fieldname, direction, array):
         self.global_bc_arr[fieldname][direction] = array
@@ -263,13 +235,11 @@ class DomainSubdivision:
                                                                     + self.halos[fieldname][5])
             ]
         ]
-        # print(self.recv_slices[fieldname], self.send_slices[fieldname], self.get_global[fieldname])
-        # print(self.get_global[fieldname])
 
-    def save_fields(self, fieldnames=None, postfix=None):
+    def save_fields(self, fieldnames=None, path="", prefix="", postfix=None):
         if fieldnames is None:
             for k in self.fields.keys():
-                filename = (str(k) + "_from_"
+                filename = (path + prefix + str(k) + "_from_"
                             + "x" + str(self.global_coords[0])
                             + "y" + str(self.global_coords[2])
                             + "z" + str(self.global_coords[4])
@@ -282,7 +252,7 @@ class DomainSubdivision:
                 np.save(filename, self.get_interior_field(k))
         else:
             for k in fieldnames:
-                filename = (str(k) + "_from_"
+                filename = (path + prefix + str(k) + "_from_"
                             + "x" + str(self.global_coords[0])
                             + "y" + str(self.global_coords[2])
                             + "z" + str(self.global_coords[4])
@@ -357,7 +327,6 @@ class DomainSubdivision:
         drz = self.size[2] + ulz - 1
 
         domain = gt.domain.Rectangle((ulx, uly, ulz), (drx, dry, drz))
-        # print(domain.up_left, domain.down_right)
 
         # Instantiate the stencil with the changed subdivision inputs
         stencil = gt.NGStencil(
@@ -403,9 +372,6 @@ class DomainSubdivision:
                             self.global_bc[fieldname], mmap_mode='r')[self.get_global[fieldname][d]]
                     # Load boundary condition from set array
                     elif self.global_bc_arr[fieldname][d] is not None:
-                        # print(self.fields[fieldname][self.recv_slices[fieldname][d]].shape)
-                        # print(self.global_bc_arr[fieldname][d].shape, fieldname, d)
-                        # print(self.global_coords[:])
                         self.fields[fieldname][self.recv_slices[fieldname][d]] = self.global_bc_arr[fieldname][d]
                     else:
                         warnings.warn("No boundary condition file or set_boundary_condition() provided in direction "
@@ -430,8 +396,7 @@ class DomainSubdivision:
                 requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
-                if (self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[d]]
-                        or MPI.COMM_WORLD.Get_size() == 1):
+                if self.check_local(d) or MPI.COMM_WORLD.Get_size() == 1:
                     requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
                     if self.halos[fieldname][d] != 0:
                         self.communicate_local(fieldname,
@@ -448,16 +413,12 @@ class DomainSubdivision:
                                 )
                                 requests[2 * d + 1] = self.communicate_external_recv(
                                     temp_buffer[d],
-                                    fieldname,
-                                    self.recv_slices[fieldname][d],
                                     DomainPartitions.domain_partitions[self.neighbors_id[d]]
                                 )
 
                         else:
                             requests[2 * d] = self.communicate_external_recv(
                                 temp_buffer[d],
-                                fieldname,
-                                self.recv_slices[fieldname][d],
                                 DomainPartitions.domain_partitions[self.neighbors_id[d]]
                             )
 
@@ -491,24 +452,11 @@ class DomainSubdivision:
         recv[:] = get[:]
 
     def communicate_external_send(self, fieldname, send_slice, send_id):
-        # temp_buffer = self.fields[fieldname][send_slice].copy()
-        # print(temp_buffer)
-        # req = MPI.COMM_WORLD.Isend(temp_buffer, dest=send_id)
-        # print(MPI.COMM_WORLD.Get_rank(), send_id)
         req = MPI.COMM_WORLD.Isend(np.ascontiguousarray(self.fields[fieldname][send_slice]), dest=send_id)
-        # print(self.fields[fieldname][send_slice], self.fields[fieldname].shape, send_slice, send_id)
         return req
 
-    def communicate_external_recv(self, temp_buffer, fieldname, recv_slice, recv_id):
-        # temp_buffer = np.zeros_like(self.fields[fieldname][recv_slice])
+    def communicate_external_recv(self, temp_buffer, recv_id):
         req = MPI.COMM_WORLD.Irecv(temp_buffer[:], source=recv_id)
-        # self.fields[fieldname][recv_slice] = temp_buffer.copy()
-        # MPI.Request.wait(req)
-        # print(MPI.COMM_WORLD.Get_rank(), temp_buffer)
-        # print(MPI.COMM_WORLD.Get_rank(), recv_id)
-        # req = MPI.COMM_WORLD.Recv(np.ascontiguousarray(self.fields[fieldname][recv_slice]), source=recv_id)
-        # MPI.Request.wait(req)
-        # print(self.fields[fieldname][recv_slice], recv_id)
         return req
 
     def check_local(self, direction):
@@ -516,366 +464,6 @@ class DomainSubdivision:
 
     def check_global_boundary(self, direction):
         return self.neighbors_id[direction] is None
-
-
-class DomainPreprocess:
-    def __init__(self, domain, periodic, subdivs_per_dim, fileoutput=""):
-        self.domain = domain
-        self.periodic = periodic
-        self.subdivs_per_dim = subdivs_per_dim
-        self.fileout = fileoutput
-
-        self.subdivisions = []
-        self.adjncy = []
-        self.xadj = []
-        self.vweights = []
-        self.eweights = []
-        self.edgecounter = 0
-        self.alist = []
-
-        self.total_subdivisions = 1
-        self.subdivisions = []
-        self.stencil_field_patterns = {}
-        self.stencil_field_accesses = {}
-
-    def add_stencil(self, stencil):
-        # stencil is a dictionary of {fieldname: list of 6 lists (one for each direction)
-        # containing the access patterns of the stencil patterns, next field : next list ...}
-        # Add stencil pattern to the field, either concatenate with already existing pattern or create new one:
-        for fieldname, stencil_pattern in stencil.items():
-            if fieldname in self.stencil_field_patterns:
-                for d in range(0, 6):
-                    self.stencil_field_patterns[fieldname][d] = sorted(
-                        (self.stencil_field_patterns[fieldname][d]
-                         + list(set(stencil_pattern[d]) - set(self.stencil_field_patterns[fieldname][d]))))
-
-                    self.stencil_field_accesses[fieldname][d] = len(self.stencil_field_patterns[fieldname][d])
-            else:
-                self.stencil_field_patterns[fieldname] = stencil_pattern.copy()
-
-                self.stencil_field_accesses[fieldname] = stencil_pattern.copy()
-                for d in range(0, 6):
-                    self.stencil_field_accesses[fieldname][d] = len(stencil_pattern[d])
-
-    def combined_accesses(self):
-        total_accesses = np.zeros(6)
-        for fieldname in self.stencil_field_accesses.keys():
-            for d in range(0, 6):
-                total_accesses[d] += self.stencil_field_accesses[fieldname][d]
-
-        return total_accesses
-
-    def halo_maximum_extent(self):
-        halo_max = np.zeros(6)
-        for fieldname in self.stencil_field_patterns.keys():
-            for d in range(0, 6):
-                halo_max[d] = max(halo_max[d], max(self.stencil_field_patterns[fieldname][d]))
-
-        return halo_max
-
-    def communication_cost_estimation(self, subdiv_size, stencil_extent):
-        halo_sizes = np.zeros((stencil_extent.size))
-        # halo_sizes[0] = subdiv_size[1] * subdiv_size[2] * stencil_extent[0]
-        # halo_sizes[1] = subdiv_size[1] * subdiv_size[2] * stencil_extent[1]
-        # halo_sizes[2] = subdiv_size[0] * subdiv_size[2] * stencil_extent[2]
-        # halo_sizes[3] = subdiv_size[0] * subdiv_size[2] * stencil_extent[3]
-        # halo_sizes[4] = subdiv_size[0] * subdiv_size[1] * stencil_extent[4]
-        # halo_sizes[5] = subdiv_size[0] * subdiv_size[1] * stencil_extent[5]
-        for e in range(stencil_extent.size):
-            halo_sizes[e] = subdiv_size[((e // 2) - 1) % 3] * subdiv_size[((e // 2) + 1) % 3] * stencil_extent[e]
-
-        return halo_sizes
-
-    def computational_cost_estimation(self, subdiv_gridpoints):
-        return subdiv_gridpoints
-
-    def preprocess(self):
-        subdiv_size = self.domain // self.subdivs_per_dim
-        assert (np.alltrue(self.domain % self.subdivs_per_dim == 0)), ("Subdivisions per dimension is not"
-                                                                       "a factor of the given domain size.")
-        subdiv_gridpoints = 1
-        for e in subdiv_size:
-            subdiv_gridpoints *= e
-
-        for e in self.subdivs_per_dim:
-            self.total_subdivisions *= e
-
-        halo_max = self.halo_maximum_extent()
-        for e in range(len(halo_max)):
-            if halo_max[e] > subdiv_size[e // 2]:
-                warnings.warn("Stencil extents into multiple subdivisions", RuntimeWarning)
-
-        stencil_extent = self.combined_accesses()
-        comm_cost = self.communication_cost_estimation(subdiv_size, stencil_extent)
-
-        comp_cost = self.computational_cost_estimation(subdiv_gridpoints)
-
-        for i in range(self.subdivs_per_dim[0]):
-            for j in range(self.subdivs_per_dim[1]):
-                for k in range(self.subdivs_per_dim[2]):
-                    ind = (i * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + k
-
-                    global_range = np.array([i * subdiv_size[0], (i + 1) * subdiv_size[0],
-                                             j * subdiv_size[1], (j + 1) * subdiv_size[1],
-                                             k * subdiv_size[2], (k + 1) * subdiv_size[2]])
-
-                    # End of Domain in negative X direction
-                    if i == 0:
-                        if self.periodic[0]:
-                            negx = (((self.subdivs_per_dim[0] - 1) * self.subdivs_per_dim[1] + j)
-                                    * self.subdivs_per_dim[2] + k)
-                        else:
-                            negx = None
-                    else:
-                        negx = ((i - 1) * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + k
-
-                    # End of Domain in positive X direction
-                    if i == self.subdivs_per_dim[0] - 1:
-                        if self.periodic[0]:
-                            posx = (0 * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + k
-                        else:
-                            posx = None
-                    else:
-                        posx = ((i + 1) * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + k
-
-                    # End of Domain in negative Y direction
-                    if j == 0:
-                        if self.periodic[1]:
-                            negy = ((i * self.subdivs_per_dim[1] + self.subdivs_per_dim[1] - 1)
-                                    * self.subdivs_per_dim[2] + k)
-                        else:
-                            negy = None
-                    else:
-                        negy = (i * self.subdivs_per_dim[1] + j - 1) * self.subdivs_per_dim[2] + k
-
-                    # End of Domain in positive Y direction
-                    if j == self.subdivs_per_dim[1] - 1:
-                        if self.periodic[1]:
-                            posy = (i * self.subdivs_per_dim[1] + 0) * self.subdivs_per_dim[2] + k
-                        else:
-                            posy = None
-                    else:
-                        posy = (i * self.subdivs_per_dim[1] + j + 1) * self.subdivs_per_dim[2] + k
-
-                    # End of Domain in negative Z direction
-                    if k == 0:
-                        if self.periodic[2]:
-                            negz = ((i * self.subdivs_per_dim[1] + j)
-                                    * self.subdivs_per_dim[2] + self.subdivs_per_dim[2] - 1)
-                        else:
-                            negz = None
-                    else:
-                        negz = (i * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + k - 1
-
-                    # End of Domain in positive Z direction
-                    if k == self.subdivs_per_dim[2] - 1:
-                        if self.periodic[2]:
-                            posz = (i * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + 0
-                        else:
-                            posz = None
-                    else:
-                        posz = (i * self.subdivs_per_dim[1] + j) * self.subdivs_per_dim[2] + k + 1
-
-                    if negx == ind or posx == ind or negy == ind or posy == ind or negz == ind or posz == ind:
-                        warnings.warn("Due to periodicity at least one subdivision"
-                                      " is its own neighbor." + str([negx, posx, negy, posy, negz, posz]),
-                                      RuntimeWarning)
-
-                    nindex = [negx, posx, negy, posy, negz, posz]
-
-                    self.subdivisions.append(DomainSubdivision(id=ind,
-                                                               pid=0,
-                                                               size=subdiv_size,
-                                                               global_coords=global_range,
-                                                               neighbors_id=nindex))
-
-                    self.vweights.append(int(comp_cost))
-                    self.xadj.append(int(self.edgecounter))
-                    for e in range(len(nindex)):
-                        if nindex[e] is not None:
-                            self.edgecounter += 1
-                            self.adjncy.append(int(nindex[e]))
-                            self.eweights.append(int(comm_cost[e]))
-
-        with open("subdivisions.pkl", "wb") as f:
-            pickle.dump(self.subdivisions, f)
-
-        if self.fileout == "metis":
-            self.write_to_file_metis_format(self.adjncy,
-                                            self.xadj,
-                                            self.vweights,
-                                            self.eweights,
-                                            self.edgecounter,
-                                            "subdomains")
-        elif self.fileout == "scotch":
-            self.write_to_file_scotch_format(self.adjncy,
-                                            self.xadj,
-                                            self.vweights,
-                                            self.eweights,
-                                            self.edgecounter,
-                                            "subdomains")
-        elif self.fileout == "both":
-            self.write_to_file_metis_format(self.adjncy,
-                                            self.xadj,
-                                            self.vweights,
-                                            self.eweights,
-                                            self.edgecounter,
-                                            "subdomains")
-            self.write_to_file_scotch_format(self.adjncy,
-                                             self.xadj,
-                                             self.vweights,
-                                             self.eweights,
-                                             self.edgecounter,
-                                             "subdomains")
-
-    def write_to_file_metis_format(self, adjncy, xadj, vweights, eweights, edgecounter, filename, flag=11):
-        """
-        Vertex numbering starts with 1 not 0!
-        """
-        # header line: Number of Vertices" "Number of Edges (counted once)" "3 digit binary flag"
-        header = "{0:d} {1:d} {2:03d} \n".format(len(xadj), edgecounter//2, flag)
-        # vertex line: s w_1 w_2 ... w_ncon v_1 e_1 v_2 e_2 ... v_k e_k
-        # s: size of vertex
-        # w_* : weight of vertex
-        # v_* : neighbor vertex index
-        # e_* : edge weight to neighbor
-
-        vertex_lines = ""
-        for i in range(len(xadj)):
-            vertex_lines += "{0:d} ".format(vweights[i])
-            if i < len(xadj) - 1:
-                for j in range(xadj[i], xadj[i + 1]):
-                    vertex_lines += "{0:d} {1:d} ".format(adjncy[j] + 1, eweights[j])
-            else:
-                for j in range(xadj[i], len(adjncy)):
-                    vertex_lines += "{0:d} {1:d} ".format(adjncy[j] + 1, eweights[j])
-            vertex_lines += "\n"
-
-        content = header + vertex_lines
-
-        with open(filename+"_metis.dat", "w") as f:
-            f.writelines(content)
-
-    def write_to_file_scotch_format(self, adjncy, xadj, vweights, eweights, edgecounter, filename, flag=11):
-        """ First line: graph file version number
-            Second line: number of vertices followed by number of arcs (edge number twice counted)
-            Third line: graph base index value (0 or 1) and numeric flag
-            //End of Header
-            Other lines: [vertex label] [vertex load] vertex_degree [arc_load] arc_end_vertex
-        """
-        header = "0 \n{0:d} {1:d} \n0 {2:03d}\n".format(len(xadj), edgecounter, flag)
-        vertex_lines = ""
-        for i in range(len(xadj)):
-            vertex_lines += "{0:d} ".format(vweights[i])
-            if i < len(xadj) - 1:
-                vertex_lines += "{0:d} ".format(xadj[i + 1] - xadj[i])
-                for j in range(xadj[i], xadj[i + 1]):
-                    vertex_lines += "{0:d} {1:d} ".format(eweights[j], adjncy[j])
-            else:
-                vertex_lines += "{0:d} ".format(len(adjncy) - xadj[i])
-                for j in range(xadj[i], len(adjncy)):
-                    vertex_lines += "{0:d} {1:d} ".format(eweights[j], adjncy[j])
-            vertex_lines += "\n"
-
-        contents = header + vertex_lines
-
-        with open(filename+"_scotch.src", "w") as f:
-            f.writelines(contents)
-
-    def prepare_for_pymetis(self):
-        self.adjncy.append(int(self.total_subdivisions))
-        self.xadj.append(int(self.edgecounter))
-
-    def pymetis_partitioning(self, nparts, verbose=False):
-        self.prepare_for_pymetis()
-
-        partitioning = part_graph(nparts,
-                                  xadj=self.xadj,
-                                  adjncy=self.adjncy,
-                                  vweights=self.vweights,
-                                  eweights=self.eweights)
-
-        with open("subdomains_pymetis.dat.part." + str(nparts), "w") as f:
-            for i in partitioning[1]:
-                f.write(str(i) + "\n")
-
-        if verbose:
-            print(partitioning[1])
-
-
-class DomainPostprocess:
-    def __init__(self):
-        with open("subdivisions.pkl", "rb") as f:
-            self.subdivisions = pickle.load(f)
-
-    def create_pickle_dump(self, nx, ny, nz, nt, domain, dt, eps, save_freq, filename, cleanup=False):
-        # Create the grid
-        x = np.linspace(domain[0][0], domain[1][0], nx)
-        y = np.linspace(domain[0][1], domain[1][1], ny)
-
-        tsave = [timedelta(0), ]
-        usave = self.combine_output_files(size=[nx, ny, nz], fieldname="unew", postfix="t_"+str(0),
-                                          save=False, cleanup=cleanup)
-        vsave = self.combine_output_files(size=[nx, ny, nz], fieldname="vnew", postfix="t_"+str(0),
-                                          save=False, cleanup=cleanup)
-        for n in range(1, nt):
-            # Save
-            if ((save_freq > 0) and (n % save_freq == 0)) or (n + 1 == nt):
-                unew = self.combine_output_files(size=[nx, ny, nz], fieldname="unew", postfix="t_"+str(n),
-                                                 save=False, cleanup=cleanup)
-                vnew = self.combine_output_files(size=[nx, ny, nz], fieldname="vnew", postfix="t_"+str(n),
-                                                 save=False, cleanup=cleanup)
-                tsave.append(timedelta(seconds=(n + 1) * dt))
-                usave = np.concatenate((usave, unew), axis=2)
-                vsave = np.concatenate((vsave, vnew), axis=2)
-
-        # Dump solution to a binary file
-        with open(filename, 'wb') as outfile:
-            pickle.dump(tsave, outfile)
-            pickle.dump(x, outfile)
-            pickle.dump(y, outfile)
-            pickle.dump(usave, outfile)
-            pickle.dump(vsave, outfile)
-            pickle.dump(eps, outfile)
-
-    def combine_output_files(self, size, fieldname, postfix=None, save=True, cleanup=False):
-        field = np.zeros((size[0], size[1], size[2]))
-        for sd in self.subdivisions:
-            filename = (str(fieldname) + "_from_"
-                        + "x" + str(sd.global_coords[0])
-                        + "y" + str(sd.global_coords[2])
-                        + "z" + str(sd.global_coords[4])
-                        + "_to_"
-                        + "x" + str(sd.global_coords[1] - 1)
-                        + "y" + str(sd.global_coords[3] - 1)
-                        + "z" + str(sd.global_coords[5] - 1))
-            if postfix is not None:
-                filename += "_" + str(postfix) + ".npy"
-            else:
-                filename += ".npy"
-
-            field[sd.global_coords[0]:sd.global_coords[1],
-                  sd.global_coords[2]:sd.global_coords[3],
-                  sd.global_coords[4]:sd.global_coords[5]] = np.load(filename, mmap_mode='r')[:, :, :]
-        if save:
-            np.save(fieldname, field)
-
-        if cleanup:
-            for sd in self.subdivisions:
-                filename = (str(fieldname) + "_from_"
-                            + "x" + str(sd.global_coords[0])
-                            + "y" + str(sd.global_coords[2])
-                            + "z" + str(sd.global_coords[4])
-                            + "_to_"
-                            + "x" + str(sd.global_coords[1] - 1)
-                            + "y" + str(sd.global_coords[3] - 1)
-                            + "z" + str(sd.global_coords[5] - 1))
-                if postfix is not None:
-                    filename += "_" + str(postfix) + ".npy"
-                else:
-                    filename += ".npy"
-                os.remove(filename)
-        return field
 
 
 class DomainDecompositionStencil:
@@ -888,13 +476,15 @@ class DomainDecompositionStencil:
 
 
 class DomainDecomposition:
-    def __init__(self, fileinput=None, fileinputformat=None):
-        self.subdivisions = self.load_subdivisions()
+    def __init__(self, fileinput=None, fileinputformat=None, path="", prefix=""):
+        self.subdivisions = self.load_subdivisions(path=path, prefix=prefix)
+        self.path = path
+        self.prefix = prefix
 
         if fileinput is None or fileinputformat is None:
             raise ValueError("Need fileinput and fileinputformat for partitioning file.")
 
-        DomainPartitions.load_partitions(fileinput, fileinputformat)
+        DomainPartitions.load_partitions(path + prefix + fileinput, fileinputformat)
 
         # If there are more than one MPI processors:
         # Change the partitions id of the subdivision to the one given by the domain decomposition from the preprocess
@@ -913,23 +503,13 @@ class DomainDecomposition:
         for sd in self.subdivisions:
             sd.neighbor_list = self.subdivisions
 
-    def load_subdivisions(self):
-        with open("subdivisions.pkl", "rb") as f:
+    def load_subdivisions(self, path="", prefix=""):
+        with open(path + prefix + "subdivisions.pkl", "rb") as f:
             return pickle.load(f)
 
     def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None):
         for sd in self.subdivisions:
             sd.register_field(fieldname, halo, field_ic_file, field_bc_file)
-
-    # def set_value(self, i, j, k, fieldname, value):
-    #     for sd in self.subdivisions:
-    #         sd.set_value(i, j, k, fieldname, value)
-    #
-    # def get_value(self, i, j, k, fieldname):
-    #     tmp = None
-    #     for sd in self.subdivisions:
-    #         tmp = sd.get_value(i, j, k, fieldname) if sd.get_value(i, j, k, fieldname) is not None else tmp
-    #     return tmp
 
     def register_stencil(self, **kwargs):
         dds = DomainDecompositionStencil()
@@ -958,7 +538,7 @@ class DomainDecomposition:
 
     def save_fields(self, fieldnames=None, postfix=None):
         for sd in self.subdivisions:
-            sd.save_fields(fieldnames, postfix=postfix)
+            sd.save_fields(fieldnames, path=self.path, prefix=self.prefix, postfix=postfix)
 
     def swap_fields(self, field1, field2):
         for sd in self.subdivisions:

@@ -38,9 +38,9 @@ from domain_decomposition import DomainDecomposition
 from dd_postprocess import DomainPostprocess
 
 
-def run_shankar():
-    timer = ti.Timings(name="Burger's equation - Shankar setup")
-    timer.start(name="Overall Shankar time", level=1)
+def run_zhao():
+    timer = ti.Timings(name="Burger's equation - Zhao setup")
+    timer.start(name="Overall Zhao time", level=1)
     timer.start(name="Initialization", level=2)
 
     # Set stencil's definitions function and computational domain
@@ -63,27 +63,43 @@ def run_shankar():
     dx = float(domain[1][0] - domain[0][0]) / nx
     dy = float(domain[1][1] - domain[0][1]) / ny
 
+    # Create the grid
+    x = np.linspace(domain[0][0], domain[1][0], nx)
+    xv = np.repeat(x[:, np.newaxis], ny, axis=1)
+    y = np.linspace(domain[0][1], domain[1][1], ny)
+    yv = np.repeat(y[np.newaxis, :], nx, axis=0)
+
+    unew_east = np.zeros((nb, ny, nz))
+    unew_west = np.zeros((nb, ny, nz))
+    unew_north = np.zeros((nx, nb, nz))
+    unew_south = np.zeros((nx, nb, nz))
+
+    vnew_east = np.zeros((nb, ny, nz))
+    vnew_west = np.zeros((nb, ny, nz))
+    vnew_north = np.zeros((nx, nb, nz))
+    vnew_south = np.zeros((nx, nb, nz))
+
     # Register fields and stencils to the DomainDecomposition class:
     prepared_domain = DomainDecomposition("subdomains_pymetis.dat.part." + str(nparts), "metis",
                                           path=path, prefix=prefix)
 
     prepared_domain.register_field(fieldname="unow",
                                    halo=halo,
-                                   field_ic_file=path + prefix +"shankar_initial_conditions_unew.npy")
-                                   # field_bc_file=path + prefix +"shankar_boundary_conditions_unew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_unew.npy")
+                                   # field_bc_file=path + prefix + "zhao_boundary_conditions_unew.npy")
     prepared_domain.register_field(fieldname="vnow",
                                    halo=halo,
-                                   field_ic_file=path + prefix +"shankar_initial_conditions_vnew.npy")
-                                   # field_bc_file=path + prefix +"shankar_boundary_conditions_vnew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_vnew.npy")
+                                   # field_bc_file=path + prefix + "zhao_boundary_conditions_vnew.npy")
 
     prepared_domain.register_field(fieldname="unew",
                                    halo=halo,
-                                   field_ic_file=path + prefix +"shankar_initial_conditions_unew.npy")
-                                   # field_bc_file=path + prefix +"shankar_boundary_conditions_unew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_unew.npy")
+                                   # field_bc_file=path + prefix + "zhao_boundary_conditions_unew.npy")
     prepared_domain.register_field(fieldname="vnew",
                                    halo=halo,
-                                   field_ic_file=path + prefix +"shankar_initial_conditions_vnew.npy")
-                                   # field_bc_file=path + prefix +"shankar_boundary_conditions_vnew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_vnew.npy")
+                                   # field_bc_file=path + prefix + "zhao_boundary_conditions_vnew.npy")
 
     # Convert global inputs to GT4Py Global's
     dt_ = gt.Global(dt)
@@ -111,15 +127,26 @@ def run_shankar():
         prepared_domain.swap_fields("vnow", "vnew")
 
         # Apply the boundary conditions
-        prepared_domain.set_boundary_condition("unow", 0, 1, np.zeros((1, ny, 1)))
-        prepared_domain.set_boundary_condition("unow", 1, 1, np.zeros((1, ny, 1)))
-        prepared_domain.set_boundary_condition("unow", 2, 1, np.zeros((nx, 1, 1)))
-        prepared_domain.set_boundary_condition("unow", 3, 1, np.zeros((nx, 1, 1)))
+        # Set the boundaries
+        t = (n + 1) * float(dt)
+        unew_west[:, :, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[:nb, :])
+        unew_east[:, :, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[-nb:, :])
+        unew_north[:, :, 0] = np.zeros((nx, nb))
+        unew_south[:, :, 0] = np.zeros((nx, nb))
+        vnew_west[:, :, 0] = np.zeros((nb, ny))
+        vnew_east[:, :, 0] = np.zeros((nb, ny))
+        vnew_north[:, :, 0] = - eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, :nb])
+        vnew_south[:, :, 0] = eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, -nb:])
 
-        prepared_domain.set_boundary_condition("vnow", 0, 1, np.zeros((1, ny, 1)))
-        prepared_domain.set_boundary_condition("vnow", 1, 1, np.zeros((1, ny, 1)))
-        prepared_domain.set_boundary_condition("vnow", 2, 1, np.zeros((nx, 1, 1)))
-        prepared_domain.set_boundary_condition("vnow", 3, 1, np.zeros((nx, 1, 1)))
+        prepared_domain.set_boundary_condition("unow", 0, 1, unew_west)
+        prepared_domain.set_boundary_condition("unow", 1, 1, unew_east)
+        prepared_domain.set_boundary_condition("unow", 2, 1, unew_north)
+        prepared_domain.set_boundary_condition("unow", 3, 1, unew_south)
+
+        prepared_domain.set_boundary_condition("vnow", 0, 1, vnew_west)
+        prepared_domain.set_boundary_condition("vnow", 1, 1, vnew_east)
+        prepared_domain.set_boundary_condition("vnow", 2, 1, vnew_north)
+        prepared_domain.set_boundary_condition("vnow", 3, 1, vnew_south)
 
         prepared_domain.apply_boundary_condition("unow")
         prepared_domain.apply_boundary_condition("vnow")
@@ -143,13 +170,13 @@ def run_shankar():
 
     timer.stop(name="Time integration")
 
-    timer.stop(name="Overall Shankar time")
+    timer.stop(name="Overall Zhao time")
 
     if MPI.COMM_WORLD.Get_rank() == 0:
         timer.list_timings()
 
 
-def postprocess_shankar():
+def postprocess_zhao():
     postproc = DomainPostprocess(path=path, prefix=prefix)
     postproc.create_pickle_dump(nx, ny, nz, nt, domain, dt, eps, save_freq, filename, cleanup=True)
 
@@ -179,7 +206,7 @@ if __name__ == "__main__":
                         help="Prefix for file names.")
     args = parser.parse_args()
 
-    domain = [(0, 0), (2, 2)]
+    domain = [(0, 0), (1, 1)]
     nx = args.nx
     ny = args.ny
     nz = 1
@@ -189,13 +216,13 @@ if __name__ == "__main__":
     method = args.m
     datatype = np.float64
     save_freq = args.sf
-    filename = 'shankar' + str(method) + '.pickle'
+    filename = 'zhao_' + str(method) + '.pickle'
 
     nparts = args.np
     path = args.loc
     prefix = args.pf
 
-    run_shankar()
+    run_zhao()
     MPI.COMM_WORLD.Barrier()
     if MPI.COMM_WORLD.Get_rank() == 0:
-        postprocess_shankar()
+        postprocess_zhao()
