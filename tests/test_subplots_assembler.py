@@ -4,6 +4,9 @@ import os
 import pickle
 import pytest
 
+from conftest import isentropic_moist_sedimentation_data, \
+					 isentropic_moist_sedimentation_evaporation_data
+
 
 @image_comparison(baseline_images=['test_plot_1d'], extensions=['eps'])
 def test_plot_1d():
@@ -24,12 +27,9 @@ def test_plot_1d():
 	# Plot1d#1
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state1 = states[-1]
+	grid, states = isentropic_moist_sedimentation_evaporation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state1 = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -63,12 +63,9 @@ def test_plot_1d():
 	# Plot1d#2
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist_maccormack.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state2 = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state2 = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -125,12 +122,9 @@ def test_plot_1d_share_yaxis():
 	# Plot1d#1
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state1 = states[-1]
+	grid, states = isentropic_moist_sedimentation_evaporation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state1 = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -164,12 +158,9 @@ def test_plot_1d_share_yaxis():
 	# Plot1d#2
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist_maccormack.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state2 = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state2 = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -226,12 +217,9 @@ def test_plot_1d_share_xaxis():
 	# Plot1d#1
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state1 = states[-1]
+	grid, states = isentropic_moist_sedimentation_evaporation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state1 = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -265,12 +253,9 @@ def test_plot_1d_share_xaxis():
 	# Plot1d#2
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist_maccormack.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state2 = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state2 = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -327,12 +312,9 @@ def test_plot_2d_one_row_two_columns():
 	# Plot2d#1
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state1 = states[-1]
+	grid, states = isentropic_moist_sedimentation_evaporation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state1 = states[-1]
 
 	# Indices identifying the cross-section to visualize
 	y_level = 0
@@ -373,12 +355,9 @@ def test_plot_2d_one_row_two_columns():
 	# Plot2d#2
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist_maccormack.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state2 = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state2 = states[-1]
 
 	# Indices identifying the cross-section to visualize
 	y_level = 0
@@ -444,12 +423,9 @@ def test_plot_2d_two_rows_two_columns():
 	# Plot2d#1
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state1 = states[-1]
+	grid, states = isentropic_moist_sedimentation_evaporation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state1 = states[-1]
 
 	# Indices identifying the cross-section to visualize
 	y_level = 0
@@ -489,12 +465,9 @@ def test_plot_2d_two_rows_two_columns():
 	# Plot2d#2
 	#
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist_maccormack.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state2 = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state2 = states[-1]
 
 	# Indices identifying the cross-section to visualize
 	y_level = 0

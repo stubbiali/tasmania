@@ -11,11 +11,12 @@ def test_rayleigh(grid):
 	dt = timedelta(seconds=27)
 
 	ni, nj, nk = nx+1, ny, nz+1
-	phi_now = np.random.rand(ni, nj, nk)
-	phi_new = np.random.rand(ni, nj, nk)
-	phi_ref = np.random.rand(ni, nj, nk)
+	phi_now  = np.random.rand(ni, nj, nk)
+	phi_new  = np.random.rand(ni, nj, nk)
+	phi_ref  = np.random.rand(ni, nj, nk)
+	phi_damp = np.zeros((ni, nj, nk), dtype=phi_now.dtype)
 	vd = VD.factory('rayleigh', (ni, nj, nk), grid, 15, 0.03, dtype=phi_now.dtype)
-	phi_damp = vd(dt, phi_now, phi_new, phi_ref)
+	vd(dt, phi_now, phi_new, phi_ref, phi_damp)
 
 	assert phi_damp.shape == (ni, nj, nk)
 

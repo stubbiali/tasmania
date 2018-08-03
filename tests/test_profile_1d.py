@@ -1,15 +1,12 @@
 from matplotlib.testing.decorators import image_comparison
 import os
-import pickle
 import pytest
+
+from conftest import isentropic_dry_data, isentropic_moist_sedimentation_data
 
 
 @image_comparison(baseline_images=['test_profile_1d_x'], extensions=['eps'])
 def test_profile_1d_x():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-
 	# Field to plot
 	field_to_plot = 'accumulated_precipitation'
 
@@ -24,10 +21,9 @@ def test_profile_1d_x():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -63,10 +59,6 @@ def test_profile_1d_x():
 
 @image_comparison(baseline_images=['test_profile_1d_y'], extensions=['eps'])
 def test_profile_1d_y():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Field to plot
 	field_to_plot = 'y_velocity_at_v_locations'
 
@@ -81,10 +73,9 @@ def test_profile_1d_y():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {0: int(grid.nx/2), 2: -1}
@@ -120,10 +111,6 @@ def test_profile_1d_y():
 
 @image_comparison(baseline_images=['test_profile_1d_z'], extensions=['eps'])
 def test_profile_1d_z():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-
 	# Field to plot
 	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
 
@@ -138,10 +125,9 @@ def test_profile_1d_z():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {0: 40, 1: 0}
@@ -177,10 +163,6 @@ def test_profile_1d_z():
 
 @image_comparison(baseline_images=['test_profile_1d_height'], extensions=['eps'])
 def test_profile_1d_height():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-
 	# Field to plot
 	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
 
@@ -195,10 +177,9 @@ def test_profile_1d_height():
 	save_dest = None if os.path.exists(baseline_img + '.eps') else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_moist_sedimentation_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Indices identifying the cross-line to visualize
 	levels = {0: 40, 1: 0}

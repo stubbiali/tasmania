@@ -20,9 +20,9 @@ def test_upwind_horizontal_flux(grid):
 	sqc = gt.Equation()
 	sqr = gt.Equation()
 
-	from tasmania.dynamics.isentropic_fluxes import HorizontalFlux
+	from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalFlux.factory('upwind', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv)
 
 	assert len(fluxes) == 6
@@ -33,7 +33,7 @@ def test_upwind_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'flux_sv_x'
 	assert fluxes[5].get_name() == 'flux_sv_y'
 
-	fluxer = HorizontalFlux.factory('upwind', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('upwind', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr)
 
 	assert len(fluxes) == 12
@@ -68,9 +68,9 @@ def test_centered_horizontal_flux(grid):
 	sqc = gt.Equation()
 	sqr = gt.Equation()
 
-	from tasmania.dynamics.isentropic_fluxes import HorizontalFlux
+	from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalFlux.factory('centered', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('centered', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv)
 
 	assert len(fluxes) == 6
@@ -81,7 +81,7 @@ def test_centered_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'flux_sv_x'
 	assert fluxes[5].get_name() == 'flux_sv_y'
 
-	fluxer = HorizontalFlux.factory('centered', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('centered', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr)
 
 	assert len(fluxes) == 12
@@ -116,9 +116,9 @@ def test_maccormack_horizontal_flux(grid):
 	sqc = gt.Equation()
 	sqr = gt.Equation()
 
-	from tasmania.dynamics.isentropic_fluxes import HorizontalFlux
+	from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalFlux.factory('maccormack', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('maccormack', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv)
 
 	assert len(fluxes) == 6
@@ -129,7 +129,7 @@ def test_maccormack_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'flux_sv_x'
 	assert fluxes[5].get_name() == 'flux_sv_y'
 
-	fluxer = HorizontalFlux.factory('maccormack', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('maccormack', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr)
 
 	assert len(fluxes) == 12

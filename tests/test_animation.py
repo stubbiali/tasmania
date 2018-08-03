@@ -3,7 +3,7 @@ import pickle
 import pytest
 
 
-def test_animation_plot_1d():
+def test_animation_plot_1d(isentropic_moist_sedimentation_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
 	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
 								'tests/baseline_images/test_animation')
@@ -26,12 +26,7 @@ def test_animation_plot_1d():
 	field_to_plot = 'precipitation'
 
 	# Grab data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid    = pickle.load(data)
-		states = pickle.load(data)
-		states = states[1:]
+	grid, states = isentropic_moist_sedimentation_data
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -73,7 +68,8 @@ def test_animation_plot_1d():
 	assert os.path.exists(save_dest)
 
 
-def test_animation_plots_assembler():
+def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
+									isentropic_moist_sedimentation_evaporation_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
 	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
 								'tests/baseline_images/test_animation')
@@ -87,7 +83,7 @@ def test_animation_plots_assembler():
 		os.makedirs(result_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	filename = 'test_animation_plot_1d_assembler.mp4'
+	filename = 'test_animation_plot_1d_overlapper.mp4'
 	baseline_img = os.path.join(baseline_dir, filename)
 	result_img = os.path.join(result_dir, filename)
 	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
@@ -99,12 +95,7 @@ def test_animation_plots_assembler():
 	# Plot1d#1
 	#
 	# Grab data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-	with open(filename, 'rb') as data:
-		grid    = pickle.load(data)
-		states1 = pickle.load(data)
-		states1 = states1[1:]
+	grid, states1 = isentropic_moist_sedimentation_evaporation_data
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -117,7 +108,7 @@ def test_animation_plots_assembler():
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
-		'legend_label': 'LF',
+		'legend_label': 'LF, evap. ON',
 	}
 	
 	# Instantiate the monitor
@@ -130,11 +121,7 @@ def test_animation_plots_assembler():
 	# Plot1d#2
 	#
 	# Grab data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'], 'tests/baseline_datasets/verification_moist_maccormack.pickle')
-	with open(filename, 'rb') as data:
-		grid    = pickle.load(data)
-		states2 = pickle.load(data)
-		states2 = states2[1:]
+	grid, states2 = isentropic_moist_sedimentation_data
 
 	# Indices identifying the cross-line to visualize
 	levels = {1: 0, 2: -1}
@@ -147,7 +134,7 @@ def test_animation_plots_assembler():
 		'linecolor': 'green',
 		'linestyle': '--',
 		'linewidth': 1.5,
-		'legend_label': 'MC',
+		'legend_label': 'MC, evap. OFF',
 	}
 
 	# Instantiate the monitor
@@ -155,7 +142,7 @@ def test_animation_plots_assembler():
 					plot_function_kwargs=plot_function_kwargs)
 
 	#
-	# PlotsAssembler
+	# PlotsOverlapper
 	#
 	# Plot properties
 	plot_properties = {
@@ -170,8 +157,8 @@ def test_animation_plots_assembler():
 	}
 
 	# Instantiate the artist which generates the frames
-	from tasmania.plot.assemblers import PlotsAssembler
-	assembler = PlotsAssembler([monitor1, monitor2], interactive=False,
+	from tasmania.plot.assemblers import PlotsOverlapper
+	assembler = PlotsOverlapper([monitor1, monitor2], interactive=False,
 							   plot_properties=plot_properties)
 
 	# Create the animation
@@ -185,7 +172,7 @@ def test_animation_plots_assembler():
 	assert os.path.exists(save_dest)
 
 
-def test_animation_plot_2d():
+def test_animation_plot_2d(isentropic_dry_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
 	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
 								'tests/baseline_images/test_animation')
@@ -211,11 +198,7 @@ def test_animation_plot_2d():
 	z_level = -1
 
 	# Load data
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
+	grid, states = isentropic_dry_data
 
 	# Plot properties
 	plot_properties = {

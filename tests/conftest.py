@@ -1,12 +1,10 @@
 from datetime import timedelta
-import os
-import pickle
 import pytest
 from sympl import DataArray
 
 from tasmania.grids.grid_xyz import GridXYZ as Grid
 from tasmania.grids.grid_xz import GridXZ
-from tasmania.utils.data_utils import make_data_array_3d
+from tasmania.utils.storage_utils import load_netcdf_dataset
 
 
 @pytest.fixture(scope='module')
@@ -60,88 +58,24 @@ def grid_yz():
 							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
 
 
-def make_grid(filename):
-	with open(filename, 'rb') as data:
-		grid_ = pickle.load(data)
-
-	domain_x = DataArray([grid_.x.values[0], grid_.x.values[-1]], dims=grid_.x.dims,
-						 attrs={'units': grid_.x.attrs['units']})
-	nx = grid_.nx
-	domain_y = DataArray([grid_.y.values[0], grid_.y.values[-1]], dims=grid_.y.dims,
-						 attrs={'units': grid_.y.attrs['units']})
-	ny = grid_.ny
-	domain_z = DataArray([grid_.z_half_levels.values[0],
-						  grid_.z_half_levels.values[-1]], dims=grid_.z.dims,
-						 attrs={'units': grid_.z.attrs['units']})
-	nz = grid_.nz
-
-	return Grid(domain_x, nx, domain_y, ny, domain_z, nz,
-				topo_type='gaussian', topo_time=timedelta(seconds=0),
-				topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'})},
-				dtype=domain_x.values.dtype)
+@pytest.fixture(scope='module')
+def isentropic_dry_data():
+	return load_netcdf_dataset('baseline_datasets/isentropic_dry.nc')
 
 
-@pytest.fixture
-def grid_and_state():
-	#filename = os.path.join(os.environ['TASMANIA_ROOT'],
-	#						'tests/baseline_datasets/verification_moist.pickle')
-	filename = 'baseline_datasets/verification_moist.pickle'
+@pytest.fixture(scope='module')
+def isentropic_moist_data():
+	return load_netcdf_dataset('baseline_datasets/isentropic_moist.nc')
 
-	g = make_grid(filename)
 
-	with open(filename, 'rb') as data:
-		_ = pickle.load(data)
-		states = pickle.load(data)
+@pytest.fixture(scope='module')
+def isentropic_moist_sedimentation_data():
+	return load_netcdf_dataset('baseline_datasets/isentropic_moist_sedimentation.nc')
 
-	state_ = states[-1]
-	state = {
-		'time': state_['time'],
-		'air_density':
-			make_data_array_3d(state_['air_density'].values,
-							  g, 'kg m^-3'),
-		'air_isentropic_density':
-			make_data_array_3d(state_['air_isentropic_density'].values,
-							  g, 'kg m^-2 K^-1'),
-		'air_pressure_on_interface_levels':
-			make_data_array_3d(state_['air_pressure_on_interface_levels'].values,
-							  g, 'Pa'),
-		'air_temperature':
-			make_data_array_3d(state_['air_temperature'].values,
-							  g, 'K'),
-		'exner_function_on_interface_levels':
-			make_data_array_3d(state_['exner_function_on_interface_levels'].values,
-							  g, 'J K^-1 kg^-1'),
-		'height_on_interface_levels':
-			make_data_array_3d(state_['height_on_interface_levels'].values,
-							  g, 'm'),
-		'mass_fraction_of_water_vapor_in_air':
-			make_data_array_3d(state_['mass_fraction_of_water_vapor_in_air'].values,
-							  g, 'g g^-1'),
-		'mass_fraction_of_cloud_liquid_water_in_air':
-			make_data_array_3d(1e3 * state_['mass_fraction_of_cloud_liquid_water_in_air'].values,
-							  g, 'g kg^-1'),
-		'mass_fraction_of_precipitation_water_in_air':
-			make_data_array_3d(state_['mass_fraction_of_precipitation_water_in_air'].values,
-							  g, 'kg kg^-1'),
-		'montgomery_potential':
-			make_data_array_3d(state_['montgomery_potential'].values,
-							  g, 'J kg^-1'),
-		'x_momentum_isentropic':
-			make_data_array_3d(state_['x_momentum_isentropic'].values,
-							  g, 'kg m^-1 K^-1 s^-1'),
-		'x_velocity_at_u_locations':
-			make_data_array_3d(state_['x_velocity_at_u_locations'].values,
-							  g, 'm s^-1'),
-		'y_momentum_isentropic':
-			make_data_array_3d(state_['y_momentum_isentropic'].values,
-							  g, 'kg m^-1 K^-1 s^-1'),
-		'y_velocity_at_v_locations':
-			make_data_array_3d(state_['y_velocity_at_v_locations'].values,
-							  g, 'm s^-1'),
-	}
 
-	return g, state
+@pytest.fixture(scope='module')
+def isentropic_moist_sedimentation_evaporation_data():
+	return load_netcdf_dataset('baseline_datasets/isentropic_moist_sedimentation_evaporation.nc')
 
 
 @pytest.fixture(scope='module')
