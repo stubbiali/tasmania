@@ -165,13 +165,10 @@ class _Centered(IsentropicPrognostic):
 		self._dt.value  = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 		self._dts.value = 1.e-6 * dts.microseconds if dts.seconds == 0. else dts.seconds
 		self._in_s[:nx, :ny, :]     = self._in_s_old[:nx, :ny, :]
-		self._in_s_prv[:nx, :ny, :] = raw_state_prv['air_isentropic_density'][:, :, :]
+		self._in_s_prv[:nx, :ny, :] = raw_state_prv['air_isentropic_density'][...]
 		self._water_constituent_diagnostic.get_mass_fraction_of_water_constituent_in_air(
 			self._in_s_old[:nx, :ny, :], self._in_sqr_old[:nx, :ny, :], self._in_qr)
-		self._water_constituent_diagnostic.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_prv['air_isentropic_density'][:, :, :],
-			raw_state_prv['isentropic_density_of_precipitation_water'][:, :, :],
-			self._in_qr_prv)
+		self._in_qr_prv[...] = raw_state_prv['mass_fraction_of_precipitation_water_in_air'][...]
 
 		# Compute the slow tendencies from the large timestepping
 		self._stencil_computing_slow_tendencies.compute()
@@ -205,26 +202,26 @@ class _Centered(IsentropicPrognostic):
 		precipitation = np.zeros((nx, ny, 1), dtype=self._dtype)
 		accumulated_precipitation = np.zeros((nx, ny, 1), dtype=self._dtype)
 		if raw_state_now.get('accumulated_precipitation', None) is not None:
-			accumulated_precipitation[:, :, :] = \
-				raw_state_now['accumulated_precipitation'][:, :, :]
+			accumulated_precipitation[...] = \
+				raw_state_now['accumulated_precipitation'][...]
 
 		# Perform the time-splitting procedure
 		for n in range(self._sedimentation_substeps):
 			# Diagnose the geometric height of the interface vertical levels
-			self._in_h[:, :, :] = self._diagnostics.get_height(self._in_s[:nx, :ny, :], pt)
+			self._in_h[...] = self._diagnostics.get_height(self._in_s[:nx, :ny, :], pt)
 
 			# Diagnose the air density
-			self._in_rho[:, :, :] = self._diagnostics.get_air_density(self._in_s[:nx, :ny, :],
+			self._in_rho[...] = self._diagnostics.get_air_density(self._in_s[:nx, :ny, :],
 																	  self._in_h)
 
 			# Compute the raindrop fall velocity
 			vt_dict = self._fall_velocity_diagnostic(state_new)
-			self._in_vt[:, :, :] = \
-				vt_dict['raindrop_fall_velocity'].to_units('m s^-1').values[:, :, :]
+			self._in_vt[...] = \
+				vt_dict['raindrop_fall_velocity'].to_units('m s^-1').values[...]
 
 			# Make sure the vertical CFL is obeyed
 			self._stencil_ensuring_vertical_cfl_is_obeyed.compute()
-			self._in_vt[:, :, :] = self._out_vt[:, :, :]
+			self._in_vt[...] = self._out_vt[...]
 
 			# Compute the precipitation and the accumulated precipitation
 			# Note: the precipitation is accumulated only on the time interval
@@ -232,9 +229,9 @@ class _Centered(IsentropicPrognostic):
 			rho_water = self._physical_constants['density_of_liquid_water']
 			ppt = self._in_rho[:, :, -1:] * self._in_qr[:, :, -1:] * self._in_vt[:, :, -1:] * \
 				  self._dts.value / rho_water
-			precipitation[:, :, :] = ppt[:, :, :] / self._dts.value * 3.6e6
+			precipitation[...] = ppt[...] / self._dts.value * 3.6e6
 			if n >= self._sedimentation_substeps / 2:
-				accumulated_precipitation[:, :, :] += ppt[:, :, :] * 1.e3
+				accumulated_precipitation[...] += ppt[...] * 1.e3
 
 			# Perform a small timestep
 			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
@@ -243,14 +240,9 @@ class _Centered(IsentropicPrognostic):
 			self._in_s[:, :, nb:]  = self._out_s[:, :, nb:]
 			self._in_qr[:, :, nb:] = self._out_qr[:, :, nb:]
 
-		# Diagnose the isentropic density of precipitation water
-		self._water_constituent_diagnostic.get_density_of_water_constituent(
-			self._in_s[:nx, :ny, :], self._in_qr, self._out_sqr[:nx, :ny, :])
-
 		# Instantiate raw output state
 		raw_state_out = {
-			'time': state_new['time'],
-			'isentropic_density_of_precipitation_water_in_air': self._out_sqr[:nx, :ny, :],
+			'mass_fraction_of_precipitation_water_in_air': self._in_qr,
 			'precipitation': precipitation,
 			'accumulated_precipitation': accumulated_precipitation,
 		}
@@ -358,19 +350,19 @@ class _Centered(IsentropicPrognostic):
 		# At the first iteration, update the Numpy arrays representing
 		# the solution at the previous time step
 		if self._is_first_timestep:
-			self._in_s_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
+			self._in_s_old[...] = self._hboundary.from_physical_to_computational_domain(
 				raw_state['air_isentropic_density'])
-			self._in_su_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
+			self._in_su_old[...] = self._hboundary.from_physical_to_computational_domain(
 				raw_state['x_momentum_isentropic'])
-			self._in_sv_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
+			self._in_sv_old[...] = self._hboundary.from_physical_to_computational_domain(
 				raw_state['y_momentum_isentropic'])
 
 			if self._moist_on:
-				self._in_sqv_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
+				self._in_sqv_old[...] = self._hboundary.from_physical_to_computational_domain(
 					raw_state['isentropic_density_of_water_vapor'])
-				self._in_sqc_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
+				self._in_sqc_old[...] = self._hboundary.from_physical_to_computational_domain(
 					raw_state['isentropic_density_of_cloud_liquid_water'])
-				self._in_sqr_old[:, :, :] = self._hboundary.from_physical_to_computational_domain(
+				self._in_sqr_old[...] = self._hboundary.from_physical_to_computational_domain(
 					raw_state['isentropic_density_of_precipitation_water'])
 
 	def _stencil_stepping_by_neglecting_vertical_motion_defs(
@@ -742,7 +734,8 @@ class _Centered(IsentropicPrognostic):
 		tmp_qr_st[i, j, k] = in_qr[i, j, k] + dts * in_qr_tnd[i, j, k]
 		tmp_qr[i, j, k] = tmp_qr_st[i, j, k] + dts * tmp_dfdz[i, j, k] / in_rho[i, j, k]
 		out_qr[i, j, k] = (tmp_qr[i, j, k] > 0.) * tmp_qr[i, j, k] + \
-						  (tmp_qr[i, j, k] < 0.) * tmp_qr_st[i, j, k]
+						  (tmp_qr[i, j, k] < 0.) * \
+						  ((tmp_qr_st[i, j, k] > 0.) * tmp_qr_st[i, j, k])
 
 		return out_s, out_qr
 
@@ -911,21 +904,18 @@ class _ForwardEuler(IsentropicPrognostic):
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		self._dt.value  = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
 		self._dts.value = 1.e-6 * dts.microseconds if dts.seconds == 0. else dts.seconds
-		self._in_s[:nx, :ny, :]     = raw_state_now['air_isentropic_density'][:, :, :]
-		self._in_s_prv[:nx, :ny, :] = raw_state_prv['air_isentropic_density'][:, :, :]
-		self._in_qr[:, :, :] 		= \
-			raw_state_prv['mass_fraction_of_precipitation_water_in_air'][:, :, :]
-		self._water_constituent_diagnostic.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_prv['air_isentropic_density'][:, :, :],
-			raw_state_prv['isentropic_density_of_precipitation_water'][:, :, :],
-			self._in_qr_prv)
+		self._in_s[:nx, :ny, :]     = raw_state_now['air_isentropic_density'][...]
+		self._in_s_prv[:nx, :ny, :] = raw_state_prv['air_isentropic_density'][...]
+		self._in_qr[...]     = raw_state_now['mass_fraction_of_precipitation_water_in_air'][...]
+		self._in_qr_prv[...] = raw_state_prv['mass_fraction_of_precipitation_water_in_air'][...]
 
 		# Compute the slow tendencies from the large timestepping
 		self._stencil_computing_slow_tendencies.compute()
 
 		# Set the upper layers of the output fields
 		self._out_s[:nx, :ny, :nb] = raw_state_prv['air_isentropic_density'][:, :, :nb]
-		self._out_qr[:, :, :nb]    = self._in_qr[:, :, :nb]
+		self._out_qr[:, :, :nb]    = \
+			raw_state_prv['mass_fraction_of_precipitation_water_in_air'][:, :, :nb]
 
 		# Initialize new raw state
 		raw_state_new = {
@@ -947,25 +937,25 @@ class _ForwardEuler(IsentropicPrognostic):
 		precipitation = np.zeros((nx, ny, 1), dtype=self._dtype)
 		accumulated_precipitation = np.zeros((nx, ny, 1), dtype=self._dtype)
 		if raw_state_now.get('accumulated_precipitation', None) is not None:
-			accumulated_precipitation[:, :, :] = raw_state_now['accumulated_precipitation'][:, :, :]
+			accumulated_precipitation[...] = raw_state_now['accumulated_precipitation'][...]
 
 		# Perform the time-splitting procedure
 		for n in range(self._sedimentation_substeps):
 			# Diagnose the geometric height of the interface vertical levels
-			self._in_h[:, :, :] = self._diagnostics.get_height(self._in_s[:nx, :ny, :], pt)
+			self._in_h[...] = self._diagnostics.get_height(self._in_s[:nx, :ny, :], pt)
 
 			# Diagnose the air density
-			self._in_rho[:, :, :] = self._diagnostics.get_air_density(self._in_s[:nx, :ny, :],
-																	  self._in_h)
+			self._in_rho[...] = self._diagnostics.get_air_density(self._in_s[:nx, :ny, :],
+																  self._in_h)
 
 			# Compute the raindrop fall velocity
 			vt_dict = self._fall_velocity_diagnostic(state_new)
-			self._in_vt[:, :, :] = \
-				vt_dict['raindrop_fall_velocity'].to_units('m s^-1').values[:, :, :]
+			self._in_vt[...] = \
+				vt_dict['raindrop_fall_velocity'].to_units('m s^-1').values[...]
 
 			# Make sure the vertical CFL is obeyed
 			self._stencil_ensuring_vertical_cfl_is_obeyed.compute()
-			self._in_vt[:, :, :] = self._out_vt[:, :, :]
+			self._in_vt[...] = self._out_vt[...]
 
 			# Compute the precipitation and the accumulated precipitation
 			# Note: the precipitation is accumulated only on the time interval
@@ -973,9 +963,9 @@ class _ForwardEuler(IsentropicPrognostic):
 			rho_water = self._physical_constants['density_of_liquid_water']
 			ppt = self._in_rho[:, :, -1:] * self._in_qr[:, :, -1:] * self._in_vt[:, :, -1:] * \
 				  self._dts.value / rho_water
-			precipitation[:, :, :] = ppt[:, :, :] / self._dts.value * 3.6e6
+			precipitation[...] = ppt[...] / self._dts.value * 3.6e6
 			if n >= self._sedimentation_substeps / 2:
-				accumulated_precipitation[:, :, :] += ppt[:, :, :] * 1.e3
+				accumulated_precipitation[...] += ppt[...] * 1.e3
 
 			# Perform a small timestep
 			self._stencil_stepping_by_integrating_sedimentation_flux.compute()
@@ -984,14 +974,9 @@ class _ForwardEuler(IsentropicPrognostic):
 			self._in_s[:, :, nb:]  = self._out_s[:, :, nb:]
 			self._in_qr[:, :, nb:] = self._out_qr[:, :, nb:]
 
-		# Diagnose the isentropic density of precipitation water
-		self._water_constituent_diagnostic.get_density_of_water_constituent(
-			self._in_s[:nx, :ny, :], self._in_qr, self._out_sqr[:nx, :ny, :])
-
 		# Instantiate raw output state
 		raw_state_out = {
-			'time': state_new['time'],
-			'isentropic_density_of_precipitation_water_in_air': self._out_sqr[:nx, :ny, :],
+			'mass_fraction_of_precipitation_water_in_air': self._in_qr,
 			'precipitation': precipitation,
 			'accumulated_precipitation': accumulated_precipitation,
 		}
@@ -1301,11 +1286,12 @@ class _ForwardEuler(IsentropicPrognostic):
 
 		# Allocate the Numpy arrays which will serve as stencils' inputs
 		self._in_rho    = np.zeros((nx, ny, nz  ), dtype=dtype)
-		self._in_s_prv  = np.zeros((nx, ny, nz  ), dtype=dtype)
 		self._in_h      = np.zeros((nx, ny, nz+1), dtype=dtype)
 		self._in_qr     = np.zeros((nx, ny, nz  ), dtype=dtype)
 		self._in_qr_prv = np.zeros((nx, ny, nz  ), dtype=dtype)
 		self._in_vt     = np.zeros((nx, ny, nz  ), dtype=dtype)
+		if not hasattr(self, '_in_s_prv'):
+			self._in_s_prv = np.zeros((nx, ny, nz), dtype=dtype)
 
 		# Allocate the Numpy arrays which will be shared across different stencils
 		self._tmp_s_tnd  = np.zeros((nx, ny, nz), dtype=dtype)
@@ -1486,6 +1472,7 @@ class _ForwardEuler(IsentropicPrognostic):
 		tmp_qr_st[i, j, k] = in_qr[i, j, k] + dts * in_qr_tnd[i, j, k]
 		tmp_qr[i, j, k] = tmp_qr_st[i, j, k] + dts * tmp_dfdz[i, j, k] / in_rho[i, j, k]
 		out_qr[i, j, k] = (tmp_qr[i, j, k] > 0.) * tmp_qr[i, j, k] + \
-						  (tmp_qr[i, j, k] < 0.) * tmp_qr_st[i, j, k]
+						  (tmp_qr[i, j, k] < 0.) * \
+						  ((tmp_qr_st[i, j, k] > 0.) * tmp_qr_st[i, j, k])
 
 		return out_s, out_qr

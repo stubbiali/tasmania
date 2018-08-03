@@ -61,7 +61,7 @@ class VerticalDamping:
 		self._stencil_initialize(dtype)
 
 	@abc.abstractmethod
-	def __call__(self, dt, phi_now, phi_new, phi_ref):
+	def __call__(self, dt, phi_now, phi_new, phi_ref, phi_out):
 		"""
 		Apply vertical damping to a generic field :math:`\phi`. 
 		As this method is marked as abstract, its implementation
@@ -80,11 +80,9 @@ class VerticalDamping:
 		phi_ref : array_like
 			:class:`numpy.ndarray` representing a reference value for
 			:math:`\phi`.
-
-		Return
-		------
-		array_like :
-			:class:`numpy.ndarray` representing the damped field :math:`\phi`.
+		phi_out : array_like
+			:class:`numpy.ndarray` into which writing the output,
+			vertically damped field.
 		"""
 
 	@abc.abstractmethod
@@ -182,23 +180,22 @@ class _Rayleigh(VerticalDamping):
 		"""
 		super().__init__(dims, grid, damp_depth, damp_max, backend, dtype)
 
-	def __call__(self, dt, phi_now, phi_new, phi_ref):
+	def __call__(self, dt, phi_now, phi_new, phi_ref, phi_out):
 		"""
 		Apply vertical damping to a generic field :math:`\phi`. 
 		"""
 		# Update the attributes which will serve as stencil's inputs
 		self._dt.value = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
-		self._phi_now[:, :, :] = phi_now[:, :, :]
-		self._phi_new[:, :, :] = phi_new[:, :, :]
-		self._phi_ref[:, :, :] = phi_ref[:, :, :]
+		self._phi_now[...] = phi_now[...]
+		self._phi_new[...] = phi_new[...]
+		self._phi_ref[...] = phi_ref[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
 
-		# The layers below the damping region are not affected
-		self._phi_out[:, :, self._damp_depth:] = phi_new[:, :, self._damp_depth:]
-
-		return self._phi_out
+		# Write to the passed array
+		phi_out[:, :, :self._damp_depth] = self._phi_out[:, :, :self._damp_depth]
+		phi_out[:, :, self._damp_depth:] = phi_new[:, :, self._damp_depth:]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -233,13 +230,14 @@ class _Rayleigh(VerticalDamping):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'phi_now': self._phi_now, 'phi_new': self._phi_new,
-					'phi_ref': self._phi_ref, 'rmat': self._rmat},
-			global_inputs={'dt': self._dt},
-			outputs={'phi_out': self._phi_out},
-			domain=gt.domain.Rectangle((0, 0, 0), (ni-1, nj-1, self._damp_depth-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'phi_now': self._phi_now, 'phi_new': self._phi_new,
+								'phi_ref': self._phi_ref, 'rmat': self._rmat},
+			global_inputs	 = {'dt': self._dt},
+			outputs			 = {'phi_out': self._phi_out},
+			domain			 = gt.domain.Rectangle((0, 0, 0),
+												   (ni-1, nj-1, self._damp_depth-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(dt, phi_now, phi_new, phi_ref, rmat):

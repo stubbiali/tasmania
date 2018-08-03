@@ -74,7 +74,7 @@ class GridXY:
 		# x-coordinates of the mass points
 		xv = np.array([0.5 * (values_x[0]+values_x[1])], dtype=dtype) if nx == 1 \
 			 else np.linspace(values_x[0], values_x[1], nx, dtype=dtype)
-		self.x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x',
+		self.x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name=dims_x[0],
 								 attrs={'units': units_x})
 
 		# Number of mass points along the x-axis
@@ -87,8 +87,9 @@ class GridXY:
 		# x-coordinates of the x-staggered points
 		xv_u = np.linspace(values_x[0] - 0.5*dx_v, values_x[1] + 0.5*dx_v,
 						   nx+1, dtype=dtype)
-		self.x_at_u_locations = sympl.DataArray(xv_u, coords=[xv_u], dims=dims_x,
-												name='x_at_u_locations',
+		self.x_at_u_locations = sympl.DataArray(xv_u, coords=[xv_u],
+												dims=(dims_x[0] + '_at_u_locations'),
+												name=dims_x[0] + '_at_u_locations',
 												attrs={'units': units_x})
 
 		# Extract y-axis properties
@@ -99,7 +100,7 @@ class GridXY:
 		# y-coordinates of the mass points
 		yv = np.array([0.5 * (values_y[0]+values_y[1])], dtype=dtype) if ny == 1 \
 			 else np.linspace(values_y[0], values_y[1], ny, dtype=dtype)
-		self.y = sympl.DataArray(yv, coords=[yv], dims=dims_y, name='y',
+		self.y = sympl.DataArray(yv, coords=[yv], dims=dims_y, name=dims_y[0],
 								 attrs={'units': units_y})
 
 		# Number of mass points along the y-axis
@@ -112,6 +113,7 @@ class GridXY:
 		# y-coordinates of the y-staggered points
 		yv_v = np.linspace(values_y[0] - 0.5*dy_v, values_y[1] + 0.5*dy_v,
 						   ny+1, dtype=dtype)
-		self.y_at_v_locations = sympl.DataArray(yv_v, coords=[yv_v], dims=dims_y,
-												name='y_at_v_locations',
+		self.y_at_v_locations = sympl.DataArray(yv_v, coords=[yv_v],
+												dims=(dims_y[0] + '_at_v_locations'),
+												name=dims_y[0] + '_at_v_locations',
 												attrs={'units': units_y})

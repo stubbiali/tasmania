@@ -7,7 +7,7 @@ from tasmania.utils import plot_utils
 from tasmania.utils import utils
 
 
-class PlotsAssembler:
+class PlotsOverlapper:
 	"""
 	This class creates a plot by merging the individual plots created by
 	different artists. An artist may be either a
@@ -224,7 +224,7 @@ class SubplotsAssembler:
 	:class:`~tasmania.plot.plot_monitors.Plot1d`,
 	:class:`~tasmania.plot.plot_monitors.Plot2d`,
 	:class:`~tasmania.plot.plot_monitors.Plot3d`, or
-	:class:`~tasmania.plot.assemblers.PlotsAssembler` object.
+	:class:`~tasmania.plot.assemblers.PlotsOverlapper` object.
 
 	Attributes
 	----------
@@ -232,7 +232,7 @@ class SubplotsAssembler:
         Sequence of :class:`~tasmania.plot.plot_monitors.Plot1d`,
         :class:`~tasmania.plot.plot_monitors.Plot2d`,
         :class:`~tasmania.plot.plot_monitors.Plot3d`, or
-        :class:`~tasmania.plot.assemblers.PlotsAssembler` objects.
+        :class:`~tasmania.plot.assemblers.PlotsOverlapper` objects.
     interactive : bool
         :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
     fontsize : int
@@ -257,7 +257,7 @@ class SubplotsAssembler:
 			Sequence of :class:`~tasmania.plot.plot_monitors.Plot1d`,
 			:class:`~tasmania.plot.plot_monitors.Plot2d`,
 			:class:`~tasmania.plot.plot_monitors.Plot3d`, or
-			:class:`~tasmania.plot.assemblers.PlotsAssembler` objects.
+			:class:`~tasmania.plot.assemblers.PlotsOverlapper` objects.
 		interactive : `bool`, optional
 			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 			Default is :obj:`True`.
@@ -271,7 +271,7 @@ class SubplotsAssembler:
 		"""
 		# Check input artists list
 		utils.assert_sequence(artists, reflen=nrows*ncols,
-							  reftype=(Plot1d, Plot2d, Plot3d, PlotsAssembler))
+							  reftype=(Plot1d, Plot2d, Plot3d, PlotsOverlapper))
 
 		# Store input arguments as private attributes
 		self._nrows	= nrows
@@ -361,7 +361,7 @@ class SubplotsAssembler:
 
 		if self.interactive:
 			plt.ion()
-			if self._figure is not None:
+			if self._figure is None:
 				rcParams['font.size'] = self.fontsize
 				self._figure = plt.figure(figsize=self.figsize)
 		else:

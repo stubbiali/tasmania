@@ -10,7 +10,7 @@ class Animation:
 	This class creates an animation by sequentially invoking a wrapped
 	:class:`~tasmania.plot.plot_monitors.Plot1d`,
 	:class:`~tasmania.plot.plot_monitors.Plot2d`,
-	:class:`~tasmania.plot.assemblers.PlotsAssembler`,
+	:class:`~tasmania.plot.assemblers.PlotsOverlapper`,
 	or :class:`~tasmania.plot.plot_monitors.SubplotsAssembler` object
 	on a list of model states, and grabbing the so-generated frames.
 
@@ -43,7 +43,7 @@ class Animation:
 		artist : artist
 			Instance of :class:`~tasmania.plot.plot_monitors.Plot1d`,
 			:class:`~tasmania.plot.plot_monitors.Plot2d`,
-			:class:`~tasmania.plot.assemblers.PlotsAssembler`,
+			:class:`~tasmania.plot.assemblers.PlotsOverlapper`,
 			or :class:`~tasmania.plot.assemblers.SubplotsAssembler`.
 		fontsize : `int`, optional
 			The fontsize to be used. Default is 16.

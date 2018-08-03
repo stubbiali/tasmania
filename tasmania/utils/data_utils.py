@@ -9,6 +9,7 @@ Functions:
 	make_data_array_2d
 	make_data_array_3d
 """
+import numpy as np
 from sympl import DataArray
 
 from tasmania.grids.grid_xy import GridXY
@@ -52,9 +53,12 @@ def add(state_1, state_2, units=None):
     TimeInconsistencyError :
     	If the two passed states are defined at two different time instants.
 	"""
-	if state_1['time'] != state_2['time']:
-		raise TimeInconsistencyError('Input states should be defined at '
-                                     'the same time instant.')
+	try:
+		if state_1['time'] != state_2['time']:
+			raise TimeInconsistencyError('Input states should be defined at '
+                   		                 'the same time instant.')
+	except KeyError:
+		pass
 
 	units = {} if units is None else units
 
@@ -322,7 +326,8 @@ def get_state(raw_state, grid, units):
 	try:
 		state = {'time': raw_state['time']}
 	except KeyError:
-		print('Input raw state dictionary must contain the keyword ''time''.')
+		#print('Input raw state dictionary must contain the keyword ''time''.')
+		state = {}
 
 	for key in raw_state.keys():
 		if key != 'time':
@@ -359,7 +364,8 @@ def get_raw_state(state, units=None):
 	try:
 		raw_state = {'time': state['time']}
 	except KeyError:
-		print('Input state dictionary must contain the keyword ''time''.')
+		#print('Input state dictionary must contain the keyword ''time''.')
+		raw_state = {}
 
 	for key in state.keys():
 		if key != 'time':
@@ -371,8 +377,6 @@ def get_raw_state(state, units=None):
 			raw_state[key] = data_array.values
 
 	return raw_state
-
-
 
 
 def _make_data_array_xy(raw_array, grid, units, name):
@@ -451,7 +455,12 @@ def _make_data_array_xyz(raw_array, grid, units, name):
 		raise ValueError('The array extent in the y-direction is {} but either '
 						 '{} or {} was expected.'.format(nj, ny, ny+1))
 
-	if nk == nz:
+	if nk == 1:
+		z = DataArray(np.array((grid.z_on_interface_levels.values[-1], )),
+					  #coords=[grid.z_on_interface_levels.values[-1]],
+					  dims=[grid.z.dims[0] + '_at_surface_level'],
+					  attrs={'units': grid.z.attrs['units']})
+	elif nk == nz:
 		z = grid.z
 	elif nk == nz+1:
 		z = grid.z_on_interface_levels

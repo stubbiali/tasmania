@@ -288,6 +288,6 @@ initial_state_kwargs  = {
 						}
 backend  		      = gt.mode.NUMPY
 save_iterations		  = np.arange(30, 1801, 30)
-save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/old_datasets/verification_1_maccormack.pickle')
+#save_dest		      = os.path.join(os.environ['TASMANIA_ROOT'], 'data/old_datasets/verification_1_maccormack.pickle')
 tol      		      = 1.e-8		
 datatype 		      = np.float32
