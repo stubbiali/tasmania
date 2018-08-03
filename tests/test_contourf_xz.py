@@ -25,13 +25,11 @@ import os
 import pickle
 import pytest
 
+from conftest import isentropic_dry_data, isentropic_moist_data
+
 
 @image_comparison(baseline_images=['test_contourf_xz_velocity'], extensions=['eps'])
 def test_contourf_xz_velocity():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Field to plot
 	field_to_plot = 'x_velocity_at_u_locations'
 
@@ -46,10 +44,9 @@ def test_contourf_xz_velocity():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	y_level = int(grid.ny/2)
@@ -94,10 +91,6 @@ def test_contourf_xz_velocity():
 
 @image_comparison(baseline_images=['test_contourf_xz_isentropic_density'], extensions=['eps'])
 def test_contourf_xz_isentropic_density():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-
 	# Field to plot
 	field_to_plot = 'air_isentropic_density'
 
@@ -112,10 +105,9 @@ def test_contourf_xz_isentropic_density():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_moist_data()
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	y_level = 0
@@ -127,7 +119,7 @@ def test_contourf_xz_isentropic_density():
 		'x_lim': None,
 		'y_label': '$z$ [km]',
 		'y_lim': [0, 15],
-		'text': 'LF',
+		'text': 'UW',
 		'text_loc': 'upper right',
 	}
 
@@ -157,10 +149,6 @@ def test_contourf_xz_isentropic_density():
 
 @image_comparison(baseline_images=['test_contourf_xz_cloud_liquid_water'], extensions=['eps'])
 def test_contourf_xz_cloud_liquid_water():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_moist.pickle')
-
 	# Field to plot
 	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
 
@@ -175,10 +163,9 @@ def test_contourf_xz_cloud_liquid_water():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_moist_data()
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	y_level = 0
@@ -190,7 +177,7 @@ def test_contourf_xz_cloud_liquid_water():
 		'x_lim': None,
 		'y_label': '$z$ [km]',
 		'y_lim': [0, 15],
-		'text': 'LF',
+		'text': 'UW',
 		'text_loc': 'upper right',
 	}
 

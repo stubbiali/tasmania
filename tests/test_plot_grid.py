@@ -22,16 +22,13 @@
 #
 from matplotlib.testing.decorators import image_comparison
 import os
-import pickle
 import pytest
+
+from conftest import isentropic_dry_data
 
 
 @image_comparison(baseline_images=['test_plot_grid_xz'], extensions=['eps'])
 def test_plot_grid_xz():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Field to plot
 	field_to_plot = 'grid'
 
@@ -46,10 +43,9 @@ def test_plot_grid_xz():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	y_level = int(grid.ny/2)
@@ -85,10 +81,6 @@ def test_plot_grid_xz():
 
 @image_comparison(baseline_images=['test_plot_grid_yz'], extensions=['eps'])
 def test_plot_grid_yz():
-	# Dataset to load
-	filename = os.path.join(os.environ['TASMANIA_ROOT'],
-							'tests/baseline_datasets/verification_dry.pickle')
-
 	# Field to plot
 	field_to_plot = 'grid'
 
@@ -103,10 +95,9 @@ def test_plot_grid_yz():
 	save_dest = None if os.path.exists(baseline_img) else baseline_img
 
 	# Grab data from dataset
-	with open(filename, 'rb') as data:
-		grid   = pickle.load(data)
-		states = pickle.load(data)
-		state  = states[-1]
+	grid, states = isentropic_dry_data()
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	# Index identifying the cross-section to visualize
 	x_level = int(grid.nx/2)
