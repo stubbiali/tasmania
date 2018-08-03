@@ -160,7 +160,7 @@ class IsentropicDiagnostics:
 		g	  = self._physical_constants['gravitational_acceleration']
 
 		# Update the attributes which serve as inputs to the GT4Py stencils
-		self._in_s[:, :, :] = s[:, :, :]
+		self._in_s[...] = s[...]
 
 		# Apply upper boundary condition on pressure
 		self._out_p[:, :, 0] = pt
@@ -169,7 +169,7 @@ class IsentropicDiagnostics:
 		self._stencil_diagnosing_air_pressure.compute()
 	
 		# Compute the Exner function (not via a GT4Py stencils)
-		self._in_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp)
+		self._in_exn[...] = cp * (self._out_p[...] / p_ref) ** (Rd / cp)
 
 		# Compute Montgomery potential at the lower main level
 		mtg_s = self._grid.z_on_interface_levels.values[-1] * self._in_exn[:, :, -1] \
@@ -218,7 +218,7 @@ class IsentropicDiagnostics:
 		Rd    = self._physical_constants['gas_constant_of_dry_air']
 
 		# Update the attributes which serve as inputs to the GT4Py stencils
-		self._in_s[:, :, :] = s[:, :, :]
+		self._in_s[...] = s[...]
 
 		# Apply upper boundary condition on pressure
 		self._out_p[:, :, 0] = pt
@@ -227,7 +227,7 @@ class IsentropicDiagnostics:
 		self._stencil_diagnosing_air_pressure.compute()
 
 		# Compute the Exner function (not via a GT4Py stencils)
-		self._in_exn[:, :, :] = cp * (self._out_p[:, :, :] / p_ref) ** (Rd / cp)
+		self._in_exn[...] = cp * (self._out_p[...] / p_ref) ** (Rd / cp)
 
 		# Compute geometrical height of the isentropes
 		self._out_h[:, :, -1] = self._grid.topography_height
@@ -260,8 +260,8 @@ class IsentropicDiagnostics:
 			self._stencil_diagnosing_air_density_initialize()
 
 		# Update the attributes which serve as inputs to the stencil
-		self._in_s[:, :, :] = s[:, :, :]
-		self._in_h[:, :, :] = h[:, :, :]
+		self._in_s[...] = s[...]
+		self._in_h[...] = h[...]
 
 		# Run the stencil's compute function
 		self._stencil_diagnosing_air_density.compute()
@@ -288,7 +288,7 @@ class IsentropicDiagnostics:
 			self._stencil_diagnosing_air_temperature_initialize()
 
 		# Update the attributes which serve as inputs to the stencil
-		self._in_exn[:, :, :] = exn[:, :, :]
+		self._in_exn[...] = exn[...]
 
 		# Run the stencil's compute function
 		self._stencil_diagnosing_air_temperature.compute()
@@ -311,12 +311,12 @@ class IsentropicDiagnostics:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_air_pressure = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_air_pressure_defs,
-			inputs={'in_s': self._in_s, 'in_p': self._in_p},
-			outputs={'out_p': self._out_p},
-			domain=gt.domain.Rectangle((0, 0, 1), (nx-1, ny-1, nz)),
-			mode=self._backend,
-			vertical_direction=gt.vertical_direction.FORWARD)
+			definitions_func   = self._stencil_diagnosing_air_pressure_defs,
+			inputs			   = {'in_s': self._in_s, 'in_p': self._in_p},
+			outputs			   = {'out_p': self._out_p},
+			domain			   = gt.domain.Rectangle((0, 0, 1), (nx-1, ny-1, nz)),
+			mode			   = self._backend,
+			vertical_direction = gt.vertical_direction.FORWARD)
 
 	def _stencil_diagnosing_air_pressure_defs(self, in_s, in_p):
 		"""
@@ -365,12 +365,12 @@ class IsentropicDiagnostics:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_montgomery = gt.NGStencil( 
-			definitions_func=self._stencil_diagnosing_montgomery_defs,
-			inputs={'in_exn': self._in_exn, 'in_mtg': self._in_mtg},
-			outputs={'out_mtg': self._out_mtg},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-2)),
-			mode=self._backend,
-			vertical_direction=gt.vertical_direction.BACKWARD)
+			definitions_func   = self._stencil_diagnosing_montgomery_defs,
+			inputs			   = {'in_exn': self._in_exn, 'in_mtg': self._in_mtg},
+			outputs			   = {'out_mtg': self._out_mtg},
+			domain			   = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-2)),
+			mode			   = self._backend,
+			vertical_direction = gt.vertical_direction.BACKWARD)
 
 	def _stencil_diagnosing_montgomery_defs(self, in_exn, in_mtg):
 		"""
@@ -419,13 +419,13 @@ class IsentropicDiagnostics:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_height = gt.NGStencil( 
-			definitions_func=self._stencil_diagnosing_height_defs,
-			inputs={'in_theta': self._theta, 'in_exn': self._in_exn,
-					'in_p': self._out_p, 'in_h': self._in_h},
-			outputs={'out_h': self._out_h},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend,
-			vertical_direction=gt.vertical_direction.BACKWARD)
+			definitions_func   = self._stencil_diagnosing_height_defs,
+			inputs			   = {'in_theta': self._theta, 'in_exn': self._in_exn,
+								  'in_p': self._out_p, 'in_h': self._in_h},
+			outputs			   = {'out_h': self._out_h},
+			domain			   = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			   = self._backend,
+			vertical_direction = gt.vertical_direction.BACKWARD)
 
 	def _stencil_diagnosing_height_defs(self, in_theta, in_exn, in_p, in_h):
 		"""
@@ -485,11 +485,11 @@ class IsentropicDiagnostics:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_air_density = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_air_density_defs,
-			inputs={'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._in_h},
-			outputs={'out_rho': self._out_rho},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_air_density_defs,
+			inputs			 = {'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._in_h},
+			outputs			 = {'out_rho': self._out_rho},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_diagnosing_air_density_defs(in_theta, in_s, in_h):
@@ -540,11 +540,11 @@ class IsentropicDiagnostics:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_air_temperature = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_air_temperature_defs,
-			inputs={'in_theta': self._theta, 'in_exn': self._in_exn},
-			outputs={'out_temp': self._out_temp},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_air_temperature_defs,
+			inputs			 = {'in_theta': self._theta, 'in_exn': self._in_exn},
+			outputs			 = {'out_temp': self._out_temp},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	def _stencil_diagnosing_air_temperature_defs(self, in_theta, in_exn):
 		"""
@@ -586,7 +586,7 @@ class WaterConstituent:
 	constituent with the help of the air density and the mass fraction (resp.,
 	the density) of that water constituent.
 	"""
-	def __init__(self, grid, backend=gt.mode.NUMPY):
+	def __init__(self, grid, backend=gt.mode.NUMPY, dtype=datatype):
 		"""
 		Constructor.
 
@@ -598,10 +598,16 @@ class WaterConstituent:
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 			Defaults to :class:`gridtools.mode.NUMPY`.
+		dtype : `obj`, optional
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
+			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		# Store the grid
+		# Keep track of input arguments
 		self._grid    = grid
 		self._backend = backend
+		self._dtype   = dtype
 
 		# Initialize the pointers to the underlying stencils
 		# These will be properly re-directed the first time the corresponding
@@ -632,11 +638,11 @@ class WaterConstituent:
 		"""
 		# Initialize the underlying GT4Py stencils
 		if self._stencil_diagnosing_density is None:
-			self._stencil_diagnosing_density_initialize(dq.dtype)
+			self._stencil_diagnosing_density_initialize()
 
 		# Update the arrays which serve as stencil's inputs
-		self._d[:, :, :] = d[:, :, :]
-		self._q[:, :, :] = q[:, :, :]
+		self._d[...] = d[...]
+		self._q[...] = q[...]
 
 		# Set pointer to correct stencil
 		stencil = self._stencil_diagnosing_and_clipping_density if clipping \
@@ -646,7 +652,7 @@ class WaterConstituent:
 		stencil.compute()
 
 		# Set the output array
-		dq[:, :, :] = self._dq[:, :, :]
+		dq[...] = self._dq[...]
 
 	def get_mass_fraction_of_water_constituent_in_air(self, d, dq, q, clipping=False):
 		"""
@@ -670,11 +676,11 @@ class WaterConstituent:
 		"""
 		# Initialize the underlying GT4Py stencils
 		if self._stencil_diagnosing_mass_fraction is None:
-			self._stencil_diagnosing_mass_fraction_initialize(q.dtype)
+			self._stencil_diagnosing_mass_fraction_initialize()
 
 		# Update the arrays which serve as stencil's inputs
-		self._d[:, :, :]  = d[:, :, :]
-		self._dq[:, :, :] = dq[:, :, :]
+		self._d[...]  = d[...]
+		self._dq[...] = dq[...]
 
 		# Set pointer to correct stencil
 		stencil = self._stencil_diagnosing_and_clipping_mass_fraction if clipping \
@@ -684,15 +690,16 @@ class WaterConstituent:
 		stencil.compute()
 
 		# Update the output array
-		q[:, :, :] = self._q[:, :, :]
+		q[...] = self._q[...]
 
-	def _stencil_diagnosing_density_initialize(self, dtype):
+	def _stencil_diagnosing_density_initialize(self):
 		"""
 		Initialize the GT4Py stencils in charge of diagnosing the density
 		of the water constituent.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+		dtype = self._dtype
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
@@ -705,19 +712,19 @@ class WaterConstituent:
 
 		# Instantiate the stencil which does not clip the negative values
 		self._stencil_diagnosing_density = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_density_defs,
-			inputs={'in_d': self._d, 'in_q': self._q},
-			outputs={'out_dq': self._dq},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_density_defs,
+			inputs			 = {'in_d': self._d, 'in_q': self._q},
+			outputs			 = {'out_dq': self._dq},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 		# Instantiate the stencil which does clip the negative values
 		self._stencil_diagnosing_and_clipping_density = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_and_clipping_density_defs,
-			inputs={'in_d': self._d, 'in_q': self._q},
-			outputs={'out_dq': self._dq},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_and_clipping_density_defs,
+			inputs			 = {'in_d': self._d, 'in_q': self._q},
+			outputs			 = {'out_dq': self._dq},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_diagnosing_density_defs(in_d, in_q):
@@ -786,13 +793,14 @@ class WaterConstituent:
 
 		return out_dq
 
-	def _stencil_diagnosing_mass_fraction_initialize(self, dtype):
+	def _stencil_diagnosing_mass_fraction_initialize(self):
 		"""
 		Initialize the GT4Py stencils in charge of diagnosing the mass fraction
 		of the water constituent.
 		"""
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+		dtype = self._dtype
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
@@ -805,19 +813,19 @@ class WaterConstituent:
 
 		# Instantiate the stencil which does not clip the negative values
 		self._stencil_diagnosing_mass_fraction = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_mass_fraction_defs,
-			inputs={'in_d': self._d, 'in_dq': self._dq},
-			outputs={'out_q': self._q},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_mass_fraction_defs,
+			inputs			 = {'in_d': self._d, 'in_dq': self._dq},
+			outputs			 = {'out_q': self._q},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 		# Instantiate the stencil which does clip the negative values
 		self._stencil_diagnosing_and_clipping_mass_fraction = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_and_clipping_mass_fraction_defs,
-			inputs={'in_d': self._d, 'in_dq': self._dq},
-			outputs={'out_q': self._q},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_and_clipping_mass_fraction_defs,
+			inputs			 = {'in_d': self._d, 'in_dq': self._dq},
+			outputs			 = {'out_q': self._q},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_diagnosing_mass_fraction_defs(in_d, in_dq):
@@ -950,9 +958,9 @@ class HorizontalVelocity:
 			self._stencil_diagnosing_momenta_initialize()
 
 		# Update the arrays which serve as stencil's inputs
-		self._d[:, :, :] = d[:, :, :]
-		self._u[:, :, :] = u[:, :, :]
-		self._v[:, :, :] = v[:, :, :]
+		self._d[...] = d[...]
+		self._u[...] = u[...]
+		self._v[...] = v[...]
 
 		# Call the stencil's compute function
 		self._stencil_diagnosing_momenta.compute()
@@ -993,9 +1001,9 @@ class HorizontalVelocity:
 			self._stencil_diagnosing_velocity_y_initialize()
 
 		# Update the arrays which serve as stencils' inputs
-		self._d[:, :, :]  = d[:, :, :]
-		self._du[:, :, :] = du[:, :, :]
-		self._dv[:, :, :] = dv[:, :, :]
+		self._d[...]  = d[...]
+		self._du[...] = du[...]
+		self._dv[...] = dv[...]
 
 		# Call the stencils' compute function
 		self._stencil_diagnosing_velocity_x.compute()
@@ -1026,11 +1034,11 @@ class HorizontalVelocity:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_momenta = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_momenta_defs,
-			inputs={'in_d': self._d, 'in_u': self._u, 'in_v': self._v},
-			outputs={'out_du': self._du, 'out_dv': self._dv},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_momenta_defs,
+			inputs			 = {'in_d': self._d, 'in_u': self._u, 'in_v': self._v},
+			outputs			 = {'out_du': self._du, 'out_dv': self._dv},
+			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_diagnosing_momenta_defs(in_d, in_u, in_v):
@@ -1088,11 +1096,11 @@ class HorizontalVelocity:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_velocity_x = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_velocity_x_defs,
-			inputs={'in_d': self._d, 'in_du': self._du},
-			outputs={'out_u': self._u},
-			domain=gt.domain.Rectangle((1, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_velocity_x_defs,
+			inputs			 = {'in_d': self._d, 'in_du': self._du},
+			outputs			 = {'out_u': self._u},
+			domain			 = gt.domain.Rectangle((1, 0, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	def _stencil_diagnosing_velocity_y_initialize(self):
 		"""
@@ -1114,11 +1122,11 @@ class HorizontalVelocity:
 
 		# Instantiate the stencil
 		self._stencil_diagnosing_velocity_y = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_velocity_y_defs,
-			inputs={'in_d': self._d, 'in_dv': self._dv},
-			outputs={'out_v': self._v},
-			domain=gt.domain.Rectangle((0, 1, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend)
+			definitions_func = self._stencil_diagnosing_velocity_y_defs,
+			inputs			 = {'in_d': self._d, 'in_dv': self._dv},
+			outputs			 = {'out_v': self._v},
+			domain			 = gt.domain.Rectangle((0, 1, 0), (nx-1, ny-1, nz-1)),
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_diagnosing_velocity_x_defs(in_d, in_du):

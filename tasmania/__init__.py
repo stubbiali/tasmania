@@ -39,7 +39,7 @@ from tasmania.physics.composite import PhysicsComponentComposite
 from tasmania.physics.microphysics import Kessler, RaindropFallVelocity, \
 										  SaturationAdjustmentKessler
 from tasmania.plot.animation import Animation
-from tasmania.plot.assemblers import PlotsAssembler, SubplotsAssembler
+from tasmania.plot.assemblers import PlotsOverlapper, SubplotsAssembler
 from tasmania.plot.contour_xz import make_contour_xz
 from tasmania.plot.contourf_xy import make_contourf_xy
 from tasmania.plot.contourf_xz import make_contourf_xz
@@ -51,9 +51,10 @@ from tasmania.plot.quiver_xy import make_quiver_xy
 from tasmania.plot.topography import plot_topography_3d
 from tasmania.utils.data_utils import make_data_array_2d, make_data_array_3d
 from tasmania.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
+from tasmania.utils.storage_utils import load_netcdf_dataset, NetCDFMonitor
 
 
-__version__ == '0.2.0'
+__version__ = '0.2.0'
 
 __all__ = (
 	DynamicalCore,
@@ -67,7 +68,7 @@ __all__ = (
 	PhysicsComponentComposite,
 	Kessler, RaindropFallVelocity, SaturationAdjustmentKessler,
 	Plot1d, Plot2d, Plot3d,
-	PlotsAssembler, SubplotsAssembler, Animation,
+	PlotsOverlapper, SubplotsAssembler, Animation,
 	make_contour_xz, make_contourf_xy, make_contourf_xz, make_quiver_xy,
 	plot_horizontal_profile, plot_vertical_profile,
 	plot_vertical_profile_with_respect_to_vertical_height,
@@ -75,4 +76,5 @@ __all__ = (
 	plot_topography_3d,
 	make_data_array_2d, make_data_array_3d,
 	ConstantNotFoundError, TimeInconsistencyError,
+	load_netcdf_dataset, NetCDFMonitor,
 )

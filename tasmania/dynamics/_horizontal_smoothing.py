@@ -94,7 +94,7 @@ class _FirstOrder(HorizontalSmoothing):
 			self._stencil_initialize(phi.dtype)
 
 		# Update the Numpy array representing the stencil's input field
-		self._in_phi[:, :, :] = phi[:, :, :]
+		self._in_phi[...] = phi[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -107,7 +107,7 @@ class _FirstOrder(HorizontalSmoothing):
 		self._out_phi[1:-1, -1, :] = self._in_phi[1:-1, -1, :]
 
 		# Write the output field into the provided array
-		phi_out[:, :, :] = self._out_phi[:, :, :]
+		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -126,11 +126,11 @@ class _FirstOrder(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs={'out_phi': self._out_phi},
-			domain=_domain,
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs			 = {'out_phi': self._out_phi},
+			domain			 = _domain,
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -222,7 +222,7 @@ class _FirstOrderXZ(HorizontalSmoothing):
 			self._stencil_initialize(phi.dtype)
 
 		# Update the Numpy array representing the stencil's input field
-		self._in_phi[:, :, :] = phi[:, :, :]
+		self._in_phi[...] = phi[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -233,7 +233,7 @@ class _FirstOrderXZ(HorizontalSmoothing):
 		self._out_phi[-1, :, :] = self._in_phi[-1, :, :]
 
 		# Write the output field into the provided array
-		phi_out[:, :, :] = self._out_phi[:, :, :]
+		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -252,11 +252,11 @@ class _FirstOrderXZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs={'out_phi': self._out_phi},
-			domain=_domain,
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs			 = {'out_phi': self._out_phi},
+			domain			 = _domain,
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -346,7 +346,7 @@ class _FirstOrderYZ(HorizontalSmoothing):
 			self._stencil_initialize(phi.dtype)
 
 		# Update the Numpy array representing the stencil's input field
-		self._in_phi[:, :, :] = phi[:, :, :]
+		self._in_phi[...] = phi[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -357,7 +357,7 @@ class _FirstOrderYZ(HorizontalSmoothing):
 		self._out_phi[:, -1, :] = self._in_phi[:, -1, :]
 
 		# Write the output field into the provided array
-		phi_out[:, :, :] = self._out_phi[:, :, :]
+		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -376,11 +376,11 @@ class _FirstOrderYZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs={'out_phi': self._out_phi},
-			domain=_domain,
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs			 = {'out_phi': self._out_phi},
+			domain			 = _domain,
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -469,7 +469,7 @@ class _SecondOrder(HorizontalSmoothing):
 			self._stencil_initialize(phi.dtype)
 
 		# Update the Numpy array representing the stencil's input field
-		self._in_phi[:, :, :] = phi[:, :, :]
+		self._in_phi[...] = phi[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -486,7 +486,7 @@ class _SecondOrder(HorizontalSmoothing):
 		self._out_phi[2:-2, -1, :] = self._in_phi[2:-2, -1, :]
 
 		# Write the output field into the provided array
-		phi_out[:, :, :] = self._out_phi[:, :, :]
+		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -505,11 +505,11 @@ class _SecondOrder(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs={'out_phi': self._out_phi},
-			domain=_domain,
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs			 = {'out_phi': self._out_phi},
+			domain			 = _domain,
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -603,7 +603,7 @@ class _SecondOrderXZ(HorizontalSmoothing):
 			self._stencil_initialize(phi.dtype)
 
 		# Update the Numpy array representing the stencil's input field
-		self._in_phi[:, :, :] = phi[:, :, :]
+		self._in_phi[...] = phi[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -616,7 +616,7 @@ class _SecondOrderXZ(HorizontalSmoothing):
 		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
 
 		# Write the output field into the provided array
-		phi_out[:, :, :] = self._out_phi[:, :, :]
+		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -635,11 +635,11 @@ class _SecondOrderXZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs={'out_phi': self._out_phi},
-			domain=_domain,
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs			 = {'out_phi': self._out_phi},
+			domain			 = _domain,
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -730,7 +730,7 @@ class _SecondOrderYZ(HorizontalSmoothing):
 			self._stencil_initialize(phi.dtype)
 
 		# Update the Numpy array representing the stencil's input field
-		self._in_phi[:, :, :] = phi[:, :, :]
+		self._in_phi[...] = phi[...]
 
 		# Run the stencil's compute function
 		self._stencil.compute()
@@ -743,7 +743,7 @@ class _SecondOrderYZ(HorizontalSmoothing):
 		self._out_phi[:, -1, :] = self._in_phi[:, -1, :]
 
 		# Write the output field into the provided array
-		phi_out[:, :, :] = self._out_phi[:, :, :]
+		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		"""
@@ -762,11 +762,11 @@ class _SecondOrderYZ(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs={'out_phi': self._out_phi},
-			domain=_domain,
-			mode=self._backend)
+			definitions_func = self._stencil_defs,
+			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs			 = {'out_phi': self._out_phi},
+			domain			 = _domain,
+			mode			 = self._backend)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):

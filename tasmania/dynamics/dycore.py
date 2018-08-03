@@ -185,6 +185,7 @@ class DynamicalCore:
 			timestepping, and whose values are fundamental properties
 			(dims, units) of those tendencies.
 		"""
+
 	@property
 	def output_properties(self):
 		"""
@@ -207,7 +208,7 @@ class DynamicalCore:
 
 			# Ensure that the variables output by any stage
 			# can be fed into the fast parameterizations
-			shared_vars = set(params_inputs).intersect(dycore_outputs)
+			shared_vars = set(params_inputs).intersection(dycore_outputs)
 			for name in shared_vars:
 				check_property_compatibility(params_inputs[name], dycore_outputs[name],
 											 name=name)
@@ -291,6 +292,7 @@ class DynamicalCore:
 			raw_in_state = get_raw_state(out_state, units=in_state_units)
 
 			# Extract Numpy arrays from tendencies
+			in_tendencies['time'] = state['time']
 			in_tendencies_units = {name: self._tendency_properties[name]['units']
 							   	   for name in self._tendency_properties.keys()}
 			raw_in_tendencies = get_raw_state(in_tendencies,

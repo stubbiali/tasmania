@@ -103,7 +103,7 @@ def make_contour_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 	ni, nk = var.shape
 
 	# The underlying x-grid
-	x  = grid.x[:] if ni == nx else grid.x_at_u_locations[:]
+	x  = grid.x.values[:] if ni == nx else grid.x_at_u_locations.values[:]
 	xv = np.repeat(x[:, np.newaxis], nk, axis=1)
 
 	# Extract the geometric height at the main or interface levels, and the topography

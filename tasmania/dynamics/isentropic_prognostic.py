@@ -349,7 +349,7 @@ class IsentropicPrognostic:
 			The dictionary should contain the following keys:
 
             	* air_isentropic_density [kg m^-2 K^-1];
-            	* isentropic_density_of_precipitation_water [kg m^-2 K^-1].
+            	* mass_fraction_of_precipitation_water_in_air [g g^-1].
 
 			This may be the output of
 			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_motion`
@@ -471,6 +471,7 @@ class IsentropicPrognostic:
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		dtype = self._dtype
+		raw_tendencies = {} if raw_tendencies is None else raw_tendencies
 		tendency_names = raw_tendencies.keys()
 
 		# Instantiate a GT4Py Global representing the timestep
@@ -561,13 +562,13 @@ class IsentropicPrognostic:
 		if raw_tendencies is not None:
 			qv_tnd_on = \
 				raw_tendencies.get('tendency_of_mass_fraction_of_water_vapor_in_air',
-								   None)
+								   None) is not None
 			qc_tnd_on = \
 				raw_tendencies.get('tendency_of_mass_fraction_of_cloud_liquid_water_in_air',
-								   None)
+								   None) is not None
 			qr_tnd_on = \
 				raw_tendencies.get('tendency_of_mass_fraction_of_precipitation_water_in_air',
-								   None)
+								   None) is not None
 		else:
 			qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
