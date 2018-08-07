@@ -1,1 +1,3 @@
 grids/parser/* linguist-vendored
+
+git lfs track "*.nc"
