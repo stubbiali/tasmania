@@ -23,6 +23,8 @@
 from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_dry_data, isentropic_moist_sedimentation_data
 
@@ -33,8 +35,7 @@ def test_profile_1d_x():
 	field_to_plot = 'accumulated_precipitation'
 
 	# Make sure the folder tests/baseline_images/test_profile_1d does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_profile_1d')
+	baseline_dir = 'baseline_images/test_profile_1d'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -85,8 +86,7 @@ def test_profile_1d_y():
 	field_to_plot = 'y_velocity_at_v_locations'
 
 	# Make sure the folder tests/baseline_images/test_profile_1d does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_profile_1d')
+	baseline_dir = 'baseline_images/test_profile_1d'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -137,8 +137,7 @@ def test_profile_1d_z():
 	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
 
 	# Make sure the folder tests/baseline_images/test_profile_1d does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_profile_1d')
+	baseline_dir = 'baseline_images/test_profile_1d'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -189,8 +188,7 @@ def test_profile_1d_height():
 	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
 
 	# Make sure the folder tests/baseline_images/test_profile_1d does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_profile_1d')
+	baseline_dir = 'baseline_images/test_profile_1d'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

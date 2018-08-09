@@ -22,8 +22,9 @@
 #
 from matplotlib.testing.decorators import image_comparison
 import os
-import pickle
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_dry_data, isentropic_moist_data
 
@@ -34,8 +35,7 @@ def test_contourf_xz_velocity():
 	field_to_plot = 'x_velocity_at_u_locations'
 
 	# Make sure the folder tests/baseline_images/test_contourf_xz does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_contourf_xz')
+	baseline_dir = 'baseline_images/test_contourf_xz'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -95,8 +95,7 @@ def test_contourf_xz_isentropic_density():
 	field_to_plot = 'air_isentropic_density'
 
 	# Make sure the folder tests/baseline_images/test_contourf_xz does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_contourf_xz')
+	baseline_dir = 'baseline_images/test_contourf_xz'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -153,8 +152,7 @@ def test_contourf_xz_cloud_liquid_water():
 	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
 
 	# Make sure the folder tests/baseline_images/test_contourf_xz does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_contourf_xz')
+	baseline_dir = 'baseline_images/test_contourf_xz'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
