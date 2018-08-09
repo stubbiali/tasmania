@@ -1,3 +1,2 @@
 grids/parser/* linguist-vendored
-
-git lfs track "*.nc"
+*.nc filter=lfs diff=lfs merge=lfs -text
