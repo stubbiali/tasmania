@@ -23,6 +23,8 @@
 from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_dry_data
 
@@ -33,8 +35,7 @@ def test_plot_grid_xz():
 	field_to_plot = 'grid'
 
 	# Make sure the folder tests/baseline_images/test_plot_grid does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_plot_grid')
+	baseline_dir = 'baseline_images/test_plot_grid'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -85,8 +86,7 @@ def test_plot_grid_yz():
 	field_to_plot = 'grid'
 
 	# Make sure the folder tests/baseline_images/test_plot_grid does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_plot_grid')
+	baseline_dir = 'baseline_images/test_plot_grid'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
