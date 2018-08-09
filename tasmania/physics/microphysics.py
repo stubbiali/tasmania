@@ -180,16 +180,16 @@ class Kessler(Tendency):
 		dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
 		return_dict = {
-			'tendency_of_mass_fraction_of_cloud_liquid_water_in_air':
+			'mass_fraction_of_cloud_liquid_water_in_air':
 				{'dims': dims, 'units': 'g g^-1 s^-1'},
-			'tendency_of_mass_fraction_of_precipitation_water_in_air':
+			'mass_fraction_of_precipitation_water_in_air':
 				{'dims': dims, 'units': 'g g^-1 s^-1'},
 		}
 
 		if self._rain_evaporation_on:
-			return_dict['tendency_of_mass_fraction_of_water_vapor_in_air'] = \
+			return_dict['mass_fraction_of_water_vapor_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['tendency_of_air_potential_temperature'] = \
+			return_dict['air_potential_temperature'] = \
 				{'dims': dims, 'units': 'K s^-1'}
 
 		return return_dict
@@ -248,12 +248,12 @@ class Kessler(Tendency):
 
 		# Collect the tendencies
 		tendencies = {
-			'tendency_of_mass_fraction_of_cloud_liquid_water_in_air': self._out_qc_tnd,
-			'tendency_of_mass_fraction_of_precipitation_water_in_air': self._out_qr_tnd,
+			'mass_fraction_of_cloud_liquid_water_in_air': self._out_qc_tnd,
+			'mass_fraction_of_precipitation_water_in_air': self._out_qr_tnd,
 		}
 		if self._rain_evaporation_on:
-			tendencies['tendency_of_mass_fraction_of_water_vapor_in_air'] = self._out_qv_tnd
-			tendencies['tendency_of_air_potential_temperature'] = self._out_theta_tnd
+			tendencies['mass_fraction_of_water_vapor_in_air'] = self._out_qv_tnd
+			tendencies['air_potential_temperature'] = self._out_theta_tnd
 
 		# Instantiate an empty dictionary, serving as the output diagnostics dictionary
 		diagnostics = {}

@@ -471,6 +471,145 @@ class _MacCormackIsentropicHorizontalFlux(IsentropicHorizontalFlux):
 		return flux_s_y
 
 
+class _FifthOrderUpwindIsentropicHorizontalFlux(IsentropicHorizontalFlux):
+	"""
+	Class which inherits
+	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux`
+	to implement the fifth-order upwind scheme to compute the horizontal
+	numerical fluxes for the governing equations expressed in
+	conservative form using isentropic coordinates.
+
+	Attributes
+	----------
+	nb : int
+		Number of boundary layers.
+	order : int
+		Order of accuracy.
+	"""
+	def __init__(self, grid, moist_on):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : obj
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing
+			the underlying grid.
+		moist_on : bool
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+		"""
+		super().__init__(grid, moist_on)
+		self.nb = 3
+		self.order = 5
+
+	def __call__(self, i, j, k, dt, s, u, v, mtg, su, sv,
+				 sqv=None, sqc=None, sqr=None,
+				 qv_tnd=None, qc_tnd=None, qr_tnd=None):
+		"""
+		Note
+		----
+		:data:`qv_tnd`, :data:`qc_tnd`, and :data:`qr_tnd` are not
+		actually used, yet they appear as default arguments for compliancy
+		with the class hierarchy interface.
+		"""
+		# Compute fluxes for the isentropic density and the momenta
+		flux_s_x  = self._get_fifth_order_upwind_flux_x(i, j, k, u, s)
+		flux_s_y  = self._get_fifth_order_upwind_flux_y(i, j, k, v, s)
+		flux_su_x = self._get_fifth_order_upwind_flux_x(i, j, k, u, su)
+		flux_su_y = self._get_fifth_order_upwind_flux_y(i, j, k, v, su)
+		flux_sv_x = self._get_fifth_order_upwind_flux_x(i, j, k, u, sv)
+		flux_sv_y = self._get_fifth_order_upwind_flux_y(i, j, k, v, sv)
+
+		# Initialize the return list
+		return_list = [flux_s_x, flux_s_y, flux_su_x, flux_su_y,
+					   flux_sv_x, flux_sv_y]
+
+		if self._moist_on:
+			# Compute fluxes for the water constituents
+			flux_sqv_x = self._get_fifth_order_upwind_flux_x(i, j, k, u, sqv)
+			flux_sqv_y = self._get_fifth_order_upwind_flux_y(i, j, k, v, sqv)
+			flux_sqc_x = self._get_fifth_order_upwind_flux_x(i, j, k, u, sqc)
+			flux_sqc_y = self._get_fifth_order_upwind_flux_y(i, j, k, v, sqc)
+			flux_sqr_x = self._get_fifth_order_upwind_flux_x(i, j, k, u, sqr)
+			flux_sqr_y = self._get_fifth_order_upwind_flux_y(i, j, k, v, sqr)
+
+			# Update the return list
+			return_list += [flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y,
+							flux_sqr_x, flux_sqr_y]
+
+		return return_list
+
+	@staticmethod
+	def _get_fifth_order_upwind_flux_x(i, j, k, u, phi):
+		"""
+		Get the :class:`gridtools.Equation` representing the fifth-order
+		upwind flux in :math:`x`-direction for a generic prognostic variable
+		:math:`\phi`.
+		"""
+		phi_name = phi.get_name()
+		flux_name = 'fifth_order_flux_' + phi_name + '_x'
+		flux = gt.Equation(name=flux_name)
+
+		flux6 = __class__._get_sixth_order_centered_flux_x(i, j, k, u, phi)
+
+		flux[i, j, k] = flux6[i, j, k] - \
+						((u[i+1, j, k] > 0.) * u[i+1, j, k] -
+						 (u[i+1, j, k] < 0.) * u[i+1, j, k]) / 60. * \
+						(10. * (phi[i+1, j, k] - phi[i, j, k])
+						 - 5. * (phi[i+2, j, k] - phi[i-1, j, k])
+						 + (phi[i+3, j, k] - phi[i-2, j, k]))
+
+		return flux
+
+	@staticmethod
+	def _get_sixth_order_centered_flux_x(i, j, k, u, phi):
+		phi_name = phi.get_name()
+		flux_name = 'sixth_order_flux' + phi_name + '_x'
+		flux = gt.Equation(name=flux_name)
+
+		flux[i, j, k] = u[i+1, j, k] / 60. * \
+						(37. * (phi[i+1, j, k] + phi[i, j, k])
+						 - 8. * (phi[i+2, j, k] + phi[i-1, j, k])
+						 + (phi[i+3, j, k] + phi[i-2, j, k]))
+
+		return flux
+
+	@staticmethod
+	def _get_fifth_order_upwind_flux_y(i, j, k, v, phi):
+		"""
+		Get the :class:`gridtools.Equation` representing the fifth-order
+		upwind flux in :math:`y`-direction for a generic prognostic variable
+		:math:`\phi`.
+		"""
+		phi_name = phi.get_name()
+		flux_name = 'fifth_order_flux_' + phi_name + '_y'
+		flux = gt.Equation(name=flux_name)
+
+		flux6 = __class__._get_sixth_order_centered_flux_y(i, j, k, v, phi)
+
+		flux[i, j, k] = flux6[i, j, k] - \
+						((v[i, j+1, k] > 0.) * v[i, j+1, k] -
+						 (v[i, j+1, k] < 0.) * v[i, j+1, k]) / 60. * \
+						(10. * (phi[i, j+1, k] - phi[i, j, k])
+						 - 5. * (phi[i, j+2, k] - phi[i, j-1, k])
+						 + (phi[i, j+3, k] - phi[i, j-2, k]))
+
+		return flux
+
+	@staticmethod
+	def _get_sixth_order_centered_flux_y(i, j, k, v, phi):
+		phi_name = phi.get_name()
+		flux_name = 'sixth_order_flux' + phi_name + '_y'
+		flux = gt.Equation(name=flux_name)
+
+		flux[i, j, k] = v[i, j+1, k] / 60. * \
+						(37. * (phi[i, j+1, k] + phi[i, j, k])
+						 - 8. * (phi[i, j+2, k] + phi[i, j-1, k])
+						 + (phi[i, j+3, k] + phi[i, j-2, k]))
+
+		return flux
+
+
 class _UpwindIsentropicVerticalFlux(IsentropicVerticalFlux):
 	"""
 	Class which inherits

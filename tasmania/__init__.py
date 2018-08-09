@@ -35,6 +35,7 @@ from tasmania.grids.grid_xy import GridXY
 from tasmania.grids.grid_xyz import GridXYZ
 from tasmania.grids.grid_xz import GridXZ
 from tasmania.grids.topography import Topography1d, Topography2d
+from tasmania.model import Model
 from tasmania.physics.composite import PhysicsComponentComposite
 from tasmania.physics.microphysics import Kessler, RaindropFallVelocity, \
 										  SaturationAdjustmentKessler
@@ -67,6 +68,7 @@ __all__ = (
 	Topography1d, Topography2d,
 	PhysicsComponentComposite,
 	Kessler, RaindropFallVelocity, SaturationAdjustmentKessler,
+	Model,
 	Plot1d, Plot2d, Plot3d,
 	PlotsOverlapper, SubplotsAssembler, Animation,
 	make_contour_xz, make_contourf_xy, make_contourf_xz, make_quiver_xy,

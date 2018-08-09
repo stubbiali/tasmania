@@ -267,11 +267,11 @@ class IsentropicDynamicalCore(DynamicalCore):
 		return_dict = {}
 
 		if self._moist_on:
-			return_dict['tendency_of_mass_fraction_of_water_vapor_in_air'] = \
+			return_dict['mass_fraction_of_water_vapor_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['tendency_of_mass_fraction_of_cloud_liquid_water_in_air'] = \
+			return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['tendency_of_mass_fraction_of_precipitation_water_in_air'] = \
+			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1 s^-1'}
 
 		return return_dict

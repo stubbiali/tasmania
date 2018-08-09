@@ -178,8 +178,8 @@ def assert_sequence(seq, reflen=None, reftype=None):
 			.format(len(seq), reflen)
 
 	if reftype is not None:
-		if type(reftype) not in (list, tuple):
-			reftype = [reftype,]
+		if type(reftype) is not tuple:
+			reftype = (reftype, )
 		for item in seq:
 			error_msg = 'An item of the input sequence is of type ' \
 						+ str(type(item)) + ', but one of [ '
@@ -187,7 +187,7 @@ def assert_sequence(seq, reflen=None, reftype=None):
 				error_msg += str(reftype_) + ' '
 			error_msg += '] was expected.'
 
-			assert type(item) in reftype, error_msg
+			assert isinstance(item, reftype), error_msg
 
 
 def check_property_compatibility(property_1, property_2, name=None):
