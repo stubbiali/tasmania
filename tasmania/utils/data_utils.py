@@ -84,7 +84,10 @@ def add(state_1, state_2, units=None):
 
 	units = {} if units is None else units
 
-	out_state = {'time': state_1['time']}
+	try:
+		out_state = {'time': state_1['time']}
+	except KeyError:
+		out_state = {}
 
 	for key in set().union(state_1.keys(), state_2.keys()):
 		if key != 'time':
