@@ -21,14 +21,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 PYSRC := $(shell find $(shell pwd) -name '*.py')
-PYTMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
-PYTMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__')
+TMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
+TMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__') 
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
 DOCDIR := doc
 DOCSRC := $(DOCDIR)/source/conf.py $(DOCDIR)/source/api.rst
 PARSERDIR := tasmania/grids/parser
 UMLDIR := $(DOCDIR)/uml
+TESTDIR := tests
 
-all: clean parser html
+all: clean parser html test
 
 parser:
 	@cd $(PARSERDIR) && $(MAKE)
@@ -56,12 +60,19 @@ uml: parser
 	@mv classes_*.eps $(UMLDIR) > /dev/null
 	@mv packages_*.eps $(UMLDIR) > /dev/null
 	@echo "OK."
+
+test: parser
+	@cd $(TESTDIR) && \
+	 pytest --ignore=test_animation.py --ignore=test_contour_xz.py --ignore=test_contourf_xy.py \
+			--ignore=test_contourf_xz.py --ignore=test_plot_grid.py --ignore=test_plot_overlapper.py \
+			--ignore=test_plot_topography.py --ignore=test_profile_1d.py --ignore=test_quiver_xy.py \
+			--ignore=test_subplots_assembler.py
 	
 .PHONY: clean gitignore
 
 clean:
-	@$(RM) $(PYTMP_FILES) > /dev/null
-	@$(RM) -r $(PYTMP_FOLDERS) > /dev/null
+	@$(RM) $(TMP_FILES) > /dev/null
+	@$(RM) -r $(TMP_FOLDERS) > /dev/null
 	@find . -type f -name "*.sw[klmnop]" -delete
 	@cd $(PARSERDIR) && $(MAKE) clean > /dev/null
 	@cd $(PARSERDIR)/tests && $(MAKE) clean > /dev/null

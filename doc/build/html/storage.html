@@ -1,0 +1,326 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>I/O &mdash; tasmania 0.2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="tasmania 0.2.0 documentation" href="index.html"/>
+        <link rel="prev" title="Plotting" href="plot.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> tasmania
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain.html">Computational domain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state.html">Model state</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dynamics.html">Dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot.html">Plotting</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">I/O</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#write-to-file">Write to file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#read-from-file">Read from file</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">tasmania</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>I/O</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/storage.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="i-o">
+<h1>I/O<a class="headerlink" href="#i-o" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="write-to-file">
+<h2>Write to file<a class="headerlink" href="#write-to-file" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="tasmania.utils.storage_utils.NetCDFMonitor">
+<em class="property">class </em><code class="descclassname">tasmania.utils.storage_utils.</code><code class="descname">NetCDFMonitor</code><span class="sig-paren">(</span><em>filename</em>, <em>grid</em>, <em>time_units='seconds'</em>, <em>store_names=None</em>, <em>write_on_store=False</em>, <em>aliases=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.storage_utils.NetCDFMonitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Customized version of <code class="xref py py-class docutils literal"><span class="pre">sympl.NetCDFMonitor</span></code>, which
+caches stored states and then write them to a NetCDF file,
+together with some grid properties.</p>
+<dl class="method">
+<dt id="tasmania.utils.storage_utils.NetCDFMonitor.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>filename</em>, <em>grid</em>, <em>time_units='seconds'</em>, <em>store_names=None</em>, <em>write_on_store=False</em>, <em>aliases=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.storage_utils.NetCDFMonitor.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><blockquote>
+<div><p>The constructor.</p>
+<p>filename : str</p>
+</div></blockquote>
+<p>The file to which the NetCDF file will be written.</p>
+</div></blockquote>
+<dl class="docutils">
+<dt>grid <span class="classifier-delimiter">:</span> <span class="classifier">grid</span></dt>
+<dd>Instance of <code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code>
+representing the underlying computational grid.</dd>
+<dt>time_units <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd>The units in which time will be
+stored in the NetCDF file. Time is stored as an integer
+number of these units. Default is seconds.</dd>
+<dt>store_names <span class="classifier-delimiter">:</span> <span class="classifier">iterable of str, optional</span></dt>
+<dd><blockquote class="first">
+<div><p>Names of quantities to store. If not given,
+all quantities are stored.
+write_on_store : bool, optional
+If True, stored changes are immediately written to file.</p>
+<blockquote>
+<div>This can result in many file open/close operations.
+Default is to write only when the write() method is</div></blockquote>
+</div></blockquote>
+<p class="last">called directly.</p>
+</dd>
+<dt>aliases <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><blockquote class="first">
+<div>A dictionary of string replacements to apply to state variable</div></blockquote>
+<p class="last">names before saving them in netCDF files.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.utils.storage_utils.NetCDFMonitor.write">
+<code class="descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.storage_utils.NetCDFMonitor.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write grid properties and all cached states to the NetCDF file,
+and clear the cache. This will append to any existing NetCDF file.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="read-from-file">
+<h2>Read from file<a class="headerlink" href="#read-from-file" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="tasmania.utils.storage_utils.load_netcdf_dataset">
+<code class="descclassname">tasmania.utils.storage_utils.</code><code class="descname">load_netcdf_dataset</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.storage_utils.load_netcdf_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Load the sequence of states stored in a NetCDF dataset,
+and build the underlying grid.</p>
+<dl class="docutils">
+<dt>filename <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Path to the NetCDF dataset.</dd>
+</dl>
+<dl class="docutils">
+<dt>grid <span class="classifier-delimiter">:</span> <span class="classifier">grid</span></dt>
+<dd>Instance of <code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></dd>
+</dl>
+<p>representing the underlying computational grid.</p>
+</div></blockquote>
+<dl class="docutils">
+<dt>states <span class="classifier-delimiter">:</span> <span class="classifier">list of dict</span></dt>
+<dd>List of state dictionaries stored in the NetCDF file.</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="plot.html" class="btn btn-neutral" title="Plotting" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Stefano Ubbiali.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.2.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

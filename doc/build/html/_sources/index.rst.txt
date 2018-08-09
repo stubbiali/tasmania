@@ -3,14 +3,22 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to tasmania's documentation!
+Welcome to Tasmania's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Contents
 
-   api
+   introduction
+   installation
+   domain
+   state
+   dynamics
+   physics
+   model
+   plot
+   storage
 
 Indices and tables
 ==================
