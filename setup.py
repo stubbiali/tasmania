@@ -1,7 +1,6 @@
 import os
 import sys
 from setuptools import setup, Extension
-from tasmania import __version__
 
 
 if sys.version_info.major < 3:
@@ -28,9 +27,9 @@ def read_file(fname):
 
 setup(
 	name			 = 'tasmania',
-	description		 = 'A Python library for building Earth system models.',
+	description		 = 'A Python library to ease the composition, configuration, and execution of Earth system models.',
 	long_description = read_file('README.md'),
-	version			 = __version__,
+	version			 = '0.2.0',
 	keywords		 = 'tasmania',
 	author			 = 'Stefano Ubbiali',
 	author_email	 = 'subbiali@phys.ethz.ch',

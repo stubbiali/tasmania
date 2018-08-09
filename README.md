@@ -3,7 +3,7 @@
 Tasmania
 ========
 
-This is the repository for Tasmania, a Python library for Earth system science.
+This is the repository for Tasmania, a Python library to ease the composition, configuration, and execution of Earth system models.
 
 Motivation
 ----------
@@ -20,17 +20,31 @@ Tasmania aims to be a high-level, modular and flexible framework to ease the com
 Installation
 ------------
 
-We suggest to run any application relying on Tasmania inside a [Docker](https://www.docker.com/) container spawn from a provided image. To create a local instance of the image, from the repository root directory issue:
+To clone this repository on your machine and place yourself on the current branch, from within a terminal run:
 
-	docker build --build-arg uid=$(id -u) -t tasmania-ci docker
+	git clone https://github.com/eth-cscs/tasmania.git
+	cd tasmania
+	git checkout sympl-compliant
 
-Later, type
+Then, enter the folder `docker/` and type
 
-	docker run --rm -dit -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD:/tasmania tasmania-ci
+	git clone https://github.com/eth-cscs/gridtools4py.git
+	cd gridtools4py
+	git checkout merge_ubbiali
 
-to run the container in detached mode. The flags `-e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix` are required only if one wants to generate plots via [Matplotlib](https://matplotlib.org/). If this is not the case, they can be omitted. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*, so that the folder `/tasmania` within the container will be in sync with the repository root directory.
+to clone the GridTools4Py repository. **Note**: both Tasmania and GridTools4Py repositories are *private*, so you should be given access to them in order to accomplish the steps above.
 
-When successful, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:
+We suggest to run any script or application relying on Tasmania inside a [Docker](https://www.docker.com/) container, spawn from a provided image. To create a local instance of the image, named `tasmania`, from the repository root directory issue:
+
+	docker build --build-arg uid=$(id -u) -t tasmania .
+
+Later, launch
+
+	docker run --rm -dit --privileged -e DISPLAY -e XAUTHORITY=$XAUTORITY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD:/tasmania tasmania
+
+to run the container in detached mode. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*, so that the folder :option:`/tasmania` within the container will be in sync with the repository root directory. Instead, the flags `--privileged -e DISPLAY -e XAUTHORITY:$XAUTHORITY -v /tmp/.X11-unix:/tmp/.X11-unix` are required to execute any graphical application within the container, and should then be used to, e.g., generate a plot via [Matplotlib](https://matplotlib.org/) or run a [Jupyter](http://jupyter.org/) notebook. **Note**: we are conscious of the fact that granting a container privileged rights is consider bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.
+
+When executed successfully, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:
 
 	docker exec -it CONTAINER_ID bash
 
