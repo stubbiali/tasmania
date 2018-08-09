@@ -1,7 +1,8 @@
 from matplotlib.testing.decorators import image_comparison
 import os
-import pickle
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_dry_data, \
 					 isentropic_moist_sedimentation_data, \
@@ -11,8 +12,7 @@ from conftest import isentropic_dry_data, \
 @image_comparison(baseline_images=['test_plot_1d_x'], extensions=['eps'])
 def test_plot_1d_x():
 	# Make sure the folder tests/baseline_images/test_plots_assembler does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_plots_overlapper')
+	baseline_dir = 'baseline_images/test_plots_overlapper'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -103,8 +103,7 @@ def test_plot_1d_x():
 @image_comparison(baseline_images=['test_plot_1d_z'], extensions=['eps'])
 def test_plot_1d_z():
 	# Make sure the folder tests/baseline_images/test_plots_assembler does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_plots_overlapper')
+	baseline_dir = 'baseline_images/test_plots_overlapper'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -194,8 +193,7 @@ def test_plot_1d_z():
 @image_comparison(baseline_images=['test_plot_2d'], extensions=['eps'])
 def test_plot_2d():
 	# Make sure the folder tests/baseline_images/test_plots_assembler does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_plots_overlapper')
+	baseline_dir = 'baseline_images/test_plots_overlapper'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

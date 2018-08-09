@@ -1,6 +1,8 @@
 from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_dry_data
 
@@ -11,8 +13,7 @@ def test_quiver_xy_velocity():
 	field_to_plot = 'horizontal_velocity'
 
 	# Make sure the folder tests/baseline_images/test_quiver_xy does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_quiver_xy')
+	baseline_dir = 'baseline_images/test_quiver_xy'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -74,8 +75,7 @@ def test_quiver_xy_velocity_bw():
 	field_to_plot = 'horizontal_velocity'
 
 	# Make sure the folder tests/baseline_images/test_quiver_xy does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_quiver_xy')
+	baseline_dir = 'baseline_images/test_quiver_xy'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

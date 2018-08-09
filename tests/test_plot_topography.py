@@ -1,6 +1,8 @@
 from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_dry_data
 
@@ -8,8 +10,7 @@ from conftest import isentropic_dry_data
 @image_comparison(baseline_images=['test_plot_topography_3d'], extensions=['eps'], tol=0.15)
 def test_plot_topography_3d():
 	# Make sure the folder tests/baseline_images/test_plot_topography does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_plot_topography')
+	baseline_dir = 'baseline_images/test_plot_topography'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

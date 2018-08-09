@@ -1,8 +1,9 @@
 from datetime import timedelta
 from matplotlib.testing.decorators import image_comparison
 import os
-import pickle
 import pytest
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from conftest import isentropic_moist_sedimentation_data, \
 					 isentropic_moist_sedimentation_evaporation_data
@@ -11,8 +12,7 @@ from conftest import isentropic_moist_sedimentation_data, \
 @image_comparison(baseline_images=['test_plot_1d'], extensions=['eps'])
 def test_plot_1d():
 	# Make sure the folder tests/baseline_images/test_subplots_composer does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_subplots_assembler')
+	baseline_dir = 'baseline_images/test_subplots_assembler'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -106,8 +106,7 @@ def test_plot_1d():
 @image_comparison(baseline_images=['test_plot_1d_share_yaxis'], extensions=['eps'])
 def test_plot_1d_share_yaxis():
 	# Make sure the folder tests/baseline_images/test_subplots_composer does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_subplots_assembler')
+	baseline_dir = 'baseline_images/test_subplots_assembler'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -201,8 +200,7 @@ def test_plot_1d_share_yaxis():
 @image_comparison(baseline_images=['test_plot_1d_share_xaxis'], extensions=['eps'])
 def test_plot_1d_share_xaxis():
 	# Make sure the folder tests/baseline_images/test_subplots_composer does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_subplots_assembler')
+	baseline_dir = 'baseline_images/test_subplots_assembler'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -296,8 +294,7 @@ def test_plot_1d_share_xaxis():
 @image_comparison(baseline_images=['test_plot_2d_one_row_two_columns'], extensions=['eps'])
 def test_plot_2d_one_row_two_columns():
 	# Make sure the folder tests/baseline_images/test_subplots_assembler does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_subplots_assembler')
+	baseline_dir = 'baseline_images/test_subplots_assembler'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -407,8 +404,7 @@ def test_plot_2d_one_row_two_columns():
 @image_comparison(baseline_images=['test_plot_2d_two_rows_two_columns'], extensions=['eps'])
 def test_plot_2d_two_rows_two_columns():
 	# Make sure the folder tests/baseline_images/test_subplots_assembler does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_subplots_assembler')
+	baseline_dir = 'baseline_images/test_subplots_assembler'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

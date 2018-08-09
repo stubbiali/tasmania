@@ -21,8 +21,9 @@ def test_dry(isentropic_dry_data):
 									 horizontal_flux_scheme='maccormack',
 									 horizontal_boundary_type='relaxed',
 									 damp_on=True, damp_type='rayleigh', damp_depth=15,
-									 damp_max=0.0002, damp_at_every_stage=True,
-									 smooth_on=True, smooth_coeff=0.03, smooth_at_every_stage=True,
+									 damp_max=0.0002, damp_at_every_stage=False,
+									 smooth_on=True, smooth_type='first_order',
+									 smooth_coeff=0.12, smooth_at_every_stage=False,
 									 backend=gt.mode.NUMPY, dtype=np.float32)
 
 	timestep   = timedelta(seconds=24)
@@ -55,7 +56,7 @@ def test_moist(isentropic_moist_data):
 									 horizontal_flux_scheme='upwind',
 									 horizontal_boundary_type='relaxed',
 									 smooth_on=True, smooth_type='first_order',
-									 smooth_coeff=0.05, smooth_at_every_stage=True,
+									 smooth_coeff=0.20, smooth_at_every_stage=True,
 									 adiabatic_flow=True,
 									 backend=gt.mode.NUMPY, dtype=np.float64)
 
@@ -97,7 +98,7 @@ def test_moist_sedimentation(isentropic_moist_sedimentation_data):
 									 horizontal_flux_scheme='maccormack',
 									 horizontal_boundary_type='relaxed',
 									 smooth_on=True, smooth_type='first_order',
-									 smooth_coeff=0.05, smooth_at_every_stage=True,
+									 smooth_coeff=0.20, smooth_at_every_stage=True,
 									 adiabatic_flow=True, sedimentation_on=True,
 									 sedimentation_flux_type='second_order_upwind',
 									 sedimentation_substeps=2,
@@ -142,7 +143,7 @@ def test_moist_sedimentation_evaporation(isentropic_moist_sedimentation_evaporat
 									 horizontal_flux_scheme='centered',
 									 horizontal_boundary_type='relaxed',
 									 smooth_on=True, smooth_type='first_order',
-									 smooth_coeff=0.05, smooth_at_every_stage=True,
+									 smooth_coeff=0.20, smooth_at_every_stage=True,
 									 adiabatic_flow=True, sedimentation_on=True,
 									 sedimentation_flux_type='second_order_upwind',
 									 sedimentation_substeps=2,

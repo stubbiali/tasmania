@@ -18,10 +18,10 @@ def test_kessler(isentropic_moist_sedimentation_evaporation_data):
 
 	tendencies, diagnostics = kp(state)
 
-	tnd_name_1 = 'tendency_of_air_potential_temperature'
-	tnd_name_2 = 'tendency_of_mass_fraction_of_water_vapor_in_air'
-	tnd_name_3 = 'tendency_of_mass_fraction_of_cloud_liquid_water_in_air'
-	tnd_name_4 = 'tendency_of_mass_fraction_of_precipitation_water_in_air'
+	tnd_name_1 = 'air_potential_temperature'
+	tnd_name_2 = 'mass_fraction_of_water_vapor_in_air'
+	tnd_name_3 = 'mass_fraction_of_cloud_liquid_water_in_air'
+	tnd_name_4 = 'mass_fraction_of_precipitation_water_in_air'
 
 	assert tnd_name_1 in tendencies.keys()
 	assert tnd_name_2 in tendencies.keys()

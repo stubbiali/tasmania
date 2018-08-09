@@ -1,18 +1,15 @@
 import os
-import pickle
 import pytest
 
 
 def test_animation_plot_1d(isentropic_moist_sedimentation_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_animation')
+	baseline_dir = 'baseline_images/test_animation'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the folder tests/result_images/test_animation does exist
-	result_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-							  'tests/result_images/test_animation')
+	result_dir = 'result_images/test_animation'
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 
@@ -71,14 +68,12 @@ def test_animation_plot_1d(isentropic_moist_sedimentation_data):
 def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
 									isentropic_moist_sedimentation_evaporation_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_animation')
+	baseline_dir = 'baseline_images/test_animation'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the folder tests/result_images/test_animation does exist
-	result_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-							  'tests/result_images/test_animation')
+	result_dir = 'result_images/test_animation'
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 
@@ -174,14 +169,12 @@ def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
 
 def test_animation_plot_2d(isentropic_dry_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
-	baseline_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-								'tests/baseline_images/test_animation')
+	baseline_dir = 'baseline_images/test_animation'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the folder tests/result_images/test_animation does exist
-	result_dir = os.path.join(os.environ['TASMANIA_ROOT'],
-							  'tests/result_images/test_animation')
+	result_dir = 'result_images/test_animation'
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 
