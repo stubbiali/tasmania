@@ -1,290 +1,207 @@
 import copy
-from datetime import timedelta
-import numpy as np
 
-from tasmania.parameterizations.adjustments import AdjustmentMicrophysics
-from tasmania.parameterizations.fast_tendencies import FastTendencyMicrophysics
-from tasmania.parameterizations.slow_tendencies import SlowTendencyMicrophysics
-from tasmania.storages.grid_data import GridData
-import tasmania.utils.utils as utils
+from sympl import InvalidPropertyDictError
+from tasmania.utils.utils import check_property_compatibility
+
 
 class Model:
 	"""
-	This class is intended to represent and run a generic climate or meteorological numerical model.
-	A model is made up of:
-
-	* a dynamical core (mandatory);
-	* a set of parameterizations providing *slow-varying tendencies*, i.e., physical parameterization	\
-		schemes which, within a timestep, are evaluated *before* the dynamical core; they are intended 	\
-		to supply the dynamical core with physical tendencies;
-	* a set of parameterizations providing *fast-varying tendencies*, i.e., physical parameterization	\
-		schemes which, within a timestep, are evaluated *within* the dynamical core; they are intended 	\
-		to supply the dynamical core with physical tendencies;
-	* a set of *adjustment-performing* parameterizations, i.e., physical parametrization schemes which,		\
-		within a timestep, are performed *after* the dynamical core; they are intended to perform physical	\
-		adjustements on the state variables and possibly provide some diagnostics.
+	This class is intended to represent and simulate a generic
+	weather or climate numerical model. A model always include
+	a dynamical core, and may contain physical parameterizations.
+	Within a timestep, the latter could be evaluated either
+	*before* or *after* the dynamics.
 	"""
-	def __init__(self):
+	def __init__(self, dycore, physics_before_dynamics=None,
+				 physics_after_dynamics=None):
 		"""
-		Default constructor.
-		"""
-		# Initialize the dycore, the list of tendencies, and the list of adjustments
-		self._dycore      	  = None
-		self._slow_tendencies = []
-		self._fast_tendencies = []
-		self._adjustments     = []
-
-	def set_dynamical_core(self, dycore):
-		"""
-		Set the dynamical core.
+		The constructor.
 
 		Parameters
 		----------
 		dycore : obj
-			Instance of a derived class of :class:`~tasmania.dycore.dycore.DynamicalCore` 
+			Instance of a derived class of :class:`~tasmania.DynamicalCore`
 			representing the dynamical core.
+		physics_before_dynamics : `obj`, optional
+			Instance of :class:`~tasmania.PhysicsCompositeComponent`
+			wrapping the physical parameterizations to evaluate before
+			the dynamics is resolved.
+		physics_after_dynamics : `obj`, optional
+			Instance of :class:`~tasmania.PhysicsCompositeComponent`
+			wrapping the physical parameterizations to evaluate after
+			the dynamics is resolved.
 		"""
+		check_components_coherency(dycore, physics_before_dynamics,
+								   physics_after_dynamics)
+
 		self._dycore = dycore
+		self._physics_before_dynamics = physics_before_dynamics
+		self._physics_after_dynamics = physics_after_dynamics
 
-		# Update the parameterizations
-		for slow_tendency in self._slow_tendencies:
-			slow_tendency.time_levels = dycore.time_levels
-		for adjustment in self._adjustments:
-			adjustment.time_levels = dycore.time_levels
+		self._initial_time = None
+		self._tendencies   = {}
 
-		# Update the dycore by setting the microphysics scheme
-		for slow_tendency in self._slow_tendencies:
-			if isinstance(slow_tendency, SlowTendencyMicrophysics) and not done:
-				self._dycore.microphysics = slow_tendency
-		for fast_tendency in self._fast_tendencies:
-			if isinstance(fast_tendency, FastTendencyMicrophysics) and not done:
-				self._dycore.microphysics = fast_tendency
-		for adjustment in self._adjustments:
-			if isinstance(adjustment, AdjustmentMicrophysics) and not done:
-				self._dycore.microphysics = adjustment
+	@property
+	def input_properties(self):
+		return_dict = {}
 
-		# Update the dycore by setting the list of parameterizations providing fast-varying tendencies
-		self._dycore.fast_tendencies = self._fast_tendencies
+		if self._physics_before_dynamics is None:
+			return_dict.update(self._dycore.input_properties)
+		else:
+			return_dict.update(self._physics_before_dynamics.input_properties)
 
-	def add_slow_tendency(self, tendency):
+			dyn_inputs_available = self._physics_before_dynamics.output_properties
+			dyn_inputs_required  = self._dycore.input_properties
+			for key, value in dyn_inputs_required.items():
+				if key not in dyn_inputs_available:
+					return_dict[key] = {}
+					return_dict[key].update(value)
+
+		return return_dict
+
+	@property
+	def output_properties(self):
+		return_dict = {}
+
+		if self._physics_after_dynamics is None:
+			return_dict.update(self._dycore.output_properties)
+		else:
+			return_dict.update(self._physics_after_dynamics.output_properties)
+
+			for key, val in self._dycore.output_properties.items():
+				if key not in self._physics_after_dynamics.output_properties:
+					return_dict[key] = {}
+					return_dict[key].update(val)
+
+		return return_dict
+
+	def __call__(self, state, timestep, initial_time=None):
 		"""
-		Add to the model a parameterization providing slow-varying tendencies.
+		Perform a full timestep.
 
 		Parameters
 		----------
-		tendency : obj
-			Instance of a derived class of :class:`~tasmania.parameterizations.slow_tendencies.SlowTendency` 
-			representing a parameterization providing slow-varying tendencies.
-
-		Note
-		----
-		In a simulation, parameterizations calculating slow-varying tendencies will be executed in the same 
-		order they have been added to the model.
-		"""
-		self._slow_tendencies.append(tendency)
-		
-		#
-		# Set dependencies
-		#
-		if self._dycore is not None:
-			tendency.time_levels = self._dycore.time_levels
-
-		if isinstance(tendency, SlowTendencyMicrophysics) and self._dycore is not None:
-			self._dycore.microphysics = tendency
-
-	def add_fast_tendency(self, tendency):
-		"""
-		Add to the model a parameterization providing fast-varying tendencies.
-
-		Parameters
-		----------
-		tendency : obj
-			Instance of a derived class of :class:`~tasmania.parameterizations.fast_tendencies.FastTendency` 
-			representing a parameterization providing fast-varying tendencies.
-
-		Note
-		----
-		In a simulation, parameterizations calculating fast-varying tendencies will be executed in the same 
-		order they have been added to the model.
-		"""
-		self._fast_tendencies.append(tendency)
-		
-		#
-		# Set dependencies
-		#
-		if isinstance(tendency, FastTendencyMicrophysics) and self._dycore is not None:
-			self._dycore.microphysics = tendency
-
-		if self._dycore is not None:
-			self._dycore.fast_tendencies = self._fast_tendencies
-
-	def add_adjustment(self, adjustment):
-		"""
-		Add an *adjustment-performing* parameterization to the model.
-
-		Parameters
-		----------
-		adjustment : obj
-			Instance of a derived class of :class:`~tasmania.parameterizations.adjustments.Adjustment` 
-			representing an adjustment-performing parameterization.
-
-		Note
-		----
-		In a simulation, adjustment-performing parameterizations will be executed in the same order 
-		they have been added to the model.
-		"""
-		self._adjustments.append(adjustment)
-
-		#
-		# Set dependencies
-		#
-		if self._dycore is not None:
-			adjustment.time_levels = self._dycore.time_levels 
-
-		if isinstance(adjustment, AdjustmentMicrophysics) and self._dycore is not None:
-			self._dycore.microphysics = adjustment
-
-	def __call__(self, dt, simulation_time, state, save_iterations = []):
-		"""
-		Call operator integrating the model forward in time.
-
-		Parameters
-		----------
-		dt : obj
+		state : dictionary
+			Dictionary whose keys are strings denoting model state
+			variables, and whose values are :class:`~sympl.DataArray`\s
+			storing the current values for those variables.
+		timestep : timedelta
 			:class:`datetime.timedelta` representing the time step.
-		simulation_time : obj
-			:class:`datetime.timedelta` representing the simulation time.
-		state : obj
-			The initial state, as an instance of :class:`~tasmania.storages.grid_data.GridData` or one of its derived classes.
-		save_freq : `tuple`, optional
-			The iterations at which the state should be saved. Default is empty, meaning that only the initial and 
-			final states are saved.
+		initial_time : datetime
+			:class:`datetime.datetime` representing the starting simulation
+			time. This is used to update the (time-dependent) topography.
+			If not specified, the starting time is inferred from the first
+			state passed to this object.
 
-		Returns
-		-------
-		state_out : obj
-			The final state, of the same class of :data:`state`.
-		state_save : obj
-			The sequence of saved states, of the same class of :data:`state`.
-		diagnostics_save : obj
+		Return
+		------
+		dict :
+			Dictionary whose keys are strings denoting model state
+			variables, and whose values are :class:`~sympl.DataArray`\s
+			storing the new values for those variables.
+
+		Note
+		----
+		The passed state may be modified in-place if any adjustment-like
+		parameterization is performed before the dynamical core is called.
 		"""
-		# Initialize the control variables and copy the timestep
-		steps 		 = 0
-		first_save   = 1
-		elapsed_time = timedelta()
-		dt_          = copy.deepcopy(dt)
+		# If this is the first timestep: store the starting time
+		if initial_time is not None:
+			self._initial_time = copy.deepcopy(initial_time)
+		elif self._initial_time is None:
+			self._initial_time = copy.deepcopy(state['time'])
 
-		# Initialize storages collecting tendencies and diagnostics
-		time        = state.time
-		tendencies  = GridData(time, state.grid)
-		diagnostics = GridData(time, state.grid)
+		# Update the time-dependent topography
+		self._dycore.update_topography(state['time'] - self._initial_time + timestep)
 
-		# Initialize the outputs
-		state_out  = copy.deepcopy(state)
-		state_save = copy.deepcopy(state)
+		# Physics before dynamics
+		if self._physics_before_dynamics is not None:
+			tendencies = self._physics_before_dynamics(state, timestep)
 
-		#
-		# First time step, performed out of the loop to avoid if-statements
-		#
-		# Update control variables
-		steps += 1
-		elapsed_time += dt_
-		if elapsed_time > simulation_time:
-			dt_ = simulation_time - (elapsed_time - dt_)
-			elapsed_time = simulation_time
+			for key, value in self._tendencies.items():
+				if key != 'time':
+					if key in tendencies:
+						tendencies[key] += value
+					else:
+						tendencies[key] = value
+		else:
+			tendencies = {}
+			tendencies.update(self._tendencies)
 
-		# Update the time-dependent topography (useful for stability purposes)
-		self._dycore.update_topography(elapsed_time)
+		# Dynamics
+		state_new = self._dycore(state, tendencies, timestep)
 
-		# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
-		for slow_tendency in self._slow_tendencies: 
-			tendencies_, diagnostics_ = slow_tendency(dt_, state_out)
-			tendencies += tendencies_
-			diagnostics.extend(diagnostics_)
+		# Physics after dynamics
+		if self._physics_after_dynamics:
+			self._tendencies.update(self._physics_after_dynamics(state_new, timestep))
 
-		# Run the dynamical core, then update the state and the diagnostics
-		state_out_, diagnostics_ = self._dycore(dt_, state_out, tendencies, diagnostics)
-		state_out.extend(state_out_)
-		diagnostics.extend(diagnostics_)
+		return state_new
 
-		# Run the adjustment-performing parameterizations; after each parameterization, 
-		# update the state and collect diagnostics
-		for adjustment in self._adjustments:
-			diagnostics_, state_out_ = adjustment(state_out, dt_)
-			state_out.update(state_out_)
-			diagnostics.extend(diagnostics_)
 
-		# Check the CFL condition
-		u_max, u_min = state_out.get_max('x_velocity'), state_out.get_min('x_velocity')
-		v_max, v_min = state_out.get_max('y_velocity'), state_out.get_min('y_velocity')
-		cfl = state_out.get_cfl(dt_)
-		print('Step %6.i, CFL number: %5.5E, u max: %4.4f m/s, u min: %4.4f m/s, v max: %4.4f m/s, v min %4.4f m/s' 
-			  % (steps, cfl, u_max, u_min, v_max, v_min))
+def check_components_coherency(dycore, physics_before_dynamics,
+							   physics_after_dynamics):
+	tendencies_allowed = dycore.tendency_properties
 
-		# Save, if needed
-		if (steps in save_iterations) or (elapsed_time == simulation_time):
-			state_save.grid.update_topography(elapsed_time)
-			state_save.append(state_out)
+	if physics_before_dynamics is not None:
+		tendencies_available_before = physics_before_dynamics.tendency_properties
+		for key in tendencies_available_before:
+			if key in tendencies_allowed:
+				try:
+					check_property_compatibility(tendencies_allowed[key],
+											 	 tendencies_available_before[key], name=key)
+				except InvalidPropertyDictError as err:
+					raise InvalidPropertyDictError(
+						'While assessing compatibility between the tendencies output '
+						'by the parameterizations run before resolving the dynamics, '
+						'and those required by the dynamical core: {}'.format(str(err)))
+			else:
+				raise KeyError('Tendency {} calculated by the parameterizations, '
+							   'but not required by the dynamical core.'.format(key))
 
-			diagnostics_save = copy.deepcopy(diagnostics)
-			diagnostics_save.grid.update_topography(elapsed_time)
+		if physics_after_dynamics is not None:
+			tendencies_available_after = physics_after_dynamics.tendency_properties
+			for key in tendencies_available_after:
+				if key in tendencies_available_before:
+					try:
+						check_property_compatibility(tendencies_available_before[key],
+												 	 tendencies_available_after[key], name=key)
+					except InvalidPropertyDictError as err:
+						print('While assessing inter-parameterizations compatibility.')
+						raise err
 
-			first_save = 0
+		inputs_required  = dycore.input_properties
+		inputs_available = physics_before_dynamics.output_properties
+		for key in inputs_required:
+			if key in inputs_available:
+				try:
+					check_property_compatibility(inputs_required[key],
+											 	 inputs_available[key], name=key)
+				except InvalidPropertyDictError as err:
+					raise InvalidPropertyDictError(
+						'While assessing compatibility between the model variables output '
+						'by the parameterizations run before resolving the dynamics, '
+						'and those required by the dynamical core: {}'.format(str(err)))
 
-			print('Step %6.i saved' % (steps))
+	if physics_after_dynamics is not None:
+		tendencies_available_after = physics_after_dynamics.tendency_properties
+		for key in tendencies_available_after:
+			if key not in tendencies_allowed:
+				raise KeyError('Tendency {} calculated by the parameterizations, '
+							   'but not required by the dynamical core.'.format(key))
 
-		#
-		# Time loop
-		#
-		while elapsed_time < simulation_time:
-			# Update control variables
-			steps += 1
-			elapsed_time += dt_
-			if elapsed_time > simulation_time:
-				dt_ = simulation_time - (elapsed_time - dt_)
-				elapsed_time = simulation_time
-
-			# Update the time-dependent topography (useful for stability purposes)
-			self._dycore.update_topography(elapsed_time)
-
-			# Sequentially perform tendency-providing schemes, and collect tendencies and diagnostics
-			for slow_tendency in self._slow_tendencies: 
-				tendencies_, diagnostics_ = slow_tendency(dt_, state_out)
-				tendencies += tendencies_
-				diagnostics.update(diagnostics_)
-
-			# Run the dynamical core, then update the state and the diagnostics
-			state_out_, diagnostics_ = self._dycore(dt_, state_out, tendencies, diagnostics)
-			state_out.update(state_out_)
-			diagnostics.update(diagnostics_)
-
-			# Run the adjustment-performing parameterizations; after each parameterization, 
-			# update the state and collect diagnostics
-			for adjustment in self._adjustments:
-				diagnostics_, state_out_ = adjustment(state_out, dt_)
-				state_out.update(state_out_)
-				diagnostics.update(diagnostics_)
-
-			# Check the CFL condition
-			u_max, u_min = state_out.get_max('x_velocity'), state_out.get_min('x_velocity')
-			v_max, v_min = state_out.get_max('y_velocity'), state_out.get_min('y_velocity')
-			cfl = state_out.get_cfl(dt_)
-			print('Step %6.i, CFL number: %5.5E, u max: %4.4f m/s, u min: %4.4f m/s, v max: %4.4f m/s, v min %4.4f m/s' 
-				  % (steps, cfl, u_max, u_min, v_max, v_min))
-
-			# Save, if needed
-			if (steps in save_iterations) or (elapsed_time == simulation_time):
-				state_save.grid.update_topography(elapsed_time)
-				state_save.append(state_out)
-
-				if first_save: 
-					diagnostics_save = copy.deepcopy(diagnostics)
-					diagnostics_save.grid.update_topography(elapsed_time)
-					first_save = 0
-				else:
-					diagnostics_save.grid.update_topography(elapsed_time)
-					diagnostics_save.append(diagnostics)
-
-				print('Step %6.i saved' % (steps))
-
-		return state_out, state_save, diagnostics_save
+		inputs_required = physics_after_dynamics.input_properties
+		inputs_available = dycore.output_properties
+		for key in inputs_required:
+			if key in inputs_available:
+				try:
+					check_property_compatibility(inputs_required[key],
+											 	 inputs_available[key], name=key)
+				except InvalidPropertyDictError as err:
+					raise InvalidPropertyDictError(
+						'While assessing compatibility between the model variables output '
+						'by the dynamical core, and those required by the parameterizations '
+						'run after resolving the dynamics: {}'.format(str(err)))
+			else:
+				raise KeyError('Variable {} required by the parameterizations '
+							   'performed after the dynamical core, but not '
+							   'provided by the dynamical core.'.format(key))

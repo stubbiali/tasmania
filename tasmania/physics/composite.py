@@ -230,13 +230,14 @@ class PhysicsComponentComposite:
 		"""
 		Couple the parameterizations pursuing the parallel splitting approach.
 		"""
-		out_tendencies  = {'time': state['time']}
+		out_tendencies = {'time': state['time']}
+		tendency_units = {tendency: properties['units']
+						  for tendency, properties in self.tendency_properties.items()}
 
 		for component in self.components_list:
 			if isinstance(component, Tendency):
 				tendencies, diagnostics = component(state)
-				out_tendencies = add(out_tendencies, tendencies,
-									 units=self.tendency_properties)
+				out_tendencies = add(out_tendencies, tendencies, units=tendency_units)
 				state.update(diagnostics)
 			else:
 				diagnostics = component(state)

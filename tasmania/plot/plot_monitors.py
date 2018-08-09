@@ -133,8 +133,12 @@ class Plot1d(Monitor):
 			_, ext = os.path.splitext(save_dest)
 			plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		if not self.interactive and show:
-			plt.show()
+		if fig is None:
+			if self.interactive:
+				out_fig.canvas.draw()
+				plt.show(block=False)
+			elif show:
+				plt.show()
 
 		return out_fig, out_ax
 
@@ -303,8 +307,12 @@ class Plot2d(Monitor):
 			_, ext = os.path.splitext(save_dest)
 			plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		if not self.interactive and show:
-			plt.show()
+		if fig is None:
+			if self.interactive:
+				out_fig.canvas.draw()
+				plt.show(block=False)
+			elif show:
+				plt.show()
 
 		return out_fig, out_ax
 
@@ -469,8 +477,12 @@ class Plot3d(Monitor):
 			_, ext = os.path.splitext(save_dest)
 			plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		if not self.interactive and show:
-			plt.show()
+		if fig is None:
+			if self.interactive:
+				out_fig.canvas.draw()
+				plt.show(block=False)
+			elif show:
+				plt.show()
 
 		return out_fig, out_ax
 

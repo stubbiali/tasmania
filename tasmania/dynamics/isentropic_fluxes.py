@@ -137,7 +137,8 @@ class IsentropicHorizontalFlux:
 
 			* 'upwind', for the upwind scheme;
 			* 'centered', for a second-order centered scheme;
-			* 'maccormack', for the MacCormack scheme.
+			* 'maccormack', for the MacCormack scheme;
+			* 'fifth_order_upwind', for the fifth-order upwind scheme.
 
 		grid : obj
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing
@@ -150,14 +151,26 @@ class IsentropicHorizontalFlux:
 		obj :
 			Instance of the derived class implementing the scheme
 			specified by :data:`scheme`.
+
+		References
+		----------
+		Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
+			elastic models using forward time schemes. *Monthly Weather Review*, \
+			*130*:2088-2097.
+		Zeman, C. (2016). An isentropic mountain flow model with iterative \
+			synchronous flux correction. *Master thesis, ETH Zurich*.
 		"""
 		import tasmania.dynamics._isentropic_fluxes as module
 		if scheme == 'upwind':
 			return module._UpwindIsentropicHorizontalFlux(grid, moist_on)
 		elif scheme == 'centered':
 			return module._CenteredIsentropicHorizontalFlux(grid, moist_on)
-		else:
+		elif scheme == 'maccormack':
 			return module._MacCormackIsentropicHorizontalFlux(grid, moist_on)
+		elif scheme == 'fifth_order_upwind':
+			return module._FifthOrderUpwindIsentropicHorizontalFlux(grid, moist_on)
+		else:
+			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
 
 
 class IsentropicVerticalFlux:

@@ -171,18 +171,18 @@ class IsentropicPrognostic:
 		return self._hboundary
 
 	@abc.abstractmethod
-	def step_neglecting_vertical_motion(self, substep, dt, raw_state, raw_tendencies=None):
+	def step_neglecting_vertical_motion(self, stage, dt, raw_state, raw_tendencies=None):
 		"""
 		Method advancing the conservative, prognostic model variables
-		one substep forward in time. Only horizontal derivatives are considered;
+		one stage forward in time. Only horizontal derivatives are considered;
 		possible vertical derivatives are disregarded.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
 
 		Parameters
 		----------
-		substep : int
-			Index of the substep to perform.
+		stage : int
+			Index of the stage to perform.
 		dt : timedelta
 			:class:`datetime.timedelta` representing the time step.
 		raw_state : dict
@@ -208,9 +208,9 @@ class IsentropicPrognostic:
             the data for those tendencies.
             The dictionary may contain the following keys:
 
-            	* tendency_of_mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];
-            	* tendency_of_mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];
-            	* tendency_of_mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].
+            	* mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];
+            	* mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];
+            	* mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].
 
 		Return
 		------
@@ -229,18 +229,18 @@ class IsentropicPrognostic:
 		"""
 
 	@abc.abstractmethod
-	def step_integrating_vertical_advection(self, substep, dt, raw_state_now, raw_state_prv):
+	def step_integrating_vertical_advection(self, stage, dt, raw_state_now, raw_state_prv):
 		"""
 		Method advancing the conservative, prognostic model variables
-		one substep forward in time by integrating the vertical advection, i.e.,
+		one stage forward in time by integrating the vertical advection, i.e.,
 		by accounting for the change over time in potential temperature.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
 
 		Parameters
 		----------
-		substep : int
-			The substep to perform.
+		stage : int
+			The stage to perform.
 		dt : obj
 			:class:`datetime.timedelta` representing the time step.
 		raw_state_now : dict
@@ -293,7 +293,7 @@ class IsentropicPrognostic:
 		"""
 
 	@abc.abstractmethod
-	def step_integrating_sedimentation_flux(self, substep, dt, raw_state_now, raw_state_prv):
+	def step_integrating_sedimentation_flux(self, stage, dt, raw_state_now, raw_state_prv):
 		"""
 		Method advancing the mass fraction of precipitation water by taking
 		the sedimentation into account. For the sake of numerical stability,
@@ -304,8 +304,8 @@ class IsentropicPrognostic:
 
 		Parameters
 		----------
-		substep : int
-			The substep to perform.
+		stage : int
+			The stage to perform.
 		dt : obj 
 			:class:`datetime.timedelta` representing the time step.
 		raw_state_now : dict
@@ -363,7 +363,8 @@ class IsentropicPrognostic:
 			String specifying the time stepping method to implement. Either:
 
 			* 'forward_euler', for the forward Euler scheme;
-			* 'centered', for a centered scheme.
+			* 'centered', for a centered scheme;
+			* 'rk3', for the three-stages Runge-Kutta scheme.
 
 		grid : grid
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
@@ -437,8 +438,10 @@ class IsentropicPrognostic:
 			return module._ForwardEuler(*arg_list)
 		elif scheme == 'centered':
 			return module._Centered(*arg_list)
+		elif scheme == 'rk3':
+			return module._RK3(*arg_list)
 		else:
-			raise ValueError('Unknown time integration scheme.')
+			raise ValueError('Unknown time integration scheme {}.'.format(scheme))
 
 	def _stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(self, raw_tendencies):
 		"""
@@ -486,11 +489,11 @@ class IsentropicPrognostic:
 		self._in_v   = np.zeros((  mi, mj+1, nz), dtype=dtype)
 		self._in_mtg = np.zeros((  mi,   mj, nz), dtype=dtype)
 		if tendency_names is not None:
-			if 'tendency_of_mass_fraction_of_water_vapor_in_air' in tendency_names:
+			if 'mass_fraction_of_water_vapor_in_air' in tendency_names:
 				self._in_qv_tnd = np.zeros((mi, mj, nz), dtype=dtype)
-			if 'tendency_of_mass_fraction_of_cloud_liquid_water_in_air' in tendency_names:
+			if 'mass_fraction_of_cloud_liquid_water_in_air' in tendency_names:
 				self._in_qc_tnd = np.zeros((mi, mj, nz), dtype=dtype)
-			if 'tendency_of_mass_fraction_of_precipitation_water_in_air' in tendency_names:
+			if 'mass_fraction_of_precipitation_water_in_air' in tendency_names:
 				self._in_qr_tnd = np.zeros((mi, mj, nz), dtype=dtype)
 
 	def _stencils_stepping_by_neglecting_vertical_motion_allocate_outputs(self):
@@ -513,7 +516,7 @@ class IsentropicPrognostic:
 		# Allocate the output Numpy arrays which will serve as stencil's
 		# outputs; these may be shared with the stencil in charge
 		# of integrating the vertical advection
-		self._out_s = np.zeros((li, lj, nz), dtype=dtype)
+		self._out_s  = np.zeros((li, lj, nz), dtype=dtype)
 		self._out_su = np.zeros((li, lj, nz), dtype=dtype)
 		self._out_sv = np.zeros((li, lj, nz), dtype=dtype)
 		if self._moist_on:
@@ -530,7 +533,7 @@ class IsentropicPrognostic:
 			self._out_sqr = np.zeros((li, lj, nz), dtype=dtype)
 
 	def _stencils_stepping_by_neglecting_vertical_motion_set_inputs(
-		self, dt, raw_state, raw_tendencies):
+		self, stage, dt, raw_state, raw_tendencies):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencils
 		which step the solution disregarding any vertical motion.
@@ -539,19 +542,16 @@ class IsentropicPrognostic:
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		if raw_tendencies is not None:
 			qv_tnd_on = \
-				raw_tendencies.get('tendency_of_mass_fraction_of_water_vapor_in_air',
-								   None) is not None
+				raw_tendencies.get('mass_fraction_of_water_vapor_in_air', None) is not None
 			qc_tnd_on = \
-				raw_tendencies.get('tendency_of_mass_fraction_of_cloud_liquid_water_in_air',
-								   None) is not None
+				raw_tendencies.get('mass_fraction_of_cloud_liquid_water_in_air', None) is not None
 			qr_tnd_on = \
-				raw_tendencies.get('tendency_of_mass_fraction_of_precipitation_water_in_air',
-								   None) is not None
+				raw_tendencies.get('mass_fraction_of_precipitation_water_in_air', None) is not None
 		else:
 			qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
 		# Update the local time step
-		self._dt.value = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
+		self._dt.value = dt.total_seconds()
 
 		# Extract the Numpy arrays representing the current solution
 		s   = raw_state['air_isentropic_density']
@@ -565,11 +565,11 @@ class IsentropicPrognostic:
 			sqc = raw_state['isentropic_density_of_cloud_liquid_water']
 			sqr = raw_state['isentropic_density_of_precipitation_water']
 		if qv_tnd_on:
-			qv_tnd = raw_tendencies['tendency_of_mass_fraction_of_water_vapor_in_air']
+			qv_tnd = raw_tendencies['mass_fraction_of_water_vapor_in_air']
 		if qc_tnd_on:
-			qc_tnd = raw_tendencies['tendency_of_mass_fraction_of_cloud_liquid_water_in_air']
+			qc_tnd = raw_tendencies['mass_fraction_of_cloud_liquid_water_in_air']
 		if qr_tnd_on:
-			qr_tnd = raw_tendencies['tendency_of_mass_fraction_of_precipitation_water_in_air']
+			qr_tnd = raw_tendencies['mass_fraction_of_precipitation_water_in_air']
 		
 		# Update the Numpy arrays which serve as inputs to the GT4Py stencils
 		self._in_s  [  :mi,   :mj, :] = self._hboundary.from_physical_to_computational_domain(s)

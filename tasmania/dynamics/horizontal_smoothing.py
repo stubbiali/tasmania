@@ -102,7 +102,8 @@ class HorizontalSmoothing:
 			String specifying the smoothing technique to implement. Either:
 
 			* 'first_order', for first-order numerical smoothing;
-			* 'second_order', for second-order numerical smoothing.
+			* 'second_order', for second-order numerical smoothing;
+			* 'third_order', for third-order numerical smoothing.
 
 		dims : tuple
 			Shape of the (three-dimensional) arrays on which
@@ -149,3 +150,10 @@ class HorizontalSmoothing:
 				return module._SecondOrderYZ(*arg_list)
 			else:
 				return module._SecondOrder(*arg_list)
+		elif smooth_type == 'third_order':
+			if dims[1] == 1:
+				return module._ThirdOrderXZ(*arg_list)
+			elif dims[0] == 1:
+				return module._ThirdOrderYZ(*arg_list)
+			else:
+				return module._ThirdOrder(*arg_list)
