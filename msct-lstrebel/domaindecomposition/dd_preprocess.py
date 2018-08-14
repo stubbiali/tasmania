@@ -36,31 +36,6 @@ from pymetis import part_graph
 from domain_decomposition import DomainSubdivision
 
 
-class DomainPartitions:
-    domain_partitions = None
-
-    @staticmethod
-    def load_partitions(fileinput, fileformat):
-        if fileformat == "metis":
-            DomainPartitions.domain_partitions = DomainPartitions.load_from_metis_file(fileinput)
-        elif fileformat == "scotch":
-            DomainPartitions.domain_partitions = DomainPartitions.load_from_scotch_file(fileinput)
-        else:
-            print("Only 'metis' or 'scotch' as fileformat accepted.")
-
-    @staticmethod
-    def load_from_metis_file(fileinput):
-        return np.loadtxt(fileinput, dtype=int)
-
-    @staticmethod
-    def load_from_scotch_file(fileinput):
-        return np.loadtxt(fileinput, dtype=int, skiprows=1, usecols=1)
-
-    @staticmethod
-    def print_partitions():
-        print(DomainPartitions.domain_partitions)
-
-
 class DomainPreprocess:
     def __init__(self, domain, periodic, subdivs_per_dim, fileoutput="", path="", prefix=""):
         self.domain = domain

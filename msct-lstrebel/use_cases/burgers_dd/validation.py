@@ -41,11 +41,15 @@ def calculate_difference(ref_field, target_field):
     abs_err_sum = np.sum(abs_diff)
     abs_err_avg = np.mean(abs_diff)
 
+
+    # Relative error calculation with formula from:
+    # https://stats.stackexchange.com/questions/86708/how-to-calculate-relative-error-when-the-true-value-is-zero
     rel_diff = np.subtract(ref_field, target_field)
-    rel_diff = np.absolute(rel_diff)
+    rel_diff = 2.0 * rel_diff #* np.absolute(rel_diff)
     with np.errstate(invalid='ignore'):
-        rel_diff = np.divide(rel_diff, np.maximum(np.absolute(ref_field), np.absolute(target_field)))
-    rel_diff[np.maximum(np.absolute(ref_field), np.absolute(target_field)) == 0.0] = 0.0
+        # rel_diff = np.divide(rel_diff, np.maximum(np.absolute(ref_field), np.absolute(target_field)))
+        rel_diff = np.divide(rel_diff, np.absolute(ref_field) + np.absolute(target_field))
+    # rel_diff[np.maximum(np.absolute(ref_field), np.absolute(target_field)) == 0.0] = 0.0
 
     rel_err_sum = np.sum(rel_diff)
     rel_err_avg = np.mean(rel_diff)
@@ -53,7 +57,8 @@ def calculate_difference(ref_field, target_field):
     return diff, abs_err_sum, abs_err_avg, rel_err_sum, rel_err_avg
 
 
-def compare_zhao_exact_with_file(target_file, fileoutput=False, path="", plotting=False, extent=(0, 1, 0, 1)):
+def compare_zhao_exact_with_file(target_file, fileoutput=False, path="", prefix="", plotting=False, onlylast=False,
+                                 extent=(0, 1, 0, 1)):
     with open(target_file, 'rb') as data:
         t2 = pickle.load(data)
         x2 = pickle.load(data)
@@ -75,7 +80,14 @@ def compare_zhao_exact_with_file(target_file, fileoutput=False, path="", plottin
     u1 = np.zeros_like(u2)
     v1 = np.zeros_like(v2)
 
-    for t in range(len(t2)-1, len(t2)):
+    if onlylast:
+        start_time = len(t2) - 1
+    else:
+        u_diff_per_cell_sum = np.zeros_like(u2[:, :, 0])
+        v_diff_per_cell_sum = np.zeros_like(v2[:, :, 0])
+        start_time = 0
+
+    for t in range(start_time, len(t2)):
         t_ = t2[t].seconds if t2[t].seconds > 0 else t2[t].microseconds / 1.e6
         u1[:, :, t] = (- 2. * eps2 * 2. * np.pi * np.exp(- 5. * np.pi * np.pi * eps2 * t_) * np.cos(2. * np.pi * x2)
                        * np.sin(np.pi * y2) / (2. + np.exp(- 5. * np.pi * np.pi * eps2 * t_) * np.sin(2. * np.pi * x2)
@@ -90,14 +102,24 @@ def compare_zhao_exact_with_file(target_file, fileoutput=False, path="", plottin
         v_diff, v_abs_err_sum[t], v_abs_err_avg[t], v_rel_err_sum[t], v_rel_err_avg[t] = calculate_difference(
             v1[:, :, t], v2[:, :, t])
 
+        if not onlylast:
+            u_diff_per_cell_sum[:] += u_diff[:]
+            v_diff_per_cell_sum[:] += v_diff[:]
+
     if fileoutput:
-        save_differences_to_file([u_abs_err_avg, u_rel_err_avg, v_abs_err_avg, v_rel_err_avg], "zhao_exact_vs_dd.csv")
+        save_differences_to_file([u_abs_err_avg, u_rel_err_avg, v_abs_err_avg, v_rel_err_avg],
+                                 str(path) + str(prefix) + "zhao_exact_vs_dd.csv")
 
     if plotting:
-        plot_difference_field(u_diff, v_diff, extent=extent, filename=str(path) + "zhao_exact_vs_dd")
+        if onlylast:
+            plot_difference_field(u_diff, v_diff, extent=extent, filename=str(path) + str(prefix) + "zhao_exact_vs_dd")
+        else:
+            u_diff_per_cell_sum[:] /= len(t2)
+            plot_difference_field(u_diff_per_cell_sum, v_diff_per_cell_sum, extent=extent,
+                                  filename=str(path) + str(prefix) + "zhao_exact_vs_dd_time_avg")
 
 
-def compare_pickle_files(ref_file, target_file, fileoutput=False, path="", prefix="", plotting=False,
+def compare_pickle_files(ref_file, target_file, fileoutput=False, path="", prefix="", plotting=False, onlylast=False,
                          extent=(0, 1, 0, 1)):
     # Load data
     with open(ref_file, 'rb') as data:
@@ -126,20 +148,35 @@ def compare_pickle_files(ref_file, target_file, fileoutput=False, path="", prefi
     v_rel_err_sum = np.zeros(len(t2))
     v_rel_err_avg = np.zeros(len(t2))
 
-    for t in range(len(t2)-1, len(t2)):
+    if onlylast:
+        start_time = len(t2) - 1
+    else:
+        u_diff_per_cell_sum = np.zeros_like(u2[:, :, 0])
+        v_diff_per_cell_sum = np.zeros_like(v2[:, :, 0])
+        start_time = 0
+
+    for t in range(start_time, len(t2)):
         u_diff, u_abs_err_sum[t], u_abs_err_avg[t], u_rel_err_sum[t], u_rel_err_avg[t] = calculate_difference(
             u1[:, :, t], u2[:, :, t])
 
         v_diff, v_abs_err_sum[t], v_abs_err_avg[t], v_rel_err_sum[t], v_rel_err_avg[t] = calculate_difference(
             v1[:, :, t], v2[:, :, t])
 
+        if not onlylast:
+            u_diff_per_cell_sum[:] += u_diff[:]
+            v_diff_per_cell_sum[:] += v_diff[:]
+
     if fileoutput:
         save_differences_to_file([u_abs_err_avg, u_rel_err_avg, v_abs_err_avg, v_rel_err_avg],
                                  str(path) + str(prefix) + "ref_vs_dd.csv")
 
     if plotting:
-        plot_difference_field(u_diff, v_diff, extent=extent, filename=str(path) + str(prefix) + "ref_vs_dd")
-
+        if onlylast:
+            plot_difference_field(u_diff, v_diff, extent=extent, filename=str(path) + str(prefix) + "zhao_exact_vs_dd")
+        else:
+            u_diff_per_cell_sum[:] /= len(t2)
+            plot_difference_field(u_diff_per_cell_sum, v_diff_per_cell_sum, extent=extent,
+                                  filename=str(path) + str(prefix) + "zhao_exact_vs_dd_time_avg")
 
 def plot_difference_field(field1, field2, extent, filename):
     cm = utils.reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
@@ -188,7 +225,9 @@ if __name__ == "__main__":
         raise ValueError("No pickle file to compare given.")
 
     if args.r is None:
-        compare_zhao_exact_with_file(args.f, fileoutput=args.o, path=args.loc, plotting=args.p, extent=tuple(args.e))
+        compare_zhao_exact_with_file(args.f, fileoutput=args.o, path=args.loc, prefix=args.pf,
+                                     plotting=args.p, extent=tuple(args.e))
     else:
-        compare_pickle_files(args.r, args.f, fileoutput=args.o, path=args.loc, prefix=args.pf, plotting=args.p, extent=tuple(args.e))
+        compare_pickle_files(args.r, args.f, fileoutput=args.o, path=args.loc, prefix=args.pf,
+                             plotting=args.p, extent=tuple(args.e))
 
