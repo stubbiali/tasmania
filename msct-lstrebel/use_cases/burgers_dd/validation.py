@@ -41,15 +41,13 @@ def calculate_difference(ref_field, target_field):
     abs_err_sum = np.sum(abs_diff)
     abs_err_avg = np.mean(abs_diff)
 
-
     # Relative error calculation with formula from:
     # https://stats.stackexchange.com/questions/86708/how-to-calculate-relative-error-when-the-true-value-is-zero
-    rel_diff = np.subtract(ref_field, target_field)
-    rel_diff = 2.0 * rel_diff #* np.absolute(rel_diff)
+    rel_diff = np.absolute(np.subtract(ref_field, target_field)) * 2.0
     with np.errstate(invalid='ignore'):
         # rel_diff = np.divide(rel_diff, np.maximum(np.absolute(ref_field), np.absolute(target_field)))
         rel_diff = np.divide(rel_diff, np.absolute(ref_field) + np.absolute(target_field))
-    # rel_diff[np.maximum(np.absolute(ref_field), np.absolute(target_field)) == 0.0] = 0.0
+    rel_diff[np.maximum(np.absolute(ref_field), np.absolute(target_field)) == 0.0] = 0.0
 
     rel_err_sum = np.sum(rel_diff)
     rel_err_avg = np.mean(rel_diff)

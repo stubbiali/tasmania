@@ -64,7 +64,7 @@ class DomainPartitions:
 
 
 class DomainSubdivision:
-    def __init__(self, id, pid, size, global_coords, neighbors_id):
+    def __init__(self, id, pid, size, global_coords, neighbors_id, onesided=False):
         self.id = id
         self.partitions_id = pid
         self.global_coords = global_coords
@@ -79,22 +79,33 @@ class DomainSubdivision:
         self.send_slices = {}
         self.get_local = {}
         self.get_global = {}
+        self.onesided = onesided
+        if onesided:
+            self.onesided_buffers = {}
+            self.onesided_windows = {}
 
     def set_boundary_condition(self, fieldname, direction, array):
         self.global_bc_arr[fieldname][direction] = array
 
-    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None):
+    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None, staggered=None):
         self.halos[fieldname] = halo
-        self.fields[fieldname] = np.zeros((self.size[0] + halo[0] + halo[1],
-                                           self.size[1] + halo[2] + halo[3],
-                                           self.size[2] + halo[4] + halo[5]))
+        if staggered is None:
+            staggered = (0, 0, 0)
+            self.fields[fieldname] = np.zeros((self.size[0] + halo[0] + halo[1],
+                                               self.size[1] + halo[2] + halo[3],
+                                               self.size[2] + halo[4] + halo[5]))
+        else:
+            self.fields[fieldname] = np.zeros((self.size[0] - staggered[0] + halo[0] + halo[1],
+                                               self.size[1] - staggered[1] + halo[2] + halo[3],
+                                               self.size[2] - staggered[2] + halo[4] + halo[5]))
+
         if field_ic_file is not None:
             self.fields[fieldname][halo[0]:None if halo[1] == 0 else -halo[1],
                                    halo[2]:None if halo[3] == 0 else -halo[3],
                                    halo[4]:None if halo[5] == 0 else -halo[5]] = np.load(
-                field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1],
-                                              self.global_coords[2]:self.global_coords[3],
-                                              self.global_coords[4]:self.global_coords[5]]
+                field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1] - staggered[0],
+                                              self.global_coords[2]:self.global_coords[3] - staggered[1],
+                                              self.global_coords[4]:self.global_coords[5] - staggered[2]]
 
         self.global_bc[fieldname] = field_bc_file
         self.global_bc_arr[fieldname] = [None, None, None, None, None, None]
@@ -236,6 +247,25 @@ class DomainSubdivision:
             ]
         ]
 
+        if self.onesided:
+            self.onesided_buffers[fieldname] = [
+                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][0]]),
+                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][1]]),
+                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][2]]),
+                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][3]]),
+                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][4]]),
+                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][5]])
+            ]
+            self.onesided_windows[fieldname] = [
+                MPI.Win.Create(self.onesided_buffers[fieldname][0], comm=MPI.COMM_WORLD),
+                MPI.Win.Create(self.onesided_buffers[fieldname][1], comm=MPI.COMM_WORLD),
+                MPI.Win.Create(self.onesided_buffers[fieldname][2], comm=MPI.COMM_WORLD),
+                MPI.Win.Create(self.onesided_buffers[fieldname][3], comm=MPI.COMM_WORLD),
+                MPI.Win.Create(self.onesided_buffers[fieldname][4], comm=MPI.COMM_WORLD),
+                MPI.Win.Create(self.onesided_buffers[fieldname][5], comm=MPI.COMM_WORLD)
+            ]
+
+
     def save_fields(self, fieldnames=None, path="", prefix="", postfix=None):
         if fieldnames is None:
             for k in self.fields.keys():
@@ -313,13 +343,14 @@ class DomainSubdivision:
         # Change the domain to the subdivision rectangle domain with maximum halo
         ulx = uly = ulz = drx = dry = drz = 0
 
-        for k in self.fields.keys():
-            ulx = max(ulx, self.halos[k][0])
-            drx = max(drx, self.halos[k][1])
-            uly = max(uly, self.halos[k][2])
-            dry = max(dry, self.halos[k][3])
-            ulz = max(ulz, self.halos[k][4])
-            drz = max(drz, self.halos[k][5])
+        for k, v in inputs.items():
+            ulx = max(ulx, self.halos[v][0])
+            drx = max(drx, self.halos[v][1])
+            uly = max(uly, self.halos[v][2])
+            dry = max(dry, self.halos[v][3])
+            ulz = max(ulz, self.halos[v][4])
+            drz = max(drz, self.halos[v][5])
+            # print(self.halos[v][0], self.halos[v][1], self.halos[v][2], self.halos[v][3], self.halos[v][4], self.halos[v][5])
 
         # endpoint = self.size + lower halo - 1 (because index starts at 0 but size does not)
         drx = self.size[0] + ulx - 1
@@ -327,6 +358,8 @@ class DomainSubdivision:
         drz = self.size[2] + ulz - 1
 
         domain = gt.domain.Rectangle((ulx, uly, ulz), (drx, dry, drz))
+        # print(ulx, uly, ulz, drx, dry, drz)
+        # gt.domain.Rectangle((1, 1, 0), (89, 43, 0)),#
 
         # Instantiate the stencil with the changed subdivision inputs
         stencil = gt.NGStencil(
@@ -459,6 +492,11 @@ class DomainSubdivision:
         req = MPI.COMM_WORLD.Irecv(temp_buffer[:], source=recv_id)
         return req
 
+    def communicate_external_get(self, fieldname, temp_buffer, recv_id):
+        self.onesided_windows[fieldname].Fence()
+        self.onesided_windows[fieldname].Get(origin=temp_buffer, target_rank=recv_id)
+        self.onesided_windows[fieldname].Fence()
+
     def check_local(self, direction):
         return self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[direction]]
 
@@ -503,13 +541,14 @@ class DomainDecomposition:
         for sd in self.subdivisions:
             sd.neighbor_list = self.subdivisions
 
-    def load_subdivisions(self, path="", prefix=""):
+    @staticmethod
+    def load_subdivisions(path="", prefix=""):
         with open(path + prefix + "subdivisions.pkl", "rb") as f:
             return pickle.load(f)
 
-    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None):
+    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None, staggered=None):
         for sd in self.subdivisions:
-            sd.register_field(fieldname, halo, field_ic_file, field_bc_file)
+            sd.register_field(fieldname, halo, field_ic_file, field_bc_file, staggered)
 
     def register_stencil(self, **kwargs):
         dds = DomainDecompositionStencil()

@@ -57,16 +57,16 @@ timer.start(name="Overall Zhao time", level=1)
 timer.start(name="Initialization", level=2)
 
 domain 		= [(0,0), (1,1)]		
-nx     		= 101
-ny     		= 101
+nx     		= 100
+ny     		= 100
 dt     		= 0.001
-nt     		= 100
+nt     		= 1000
 eps    		= 0.01
 method 		= 'upwind_third_order'
 datatype	= np.float64	
 save_freq	= 10
 print_freq	= 10
-file_output     = False
+file_output     = True
 filename	= 'test_zhao_' + str(method) + '.pickle'
 
 #

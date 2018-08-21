@@ -55,7 +55,7 @@ class DomainPostprocess:
         vsave = self.combine_output_files(size=[nx, ny, nz], fieldname="vnew",
                                           path=self.path, prefix=self.prefix,
                                           postfix="t_"+str(0), save=False, cleanup=cleanup)
-        for n in range(1, nt):
+        for n in range(1, nt+1):
             # Save
             if ((save_freq > 0) and (n % save_freq == 0)) or (n + 1 == nt):
                 unew = self.combine_output_files(size=[nx, ny, nz], fieldname="unew",

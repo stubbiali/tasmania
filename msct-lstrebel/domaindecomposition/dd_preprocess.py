@@ -112,7 +112,7 @@ class DomainPreprocess:
     def preprocess(self):
         subdiv_size = self.domain // self.subdivs_per_dim
         assert (np.alltrue(self.domain % self.subdivs_per_dim == 0)), ("Subdivisions per dimension is not"
-                                                                       "a factor of the given domain size.")
+                                                                       " a factor of the given domain size.")
         subdiv_gridpoints = 1
         for e in subdiv_size:
             subdiv_gridpoints *= e
