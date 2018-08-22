@@ -1,0 +1,1954 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Dynamics &mdash; tasmania 0.2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="tasmania 0.2.0 documentation" href="index.html"/>
+        <link rel="next" title="Physics" href="physics.html"/>
+        <link rel="prev" title="Model state" href="state.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> tasmania
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain.html">Computational domain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state.html">Model state</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Dynamics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#model-agnostic-classes">Model-agnostic classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dynamical-core">Dynamical core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#diagnostics">Diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lateral-boundary-conditions">Lateral boundary conditions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#horizontal-smoothing">Horizontal smoothing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sedimentation-flux">Sedimentation flux</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wave-absorber">Wave absorber</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#isentropic-dynamical-core">Isentropic dynamical core</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">I/O</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">tasmania</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Dynamics</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/dynamics.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="dynamics">
+<h1>Dynamics<a class="headerlink" href="#dynamics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="model-agnostic-classes">
+<h2>Model-agnostic classes<a class="headerlink" href="#model-agnostic-classes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dynamical-core">
+<h3>Dynamical core<a class="headerlink" href="#dynamical-core" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="tasmania.dynamics.dycore.DynamicalCore">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.dycore.</code><code class="descname">DynamicalCore</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em>, <em>fast_parameterizations=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes implement different dynamical cores.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>state</em>, <em>tendencies</em>, <em>timestep</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call operator advancing the input state one timestep forward.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>state</strong> (<em>dict</em>) – Dictionary whose keys are strings denoting input model variables,
+and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s storing values
+for those variables.</li>
+<li><strong>tendencies</strong> (<em>dict</em>) – Dictionary whose keys are strings denoting input tendencies,
+and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s storing values
+for those tendencies.</li>
+<li><strong>timestep</strong> (<em>timedelta</em>) – <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the timestep size, i.e.,
+the amount of time to step forward.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary whose keys are strings denoting output model variables,
+and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s storing values
+for those variables.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em>, <em>fast_parameterizations=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>grid</strong> (<em>obj</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>,
+or one of its derived classes.</li>
+<li><strong>moist_on</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+<li><strong>fast_parameterizations</strong> (<cite>obj</cite>, None) – <a class="reference internal" href="physics.html#tasmania.physics.composite.PhysicsComponentComposite" title="tasmania.physics.composite.PhysicsComponentComposite"><code class="xref py py-class docutils literal"><span class="pre">PhysicsComponentComposite</span></code></a>
+object, wrapping the fast physical parameterizations.
+Here, <em>fast</em> refers to the fact that these parameterizations
+are evaluated <em>before</em> each stage of the dynamical core.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.array_call">
+<code class="descname">array_call</code><span class="sig-paren">(</span><em>stage</em>, <em>raw_state</em>, <em>raw_tendencies</em>, <em>timestep</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.array_call" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>stage</strong> (<em>int</em>) – The stage to perform.</li>
+<li><strong>raw_state</strong> (<em>dict</em>) – Dictionary whose keys are strings denoting input model
+variables, and whose values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s
+storing values for those variables.</li>
+<li><strong>raw_tendencies</strong> (<em>dict</em>) – Dictionary whose keys are strings denoting input
+tendencies, and whose values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s
+storing values for those tendencies.</li>
+<li><strong>timestep</strong> (<em>timedelta</em>) – The timestep size.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary whose keys are strings denoting output model
+variables, and whose values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s
+storing values for those variables.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.input_properties">
+<code class="descname">input_properties</code><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.input_properties" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>returns: Dictionary whose keys are strings denoting variables which</dt>
+<dd>should be included in any input state, and whose values
+are fundamental properties (dims, units) of those variables.
+This dictionary results from fusing the requirements
+specified by the user via
+<code class="xref py py-meth docutils literal"><span class="pre">_input_properties()</span></code>,
+with the <a class="reference internal" href="#tasmania.dynamics.dycore.DynamicalCore.input_properties" title="tasmania.dynamics.dycore.DynamicalCore.input_properties"><code class="xref py py-obj docutils literal"><span class="pre">input_properties</span></code></a> and <a class="reference internal" href="#tasmania.dynamics.dycore.DynamicalCore.output_properties" title="tasmania.dynamics.dycore.DynamicalCore.output_properties"><code class="xref py py-obj docutils literal"><span class="pre">output_properties</span></code></a>
+dictionaries of the internal
+<a class="reference internal" href="physics.html#tasmania.physics.composite.PhysicsComponentComposite" title="tasmania.physics.composite.PhysicsComponentComposite"><code class="xref py py-class docutils literal"><span class="pre">PhysicsComponentComposite</span></code></a>
+attribute (if set).</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.output_properties">
+<code class="descname">output_properties</code><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.output_properties" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>returns: Dictionary whose keys are strings denoting variables which</dt>
+<dd>included in the output state, and whose values are fundamental
+properties (dims, units) of those variables.</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><em>ComponentMissingOutputError :</em> – For a multi-stage dycore, if the output state misses some
+variables required by the fast parameterizations.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.stages">
+<code class="descname">stages</code><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.stages" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns: Number of stages carried out by the dynamical core.
+:rtype: int</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.tendency_properties">
+<code class="descname">tendency_properties</code><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.tendency_properties" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>returns: Dictionary whose keys are strings denoting tendencies which</dt>
+<dd>may (or may not) be passed to the call operator, and whose
+values are fundamental properties (dims, units) of those
+tendencies. This dictionary results from fusing the requirements
+specified by the user via
+<code class="xref py py-meth docutils literal"><span class="pre">_tendency_properties()</span></code>
+with the <a class="reference internal" href="#tasmania.dynamics.dycore.DynamicalCore.tendency_properties" title="tasmania.dynamics.dycore.DynamicalCore.tendency_properties"><code class="xref py py-obj docutils literal"><span class="pre">tendency_properties</span></code></a> dictionary of the internal
+<a class="reference internal" href="physics.html#tasmania.physics.composite.PhysicsComponentComposite" title="tasmania.physics.composite.PhysicsComponentComposite"><code class="xref py py-class docutils literal"><span class="pre">PhysicsComponentComposite</span></code></a>
+object (if set).</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.dycore.DynamicalCore.update_topography">
+<code class="descname">update_topography</code><span class="sig-paren">(</span><em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.dycore.DynamicalCore.update_topography" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the underlying (time-dependent) topography.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>time</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the elapsed simulation time.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="diagnostics">
+<h3>Diagnostics<a class="headerlink" href="#diagnostics" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="lateral-boundary-conditions">
+<h3>Lateral boundary conditions<a class="headerlink" href="#lateral-boundary-conditions" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.horizontal_boundary.</code><code class="descname">HorizontalBoundary</code><span class="sig-paren">(</span><em>grid</em>, <em>nb</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes implement different
+types of horizontal boundary conditions.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>nb</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>grid</strong> (<em>obj</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>
+or one of its derived classes.</li>
+<li><strong>nb</strong> (<em>int</em>) – Number of boundary layers.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.enforce">
+<code class="descname">enforce</code><span class="sig-paren">(</span><em>phi_new</em>, <em>phi_now</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.enforce" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enforce the boundary conditions on the field <code class="xref py py-attr docutils literal"><span class="pre">phi_new</span></code>,
+possibly relying upon the solution <code class="xref py py-attr docutils literal"><span class="pre">phi_now</span></code> at the
+current time.
+As this method is marked as abstract, its implementation is
+delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phi_new</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field on which
+applying the boundary conditions.</li>
+<li><strong>phi_now</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field at the current time.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>horizontal_boundary_type</em>, <em>grid</em>, <em>nb=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static method which returns an instance of the derived
+class which implements the boundary conditions specified by
+<code class="xref py py-data docutils literal"><span class="pre">horizontal_boundary_type</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>horizontal_boundary_type</strong> (<em>str</em>) – <p>String specifying the type of boundary conditions to apply. Either:</p>
+<blockquote>
+<div><ul>
+<li>’periodic’, for periodic boundary conditions;</li>
+<li>’relaxed’, for relaxed boundary conditions;</li>
+<li>’relaxed_symmetric_xz’, for relaxed boundary conditions                                       for a <span class="math">\(xz\)</span>-symmetric field.</li>
+<li>’relaxed_symmetric_yz’, for relaxed boundary conditions                                       for a <span class="math">\(yz\)</span>-symmetric field.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><strong>grid</strong> (<em>obj</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> or one of its derived classes.</li>
+<li><strong>nb</strong> (<cite>int</cite>, optional) – Number of boundary layers.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An instance of the derived class implementing the
+boundary conditions specified by <code class="xref py py-data docutils literal"><span class="pre">horizontal_boundary_type</span></code>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.from_computational_to_physical_domain">
+<code class="descname">from_computational_to_physical_domain</code><span class="sig-paren">(</span><em>phi_</em>, <em>out_dims</em>, <em>change_sign</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.from_computational_to_physical_domain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the computational
+domain of a stencil, return the associated physical field which
+may (or may not) satisfy the horizontal boundary conditions.
+As this method is marked as abstract, its implementation is
+delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>phi</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the computational domain
+of a stencil.</li>
+<li><strong>out_dims</strong> (<em>tuple</em>) – The shape of the output array.</li>
+<li><strong>change_sign</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> if the field should change sign through the symmetry
+plane (if any), <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the physical field.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array_like</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.from_physical_to_computational_domain">
+<code class="descname">from_physical_to_computational_domain</code><span class="sig-paren">(</span><em>phi</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.from_physical_to_computational_domain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing a physical field,
+return the associated stencil’s computational domain, i.e., the
+<a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> (accommodating the boundary conditions)
+which will be input to the stencil. If the physical and computational
+fields coincide, a shallow copy of the physical domain is returned.
+As this method is marked as abstract, its implementation is delegated
+to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>phi</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the physical field.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the stencils’
+computational domain.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">array_like</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The implementation should be designed to work with both
+staggered and unstaggered fields.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.get_computational_grid">
+<code class="descname">get_computational_grid</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.get_computational_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the <em>computational</em> grid underlying the computational domain.
+As this method is marked as abstract, its implementation
+is delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Instance of the same class of
+<code class="xref py py-obj docutils literal"><span class="pre">tasmania.dynamics.horizontal_boundary.HorizontalBoundary._grid</span></code>
+representing the underlying computational grid.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">obj</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.mi">
+<code class="descname">mi</code><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.mi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the extent of the computational domain in the <span class="math">\(x\)</span>-direction.
+As this method is marked as abstract, its implementation is delegated
+to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The extent of the computational domain in the <span class="math">\(x\)</span>-direction.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.mj">
+<code class="descname">mj</code><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.mj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the extent of the computational domain in the <span class="math">\(y\)</span>-direction.
+As this method is marked as abstract, its implementation is delegated
+to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The extent of the computational domain in the <span class="math">\(y\)</span>-direction.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.nb">
+<code class="descname">nb</code><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.nb" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns: Return the number of boundary layers.
+:rtype: int</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><em>ValueError :</em> – If the number of boundary layers has not been set.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.set_outermost_layers_x">
+<code class="descname">set_outermost_layers_x</code><span class="sig-paren">(</span><em>phi_new</em>, <em>phi_now</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.set_outermost_layers_x" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the outermost layers of <code class="xref py py-obj docutils literal"><span class="pre">phi_new</span></code> in the
+<span class="math">\(x\)</span>-direction so to satisfy the lateral boundary
+conditions. For this, possibly rely upon the field
+<code class="xref py py-obj docutils literal"><span class="pre">phi_now</span></code> at the current time.
+As this method is marked as abstract, its implementation
+is delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phi_new</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field on which
+applying the boundary conditions.</li>
+<li><strong>phi_now</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field at the
+current time.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_boundary.HorizontalBoundary.set_outermost_layers_y">
+<code class="descname">set_outermost_layers_y</code><span class="sig-paren">(</span><em>phi_new</em>, <em>phi_now</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary.set_outermost_layers_y" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the outermost layers of <code class="xref py py-obj docutils literal"><span class="pre">phi_new</span></code> in the
+<span class="math">\(y\)</span>-direction so to satisfy the lateral boundary
+conditions. For this, possibly rely upon the field
+<code class="xref py py-obj docutils literal"><span class="pre">phi_now</span></code> at the current time.
+As this method is marked as abstract, its implementation
+is delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phi_new</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field on which
+applying the boundary conditions.</li>
+<li><strong>phi_now</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field at the
+current time.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="horizontal-smoothing">
+<h3>Horizontal smoothing<a class="headerlink" href="#horizontal-smoothing" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.horizontal_smoothing.</code><code class="descname">HorizontalSmoothing</code><span class="sig-paren">(</span><em>dims</em>, <em>grid</em>, <em>smooth_damp_depth</em>, <em>smooth_coeff</em>, <em>smooth_coeff_max</em>, <em>backend</em>, <em>dtype</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes apply horizontal
+numerical smoothing to a generic (prognostic) field by means
+of a GT4Py stencil.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>phi</em>, <em>phi_out</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply horizontal smoothing to a prognostic field.
+As this method is marked as abstract, its implementation is
+delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phi</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field to filter.</li>
+<li><strong>phi_out</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> into which the filtered field
+is written.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>dims</em>, <em>grid</em>, <em>smooth_damp_depth</em>, <em>smooth_coeff</em>, <em>smooth_coeff_max</em>, <em>backend</em>, <em>dtype</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dims</strong> (<em>tuple</em>) – Shape of the (three-dimensional) arrays on which
+to apply numerical smoothing.</li>
+<li><strong>grid</strong> (<em>grid</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>
+or one of its derived classes.</li>
+<li><strong>smooth_damp_depth</strong> (<em>int</em>) – Depth of, i.e., number of vertical regions in the damping region.</li>
+<li><strong>smooth_coeff</strong> (<em>float</em>) – Value for the smoothing coefficient far from the top boundary.</li>
+<li><strong>smooth_coeff_max</strong> (<em>float</em>) – Maximum value for the smoothing coefficient.</li>
+<li><strong>backend</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the GT4Py stencil
+implementing numerical smoothing.</li>
+<li><strong>dtype</strong> (<em>obj</em>) – Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>smooth_type</em>, <em>dims</em>, <em>grid</em>, <em>smooth_damp_depth</em>, <em>smooth_coeff</em>, <em>smooth_coeff_max</em>, <em>backend=&lt;Mode.NUMPY: 4&gt;</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing.factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static method returning an instance of the derived class
+implementing the smoothing technique specified by <code class="xref py py-data docutils literal"><span class="pre">smooth_type</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>smooth_type</strong> (<em>string</em>) – <p>String specifying the smoothing technique to implement. Either:</p>
+<ul>
+<li>’first_order’, for first-order numerical smoothing;</li>
+<li>’second_order’, for second-order numerical smoothing;</li>
+<li>’third_order’, for third-order numerical smoothing.</li>
+</ul>
+</li>
+<li><strong>dims</strong> (<em>tuple</em>) – Shape of the (three-dimensional) arrays on which
+to apply numerical smoothing.</li>
+<li><strong>grid</strong> (<em>obj</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>
+or one of its derived classes.</li>
+<li><strong>smooth_damp_depth</strong> (<em>int</em>) – Depth of, i.e., number of vertical regions in the damping region.</li>
+<li><strong>smooth_coeff</strong> (<em>float</em>) – Value for the smoothing coefficient far from the top boundary.</li>
+<li><strong>smooth_coeff_max</strong> (<em>float</em>) – Maximum value for the smoothing coefficient.</li>
+<li><strong>backend</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the GT4Py stencil
+implementing numerical smoothing. Defaults to <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode.NUMPY</span></code>.</li>
+<li><strong>dtype</strong> (<cite>obj</cite>, optional) – Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code>, or <code class="xref py py-obj docutils literal"><span class="pre">numpy.float32</span></code>
+if <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code> is not defined.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Instance of the suitable derived class.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="sedimentation-flux">
+<h3>Sedimentation flux<a class="headerlink" href="#sedimentation-flux" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="tasmania.dynamics.sedimentation_flux.SedimentationFlux">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.sedimentation_flux.</code><code class="descname">SedimentationFlux</code><a class="headerlink" href="#tasmania.dynamics.sedimentation_flux.SedimentationFlux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes discretize the
+vertical derivative of the sedimentation flux with different
+orders of accuracy.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.sedimentation_flux.SedimentationFlux.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>k</em>, <em>rho</em>, <em>h_on_interface_levels</em>, <em>qr</em>, <em>vt</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.sedimentation_flux.SedimentationFlux.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the vertical derivative of the sedimentation flux.
+As this method is marked as abstract, its implementation
+is delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>k</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(\theta\)</span>-axis.</li>
+<li><strong>rho</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the air density.</li>
+<li><strong>h_on_interface_levels</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the geometric
+height of the model half-levels.</li>
+<li><strong>qr</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the mass fraction
+of precipitation water in air.</li>
+<li><strong>vt</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the raindrop
+fall velocity.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the vertical
+derivative of the sedimentation flux.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.sedimentation_flux.SedimentationFlux.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>sedimentation_flux_type</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.sedimentation_flux.SedimentationFlux.factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static method returning an instance of the derived class
+which discretizes the vertical derivative of the
+sedimentation flux with the desired level of accuracy.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sedimentation_flux_type</strong> (<em>str</em>) – <p>String specifying the method used to compute the numerical
+sedimentation flux. Available options are:</p>
+<ul class="simple">
+<li>’first_order_upwind’, for the first-order upwind scheme;</li>
+<li>’second_order_upwind’, for the second-order upwind scheme.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Instance of the derived class implementing the desired method.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="wave-absorber">
+<h3>Wave absorber<a class="headerlink" href="#wave-absorber" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="tasmania.dynamics.vertical_damping.VerticalDamping">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.vertical_damping.</code><code class="descname">VerticalDamping</code><span class="sig-paren">(</span><em>dims</em>, <em>grid</em>, <em>damp_depth</em>, <em>damp_max</em>, <em>backend</em>, <em>dtype</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.vertical_damping.VerticalDamping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes implement different
+vertical damping, i.e., wave absorbing, techniques.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.vertical_damping.VerticalDamping.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>dt</em>, <em>phi_now</em>, <em>phi_new</em>, <em>phi_ref</em>, <em>phi_out</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.vertical_damping.VerticalDamping.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply vertical damping to a generic field <span class="math">\(\phi\)</span>.
+As this method is marked as abstract, its implementation
+is delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dt</strong> (<em>timedelta</em>) – <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the time step.</li>
+<li><strong>phi_now</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field <span class="math">\(\phi\)</span>
+at the current time level.</li>
+<li><strong>phi_new</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the field <span class="math">\(\phi\)</span>
+at the next time level, on which the absorber will be applied.</li>
+<li><strong>phi_ref</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing a reference value for
+<span class="math">\(\phi\)</span>.</li>
+<li><strong>phi_out</strong> (<em>array_like</em>) – <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> into which writing the output,
+vertically damped field.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.vertical_damping.VerticalDamping.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>dims</em>, <em>grid</em>, <em>damp_depth</em>, <em>damp_max</em>, <em>backend</em>, <em>dtype</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.vertical_damping.VerticalDamping.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dims</strong> (<em>tuple</em>) – Shape of the (three-dimensional) arrays on which to apply
+vertical damping.</li>
+<li><strong>grid</strong> (<em>grid</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>
+or one of its derived classes.</li>
+<li><strong>damp_depth</strong> (<em>int</em>) – Number of vertical layers in the damping region.</li>
+<li><strong>damp_max</strong> (<em>float</em>) – Maximum value for the damping coefficient.</li>
+<li><strong>backend</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the
+underlying GT4Py stencil</li>
+<li><strong>dtype</strong> (<em>obj</em>) – Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.vertical_damping.VerticalDamping.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>damp_type</em>, <em>dims</em>, <em>grid</em>, <em>damp_depth</em>, <em>damp_max</em>, <em>backend=&lt;Mode.NUMPY: 4&gt;</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.vertical_damping.VerticalDamping.factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static method which returns an instance of the derived class
+implementing the damping method specified by <code class="xref py py-data docutils literal"><span class="pre">damp_type</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>damp_type</strong> (<em>str</em>) – <p>String specifying the damper to implement. Either:</p>
+<blockquote>
+<div><ul>
+<li>’rayleigh’, for a Rayleigh damper.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><strong>dims</strong> (<em>tuple</em>) – Shape of the (three-dimensional) arrays on which to apply
+vertical damping.</li>
+<li><strong>grid</strong> (<em>grid</em>) – The underlying grid, as an instance of
+<a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>
+or one of its derived classes.</li>
+<li><strong>damp_depth</strong> (<em>int</em>) – Number of vertical layers in the damping region.</li>
+<li><strong>damp_max</strong> (<em>float</em>) – Maximum value for the damping coefficient.</li>
+<li><strong>backend</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the
+underlying GT4Py stencil. Defaults to <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode.NUMPY</span></code>.</li>
+<li><strong>dtype</strong> (<cite>obj</cite>, optional) – Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code>, or <code class="xref py py-obj docutils literal"><span class="pre">numpy.float32</span></code>
+if <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code> is not defined.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An instance of the derived class implementing the damping method
+specified by <code class="xref py py-data docutils literal"><span class="pre">damp_type</span></code>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="isentropic-dynamical-core">
+<h2>Isentropic dynamical core<a class="headerlink" href="#isentropic-dynamical-core" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.isentropic_fluxes.</code><code class="descname">IsentropicHorizontalFlux</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes implement different schemes
+to compute the horizontal numerical fluxes for the three-dimensional isentropic
+dynamical core. The conservative form of the governing equations is used.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>i</em>, <em>j</em>, <em>k</em>, <em>dt</em>, <em>s</em>, <em>u</em>, <em>v</em>, <em>mtg</em>, <em>su</em>, <em>sv</em>, <em>sqv=None</em>, <em>sqc=None</em>, <em>sqr=None</em>, <em>qv_tnd=None</em>, <em>qc_tnd=None</em>, <em>qr_tnd=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method returns the <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code>s representing
+the <span class="math">\(x\)</span>- and <span class="math">\(y\)</span>-fluxes for all the conservative model variables.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>i</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(x\)</span>-axis.</li>
+<li><strong>j</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(y\)</span>-axis.</li>
+<li><strong>k</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(\theta\)</span>-axis.</li>
+<li><strong>dt</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Global</span></code> representing the time step.</li>
+<li><strong>s</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the isentropic density.</li>
+<li><strong>u</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-velocity.</li>
+<li><strong>v</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-velocity.</li>
+<li><strong>mtg</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the Montgomery potential.</li>
+<li><strong>su</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-momentum.</li>
+<li><strong>sv</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-momentum.</li>
+<li><strong>sqv</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the isentropic density
+of water vapor.</li>
+<li><strong>sqc</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the isentropic density
+of cloud water.</li>
+<li><strong>sqr</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the isentropic density
+of precipitation water.</li>
+<li><strong>qv_tnd</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the tendency of the mass
+fraction of water vapor.</li>
+<li><strong>qc_tnd</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the tendency of the mass
+fraction of cloud liquid water.</li>
+<li><strong>qr_tnd</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the tendency of the mass
+fraction of precipitation water.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>flux_s_x</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-flux for
+the isentropic density.</li>
+<li><strong>flux_s_y</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-flux for
+the isentropic density.</li>
+<li><strong>flux_su_x</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-flux for
+the <span class="math">\(x\)</span>-momentum.</li>
+<li><strong>flux_su_y</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-flux for
+the <span class="math">\(x\)</span>-momentum.</li>
+<li><strong>flux_sv_x</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-flux for
+the <span class="math">\(y\)</span>-momentum.</li>
+<li><strong>flux_sv_y</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-flux for
+the <span class="math">\(y\)</span>-momentum.</li>
+<li><strong>flux_sqv_x</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-flux for
+the isentropic density of water vapor.</li>
+<li><strong>flux_sqv_y</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-flux for
+the isentropic density of water vapor.</li>
+<li><strong>flux_sqc_x</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-flux for
+the isentropic density of cloud liquid water.</li>
+<li><strong>flux_sqc_y</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-flux for
+the isentropic density of cloud liquid water.</li>
+<li><strong>flux_sqr_x</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(x\)</span>-flux for
+the isentropic density of precipitation water.</li>
+<li><strong>flux_sqr_y</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(y\)</span>-flux for
+the isentropic density of precipitation water.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>grid</strong> (<em>grid</em>) – <a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing
+the underlying grid.</li>
+<li><strong>moist_on</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>scheme</em>, <em>grid</em>, <em>moist_on</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux.factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static method which returns an instance of the derived class
+implementing the numerical scheme specified by <code class="xref py py-data docutils literal"><span class="pre">scheme</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>scheme</strong> (<em>str</em>) – <p>String specifying the numerical scheme to implement. Either:</p>
+<ul>
+<li>’upwind’, for the upwind scheme;</li>
+<li>’centered’, for a second-order centered scheme;</li>
+<li>’maccormack’, for the MacCormack scheme;</li>
+<li>’fifth_order_upwind’, for the fifth-order upwind scheme.</li>
+</ul>
+</li>
+<li><strong>grid</strong> (<em>obj</em>) – <a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing
+the underlying grid.</li>
+<li><strong>moist_on</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Instance of the derived class implementing the scheme
+specified by <code class="xref py py-data docutils literal"><span class="pre">scheme</span></code>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<p>Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for                  elastic models using forward time schemes. <em>Monthly Weather Review</em>,                    <em>130</em>:2088-2097.
+Zeman, C. (2016). An isentropic mountain flow model with iterative                      synchronous flux correction. <em>Master thesis, ETH Zurich</em>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.isentropic_fluxes.</code><code class="descname">IsentropicVerticalFlux</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes implement different schemes
+to compute the vertical numerical fluxes for the three-dimensional isentropic
+dynamical core. The conservative form of the governing equations is used.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>i</em>, <em>j</em>, <em>k</em>, <em>dt</em>, <em>w</em>, <em>s</em>, <em>s_prv</em>, <em>su</em>, <em>su_prv</em>, <em>sv</em>, <em>sv_prv</em>, <em>sqv=None</em>, <em>sqv_prv=None</em>, <em>sqc=None</em>, <em>sqc_prv=None</em>, <em>sqr=None</em>, <em>sqr_prv=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method returns the <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code>s representing
+the <span class="math">\(\theta\)</span>-fluxes for all the conservative model variables.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>i</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(x\)</span>-axis.</li>
+<li><strong>j</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(y\)</span>-axis.</li>
+<li><strong>k</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Index</span></code> representing the index running
+along the <span class="math">\(\theta\)</span>-axis.</li>
+<li><strong>dt</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Global</span></code> representing the time step.</li>
+<li><strong>w</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the vertical velocity,
+i.e., the change over time in potential temperature.</li>
+<li><strong>s</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the current
+isentropic density.</li>
+<li><strong>s_prv</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional
+isentropic density, i.e., the isentropic density stepped
+disregarding the vertical advection.</li>
+<li><strong>su</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the current <span class="math">\(x\)</span>-momentum.</li>
+<li><strong>su_prv</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional
+<span class="math">\(x\)</span>-momentum, i.e., the <span class="math">\(x\)</span>-momentum stepped
+disregarding the vertical advection.</li>
+<li><strong>sv</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the current <span class="math">\(y\)</span>-momentum.</li>
+<li><strong>sv_prv</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional
+<span class="math">\(y\)</span>-momentum, i.e., the <span class="math">\(y\)</span>-momentum stepped
+disregarding the vertical advection.</li>
+<li><strong>sqv</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the current
+isentropic density of water vapor.</li>
+<li><strong>sqv_prv</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional
+isentropic density of water vapor, i.e., the isentropic
+density of water vapor stepped disregarding the vertical advection.</li>
+<li><strong>sqc</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the current
+isentropic density of cloud water.</li>
+<li><strong>sqc_prv</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional
+isentropic density of cloud water, i.e., the isentropic
+density of cloud water stepped disregarding the vertical advection.</li>
+<li><strong>sqr</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the current
+isentropic density of precipitation water.</li>
+<li><strong>sqr_prv</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the provisional
+isentropic density of precipitation water, i.e., the isentropic
+density of precipitation water stepped disregarding
+the vertical advection.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>flux_s_z</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(\theta\)</span>-flux
+for the isentropic density.</li>
+<li><strong>flux_su_z</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(\theta\)</span>-flux
+for the <span class="math">\(x\)</span>-momentum.</li>
+<li><strong>flux_sv_z</strong> (<em>obj</em>) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(\theta\)</span>-flux
+for the <span class="math">\(y\)</span>-momentum.</li>
+<li><strong>flux_sqv_z</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(\theta\)</span>-flux
+for the isentropic density of water vapor.</li>
+<li><strong>flux_sqc_z</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(\theta\)</span>-flux
+for the isentropic density of cloud water.</li>
+<li><strong>flux_sqr_z</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.Equation</span></code> representing the <span class="math">\(\theta\)</span>-flux
+for the isentropic density of precipitation water.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>grid</strong> (<em>grid</em>) – <a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing
+the underlying grid.</li>
+<li><strong>moist_on</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>scheme</em>, <em>grid</em>, <em>moist_on</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux.factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static method which returns an instance of the derived class
+implementing the numerical scheme specified by <code class="xref py py-data docutils literal"><span class="pre">scheme</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>scheme</strong> (<em>str</em>) – <p>String specifying the numerical scheme to implement. Either:</p>
+<ul>
+<li>’upwind’, for the upwind scheme;</li>
+<li>’centered’, for a second-order centered scheme;</li>
+<li>’maccormack’, for the MacCormack scheme.</li>
+</ul>
+</li>
+<li><strong>grid</strong> (<em>obj</em>) – <a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing
+the underlying grid.</li>
+<li><strong>moist_on</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Instance of the derived class implementing the scheme
+specified by <code class="xref py py-data docutils literal"><span class="pre">scheme</span></code>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">obj</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.isentropic_prognostic.</code><code class="descname">IsentropicPrognostic</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em>, <em>backend</em>, <em>diagnostics</em>, <em>horizontal_boundary_conditions</em>, <em>horizontal_flux_scheme</em>, <em>adiabatic_flow=True</em>, <em>vertical_flux_scheme=None</em>, <em>sedimentation_on=False</em>, <em>sedimentation_flux_scheme=None</em>, <em>sedimentation_substeps=2</em>, <em>raindrop_fall_velocity_diagnostic=None</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract base class whose derived classes implement different
+schemes to carry out the prognostic steps of the three-dimensional
+moist isentropic dynamical core. The conservative form of the
+governing equations is used.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em>, <em>backend</em>, <em>diagnostics</em>, <em>horizontal_boundary_conditions</em>, <em>horizontal_flux_scheme</em>, <em>adiabatic_flow=True</em>, <em>vertical_flux_scheme=None</em>, <em>sedimentation_on=False</em>, <em>sedimentation_flux_scheme=None</em>, <em>sedimentation_substeps=2</em>, <em>raindrop_fall_velocity_diagnostic=None</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Constructor.</p>
+<dl class="docutils">
+<dt>grid <span class="classifier-delimiter">:</span> <span class="classifier">grid</span></dt>
+<dd><a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing the underlying grid.</dd>
+<dt>moist_on <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</dd>
+<dt>backend <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd><code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the GT4Py stencils.</dd>
+<dt>diagnostics <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd>Instance of <a class="reference internal" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics" title="tasmania.dynamics.diagnostics.IsentropicDiagnostics"><code class="xref py py-class docutils literal"><span class="pre">IsentropicDiagnostics</span></code></a>
+calculating the diagnostic variables.</dd>
+<dt>horizontal_boundary_conditions <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd>Instance of a derived class of
+<a class="reference internal" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary" title="tasmania.dynamics.horizontal_boundary.HorizontalBoundary"><code class="xref py py-class docutils literal"><span class="pre">HorizontalBoundary</span></code></a>
+in charge of handling the lateral boundary conditions.
+This is modified in-place by setting the number of boundary layers.</dd>
+<dt>horizontal_flux_scheme <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>String specifying the numerical horizontal flux scheme to use.
+See <a class="reference internal" href="#tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux" title="tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux"><code class="xref py py-class docutils literal"><span class="pre">IsentropicHorizontalFlux</span></code></a>
+for the complete list of the available options.</dd>
+<dt>adiabatic_flow <span class="classifier-delimiter">:</span> <span class="classifier"><cite>bool</cite>, optional</span></dt>
+<dd><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for an adiabatic atmosphere, in which the potential temperature
+is conserved, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</dd>
+<dt>vertical_flux_scheme <span class="classifier-delimiter">:</span> <span class="classifier"><cite>str</cite>, optional</span></dt>
+<dd>String specifying the numerical vertical flux scheme to use.
+See <a class="reference internal" href="#tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux" title="tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux"><code class="xref py py-class docutils literal"><span class="pre">IsentropicVerticalFlux</span></code></a>
+for the complete list of the available options. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">None</span></code>.</dd>
+<dt>sedimentation_on <span class="classifier-delimiter">:</span> <span class="classifier"><cite>bool</cite>, optional</span></dt>
+<dd><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to account for rain sedimentation, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">False</span></code>.</dd>
+<dt>sedimentation_flux_scheme <span class="classifier-delimiter">:</span> <span class="classifier"><cite>str</cite>, optional</span></dt>
+<dd>String specifying the method to use to compute the numerical
+sedimentation flux. See
+<a class="reference internal" href="#tasmania.dynamics.sedimentation_flux.SedimentationFlux" title="tasmania.dynamics.sedimentation_flux.SedimentationFlux"><code class="xref py py-class docutils literal"><span class="pre">SedimentationFlux</span></code></a>
+for the complete list of available options. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">None</span></code>.</dd>
+<dt>sedimentation_substeps <span class="classifier-delimiter">:</span> <span class="classifier"><cite>int</cite>, optional</span></dt>
+<dd>Number of sub-timesteps to perform in order to integrate the
+sedimentation flux. Defaults to 2.</dd>
+<dt>raindrop_fall_velocity_diagnostic <span class="classifier-delimiter">:</span> <span class="classifier"><cite>obj</cite></span></dt>
+<dd>Instance of a <code class="xref py py-class docutils literal"><span class="pre">sympl.Diagnostic</span></code> calculating the raindrop
+fall velocity. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">None</span></code>.</dd>
+<dt>dtype <span class="classifier-delimiter">:</span> <span class="classifier"><cite>obj</cite>, optional</span></dt>
+<dd>Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code>, or <code class="xref py py-obj docutils literal"><span class="pre">numpy.float32</span></code>
+if <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code> is not defined.</dd>
+</dl>
+</div></blockquote>
+<dl class="docutils">
+<dt>physical_constants <span class="classifier-delimiter">:</span> <span class="classifier"><cite>dict</cite>, optional</span></dt>
+<dd><p class="first">Dictionary whose keys are strings indicating physical constants used
+within this object, and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s
+storing the values and units of those constants. The constants might be:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘density_of_liquid_water’, in units compatible with                                   [kg m^-3].</li>
+</ul>
+</div></blockquote>
+<p class="last">Please refer to
+<code class="xref py py-func docutils literal"><span class="pre">tasmania.utils.data_utils.get_physical_constants()</span></code> and
+<code class="xref py py-obj docutils literal"><span class="pre">tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic._d_physical_constants</span></code>
+for the default values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.factory">
+<em class="property">static </em><code class="descname">factory</code><span class="sig-paren">(</span><em>scheme</em>, <em>grid</em>, <em>moist_on</em>, <em>backend</em>, <em>diagnostics</em>, <em>horizontal_boundary_conditions</em>, <em>horizontal_flux_scheme</em>, <em>adiabatic_flow=True</em>, <em>vertical_flux_scheme=None</em>, <em>sedimentation_on=False</em>, <em>sedimentation_flux_scheme=None</em>, <em>sedimentation_substeps=2</em>, <em>raindrop_fall_velocity_diagnostic=None</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.factory" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Static method returning an instance of the derived class implementing
+the time stepping scheme specified by <code class="xref py py-data docutils literal"><span class="pre">time_scheme</span></code>.</p>
+<dl class="docutils">
+<dt>scheme <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first">String specifying the time stepping method to implement. Either:</p>
+<ul class="last simple">
+<li>‘forward_euler’, for the forward Euler scheme;</li>
+<li>‘centered’, for a centered scheme;</li>
+<li>‘rk3’, for the three-stages Runge-Kutta scheme.</li>
+</ul>
+</dd>
+<dt>grid <span class="classifier-delimiter">:</span> <span class="classifier">grid</span></dt>
+<dd><a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing the underlying grid.</dd>
+<dt>moist_on <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
+<dd><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</dd>
+<dt>backend <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd><code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the GT4Py stencils.</dd>
+<dt>diagnostics <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd>Instance of <a class="reference internal" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics" title="tasmania.dynamics.diagnostics.IsentropicDiagnostics"><code class="xref py py-class docutils literal"><span class="pre">IsentropicDiagnostics</span></code></a>
+calculating the diagnostic variables.</dd>
+<dt>horizontal_boundary_conditions <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd>Instance of a derived class of
+<a class="reference internal" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary" title="tasmania.dynamics.horizontal_boundary.HorizontalBoundary"><code class="xref py py-class docutils literal"><span class="pre">HorizontalBoundary</span></code></a>
+in charge of handling the lateral boundary conditions.</dd>
+<dt>horizontal_flux_scheme <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>String specifying the numerical horizontal flux scheme to use.
+See <code class="xref py py-class docutils literal"><span class="pre">HorizontalFlux</span></code>
+for the complete list of the available options.</dd>
+<dt>adiabatic_flow <span class="classifier-delimiter">:</span> <span class="classifier"><cite>bool</cite>, optional</span></dt>
+<dd><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for an adiabatic atmosphere, in which the potential temperature
+is conserved, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</dd>
+<dt>vertical_flux_scheme <span class="classifier-delimiter">:</span> <span class="classifier"><cite>str</cite>, optional</span></dt>
+<dd>String specifying the numerical vertical flux scheme to use.
+See <code class="xref py py-class docutils literal"><span class="pre">VerticalFlux</span></code>
+for the complete list of the available options. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">None</span></code>.</dd>
+<dt>sedimentation_on <span class="classifier-delimiter">:</span> <span class="classifier"><cite>bool</cite>, optional</span></dt>
+<dd><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to account for rain sedimentation, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">False</span></code>.</dd>
+<dt>sedimentation_flux_scheme <span class="classifier-delimiter">:</span> <span class="classifier"><cite>str</cite>, optional</span></dt>
+<dd>String specifying the method to use to compute the numerical
+sedimentation flux. See
+<a class="reference internal" href="#tasmania.dynamics.sedimentation_flux.SedimentationFlux" title="tasmania.dynamics.sedimentation_flux.SedimentationFlux"><code class="xref py py-class docutils literal"><span class="pre">SedimentationFlux</span></code></a>
+for the complete list of available options. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">None</span></code>.</dd>
+<dt>sedimentation_substeps <span class="classifier-delimiter">:</span> <span class="classifier"><cite>int</cite>, optional</span></dt>
+<dd>Number of sub-timesteps to perform in order to integrate the
+sedimentation flux. Defaults to 2.</dd>
+<dt>raindrop_fall_velocity_diagnostic <span class="classifier-delimiter">:</span> <span class="classifier"><cite>obj</cite></span></dt>
+<dd>Instance of a <code class="xref py py-class docutils literal"><span class="pre">sympl.Diagnostic</span></code> calculating the raindrop
+fall velocity. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">None</span></code>.</dd>
+<dt>dtype <span class="classifier-delimiter">:</span> <span class="classifier"><cite>obj</cite>, optional</span></dt>
+<dd>Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code>, or <code class="xref py py-obj docutils literal"><span class="pre">numpy.float32</span></code>
+if <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code> is not defined.</dd>
+</dl>
+</div></blockquote>
+<dl class="docutils">
+<dt>physical_constants <span class="classifier-delimiter">:</span> <span class="classifier"><cite>dict</cite>, optional</span></dt>
+<dd><blockquote class="first">
+<div><p>Dictionary whose keys are strings indicating physical constants used
+within this object, and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s
+storing the values and units of those constants. The constants might be:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘density_of_liquid_water’, in units compatible with                                   [kg m^-3].</li>
+</ul>
+</div></blockquote>
+<p>Please refer to
+<code class="xref py py-func docutils literal"><span class="pre">tasmania.utils.data_utils.get_physical_constants()</span></code> and
+<code class="xref py py-obj docutils literal"><span class="pre">tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic._d_physical_constants</span></code>
+for the default values.</p>
+</div></blockquote>
+<dl class="last docutils">
+<dt>obj :</dt>
+<dd>An instance of the derived class implementing the scheme specified
+by <code class="xref py py-data docutils literal"><span class="pre">scheme</span></code>.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.horizontal_boundary">
+<code class="descname">horizontal_boundary</code><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.horizontal_boundary" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns: Object in charge of handling the lateral boundary conditions.
+:rtype: obj</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.nb">
+<code class="descname">nb</code><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.nb" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns: The number of lateral boundary layers.
+:rtype: int</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.stages">
+<code class="descname">stages</code><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.stages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the number of stages carried out by the time-integration scheme.
+As this method is marked as abstract, its implementation is
+delegated to the derived classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The number of stages performed by the time-integration scheme.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux">
+<code class="descname">step_integrating_sedimentation_flux</code><span class="sig-paren">(</span><em>stage</em>, <em>dt</em>, <em>raw_state_now</em>, <em>raw_state_prv</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Method advancing the mass fraction of precipitation water by taking
+the sedimentation into account. For the sake of numerical stability,
+a time-splitting strategy is pursued, i.e., sedimentation is resolved
+using a time step which may be smaller than that specified by the user.
+As this method is marked as abstract, its implementation is delegated
+to the derived classes.</p>
+<dl class="docutils">
+<dt>stage <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>The stage to perform.</dd>
+<dt>dt <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd><code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the time step.</dd>
+</dl>
+<p>raw_state_now : dict</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the model
+variables, and values are <code class="xref py py-class docutils literal"><span class="pre">np.ndarray</span></code>s containing
+the data for those variables at current time.
+The dictionary should contain the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li>accumulated_precipitation [mm] (optional);</li>
+<li>air_isentropic_density [kg m^-2 K^-1];</li>
+<li>mass_fraction_of_precipitation_water_in_air [g g^-1].</li>
+</ul>
+<p>raw_state_prv : obj</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the model
+variables, and values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s containing
+the provisional data for those variables. Provisional data here
+mean the values obtained by sub-stepping the variables
+taking only the horizontal derivatives into account.</p>
+<blockquote>
+<div><blockquote>
+<div>The dictionary should contain the following keys:</div></blockquote>
+<ul>
+<li><p class="first">air_isentropic_density [kg m^-2 K^-1];</p>
+</li>
+<li><p class="first">mass_fraction_of_precipitation_water_in_air [g g^-1].</p>
+<blockquote>
+<div><p>This may be the output of
+<code class="xref py py-meth docutils literal"><span class="pre">step_neglecting_vertical_motion()</span></code>
+or
+<code class="xref py py-meth docutils literal"><span class="pre">step_integrating_vertical_advection()</span></code>.</p>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the conservative
+prognostic model variables, and values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArrays</span></code>s
+containing the sub-stepped data for those variables.
+The dictionary contains the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="first docutils">
+<dt>accumulated_precipitation [mm] (optional);</dt>
+<dd><ul class="first last">
+<li>mass_fraction_of_precipitation_water_in_air [g g^-1];</li>
+<li>precipitation [mm h^-1].</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection">
+<code class="descname">step_integrating_vertical_advection</code><span class="sig-paren">(</span><em>stage</em>, <em>dt</em>, <em>raw_state_now</em>, <em>raw_state_prv</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Method advancing the conservative, prognostic model variables
+one stage forward in time by integrating the vertical advection, i.e.,
+by accounting for the change over time in potential temperature.
+As this method is marked as abstract, its implementation is
+delegated to the derived classes.</p>
+<dl class="docutils">
+<dt>stage <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>The stage to perform.</dd>
+<dt>dt <span class="classifier-delimiter">:</span> <span class="classifier">obj</span></dt>
+<dd><code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the time step.</dd>
+</dl>
+<p>raw_state_now : dict</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the model
+variables, and values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s containing
+the data for those variables at current time.
+The dictionary should contain the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li>air_isentropic_density [kg m^-2 K^-1];</li>
+<li>air_pressure_on_interface_levels [Pa];</li>
+<li>isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);</li>
+<li>x_velocity_at_u_locations [m s^-1];</li>
+<li>x_momentum_isentropic [kg m^-1 K^-1 s^-1];</li>
+<li>y_velocity_at_v_locations [m s^-1];</li>
+<li>y_momentum_isentropic [kg m^-1 K^-1 s^-1].</li>
+</ul>
+<p>raw_state_prv : obj</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the model
+variables, and values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s containing
+the provisional data for those variables. Provisional data here
+mean the values obtained by sub-stepping the variables
+taking only the horizontal derivatives into account.</p>
+<blockquote>
+<div><blockquote>
+<div>The dictionary should contain the following keys:</div></blockquote>
+<ul>
+<li><p class="first">air_isentropic_density [kg m^-2 K^-1];</p>
+</li>
+<li><p class="first">isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);</p>
+</li>
+<li><p class="first">isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);</p>
+</li>
+<li><p class="first">isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);</p>
+</li>
+<li><p class="first">x_momentum_isentropic [kg m^-1 K^-1 s^-1];</p>
+</li>
+<li><p class="first">y_momentum_isentropic [kg m^-1 K^-1 s^-1].</p>
+<blockquote>
+<div><p>This may be the output of
+<code class="xref py py-meth docutils literal"><span class="pre">step_neglecting_vertical_motion()</span></code>.</p>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the conservative
+prognostic model variables, and values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s
+containing the sub-stepped data for those variables.
+The dictionary contains the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li>air_isentropic_density [kg m^-2 K^-1];</li>
+<li>isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);</li>
+<li>x_momentum_isentropic [kg m^-1 K^-1 s^-1];</li>
+<li>y_momentum_isentropic [kg m^-1 K^-1 s^-1].</li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion">
+<code class="descname">step_neglecting_vertical_motion</code><span class="sig-paren">(</span><em>stage</em>, <em>dt</em>, <em>raw_state</em>, <em>raw_tendencies=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Method advancing the conservative, prognostic model variables
+one stage forward in time. Only horizontal derivatives are considered;
+possible vertical derivatives are disregarded.
+As this method is marked as abstract, its implementation is
+delegated to the derived classes.</p>
+<dl class="docutils">
+<dt>stage <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Index of the stage to perform.</dd>
+<dt>dt <span class="classifier-delimiter">:</span> <span class="classifier">timedelta</span></dt>
+<dd><code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the time step.</dd>
+</dl>
+<p>raw_state : dict</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the model
+variables, and values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s containing
+the data for those variables at current time.
+The dictionary should contain the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li>air_isentropic_density [kg m^-2 K^-1];</li>
+<li>air_pressure_on_interface_levels [Pa];</li>
+<li>isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);</li>
+<li>montgomery_potential [m^2 s^-2];</li>
+<li>x_velocity_at_u_locations [m s^-1];</li>
+<li>x_momentum_isentropic [kg m^-1 K^-1 s^-1];</li>
+<li>y_velocity_at_v_locations [m s^-1];</li>
+<li>y_momentum_isentropic [kg m^-1 K^-1 s^-1].</li>
+</ul>
+<p>raw_tendencies : dict</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating tendencies,
+tendencies, and values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s containing
+the data for those tendencies.
+The dictionary may contain the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li>mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];</li>
+<li>mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];</li>
+<li>mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].</li>
+</ul>
+<p>dict :</p>
+</div></blockquote>
+<p>Dictionary whose keys are strings indicating the conservative
+prognostic model variables, and values are <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>s
+containing the sub-stepped data for those variables.
+The dictionary contains the following keys:</p>
+<blockquote>
+<div><ul class="simple">
+<li>air_isentropic_density [kg m^-2 K^-1];</li>
+<li>isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);</li>
+<li>isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);</li>
+<li>x_momentum_isentropic [kg m^-1 K^-1 s^-1];</li>
+<li>y_momentum_isentropic [kg m^-1 K^-1 s^-1].</li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tasmania.dynamics.diagnostics.IsentropicDiagnostics">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.diagnostics.</code><code class="descname">IsentropicDiagnostics</code><span class="sig-paren">(</span><em>grid</em>, <em>backend=&lt;Mode.NUMPY: 4&gt;</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class implementing the diagnostic steps of the three-dimensional
+isentropic dynamical core using GT4Py stencils.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.diagnostics.IsentropicDiagnostics.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>backend=&lt;Mode.NUMPY: 4&gt;</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>Constructor.</p>
+<dl class="docutils">
+<dt>grid <span class="classifier-delimiter">:</span> <span class="classifier">grid</span></dt>
+<dd><a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a>
+representing the underlying grid.</dd>
+<dt>backend <span class="classifier-delimiter">:</span> <span class="classifier"><cite>obj</cite>, optional</span></dt>
+<dd><code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the GT4Py stencils.
+Defaults to <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode.NUMPY</span></code>.</dd>
+<dt>dtype <span class="classifier-delimiter">:</span> <span class="classifier"><cite>obj</cite>, optional</span></dt>
+<dd>Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code>, or <code class="xref py py-obj docutils literal"><span class="pre">numpy.float32</span></code>
+if <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code> is not defined.</dd>
+</dl>
+</div></blockquote>
+<dl class="docutils">
+<dt>physical_constants <span class="classifier-delimiter">:</span> <span class="classifier"><cite>dict</cite>, optional</span></dt>
+<dd><p class="first">Dictionary whose keys are strings indicating physical constants used
+within this object, and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s
+storing the values and units of those constants. The constants might be:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘air_pressure_at_sea_level’, in units compatible with [Pa];</li>
+<li>‘gas_constant_of_dry_air’, in units compatible with                                   [J K^-1 kg^-1];</li>
+<li>‘gravitational acceleration’, in units compatible with [m s^-2].</li>
+<li>‘specific_heat_of_dry_air_at_constant_pressure’, in units compatible                                  with [J K^-1 kg^-1].</li>
+</ul>
+</div></blockquote>
+<p class="last">Please refer to
+<code class="xref py py-func docutils literal"><span class="pre">tasmania.utils.data_utils.get_physical_constants()</span></code> and
+<code class="xref py py-obj docutils literal"><span class="pre">tasmania.dynamics.diagnostics.IsentropicDiagnostics_d_physical_constants</span></code>
+for the default values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_air_density">
+<code class="descname">get_air_density</code><span class="sig-paren">(</span><em>s</em>, <em>h</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_air_density" title="Permalink to this definition">¶</a></dt>
+<dd><p>With the help of the isentropic density and the geometric height
+of the interface levels, diagnose the air density.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>s</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the isentropic density,
+in units of [kg m^-2 K^-1].</li>
+<li><strong>h</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the geometric height of the
+interface levels, in units of [m].</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the air density,
+in units of [kg m^-3].</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array_like</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_air_temperature">
+<code class="descname">get_air_temperature</code><span class="sig-paren">(</span><em>exn</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_air_temperature" title="Permalink to this definition">¶</a></dt>
+<dd><p>With the help of the Exner function, diagnose the air temperature.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exn</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the Exner function at the
+interface levels, in units of [J K^-1 kg^-1].</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li>3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the Exner function at the</li>
+<li><em>interface levels, in units of [J K^-1 kg^-1].</em></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_diagnostic_variables">
+<code class="descname">get_diagnostic_variables</code><span class="sig-paren">(</span><em>s</em>, <em>pt</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_diagnostic_variables" title="Permalink to this definition">¶</a></dt>
+<dd><p>With the help of the isentropic density and the upper boundary
+condition on the pressure distribution, diagnose the pressure,
+the Exner function, the Montgomery potential, and the geometric
+height of the half-levels.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>s</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the isentropic density,
+in units of [kg m^-2 K^-1].</li>
+<li><strong>pt</strong> (<em>float</em>) – The upper boundary condition on the pressure distribution,
+in units of [Pa].</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>p</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the pressure at the
+interface levels, in units of [Pa].</li>
+<li><strong>exn</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the Exner function at the
+interface levels, in units of [J K^-1 kg^-1].</li>
+<li><strong>mtg</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the Montgomery potential,
+in units of [J kg^-1].</li>
+<li><strong>h</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the geometric height of the
+interface levels, in units of [m].</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_height">
+<code class="descname">get_height</code><span class="sig-paren">(</span><em>s</em>, <em>pt</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics.get_height" title="Permalink to this definition">¶</a></dt>
+<dd><p>With the help of the isentropic density and the upper boundary
+condition on the pressure distribution, diagnose the geometric
+height of the half-levels.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>s</strong> (<em>array_like</em>) – 3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the isentropic density,
+in units of [kg m^-2 K^-1].</li>
+<li><strong>pt</strong> (<em>float</em>) – The upper boundary condition on the pressure distribution,
+in units of [Pa].</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">3-D <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> representing the geometric height of the
+interface levels, in units of [m].</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array_like</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tasmania.dynamics.isentropic_dycore.IsentropicDynamicalCore">
+<em class="property">class </em><code class="descclassname">tasmania.dynamics.isentropic_dycore.</code><code class="descname">IsentropicDynamicalCore</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em>, <em>time_integration_scheme</em>, <em>horizontal_flux_scheme</em>, <em>horizontal_boundary_type</em>, <em>fast_parameterizations=None</em>, <em>damp_on=True</em>, <em>damp_type='rayleigh'</em>, <em>damp_depth=15</em>, <em>damp_max=0.0002</em>, <em>damp_at_every_stage=True</em>, <em>smooth_on=True</em>, <em>smooth_type='first_order'</em>, <em>smooth_damp_depth=10</em>, <em>smooth_coeff=0.03</em>, <em>smooth_coeff_max=0.24</em>, <em>smooth_at_every_stage=True</em>, <em>smooth_moist_on=False</em>, <em>smooth_moist_type='first_order'</em>, <em>smooth_moist_damp_depth=10</em>, <em>smooth_moist_coeff=0.03</em>, <em>smooth_moist_coeff_max=0.24</em>, <em>smooth_moist_at_every_stage=True</em>, <em>adiabatic_flow=True</em>, <em>vertical_flux_scheme=None</em>, <em>sedimentation_on=False</em>, <em>sedimentation_flux_type='first_order_upwind'</em>, <em>sedimentation_substeps=2</em>, <em>raindrop_fall_velocity_diagnostic=None</em>, <em>backend=&lt;Mode.NUMPY: 4&gt;</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_dycore.IsentropicDynamicalCore" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class inherits <a class="reference internal" href="#tasmania.dynamics.dycore.DynamicalCore" title="tasmania.dynamics.dycore.DynamicalCore"><code class="xref py py-class docutils literal"><span class="pre">DynamicalCore</span></code></a>
+to implement the three-dimensional (moist) isentropic dynamical core.
+The class supports different numerical schemes to carry out the prognostic
+steps of the dynamical core, and different types of lateral boundary conditions.
+The conservative form of the governing equations is used.</p>
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_dycore.IsentropicDynamicalCore.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>grid</em>, <em>moist_on</em>, <em>time_integration_scheme</em>, <em>horizontal_flux_scheme</em>, <em>horizontal_boundary_type</em>, <em>fast_parameterizations=None</em>, <em>damp_on=True</em>, <em>damp_type='rayleigh'</em>, <em>damp_depth=15</em>, <em>damp_max=0.0002</em>, <em>damp_at_every_stage=True</em>, <em>smooth_on=True</em>, <em>smooth_type='first_order'</em>, <em>smooth_damp_depth=10</em>, <em>smooth_coeff=0.03</em>, <em>smooth_coeff_max=0.24</em>, <em>smooth_at_every_stage=True</em>, <em>smooth_moist_on=False</em>, <em>smooth_moist_type='first_order'</em>, <em>smooth_moist_damp_depth=10</em>, <em>smooth_moist_coeff=0.03</em>, <em>smooth_moist_coeff_max=0.24</em>, <em>smooth_moist_at_every_stage=True</em>, <em>adiabatic_flow=True</em>, <em>vertical_flux_scheme=None</em>, <em>sedimentation_on=False</em>, <em>sedimentation_flux_type='first_order_upwind'</em>, <em>sedimentation_substeps=2</em>, <em>raindrop_fall_velocity_diagnostic=None</em>, <em>backend=&lt;Mode.NUMPY: 4&gt;</em>, <em>dtype=&lt;class 'numpy.float32'&gt;</em>, <em>physical_constants=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_dycore.IsentropicDynamicalCore.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>grid</strong> (<em>grid</em>) – <a class="reference internal" href="domain.html#tasmania.grids.grid_xyz.GridXYZ" title="tasmania.grids.grid_xyz.GridXYZ"><code class="xref py py-class docutils literal"><span class="pre">GridXYZ</span></code></a> representing the underlying grid.</li>
+<li><strong>moist_on</strong> (<em>bool</em>) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for a moist dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</li>
+<li><strong>time_integration_scheme</strong> (<em>str</em>) – String specifying the time stepping method to implement.
+See <a class="reference internal" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic" title="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic"><code class="xref py py-class docutils literal"><span class="pre">IsentropicPrognostic</span></code></a>
+for sll available options.</li>
+<li><strong>horizontal_flux_scheme</strong> (<em>str</em>) – String specifying the numerical horizontal flux to use.
+See <code class="xref py py-class docutils literal"><span class="pre">HorizontalFlux</span></code>
+for sll available options.</li>
+<li><strong>horizontal_boundary_type</strong> (<em>str</em>) – String specifying the horizontal boundary conditions.
+See <a class="reference internal" href="#tasmania.dynamics.horizontal_boundary.HorizontalBoundary" title="tasmania.dynamics.horizontal_boundary.HorizontalBoundary"><code class="xref py py-class docutils literal"><span class="pre">HorizontalBoundary</span></code></a>
+for sll available options.</li>
+<li><strong>fast_parameterizations</strong> (<cite>obj</cite>, None) – <a class="reference internal" href="physics.html#tasmania.physics.composite.PhysicsComponentComposite" title="tasmania.physics.composite.PhysicsComponentComposite"><code class="xref py py-class docutils literal"><span class="pre">PhysicsComponentComposite</span></code></a>
+object, wrapping the fast physical parameterizations.
+Here, <em>fast</em> refers to the fact that these parameterizations
+are evaluated <em>before</em> each stage of the dynamical core.</li>
+<li><strong>damp_on</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to enable vertical damping, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>damp_type</strong> (<cite>str</cite>, optional) – String specifying the type of vertical damping to apply. Defaults to ‘rayleigh’.
+See <a class="reference internal" href="#tasmania.dynamics.vertical_damping.VerticalDamping" title="tasmania.dynamics.vertical_damping.VerticalDamping"><code class="xref py py-class docutils literal"><span class="pre">VerticalDamping</span></code></a>
+for sll available options.</li>
+<li><strong>damp_depth</strong> (<cite>int</cite>, optional) – Number of vertical layers in the damping region. Defaults to 15.</li>
+<li><strong>damp_max</strong> (<cite>float</cite>, optional) – Maximum value for the damping coefficient. Defaults to 0.0002.</li>
+<li><strong>damp_at_every_stage</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to carry out the damping at each stage performed by the
+dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> to carry out the damping only at the end
+of each timestep. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>smooth_on</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to enable numerical smoothing, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>smooth_type</strong> (<cite>str</cite>, optional) – String specifying the smoothing technique to implement.
+Defaults to ‘first-order’. See
+<a class="reference internal" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing" title="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing"><code class="xref py py-class docutils literal"><span class="pre">HorizontalSmoothing</span></code></a>
+for all available options.</li>
+<li><strong>smooth_damp_depth</strong> (<cite>int</cite>, optional) – Number of vertical layers in the smoothing damping region. Defaults to 10.</li>
+<li><strong>smooth_coeff</strong> (<cite>float</cite>, optional) – Smoothing coefficient. Defaults to 0.03.</li>
+<li><strong>smooth_coeff_max</strong> (<cite>float</cite>, optional) – Maximum value for the smoothing coefficient. Defaults to 0.24.
+See <a class="reference internal" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing" title="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing"><code class="xref py py-class docutils literal"><span class="pre">HorizontalSmoothing</span></code></a>
+for further details.</li>
+<li><strong>smooth_at_every_stage</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to apply numerical smoothing at each stage performed by the
+dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> to apply numerical smoothing only at the end
+of each timestep. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>smooth_moist_on</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to enable numerical smoothing on the water constituents,
+<code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>smooth_moist_type</strong> (<cite>str</cite>, optional) – String specifying the smoothing technique to apply to the water constituents.
+Defaults to ‘first-order’. See
+<a class="reference internal" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing" title="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing"><code class="xref py py-class docutils literal"><span class="pre">HorizontalSmoothing</span></code></a>
+for all available options.</li>
+<li><strong>smooth_moist_damp_depth</strong> (<cite>int</cite>, optional) – Number of vertical layers in the smoothing damping region for the
+water constituents. Defaults to 10.</li>
+<li><strong>smooth_moist_coeff</strong> (<cite>float</cite>, optional) – Smoothing coefficient for the water constituents. Defaults to 0.03.</li>
+<li><strong>smooth_moist_coeff_max</strong> (<cite>float</cite>, optional) – Maximum value for the smoothing coefficient for the water constituents.
+Defaults to 0.24. See
+<a class="reference internal" href="#tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing" title="tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing"><code class="xref py py-class docutils literal"><span class="pre">HorizontalSmoothing</span></code></a>
+for further details.</li>
+<li><strong>smooth_moist_at_every_stage</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to apply numerical smoothing to the water constituents
+at each stage performed by the dynamical core, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> to apply
+numerical smoothing only at the end of each timestep. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>adiabatic_flow</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> for an adiabatic atmosphere, in which the potential temperature
+is conserved, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise. Defaults to <code class="xref py py-obj docutils literal"><span class="pre">True</span></code>.</li>
+<li><strong>sedimentation_on</strong> (<cite>bool</cite>, optional) – <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to account for rain sedimentation, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">False</span></code>.</li>
+<li><strong>sedimentation_flux_type</strong> (<cite>str</cite>, optional) – String specifying the method seused to compute the numerical sedimentation flux.
+See <a class="reference internal" href="#tasmania.dynamics.sedimentation_flux.SedimentationFlux" title="tasmania.dynamics.sedimentation_flux.SedimentationFlux"><code class="xref py py-class docutils literal"><span class="pre">SedimentationFlux</span></code></a>
+for all available options.</li>
+<li><strong>sedimentation_substeps</strong> (<cite>int</cite>, optional) – Number of sub-timesteps to perform in order to integrate the sedimentation flux.
+Defaults to 2.</li>
+<li><strong>backend</strong> (<cite>obj</cite>, optional) – <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode</span></code> specifying the backend for the GT4Py stencils
+implementing the dynamical core. Defaults to <code class="xref py py-class docutils literal"><span class="pre">gridtools.mode.NUMPY</span></code>.</li>
+<li><strong>dtype</strong> (<cite>obj</cite>, optional) – Instance of <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.dtype</span></code></a> specifying the data type for
+any <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> used within this class.
+Defaults to <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code>, or <code class="xref py py-obj docutils literal"><span class="pre">numpy.float32</span></code>
+if <code class="xref py py-obj docutils literal"><span class="pre">datatype</span></code> is not defined.</li>
+<li><strong>physical_constants</strong> (<cite>dict</cite>, optional) – Dictionary whose keys are strings indicating physical constants used
+within this object, and whose values are <code class="xref py py-class docutils literal"><span class="pre">sympl.DataArray</span></code>s
+storing the values and units of those constants. See
+<a class="reference internal" href="#tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic" title="tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic"><code class="xref py py-class docutils literal"><span class="pre">IsentropicPrognostic</span></code></a>
+and     <a class="reference internal" href="#tasmania.dynamics.diagnostics.IsentropicDiagnostics" title="tasmania.dynamics.diagnostics.IsentropicDiagnostics"><code class="xref py py-class docutils literal"><span class="pre">IsentropicDiagnostics</span></code></a>
+for the physical constants used.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.dynamics.isentropic_dycore.IsentropicDynamicalCore.array_call">
+<code class="descname">array_call</code><span class="sig-paren">(</span><em>stage</em>, <em>raw_state</em>, <em>raw_tendencies</em>, <em>timestep</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.dynamics.isentropic_dycore.IsentropicDynamicalCore.array_call" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform a stage of the isentropic dynamical core, either dry or moist.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="physics.html" class="btn btn-neutral float-right" title="Physics" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="state.html" class="btn btn-neutral" title="Model state" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Stefano Ubbiali.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.2.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
