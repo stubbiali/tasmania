@@ -1,44 +1,51 @@
-A Python library for Earth system science
-===================================================
+<img align="right" src="taz.jpeg">
 
-`Tasmania` aims to provide domain scientists with a high-level, highly-modular and flexible framework to define, simulate and assess finite difference Earth system science models, e.g., models for climate and weather forecasting. The library leverages `GridTools4Py`, a Python binding to the C++ template library `GridTools`, developed at ETH/CSCS. `GridTools` furnishes a wide gamma of tools to implement stencil-based operations, hence it finds a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a particular architecture, e.g., Xeon Phi or GPU. In addition to these, `GridTools4Py` supplies some Pythonic backends suitable for debugging and research purposes. Nevertheless, `GridTools`'s frontend, hence `GridTools4Py`'s interface, is hardware-agnostic, implying that user's code does not need to be changed when porting it to a new architecture. This enables a complete separation of concerns between domain scientists and computer scientists: the former work in a familiar development environment like Python, while the latter oversee the translation and compilation stage. 
+Tasmania
+========
 
-Creating the virtual environment
---------------------------------
+This is the repository for Tasmania, a Python library to ease the composition, configuration, and execution of Earth system models.
 
-In order to setup a suitable virtual environment where to run any `Tasmania`-related code, please pursue the following steps:
+Motivation
+----------
 
-1. Install `VirtualBox`, available at https://www.virtualbox.org/.
-2. Install `vagrant` from terminal via
+Available computer resources limit the resolution of climate projection and weather forecasting models, and thus pose a strict lower bound on the smallest scale of motion which can be directly resolved. Processes taking place at spatial scales smaller than the grid size, or occurring on timescales shorter than the model timestep, can not be explicitly represented. Notable examples include turbulent mixing in the planetary boundary layer, radiative transfer, convection, and cloud microphysics. As in many situations these processes exert a strong influence on the large-scale fields, they cannot simply be neglected. Rather, subgrid-scale phenomena are *parameterized*, i.e., their effect is expressed in terms of the resolved variables.
 
-		apt-get install vagrant
+Although physical parameterizations have been largely studied in isolation, their combined effect, and their interaction with the underlying dynamical core (traditionally referred to as *physics-dynamics coupling*), has received significantly less attention. Among the pletora of motivations behind this deficiency, the lack of flexibility in most legacy codes, making them unsuitable to address these questions, have been playing a prominent role. 
 
-   Note that admin privileges may be required.
-3. From the repo root directory, type
+Goal
+----
 
-		vagrant up --provision
-		 
-   This command will create a virtual machine (VM) in your system, so it may take some time (even in the order of hours).
-   
-Thereafter:
+Tasmania aims to be a high-level, modular and flexible framework to ease the composition, configuration, simulation and evaluation of finite difference numerical schemes for Earth system science. The library leverages [GridTools4Py](https://github.com/eth-cscs/gridtools4py), a complete set of Python bindings for the C++ template library [GridTools](https://github.com/eth-cscs/gridtools), developed at ETH/CSCS. GridTools furnishes a wide gamma of tools to implement stencil-based operations, thus findind a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a specific architecture, e.g., x86, MIC, and GPU. In addition to these, GridTools4Py supplies some Pythonic backends suitable for debugging and research purposes. On the other hand, GridTools's frontend, then GridTools4Py's interface, are hardware-agnostic, so that the user's code can be left unchanged when porting it to different architectures. This enables a complete separation of concerns between domain scientists - who can work in a familiar amd powerful development environment like Python - and computer scientists - who oversee the translation, compilation and execution stage. 
 
-1. To boot and login to the VM, from the repo root directory type:
+Installation
+------------
 
-		vagrant up
-		vagrant ssh
+To clone this repository on your machine and place yourself on the current branch, from within a terminal run:
 
-2. Within the VM, you can switch the virtual environment on by
+	git clone https://github.com/eth-cscs/tasmania.git
+	cd tasmania
+	git checkout sympl-compliant
 
-		source venv/bin/activate
+Then, enter the folder `docker/` and type
 
-   This command should be invoked at the beginning of each session, so you may want to add it to `~/.bashrc`. 
-3. The first time you login to the VM, move to the folder `tasmania`, then write
+	git clone https://github.com/eth-cscs/gridtools4py.git
+	cd gridtools4py
+	git checkout merge_ubbiali
 
-		make
+to clone the GridTools4Py repository. **Note**: both Tasmania and GridTools4Py repositories are *private*, so you should be given access to them in order to accomplish the steps above.
 
-   This will compile some auxiliary C++ code and create the documentation (later available at `docs/build/`).
-4. Finally, `CTRL + D` to logout, then
+We suggest to run any script or application relying on Tasmania inside a [Docker](https://www.docker.com/) container, spawn from a provided image. To create a local instance of the image, named `tasmania`, from the repository root directory issue:
 
-		vagrant halt
+	docker build --build-arg uid=$(id -u) -t tasmania .
 
-   to shut down the VM.
+Later, launch
+
+	docker run --rm -dit --privileged -e DISPLAY -e XAUTHORITY=$XAUTORITY -v /tmp/.X11-unix:/tmp/.X11-unix -v $PWD:/tasmania tasmania
+
+to run the container in detached mode. The flag `-v $PWD:/tasmania` attaches the current directory to the container *volume*, so that the folder :option:`/tasmania` within the container will be in sync with the repository root directory. Instead, the flags `--privileged -e DISPLAY -e XAUTHORITY:$XAUTHORITY -v /tmp/.X11-unix:/tmp/.X11-unix` are required to execute any graphical application within the container, and should then be used to, e.g., generate a plot via [Matplotlib](https://matplotlib.org/) or run a [Jupyter](http://jupyter.org/) notebook. **Note**: we are conscious of the fact that granting a container privileged rights is consider bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.
+
+When executed successfully, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:
+
+	docker exec -it CONTAINER_ID bash
+
+Here, `CONTAINER_ID` is the container identifier.

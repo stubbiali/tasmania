@@ -1,0 +1,808 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Computational domain &mdash; tasmania 0.2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="tasmania 0.2.0 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> tasmania
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain.html">Computational domain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state.html">Model state</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dynamics.html">Dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">I/O</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">tasmania</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Computational domain</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="computational-domain">
+<h1>Computational domain<a class="headerlink" href="#computational-domain" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id1">
+<h2>Computational domain<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="model">
+<h3>Model<a class="headerlink" href="#model" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="tasmania.model.Model">
+<em class="property">class </em><code class="descclassname">tasmania.model.</code><code class="descname">Model</code><span class="sig-paren">(</span><em>dycore</em>, <em>physics_before_dynamics=None</em>, <em>physics_after_dynamics=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is intended to represent and simulate a generic
+weather or climate numerical model. A model always include
+a dynamical core, and may contain physical parameterizations.
+Within a timestep, the latter could be evaluated either
+<em>before</em> or <em>after</em> the dynamics.</p>
+<dl class="method">
+<dt id="tasmania.model.Model.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>state</em>, <em>timestep</em>, <em>initial_time=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform a full timestep.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>state</strong> (<em>dictionary</em>) – Dictionary whose keys are strings denoting model state
+variables, and whose values are <code class="xref py py-class docutils literal"><span class="pre">DataArray</span></code>s
+storing the current values for those variables.</li>
+<li><strong>timestep</strong> (<em>timedelta</em>) – <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> representing the time step.</li>
+<li><strong>initial_time</strong> (<em>datetime</em>) – <code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span></code> representing the starting simulation
+time. This is used to update the (time-dependent) topography.
+If not specified, the starting time is inferred from the first
+state passed to this object.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary whose keys are strings denoting model state
+variables, and whose values are <code class="xref py py-class docutils literal"><span class="pre">DataArray</span></code>s
+storing the new values for those variables.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The passed state may be modified in-place if any adjustment-like
+parameterization is performed before the dynamical core is called.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="tasmania.model.Model.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>dycore</em>, <em>physics_before_dynamics=None</em>, <em>physics_after_dynamics=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.model.Model.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>The constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dycore</strong> (<em>obj</em>) – Instance of a derived class of <code class="xref py py-class docutils literal"><span class="pre">DynamicalCore</span></code>
+representing the dynamical core.</li>
+<li><strong>physics_before_dynamics</strong> (<cite>obj</cite>, optional) – Instance of <code class="xref py py-class docutils literal"><span class="pre">PhysicsCompositeComponent</span></code>
+wrapping the physical parameterizations to evaluate before
+the dynamics is resolved.</li>
+<li><strong>physics_after_dynamics</strong> (<cite>obj</cite>, optional) – Instance of <code class="xref py py-class docutils literal"><span class="pre">PhysicsCompositeComponent</span></code>
+wrapping the physical parameterizations to evaluate after
+the dynamics is resolved.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tasmania.namelist">
+<span id="namelist"></span><h3>Namelist<a class="headerlink" href="#module-tasmania.namelist" title="Permalink to this headline">¶</a></h3>
+<p>Configuration and global variables used throughout the package.</p>
+<dl class="docutils">
+<dt>Physical constants:</dt>
+<dd><ul class="first last simple">
+<li><code class="xref py py-data docutils literal"><span class="pre">p_ref</span></code>: Reference pressure ([<span class="math">\(Pa\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">p_sl</span></code>: Reference pressure at sea level ([<span class="math">\(Pa\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">T_sl</span></code>: Reference temperature at sea level ([<span class="math">\(K\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">beta</span></code>: Rate of increase in reference temperature with the logarithm                 of reference pressure ([<span class="math">\(K ~ Pa^{-1}\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">Rd</span></code>: Gas constant for dry air ([<span class="math">\(J ~ K^{-1} ~ Kg^{-1}\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">Rv</span></code>: Gas constant for water vapor ([<span class="math">\(J ~ K^{-1} ~ Kg^{-1}\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">cp</span></code>: Specific heat of dry air at constant pressure ([<span class="math">\(J ~ K^{-1} ~ Kg^{-1}\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">g</span></code>: Mean gravitational acceleration ([<span class="math">\(m ~ s^{-2}\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">L</span></code>: Specific latent heat of condensation of water ([<span class="math">\(J ~ kg^{-1}\)</span>]).</li>
+<li><code class="xref py py-data docutils literal"><span class="pre">rho_water</span></code>: Water density ([<span class="math">\(kg ~ m^{-3}\)</span>]).</li>
+</ul>
+</dd>
+<dt>Grid settings:</dt>
+<dd><ul class="first last">
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">domain_x</span></code>: Tuple storing the boundaries of the domain in the                <span class="math">\(x\)</span>-direction in the form (<span class="math">\(x_{west}\)</span>, <span class="math">\(x_{east}\)</span>).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">nx</span></code>: Number of grid points in the <span class="math">\(x\)</span>-direction.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">domain_y</span></code>: Tuple storing the boundaries of the domain in the                <span class="math">\(y\)</span>-direction in the form (<span class="math">\(y_{south}\)</span>, <span class="math">\(y_{north}\)</span>).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">ny</span></code>: Number of grid points in the <span class="math">\(y\)</span>-direction.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">domain_z</span></code>: Tuple storing the boundaries of the domain in the                <span class="math">\(z\)</span>-direction in the form (<span class="math">\(z_{top}\)</span>, <span class="math">\(z_{bottom}\)</span>).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">nz</span></code>: Number of grid points in the <span class="math">\(z\)</span>-direction.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">z_interface</span></code>: For a hybrid coordinate system, interface level               at which terrain-following <span class="math">\(z\)</span>-coordinate lines get back to horizontal lines.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_type</span></code>: Topography type. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘flat_terrain’;</li>
+<li>‘gaussian’;</li>
+<li>‘schaer’;</li>
+<li>‘user_defined’.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_time</span></code>: <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> object representing the elapsed             simulation time after which the topography should stop increasing.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_max_height</span></code>: When <code class="xref py py-data docutils literal"><span class="pre">topo_type</span></code> is ‘gaussian’,          maximum mountain height ([<span class="math">\(m\)</span>]).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_width_x</span></code>: When <code class="xref py py-data docutils literal"><span class="pre">topo_type</span></code> is ‘gaussian’, mountain            half-width in <span class="math">\(x\)</span>-direction ([<span class="math">\(m\)</span>]).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_width_y</span></code>: When <code class="xref py py-data docutils literal"><span class="pre">topo_type</span></code> is ‘gaussian’, mountain            half-width in <span class="math">\(y\)</span>-direction ([<span class="math">\(m\)</span>]).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_str</span></code>: When <code class="xref py py-data docutils literal"><span class="pre">topo_type</span></code> is ‘user_defined’, terrain profile             expression in the independent variables <span class="math">\(x\)</span> and <span class="math">\(y\)</span>. Must be fully C++-compliant.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_smooth</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to smooth the topography out, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">topo_kwargs</span></code>: Dictionary storing <code class="xref py py-data docutils literal"><span class="pre">topo_max_height</span></code>,                <code class="xref py py-data docutils literal"><span class="pre">topo_width_x</span></code>, <code class="xref py py-data docutils literal"><span class="pre">topo_width_y</span></code>, <code class="xref py py-data docutils literal"><span class="pre">topo_str</span></code>,          and <code class="xref py py-data docutils literal"><span class="pre">topo_smooth</span></code>.</p>
+</li>
+</ul>
+</dd>
+<dt>Model settings:</dt>
+<dd><ul class="first last">
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">model_name</span></code>: Name of the model to implement. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘isentropic_conservative’, for the isentropic model based on the conservative form                            of the governing equations;</li>
+<li>‘isentropic_nonconservative’, for the isentropic model based on the nonconservative form                              of the governing equations.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">moist_on</span></code>: <code class="xref py py-data docutils literal"><span class="pre">True</span></code> if water constituents should be taken into account,                 <code class="xref py py-data docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">horizontal_boundary_type</span></code>: Horizontal boundary conditions. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘periodic’, for periodic boundary conditions;</li>
+<li>‘relaxed’, for relaxed boundary conditions.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</dd>
+<dt>Numerical settings:</dt>
+<dd><ul class="first last">
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">time_scheme</span></code>: Time integration scheme to implement. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘forward_euler’, for the forward Euler scheme (‘isentropic_conservative’);</li>
+<li>‘centered’, for a centered time-integration scheme (‘isentropic_conservative’, ‘isentropic_nonconservative’).</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">flux_scheme</span></code>: Numerical flux to use. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘upwind’, for the upwind scheme (‘isentropic_conservative’);</li>
+<li>‘centered’, for a second-order centered scheme (‘isentropic_conservative’, ‘isentropic_nonconservative’);</li>
+<li>‘maccormack’, for the MacCormack scheme (‘isentropic_conservative’).</li>
+</ul>
+</div></blockquote>
+</li>
+<li><dl class="first docutils">
+<dt><code class="xref py py-data docutils literal"><span class="pre">damp_on</span></code>: <code class="xref py py-data docutils literal"><span class="pre">True</span></code> if (explicit) vertical damping should be applied,</dt>
+<dd><p class="first last"><code class="xref py py-data docutils literal"><span class="pre">False</span></code> otherwise. Note that when vertical damping is switched off, the numerical diffusion               coefficient is monotonically increased towards the top of the model, so to act as a diffusive wave absorber.</p>
+</dd>
+</dl>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">damp_type</span></code>: Type of vertical damping to apply. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘rayleigh’, for Rayleigh vertical damping.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">damp_depth</span></code>: Number of levels (either main levels or half levels) in the absorbing region.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">damp_max</span></code>: Maximum value which should be assumed by the damping coefficient.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_on</span></code>: <code class="xref py py-data docutils literal"><span class="pre">True</span></code> to enable numerical horizontal smoothing, <code class="xref py py-data docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_type</span></code>: Type of smoothing technique to implement. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘first_order’, for first-order smoothing;</li>
+<li>‘second_order’, for second-order smoothing.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_depth</span></code>: Number of levels (either main levels or half levels)                 in the smoothing absorbing region.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_coeff</span></code>: The smoothing coefficient.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_coeff_max</span></code>: Maximum value for the smoothing coefficient when                 smoothing vertical damping is enabled.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_moist_on</span></code>: <code class="xref py py-data docutils literal"><span class="pre">True</span></code> to enable numerical horizontal smoothing             on the moisture constituents, <code class="xref py py-data docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_moist_type</span></code>: Type of smoothing technique to apply on the moisture            constituents. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘first_order’, for first-order smoothing;</li>
+<li>‘second_order’, for second-order smoothing.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_moist_depth</span></code>: Number of levels (either main levels or half levels)           in the smoothing absorbing region for the moisture constituents.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_coeff_moist</span></code>: The smoothing coefficient for the moisture components.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">smooth_coeff_moist_max</span></code>: Maximum value for the smoothing coefficient for            the moisture components when smoothing vertical damping is enabled.</p>
+</li>
+</ul>
+</dd>
+<dt>Microphysics settings:</dt>
+<dd><ul class="first last">
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">physics_dynamics_coupling_on</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to couple physics with dynamics,                 i.e., to take the change over time in potential temperature into account, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">sedimentation_on</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to account for rain sedimentation, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">sedimentation_flux_type</span></code>: String specifying the method used to compute the numerical                sedimentation flux. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘first_order_upwind’, for the first-order upwind scheme;</li>
+<li>‘second_order_upwind’, for the second-order upwind scheme.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">sedimentation_substeps</span></code>: If rain sedimentation is switched on, number of sub-timesteps              to perform in order to integrate the sedimentation flux.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">rain_evaporation_on</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to account for rain evaporation, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">slow_tendency_microphysics_on</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to include a parameterization scheme            providing slow-varying cloud microphysical tendencies, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">slow_tendency_microphysics_type</span></code>: The name of the parameterization scheme in charge of              providing slow-varying cloud microphysical tendencies. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘kessler_wrf’, for the WRF version of the Kessler scheme.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">slow_tendency_microphysics_kwargs</span></code>: Keyword arguments for the parameterization scheme               in charge of providing slow-varying cloud microphysical tendencies. Please see          <code class="xref py py-mod docutils literal"><span class="pre">slow_tendencies</span></code> for many more details.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">fast_tendency_microphysics_on</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to include a parameterization scheme            providing fast-varying cloud microphysical tendencies, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">fast_tendency_microphysics_type</span></code>: The name of the parameterization scheme in charge of              providing fast-varying cloud microphysical tendencies. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘kessler_wrf’, for the WRF version of the Kessler scheme.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">fast_tendency_microphysics_kwargs</span></code>: Keyword arguments for the parameterization scheme               in charge of providing fast-varying cloud microphysical tendencies. Please see          <code class="xref py py-mod docutils literal"><span class="pre">fast_tendencies</span></code> for many more details.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">adjustment_microphysics_on</span></code>: <code class="xref py py-obj docutils literal"><span class="pre">True</span></code> to include a parameterization scheme               performing cloud microphysical adjustments, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">adjustment_microphysics_type</span></code>: The name of the parameterization scheme in charge            of performing cloud microphysical adjustments. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘kessler_wrf’, for the WRF version of the Kessler scheme;</li>
+<li>‘kessler_wrf_saturation’, for the WRF version of the Kessler scheme,                          carrying out only the saturation adjustment.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">adjustment_microphysics_kwargs</span></code>: Keyword arguments for the parameterization scheme          in charge of performing cloud microphysical adjustments. Please see             <code class="xref py py-mod docutils literal"><span class="pre">adjustments</span></code> for many more details.</p>
+</li>
+</ul>
+</dd>
+<dt>Simulation settings:</dt>
+<dd><ul class="first last">
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">dt</span></code>: <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> object representing the timestep.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">initial_time</span></code>: <code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span></code> representing the initial simulation time.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">simulation_time</span></code>: <code class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></code> object representing the simulation time.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">initial_state_type</span></code>: Integer identifying the initial state. See the documentation for the method            <code class="xref py py-meth docutils literal"><span class="pre">get_initial_state()</span></code> of              <code class="xref py py-class docutils literal"><span class="pre">DycoreIsentropic</span></code>.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">x_velocity_initial</span></code>: The initial, uniform <span class="math">\(x\)</span>-velocity ([<span class="math">\(m s^{-1}\)</span>]).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">y_velocity_initial</span></code>: The initial, uniform <span class="math">\(y\)</span>-velocity ([<span class="math">\(m s^{-1}\)</span>]).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">brunt_vaisala_initial</span></code>: The initial, uniform Brunt-Vaisala frequency.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">temperature_initial</span></code>: The initial, uniform temperature ([<span class="math">\(K\)</span>]).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">initial_state_kwargs</span></code>: Dictionary storing <code class="xref py py-data docutils literal"><span class="pre">x_velocity_initial</span></code>,            <code class="xref py py-data docutils literal"><span class="pre">y_velocity_initial</span></code>, <code class="xref py py-data docutils literal"><span class="pre">brunt_vaisala_initial</span></code>,                and <code class="xref py py-data docutils literal"><span class="pre">temperature_initial</span></code>.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">backend</span></code>: GT4Py backend to use. Available options are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="xref py py-data docutils literal"><span class="pre">gridtools.mode.NUMPY</span></code>: Numpy (i.e., vectorized) backend.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">save_iterations</span></code>: List of the iterations at which the state should be saved.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">save_dest</span></code>: Path to the location where results should be saved.</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">tol</span></code>: Tolerance used to compare floats (see <code class="xref py py-mod docutils literal"><span class="pre">utils</span></code>).</p>
+</li>
+<li><p class="first"><code class="xref py py-data docutils literal"><span class="pre">datatype</span></code>: Datatype for <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a>. Either <code class="xref py py-data docutils literal"><span class="pre">np.float32</span></code> or <code class="xref py py-data docutils literal"><span class="pre">np.float64</span></code>.</p>
+</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="parameterizations">
+<h3>Parameterizations<a class="headerlink" href="#parameterizations" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="microphysics">
+<h4>Microphysics<a class="headerlink" href="#microphysics" title="Permalink to this headline">¶</a></h4>
+</div>
+</div>
+<div class="section" id="storages">
+<h3>Storages<a class="headerlink" href="#storages" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="topography">
+<h3>Topography<a class="headerlink" href="#topography" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="parsers">
+<h4>Parsers<a class="headerlink" href="#parsers" title="Permalink to this headline">¶</a></h4>
+<dl class="class">
+<dt id="tasmania.grids.parser.parser_1d.Parser1d">
+<em class="property">class </em><code class="descclassname">tasmania.grids.parser.parser_1d.</code><code class="descname">Parser1d</code><a class="headerlink" href="#tasmania.grids.parser.parser_1d.Parser1d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cython wrapper for the C++ class <code class="xref py py-obj docutils literal"><span class="pre">parser_1d_cpp</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>parser</strong> (<em>obj</em>) – Pointer to a <code class="xref py py-obj docutils literal"><span class="pre">parser_1d_cpp</span></code> object.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="tasmania.grids.parser.parser_1d.Parser1d.evaluate">
+<code class="descname">evaluate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.grids.parser.parser_1d.Parser1d.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the expression.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> of the evaluations.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tasmania.grids.parser.parser_2d.Parser2d">
+<em class="property">class </em><code class="descclassname">tasmania.grids.parser.parser_2d.</code><code class="descname">Parser2d</code><a class="headerlink" href="#tasmania.grids.parser.parser_2d.Parser2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cython wrapper for the C++ class <code class="xref py py-obj docutils literal"><span class="pre">parser_2d_cpp</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>parser</strong> (<em>obj</em>) – Pointer to a <code class="xref py py-obj docutils literal"><span class="pre">parser_2d_cpp</span></code> object.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="tasmania.grids.parser.parser_2d.Parser2d.evaluate">
+<code class="descname">evaluate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.grids.parser.parser_2d.Parser2d.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the expression.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Two-dimensional <a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.13)"><code class="xref py py-class docutils literal"><span class="pre">numpy.ndarray</span></code></a> of the evaluations.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="utilities">
+<h3>Utilities<a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="module-tasmania.utils.utils">
+<span id="general-purpose-utilities"></span><h4>General-purpose utilities<a class="headerlink" href="#module-tasmania.utils.utils" title="Permalink to this headline">¶</a></h4>
+<dl class="function">
+<dt id="tasmania.utils.utils.convert_datetime64_to_datetime">
+<code class="descclassname">tasmania.utils.utils.</code><code class="descname">convert_datetime64_to_datetime</code><span class="sig-paren">(</span><em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.utils.convert_datetime64_to_datetime" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert <code class="xref py py-class docutils literal"><span class="pre">numpy.datetime64</span></code> to <code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>time</strong> (<em>obj</em>) – The <code class="xref py py-class docutils literal"><span class="pre">numpy.datetime64</span></code> object to convert.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The converted <code class="xref py py-class docutils literal"><span class="pre">datetime.datetime</span></code> object.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">obj</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<p><a class="reference external" href="https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64">https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64</a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tasmania.utils.utils.equal_to">
+<code class="descclassname">tasmania.utils.utils.</code><code class="descname">equal_to</code><span class="sig-paren">(</span><em>a</em>, <em>b</em>, <em>tol=1e-08</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.utils.equal_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare floating point numbers, or arrays of floating point numbers,
+properly accounting for round-off errors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<cite>float</cite> or <cite>array_like</cite>) – Left-hand side.</li>
+<li><strong>b</strong> (<cite>float</cite> or <cite>array_like</cite>) – Right-hand side.</li>
+<li><strong>tol</strong> (<cite>float</cite>, optional) – Tolerance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> if <code class="xref py py-data docutils literal"><span class="pre">a</span></code> is equal to <code class="xref py py-data docutils literal"><span class="pre">b</span></code> up to <code class="xref py py-data docutils literal"><span class="pre">tol</span></code>,
+<code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tasmania.utils.utils.greater_or_equal_than">
+<code class="descclassname">tasmania.utils.utils.</code><code class="descname">greater_or_equal_than</code><span class="sig-paren">(</span><em>a</em>, <em>b</em>, <em>tol=1e-08</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.utils.greater_or_equal_than" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare floating point numbers, or arrays of floating point numbers,
+properly accounting for round-off errors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<cite>float</cite> or <cite>array_like</cite>) – Left-hand side.</li>
+<li><strong>b</strong> (<cite>float</cite> or <cite>array_like</cite>) – Right-hand side.</li>
+<li><strong>tol</strong> (<cite>float</cite>, optional) – Tolerance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> if <code class="xref py py-data docutils literal"><span class="pre">a</span></code> is greater than or equal to <code class="xref py py-data docutils literal"><span class="pre">b</span></code>
+up to <code class="xref py py-data docutils literal"><span class="pre">tol</span></code>, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tasmania.utils.utils.greater_than">
+<code class="descclassname">tasmania.utils.utils.</code><code class="descname">greater_than</code><span class="sig-paren">(</span><em>a</em>, <em>b</em>, <em>tol=1e-08</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.utils.greater_than" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare floating point numbers, or arrays of floating point numbers,
+properly accounting for round-off errors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<cite>float</cite> or <cite>array_like</cite>) – Left-hand side.</li>
+<li><strong>b</strong> (<cite>float</cite> or <cite>array_like</cite>) – Right-hand side.</li>
+<li><strong>tol</strong> (<cite>float</cite>, optional) – Tolerance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> if <code class="xref py py-data docutils literal"><span class="pre">a</span></code> is greater than <code class="xref py py-data docutils literal"><span class="pre">b</span></code> up to <code class="xref py py-data docutils literal"><span class="pre">tol</span></code>,
+<code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tasmania.utils.utils.smaller_or_equal_than">
+<code class="descclassname">tasmania.utils.utils.</code><code class="descname">smaller_or_equal_than</code><span class="sig-paren">(</span><em>a</em>, <em>b</em>, <em>tol=1e-08</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.utils.smaller_or_equal_than" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare floating point numbers or arrays of floating point numbers,
+properly accounting for round-off errors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<cite>float</cite> or <cite>array_like</cite>) – Left-hand side.</li>
+<li><strong>b</strong> (<cite>float</cite> or <cite>array_like</cite>) – Right-hand side.</li>
+<li><strong>tol</strong> (<cite>float</cite>, optional) – Tolerance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> if <code class="xref py py-data docutils literal"><span class="pre">a</span></code> is smaller than or equal to <code class="xref py py-data docutils literal"><span class="pre">b</span></code>
+up to <code class="xref py py-data docutils literal"><span class="pre">tol</span></code>, <code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tasmania.utils.utils.smaller_than">
+<code class="descclassname">tasmania.utils.utils.</code><code class="descname">smaller_than</code><span class="sig-paren">(</span><em>a</em>, <em>b</em>, <em>tol=1e-08</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.utils.utils.smaller_than" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare floating point numbers, or arrays of floating point numbers,
+properly accounting for round-off errors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>a</strong> (<cite>float</cite> or <cite>array_like</cite>) – Left-hand side.</li>
+<li><strong>b</strong> (<cite>float</cite> or <cite>array_like</cite>) – Right-hand side.</li>
+<li><strong>tol</strong> (<cite>float</cite>, optional) – Tolerance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><code class="xref py py-obj docutils literal"><span class="pre">True</span></code> if <code class="xref py py-data docutils literal"><span class="pre">a</span></code> is smaller than <code class="xref py py-data docutils literal"><span class="pre">b</span></code> up to <code class="xref py py-data docutils literal"><span class="pre">tol</span></code>,
+<code class="xref py py-obj docutils literal"><span class="pre">False</span></code> otherwise.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<span class="target" id="module-tasmania.set_namelist"></span><dl class="function">
+<dt id="tasmania.set_namelist.set_namelist">
+<code class="descclassname">tasmania.set_namelist.</code><code class="descname">set_namelist</code><span class="sig-paren">(</span><em>user_namelist=None</em><span class="sig-paren">)</span><a class="headerlink" href="#tasmania.set_namelist.set_namelist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Place the user-defined namelist module in the Python search path.
+This is achieved by physically copying the content of the user-provided module into TASMANIA_ROOT/namelist.py.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>user_namelist</strong> (<em>str</em>) – Path to the user-defined namelist. If not specified, the default namelist TASMANIA_ROOT/_namelist.py is used.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="meteo-utilities">
+<h4>Meteo utilities<a class="headerlink" href="#meteo-utilities" title="Permalink to this headline">¶</a></h4>
+</div>
+<div class="section" id="plotting-utilities">
+<h4>Plotting utilities<a class="headerlink" href="#plotting-utilities" title="Permalink to this headline">¶</a></h4>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Stefano Ubbiali.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.2.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
