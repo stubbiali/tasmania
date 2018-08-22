@@ -1,0 +1,271 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation &mdash; tasmania 0.2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="tasmania 0.2.0 documentation" href="index.html"/>
+        <link rel="next" title="Computational domain" href="domain.html"/>
+        <link rel="prev" title="Introduction" href="introduction.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> tasmania
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain.html">Computational domain</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state.html">Model state</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dynamics.html">Dynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot.html">Plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">I/O</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">tasmania</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Installation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/installation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>To clone the Tasmania repository on your machine and place yourself on the branch <code class="xref std std-option docutils literal"><span class="pre">BRANCH</span></code>, from within a terminal run:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/eth-cscs/tasmania.git
+<span class="nb">cd</span> tasmania
+git checkout BRANCH
+</pre></div>
+</div>
+<p>Then, enter the folder <code class="xref std std-option docutils literal"><span class="pre">docker/</span></code> and type</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>git clone https://github.com/eth-cscs/gridtools4py.git
+<span class="nb">cd</span> gridtools4py
+git checkout merge_ubbiali
+</pre></div>
+</div>
+<p>to clone the GridTools4Py repository. <strong>Note</strong>: both Tasmania and GridTools4Py repositories are <em>private</em>, so you should be given access to them in order to accomplish the steps above.</p>
+<p>We suggest to run any application relying on Tasmania inside a <a class="reference external" href="https://www.docker.com/">Docker</a> container, spawn from a provided image. To create a local instance of the image, named <code class="xref std std-option docutils literal"><span class="pre">tasmania</span></code>, from the repository root directory issue</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build --build-arg <span class="nv">uid</span><span class="o">=</span><span class="k">$(</span>id -u<span class="k">)</span> -t tasmania .
+</pre></div>
+</div>
+<p>Later, launch</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker run --rm -dit --privileged -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v <span class="nv">$PWD</span>:/tasmania tasmania
+</pre></div>
+</div>
+<p>to run the container in detached mode. The flag <code class="xref std std-option docutils literal"><span class="pre">-v</span> <span class="pre">$PWD:/tasmania</span></code> attaches the current directory to the container <em>volume</em>, so that the folder <code class="xref std std-option docutils literal"><span class="pre">/tasmania</span></code> within the container will be in sync with the repository root directory. Instead, the flags <code class="xref std std-option docutils literal"><span class="pre">--privileged</span> <span class="pre">-e</span> <span class="pre">DISPLAY</span> <span class="pre">-e</span> <span class="pre">XAUTHORITY:$XAUTHORITY</span> <span class="pre">-v</span> <span class="pre">/tmp/.X11-unix:/tmp/.X11-unix</span></code> are required to execute any graphical application within the container, and should then be used to, e.g., generate a plot via <a class="reference external" href="https://matplotlib.org/">Matplotlib</a> or run a <a class="reference external" href="http://jupyter.org/">Jupyter</a> notebook. <strong>Note</strong>: we are conscious of the fact that granting a container privileged rights is consider bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.</p>
+<p>When successful, the previous command returns a long sequence of letters and digits, representing the container identifier. This is required to gain shell access to the running container:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker <span class="nb">exec</span> -it CONTAINER_ID bash
+</pre></div>
+</div>
+<p>Here, <code class="xref std std-option docutils literal"><span class="pre">CONTAINER_ID</span></code> is the container identifier.</p>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="domain.html" class="btn btn-neutral float-right" title="Computational domain" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="introduction.html" class="btn btn-neutral" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Stefano Ubbiali.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.2.0',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
