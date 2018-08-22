@@ -1,0 +1,58 @@
+========
+Plotting
+========
+
+Artists
+=======
+
+.. autoclass:: tasmania.plot.plot_monitors.Plot1d
+   :members:
+
+.. autoclass:: tasmania.plot.plot_monitors.Plot2d
+   :members:
+
+.. autoclass:: tasmania.plot.plot_monitors.Plot3d
+   :members:
+   
+Plots overlapper and subplots assembler
+=======================================
+
+.. autoclass:: tasmania.plot.assemblers.PlotsOverlapper
+   :members:
+
+.. autoclass:: tasmania.plot.assemblers.SubplotsAssembler
+   :members:
+
+Animation
+=========
+
+.. autoclass:: tasmania.plot.animation.Animation
+   :members:
+
+Plot functions
+==============
+
+1-D plot functions
+------------------
+
+.. autofunction:: tasmania.plot.profile_1d.plot_horizontal_profile
+
+.. autofunction:: tasmania.plot.profile_1d.plot_vertical_profile
+
+.. autofunction:: tasmania.plot.profile_1d.plot_vertical_profile_with_respect_to_vertical_height
+
+2-D plot functions
+------------------
+
+.. autofunction:: tasmania.plot.contour_xz.make_contour_xz
+
+.. autofunction:: tasmania.plot.contourf_xy.make_contourf_xy
+
+.. autofunction:: tasmania.plot.contourf_xz.make_contourf_xz
+
+.. autofunction:: tasmania.plot.quiver_xy.make_quiver_xy
+
+3-D plot functions
+------------------
+
+.. autofunction:: tasmania.plot.topography.plot_topography_3d
