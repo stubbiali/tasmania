@@ -23,8 +23,6 @@ Installation
 To clone this repository on your machine and place yourself on the current branch, from within a terminal run:
 
 	git clone https://github.com/eth-cscs/tasmania.git
-	cd tasmania
-	git checkout sympl-compliant
 
 Then, enter the folder `docker/` and type
 
