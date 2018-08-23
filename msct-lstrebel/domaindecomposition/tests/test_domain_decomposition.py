@@ -26,7 +26,9 @@ import numpy as np
 from mpi4py import MPI
 
 import gridtools as gt
-from domain_decomposition import DomainDecomposition, DomainSubdivision, DomainPartitions, DomainPreprocess
+from domain_decomposition import DomainDecomposition, DomainSubdivision, DomainPartitions
+from dd_postprocess import DomainPostprocess
+from dd_preprocess import DomainPreprocess
 
 
 def test_stencil_mult(const, in_u):
@@ -613,7 +615,8 @@ class TestDD(unittest.TestCase):
                                         pid=0,
                                         size=np.array([size_x, size_y, size_z]),
                                         global_coords=np.array([0, size_x, 0, size_y, 0, size_z]),
-                                        neighbors_id=np.array([None, 1, None, None, None, None]))
+                                        neighbors_id=np.array([None, 1, None, None, None, None]),
+                                        onesided=True)
             slist = [subdiv0]
             subdiv0.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp]) #,
                                    # field_bc_file="test_boundary_condition.npy")
@@ -638,7 +641,8 @@ class TestDD(unittest.TestCase):
                                         pid=1,
                                         size=np.array([size_x, size_y, size_z]),
                                         global_coords=np.array([size_x, size_x+size_x, 0, size_y, 0, size_z]),
-                                        neighbors_id=np.array([0, None, None, None, None, None]))
+                                        neighbors_id=np.array([0, None, None, None, None, None]),
+                                        onesided=True)
             slist = [subdiv1]
             subdiv1.register_field(fieldname="unow", halo=[hxm, hxp, hym, hyp, hzm, hzp]) #,
                                    # field_bc_file="test_boundary_condition.npy")

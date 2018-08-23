@@ -60,10 +60,10 @@ class DomainPostprocess:
             if ((save_freq > 0) and (n % save_freq == 0)) or (n + 1 == nt):
                 unew = self.combine_output_files(size=[nx, ny, nz], fieldname="unew",
                                                  path=self.path, prefix=self.prefix,
-                                                 postfix="t_"+str(n), save=False, cleanup=cleanup)
+                                                 postfix="t_"+str(n + 1), save=False, cleanup=cleanup)
                 vnew = self.combine_output_files(size=[nx, ny, nz], fieldname="vnew",
                                                  path=self.path, prefix=self.prefix,
-                                                 postfix="t_"+str(n), save=False, cleanup=cleanup)
+                                                 postfix="t_"+str(n + 1), save=False, cleanup=cleanup)
                 tsave.append(timedelta(seconds=n * dt))
                 usave = np.concatenate((usave, unew), axis=2)
                 vsave = np.concatenate((vsave, vnew), axis=2)

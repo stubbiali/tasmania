@@ -30,6 +30,8 @@ This module contains
 import numpy as np
 import warnings
 import pickle
+import sys
+
 
 from mpi4py import MPI
 
@@ -64,7 +66,7 @@ class DomainPartitions:
 
 
 class DomainSubdivision:
-    def __init__(self, id, pid, size, global_coords, neighbors_id, onesided=False):
+    def __init__(self, id, pid, size, global_coords, neighbors_id, onesided=True):
         self.id = id
         self.partitions_id = pid
         self.global_coords = global_coords
@@ -80,7 +82,7 @@ class DomainSubdivision:
         self.get_local = {}
         self.get_global = {}
         self.onesided = onesided
-        if onesided:
+        if self.onesided:
             self.onesided_buffers = {}
             self.onesided_windows = {}
 
@@ -413,16 +415,68 @@ class DomainSubdivision:
     def communicate(self, fieldname=None):
         if fieldname is None:
             for k in self.halos.keys():
-                self.communicate_field(k)
+                if self.onesided:
+                    self.communicate_one_way_field(k)
+                else:
+                    self.communicate_field(k)
         else:
-            self.communicate_field(fieldname)
+            if self.onesided:
+                self.communicate_one_way_field(fieldname)
+            else:
+                self.communicate_field(fieldname)
+
+    def communicate_one_way_field(self, fieldname):
+        # temp_buffer = [None] * len(self.neighbors_id)
+        # for d in range(len(self.neighbors_id)):
+            # if self.halos[fieldname][d] != 0:
+            # temp_buffer[d] = np.ones_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
+            # self.communicate_external_update_buffer(fieldname, d)
+                # print(MPI.COMM_WORLD.Get_rank(), d, self.onesided_buffers[fieldname][d])
+                # sys.stdout.flush()
+        if MPI.COMM_WORLD.Get_size() > 1:
+            for d in range(len(self.neighbors_id)):
+                if self.halos[fieldname][d] != 0:
+                    if self.neighbors_id[d] is not None:
+                        fixed_neighbor = DomainPartitions.domain_partitions[self.neighbors_id[d]]
+                    else:
+                        fixed_neighbor = None #MPI.COMM_WORLD.Get_rank()
+
+                    if d % 2 == 0:
+                        cd = d + 1
+                    else:
+                        cd = d - 1
+
+                    # print(MPI.COMM_WORLD.Get_rank(), d, fixed_neighbor)
+                    # print(temp_buffer[d])
+                    self.communicate_external_get(fieldname,
+                                                  np.ascontiguousarray(self.fields[fieldname][self.get_local[fieldname][cd]]), #temp_buffer[d],
+                                                  d,
+                                                  fixed_neighbor)
+
+                # print(self.onesided_buffers[fieldname][d])
+
+        # Iterate over all neighbors i.e. all directions:
+        for d in range(len(self.neighbors_id)):
+            if self.halos[fieldname][d] != 0:
+                # Check if neighbor in current direction is the global boundary:
+                if not self.check_global_boundary(d):
+                    # Check if neighbor in current direction is local or external and communicate accordingly:
+                    if self.check_local(d) or MPI.COMM_WORLD.Get_size() == 1:
+                            self.communicate_local(fieldname,
+                                                   self.recv_slices[fieldname][d],
+                                                   self.get_local[fieldname][d],
+                                                   d)
+                    else: # temp_buffer[d]
+                        self.communicate_external_update_halo(fieldname, d)
 
     def communicate_field(self, fieldname):
         requests = [None] * 2 * len(self.neighbors_id)
         temp_buffer = [None] * len(self.neighbors_id)
-        # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
             temp_buffer[d] = np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
+        # Iterate over all neighbors i.e. all directions:
+        for d in range(len(self.neighbors_id)):
+            # temp_buffer[d] = np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
             # Check if neighbor in current direction is the global boundary:
             if self.check_global_boundary(d):
                 # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
@@ -438,6 +492,7 @@ class DomainSubdivision:
                                                d)
                 else:
                     if self.halos[fieldname][d] != 0:
+                        # Communicate two-way
                         if MPI.COMM_WORLD.Get_rank() % 2 == 0:
                                 requests[2 * d] = self.communicate_external_send(
                                     fieldname,
@@ -463,8 +518,8 @@ class DomainSubdivision:
                     else:
                         requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
 
+        # Update halo regions after receiving all boundaries
         if MPI.COMM_WORLD.Get_size() > 1:
-            # print(requests)
             MPI.Request.waitall(requests)
 
             for d in range(len(self.neighbors_id)):
@@ -492,10 +547,35 @@ class DomainSubdivision:
         req = MPI.COMM_WORLD.Irecv(temp_buffer[:], source=recv_id)
         return req
 
-    def communicate_external_get(self, fieldname, temp_buffer, recv_id):
-        self.onesided_windows[fieldname].Fence()
-        self.onesided_windows[fieldname].Get(origin=temp_buffer, target_rank=recv_id)
-        self.onesided_windows[fieldname].Fence()
+    def communicate_external_get(self, fieldname, temp_buffer, direction, recv_id):
+        # print(MPI.COMM_WORLD.Get_rank(), direction, recv_id)
+        # print(temp_buffer[:])
+        self.onesided_windows[fieldname][direction].Fence()
+        # print(MPI.COMM_WORLD.Get_rank(), direction, recv_id)
+        # sys.stdout.flush()
+        if recv_id is not None:
+            # print("Not None:", MPI.COMM_WORLD.Get_rank(), direction, recv_id)
+            # sys.stdout.flush()
+            self.onesided_windows[fieldname][direction].Put(origin=temp_buffer[:], target_rank=recv_id)
+        self.onesided_windows[fieldname][direction].Fence()
+
+        # if recv_id is not None:
+        #     print(temp_buffer[:])
+        #     sys.stdout.flush()
+
+
+    def communicate_external_update_buffer(self, fieldname, d):
+        self.onesided_buffers[fieldname][d] = self.fields[fieldname][self.get_local[fieldname][d]]
+
+    def communicate_external_update_halo(self, fieldname, direction):
+        # print(temp_buffer[:])
+        # self.onesided_windows[fieldname][direction].Fence()
+        if direction % 2 == 0:
+            cd = direction + 1
+        else:
+            cd = direction - 1
+        self.fields[fieldname][self.recv_slices[fieldname][direction]] = self.onesided_buffers[fieldname][cd]#temp_buffer[:]
+        # self.onesided_windows[fieldname][direction].Fence()
 
     def check_local(self, direction):
         return self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[direction]]
