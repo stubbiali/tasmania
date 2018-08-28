@@ -89,7 +89,8 @@ class DomainSubdivision:
     def set_boundary_condition(self, fieldname, direction, array):
         self.global_bc_arr[fieldname][direction] = array
 
-    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None, staggered=None):
+    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None,
+                       staggered=None, haloincluded=False):
         self.halos[fieldname] = halo
         if staggered is None:
             staggered = (0, 0, 0)
@@ -101,13 +102,27 @@ class DomainSubdivision:
                                                self.size[1] - staggered[1] + halo[2] + halo[3],
                                                self.size[2] - staggered[2] + halo[4] + halo[5]))
 
+        # print(fieldname, haloincluded)
+
         if field_ic_file is not None:
-            self.fields[fieldname][halo[0]:None if halo[1] == 0 else -halo[1],
-                                   halo[2]:None if halo[3] == 0 else -halo[3],
-                                   halo[4]:None if halo[5] == 0 else -halo[5]] = np.load(
-                field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1] - staggered[0],
-                                              self.global_coords[2]:self.global_coords[3] - staggered[1],
-                                              self.global_coords[4]:self.global_coords[5] - staggered[2]]
+            if not haloincluded:
+                self.fields[fieldname][halo[0]:None if halo[1] == 0 else -halo[1],
+                                       halo[2]:None if halo[3] == 0 else -halo[3],
+                                       halo[4]:None if halo[5] == 0 else -halo[5]] = np.load(
+                    field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1] - staggered[0],
+                                                  self.global_coords[2]:self.global_coords[3] - staggered[1],
+                                                  self.global_coords[4]:self.global_coords[5] - staggered[2]]
+            else:
+                # print(self.fields[fieldname].shape)
+                self.fields[fieldname][:, :, :] = np.load(
+                    field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1]
+                                                                        + halo[0] + halo[1] - staggered[0],
+                                                  self.global_coords[2]:self.global_coords[3]
+                                                                        + halo[2] + halo[3] - staggered[1],
+                                                  self.global_coords[4]:self.global_coords[5]
+                                                                        + halo[4] + halo[5] - staggered[2]]
+                # print(self.fields[fieldname][:, :, :])
+                # print(np.where(self.fields[fieldname][:, :, :] == 0.0))
 
         self.global_bc[fieldname] = field_bc_file
         self.global_bc_arr[fieldname] = [None, None, None, None, None, None]
@@ -626,9 +641,10 @@ class DomainDecomposition:
         with open(path + prefix + "subdivisions.pkl", "rb") as f:
             return pickle.load(f)
 
-    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None, staggered=None):
+    def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None,
+                       staggered=None, haloincluded=False):
         for sd in self.subdivisions:
-            sd.register_field(fieldname, halo, field_ic_file, field_bc_file, staggered)
+            sd.register_field(fieldname, halo, field_ic_file, field_bc_file, staggered, haloincluded)
 
     def register_stencil(self, **kwargs):
         dds = DomainDecompositionStencil()
