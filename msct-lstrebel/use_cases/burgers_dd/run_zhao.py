@@ -81,7 +81,7 @@ def run_zhao():
 
     # Register fields and stencils to the DomainDecomposition class:
     prepared_domain = DomainDecomposition("subdomains_pymetis.dat.part." + str(nparts), "metis",
-                                          path=path, prefix=prefix)
+                                          path=path, prefix=prefix, comm_onesided=onesided)
 
     prepared_domain.register_field(fieldname="unow",
                                    halo=halo,
@@ -205,6 +205,8 @@ if __name__ == "__main__":
                         help="Path to location where files should be saved to.")
     parser.add_argument("-pf", default="", type=str,
                         help="Prefix for file names.")
+    parser.add_argument("-ow", default=False, type=bool,
+                        help="Flag if MPI communication should use one sided communications.")
     args = parser.parse_args()
 
     domain = [(0, 0), (1, 1)]
@@ -223,7 +225,11 @@ if __name__ == "__main__":
     path = args.loc
     prefix = args.pf
 
+    onesided = args.ow
+
     run_zhao()
+
+
     MPI.COMM_WORLD.Barrier()
     if MPI.COMM_WORLD.Get_rank() == 0:
         if save_freq > 0:

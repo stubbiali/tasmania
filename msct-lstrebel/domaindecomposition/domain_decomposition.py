@@ -66,7 +66,7 @@ class DomainPartitions:
 
 
 class DomainSubdivision:
-    def __init__(self, id, pid, size, global_coords, neighbors_id, onesided=False):
+    def __init__(self, id, pid, size, global_coords, neighbors_id):
         self.id = id
         self.partitions_id = pid
         self.global_coords = global_coords
@@ -81,10 +81,9 @@ class DomainSubdivision:
         self.send_slices = {}
         self.get_local = {}
         self.get_global = {}
-        self.onesided = onesided
-        if self.onesided:
-            self.onesided_buffers = {}
-            self.onesided_windows = {}
+        self.onesided = False
+        self.onesided_buffers = {}
+        self.onesided_windows = {}
 
     def set_boundary_condition(self, fieldname, direction, array):
         self.global_bc_arr[fieldname][direction] = array
@@ -609,7 +608,7 @@ class DomainDecompositionStencil:
 
 
 class DomainDecomposition:
-    def __init__(self, fileinput=None, fileinputformat=None, path="", prefix=""):
+    def __init__(self, fileinput=None, fileinputformat=None, path="", prefix="", comm_onesided=False):
         self.subdivisions = self.load_subdivisions(path=path, prefix=prefix)
         self.path = path
         self.prefix = prefix
@@ -635,6 +634,10 @@ class DomainDecomposition:
 
         for sd in self.subdivisions:
             sd.neighbor_list = self.subdivisions
+
+        if comm_onesided:
+            for sd in self.subdivisions:
+                sd.onesided = True
 
     @staticmethod
     def load_subdivisions(path="", prefix=""):
