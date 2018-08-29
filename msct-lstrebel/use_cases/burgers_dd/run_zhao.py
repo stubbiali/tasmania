@@ -118,7 +118,8 @@ def run_zhao():
     timer.stop(name="Initialization")
     timer.start(name="Time integration", level=2)
 
-    prepared_domain.save_fields(["unew", "vnew"], postfix="t_" + str(0))
+    if save_freq > 0:
+        prepared_domain.save_fields(["unew", "vnew"], postfix="t_" + str(0))
 
     # Time integration
     for n in range(nt):
@@ -164,7 +165,7 @@ def run_zhao():
 
         timer.start(name="Saving fields during time integration", level=3)
         # Save
-        if ((save_freq > 0) and (n % save_freq == 0)) or (n + 1 == nt):
+        if ((save_freq > 0) and (n % save_freq == 0)) or (save_freq >= 0 and (n + 1 == nt)):
             prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n + 1))
         timer.stop(name="Saving fields during time integration")
 
@@ -225,4 +226,5 @@ if __name__ == "__main__":
     run_zhao()
     MPI.COMM_WORLD.Barrier()
     if MPI.COMM_WORLD.Get_rank() == 0:
-        postprocess_zhao()
+        if save_freq > 0:
+            postprocess_zhao()

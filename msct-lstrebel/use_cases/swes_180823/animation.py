@@ -205,12 +205,12 @@ def ess_movie_maker(filename, field_to_plot, projection='plate_carree',
 				cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
 			else:
 				cm = plt.get_cmap(cmap_name)
-
+			# print(h[:, :, 0])
 			for n in range(nt):
 				if n > 0:
 					for coll in surf.collections:
 						plt.gca().collections.remove(coll) 
-			
+
 				surf = plt.contourf(x, y, h[:, :, n], color_scale, transform=proj, cmap=cm)
 
 				plt.title('Fluid height [m]', loc='left', fontsize=fontsize-1)

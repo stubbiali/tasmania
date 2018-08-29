@@ -66,7 +66,7 @@ class DomainPartitions:
 
 
 class DomainSubdivision:
-    def __init__(self, id, pid, size, global_coords, neighbors_id, onesided=True):
+    def __init__(self, id, pid, size, global_coords, neighbors_id, onesided=False):
         self.id = id
         self.partitions_id = pid
         self.global_coords = global_coords

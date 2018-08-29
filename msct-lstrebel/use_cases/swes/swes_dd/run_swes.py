@@ -226,7 +226,7 @@ class LaxWendroffSWES:
 
         # TODO maybe this belongs to preprocess?
         # Compute minimum longitudinal and latitudinal distance between
-        # adjacent grid points, needed to compute timestep size through
+        # adjacent grid points, needed to compute time step size through
         # CFL condition
         dx_min = []
         dy_min = []
@@ -300,11 +300,7 @@ class LaxWendroffSWES:
             n, t = 0, 0.
 
             # Communicate partition boundaries
-            for sd in self.prepared_domain.subdivisions:
-                np.save(str(sd.id) + "testh_before.npy", sd.fields["h"])
             self.prepared_domain.communicate("h")
-            for sd in self.prepared_domain.subdivisions:
-                np.save(str(sd.id) + "testh_after.npy", sd.fields["h"])
             self.prepared_domain.communicate("h_new")
             self.prepared_domain.communicate("dx")
             self.prepared_domain.communicate("dxc")
