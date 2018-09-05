@@ -137,16 +137,14 @@ class LaxWendroffSWES:
         # Initialize timestep size
         self.dt = gt.Global(0.)
 
-        #
-        # Flat terrain height
-        #
-        self.hs = np.zeros((self.m + 3, self.n), dtype=dtype)
+        self.g = gt.Global(self.g)
+        self.a = gt.Global(self.a)
 
         #
         # Numerical settings
         #
-        assert ic[0] in range(3), 'Invalid problem identifier. ' \
-                                  'See code documentation for supported initial conditions.'
+        assert ic[0] in range(3), "Invalid problem identifier. " \
+                                  "See code documentation for supported initial conditions."
 
         self.ic = ic
         self.diffusion = diff
@@ -162,82 +160,129 @@ class LaxWendroffSWES:
         self.prepared_domain = DomainDecomposition("subdomains_pymetis.dat.part." + str(nparts), "metis",
                                               path=path, prefix=prefix)
 
-        self.halo = [1, 1, 1, 1, 0, 0]
+        if self.only_advection:
+            self.halo = [1, 1, 1, 1, 0, 0]
+        else:
+            self.halo = [1, 1, 1, 1, 0, 0]
+
+        self.prepared_domain.register_field(fieldname="h",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy")
+
+        self.prepared_domain.register_field(fieldname="dx",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dx.npy")
+
+        self.prepared_domain.register_field(fieldname="dxc",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dxc.npy",
+                                            haloincluded=True)
+
+        self.prepared_domain.register_field(fieldname="dy",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dy.npy",
+                                            staggered=(0, 1, 0),
+                                            haloincluded=True)
+
+        self.prepared_domain.register_field(fieldname="dy1",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dy1.npy",
+                                            staggered=(0, 1, 0),
+                                            haloincluded=True)
+
+        self.prepared_domain.register_field(fieldname="dy1c",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dy1c.npy",
+                                            haloincluded=True)
+
+        self.prepared_domain.register_field(fieldname="c",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c.npy")
+
+        self.prepared_domain.register_field(fieldname="c_midy",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c_midy.npy",
+                                            staggered=(0, 1, 0))
+
+        self.prepared_domain.register_field(fieldname="u",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy")
+
+        self.prepared_domain.register_field(fieldname="v",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy")
+
+        self.prepared_domain.register_field(fieldname="h_new",
+                                            halo=self.halo,
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy")
 
         if self.only_advection:
-            self.prepared_domain.register_field(fieldname="h",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy")
-
-            self.prepared_domain.register_field(fieldname="dx",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dx.npy")
-
-            self.prepared_domain.register_field(fieldname="dxc",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dxc.npy",
-                                                haloincluded=True)
-
-            self.prepared_domain.register_field(fieldname="dy",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dy.npy",
-                                                staggered=(0, 1, 0))
-
-            self.prepared_domain.register_field(fieldname="dy1",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dy1.npy",
-                                                staggered=(0, 1, 0),
-                                                haloincluded=True)
-
-            self.prepared_domain.register_field(fieldname="dy1c",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dy1c.npy",
-                                                haloincluded=True)
-
-            self.prepared_domain.register_field(fieldname="c",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c.npy")
-
-            self.prepared_domain.register_field(fieldname="c_midy",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c_midy.npy",
-                                                staggered=(0, 1, 0))
-
-            self.prepared_domain.register_field(fieldname="u",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy")
-
-            self.prepared_domain.register_field(fieldname="u_midx",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u_midx.npy")
-
-            self.prepared_domain.register_field(fieldname="v",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy")
-
             self.prepared_domain.register_field(fieldname="v_midy",
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v_midy.npy",
                                                 staggered=(0, 1, 0))
 
-            self.prepared_domain.register_field(fieldname="h_new",
+            self.prepared_domain.register_field(fieldname="u_midx",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u_midx.npy")
 
-        # TODO maybe this belongs to preprocess?
+        if not self.only_advection:
+            self.prepared_domain.register_field(fieldname="u_new",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy")
+            self.prepared_domain.register_field(fieldname="v_new",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy")
+            self.prepared_domain.register_field(fieldname="dyc",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dyc.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="f",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_f.npy")
+            self.prepared_domain.register_field(fieldname="hs",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_hs.npy")
+            self.prepared_domain.register_field(fieldname="tg",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg.npy")
+            self.prepared_domain.register_field(fieldname="tg_midx",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg_midx.npy")
+            self.prepared_domain.register_field(fieldname="tg_midy",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg_midy.npy",
+                                                staggered=(0, 1, 0))
+        if self.diffusion:
+            self.prepared_domain.register_field(fieldname="Ax",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_ax.npy")
+            self.prepared_domain.register_field(fieldname="Bx",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_bx.npy")
+            self.prepared_domain.register_field(fieldname="Cx",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_cx.npy")
+            self.prepared_domain.register_field(fieldname="Ay",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_ay.npy")
+            self.prepared_domain.register_field(fieldname="By",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_by.npy")
+            self.prepared_domain.register_field(fieldname="Cy",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_cy.npy")
+
         # Compute minimum longitudinal and latitudinal distance between
         # adjacent grid points, needed to compute time step size through
         # CFL condition
         dx_min = []
         dy_min = []
         for sd in self.prepared_domain.subdivisions:
-            # print(sd.get_interior_field("dx"))
             dx_min.append(sd.get_interior_field("dx")[:, 1:-1].min())
             dy_min.append(sd.get_interior_field("dy").min())
         self.dx_min = min(dx_min)
         self.dy_min = min(dy_min)
-        # print(dx_min, self.dx_min, dy_min, self.dy_min)
-
 
         #
         # Initialize stencils
@@ -252,8 +297,53 @@ class LaxWendroffSWES:
                         "v": "v", "v_midy": "v_midy"},
                 global_inputs={"dt": self.dt},
                 outputs={"out_h": "h_new"},
-                mode=self.backend
+                mode=self.backend,
             )
+        else:
+            self.stencil_lw = self.prepared_domain.register_stencil(
+                definitions_func=stencils.definitions_lax_wendroff,
+                inputs={"in_h": "h", "in_u": "u", "in_v": "v",
+                        "dx": "dx", "dxc": "dxc",
+                        "dy": "dy", "dyc": "dyc",
+                        "dy1": "dy1", "dy1c": "dy1c",
+                        "c": "c", "c_midy": "c_midy",
+                        "f": "f", "hs": "hs", "tg": "tg",
+                        "tg_midx": "tg_midx", "tg_midy": "tg_midy"},
+                global_inputs={"dt": self.dt, "a": self.a, "g": self.g},
+                outputs={"out_h": "h_new", "out_u": "u_new", "out_v": "v_new"},
+                mode=self.backend,
+            )
+            # if self.diffusion:
+            #     self.stencil_hdiff = self.prepared_domain.register_stencil(
+            #         definitions_uc=stencils.definitions_diffusion,
+            #         inputs={"in_q": "h_ext", "tmp_q": "h_tmp_ext",
+            #                 "Ax": "Ax", "Ay": "Ay",
+            #                 "Bx": "Bx", "By": "By",
+            #                 "Cx": "Cx", "Cy": "Cy"},
+            #         global_ins={"dt": self.dt},
+            #         outputs={"out_q": "h_new_ext"},
+            #         mode=self.backend
+            #     )
+            #     self.stencil_udiff = self.prepared_domain.register_stencil(
+            #         definitions_uc=stencils.definitions_diffusion,
+            #         inputs={"in_q": "u_ext", "tmp_q": "u_tmp_ext",
+            #                 "Ax": "Ax", "Ay": "Ay",
+            #                 "Bx": "Bx", "By": "By",
+            #                 "Cx": "Cx", "Cy": "Cy"},
+            #         global_ins={"dt": self.dt},
+            #         outputs={"out_q": "u_new_ext"},
+            #         mode=self.backend
+            #     )
+            #     self.stencil_vdiff = self.prepared_domain.register_stencil(
+            #         definitions_uc=self.definitions_diffusion,
+            #         inputs={"in_q": "v_ext", "tmp_q": "v_tmp_ext",
+            #                 "Ax": "Ax", "Ay": "Ay",
+            #                 "Bx": "Bx", "By": "By",
+            #                 "Cx": "Cx", "Cy": "Cy"},
+            #         global_ins={"dt": self.dt},
+            #         outputs={"out_q": "v_new_ext"},
+            #         mode=self.backend,
+            #     )
 
         timer.stop(name="Initialization")
 
@@ -263,7 +353,7 @@ class LaxWendroffSWES:
 
             Parameters
             ----------
-            verbose	: int
+            verbose : int
                 If positive, print to screen information about the solution
                 every :obj:`verbose` timesteps. If negative, print to screen
                 information only about the initial and final state.
@@ -304,20 +394,35 @@ class LaxWendroffSWES:
             self.prepared_domain.communicate("h_new")
             self.prepared_domain.communicate("dx")
             self.prepared_domain.communicate("dxc")
+            self.prepared_domain.communicate("dy")
             self.prepared_domain.communicate("dy1")
             self.prepared_domain.communicate("dy1c")
             self.prepared_domain.communicate("c")
             self.prepared_domain.communicate("c_midy")
             self.prepared_domain.communicate("u")
-            self.prepared_domain.communicate("u_midx")
             self.prepared_domain.communicate("v")
-            self.prepared_domain.communicate("v_midy")
-
-            # for sd in self.prepared_domain.subdivisions:
-            #     h_north_now, h_south_now = sd.get_interior_field("h")[0, -1], sd.get_interior_field("h")[0, 0]
-
-            hnew_north = np.zeros((self.m, self.halo[2], 1))
-            hnew_south = np.zeros((self.m, self.halo[3], 1))
+            if self.only_advection:
+                self.prepared_domain.communicate("u_midx")
+                self.prepared_domain.communicate("v_midy")
+            if not self.only_advection:
+                self.prepared_domain.communicate("u_new")
+                self.prepared_domain.communicate("v_new")
+                self.prepared_domain.communicate("dyc")
+                self.prepared_domain.communicate("f")
+                self.prepared_domain.communicate("hs")
+                self.prepared_domain.communicate("tg")
+                self.prepared_domain.communicate("tg_midx")
+                self.prepared_domain.communicate("tg_midy")
+            #
+            # hnew_north = np.zeros((self.m, self.halo[2], 1))
+            # hnew_south = np.zeros((self.m, self.halo[3], 1))
+            #
+            # if not self.only_advection:
+            #     unew_north = np.zeros((self.m, self.halo[2], 1))
+            #     unew_south = np.zeros((self.m, self.halo[3], 1))
+            #
+            #     vnew_north = np.zeros((self.m, self.halo[2], 1))
+            #     vnew_south = np.zeros((self.m, self.halo[3], 1))
 
             if MPI.COMM_WORLD.Get_rank() == 0:
                 tsave = [0.0]
@@ -329,33 +434,30 @@ class LaxWendroffSWES:
                 n += 1
 
                 # Compute timestep through CFL condition
-                # Keep track of the old timestep for leap-frog scheme at the poles
-                # dtold = copy.deepcopy(self.dt)
 
                 dtnew = []
                 # Compute flux Jacobian eigenvalues
                 for sd in self.prepared_domain.subdivisions:
                     eigenx = (np.maximum(
                         np.absolute(sd.get_interior_field("u")[1:-1, :]
-                                    - np.sqrt(self.g * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
+                                    - np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
                         np.maximum(np.absolute(
                             sd.get_interior_field("u")[1:-1, :]), np.absolute(
                             sd.get_interior_field("u")[1:-1, :]
-                            + np.sqrt(self.g * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
+                            + np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
                     eigeny = (np.maximum(
                         np.absolute(sd.get_interior_field("v")[1:-1, :]
-                                    - np.sqrt(self.g * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
+                                    - np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
                                          np.maximum(np.absolute(
                                              sd.get_interior_field("v")[1:-1, :]), np.absolute(
                                              sd.get_interior_field("v")[1:-1, :]
-                                             + np.sqrt(self.g
+                                             + np.sqrt(self.g.value
                                                        * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
 
                     # Compute timestep
                     dtmax = np.minimum(self.dx_min / eigenx, self.dy_min / eigeny)
                     dtnew.append(self.cfl * dtmax)
                 # Select local minimum time step
-                # print(dtnew)
                 self.dt.value = min(dtnew)
                 # If run with mpi collect all local minimum, choose the global minimum and send it to everybody
                 if MPI.COMM_WORLD.Get_size() > 1:
@@ -369,59 +471,91 @@ class LaxWendroffSWES:
                 else:
                     t += self.dt.value
 
-                # print(t)
-
-                # Update height and stereographic components at the poles
-                # This is needed for pole treatment
-                # h_north_old, h_south_old = h_north_now, h_south_now
-                #
-                # for sd in self.prepared_domain.subdivisions:
-                #     h_north_now, h_south_now = sd.get_interior_field("h")[0, -1], sd.get_interior_field("h")[0, 0]
-
                 # Communicate partition boundaries
                 timer.start(name="Communication during time integration", level=3)
                 self.prepared_domain.communicate("h")
+                if not self.only_advection:
+                    self.prepared_domain.communicate("u")
+                    self.prepared_domain.communicate("v")
                 timer.stop(name="Communication during time integration")
-
-                # for sd in self.prepared_domain.subdivisions:
-                    # print(np.where(sd.fields["dy1"] == 0.0))
-                    # print(np.where(sd.fields["dxc"] == 0.0))
 
                 #
                 # Update solution at the internal grid points
                 #
                 if self.only_advection:
                     self.stencil.compute()
+                else:
+                    self.stencil_lw.compute()
+                    # if self.diffusion:
+                    #     self._extend_solution(self.h, h_ext, h_new, h_tmp_ext)
+                    #     self._extend_solution(self.u, u_ext, u_new, u_tmp_ext)
+                    #     self._extend_solution(self.v, v_ext, v_new, v_tmp_ext)
+                    #
+                    #     self.stencil_hdiff.compute()
+                    #     self.stencil_udiff.compute()
+                    #     self.stencil_vdiff.compute()
+                    #
+                    #     h_new[1:-1, 1:-1] = h_new_ext[2:-2, 2:-2]
+                    #     u_new[1:-1, 1:-1] = u_new_ext[2:-2, 2:-2]
+                    #     v_new[1:-1, 1:-1] = v_new_ext[2:-2, 2:-2]
 
                 #
                 # Apply boundary conditions
                 #
+                hnew_north = {}
+                hnew_south = {}
                 for sd in self.prepared_domain.subdivisions:
-                    hnew_north = sd.get_interior_field("h_new")[:, 1, 0]
-                    hnew_south = sd.get_interior_field("h_new")[:, -2, 0]
-                    sd.set_boundary_condition("h_new", 2, hnew_north.reshape((sd.size[0], self.halo[2], sd.size[2])))
-                    sd.set_boundary_condition("h_new", 3, hnew_south.reshape((sd.size[0], self.halo[3], sd.size[2])))
+                    hnew_north[sd] = sd.get_interior_field("h_new")[:, 1, 0]
+                    hnew_south[sd] = sd.get_interior_field("h_new")[:, -2, 0]
+                    hnew_north[sd] = hnew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+                    hnew_south[sd] = hnew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+
+                    sd.set_boundary_condition("h_new", 2, hnew_north[sd])
+                    sd.set_boundary_condition("h_new", 3, hnew_south[sd])
+
+                if not self.only_advection:
+                    unew_south = {}
+                    unew_north = {}
+                    vnew_south = {}
+                    vnew_north = {}
+
+                    for sd in self.prepared_domain.subdivisions:
+                        unew_north[sd] = sd.get_interior_field("u_new")[:, 1, 0]
+                        unew_south[sd] = sd.get_interior_field("u_new")[:, -2, 0]
+                        unew_north[sd] = unew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+                        unew_south[sd] = unew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+
+                        sd.set_boundary_condition("u_new", 2, unew_north[sd])
+                        sd.set_boundary_condition("u_new", 3, unew_south[sd])
+
+                        vnew_north[sd] = sd.get_interior_field("v_new")[:, 1, 0]
+                        vnew_south[sd] = sd.get_interior_field("v_new")[:, -2, 0]
+                        vnew_north[sd] = vnew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+                        vnew_south[sd] = vnew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+
+                        sd.set_boundary_condition("v_new", 2, vnew_north[sd])
+                        sd.set_boundary_condition("v_new", 3, vnew_south[sd])
 
                 self.prepared_domain.apply_boundary_condition("h_new")
-
-                # North pole treatment
-                #
-                # dtv = self.dt.value
-                # dtoldv = dtold.value
-                # for sd in self.prepared_domain.subdivisions:
-                #     h_north_new = (h_north_old + (dtv + dtoldv) * 2. / (self.dxp * self.m_north * self.m)
-                #                    * np.sum(sd.get_interior_field("h")[1:-2, -2]
-                #                             * sd.get_interior_field("v")[1:-2, -2]))
-
-                #
-                # South pole treatment
-                #
-                # for sd in self.prepared_domain.subdivisions:
-                #     h_south_new = (h_south_old - (dtv + dtoldv) * 2. / (self.dxp * self.m_south * self.m) *
-                #                   np.sum(sd.get_interior_field("h")[1:-2, 1]
-                #                          * sd.get_interior_field("v")[1:-2, 1]))
+                if not self.only_advection:
+                    self.prepared_domain.apply_boundary_condition("u_new")
+                    self.prepared_domain.apply_boundary_condition("v_new")
 
                 self.prepared_domain.swap_fields("h", "h_new")
+                if not self.only_advection:
+                    self.prepared_domain.swap_fields("u", "u_new")
+                    self.prepared_domain.swap_fields("v", "v_new")
+
+                if n % 100 == 0:
+                    umax = []
+                    for sd in self.prepared_domain.subdivisions:
+                        # print("time step " + str(n) + " time " + str(t) + " sd " + str(sd.id) + " u max " + str(np.max(sd.get_interior_field("u_new")[:])))
+                        norm = np.sqrt(sd.get_interior_field("u")[1:-1, :] * sd.get_interior_field("u")[1:-1, :] +
+                                       sd.get_interior_field("v")[1:-1, :] * sd.get_interior_field("v")[1:-1, :])
+                        umax.append(norm.max())
+
+                    print('%7.2f (out of %i) hours: max(|u|) = %13.8f'
+                          % (t / 3600., int(self.t_final / 3600.), max(umax)))
 
                 timer.start(name="Saving fields during time integration", level=3)
                 if (save > 0 and n % save == 0) or t == self.t_final:
@@ -456,11 +590,11 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
 
             hsave = np.concatenate((hsave, hnew), axis=2)
 
-    phi = np.load("swes_ic0_phi.npy")
-    theta = np.load("swes_ic0_theta.npy")
-    usave = np.load("swes_ic0_u.npy")
-    vsave = np.load("swes_ic0_v.npy")
-    filename = 'swes_no_poles_ic{}.npz'.format(nic)
+    phi = np.load("swes_ic{}_phi.npy".format(nic))
+    theta = np.load("swes_ic{}_theta.npy".format(nic))
+    usave = np.load("swes_ic{}_u.npy".format(nic))
+    vsave = np.load("swes_ic{}_v.npy".format(nic))
+    filename = "swes_no_poles_ic{}.npz".format(nic)
     np.savez(filename, t=tsave[:-1], phi=phi[0:nx, 0:ny], theta=theta[0:nx, 0:ny],
              h=hsave, u=usave[0:nx, 0:ny], v=vsave[0:nx, 0:ny])
 
@@ -470,22 +604,22 @@ if __name__ == "__main__":
     timer.start(name="Overall SWES time", level=1)
 
     # Suggested values for $\alpha$ for first and second
-    # test cases from Williamson's suite:
+    # test cases from Williamson"s suite:
     # * 0
     # * 0.05
     # * pi/2 - 0.05
     # * pi/2
-    ic = (0, 0) #math.pi / 2)
+    ic = (2, 0) #math.pi / 2)
 
-    # Suggested simulation's length for Williamson's test cases:
+    # Suggested simulation"s length for Williamson"s test cases:
     # * IC 0: 12 days
     # * IC 1: 14 days
     # t_final = 12
-    t_final = 12
+    t_final = 3
 
-    # Let's go!
-    solver = LaxWendroffSWES(planet=0, t_final=t_final, m=180, n=90, ic=ic,
-                             cfl=1, diff=True, backend=gt.mode.NUMPY, dtype=np.float64, nparts=2)
+    # Let"s go!
+    solver = LaxWendroffSWES(planet=0, t_final=t_final, m=180, n=92, ic=ic,
+                             cfl=1, diff=False, backend=gt.mode.NUMPY, dtype=np.float64, nparts=2)
     solver.solve(verbose=100, save=100)
     # t, phi, theta, h, u, v = solver.solve(verbose=100, save=10)
 
@@ -496,7 +630,7 @@ if __name__ == "__main__":
 
         # Save data
 
-        postprocess_swes(180, 88, 1, ic[0], 100)
+        postprocess_swes(180, 90, 1, ic[0], 100)
 
         # postprocess_swes(nx=180, ny=88, nz=1, postfix="t_0")
         # postprocess_swes(nx=180, ny=88, nz=1, postfix="t_5226")

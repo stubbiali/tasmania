@@ -63,8 +63,8 @@ def definitions_advection(dt, dx, dxc, dy1, dy1c, c, c_midy,
     return out_h
 
 
-def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
-                             c, c_midy, f, hs, tg, tg_midx, tg_midy,
+def definitions_lax_wendroff(dt, dx, dxc, dy, dyc, dy1, dy1c,
+                             c, c_midy, f, a, g, hs, tg, tg_midx, tg_midy,
                              in_h, in_u, in_v):
     """
     Definitions function for the GT4Py stencil implementing the
@@ -124,12 +124,12 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
                    0.5 * dt / dx[i, j] * (hu[i + 1, j] - hu[i, j])
 
     # Longitudinal mid-values for hu
-    Ux[i, j] = hu[i, j] * in_u[i, j] + 0.5 * self.g * in_h[i, j] * in_h[i, j]
+    Ux[i, j] = hu[i, j] * in_u[i, j] + 0.5 * g * in_h[i, j] * in_h[i, j]
     hu_midx[i, j] = 0.5 * (hu[i, j] + hu[i + 1, j]) - \
                     0.5 * dt / dx[i, j] * (Ux[i + 1, j] - Ux[i, j]) + \
                     0.5 * dt * \
                     (0.5 * (f[i, j] + f[i + 1, j]) +
-                     0.5 * (in_u[i, j] + in_u[i + 1, j]) * tg_midx[i, j] / self.a) * \
+                     0.5 * (in_u[i, j] + in_u[i + 1, j]) * tg_midx[i, j] / a) * \
                     0.5 * (hv[i, j] + hv[i + 1, j])
 
     # Longitudinal mid-values for hv
@@ -138,7 +138,7 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
                     0.5 * dt / dx[i, j] * (Vx[i + 1, j] - Vx[i, j]) - \
                     0.5 * dt * \
                     (0.5 * (f[i, j] + f[i + 1, j]) +
-                     0.5 * (in_u[i, j] + in_u[i + 1, j]) * tg_midx[i, j] / self.a) * \
+                     0.5 * (in_u[i, j] + in_u[i + 1, j]) * tg_midx[i, j] / a) * \
                     0.5 * (hu[i, j] + hu[i + 1, j])
 
     # Latitudinal mid-values for h
@@ -151,18 +151,18 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
                     0.5 * dt / dy1[i, j] * (Uy[i, j + 1] - Uy[i, j]) + \
                     0.5 * dt * \
                     (0.5 * (f[i, j] + f[i, j + 1]) +
-                     0.5 * (in_u[i, j] + in_u[i, j + 1]) * tg_midy[i, j] / self.a) * \
+                     0.5 * (in_u[i, j] + in_u[i, j + 1]) * tg_midy[i, j] / a) * \
                     0.5 * (hv[i, j] + hv[i, j + 1])
 
     # Latitudinal mid-values for hv
     Vy1[i, j] = hv[i, j] * v1[i, j]
-    Vy2[i, j] = 0.5 * self.g * in_h[i, j] * in_h[i, j]
+    Vy2[i, j] = 0.5 * g * in_h[i, j] * in_h[i, j]
     hv_midy[i, j] = 0.5 * (hv[i, j] + hv[i, j + 1]) - \
                     0.5 * dt / dy1[i, j] * (Vy1[i, j + 1] - Vy1[i, j]) - \
                     0.5 * dt / dy[i, j] * (Vy2[i, j + 1] - Vy2[i, j]) - \
                     0.5 * dt * \
                     (0.5 * (f[i, j] + f[i, j + 1]) +
-                     0.5 * (in_u[i, j] + in_u[i, j + 1]) * tg_midy[i, j] / self.a) * \
+                     0.5 * (in_u[i, j] + in_u[i, j + 1]) * tg_midy[i, j] / a) * \
                     0.5 * (hu[i, j] + hu[i, j + 1])
 
     # Update h
@@ -173,7 +173,7 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
 
     # Update hu
     Ux_mid[i, j] = (h_midx[i, j] > 0.) * hu_midx[i, j] * hu_midx[i, j] / h_midx[i, j] + \
-                   0.5 * self.g * h_midx[i, j] * h_midx[i, j]
+                   0.5 * g * h_midx[i, j] * h_midx[i, j]
     Uy_mid[i, j + 0.5] = (h_midy[i, j] > 0.) * hv_midy[i, j] * c_midy[i, j] * \
                          hu_midy[i, j] / h_midy[i, j]
     out_hu[i, j] = hu[i, j] - \
@@ -184,10 +184,10 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
                                  hu_midx[i, j] / h_midx[i, j] +
                                  hu_midy[i, j - 1] / h_midy[i, j - 1] +
                                  hu_midy[i, j] / h_midy[i, j]) *
-                         tg[i, j] / self.a) * \
+                         tg[i, j] / a) * \
                    0.25 * (hv_midx[i - 1, j] + hv_midx[i, j] +
                            hv_midy[i, j - 1] + hv_midy[i, j]) - \
-                   dt * self.g * \
+                   dt * g * \
                    0.25 * (h_midx[i - 1, j] + h_midx[i, j] +
                            h_midy[i, j - 1] + h_midy[i, j]) * \
                    (hs[i + 1, j] - hs[i - 1, j]) / (dx[i - 1, j] + dx[i, j])
@@ -196,7 +196,7 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
     Vx_mid[i, j] = (h_midx[i, j] > 0.) * hv_midx[i, j] * hu_midx[i, j] / h_midx[i, j]
     Vy1_mid[i, j] = (h_midy[i, j] > 0.) * hv_midy[i, j] * hv_midy[i, j] / \
                     h_midy[i, j] * c_midy[i, j]
-    Vy2_mid[i, j] = 0.5 * self.g * h_midy[i, j] * h_midy[i, j]
+    Vy2_mid[i, j] = 0.5 * g * h_midy[i, j] * h_midy[i, j]
     out_hv[i, j] = hv[i, j] - \
                    dt / dxc[i, j] * (Vx_mid[i, j] - Vx_mid[i - 1, j]) - \
                    dt / dy1c[i, j] * (Vy1_mid[i, j] - Vy1_mid[i, j - 1]) - \
@@ -206,10 +206,10 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
                                  hu_midx[i, j] / h_midx[i, j] +
                                  hu_midy[i, j - 1] / h_midy[i, j - 1] +
                                  hu_midy[i, j] / h_midy[i, j]) *
-                         tg[i, j] / self.a) * \
+                         tg[i, j] / a) * \
                    0.25 * (hu_midx[i - 1, j] + hu_midx[i, j] +
                            hu_midy[i, j - 1] + hu_midy[i, j]) - \
-                   dt * self.g * \
+                   dt * g * \
                    0.25 * (h_midx[i - 1, j] + h_midx[i, j] +
                            h_midy[i, j - 1] + h_midy[i, j]) * \
                    (hs[i, j + 1] - hs[i, j - 1]) / (dy1[i, j - 1] + dy1[i, j])
@@ -221,7 +221,7 @@ def definitions_lax_wendroff(self, dt, dx, dxc, dy, dyc, dy1, dy1c,
     return out_h, out_u, out_v
 
 
-def definitions_diffusion(self, dt, Ax, Ay, Bx, By, Cx, Cy, in_q, tmp_q):
+def definitions_diffusion(dt, Ax, Ay, Bx, By, Cx, Cy, nu, in_q, tmp_q):
     """
     Definitions function for the GT4Py stencil applying numerical diffusion.
     """
@@ -261,6 +261,6 @@ def definitions_diffusion(self, dt, Ax, Ay, Bx, By, Cx, Cy, in_q, tmp_q):
                             By[i, j - 1] * in_q[i, j] +
                             Cy[i, j - 1] * in_q[i, j - 2])
 
-    out_q[i, j] = tmp_q[i, j] + dt * self.nu * (qxx[i, j] + qyy[i, j])
+    out_q[i, j] = tmp_q[i, j] + dt * nu * (qxx[i, j] + qyy[i, j])
 
     return out_q

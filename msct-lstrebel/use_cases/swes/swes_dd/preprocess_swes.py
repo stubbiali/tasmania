@@ -91,7 +91,7 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     dtheta = math.pi / (n - 1)
     # Latitude with poles
     #theta_1d = np.linspace(-0.5 * math.pi, 0.5 * math.pi, n, dtype=dtype)
-     # Latitude between 85 and -85
+    # Latitude between 85 and -85
     theta_1d = np.linspace(-85.0 / 180.0 * math.pi, 85.0 / 180.0 * math.pi, n, dtype=dtype)
 
     # Build grid
@@ -108,6 +108,11 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
 
     # Coriolis term
     f = 2. * omega * np.sin(theta)
+
+    #
+    # Flat terrain height
+    #
+    hs = np.zeros((m + 3, n), dtype=dtype)
 
     # 
     # Cartesian coordinates and increments
@@ -140,6 +145,42 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     # Compute map factor at the poles
     #m_north = 2. / (1. + np.sin(theta_1d[-2]))
     #m_south = 2. / (1. - np.sin(theta_1d[1]))
+
+    #
+    # Pre-compute coefficients for second-order three
+    # points approximations of first-order derivative
+    #
+    if diffusion:
+        # Centred finite difference along longitude
+        # Ax, Bx and Cx denote the coefficients associated
+        # with the centred, downwind and upwind point, respectively
+        Ax = np.zeros((m + 5, n + 2), dtype=dtype)
+        Ax[2:-2, 2:-2] = (dx[1:, 1:-1] - dx[:-1, 1:-1]) / (dx[1:, 1:-1] * dx[:-1, 1:-1])
+        Ax[1, :], Ax[-2, :] = Ax[-4, :], Ax[3, :]
+
+        Bx = np.zeros((m + 5, n + 2), dtype=dtype)
+        Bx[2:-2, 2:-2] = dx[:-1, 1:-1] / (dx[1:, 1:-1] * (dx[1:, 1:-1] + dx[:-1, 1:-1]))
+        Bx[1, :], Bx[-2, :] = Bx[-4, :], Bx[3, :]
+
+        Cx = np.zeros((m + 5, n + 2), dtype=dtype)
+        Cx[2:-2, 2:-2] = - dx[1:, 1:-1] / (dx[:-1, 1:-1] * (dx[1:, 1:-1] + dx[:-1, 1:-1]))
+        Cx[1, :], Cx[-2, :] = Cx[-4, :], Cx[3, :]
+
+        # Centred finite difference along latitude
+        # Ay, By and Cy denote the coefficients associated
+        # with the centred, downwind and upwind point, respectively
+        Ay = np.zeros((m + 5, n + 2), dtype=dtype)
+        Ay[2:-2, 2:-2] = (dy[1:-1, 1:] - dy[1:-1, :-1]) / (dy[1:-1, 1:] * dy[1:-1, :-1])
+
+        By = np.zeros((m + 5, n + 2), dtype=dtype)
+        By[2:-2, 2:-2] = dy[1:-1, :-1] / (dy[1:-1, 1:] * (dy[1:-1, 1:] + dy[1:-1, :-1]))
+        By[2:-2, -2] = 1. / (2. * dy[1:-1, -2])
+        By[2:-2, 1] = 1. / (2. * dy[1:-1, 1])
+
+        Cy = np.zeros((m + 5, n + 2), dtype=dtype)
+        Cy[2:-2, 2:-2] = - dy[1:-1, 1:] / (dy[1:-1, :-1] * (dy[1:-1, 1:] + dy[1:-1, :-1]))
+        Cy[2:-2, -2] = - 1. / (2. * dy[1:-1, -2])
+        Cy[2:-2, 1] = - 1. / (2. * dy[1:-1, 1])
 
     # 
     # First test case taken from Williamson's suite 
@@ -176,38 +217,38 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
 
     #
     # Sixth test case taken from Williamson's suite
-    # 		
-    # if ic[0] == 2:
-    #     # Set constants
-    #     w = 7.848e-6
-    #     K = 7.848e-6
-    #     h0 = 8e3
-    #     R = 4.
     #
-    #     # Compute initial fluid height
-    #     A = 0.5 * w * (2. * omega + w) * (np.cos(theta) ** 2.) + \
-    #         0.25 * (K ** 2.) * (np.cos(theta) ** (2. * R)) * \
-    #         ((R + 1.) * (np.cos(theta) ** 2.) +
-    #          (2. * (R ** 2.) - R - 2.) -
-    #          2. * (R ** 2.) * (np.cos(theta) ** (-2.)))
-    #     B = (2. * (omega + w) * K) / ((R + 1.) * (R + 2.)) * \
-    #         (np.cos(theta) ** R) * \
-    #         (((R ** 2.) + 2. * R + 2.) -
-    #          ((R + 1.) ** 2.) * (np.cos(theta) ** 2.))
-    #     C = 0.25 * (K ** 2.) * (np.cos(theta) ** (2. * R)) * \
-    #         ((R + 1.) * (np.cos(theta) ** 2.) - (R + 2.))
-    #
-    #     h = h0 + ((a ** 2.) * A +
-    #                    (a ** 2.) * B * np.cos(R * phi) +
-    #                    (a ** 2.) * C * np.cos(2. * R * phi)) / g
-    #
-    #     # Compute initial wind
-    #     u = a * w * np.cos(theta) + \
-    #              a * K * (np.cos(theta) ** (R - 1.)) * \
-    #              (R * (np.sin(theta) ** 2.) - (np.cos(theta) ** 2.)) * \
-    #              np.cos(R * phi)
-    #     v = - a * K * R * (np.cos(theta) ** (R - 1.)) * \
-    #              np.sin(theta) * np.sin(R * phi)
+    if ic[0] == 2:
+        # Set constants
+        w = 7.848e-6
+        K = 7.848e-6
+        h0 = 8e3
+        R = 4.
+
+        # Compute initial fluid height
+        A = 0.5 * w * (2. * omega + w) * (np.cos(theta) ** 2.) + \
+            0.25 * (K ** 2.) * (np.cos(theta) ** (2. * R)) * \
+            ((R + 1.) * (np.cos(theta) ** 2.) +
+             (2. * (R ** 2.) - R - 2.) -
+             2. * (R ** 2.) * (np.cos(theta) ** (-2.)))
+        B = (2. * (omega + w) * K) / ((R + 1.) * (R + 2.)) * \
+            (np.cos(theta) ** R) * \
+            (((R ** 2.) + 2. * R + 2.) -
+             ((R + 1.) ** 2.) * (np.cos(theta) ** 2.))
+        C = 0.25 * (K ** 2.) * (np.cos(theta) ** (2. * R)) * \
+            ((R + 1.) * (np.cos(theta) ** 2.) - (R + 2.))
+
+        h = h0 + ((a ** 2.) * A +
+                       (a ** 2.) * B * np.cos(R * phi) +
+                       (a ** 2.) * C * np.cos(2. * R * phi)) / g
+
+        # Compute initial wind
+        u = a * w * np.cos(theta) + \
+                 a * K * (np.cos(theta) ** (R - 1.)) * \
+                 (R * (np.sin(theta) ** 2.) - (np.cos(theta) ** 2.)) * \
+                 np.cos(R * phi)
+        v = - a * K * R * (np.cos(theta) ** (R - 1.)) * \
+                 np.sin(theta) * np.sin(R * phi)
 
     # 
     # Set height at the poles 
@@ -215,9 +256,9 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     h[:, -1] = np.sum(h[1:-2, -1]) / m
     h[:, 0] = np.sum(h[1:-2, 0]) / m
 
-    # 
-    # Stereographic wind components at the poles
-    # 
+    # #
+    # # Stereographic wind components at the poles
+    # #
     # if not only_advection:
     #     # Compute stereographic components at North pole
     #     # at each longitude and then make an average
@@ -242,21 +283,37 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     dx = dx.reshape((dx.shape[0], dx.shape[1], 1))
     dxc = dxc.reshape((dxc.shape[0], dxc.shape[1], 1))
     dy = dy.reshape((dy.shape[0], dy.shape[1], 1))
+    dyc = dyc.reshape((dyc.shape[0], dyc.shape[1], 1))
     dy1 = dy1.reshape((dy1.shape[0], dy1.shape[1], 1))
     dy1c = dy1c.reshape((dy1c.shape[0], dy1c.shape[1], 1))
     c = c.reshape((c.shape[0], c.shape[1], 1))
     c_midy = c_midy.reshape((c_midy.shape[0], c_midy.shape[1], 1))
 
+    f = f.reshape((dy.shape[0], f.shape[1], 1))
+
     u = u.reshape((u.shape[0], u.shape[1], 1))
     v = v.reshape((v.shape[0], v.shape[1], 1))
     h = h.reshape((h.shape[0], h.shape[1], 1))
-    u_midx = u_midx.reshape((u_midx.shape[0], u_midx.shape[1], 1))
-    v_midy = v_midy.reshape((v_midy.shape[0], v_midy.shape[1], 1))
+
+    hs = hs.reshape((hs.shape[0], hs.shape[1], 1))
+    tg = tg.reshape((tg.shape[0], tg.shape[1], 1))
+    tg_midx = tg_midx.reshape((tg_midx.shape[0], tg_midx.shape[1], 1))
+    tg_midy = tg_midy.reshape((tg_midy.shape[0], tg_midy.shape[1], 1))
+
+    if ic[0] == 0:
+        u_midx = u_midx.reshape((u_midx.shape[0], u_midx.shape[1], 1))
+        v_midy = v_midy.reshape((v_midy.shape[0], v_midy.shape[1], 1))
+
+    if diffusion:
+        Ax = Ax.reshape((Ax.shape[0], Ax.shape[1], 1))
+        Bx = Bx.reshape((Bx.shape[0], Bx.shape[1], 1))
+        Cx = Cx.reshape((Cx.shape[0], Cx.shape[1], 1))
+        Ay = Ay.reshape((Ay.shape[0], Ay.shape[1], 1))
+        By = By.reshape((By.shape[0], By.shape[1], 1))
+        Cy = Cy.reshape((Cy.shape[0], Cy.shape[1], 1))
 
     # print(dx.shape, dxc.shape, dy.shape, dy1.shape, dy1c.shape, c.shape, c_midy.shape,
     #       u.shape, v.shape, h.shape, u_midx.shape, v_midy.shape)
-
-
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_phi.npy", phi)
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_theta.npy", theta)
 
@@ -268,7 +325,6 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_c.npy", c)
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_c_midy.npy", c_midy)
 
-
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_u.npy", u)
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v.npy", v)
     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_h.npy", h)
@@ -277,11 +333,26 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
         np.save(path + prefix + "swes_ic" + str(ic[0]) + "_u_midx.npy", u_midx)
         np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v_midy.npy", v_midy)
 
-    # if not only_advection:
-    #     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_u_north.npy", u_north)
-    #     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_u_south.npy", u_south)
-    #     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v_north.npy", v_north)
-    #     np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v_south.npy", v_south)
+    if diffusion:
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_ax.npy", Ax)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_bx.npy", Bx)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_cx.npy", Cx)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_ay.npy", Ay)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_by.npy", By)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_cy.npy", Cy)
+
+    if not only_advection:
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_dyc.npy", dyc)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_f.npy", f)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_hs.npy", hs)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_tg.npy", tg)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_tg_midx.npy", tg_midx)
+        np.save(path + prefix + "swes_ic" + str(ic[0]) + "_tg_midy.npy", tg_midy)
+
+        # np.save(path + prefix + "swes_ic" + str(ic[0]) + "_u_north.npy", u_north)
+        # np.save(path + prefix + "swes_ic" + str(ic[0]) + "_u_south.npy", u_south)
+        # np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v_north.npy", v_north)
+        # np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v_south.npy", v_south)
 
 
 
@@ -292,12 +363,13 @@ if __name__ == "__main__":
     # * 0.05
     # * pi/2 - 0.05
     # * pi/2
-    ic = (0, 0) #math.pi / 2)
+    ic = (2, 0) #math.pi / 2)
+
     m = 180
     n = 90
     nz = 1
     sx = 2
-    sy = 2
+    sy = 1
     sz = 1
     nparts = 2
 
@@ -306,10 +378,12 @@ if __name__ == "__main__":
     else:
         only_advection = False
 
+    diffusion = False
+
     path = ""
     prefix = ""
-
-    prepare_partitioning(nx=m, ny=n-2, nz=nz, sx=sx, sy=sy, sz=sz, nparts=nparts, only_advection=only_advection,
+    # ny=n-2
+    prepare_partitioning(nx=m, ny=n, nz=nz, sx=sx, sy=sy, sz=sz, nparts=nparts, only_advection=only_advection,
                          path=path, prefix=prefix)
 
     prepare_initial_condition(m=m, n=n, ic=ic, only_advection=only_advection, planet=0, dtype=np.float64,

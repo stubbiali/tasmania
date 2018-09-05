@@ -844,20 +844,32 @@ class LaxWendroffSWES:
 			# 
 			# Apply boundary conditions
 			#
-			self.h[:, 1:-1] = np.concatenate((h_new[-3:-2, 1:-1], 
-											  h_new[1:-1, 1:-1], 
-											  h_new[2:3, 1:-1]), axis=0)
-			self.h[:, -1], self.h[:, 0] = self.h[:, -2], self.h[:, 1]	
+			# self.h[:, 1:-1] = np.concatenate((h_new[-3:-2, 1:-1],
+			# 								  h_new[1:-1, 1:-1],
+			# 								  h_new[2:3, 1:-1]), axis=0)
+
+			self.h[:, 1:-1] = np.concatenate((h_new[-2:-1, 1:-1],
+											  h_new[1:-1, 1:-1],
+											  h_new[1:2, 1:-1]), axis=0)
+			self.h[:, -1], self.h[:, 0] = self.h[:, -2], self.h[:, 1]
 		
 			if not self.only_advection:
-				self.u[:, 1:-1] = np.concatenate((u_new[-3:-2, 1:-1], 
-												  u_new[1:-1, 1:-1], 
-												  u_new[2:3, 1:-1]), axis=0)
+				# self.u[:, 1:-1] = np.concatenate((u_new[-3:-2, 1:-1],
+				# 								  u_new[1:-1, 1:-1],
+				# 								  u_new[2:3, 1:-1]), axis=0)
+				self.u[:, 1:-1] = np.concatenate((u_new[-2:-1, 1:-1],
+												  u_new[1:-1, 1:-1],
+											  u_new[1:2, 1:-1]), axis=0)
 				self.u[:, -1], self.u[:, 0] = self.u[:, -2], self.u[:, 1]
 		
 				self.v[:, 1:-1] = np.concatenate((v_new[-3:-2, 1:-1], 
 												  v_new[1:-1, 1:-1], 
 												  v_new[2:3, 1:-1]), axis=0)
+
+				self.v[:, 1:-1] = np.concatenate((v_new[-2:-1, 1:-1],
+                                                  v_new[1:-1, 1:-1],
+                                                  v_new[1:2, 1:-1]), axis=0)
+
 				self.v[:, -1], self.v[:, 0] = self.v[:, -2], self.v[:, 1]
 																						  	  			
 			end = time.time()

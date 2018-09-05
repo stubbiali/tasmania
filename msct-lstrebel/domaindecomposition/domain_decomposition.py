@@ -111,8 +111,10 @@ class DomainSubdivision:
                     field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1] - staggered[0],
                                                   self.global_coords[2]:self.global_coords[3] - staggered[1],
                                                   self.global_coords[4]:self.global_coords[5] - staggered[2]]
+                # if fieldname == "h":
+                #     print(self.fields[fieldname].shape)
             else:
-                # print(self.fields[fieldname].shape)
+                print(fieldname, self.fields[fieldname].shape)
                 self.fields[fieldname][:, :, :] = np.load(
                     field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1]
                                                                         + halo[0] + halo[1] - staggered[0],
@@ -120,7 +122,7 @@ class DomainSubdivision:
                                                                         + halo[2] + halo[3] - staggered[1],
                                                   self.global_coords[4]:self.global_coords[5]
                                                                         + halo[4] + halo[5] - staggered[2]]
-                # print(self.fields[fieldname][:, :, :])
+
                 # print(np.where(self.fields[fieldname][:, :, :] == 0.0))
 
         self.global_bc[fieldname] = field_bc_file
