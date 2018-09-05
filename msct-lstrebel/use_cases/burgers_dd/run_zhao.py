@@ -39,7 +39,6 @@ from dd_postprocess import DomainPostprocess
 
 
 def run_zhao():
-    timer = ti.Timings(name="Burger's equation - Zhao setup")
     timer.start(name="Overall Zhao time", level=1)
     timer.start(name="Initialization", level=2)
 
@@ -118,7 +117,7 @@ def run_zhao():
     timer.stop(name="Initialization")
     timer.start(name="Time integration", level=2)
 
-    if save_freq > 0:
+    if save_freq >= 0:
         prepared_domain.save_fields(["unew", "vnew"], postfix="t_" + str(0))
 
     # Time integration
@@ -173,8 +172,6 @@ def run_zhao():
 
     timer.stop(name="Overall Zhao time")
 
-    if MPI.COMM_WORLD.Get_rank() == 0:
-        timer.list_timings()
 
 
 def postprocess_zhao():
@@ -227,10 +224,17 @@ if __name__ == "__main__":
 
     onesided = args.ow
 
+    timer = ti.Timings(name="Burger's equation - Zhao setup")
+
     run_zhao()
 
-
+    timer.start(name="Post processing time", level=1)
     MPI.COMM_WORLD.Barrier()
     if MPI.COMM_WORLD.Get_rank() == 0:
         if save_freq > 0:
             postprocess_zhao()
+
+    timer.stop(name="Post processing time")
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        timer.list_timings()

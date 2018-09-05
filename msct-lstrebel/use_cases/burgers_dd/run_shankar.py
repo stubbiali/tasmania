@@ -39,7 +39,6 @@ from dd_postprocess import DomainPostprocess
 
 
 def run_shankar():
-    timer = ti.Timings(name="Burger's equation - Shankar setup")
     timer.start(name="Overall Shankar time", level=1)
     timer.start(name="Initialization", level=2)
 
@@ -102,7 +101,8 @@ def run_shankar():
     timer.stop(name="Initialization")
     timer.start(name="Time integration", level=2)
 
-    prepared_domain.save_fields(["unew", "vnew"], postfix="t_" + str(0))
+    if save_freq >= 0:
+        prepared_domain.save_fields(["unew", "vnew"], postfix="t_" + str(0))
 
     # Time integration
     for n in range(nt):
@@ -137,16 +137,13 @@ def run_shankar():
 
         timer.start(name="Saving fields during time integration", level=3)
         # Save
-        if ((save_freq > 0) and (n % save_freq == 0)) or (n + 1 == nt):
+        if ((save_freq > 0) and (n % save_freq == 0)) or (save_freq >= 0 and n + 1 == nt):
             prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n + 1))
         timer.stop(name="Saving fields during time integration")
 
     timer.stop(name="Time integration")
 
     timer.stop(name="Overall Shankar time")
-
-    if MPI.COMM_WORLD.Get_rank() == 0:
-        timer.list_timings()
 
 
 def postprocess_shankar():
@@ -195,7 +192,17 @@ if __name__ == "__main__":
     path = args.loc
     prefix = args.pf
 
+    timer = ti.Timings(name="Burger's equation - Shankar setup")
+
     run_shankar()
+
+    timer.start("Post processing time", level=1)
+
     MPI.COMM_WORLD.Barrier()
     if MPI.COMM_WORLD.Get_rank() == 0:
         postprocess_shankar()
+
+    timer.stop("Post processing time")
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        timer.list_timings()
