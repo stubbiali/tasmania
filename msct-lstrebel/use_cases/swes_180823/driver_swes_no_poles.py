@@ -45,7 +45,7 @@ t_final = 3
 
 # Let's go!
 solver = LaxWendroffSWES(planet=0, t_final=t_final, m=180, n=90, ic=ic,
-						 cfl=1, diff=False, backend=gt.mode.NUMPY, dtype=np.float64)
+						 cfl=1, diff=True, backend=gt.mode.NUMPY, dtype=np.float64)
 t, phi, theta, h, u, v = solver.solve(verbose=100, save=100)
 
 # Save data

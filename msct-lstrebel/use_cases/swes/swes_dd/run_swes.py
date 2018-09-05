@@ -139,6 +139,7 @@ class LaxWendroffSWES:
 
         self.g = gt.Global(self.g)
         self.a = gt.Global(self.a)
+        self.nu = gt.Global(self.nu)
 
         #
         # Numerical settings
@@ -167,11 +168,14 @@ class LaxWendroffSWES:
 
         self.prepared_domain.register_field(fieldname="h",
                                             halo=self.halo,
-                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy")
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
+                                            haloincluded=True)
 
         self.prepared_domain.register_field(fieldname="dx",
                                             halo=self.halo,
-                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dx.npy")
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dx.npy",
+                                            staggered=(1, 0, 0),
+                                            haloincluded=True)
 
         self.prepared_domain.register_field(fieldname="dxc",
                                             halo=self.halo,
@@ -197,81 +201,137 @@ class LaxWendroffSWES:
 
         self.prepared_domain.register_field(fieldname="c",
                                             halo=self.halo,
-                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c.npy")
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c.npy",
+                                            haloincluded=True)
 
         self.prepared_domain.register_field(fieldname="c_midy",
                                             halo=self.halo,
                                             field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_c_midy.npy",
-                                            staggered=(0, 1, 0))
+                                            staggered=(0, 1, 0),
+                                            haloincluded=True)
 
         self.prepared_domain.register_field(fieldname="u",
                                             halo=self.halo,
-                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy")
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
+                                            haloincluded=True)
 
         self.prepared_domain.register_field(fieldname="v",
                                             halo=self.halo,
-                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy")
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
+                                            haloincluded=True)
 
         self.prepared_domain.register_field(fieldname="h_new",
                                             halo=self.halo,
-                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy")
+                                            field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
+                                            haloincluded=True)
 
         if self.only_advection:
             self.prepared_domain.register_field(fieldname="v_midy",
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v_midy.npy",
-                                                staggered=(0, 1, 0))
+                                                staggered=(0, 1, 0),
+                                                haloincluded=True)
 
             self.prepared_domain.register_field(fieldname="u_midx",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u_midx.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u_midx.npy",
+                                                haloincluded=True)
 
         if not self.only_advection:
             self.prepared_domain.register_field(fieldname="u_new",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="v_new",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="dyc",
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_dyc.npy",
                                                 haloincluded=True)
             self.prepared_domain.register_field(fieldname="f",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_f.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_f.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="hs",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_hs.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_hs.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="tg",
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg.npy")
             self.prepared_domain.register_field(fieldname="tg_midx",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg_midx.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg_midx.npy",
+                                                staggered=(1, 0, 0),
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="tg_midy",
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_tg_midy.npy",
-                                                staggered=(0, 1, 0))
+                                                staggered=(0, 1, 0),
+                                                haloincluded=True)
         if self.diffusion:
             self.prepared_domain.register_field(fieldname="Ax",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_ax.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_ax.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="Bx",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_bx.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_bx.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="Cx",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_cx.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_cx.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="Ay",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_ay.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_ay.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="By",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_by.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_by.npy",
+                                                haloincluded=True)
             self.prepared_domain.register_field(fieldname="Cy",
                                                 halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_cy.npy")
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_cy.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="h_tmp",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="u_tmp",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="v_tmp",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="h_tmp2",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="u_tmp2",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="v_tmp2",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="h_tmp3",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="u_tmp3",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
+                                                haloincluded=True)
+            self.prepared_domain.register_field(fieldname="v_tmp3",
+                                                halo=self.halo,
+                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
+                                                haloincluded=True)
 
         # Compute minimum longitudinal and latitudinal distance between
         # adjacent grid points, needed to compute time step size through
@@ -313,37 +373,41 @@ class LaxWendroffSWES:
                 outputs={"out_h": "h_new", "out_u": "u_new", "out_v": "v_new"},
                 mode=self.backend,
             )
-            # if self.diffusion:
-            #     self.stencil_hdiff = self.prepared_domain.register_stencil(
-            #         definitions_uc=stencils.definitions_diffusion,
-            #         inputs={"in_q": "h_ext", "tmp_q": "h_tmp_ext",
-            #                 "Ax": "Ax", "Ay": "Ay",
-            #                 "Bx": "Bx", "By": "By",
-            #                 "Cx": "Cx", "Cy": "Cy"},
-            #         global_ins={"dt": self.dt},
-            #         outputs={"out_q": "h_new_ext"},
-            #         mode=self.backend
-            #     )
-            #     self.stencil_udiff = self.prepared_domain.register_stencil(
-            #         definitions_uc=stencils.definitions_diffusion,
-            #         inputs={"in_q": "u_ext", "tmp_q": "u_tmp_ext",
-            #                 "Ax": "Ax", "Ay": "Ay",
-            #                 "Bx": "Bx", "By": "By",
-            #                 "Cx": "Cx", "Cy": "Cy"},
-            #         global_ins={"dt": self.dt},
-            #         outputs={"out_q": "u_new_ext"},
-            #         mode=self.backend
-            #     )
-            #     self.stencil_vdiff = self.prepared_domain.register_stencil(
-            #         definitions_uc=self.definitions_diffusion,
-            #         inputs={"in_q": "v_ext", "tmp_q": "v_tmp_ext",
-            #                 "Ax": "Ax", "Ay": "Ay",
-            #                 "Bx": "Bx", "By": "By",
-            #                 "Cx": "Cx", "Cy": "Cy"},
-            #         global_ins={"dt": self.dt},
-            #         outputs={"out_q": "v_new_ext"},
-            #         mode=self.backend,
-            #     )
+            if self.diffusion:
+                rdx = [1, 1, 1, 1, 0, 0]
+                self.stencil_hdiff = self.prepared_domain.register_stencil(
+                    definitions_func=stencils.definitions_diffusion,
+                    inputs={"in_q": "h_tmp2", "tmp_q": "h_tmp",
+                            "Ax": "Ax", "Ay": "Ay",
+                            "Bx": "Bx", "By": "By",
+                            "Cx": "Cx", "Cy": "Cy"},
+                    global_inputs={"dt": self.dt, "nu": self.nu},
+                    outputs={"out_q": "h_tmp3"},
+                    mode=self.backend,
+                    reductions=rdx,
+                )
+                self.stencil_udiff = self.prepared_domain.register_stencil(
+                    definitions_func=stencils.definitions_diffusion,
+                    inputs={"in_q": "u_tmp2", "tmp_q": "u_tmp",
+                            "Ax": "Ax", "Ay": "Ay",
+                            "Bx": "Bx", "By": "By",
+                            "Cx": "Cx", "Cy": "Cy"},
+                    global_inputs={"dt": self.dt, "nu": self.nu},
+                    outputs={"out_q": "u_tmp3"},
+                    mode=self.backend,
+                    reductions=rdx,
+                )
+                self.stencil_vdiff = self.prepared_domain.register_stencil(
+                    definitions_func=stencils.definitions_diffusion,
+                    inputs={"in_q": "v_tmp2", "tmp_q": "v_tmp",
+                            "Ax": "Ax", "Ay": "Ay",
+                            "Bx": "Bx", "By": "By",
+                            "Cx": "Cx", "Cy": "Cy"},
+                    global_inputs={"dt": self.dt, "nu": self.nu},
+                    outputs={"out_q": "v_tmp3"},
+                    mode=self.backend,
+                    reductions=rdx,
+                )
 
         timer.stop(name="Initialization")
 
@@ -390,29 +454,29 @@ class LaxWendroffSWES:
             n, t = 0, 0.
 
             # Communicate partition boundaries
-            self.prepared_domain.communicate("h")
-            self.prepared_domain.communicate("h_new")
-            self.prepared_domain.communicate("dx")
-            self.prepared_domain.communicate("dxc")
-            self.prepared_domain.communicate("dy")
-            self.prepared_domain.communicate("dy1")
-            self.prepared_domain.communicate("dy1c")
-            self.prepared_domain.communicate("c")
-            self.prepared_domain.communicate("c_midy")
-            self.prepared_domain.communicate("u")
-            self.prepared_domain.communicate("v")
-            if self.only_advection:
-                self.prepared_domain.communicate("u_midx")
-                self.prepared_domain.communicate("v_midy")
-            if not self.only_advection:
-                self.prepared_domain.communicate("u_new")
-                self.prepared_domain.communicate("v_new")
-                self.prepared_domain.communicate("dyc")
-                self.prepared_domain.communicate("f")
-                self.prepared_domain.communicate("hs")
-                self.prepared_domain.communicate("tg")
-                self.prepared_domain.communicate("tg_midx")
-                self.prepared_domain.communicate("tg_midy")
+            # self.prepared_domain.communicate("h")
+            # self.prepared_domain.communicate("h_new")
+            # self.prepared_domain.communicate("dx")
+            # self.prepared_domain.communicate("dxc")
+            # self.prepared_domain.communicate("dy")
+            # self.prepared_domain.communicate("dy1")
+            # self.prepared_domain.communicate("dy1c")
+            # self.prepared_domain.communicate("c")
+            # self.prepared_domain.communicate("c_midy")
+            # self.prepared_domain.communicate("u")
+            # self.prepared_domain.communicate("v")
+            # if self.only_advection:
+            #     self.prepared_domain.communicate("u_midx")
+            #     self.prepared_domain.communicate("v_midy")
+            # if not self.only_advection:
+            #     self.prepared_domain.communicate("u_new")
+            #     self.prepared_domain.communicate("v_new")
+            #     self.prepared_domain.communicate("dyc")
+            #     self.prepared_domain.communicate("f")
+            #     self.prepared_domain.communicate("hs")
+            #     self.prepared_domain.communicate("tg")
+            #     self.prepared_domain.communicate("tg_midx")
+            #     self.prepared_domain.communicate("tg_midy")
             #
             # hnew_north = np.zeros((self.m, self.halo[2], 1))
             # hnew_south = np.zeros((self.m, self.halo[3], 1))
@@ -480,38 +544,18 @@ class LaxWendroffSWES:
                 timer.stop(name="Communication during time integration")
 
                 #
-                # Update solution at the internal grid points
-                #
-                if self.only_advection:
-                    self.stencil.compute()
-                else:
-                    self.stencil_lw.compute()
-                    # if self.diffusion:
-                    #     self._extend_solution(self.h, h_ext, h_new, h_tmp_ext)
-                    #     self._extend_solution(self.u, u_ext, u_new, u_tmp_ext)
-                    #     self._extend_solution(self.v, v_ext, v_new, v_tmp_ext)
-                    #
-                    #     self.stencil_hdiff.compute()
-                    #     self.stencil_udiff.compute()
-                    #     self.stencil_vdiff.compute()
-                    #
-                    #     h_new[1:-1, 1:-1] = h_new_ext[2:-2, 2:-2]
-                    #     u_new[1:-1, 1:-1] = u_new_ext[2:-2, 2:-2]
-                    #     v_new[1:-1, 1:-1] = v_new_ext[2:-2, 2:-2]
-
-                #
                 # Apply boundary conditions
                 #
                 hnew_north = {}
                 hnew_south = {}
                 for sd in self.prepared_domain.subdivisions:
-                    hnew_north[sd] = sd.get_interior_field("h_new")[:, 1, 0]
-                    hnew_south[sd] = sd.get_interior_field("h_new")[:, -2, 0]
+                    hnew_north[sd] = sd.get_interior_field("h")[:, 1, 0]
+                    hnew_south[sd] = sd.get_interior_field("h")[:, -2, 0]
                     hnew_north[sd] = hnew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
                     hnew_south[sd] = hnew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
 
-                    sd.set_boundary_condition("h_new", 2, hnew_north[sd])
-                    sd.set_boundary_condition("h_new", 3, hnew_south[sd])
+                    sd.set_boundary_condition("h", 2, hnew_north[sd])
+                    sd.set_boundary_condition("h", 3, hnew_south[sd])
 
                 if not self.only_advection:
                     unew_south = {}
@@ -520,31 +564,68 @@ class LaxWendroffSWES:
                     vnew_north = {}
 
                     for sd in self.prepared_domain.subdivisions:
-                        unew_north[sd] = sd.get_interior_field("u_new")[:, 1, 0]
-                        unew_south[sd] = sd.get_interior_field("u_new")[:, -2, 0]
+                        unew_north[sd] = sd.get_interior_field("u")[:, 1, 0]
+                        unew_south[sd] = sd.get_interior_field("u")[:, -2, 0]
                         unew_north[sd] = unew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
                         unew_south[sd] = unew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
 
-                        sd.set_boundary_condition("u_new", 2, unew_north[sd])
-                        sd.set_boundary_condition("u_new", 3, unew_south[sd])
+                        sd.set_boundary_condition("u", 2, unew_north[sd])
+                        sd.set_boundary_condition("u", 3, unew_south[sd])
 
-                        vnew_north[sd] = sd.get_interior_field("v_new")[:, 1, 0]
-                        vnew_south[sd] = sd.get_interior_field("v_new")[:, -2, 0]
+                        vnew_north[sd] = sd.get_interior_field("v")[:, 1, 0]
+                        vnew_south[sd] = sd.get_interior_field("v")[:, -2, 0]
                         vnew_north[sd] = vnew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
                         vnew_south[sd] = vnew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
 
-                        sd.set_boundary_condition("v_new", 2, vnew_north[sd])
-                        sd.set_boundary_condition("v_new", 3, vnew_south[sd])
+                        sd.set_boundary_condition("v", 2, vnew_north[sd])
+                        sd.set_boundary_condition("v", 3, vnew_south[sd])
 
-                self.prepared_domain.apply_boundary_condition("h_new")
+                self.prepared_domain.apply_boundary_condition("h")
                 if not self.only_advection:
-                    self.prepared_domain.apply_boundary_condition("u_new")
-                    self.prepared_domain.apply_boundary_condition("v_new")
+                    self.prepared_domain.apply_boundary_condition("u")
+                    self.prepared_domain.apply_boundary_condition("v")
 
-                self.prepared_domain.swap_fields("h", "h_new")
+
+                #
+                # Update solution at the internal grid points
+                #
+                if self.only_advection:
+                    self.stencil.compute()
+                else:
+
+                    self.stencil_lw.compute()
+
+                    if self.diffusion:
+                        for sd in self.prepared_domain.subdivisions:
+                            sd.fields["h_tmp"] = sd.fields["h_new"].copy()
+                            sd.fields["u_tmp"] = sd.fields["u_new"].copy()
+                            sd.fields["v_tmp"] = sd.fields["v_new"].copy()
+                            sd.fields["h_tmp3"] = sd.fields["h_new"].copy()
+                            sd.fields["u_tmp3"] = sd.fields["u_new"].copy()
+                            sd.fields["v_tmp3"] = sd.fields["v_new"].copy()
+                            sd.fields["h_tmp2"] = sd.fields["h"].copy()
+                            sd.fields["u_tmp2"] = sd.fields["u"].copy()
+                            sd.fields["v_tmp2"] = sd.fields["v"].copy()
+
+                            # print("before", (sd.fields["h_new"] == sd.fields["h_tmp3"]).all())
+
+                        self.stencil_hdiff.compute()
+                        self.stencil_udiff.compute()
+                        self.stencil_vdiff.compute()
+
+                        # for sd in self.prepared_domain.subdivisions:
+                        #     print("after", (sd.fields["h_tmp"] == sd.fields["h_tmp3"]).all())
+
+
+                self.prepared_domain.swap_fields("h", "h_tmp3")
                 if not self.only_advection:
-                    self.prepared_domain.swap_fields("u", "u_new")
-                    self.prepared_domain.swap_fields("v", "v_new")
+                    self.prepared_domain.swap_fields("u", "u_tmp3")
+                    self.prepared_domain.swap_fields("v", "v_tmp3")
+
+                # self.prepared_domain.swap_fields("h", "h_new")
+                # if not self.only_advection:
+                #     self.prepared_domain.swap_fields("u", "u_new")
+                #     self.prepared_domain.swap_fields("v", "v_new")
 
                 if n % 100 == 0:
                     umax = []
@@ -614,13 +695,17 @@ if __name__ == "__main__":
     # Suggested simulation"s length for Williamson"s test cases:
     # * IC 0: 12 days
     # * IC 1: 14 days
-    # t_final = 12
-    t_final = 3
+    t_final = 12
+    # t_final = 3
+    nx = 180
+    ny = 90
+    nz = 1
 
     # Let"s go!
-    solver = LaxWendroffSWES(planet=0, t_final=t_final, m=180, n=92, ic=ic,
-                             cfl=1, diff=False, backend=gt.mode.NUMPY, dtype=np.float64, nparts=2)
-    solver.solve(verbose=100, save=100)
+    solver = LaxWendroffSWES(planet=0, t_final=t_final, m=nx, n=ny, ic=ic,
+                             cfl=1, diff=True, backend=gt.mode.NUMPY, dtype=np.float64, nparts=2)
+    save_freq = 100 #25
+    solver.solve(verbose=100, save=save_freq)
     # t, phi, theta, h, u, v = solver.solve(verbose=100, save=10)
 
     timer.stop(name="Overall SWES time")
@@ -630,7 +715,7 @@ if __name__ == "__main__":
 
         # Save data
 
-        postprocess_swes(180, 90, 1, ic[0], 100)
+        postprocess_swes(nx, ny, nz, ic[0], save_freq)
 
         # postprocess_swes(nx=180, ny=88, nz=1, postfix="t_0")
         # postprocess_swes(nx=180, ny=88, nz=1, postfix="t_5226")

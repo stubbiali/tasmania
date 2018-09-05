@@ -76,6 +76,8 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
         nu = 5e6
     else:
         raise ValueError('Unknown planet {}.'.format(planet))
+
+    halo = [1, 1, 1, 1, 0, 0]
     # 
     # Lat-lon grid
     #
@@ -84,15 +86,16 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     # Discretize longitude
     m = m
     dphi = 2. * math.pi / m
-    phi_1d = np.linspace(-dphi, 2. * math.pi + dphi, m + 3, dtype=dtype)
+    phi_1d = np.linspace(-dphi, 2. * math.pi, m + halo[0] + halo[1], dtype=dtype)
 
     # Discretize latitude
     n = n
-    dtheta = math.pi / (n - 1)
+    dtheta = math.pi / n
     # Latitude with poles
     #theta_1d = np.linspace(-0.5 * math.pi, 0.5 * math.pi, n, dtype=dtype)
     # Latitude between 85 and -85
-    theta_1d = np.linspace(-85.0 / 180.0 * math.pi, 85.0 / 180.0 * math.pi, n, dtype=dtype)
+    theta_1d = np.linspace((-85.0 - dtheta) / 180.0 * math.pi, (85.0 + dtheta) / 180.0 * math.pi,
+                           n + halo[2] + halo[3], dtype=dtype)
 
     # Build grid
     phi, theta = np.meshgrid(phi_1d, theta_1d, indexing='ij')
@@ -112,7 +115,7 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     #
     # Flat terrain height
     #
-    hs = np.zeros((m + 3, n), dtype=dtype)
+    hs = np.zeros((m + halo[0] + halo[1], n + halo[2] + halo[3]), dtype=dtype)
 
     # 
     # Cartesian coordinates and increments
@@ -132,11 +135,11 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     dy_min = dy.min()
 
     # "Centred" increments
-    dxc = np.zeros((m + 3, n), dtype=dtype)
+    dxc = np.zeros((m + halo[0] + halo[1], n + halo[2] + halo[3]), dtype=dtype)
     dxc[1:-1, 1:-1] = 0.5 * (dx[:-1, 1:-1] + dx[1:, 1:-1])
-    dyc = np.zeros((m + 3, n), dtype=dtype)
+    dyc = np.zeros((m + halo[0] + halo[1], n + halo[2] + halo[3]), dtype=dtype)
     dyc[1:-1, 1:-1] = 0.5 * (dy[1:-1, :-1] + dy[1:-1, 1:])
-    dy1c = np.zeros((m + 3, n), dtype=dtype)
+    dy1c = np.zeros((m + halo[0] + halo[1], n + halo[2] + halo[3]), dtype=dtype)
     dy1c[1:-1, 1:-1] = 0.5 * (dy1[1:-1, :-1] + dy1[1:-1, 1:])
 
     # Compute longitudinal increment used in pole treatment
@@ -154,30 +157,30 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
         # Centred finite difference along longitude
         # Ax, Bx and Cx denote the coefficients associated
         # with the centred, downwind and upwind point, respectively
-        Ax = np.zeros((m + 5, n + 2), dtype=dtype)
+        Ax = np.zeros((m + halo[0] + halo[1] + 2, n + halo[2] + halo[3] + 2), dtype=dtype)
         Ax[2:-2, 2:-2] = (dx[1:, 1:-1] - dx[:-1, 1:-1]) / (dx[1:, 1:-1] * dx[:-1, 1:-1])
         Ax[1, :], Ax[-2, :] = Ax[-4, :], Ax[3, :]
 
-        Bx = np.zeros((m + 5, n + 2), dtype=dtype)
+        Bx = np.zeros((m + halo[0] + halo[1] + 2, n + halo[2] + halo[3] + 2), dtype=dtype)
         Bx[2:-2, 2:-2] = dx[:-1, 1:-1] / (dx[1:, 1:-1] * (dx[1:, 1:-1] + dx[:-1, 1:-1]))
         Bx[1, :], Bx[-2, :] = Bx[-4, :], Bx[3, :]
 
-        Cx = np.zeros((m + 5, n + 2), dtype=dtype)
+        Cx = np.zeros((m + halo[0] + halo[1] + 2, n + halo[2] + halo[3] + 2), dtype=dtype)
         Cx[2:-2, 2:-2] = - dx[1:, 1:-1] / (dx[:-1, 1:-1] * (dx[1:, 1:-1] + dx[:-1, 1:-1]))
         Cx[1, :], Cx[-2, :] = Cx[-4, :], Cx[3, :]
 
         # Centred finite difference along latitude
         # Ay, By and Cy denote the coefficients associated
         # with the centred, downwind and upwind point, respectively
-        Ay = np.zeros((m + 5, n + 2), dtype=dtype)
+        Ay = np.zeros((m + halo[0] + halo[1] + 2, n + halo[2] + halo[3] + 2), dtype=dtype)
         Ay[2:-2, 2:-2] = (dy[1:-1, 1:] - dy[1:-1, :-1]) / (dy[1:-1, 1:] * dy[1:-1, :-1])
 
-        By = np.zeros((m + 5, n + 2), dtype=dtype)
+        By = np.zeros((m + halo[0] + halo[1] + 2, n + halo[2] + halo[3] + 2), dtype=dtype)
         By[2:-2, 2:-2] = dy[1:-1, :-1] / (dy[1:-1, 1:] * (dy[1:-1, 1:] + dy[1:-1, :-1]))
         By[2:-2, -2] = 1. / (2. * dy[1:-1, -2])
         By[2:-2, 1] = 1. / (2. * dy[1:-1, 1])
 
-        Cy = np.zeros((m + 5, n + 2), dtype=dtype)
+        Cy = np.zeros((m + halo[0] + halo[1] + 2, n + halo[2] + halo[3] + 2), dtype=dtype)
         Cy[2:-2, 2:-2] = - dy[1:-1, 1:] / (dy[1:-1, :-1] * (dy[1:-1, 1:] + dy[1:-1, :-1]))
         Cy[2:-2, -2] = - 1. / (2. * dy[1:-1, -2])
         Cy[2:-2, 1] = - 1. / (2. * dy[1:-1, 1])
@@ -199,13 +202,13 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
         # Compute steering wind
         u = u0 * (np.cos(theta) * np.cos(alpha) +
                   np.sin(theta) * np.cos(phi) * np.sin(alpha))
-        u_midx = np.zeros((m + 2, n), dtype=dtype)
+        u_midx = np.zeros((m + halo[0] + halo[1] - 1, n + halo[2] + halo[3]), dtype=dtype)
         u_midx[:, 1:-1] = u0 * (np.cos(0.5 * (theta[:-1, 1:-1] + theta[1:, 1:-1])) * np.cos(alpha) +
                                 np.sin(0.5 * (theta[:-1, 1:-1] + theta[1:, 1:-1])) *
                                 np.cos(0.5 * (phi[:-1, 1:-1] + phi[1:, 1:-1])) * np.sin(alpha))
 
         v = - u0 * np.sin(phi) * np.sin(alpha)
-        v_midy = np.zeros((m + 3, n - 1), dtype=dtype)
+        v_midy = np.zeros((m + halo[0] + halo[1], n + halo[2] + halo[3] - 1), dtype=dtype)
         v_midy[1:-1, :] = - u0 * np.sin(0.5 * (phi[1:-1, :-1] + phi[1:-1, 1:])) * np.sin(alpha)
 
         # Compute initial fluid height
@@ -378,7 +381,7 @@ if __name__ == "__main__":
     else:
         only_advection = False
 
-    diffusion = False
+    diffusion = True
 
     path = ""
     prefix = ""

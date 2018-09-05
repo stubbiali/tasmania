@@ -114,7 +114,7 @@ class DomainSubdivision:
                 # if fieldname == "h":
                 #     print(self.fields[fieldname].shape)
             else:
-                print(fieldname, self.fields[fieldname].shape)
+                # print(fieldname, self.fields[fieldname].shape)
                 self.fields[fieldname][:, :, :] = np.load(
                     field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1]
                                                                         + halo[0] + halo[1] - staggered[0],
@@ -319,6 +319,8 @@ class DomainSubdivision:
         mode = Mode.DEBUG
         vertical_direction = VerticalDirection.PARALLEL
 
+        rdx = [0, 0, 0, 0, 0, 0]
+
         # Read keyword arguments
         for key in kwargs:
             if key == "definitions_func":
@@ -337,6 +339,8 @@ class DomainSubdivision:
                 mode = kwargs[key]
             elif key == "vertical_direction":
                 vertical_direction = kwargs[key]
+            elif key == "reductions":
+                rdx = kwargs[key]
             else:
                 raise ValueError("\n  NGStencil accepts the following keyword arguments: \n"
                                  "  - definitions_func, \n"
@@ -344,10 +348,11 @@ class DomainSubdivision:
                                  "  - constant_inputs [default: {}], \n"
                                  "  - global_inputs [default: {}], \n"
                                  "  - outputs, \n"
-                                 "  - domain, \n"
+                                 "  - reductions, \n"
                                  "  - mode [default: DEBUG], \n"
                                  "  - vertical_direction [default: PARALLEL]. \n"
-                                 "  The order does not matter.")
+                                 "  The order does not matter. \n"
+                                 " But provided key was: " + str(key))
 
         # Use the inputs/outputs as names of the field to instantiate the stencil with subdivision fields
         fields_in = {}
@@ -375,7 +380,8 @@ class DomainSubdivision:
         dry = self.size[1] + uly - 1
         drz = self.size[2] + ulz - 1
 
-        domain = gt.domain.Rectangle((ulx, uly, ulz), (drx, dry, drz))
+        domain = gt.domain.Rectangle((ulx + rdx[0], uly+ rdx[2], ulz+ rdx[4]),
+                                     (drx - rdx[1], dry - rdx[3], drz - rdx[5]))
         # print(ulx, uly, ulz, drx, dry, drz)
         # gt.domain.Rectangle((1, 1, 0), (89, 43, 0)),#
 
