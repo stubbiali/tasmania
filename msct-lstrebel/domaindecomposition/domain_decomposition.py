@@ -502,6 +502,7 @@ class DomainSubdivision:
             # Check if neighbor in current direction is the global boundary:
             if self.check_global_boundary(d):
                 # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
+                # print("Found the global boundary for subdivision ", self.id, " in direction ", d)
                 requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
@@ -543,6 +544,7 @@ class DomainSubdivision:
         # Update halo regions after receiving all boundaries
         if MPI.COMM_WORLD.Get_size() > 1:
             MPI.Request.waitall(requests)
+            # print(requests)
 
             for d in range(len(self.neighbors_id)):
                 # Check if neighbor in current direction is the global boundary:

@@ -84,18 +84,21 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     assert (m > 1) and (n > 1), \
         "Number of grid points along each direction must be greater than one."
     # Discretize longitude
-    m = m
+    # m = m
     dphi = 2. * math.pi / m
     phi_1d = np.linspace(-dphi, 2. * math.pi, m + halo[0] + halo[1], dtype=dtype)
 
     # Discretize latitude
-    n = n
-    dtheta = math.pi / n
+    # n = n
+    # dtheta = math.pi / n
+    # dtheta = 170.0 / n
     # Latitude with poles
     #theta_1d = np.linspace(-0.5 * math.pi, 0.5 * math.pi, n, dtype=dtype)
     # Latitude between 85 and -85
-    theta_1d = np.linspace((-85.0 - dtheta) / 180.0 * math.pi, (85.0 + dtheta) / 180.0 * math.pi,
-                           n + halo[2] + halo[3], dtype=dtype)
+    theta_1d = np.linspace(-85.0  / 180.0 * math.pi, 85.0 / 180.0 * math.pi, n, dtype=dtype)
+    dtheta = theta_1d[1] - theta_1d[0]
+    theta_1d = np.insert(theta_1d, 0, theta_1d[0] - dtheta)
+    theta_1d = np.append(theta_1d, theta_1d[-1] + dtheta)
 
     # Build grid
     phi, theta = np.meshgrid(phi_1d, theta_1d, indexing='ij')
@@ -372,7 +375,7 @@ if __name__ == "__main__":
     n = 90
     nz = 1
     sx = 2
-    sy = 1
+    sy = 2
     sz = 1
     nparts = 2
 

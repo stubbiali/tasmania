@@ -235,6 +235,7 @@ class LaxWendroffSWES:
             self.prepared_domain.register_field(fieldname="u_midx",
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u_midx.npy",
+                                                staggered=(1, 0, 0),
                                                 haloincluded=True)
 
         if not self.only_advection:
@@ -526,7 +527,8 @@ class LaxWendroffSWES:
                 # If run with mpi collect all local minimum, choose the global minimum and send it to everybody
                 if MPI.COMM_WORLD.Get_size() > 1:
                     self.dt.value = MPI.COMM_WORLD.allreduce(sendobj=self.dt.value, op=MPI.MIN)
-                # print(self.dt.value)
+                # if n % 100 == 0:
+                #     print(self.dt.value)
 
                 # If needed, adjust time step
                 if t + self.dt > self.t_final:
@@ -552,7 +554,7 @@ class LaxWendroffSWES:
                     hnew_north[sd] = sd.get_interior_field("h")[:, 1, 0]
                     hnew_south[sd] = sd.get_interior_field("h")[:, -2, 0]
                     hnew_north[sd] = hnew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
-                    hnew_south[sd] = hnew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+                    hnew_south[sd] = hnew_south[sd].reshape((sd.size[0], self.halo[3], sd.size[2]))
 
                     sd.set_boundary_condition("h", 2, hnew_north[sd])
                     sd.set_boundary_condition("h", 3, hnew_south[sd])
@@ -567,7 +569,7 @@ class LaxWendroffSWES:
                         unew_north[sd] = sd.get_interior_field("u")[:, 1, 0]
                         unew_south[sd] = sd.get_interior_field("u")[:, -2, 0]
                         unew_north[sd] = unew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
-                        unew_south[sd] = unew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+                        unew_south[sd] = unew_south[sd].reshape((sd.size[0], self.halo[3], sd.size[2]))
 
                         sd.set_boundary_condition("u", 2, unew_north[sd])
                         sd.set_boundary_condition("u", 3, unew_south[sd])
@@ -575,7 +577,7 @@ class LaxWendroffSWES:
                         vnew_north[sd] = sd.get_interior_field("v")[:, 1, 0]
                         vnew_south[sd] = sd.get_interior_field("v")[:, -2, 0]
                         vnew_north[sd] = vnew_north[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
-                        vnew_south[sd] = vnew_south[sd].reshape((sd.size[0], self.halo[2], sd.size[2]))
+                        vnew_south[sd] = vnew_south[sd].reshape((sd.size[0], self.halo[3], sd.size[2]))
 
                         sd.set_boundary_condition("v", 2, vnew_north[sd])
                         sd.set_boundary_condition("v", 3, vnew_south[sd])
@@ -616,9 +618,10 @@ class LaxWendroffSWES:
                         # for sd in self.prepared_domain.subdivisions:
                         #     print("after", (sd.fields["h_tmp"] == sd.fields["h_tmp3"]).all())
 
-
-                self.prepared_domain.swap_fields("h", "h_tmp3")
-                if not self.only_advection:
+                if self.only_advection:
+                    self.prepared_domain.swap_fields("h", "h_new")
+                else:
+                    self.prepared_domain.swap_fields("h", "h_tmp3")
                     self.prepared_domain.swap_fields("u", "u_tmp3")
                     self.prepared_domain.swap_fields("v", "v_tmp3")
 
@@ -627,7 +630,7 @@ class LaxWendroffSWES:
                 #     self.prepared_domain.swap_fields("u", "u_new")
                 #     self.prepared_domain.swap_fields("v", "v_new")
 
-                if n % 100 == 0:
+                if n % 100 == 0 and MPI.COMM_WORLD.Get_rank() == 0:
                     umax = []
                     for sd in self.prepared_domain.subdivisions:
                         # print("time step " + str(n) + " time " + str(t) + " sd " + str(sd.id) + " u max " + str(np.max(sd.get_interior_field("u_new")[:])))
@@ -676,8 +679,8 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
     usave = np.load("swes_ic{}_u.npy".format(nic))
     vsave = np.load("swes_ic{}_v.npy".format(nic))
     filename = "swes_no_poles_ic{}.npz".format(nic)
-    np.savez(filename, t=tsave[:-1], phi=phi[0:nx, 0:ny], theta=theta[0:nx, 0:ny],
-             h=hsave, u=usave[0:nx, 0:ny], v=vsave[0:nx, 0:ny])
+    np.savez(filename, t=tsave[:-1], phi=phi[1:nx+1, 1:ny+1], theta=theta[1:nx+1, 1:ny+1],
+             h=hsave, u=usave[1:nx+1, 1:ny+1], v=vsave[1:nx+1, 1:ny+1])
 
 
 if __name__ == "__main__":
@@ -695,7 +698,7 @@ if __name__ == "__main__":
     # Suggested simulation"s length for Williamson"s test cases:
     # * IC 0: 12 days
     # * IC 1: 14 days
-    t_final = 12
+    t_final = 9
     # t_final = 3
     nx = 180
     ny = 90
