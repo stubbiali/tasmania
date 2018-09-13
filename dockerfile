@@ -61,7 +61,7 @@ RUN cd /tasmania/docker/gridtools4py && \
 RUN cd / && \
 	git clone https://github.com/mcgibbon/sympl.git && \
 	cd sympl && \
-	git checkout develop && \
+	git checkout master && \
 	python -m pip install --no-binary -e .
 
 # Install Boost-1.58.0
