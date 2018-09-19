@@ -156,8 +156,8 @@ def compare_files(ref_file, target_file, fileoutput=False, path="", prefix="", p
             h_ref[:, :, t], h_tar[:, :, t])
 
         # if plotting:
-        #         plot_difference_field(t_tar, h_diff, phi_tar, theta_tar, filename=str(path) + str(prefix)
-        #                                                                           + "_" + str(t) + "_" + "ref_vs_dd")
+        #         plot_difference_field(t_tar, h_diff, phi_tar, theta_tar,
+        #                               filename=str(path) + str(prefix) + "_" + str(t) + "_" + "ref_vs_dd")
 
         if not onlylast:
             h_diff_per_cell_sum[:] += h_diff[:]
@@ -182,9 +182,12 @@ def compare_files(ref_file, target_file, fileoutput=False, path="", prefix="", p
 
 
 def plot_difference_field(t, h, phi, theta, filename):
+    plt.cla()
+    plt.clf()
+
     projection = 'plate_carree'
     # Tunable settings
-    fontsize = 16
+    fontsize = 14
     figsize = [7, 8]
     color_scale_levels = 29
     cmap_name = 'BuRd'

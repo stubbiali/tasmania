@@ -745,15 +745,16 @@ class LaxWendroffSWES:
 								
 		# Save
 		t_save = np.array([[0]])
-		h_save = self.h[1:-1, :, np.newaxis]
-		u_save = self.u[1:-1, :, np.newaxis]
-		v_save = self.v[1:-1, :, np.newaxis]
+		h_save = np.copy(self.h[1:-1, :, np.newaxis])
+		u_save = np.copy(self.u[1:-1, :, np.newaxis])
+		v_save = np.copy(self.v[1:-1, :, np.newaxis])
 								
 		#
 		# Time marching
 		# 
 		n, t = 0, 0.
 		elapsed_time = 0.
+		min_ts = None
 
 		while t < self.t_final and n < self.nmax:
 			start = time.time()
@@ -783,7 +784,11 @@ class LaxWendroffSWES:
 				t = self.t_final
 			else:
 				t += self.dt.value
-				
+
+			if min_ts is None:
+				min_ts = self.dt.value
+			else:
+				min_ts = np.minimum(min_ts, self.dt.value)
 			# 
 			# Update solution at the internal grid points
 			#
@@ -856,5 +861,6 @@ class LaxWendroffSWES:
 		# 
 		print('\nTotal number of iterations performed: {}'.format(n))
 		print('Average time per iteration: {} ms\n'.format(elapsed_time/n * 1000.))
+		print('Smallest time step during iterations: {}'.format(min_ts))
 		
 		return t_save, self.phi[1:-1, :], self.theta[1:-1, :], h_save, u_save, v_save
