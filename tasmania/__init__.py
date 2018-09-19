@@ -7,6 +7,7 @@ from tasmania.dynamics.isentropic_dycore import IsentropicDynamicalCore
 from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux, \
 												IsentropicVerticalFlux
 from tasmania.dynamics.isentropic_prognostic import IsentropicPrognostic
+from tasmania.dynamics.isentropic_state import get_isothermal_isentropic_state
 from tasmania.dynamics.sedimentation_flux import SedimentationFlux
 from tasmania.dynamics.vertical_damping import VerticalDamping
 from tasmania.grids.grid_xy import GridXY
@@ -40,6 +41,7 @@ __all__ = (
 	HorizontalBoundary, HorizontalSmoothing, VerticalDamping,
 	IsentropicHorizontalFlux, IsentropicVerticalFlux,
 	IsentropicPrognostic, IsentropicDiagnostics, IsentropicDynamicalCore,
+	get_isothermal_isentropic_state,
 	SedimentationFlux,
 	HorizontalVelocity, WaterConstituent,
 	GridXY, GridXZ, GridXYZ,

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+IMAGE_NAME=tasmania:master
+CONTAINER_NAME=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
+VOLUME_NAME=tasmania-volume
+
+echo "About to spawn a containter named $CONTAINER_NAME" 
+echo "from the image '$IMAGE_NAME'." 
+read -n 1 -r -p "Press any key to continue, or Ctrl-C to exit."
+
+docker volume create $VOLUME_NAME
+
+docker run --privileged					\
+		   -dit							\
+		   -e DISPLAY 					\
+		   -e XAUTHORITY=$XAUTHORITY 	\
+		   --name $CONTAINER_NAME		\
+		   --mount type=volume,src=tasmania-volume,dst=/home/dockeruser/tasmania	\
+		   $IMAGE_NAME					\
+		   mkdir tasmania					
+
+docker cp ../ $CONTAINER_NAME:/home/dockeruser/tasmania
+
+docker exec -it $CONTAINER_NAME bash
+		   
+#-v /tmp/.X11-unix:/tmp/.X11-unix 		\

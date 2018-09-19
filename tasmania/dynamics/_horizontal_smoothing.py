@@ -1,5 +1,5 @@
 """
-Classes:
+This module contains:
     _FirstOrder(HorizontalSmoothing)
     _FirstOrder{XZ, YZ}(HorizontalSmoothing)
     _SecondOrder(HorizontalSmoothing)

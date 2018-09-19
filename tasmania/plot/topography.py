@@ -1,3 +1,7 @@
+"""
+This module contains:
+	plot_topography_3d
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np

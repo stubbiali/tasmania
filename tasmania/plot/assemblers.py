@@ -1,3 +1,8 @@
+"""
+This module contains:
+	PlotsOverlapper
+	SubplotsAssembler
+"""
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import os

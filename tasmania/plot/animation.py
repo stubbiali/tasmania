@@ -1,3 +1,7 @@
+"""
+This module contains:
+	Animation
+"""
 import matplotlib.animation as manimation
 import matplotlib.pyplot as plt
 

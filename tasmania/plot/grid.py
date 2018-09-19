@@ -1,3 +1,9 @@
+"""
+This module contains:
+	plot_grid_xz
+	plot_grid_yz
+	plot_grid_vertical_section
+"""
 import matplotlib as mpl
 import numpy as np
 

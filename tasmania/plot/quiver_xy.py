@@ -1,3 +1,8 @@
+"""
+This module contains:
+	make_quiver_xy
+	plot_quiver_xy
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np

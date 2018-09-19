@@ -1,3 +1,8 @@
+"""
+This module contains:
+	make_contourf_xy
+	plot_contourf_xy
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np

@@ -1,5 +1,5 @@
 """
-Classes:
+This module contains:
 	HorizontalBoundary
 """
 import abc

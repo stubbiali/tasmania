@@ -1,5 +1,5 @@
 """
-Classes:
+This module contains:
 	_Centered(IsentropicPrognostic)
 	_ForwardEuler(IsentropicPrognostic)
 	_RK3(IsentropicPrognostic)

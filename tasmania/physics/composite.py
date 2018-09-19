@@ -1,3 +1,7 @@
+"""
+This module contains:
+	PhysicsComponentComposite
+"""
 from sympl import DiagnosticComponent as Diagnostic, \
 				  TendencyComponent as Tendency, \
 				  AdamsBashforth as TendencyStepper, \

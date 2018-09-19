@@ -1,3 +1,7 @@
+"""
+This module contains:
+	GridXY
+"""
 import numpy as np
 import sympl
 

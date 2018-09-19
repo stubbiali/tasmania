@@ -1,3 +1,9 @@
+"""
+This module contains:
+	Plot1d(Monitor)
+	Plot2d(Monitor)
+	Plot3d(Monitor)
+"""
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import os

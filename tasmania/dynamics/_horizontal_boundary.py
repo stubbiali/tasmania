@@ -1,5 +1,5 @@
 """
-Classes:
+This module contains:
     _Periodic(HorizontalBoundary)
     _Periodic{XZ, YZ}(HorizontalBoundary)
     _Relaxed(HorizontalBoundary)

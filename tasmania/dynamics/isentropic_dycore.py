@@ -1,3 +1,7 @@
+"""
+This module contains:
+	IsentropicDynamicalCore(DynamicalCore)
+"""
 import numpy as np
 
 import gridtools as gt

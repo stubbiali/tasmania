@@ -4,6 +4,7 @@ TMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
+BUILD_FOLDERS = build .eggs tasmania/tasmania.egg-info
 DOCDIR := doc
 DOCSRC := $(DOCDIR)/source/conf.py $(DOCDIR)/source/api.rst
 PARSERDIR := tasmania/grids/parser
@@ -39,14 +40,14 @@ uml: parser
 	@mv packages_*.eps $(UMLDIR) > /dev/null
 	@echo "OK."
 
-test: parser
+test:
 	@cd $(TESTDIR) && \
 	 pytest --ignore=test_animation.py --ignore=test_contour_xz.py --ignore=test_contourf_xy.py \
-			--ignore=test_contourf_xz.py --ignore=test_plot_grid.py --ignore=test_plot_overlapper.py \
+			--ignore=test_contourf_xz.py --ignore=test_plot_grid.py --ignore=test_plots_overlapper.py \
 			--ignore=test_plot_topography.py --ignore=test_profile_1d.py --ignore=test_quiver_xy.py \
 			--ignore=test_subplots_assembler.py
 	
-.PHONY: clean gitignore
+.PHONY: clean distclean gitignore
 
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null
@@ -54,6 +55,9 @@ clean:
 	@find . -type f -name "*.sw[klmnop]" -delete
 	@cd $(PARSERDIR) && $(MAKE) clean > /dev/null
 	@cd $(PARSERDIR)/tests && $(MAKE) clean > /dev/null
+
+distclean: clean
+	@$(RM) -r $(BUILD_FOLDERS) > /dev/null
 
 gitignore:
 	@sed -n '/# AUTOMATICALLY GENERATED TEXT/q;p' .gitignore | cat > .gitignore_tmp

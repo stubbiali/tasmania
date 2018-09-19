@@ -1,5 +1,5 @@
 """
-Classes:
+This module contains:
     SedimentationFlux
     _{First, Second}OrderUpwind(SedimentationFlux)
 """

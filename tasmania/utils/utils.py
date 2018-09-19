@@ -140,12 +140,13 @@ def convert_datetime64_to_datetime(time):
 	References
 	----------
 	https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
+	https://github.com/bokeh/bokeh/pull/6192/commits/48aea137edbabe731fb9a9c160ff4ab2b463e036.
 	"""
 	# Safeguard check
 	if type(time) == datetime:
 		return time
 
-	ts = (time - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+	ts = (time - np.datetime64('0', 's')) / np.timedelta64(1, 's')
 	return datetime.utcfromtimestamp(ts)
 
 

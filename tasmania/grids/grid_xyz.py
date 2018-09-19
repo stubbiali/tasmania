@@ -1,5 +1,5 @@
 """
-Classes:
+This module contains:
 	GridXYZ
 """
 from datetime import timedelta

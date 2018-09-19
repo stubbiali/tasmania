@@ -1,3 +1,8 @@
+"""
+This module contains:
+	make_contour_xz
+	plot_contour_xz
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np

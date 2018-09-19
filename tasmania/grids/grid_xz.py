@@ -1,3 +1,7 @@
+"""
+This module contains:
+	GridXZ
+"""
 from datetime import timedelta
 import math
 import numpy as np
