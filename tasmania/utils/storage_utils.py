@@ -20,6 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	NetCDFMonitor
+	load_netcdf_dataset
+	_load_grid
+	_load_states
+"""
 from datetime import timedelta
 import netCDF4 as nc4
 import numpy as np
@@ -149,11 +156,11 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 					var[:] = value.values.item()
 					var.setncattr('units', value.attrs['units'])
 				elif isinstance(value, str):
-					topo_type    = dataset.createVariable(key, str, ('str_dim',))
-					topo_type[:] = np.array([value], dtype='object')
+					var    = dataset.createVariable(key, str, ('str_dim',))
+					var[:] = np.array([value], dtype='object')
 				elif isinstance(value, bool):
-					topo_type    = dataset.createVariable(key, bool, ('bool_dim',))
-					topo_type[:] = np.array([value], dtype=bool)
+					var    = dataset.createVariable(key, int, ('bool_dim',))
+					var[:] = np.array([1 if value else 0], dtype=bool)
 
 				keys.append(key)
 

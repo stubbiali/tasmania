@@ -20,6 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	PlotsOverlapper
+	SubplotsAssembler
+"""
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import os

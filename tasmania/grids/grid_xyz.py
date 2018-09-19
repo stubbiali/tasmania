@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-Classes:
+This module contains:
 	GridXYZ
 """
 from datetime import timedelta

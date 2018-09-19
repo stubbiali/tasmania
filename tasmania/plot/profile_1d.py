@@ -20,6 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	plot_horizontal_profile
+	plot_vertical_profile
+	plot_vertical_profile_with_respect_to_vertical_height
+	plot_xy
+"""
 import matplotlib as mpl
 
 from tasmania.utils.data_utils import get_numpy_arrays

@@ -21,10 +21,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-Classes:
+This module contains:
 	IsentropicDiagnostics
-	VelocityComponents
-	WaterConstituents
+	HorizontalVelocity
+	WaterConstituent
 """
 import numpy as np
 from sympl import DataArray
