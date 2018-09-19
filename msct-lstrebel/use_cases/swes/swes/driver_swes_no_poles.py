@@ -42,6 +42,8 @@ parser.add_argument("-nt", default=12, type=int,
 					help="Number of days the simulation should run.")
 parser.add_argument("-sf", default=100, type=int,
 					help="Save frequency: Number of time steps between fields are saved to file.")
+parser.add_argument("-ft", default=None, type=int,
+					help="Optional: If set use as fixed time step instead of adaptive time stepping.")
 args = parser.parse_args()
 
 nx = args.nx
@@ -68,7 +70,7 @@ t_final = days
 # Let's go!
 solver = LaxWendroffSWES(planet=0, t_final=t_final, m=nx, n=ny, ic=ic,
 						 cfl=1, diff=True, backend=gt.mode.NUMPY, dtype=np.float64)
-t, phi, theta, h, u, v = solver.solve(verbose=100, save=sf)
+t, phi, theta, h, u, v = solver.solve(verbose=100, save=sf, fixed_ts=args.ft)
 
 # Save data
 filename = 'swes_no_poles_ic{}.npz'.format(ic[0])

@@ -603,7 +603,7 @@ class LaxWendroffSWES:
 		
 		return out_q
 
-	def solve(self, verbose, save):
+	def solve(self, verbose, save, fixed_ts=None):
 		"""
 		Perform the time marching.
 
@@ -759,24 +759,27 @@ class LaxWendroffSWES:
 		while t < self.t_final and n < self.nmax:
 			start = time.time()
 			n += 1
-					
-			# Compute flux Jacobian eigenvalues
-			eigenx = (np.maximum(np.absolute(self.u[1:-1, :] -
-											 np.sqrt(self.g * np.absolute(self.h[1:-1, :]))),
-								 np.maximum(np.absolute(self.u[1:-1, :]),
-								 			np.absolute(self.u[1:-1, :] +
-								 						np.sqrt(self.g *
-																np.absolute(self.h[1:-1, :])))))).max()
-			eigeny = (np.maximum(np.absolute(self.v[1:-1, :] -
-											 np.sqrt(self.g * np.absolute(self.h[1:-1, :]))),
-								 np.maximum(np.absolute(self.v[1:-1, :]),
-								 			np.absolute(self.v[1:-1, :] +
-								 						np.sqrt(self.g *
-																np.absolute(self.h[1:-1, :])))))).max()
-			
-			# Compute timestep					 
-			dtmax = np.minimum(self.dx_min/eigenx, self.dy_min/eigeny)
-			self.dt.value = self.cfl * dtmax
+
+			if fixed_ts is None:
+				# Compute flux Jacobian eigenvalues
+				eigenx = (np.maximum(np.absolute(self.u[1:-1, :] -
+												 np.sqrt(self.g * np.absolute(self.h[1:-1, :]))),
+									 np.maximum(np.absolute(self.u[1:-1, :]),
+												np.absolute(self.u[1:-1, :] +
+															np.sqrt(self.g *
+																	np.absolute(self.h[1:-1, :])))))).max()
+				eigeny = (np.maximum(np.absolute(self.v[1:-1, :] -
+												 np.sqrt(self.g * np.absolute(self.h[1:-1, :]))),
+									 np.maximum(np.absolute(self.v[1:-1, :]),
+												np.absolute(self.v[1:-1, :] +
+															np.sqrt(self.g *
+																	np.absolute(self.h[1:-1, :])))))).max()
+
+				# Compute timestep
+				dtmax = np.minimum(self.dx_min/eigenx, self.dy_min/eigeny)
+				self.dt.value = self.cfl * dtmax
+			else:
+				self.dt.value = fixed_ts
 		
 			# If needed, adjust timestep
 			if t + self.dt > self.t_final:

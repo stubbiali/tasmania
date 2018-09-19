@@ -412,7 +412,7 @@ class LaxWendroffSWES:
 
         timer.stop(name="Initialization")
 
-    def solve(self, verbose, save):
+    def solve(self, verbose, save, fixed_ts=None):
             """
             Perform the time marching.
 
@@ -498,37 +498,39 @@ class LaxWendroffSWES:
             while t < self.t_final and n < self.nmax:
                 n += 1
 
-                # Compute timestep through CFL condition
+                if fixed_ts is None:
+                    # Compute timestep through CFL condition
+                    dtnew = []
+                    # Compute flux Jacobian eigenvalues
+                    for sd in self.prepared_domain.subdivisions:
+                        eigenx = (np.maximum(
+                            np.absolute(sd.get_interior_field("u")[1:-1, :]
+                                        - np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
+                            np.maximum(np.absolute(
+                                sd.get_interior_field("u")[1:-1, :]), np.absolute(
+                                sd.get_interior_field("u")[1:-1, :]
+                                + np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
+                        eigeny = (np.maximum(
+                            np.absolute(sd.get_interior_field("v")[1:-1, :]
+                                        - np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
+                                             np.maximum(np.absolute(
+                                                 sd.get_interior_field("v")[1:-1, :]), np.absolute(
+                                                 sd.get_interior_field("v")[1:-1, :]
+                                                 + np.sqrt(self.g.value
+                                                           * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
 
-                dtnew = []
-                # Compute flux Jacobian eigenvalues
-                for sd in self.prepared_domain.subdivisions:
-                    eigenx = (np.maximum(
-                        np.absolute(sd.get_interior_field("u")[1:-1, :]
-                                    - np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
-                        np.maximum(np.absolute(
-                            sd.get_interior_field("u")[1:-1, :]), np.absolute(
-                            sd.get_interior_field("u")[1:-1, :]
-                            + np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
-                    eigeny = (np.maximum(
-                        np.absolute(sd.get_interior_field("v")[1:-1, :]
-                                    - np.sqrt(self.g.value * np.absolute(sd.get_interior_field("h")[1:-1, :]))),
-                                         np.maximum(np.absolute(
-                                             sd.get_interior_field("v")[1:-1, :]), np.absolute(
-                                             sd.get_interior_field("v")[1:-1, :]
-                                             + np.sqrt(self.g.value
-                                                       * np.absolute(sd.get_interior_field("h")[1:-1, :])))))).max()
-
-                    # Compute timestep
-                    dtmax = np.minimum(self.dx_min / eigenx, self.dy_min / eigeny)
-                    dtnew.append(self.cfl * dtmax)
-                # Select local minimum time step
-                self.dt.value = min(dtnew)
-                # If run with mpi collect all local minimum, choose the global minimum and send it to everybody
-                if MPI.COMM_WORLD.Get_size() > 1:
-                    self.dt.value = MPI.COMM_WORLD.allreduce(sendobj=self.dt.value, op=MPI.MIN)
-                # if n % 100 == 0:
-                #     print(self.dt.value)
+                        # Compute timestep
+                        dtmax = np.minimum(self.dx_min / eigenx, self.dy_min / eigeny)
+                        dtnew.append(self.cfl * dtmax)
+                    # Select local minimum time step
+                    self.dt.value = min(dtnew)
+                    # If run with mpi collect all local minimum, choose the global minimum and send it to everybody
+                    if MPI.COMM_WORLD.Get_size() > 1:
+                        self.dt.value = MPI.COMM_WORLD.allreduce(sendobj=self.dt.value, op=MPI.MIN)
+                    # if n % 100 == 0:
+                    #     print(self.dt.value)
+                else:
+                    self.dt.value = fixed_ts
 
                 # If needed, adjust time step
                 if t + self.dt > self.t_final:
@@ -717,6 +719,8 @@ if __name__ == "__main__":
                         help="Path to location where files should be saved to.")
     parser.add_argument("-pf", default="", type=str,
                         help="Prefix for file names.")
+    parser.add_argument("-ft", default=None, type=int,
+                        help="Optional: If set use as fixed time step instead of adaptive time stepping.")
     args = parser.parse_args()
 
     nx = args.nx
@@ -756,7 +760,7 @@ if __name__ == "__main__":
                              cfl=1, diff=True, backend=gt.mode.NUMPY, nparts=nparts,
                              dtype=np.float64, path=path, prefix=prefix)
     # save_freq = 100 #25
-    solver.solve(verbose=100, save=sf)
+    solver.solve(verbose=100, save=sf, fixed_ts=args.ft)
 
     timer.stop(name="Overall SWES time")
 
