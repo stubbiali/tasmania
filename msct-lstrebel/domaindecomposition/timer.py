@@ -24,7 +24,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains
+This module contains a minimalistic timing framework.
 """
 import time
 

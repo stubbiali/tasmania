@@ -47,8 +47,8 @@ class LaxWendroffSWES:
     for the shallow water equations defined on a sphere.
     """
 
-    def __init__(self, planet, t_final, m, n, ic, cfl, diff, backend,
-                 dtype=np.float64, nparts=0, path="", prefix=""):
+    def __init__(self, planet, t_final, m, n, ic, cfl, diff, backend, nparts,
+                 dtype=np.float64, path="", prefix=""):
         """
         Constructor.
 
@@ -412,7 +412,7 @@ class LaxWendroffSWES:
 
         timer.stop(name="Initialization")
 
-    def solve(self, verbose, save, nparts=0, path="", prefix=""):
+    def solve(self, verbose, save):
             """
             Perform the time marching.
 
@@ -663,6 +663,12 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
     hsave = postproc.combine_output_files(size=[nx, ny, nz], fieldname="h",
                                       path=path, prefix=prefix,
                                       postfix="t_" + str(0), save=False, cleanup=True)
+    hsave = np.append(hsave, hsave[0, :].reshape((1, hsave.shape[1], hsave.shape[2])), axis=0)
+
+    # htemp = np.load("swes_ic{}_h.npy".format(nic))
+    # hsave = htemp[1:-1, 1:-1, :]
+    # hsave = np.append(hsave, hsave[0, :].reshape((1, hsave.shape[1], hsave.shape[2])), axis=0)
+
     tsave = np.load("t.npy")
     nt = int(tsave[-1])
     for n in range(1, nt + 1):
@@ -672,18 +678,59 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
                                              path=path, prefix=prefix,
                                              postfix="t_" + str(n), save=False, cleanup=True)
 
+            hnew = np.append(hnew, hnew[0, :].reshape((1, hnew.shape[1], hnew.shape[2])), axis=0)
+            # print(hnew.shape, hsave.shape)
             hsave = np.concatenate((hsave, hnew), axis=2)
 
     phi = np.load("swes_ic{}_phi.npy".format(nic))
+    phi = np.append(phi, 2.0 * math.pi * np.ones((1, phi.shape[1])), axis=0)
+
     theta = np.load("swes_ic{}_theta.npy".format(nic))
+    theta = np.append(theta, theta[0, :].reshape((1, theta.shape[1])), axis=0)
+
     usave = np.load("swes_ic{}_u.npy".format(nic))
+
     vsave = np.load("swes_ic{}_v.npy".format(nic))
+
     filename = "swes_no_poles_ic{}.npz".format(nic)
-    np.savez(filename, t=tsave[:-1], phi=phi[1:nx+1, 1:ny+1], theta=theta[1:nx+1, 1:ny+1],
-             h=hsave, u=usave[1:nx+1, 1:ny+1], v=vsave[1:nx+1, 1:ny+1])
+    np.savez(filename, t=tsave[:-1], phi=phi[1:nx+2, 1:ny+1], theta=theta[1:nx+2, 1:ny+1],
+             h=hsave, u=usave[1:nx+2, 1:ny+1], v=vsave[1:nx+2, 1:ny+1])
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the Shallow Water Equation on a Sphere")
+    parser.add_argument("-nx", default=360, type=int,
+                        help="Number of grid points in x direction.")
+    parser.add_argument("-ny", default=180, type=int,
+                        help="Number of grid points in y direction.")
+    parser.add_argument("-nz", default=1, type=int,
+                        help="Number of grid points in z direction.")
+    parser.add_argument("-ic", default=0, type=int,
+                        help="Initial condition either 0 or 2.")
+    parser.add_argument("-nt", default=12, type=int,
+                        help="Number of days the simulation should run.")
+    parser.add_argument("-sf", default=100, type=int,
+                        help="Save frequency: Number of time steps between fields are saved to file.")
+    parser.add_argument("-np", default=2, type=int,
+                        help="Number of partitions.")
+    parser.add_argument("-loc", default="", type=str,
+                        help="Path to location where files should be saved to.")
+    parser.add_argument("-pf", default="", type=str,
+                        help="Prefix for file names.")
+    args = parser.parse_args()
+
+    nx = args.nx
+    ny = args.ny
+    nz = args.nz
+    aic = args.ic
+    days = args.nt
+    sf = args.sf
+    nparts = args.np
+
+    path = args.loc
+    prefix = args.pf
+
+
     timer = ti.Timings(name="Shallow Water Equation on a Sphere")
     timer.start(name="Overall SWES time", level=1)
 
@@ -693,32 +740,32 @@ if __name__ == "__main__":
     # * 0.05
     # * pi/2 - 0.05
     # * pi/2
-    ic = (2, 0) #math.pi / 2)
+    ic = (aic, 0) #math.pi / 2)
 
     # Suggested simulation"s length for Williamson"s test cases:
     # * IC 0: 12 days
     # * IC 1: 14 days
-    t_final = 9
+    # t_final = 12
     # t_final = 3
-    nx = 180
-    ny = 90
-    nz = 1
+    # nx = 360
+    # ny = 180
+    # nz = 1
 
     # Let"s go!
-    solver = LaxWendroffSWES(planet=0, t_final=t_final, m=nx, n=ny, ic=ic,
-                             cfl=1, diff=True, backend=gt.mode.NUMPY, dtype=np.float64, nparts=2)
-    save_freq = 100 #25
-    solver.solve(verbose=100, save=save_freq)
-    # t, phi, theta, h, u, v = solver.solve(verbose=100, save=10)
+    solver = LaxWendroffSWES(planet=0, t_final=days, m=nx, n=ny, ic=ic,
+                             cfl=1, diff=True, backend=gt.mode.NUMPY, nparts=nparts,
+                             dtype=np.float64, path=path, prefix=prefix)
+    # save_freq = 100 #25
+    solver.solve(verbose=100, save=sf)
 
     timer.stop(name="Overall SWES time")
 
+    timer.start(name="Post processing time", level=1)
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        # Save data
+        postprocess_swes(nx, ny, nz, ic[0], sf, path=path, prefix=prefix)
+
+    timer.stop(name="Post processing time")
     if MPI.COMM_WORLD.Get_rank() == 0:
         timer.list_timings()
-
-        # Save data
-
-        postprocess_swes(nx, ny, nz, ic[0], save_freq)
-
-        # postprocess_swes(nx=180, ny=88, nz=1, postfix="t_0")
-        # postprocess_swes(nx=180, ny=88, nz=1, postfix="t_5226")

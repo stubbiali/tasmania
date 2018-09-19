@@ -103,7 +103,7 @@ def prepare_boundary_condition(nx, ny, nz, hxm, hxp, hym, hyp, hzm, hzp):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run Burger's equation - Zhao setup.")
+    parser = argparse.ArgumentParser(description="Run pre-process of the Burger's equation - Zhao setup.")
     parser.add_argument("-nx", default=100, type=int,
                         help="Number of grid points in x direction.")
     parser.add_argument("-ny", default=100, type=int,

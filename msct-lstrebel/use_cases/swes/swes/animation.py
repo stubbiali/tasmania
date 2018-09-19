@@ -226,7 +226,7 @@ def ess_movie_maker(filename, field_to_plot, projection='plate_carree',
 				else:
 					cb.set_ticks(color_scale[::cbar_ticks_step])
 
-				# fig.tight_layout()
+				fig.tight_layout()
 					
 				writer.grab_frame()
 	

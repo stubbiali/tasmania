@@ -19,22 +19,43 @@ The next sections will first outline the design and functionality of each of the
 \subsection{Design}
 % TODO small intro / abstract design goals 
 \subsubsection{Pre-process}
-% TODO finish this section
 The pre-process contains functionalities needed before the main, distributed stencil computations are performed.
 Specifically, the actual domain decomposition happens during the pre-process.
-Therefore the main tasks of the pre-process are preparing the graph partitioning files, performing the graph partitioning, and storing the results.
+Therefore the pre-process contains functions to prepare the graph partitioning files, perform the actual graph partitioning, and store the results.
+
+The implementation of the pre-process functions follows the descriptions of the source graph generation, and graph partitioning from the previous chapter in the sections \ref{sec:commcost}, \ref{sec:compcost}, and \ref{sec:sourcegraphgeneration} and the pseudo-code of alg. \ref{alg:domaindecomposition} very closely.
+
+The user-facing part of the pre-process implementation is outlined with examples in section \ref{sec:userpreprocess}.
 
 \subsubsection{Runtime process}
 % TODO Main functionalities / internal boundary exchanges local / external / global boundary etc
 
+
+
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{Classes_Delegation.png}
+\caption{Overview.}
+\label{fig:classes_chart}
+\end{figure}
+
 \subsubsection{Post-process}
 % TODO mainly combining field data from various subdivisions back into one file
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{mpi_onesided.png}
+\caption{Overview.}
+\label{fig:mpi_onesided_communication_flow}
+\end{figure}
 
 \newpage
 \subsection{User interface}
 The following subsections go through the additional code and code modifications required to transform a non-distributed gridtools code into a domain decomposed and distributed gridtools code.
 
 \subsubsection{Pre-process: Additional setup information.}
+\label{sec:userpreprocess}
 To start the domain decomposition pre-process the \texttt{DomainPreprocess} class needs to be initialized with the size of the computational domain, the periodicity of the global boundary, and the number of subdivisions per dimension.
 Optionally, the path and prefix arguments can be provided to store all the files under the given path and using the given prefix.
 
@@ -132,7 +153,7 @@ The subdivision information file uses the name generated in the pre-process and 
 
 The listing \ref{alg:infoload} shows such an initialization call.
 
-\begin{lstlisting}[caption={Example code for the loading of the domain decomposition information.},captionpos=b, label={alg:infoload}]
+\begin{lstlisting}[caption={Example code for the loading of the domain decomposition information.},captionpos=b, label={alg:infoload}, float, floatplacement=H]
 prep_domain = DomainDecomposition("subdomains_pymetis.dat.part.4", "metis", path=path, prefix=prefix)
 \end{lstlisting}
 
@@ -156,7 +177,7 @@ The field halo extent here are needed to instantiate fields in the subdivisions 
 Listing \ref{alg:refinstant} and listing \ref{alg:ddinstant} show the direct comparison between the original instantiation of four fields and the corresponding registration process needed in the domain decomposition library.
 This should demonstrate that code needed to be added by the user is kept to a minimum.
 
-\begin{lstlisting}[caption={Example code for the original user field instantiation.},captionpos=b, label={alg:refinstant}]
+\begin{lstlisting}[caption={Example code for the original user field instantiation.},captionpos=b, label={alg:refinstant}, float, floatplacement=H]
 # Instantiate the arrays representing the solution
 unow = np.zeros((nx, ny, 1), dtype = datatype)
 unew = np.zeros((nx, ny, 1), dtype = datatype)
@@ -164,7 +185,7 @@ vnow = np.zeros((nx, ny, 1), dtype = datatype)
 vnew = np.zeros((nx, ny, 1), dtype = datatype)
 \end{lstlisting} 
 
-\begin{lstlisting}[caption={Example code for the same field instantiation using the domain decomposition library.},captionpos=b, label={alg:ddinstant}]
+\begin{lstlisting}[caption={Example code for the same field instantiation using the domain decomposition library.},captionpos=b, label={alg:ddinstant}, float, floatplacement=H]
 halo = [1, 1, 1, 1, 0, 0]
 prep_domain.register_field(fieldname="unow", halo=halo, field_ic_file=path + prefix +"shankar_initial_conditions_unew.npy")
 
@@ -187,7 +208,7 @@ Listing \ref{alg:refstencil} compared to listing \ref{alg:ddstencil} show that t
 
 Also, note that the \texttt{domain} keyword can be dropped, since the subdivisions need to define their domain based on the halos provided in field registration.
 
-\begin{lstlisting}[caption={Example code for the original user stencil instantiation.},captionpos=b, label={alg:refstencil}]
+\begin{lstlisting}[caption={Example code for the original user stencil instantiation.},captionpos=b, label={alg:refstencil}, float, floatplacement=H]
 # Instantiate stencil object
 stencil = gt.NGStencil(
     definitions_func = definitions_func_,
@@ -199,7 +220,7 @@ stencil = gt.NGStencil(
     )
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Example code for the same stencil instantiation using the domain decomposition library.},captionpos=b, label={alg:ddstencil}]
+\begin{lstlisting}[caption={Example code for the same stencil instantiation using the domain decomposition library.},captionpos=b, label={alg:ddstencil}, float, floatplacement=H]
 # Instantiate stencil object
 stencil = prep_domain.register_stencil(
     definitions_func=definitions_func_,
@@ -258,7 +279,7 @@ Fields are not stored globally when using the domain decomposition library there
 The \texttt{DomainDecomposition} class provides a function called \texttt{swap\_fields(field1, field2)} that delegates the swapping of the two fields to the underlying subdivisions.
 Listing \ref{alg:ddswap} shows an example.
 
-\begin{lstlisting}[caption={Example swapping two arrays in the domain decomposition libarary},captionpos=b, label={alg:ddswap}]
+\begin{lstlisting}[caption={Example swapping two arrays in the domain decomposition libarary},captionpos=b, label={alg:ddswap}, float, floatplacement=H]
 # Advance the time levels
 prep_domain.swap_fields("unow", "unew")
 prep_domain.swap_fields("vnow", "vnew")
@@ -270,7 +291,7 @@ Exchanging the internal boundaries is the main overhead added by decomposing and
 However, for the user this exchange is as simple as calling the \texttt{communicate(fieldname)} function of the \texttt{DomainDecomposition} class for each field that needs its boundaries exchanged.
 Listing \ref{alg:ddcomm} shows an example of this.
 
-\begin{lstlisting}[caption={Example calling for internal boundary exchange of two fields in the domain decomposition libarary},captionpos=b, label={alg:ddcomm}]
+\begin{lstlisting}[caption={Example calling for internal boundary exchange of two fields in the domain decomposition libarary},captionpos=b, label={alg:ddcomm}, float, floatplacement=H]
 # Communicate partition boundaries
 prep_domain.communicate("unew")
 prep_domain.communicate("vnew")
@@ -286,7 +307,7 @@ This means that each saved field will produce a number of separate files.
 The next subsection will outline how these separate files can then be combined after the distributed computations are done.
 Listing \ref{alg:ddsave} shows a small example of saving fields during runtime.
 
-\begin{lstlisting}[caption={Example calling to save two fields during time stepping using the domain decomposition libarary},captionpos=b, label={alg:ddsave}]
+\begin{lstlisting}[caption={Example calling to save two fields during time stepping using the domain decomposition libarary},captionpos=b, label={alg:ddsave}, float, floatplacement=H]
 # Save
 if (save_freq > 0) and (n % save_freq == 0):
     prep_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n + 1))
@@ -306,7 +327,7 @@ Optionally the binary flags \texttt{save} and \texttt{cleanup} can respectively 
 
 Listing \ref{alg:ddpostproc} shows an example initialization and call to combine the subdivision files for time step 0 that deletes the subdivision files after they are combined.
 
-\begin{lstlisting}[caption={Example post-processing.},captionpos=b, label={alg:ddpostproc}]
+\begin{lstlisting}[caption={Example post-processing.},captionpos=b, label={alg:ddpostproc}, float, floatplacement=H]
 postproc = DomainPostprocess(path=path, prefix=prefix)
 postproc.combine_output_files([100, 100, 1], "unew", path=path, prefix=prefix, postfix="t_0", save=True, cleanup=True)
 postproc.combine_output_files([100, 100, 1], "vnew", path=path, prefix=prefix, postfix="t_0", save=True, cleanup=True)

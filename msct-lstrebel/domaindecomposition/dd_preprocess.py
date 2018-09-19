@@ -24,7 +24,10 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains
+This module contains the domain decomposition pre-process functionality.
+Specifically, the creation of a graph partitioning source graph based on stencil patterns,
+saving the source graph in a specific format, and calling the PyMetis library to carry out the graph partitioning.
+
 """
 
 import numpy as np
@@ -37,7 +40,24 @@ from domain_decomposition import DomainSubdivision
 
 
 class DomainPreprocess:
+    """ This class contains all the functions needed for the domain decomposition pre-process.
+
+    """
     def __init__(self, domain, periodic, subdivs_per_dim, fileoutput="", path="", prefix=""):
+        """ Initialize the DomainPreprocess class with the necessary parameters and options.
+
+        :param domain: Array or List with 3 entries corresponding to the domain size
+        in x-direction, y-direction, and z-direction.
+        :param periodic: Array or List with 3 entries corresponding to the periodicity
+        in x-direction, y-direction, and z-direction. An entry of 0 means non-periodic and an entry of 1 means periodic.
+        :param subdivs_per_dim: Array or List with 3 entries corresponding to the number of subdivisions
+        in x-direction, y-direction, and z-direction.
+        The number of subdivisions needs to be a factor of the corresponding domain size.
+        :param fileoutput: Optional: Can be "metis", "scotch", or "both".
+        If provided saves the created source graph in the corresponding file format.
+        :param path: Optional: Path where all the output should be saved.
+        :param prefix: Optional: Prefix for all output file names.
+        """
         self.domain = domain
         self.periodic = periodic
         self.subdivs_per_dim = subdivs_per_dim
@@ -59,8 +79,14 @@ class DomainPreprocess:
         self.stencil_field_accesses = {}
 
     def add_stencil(self, stencil):
-        # stencil is a dictionary of {fieldname: list of 6 lists (one for each direction)
-        # containing the access patterns of the stencil patterns, next field : next list ...}
+        """ Function to add stencil patterns to the DomainPreprocess class needed to generate the correct source graph.
+
+        Concatenates the access pattern with previously added stencils.
+
+        :param stencil: A dictionary of {fieldname: list of 6 lists (one for each direction)
+        containing the access patterns of the stencil patterns, next field : next list ...}
+        :return: None
+        """
         # Add stencil pattern to the field, either concatenate with already existing pattern or create new one:
         for fieldname, stencil_pattern in stencil.items():
             if fieldname in self.stencil_field_patterns:
@@ -78,6 +104,10 @@ class DomainPreprocess:
                     self.stencil_field_accesses[fieldname][d] = len(stencil_pattern[d])
 
     def combined_accesses(self):
+        """ Helper function used to collect and combine all access patterns.
+
+        :return: total_accesses: Array of size 6 containing the total accesses in each direction.
+        """
         total_accesses = np.zeros(6)
         for fieldname in self.stencil_field_accesses.keys():
             for d in range(0, 6):
@@ -86,6 +116,10 @@ class DomainPreprocess:
         return total_accesses
 
     def halo_maximum_extent(self):
+        """ Helper function to determine the maximum of the stencil patterns in each direction.
+
+        :return: halo_max: Array of size 6 containing the maximum extent of the stencils in each direction.
+        """
         halo_max = np.zeros(6)
         for fieldname in self.stencil_field_patterns.keys():
             for d in range(0, 6):
@@ -94,6 +128,12 @@ class DomainPreprocess:
         return halo_max
 
     def communication_cost_estimation(self, subdiv_size, stencil_extent):
+        """ Communication cost estimation function.
+
+        :param subdiv_size: List or Array of size 3 containing the size of the subdivisions in each dimension.
+        :param stencil_extent: List or Array of size 6 containing the maximum extent of the stencils in each direction.
+        :return: halo_sizes: Array of size 6 containing the size of the halo for each direction.
+        """
         halo_sizes = np.zeros((stencil_extent.size))
         # halo_sizes[0] = subdiv_size[1] * subdiv_size[2] * stencil_extent[0]
         # halo_sizes[1] = subdiv_size[1] * subdiv_size[2] * stencil_extent[1]
@@ -107,9 +147,32 @@ class DomainPreprocess:
         return halo_sizes
 
     def computational_cost_estimation(self, subdiv_gridpoints):
+        """ Computational cost estimation function.
+
+        For simplicity computational cost estimation is proportional to number of grid points in the subdivision.
+
+        :param subdiv_gridpoints: Number of grid points in each subdivision.
+        :return: Computational cost estimation.
+        """
         return subdiv_gridpoints
 
     def preprocess(self):
+        """ Main pre-process function.
+        Uses the initialized parameters and options to generate a graph partitioning source graph.
+
+        Source graph is generated by iterating through the subdivisions in each direction,
+        determine the neighbor index,
+        or setting it to "None" if the subdivision is on the global boundary and non-periodic.
+        Vertex and edge weights are determined by the estimation functions.
+
+        Saves the subdivisions in the classes subdivisions list,
+        and serializes them using pickle into the subdivisions.pkl file.
+        Saves the source graph in the classes adjncy, xadj, vweights, and eweights lists,
+        adhering to the PyMetis naming convention.
+        If initialized with the option saves the source graph in "metis", "scotch", or "both" formats to file.
+
+        :return: None
+        """
         subdiv_size = self.domain // self.subdivs_per_dim
         assert (np.alltrue(self.domain % self.subdivs_per_dim == 0)), ("Subdivisions per dimension is not"
                                                                        " a factor of the given domain size.")
@@ -249,16 +312,22 @@ class DomainPreprocess:
                                              self.path + self.prefix + "subdomains")
 
     def write_to_file_metis_format(self, adjncy, xadj, vweights, eweights, edgecounter, filename, flag=11):
-        """
+        """ Helper function to write the source graph to file in the metis format:
+        Header:
+        One Line: "Number of Vertices" "Number of Edges (counted once)" "3 digit binary flag"
+
+        Body:
+        Each vertex line: s w_1 w_2 ... w_ncon v_1 e_1 v_2 e_2 ... v_k e_k
+        s: size of vertex
+        w_* : weight of vertex
+        v_* : neighbor vertex index
+        e_* : edge weight to neighbor
+
         Vertex numbering starts with 1 not 0!
+
+        :return: None
         """
-        # header line: Number of Vertices" "Number of Edges (counted once)" "3 digit binary flag"
         header = "{0:d} {1:d} {2:03d} \n".format(len(xadj), edgecounter//2, flag)
-        # vertex line: s w_1 w_2 ... w_ncon v_1 e_1 v_2 e_2 ... v_k e_k
-        # s: size of vertex
-        # w_* : weight of vertex
-        # v_* : neighbor vertex index
-        # e_* : edge weight to neighbor
 
         vertex_lines = ""
         for i in range(len(xadj)):
@@ -277,11 +346,16 @@ class DomainPreprocess:
             f.writelines(content)
 
     def write_to_file_scotch_format(self, adjncy, xadj, vweights, eweights, edgecounter, filename, flag=11):
-        """ First line: graph file version number
-            Second line: number of vertices followed by number of arcs (edge number twice counted)
-            Third line: graph base index value (0 or 1) and numeric flag
-            //End of Header
-            Other lines: [vertex label] [vertex load] vertex_degree [arc_load] arc_end_vertex
+        """ Helper function to write the source graph to file in the scotch format:
+        Header:
+        First line: graph file version number
+        Second line: number of vertices followed by number of arcs (edge number twice counted)
+        Third line: graph base index value (0 or 1) and numeric flag
+
+        Body:
+        Each vertex line: [vertex label] [vertex load] vertex_degree [arc_load] arc_end_vertex
+
+        :return: None
         """
         header = "0 \n{0:d} {1:d} \n0 {2:03d}\n".format(len(xadj), edgecounter, flag)
         vertex_lines = ""
@@ -303,10 +377,21 @@ class DomainPreprocess:
             f.writelines(contents)
 
     def prepare_for_pymetis(self):
+        """ Small helper function to add end point to adjacency lists needed by PyMetis.
+
+        :return: None
+        """
         self.adjncy.append(int(self.total_subdivisions))
         self.xadj.append(int(self.edgecounter))
 
     def pymetis_partitioning(self, nparts, verbose=False):
+        """ Partioning function calls PyMetis library to graph partition prepared source graph.
+
+        :param nparts: Number of partitions the graph should be partitioned into.
+        Corresponds to number of processing units that will carry out the computations.
+        :param verbose: Optional: binary flag if True shows the partitioning results in the standard output.
+        :return: None
+        """
         self.prepare_for_pymetis()
 
         partitioning = part_graph(nparts,

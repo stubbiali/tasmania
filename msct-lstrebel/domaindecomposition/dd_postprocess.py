@@ -24,7 +24,9 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains
+This module contains the domain decomposition post-process functionality.
+Specifically, it contains functions to combine the output fields saved by each subdivision
+into a single file per field.
 """
 
 import numpy as np
@@ -36,7 +38,15 @@ from domain_decomposition import DomainSubdivision
 
 
 class DomainPostprocess:
+    """ Class containing all post-process functions and storing the subdivision information during post-process.
+    """
     def __init__(self, path="", prefix=""):
+        """ Load the subdivision information from file and store it in the class.
+        Store the path and prefix parameters as well.
+
+        :param path: Optional: Path where all the output should be saved.
+        :param prefix: Optional: Prefix for all output file names.
+        """
         with open(path + prefix + "subdivisions.pkl", "rb") as f:
             self.subdivisions = pickle.load(f)
 
@@ -44,6 +54,21 @@ class DomainPostprocess:
         self.prefix = prefix
 
     def create_pickle_dump(self, nx, ny, nz, nt, domain, dt, eps, save_freq, filename, cleanup=False):
+        """ Helper function to create a specific pickle used in the Burger use cases.
+
+        :param nx: Number of grid points in x-direction.
+        :param ny: Number of grid points in y-direction.
+        :param nz: Number of grid points in z-direction.
+        :param nt: Number of time steps.
+        :param domain: Extent of the domain.
+        :param dt: Time step size.
+        :param eps: Diffusion coefficient.
+        :param save_freq: Number of time steps between save points.
+        :param filename: Name of the file to create.
+        :param cleanup: Optional, binary flag: If True deletes the temporary files created by each subdivision
+        after processing them.
+        :return: None
+        """
         # Create the grid
         x = np.linspace(domain[0][0], domain[1][0], nx)
         y = np.linspace(domain[0][1], domain[1][1], ny)
@@ -78,6 +103,18 @@ class DomainPostprocess:
             pickle.dump(eps, outfile)
 
     def combine_output_files(self, size, fieldname, path="", prefix="", postfix=None, save=True, cleanup=False):
+        """ Main post-processing function. Collect the files created by each subdivision into a single numpy array
+        and then save it as a  file.
+
+        :param size: Size of the domain in each dimension.
+        :param fieldname: Name of the field to combine.
+        :param path: Optional: Path where all the output should be saved.
+        :param prefix: Optional: Prefix for all output file names.
+        :param postfix: Optional: Postfix for the input files e.g. time step at save point.
+        :param save: Optional, binary flag: If True saves the combined array to file.
+        :param cleanup: Optional, binary flag: If True deletes the input files after combining them.
+        :return: None
+        """
         field = np.zeros((size[0], size[1], size[2]))
         for sd in self.subdivisions:
             filename = (path + prefix + str(fieldname) + "_from_"

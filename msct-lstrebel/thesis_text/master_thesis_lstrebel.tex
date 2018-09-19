@@ -16,6 +16,7 @@
 \usepackage{fancyhdr}
 \usepackage{setspace}
 \usepackage[hidelinks]{hyperref}
+\usepackage[htt]{hyphenat}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{graphicx}
@@ -56,8 +57,8 @@
 
 % Python listing
 % Default fixed font does not support bold face
-\DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{12} % for bold
-\DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{12}  % for normal
+\DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{\small} % for bold
+\DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{\small}  % for normal
 
 % Custom colors
 \usepackage{color}
@@ -70,7 +71,7 @@
 % Python style for highlighting
 \lstset{
 language=Python,
-basicstyle=\ttm,
+basicstyle=\small\ttm,
 breaklines=true,
 otherkeywords={self},             % Add keywords here
 keywordstyle=\ttb\color{deepblue},
@@ -81,7 +82,8 @@ frame=single,                         % Any extra options here
 showstringspaces=false            % 
 }
 
-
+\newcommand\numberfont{\normalfont\footnotesize\color{Numbers}}
+\newcommand\basicfont{\small\ttfamily}
 
 % Floor sign
 \DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}

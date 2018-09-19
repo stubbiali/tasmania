@@ -1,16 +1,4 @@
 \section{Domain decomposition}
-% * <felipe.cruz.v@gmail.com> 2018-06-04T10:33:10.994Z:
-% 
-% > Domain decomposition
-% I think you need a high level explanation before jumping into the details, otherwise you would have to read the whole section to infer what is going on. I.e.:
-% Can you explain at the start of this section what is the objective of the domain decomposition from a very abstract point of view (e.g. distribute partitions of the domain among multiple compute nodes)? and how it achieves the goal with pseudo code:
-% * what are the inputs
-% * how that inputs if transformed into subdivision
-% * how the models for the compute and communication for each cell is built
-% *how the optimization is run to load balance
-% * what is the output
-% 
-% ^.
 Domain decomposition in the context of this thesis refers to the process of dividing a computational domain into smaller parts in order to run on multiple processing units.
 Importantly, domain decomposition in this context is not be confused with the \textit{domain decomposition method} in mathematics and numerical analysis.
 The \textit{domain decomposition method} is used to solve boundary value problems by splitting them into smaller parts.
@@ -44,6 +32,9 @@ To note in algorithm \ref{alg:domaindecomposition} is that the over-decompositio
 This parameter is further explained in section \ref{sec:subdivmodel}.
 
 \begin{algorithm}[!htbp]
+\basicfont
+\numberfont
+
 \SetKwProg{Fn}{Function}{}{}
 \SetKwProg{Ds}{Datastructure}{}{}
 \SetKwFunction{SubdivideDomain}{SubdivideDomain}
@@ -230,6 +221,7 @@ Outside in gray the six halo regions.}
 \end{figure}
 
 \subsubsection{Source graph generation}
+\label{sec:sourcegraphgeneration}
 With the subdivision model definition and the two cost functions defined the source graph can be easily generated.
 As shown in lines 14 to 20 of alg. \ref{alg:domaindecomposition} the source graph is generated as a weighted adjacency list by iterating over all subdivisions to determine their neighbors and handle the physical domain boundaries.
 

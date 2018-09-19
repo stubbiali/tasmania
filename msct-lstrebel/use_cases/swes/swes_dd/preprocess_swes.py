@@ -95,7 +95,7 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
     # Latitude with poles
     #theta_1d = np.linspace(-0.5 * math.pi, 0.5 * math.pi, n, dtype=dtype)
     # Latitude between 85 and -85
-    theta_1d = np.linspace(-85.0  / 180.0 * math.pi, 85.0 / 180.0 * math.pi, n, dtype=dtype)
+    theta_1d = np.linspace(-85.0 / 180.0 * math.pi, 85.0 / 180.0 * math.pi, n, dtype=dtype)
     dtheta = theta_1d[1] - theta_1d[0]
     theta_1d = np.insert(theta_1d, 0, theta_1d[0] - dtheta)
     theta_1d = np.append(theta_1d, theta_1d[-1] + dtheta)
@@ -361,23 +361,58 @@ def prepare_initial_condition(m, n, ic, only_advection, planet, dtype, path="", 
         # np.save(path + prefix + "swes_ic" + str(ic[0]) + "_v_south.npy", v_south)
 
 
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run pre-process of the Shallow Water Equation on a Sphere")
+    parser.add_argument("-nx", default=360, type=int,
+                        help="Number of grid points in x direction.")
+    parser.add_argument("-ny", default=180, type=int,
+                        help="Number of grid points in y direction.")
+    parser.add_argument("-nz", default=1, type=int,
+                        help="Number of grid points in z direction.")
+    parser.add_argument("-ic", default=0, type=int,
+                        help="Initial condition either 0 or 2.")
+    parser.add_argument("-sx", default=2, type=int,
+                        help="Number of divisions in x direction.")
+    parser.add_argument("-sy", default=1, type=int,
+                        help="Number of divisions in y direction.")
+    parser.add_argument("-sz", default=1, type=int,
+                        help="Number of divisions in z direction.")
+    parser.add_argument("-np", default=2, type=int,
+                        help="Number of partitions.")
+    parser.add_argument("-loc", default="", type=str,
+                        help="Path to location where files should be saved to.")
+    parser.add_argument("-pf", default="", type=str,
+                        help="Prefix for file names.")
+    args = parser.parse_args()
+
+    nx = args.nx
+    ny = args.ny
+    nz = args.nz
+    aic = args.ic
+
+    sx = args.sx
+    sy = args.sy
+    sz = args.sz
+    nparts = args.np
+
+    path = args.loc
+    prefix = args.pf
+
     # Suggested values for $\alpha$ for first and second
     # test cases from Williamson's suite:
     # * 0
     # * 0.05
     # * pi/2 - 0.05
     # * pi/2
-    ic = (2, 0) #math.pi / 2)
-
-    m = 180
-    n = 90
-    nz = 1
-    sx = 2
-    sy = 2
-    sz = 1
-    nparts = 2
+    ic = (aic, 0) #math.pi / 2)
+    #
+    # m = 360
+    # n = 180
+    # nz = 1
+    # sx = 2
+    # sy = 2
+    # sz = 1
+    # nparts = 2
 
     if ic[0] == 0:
         only_advection = True
@@ -389,8 +424,8 @@ if __name__ == "__main__":
     path = ""
     prefix = ""
     # ny=n-2
-    prepare_partitioning(nx=m, ny=n, nz=nz, sx=sx, sy=sy, sz=sz, nparts=nparts, only_advection=only_advection,
+    prepare_partitioning(nx=nx, ny=ny, nz=nz, sx=sx, sy=sy, sz=sz, nparts=nparts, only_advection=only_advection,
                          path=path, prefix=prefix)
 
-    prepare_initial_condition(m=m, n=n, ic=ic, only_advection=only_advection, planet=0, dtype=np.float64,
+    prepare_initial_condition(m=nx, n=ny, ic=ic, only_advection=only_advection, planet=0, dtype=np.float64,
                               path=path, prefix=prefix)

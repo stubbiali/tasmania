@@ -41,10 +41,25 @@ from gridtools.user_interface.vertical_direction import VerticalDirection
 
 
 class DomainPartitions:
+    """ Class containing the global partitioning array and functions to load it from the partitioning file.
+
+    The partitioning array is one dimensional and has the size of the number of subdivisions.
+    Each entry of the partitioning array contains the index of the partition
+    of the corresponding array index subdivision.
+
+    e.g. to get the partition id for the 17th subdivision would be:
+    DomainPartitions.domain_partitions[16] (indexing starts at 0).
+    """
     domain_partitions = None
 
     @staticmethod
     def load_partitions(fileinput, fileformat):
+        """ Load the partitioning file depending on the fileformat ("scotch" or "metis") it was saved in.
+
+        :param fileinput: Path and name of the partitioning file.
+        :param fileformat: Fileformat of the partitioning file. Can be "scotch" or "metis".
+        :return: None
+        """
         if fileformat == "metis":
             DomainPartitions.domain_partitions = DomainPartitions.load_from_metis_file(fileinput)
         elif fileformat == "scotch":
@@ -54,19 +69,50 @@ class DomainPartitions:
 
     @staticmethod
     def load_from_metis_file(fileinput):
+        """ Helper function to load the partitioning if it was saved in the Metis format.
+
+        :param fileinput: Path and name of the partitioning file.
+        :return: Partitioning array.
+        """
         return np.loadtxt(fileinput, dtype=int)
 
     @staticmethod
     def load_from_scotch_file(fileinput):
+        """ Helper function to load the partitioning if it was saved in the Scotch format.
+
+        :param fileinput: Path and name of the partitioning file.
+        :return: Partitioning array.
+        """
         return np.loadtxt(fileinput, dtype=int, skiprows=1, usecols=1)
 
     @staticmethod
     def print_partitions():
+        """ Small helper function to print the partitioning as loaded from the file.
+
+        :return: None
+        """
         print(DomainPartitions.domain_partitions)
 
 
 class DomainSubdivision:
+    """ Class containing all the information of a subdivision as well as all functions needed for the subdivisions.
+
+    """
     def __init__(self, id, pid, size, global_coords, neighbors_id):
+        """ Initialize subdivision with the input parameters.
+
+        :param id: Subdivision identification number, generated in the pre-process.
+        :param pid: Partition identification number, generated in the partitioning of the pre-process.
+        :param size: Subdivision domain size: array of size 3:
+        [x-direction, y-direction, and z-direction size].
+        :param global_coords: Global coordinates of the subdivision, array of size 6:
+        [x-direction minimum, y-direction minimum, z-direction minimum,
+        x-direction maximum, y-direction maximum, z-direction maximum]
+        :param neighbors_id: Subdivision identification numbers of the neighboring subdivisions: array of size 6:
+        [negative x-direction, positive x-direction,
+         negative y-direction, positive y-direction,
+         negative z-direction, positive z-direction]
+        """
         self.id = id
         self.partitions_id = pid
         self.global_coords = global_coords
@@ -86,10 +132,35 @@ class DomainSubdivision:
         self.onesided_windows = {}
 
     def set_boundary_condition(self, fieldname, direction, array):
+        """ Helper function to set an input array as the global boundary condition for a specific field and direction.
+
+        :param fieldname: Name of the field to set the global boundary condition.
+        :param direction: Direction of the global boundary condition.
+        :param array: Input array to be the global boundary condition.
+        :return: None
+        """
         self.global_bc_arr[fieldname][direction] = array
 
     def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None,
                        staggered=None, haloincluded=False):
+        """ Register field to subdivision. Fields need to be register in order for the arrays to be allocated,
+        and subdivision boundary indices to be prepared for the communication between subdivisions.
+
+        :param fieldname: Name of the field.
+        :param halo: Size of the halo in each direction: array of size 6:
+        [negative x-direction, positive x-direction,
+         negative y-direction, positive y-direction,
+         negative z-direction, positive z-direction] halo size.
+        :param field_ic_file: Optional: Initial condition / values array file.
+        If none is provided initial values are zero.
+        :param field_bc_file: Optional: Boundary value file. In cases were the boundary condition is provided in a file.
+        If none is provided the global boundary condition needs to be registered and set manually.
+        :param staggered: Optional: Parameter for staggered grids: array of size 3:
+        [x-direction, y-direction, z-direction] reduces field size by array value.
+        Should only have 0 or 1 in the array to be supported by GridTools.
+        :param haloincluded: Optional: Binary option if the initial value field includes the global halo or not.
+        :return: None
+        """
         self.halos[fieldname] = halo
         if staggered is None:
             staggered = (0, 0, 0)
@@ -100,8 +171,6 @@ class DomainSubdivision:
             self.fields[fieldname] = np.zeros((self.size[0] - staggered[0] + halo[0] + halo[1],
                                                self.size[1] - staggered[1] + halo[2] + halo[3],
                                                self.size[2] - staggered[2] + halo[4] + halo[5]))
-
-        # print(fieldname, haloincluded)
 
         if field_ic_file is not None:
             if not haloincluded:
@@ -130,6 +199,37 @@ class DomainSubdivision:
         self.setup_slices(fieldname)
 
     def setup_slices(self, fieldname):
+        """ Helper function to set up all indices for the inter-subdivision communication for fields.
+        If the one-sided communication option is enabled also setup the one-sided windows.
+
+        The following indices are generated:
+
+        recv_slices: Indices to receive the halo region into i.e. the halo region of the field. Array of size 6:
+        [negative x-direction, positive x-direction,
+         negative y-direction, positive y-direction,
+         negative z-direction, positive z-direction] halo region indices.
+
+        send_slices: Indices to send the halo region to the neighbor i.e. the outermost part of the interior field.
+        Array of size 6:
+        [negative x-direction, positive x-direction,
+         negative y-direction, positive y-direction,
+         negative z-direction, positive z-direction] overlap region
+         i.e. boundary values for neighbor and outermost interior values for this subdivision
+
+        get_local: Indices to copy the halo region to the neighbor if they are on the same partition
+        i.e. the outermost part of the interior field. Array of size 6:
+        [positive x-direction, negative x-direction,
+         positive y-direction, negative y-direction,
+         positive z-direction, negative z-direction,] overlap region
+         i.e. boundary values for neighbor and outermost interior values for this subdivision
+         Differs from send_slices in order of indices only, because TODO good explanation for this
+
+        get_global:
+
+
+        :param fieldname: Name of the field.
+        :return: None
+        """
         self.recv_slices[fieldname] = [
             # Halo region in negative x direction
             np.s_[0:self.halos[fieldname][0],
@@ -183,7 +283,7 @@ class DomainSubdivision:
                   self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
                   self.halos[fieldname][4]:(None if self.halos[fieldname][4] == 0
                                             else self.halos[fieldname][4] + self.halos[fieldname][4])],
-                        # Overlap region in neighboring, positive z direction
+            # Overlap region in neighboring, positive z direction
             np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
                   self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
                   -(self.halos[fieldname][5] + self.halos[fieldname][5]):(None if self.halos[fieldname][5] == 0
@@ -283,8 +383,15 @@ class DomainSubdivision:
                 MPI.Win.Create(self.onesided_buffers[fieldname][5], comm=MPI.COMM_WORLD)
             ]
 
-
     def save_fields(self, fieldnames=None, path="", prefix="", postfix=None):
+        """ Function to save fields to file per subdivision.
+
+        :param fieldnames: List of fieldnames to save
+        :param path: Path to location where files should be saved.
+        :param prefix: Prefix for the naming of all files e.g. run id.
+        :param postfix: Postfix for the naming of all files e.g. time step.
+        :return: None
+        """
         if fieldnames is None:
             for k in self.fields.keys():
                 filename = (path + prefix + str(k) + "_from_"
@@ -313,6 +420,14 @@ class DomainSubdivision:
                 np.save(filename, self.get_interior_field(k))
 
     def register_stencil(self, **kwargs):
+        """ Function to register GridTools4Py stencil to the subdivision.
+
+        :param kwargs: keyword arguments almost the same as kwargs for usual GridTools4Py stencil instantiation.
+        Accepts keywords: definitions_func, inputs, constant_inputs, global_inputs, outputs,
+        domain, mode, vertical_direction, and the new keyword reductions.
+
+        :return: Instantiated GridTools4Py stencil for the subdivision.
+        """
         # Set default values
         definitions_func = inputs = outputs = domain = None
         constant_inputs = global_inputs = {}
@@ -399,6 +514,11 @@ class DomainSubdivision:
         return stencil
 
     def get_local_neighbor(self, id):
+        """ Helper function to get a reference to a neighboring subdivision in the same partition from the subdivision id.
+
+        :param id: Subdivision identification number of the neighboring subdivision.
+        :return: Subdivision Object of neighbor in same partition or None if the id is not a neighbor.
+        """
         temp_sd = None
         for sd in self.neighbor_list:
             if id == sd.id:
@@ -406,6 +526,11 @@ class DomainSubdivision:
         return temp_sd
 
     def get_interior_field(self, fieldname):
+        """ Helper function to get only the interior part of a field i.e. exclude the subdivision halo regions.
+
+        :param fieldname: Name of the field to access.
+        :return: Interior part of the field from the subdivision.
+        """
         xneg = self.halos[fieldname][0]
         xpos = None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1]
         yneg = self.halos[fieldname][2]
@@ -415,9 +540,22 @@ class DomainSubdivision:
         return self.fields[fieldname][xneg:xpos, yneg:ypos, zneg:zpos]
 
     def swap_fields(self, field1, field2):
+        """ Function to easily swap the content of two fields.
+        Used in a lot of stencil codes to swap between old and new array values between time steps / computations.
+
+        :param field1: First field to be swapped.
+        :param field2: Second field to be swapped.
+        :return: None
+        """
         self.fields[field1][:], self.fields[field2][:] = self.fields[field2][:], self.fields[field1][:]
 
     def apply_boundary_condition(self, fieldname):
+        """ Function to apply the global boundary values to a field if the subdivision is at the global boundary.
+        Global boundary values need to be provided by file or by set_boundary_value function beforehand.
+
+        :param fieldname: Name of the field to apply global boundary condition.
+        :return: None
+        """
         # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
             # Check if neighbor in current direction is the global boundary:
@@ -435,6 +573,14 @@ class DomainSubdivision:
                                       + str(d) + " for field " + str(fieldname), RuntimeWarning)
 
     def communicate(self, fieldname=None):
+        """ Function to delegate the communication of subdivision halo regions, for specified field or all fields.
+
+        Delegates either two-way or one-sided communication depending on binary option "onesided" of the subdivision.
+
+        :param fieldname: Optional: Name of the field to communicate.
+        If none is provided all registered fields are communicated.
+        :return: None
+        """
         if fieldname is None:
             for k in self.halos.keys():
                 if self.onesided:
@@ -448,34 +594,37 @@ class DomainSubdivision:
                 self.communicate_field(fieldname)
 
     def communicate_one_way_field(self, fieldname):
-        # temp_buffer = [None] * len(self.neighbors_id)
-        # for d in range(len(self.neighbors_id)):
-            # if self.halos[fieldname][d] != 0:
-            # temp_buffer[d] = np.ones_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
-            # self.communicate_external_update_buffer(fieldname, d)
-                # print(MPI.COMM_WORLD.Get_rank(), d, self.onesided_buffers[fieldname][d])
-                # sys.stdout.flush()
+        """ Function to start one sided communication between subdivisions.
+
+        :param fieldname: Name of the field to exchange halo regions.
+        :return: None
+        """
+        # Only communicate non-locally if there are more than 1 MPI processes.
         if MPI.COMM_WORLD.Get_size() > 1:
+            # Iterate over directions
             for d in range(len(self.neighbors_id)):
+                # Check if the halo in the given direction is zero i.e. no halo region.
                 if self.halos[fieldname][d] != 0:
+                    # Check if the neighbor in the direction exists or is the global boundary.
                     if self.neighbors_id[d] is not None:
                         fixed_neighbor = DomainPartitions.domain_partitions[self.neighbors_id[d]]
                     else:
-                        fixed_neighbor = None #MPI.COMM_WORLD.Get_rank()
+                        fixed_neighbor = None
 
+                    # Determine counter direction number based on direction.
                     if d % 2 == 0:
                         cd = d + 1
                     else:
                         cd = d - 1
 
-                    # print(MPI.COMM_WORLD.Get_rank(), d, fixed_neighbor)
-                    # print(temp_buffer[d])
-                    self.communicate_external_get(fieldname,
-                                                  np.ascontiguousarray(self.fields[fieldname][self.get_local[fieldname][cd]]), #temp_buffer[d],
+                    # Call the one sided communcication function with the local slice in the counter direction,
+                    # because Put needs this subdivisions outer most values of the opposite direction
+                    # to transfer into the neighbors halo region.
+                    self.communicate_external_put(fieldname,
+                                                  np.ascontiguousarray(self.fields[fieldname][
+                                                                           self.get_local[fieldname][cd]]),
                                                   d,
                                                   fixed_neighbor)
-
-                # print(self.onesided_buffers[fieldname][d])
 
         # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
@@ -488,25 +637,34 @@ class DomainSubdivision:
                                                    self.recv_slices[fieldname][d],
                                                    self.get_local[fieldname][d],
                                                    d)
-                    else: # temp_buffer[d]
+                    else:
+                        # If not local then halo region was Put into buffer by neighbor, need to update halo region.
                         self.communicate_external_update_halo(fieldname, d)
 
     def communicate_field(self, fieldname):
+        """ Function to perform standard two-way communication of a fields halo regions.
+
+        :param fieldname: Name of the field to exchange halo regions.
+        :return: None
+        """
+        # Create MPI request and buffer arrays
         requests = [None] * 2 * len(self.neighbors_id)
         temp_buffer = [None] * len(self.neighbors_id)
         for d in range(len(self.neighbors_id)):
             temp_buffer[d] = np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
+
         # Iterate over all neighbors i.e. all directions:
         for d in range(len(self.neighbors_id)):
-            # temp_buffer[d] = np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][d]])
             # Check if neighbor in current direction is the global boundary:
             if self.check_global_boundary(d):
-                # Set the requests for the corresponding direction to null, so that the MPI waitall() works later.
-                # print("Found the global boundary for subdivision ", self.id, " in direction ", d)
+                # If at the global boundary then set the requests for the corresponding direction to null,
+                # so that the MPI waitall() works later.
                 requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
             else:
                 # Check if neighbor in current direction is local or external and communicate accordingly:
                 if self.check_local(d) or MPI.COMM_WORLD.Get_size() == 1:
+                    # Set the requests for the corresponding direction to null,
+                    # so that the MPI waitall() works later.
                     requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
                     if self.halos[fieldname][d] != 0:
                         self.communicate_local(fieldname,
@@ -515,7 +673,7 @@ class DomainSubdivision:
                                                d)
                 else:
                     if self.halos[fieldname][d] != 0:
-                        # Communicate two-way
+                        # Communicate two-way depending on rank either send first or receive first to avoid deadlock.
                         if MPI.COMM_WORLD.Get_rank() % 2 == 0:
                                 requests[2 * d] = self.communicate_external_send(
                                     fieldname,
@@ -539,12 +697,15 @@ class DomainSubdivision:
                                 DomainPartitions.domain_partitions[self.neighbors_id[d]]
                             )
                     else:
+                        # If there is no halo region in a direction,
+                        # set the requests for the corresponding direction to null,
+                        # so that the MPI waitall() works later.
                         requests[2 * d] = requests[2 * d + 1] = MPI.REQUEST_NULL
 
         # Update halo regions after receiving all boundaries
         if MPI.COMM_WORLD.Get_size() > 1:
+            # Wait for all send / receives to finish
             MPI.Request.waitall(requests)
-            # print(requests)
 
             for d in range(len(self.neighbors_id)):
                 # Check if neighbor in current direction is the global boundary:
@@ -554,75 +715,151 @@ class DomainSubdivision:
                         self.fields[fieldname][self.recv_slices[fieldname][d]] = temp_buffer[d].copy()
 
     def communicate_local(self, fieldname, recv_slice, get_slice, neighbor_id):
+        """ Function to communicate halo exchanges for subdivisions in the same partition.
+        Communicate means copying in this case.
+
+        :param fieldname: Name of the field.
+        :param recv_slice: Indices to receive the halos into i.e. subdivisions halo region in this direction.
+        :param get_slice: Indices of the halo region in the neighboring subdivision to get
+        i.e. the outer most parts of the neighboring field in the opposite direction.
+        :param neighbor_id: Identification number for the neighboring subdivision.
+        :return: None
+        """
         # Numpy view of the halo region
         recv = self.fields[fieldname][recv_slice]
         # Neighboring subdivision
         neighbor_sd = self.get_local_neighbor(self.neighbors_id[neighbor_id])
         # Overlap region in neighboring subdivision
         get = neighbor_sd.fields[fieldname][get_slice]
-        # Transfer overlap region into halo region
+        # Transfer / copy overlap region into halo region
         recv[:] = get[:]
 
     def communicate_external_send(self, fieldname, send_slice, send_id):
+        """ Function to communicate two-way sending a halo region to its neighboring subdivision.
+
+        Uses numpy function "ascontiguousarray" to avoid having to copy into a buffer first
+        for non-contiguous halo regions.
+
+        :param fieldname: Name of the field
+        :param send_slice: Indices to send to neighbor i.e. outer most parts of the field in the direction.
+        :param send_id: Identification number of the neighboring subdivision.
+        :return: MPI Request for the send communication.
+        """
         req = MPI.COMM_WORLD.Isend(np.ascontiguousarray(self.fields[fieldname][send_slice]), dest=send_id)
         return req
 
     def communicate_external_recv(self, temp_buffer, recv_id):
+        """ Function to communicate two-way receiving a halo region from a neighboring subdivision.
+
+        :param temp_buffer: Temporary buffer array to receive halo region into.
+        :param recv_id: Identification number of neighboring subdivision.
+        :return: MPI Request for the receive communication.
+        """
         req = MPI.COMM_WORLD.Irecv(temp_buffer[:], source=recv_id)
         return req
 
-    def communicate_external_get(self, fieldname, temp_buffer, direction, recv_id):
-        # print(MPI.COMM_WORLD.Get_rank(), direction, recv_id)
-        # print(temp_buffer[:])
+    def communicate_external_put(self, fieldname, temp_buffer, direction, recv_id):
+        """ Function to communicate one-sided by using MPI Put to transfer
+        the outer most part of the field into neighboring halo region.
+
+        :param fieldname: Name of the field.
+        :param temp_buffer: Temporary buffer to hold the contiguous boundary before transfering.
+        :param direction: Direction number needed to use the corresponding MPI Window.
+        :param recv_id: Identification number of the receiving neighbor subdivision.
+        :return: None
+        """
         self.onesided_windows[fieldname][direction].Fence()
-        # print(MPI.COMM_WORLD.Get_rank(), direction, recv_id)
-        # sys.stdout.flush()
         if recv_id is not None:
-            # print("Not None:", MPI.COMM_WORLD.Get_rank(), direction, recv_id)
-            # sys.stdout.flush()
             self.onesided_windows[fieldname][direction].Put(origin=temp_buffer[:], target_rank=recv_id)
         self.onesided_windows[fieldname][direction].Fence()
 
-        # if recv_id is not None:
-        #     print(temp_buffer[:])
-        #     sys.stdout.flush()
-
-
-    def communicate_external_update_buffer(self, fieldname, d):
-        self.onesided_buffers[fieldname][d] = self.fields[fieldname][self.get_local[fieldname][d]]
+    # Used before changing one sided from MPI Get() to MPI Put()
+    # def communicate_external_update_buffer(self, fieldname, d):
+    #     """ Function to copy the values transferred by one sided communication into the windows buffer.
+    #
+    #     :param fieldname: Name of the field.
+    #     :param d: Direction number needed to use the corresponding MPI Window.
+    #     :return: None
+    #     """
+    #     self.onesided_buffers[fieldname][d] = self.fields[fieldname][self.get_local[fieldname][d]]
 
     def communicate_external_update_halo(self, fieldname, direction):
-        # print(temp_buffer[:])
-        # self.onesided_windows[fieldname][direction].Fence()
+        """ Function to copy the values transferred by one sided communication into the windows buffer.
+
+        Notice that the one sided buffers of any direction correspond to receiving from that direction
+        and therefore need to be used to update the halo of the opposite direction for correct boundary exchange.
+
+        :param fieldname: Name of the field.
+        :param direction: Direction number needed to use the corresponding MPI Window.
+        :return: None
+        """
+        # Determine the opposite direction
         if direction % 2 == 0:
             cd = direction + 1
         else:
             cd = direction - 1
-        self.fields[fieldname][self.recv_slices[fieldname][direction]] = self.onesided_buffers[fieldname][cd]#temp_buffer[:]
-        # self.onesided_windows[fieldname][direction].Fence()
+        # Copy the buffer of the opposite direction into the halo region of the current direction.
+        self.fields[fieldname][self.recv_slices[fieldname][direction]] = self.onesided_buffers[fieldname][cd]
 
     def check_local(self, direction):
+        """ Small helper function to check if the subdivision in a direction is in the same partition or not.
+
+        :param direction: Direction to check for local neighbor.
+        :return: True if the subdivision in the given direction is in the same partition. False otherwise.
+        """
         return self.partitions_id == DomainPartitions.domain_partitions[self.neighbors_id[direction]]
 
     def check_global_boundary(self, direction):
+        """ Small helper function to check if the subdivision borders the global boundary in a direction.
+
+        :param direction: Direction to check for global boundary.
+        :return: True if the subdivision borders the global boundary in the given direction. False otherwise.
+        """
         return self.neighbors_id[direction] is None
 
 
 class DomainDecompositionStencil:
+    """ Small class to store the subdivisions instantiated stencils in a list,
+    so that the partition can call the compute function of all subdivision stencils easily.
+
+    """
     def __init__(self):
+        """ Initializes with an empty list.
+        DomainDecomposition.register_stencil() function adds entries into the list.
+        """
         self.subdiv_stencil_list = []
 
     def compute(self):
+        """ Function to delegate the compute() call to all subdivision stencils.
+
+        :return: None
+        """
         for sd in self.subdiv_stencil_list:
             sd.compute()
 
 
 class DomainDecomposition:
+    """ Class containing the partition spanning information as well as functions to manage the partitions subdivisions.
+
+    Also used to obscure separation caused by subdivisions from users
+    and make the interface simpler so that the user has to write less boiler plate code.
+    """
     def __init__(self, fileinput=None, fileinputformat=None, path="", prefix="", comm_onesided=False):
+        """ Only one DomainDecomposition object should be instantiated for each simulation.
+        (Except each MPI process has of course it's own)
+
+        :param fileinput: Name of the partition file to be used.
+        :param fileinputformat: Format of the partition file, can be "metis" or "scotch".
+        :param path: Optional: Path of the partition file and other files that will be created.
+        :param prefix: Optional: Prefix for all files used.
+        :param comm_onesided: Optional: Binary option to enable one-sided communication for all subdivisions.
+        """
+        # Load the subdivisions serialized in the pre-process.
         self.subdivisions = self.load_subdivisions(path=path, prefix=prefix)
         self.path = path
         self.prefix = prefix
 
+        # Load the partitioning file:
         if fileinput is None or fileinputformat is None:
             raise ValueError("Need fileinput and fileinputformat for partitioning file.")
 
@@ -642,34 +879,82 @@ class DomainDecomposition:
                     temp_list.append(sd)
             self.subdivisions = temp_list
 
+        # Register all subdivisions to each other.
+        # Needed to easily communicate / copy between the local (same partition) subdivisions.
         for sd in self.subdivisions:
             sd.neighbor_list = self.subdivisions
 
+        # Enable one-sided communication if the option is provided.
         if comm_onesided:
             for sd in self.subdivisions:
                 sd.onesided = True
 
     @staticmethod
     def load_subdivisions(path="", prefix=""):
+        """ Small helper function to de-serialize the subdivisions created in the pre-process.
+
+        :param path: Path to the subdivisions pickle file.
+        :param prefix: Prefix of the subdivision pickle file.
+        :return: List of subdivisions from the pickle file.
+        """
         with open(path + prefix + "subdivisions.pkl", "rb") as f:
             return pickle.load(f)
 
     def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None,
                        staggered=None, haloincluded=False):
+        """ Function to register fields to subdivisions. Delegates to DomainSubdivision.register_field().
+
+        :param fieldname: Name of the field.
+        :param halo: Size of the halo in each direction: array of size 6:
+        [negative x-direction, positive x-direction,
+         negative y-direction, positive y-direction,
+         negative z-direction, positive z-direction] halo size.
+        :param field_ic_file: Optional: Initial condition / values array file.
+        If none is provided initial values are zero.
+        :param field_bc_file: Optional: Boundary value file. In cases were the boundary condition is provided in a file.
+        If none is provided the global boundary condition needs to be registered and set manually.
+        :param staggered: Optional: Parameter for staggered grids: array of size 3:
+        [x-direction, y-direction, z-direction] reduces field size by array value.
+        Should only have 0 or 1 in the array to be supported by GridTools.
+        :param haloincluded: Optional: Binary option if the initial value field includes the global halo or not.
+        :return: None
+        """
         for sd in self.subdivisions:
             sd.register_field(fieldname, halo, field_ic_file, field_bc_file, staggered, haloincluded)
 
     def register_stencil(self, **kwargs):
+        """ Function to register GridTools4Py stencils. Delegates to DomainSubdivision.register_stencil().
+
+        :param kwargs: keyword arguments almost the same as kwargs for usual GridTools4Py stencil instantiation.
+        Accepts keywords: definitions_func, inputs, constant_inputs, global_inputs, outputs,
+        domain, mode, vertical_direction, and the new keyword reductions.
+
+        :return: List of instantiated GridTools4Py stencil for all subdivisions.
+        """
         dds = DomainDecompositionStencil()
         for sd in self.subdivisions:
             dds.subdiv_stencil_list.append(sd.register_stencil(**kwargs))
         return dds
 
     def communicate(self, fieldname=None):
+        """ Function to start the boundary exchange between subdivisions. Delegates to DomainSubdivision.communicate().
+
+        :param fieldname: Name of the field. If none is provided communicates all registered fields.
+        :return: None
+        """
         for sd in self.subdivisions:
             sd.communicate(fieldname)
 
     def set_boundary_condition(self, fieldname, direction, halo, array):
+        """ Function to set an input array as the global boundary condition for a specific field and direction.
+        Manages the indices of the global array for each subdivision.
+        Delegates to DomainSubdivision.set_boundary_condition() with subdivision specific part of the array.
+
+        :param fieldname: Name of the field to set the global boundary condition.
+        :param direction: Direction of the global boundary condition.
+        :param array: Input array to be the global boundary condition.
+        :return: None
+        """
         for sd in self.subdivisions:
             if (direction == 0 or direction == 1):
                 slice = np.s_[:halo, sd.global_coords[2]:sd.global_coords[3], sd.global_coords[4]:sd.global_coords[5]]
@@ -681,14 +966,33 @@ class DomainDecomposition:
             sd.set_boundary_condition(fieldname, direction, array[slice])
 
     def apply_boundary_condition(self, fieldname):
+        """ Function to apply the set boundary condition of a field.
+        Delegates to DomainSubdivision.apply_boundary_condition().
+
+        :param fieldname: Name of the field.
+        :return: None
+        """
         for sd in self.subdivisions:
             sd.apply_boundary_condition(fieldname)
 
     def save_fields(self, fieldnames=None, postfix=None):
+        """ Function to save field into file per subdivision.
+
+        :param fieldnames: List of names of the fields to save.
+        :param postfix: Postfix to apply to all files, e.g. time step identifier.
+        :return: None
+        """
         for sd in self.subdivisions:
             sd.save_fields(fieldnames, path=self.path, prefix=self.prefix, postfix=postfix)
 
     def swap_fields(self, field1, field2):
+        """ Function to easily swap the content of two fields.
+        Used in a lot of stencil codes to swap between old and new array values between time steps / computations.
+
+        :param field1: First field to be swapped.
+        :param field2: Second field to be swapped.
+        :return: None
+        """
         for sd in self.subdivisions:
             sd.swap_fields(field1, field2)
 
