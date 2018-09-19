@@ -20,6 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	Kessler(TendencyComponent)
+	SaturationAdjustmentKessler(DiagnosticComponent)
+	RaindropFallVelocity(DiagnosticComponent)
+"""
 import numpy as np
 from sympl import DataArray, \
 				  DiagnosticComponent as Diagnostic, \

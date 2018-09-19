@@ -20,6 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	plot_topography_3d
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np

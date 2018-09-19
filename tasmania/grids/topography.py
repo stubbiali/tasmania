@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-Classes:
+This module contains:
 	Topography{1d, 2d}
 """
 from copy import deepcopy
@@ -171,7 +171,7 @@ class Topography1d:
 
 			self._topo_final = topo_max_height * np.exp(- ((xv-cx) / topo_width_x)**2)
 		elif self.topo_type == 'user_defined':
-			topo_str = kwargs.get('topo_str', 'x').encode('UTF-8')
+			topo_str = kwargs.get('topo_str', 'x')
 
 			self.topo_kwargs['topo_str'] = topo_str
 			
@@ -181,11 +181,12 @@ class Topography1d:
 				print('Hint: did you compile the parser?')
 				raise
 				
-			parser = Parser1d(topo_str, xv)
+			parser = Parser1d(topo_str.encode('UTF-8'), xv)
 			self._topo_final = parser.evaluate()
 			
 		# Smooth the topography out
-		if kwargs.get('topo_smooth', False):
+		self.topo_kwargs['topo_smooth'] = kwargs.get('topo_smooth', False)
+		if self.topo_kwargs['topo_smooth']:
 			self._topo_final[1:-1] += 0.25 * (self._topo_final[:-2] -
 											  2.*self._topo_final[1:-1] +
 											  self._topo_final[2:])
@@ -413,8 +414,7 @@ class Topography2d:
 							   ((1 + ((xv_ - topo_center_x) / topo_width_x)**2 +
 									 ((yv_ - topo_center_y) / topo_width_y)**2) ** 1.5)
 		elif self.topo_type == 'user_defined':
-			topo_str = 'x + y'.encode('UTF-8') if kwargs.get('topo_str') is None \
-					   else kwargs['topo_str'].encode('UTF-8')
+			topo_str = 'x + y' if kwargs.get('topo_str') is None else kwargs['topo_str']
 
 			self.topo_kwargs['topo_str'] = topo_str
 			
@@ -426,12 +426,13 @@ class Topography2d:
 				raise
 				
 			# Parse
-			parser = Parser2d(topo_str, grid.x.to_units('m').values,
+			parser = Parser2d(topo_str.encode('UTF-8'), grid.x.to_units('m').values,
 							  grid.y.to_units('m').values)
 			self._topo_final = parser.evaluate()
 			
 		# Smooth the topography out
-		if kwargs.get('topo_smooth', False):
+		self.topo_kwargs['topo_smooth'] = kwargs.get('topo_smooth', False)
+		if self.topo_kwargs['topo_smooth']:
 			self._topo_final[1:-1, 1:-1] += 0.125 * (self._topo_final[:-2, 1:-1] +
 													 self._topo_final[2:, 1:-1] +
 													 self._topo_final[1:-1, :-2] +

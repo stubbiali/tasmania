@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-Classes:
+This module contains:
 	IsentropicPrognostic
 """
 import abc
@@ -30,7 +30,8 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.dynamics.diagnostics import WaterConstituent
-from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux, IsentropicVerticalFlux
+from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux, \
+												IsentropicVerticalFlux
 from tasmania.dynamics.sedimentation_flux import SedimentationFlux
 from tasmania.physics.microphysics import RaindropFallVelocity
 from tasmania.utils.data_utils import get_physical_constants

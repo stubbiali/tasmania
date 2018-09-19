@@ -20,6 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	make_contourf_xz
+	plot_contourf_xz
+"""
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -80,7 +85,21 @@ def make_contourf_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 
 	# Extract, compute, or interpolate the field to plot
 	if field_to_plot in state.keys():
-		var = state[field_to_plot].values[:, y_level, :] 
+		var = state[field_to_plot].values[:, y_level, :]
+	elif field_to_plot == 'x_velocity':
+		try:
+			r, ru = get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
+									 'air_density', 'x_momentum')
+			var = ru / r
+		except KeyError:
+			pass
+
+		try:
+			s, su = get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)),
+									 'air_isentropic_density', 'x_momentum_isentropic')
+			var = su / s
+		except KeyError:
+			pass
 	elif field_to_plot == 'vertical_velocity':
 		assert grid.ny == 1, \
 			'The input grid should consist of only one point in the y-direction.'
@@ -98,7 +117,7 @@ def make_contourf_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
 		h_mid_at_u_loc	= np.concatenate((h_mid_at_u_loc_[0:1, :], h_mid_at_u_loc_,
 										  h_mid_at_u_loc_[-1:, :]), axis=0)
 
-		var = u * (h_mid_at_u_loc[1:, :] - h_mid_at_u_loc[:-1, :]) / grid.dx
+		var = u * (h_mid_at_u_loc[1:, :] - h_mid_at_u_loc[:-1, :]) / grid.dx.values.item()
 	else:
 		raise ValueError('Unknown field to plot {}.'.format(field_to_plot))
 

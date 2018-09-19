@@ -20,6 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	TendencyChecker
+	DynamicalCore
+"""
 import abc
 from sympl import ComponentMissingOutputError
 from sympl._core.base_components import InputChecker, \

@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 """
-Classes:
+This module contains:
     _Periodic(HorizontalBoundary)
     _Periodic{XZ, YZ}(HorizontalBoundary)
     _Relaxed(HorizontalBoundary)

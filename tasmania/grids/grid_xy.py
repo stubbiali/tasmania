@@ -20,6 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	GridXY
+"""
 import numpy as np
 import sympl
 
