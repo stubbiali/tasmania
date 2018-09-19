@@ -42,7 +42,7 @@ parser.add_argument("-nt", default=12, type=int,
 					help="Number of days the simulation should run.")
 parser.add_argument("-sf", default=100, type=int,
 					help="Save frequency: Number of time steps between fields are saved to file.")
-parser.add_argument("-ft", default=None, type=int,
+parser.add_argument("-ft", default=None, type=float,
 					help="Optional: If set use as fixed time step instead of adaptive time stepping.")
 args = parser.parse_args()
 

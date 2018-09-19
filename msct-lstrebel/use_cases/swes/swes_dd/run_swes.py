@@ -653,7 +653,7 @@ class LaxWendroffSWES:
 
                     if t == self.t_final:
                         tsave.append(n)
-                        np.save("t.npy", tsave)
+                        np.save(path + prefix + "t.npy", tsave)
                 timer.stop(name="Saving fields during time integration")
 
             timer.stop(name="Time integration")
@@ -671,7 +671,7 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
     # hsave = htemp[1:-1, 1:-1, :]
     # hsave = np.append(hsave, hsave[0, :].reshape((1, hsave.shape[1], hsave.shape[2])), axis=0)
 
-    tsave = np.load("t.npy")
+    tsave = np.load(path + prefix + "t.npy")
     nt = int(tsave[-1])
     for n in range(1, nt + 1):
         # Save
@@ -684,17 +684,17 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
             # print(hnew.shape, hsave.shape)
             hsave = np.concatenate((hsave, hnew), axis=2)
 
-    phi = np.load("swes_ic{}_phi.npy".format(nic))
+    phi = np.load(path + prefix + "swes_ic{}_phi.npy".format(nic))
     phi = np.append(phi, 2.0 * math.pi * np.ones((1, phi.shape[1])), axis=0)
 
-    theta = np.load("swes_ic{}_theta.npy".format(nic))
+    theta = np.load(path + prefix + "swes_ic{}_theta.npy".format(nic))
     theta = np.append(theta, theta[0, :].reshape((1, theta.shape[1])), axis=0)
 
-    usave = np.load("swes_ic{}_u.npy".format(nic))
+    usave = np.load(path + prefix + "swes_ic{}_u.npy".format(nic))
 
-    vsave = np.load("swes_ic{}_v.npy".format(nic))
+    vsave = np.load(path + prefix + "swes_ic{}_v.npy".format(nic))
 
-    filename = "swes_no_poles_ic{}.npz".format(nic)
+    filename = path + prefix + "swes_no_poles_ic{}.npz".format(nic)
     np.savez(filename, t=tsave[:-1], phi=phi[1:nx+2, 1:ny+1], theta=theta[1:nx+2, 1:ny+1],
              h=hsave, u=usave[1:nx+2, 1:ny+1], v=vsave[1:nx+2, 1:ny+1])
 
@@ -719,7 +719,7 @@ if __name__ == "__main__":
                         help="Path to location where files should be saved to.")
     parser.add_argument("-pf", default="", type=str,
                         help="Prefix for file names.")
-    parser.add_argument("-ft", default=None, type=int,
+    parser.add_argument("-ft", default=None, type=float,
                         help="Optional: If set use as fixed time step instead of adaptive time stepping.")
     args = parser.parse_args()
 

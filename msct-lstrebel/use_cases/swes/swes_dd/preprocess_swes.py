@@ -421,9 +421,6 @@ if __name__ == "__main__":
 
     diffusion = True
 
-    path = ""
-    prefix = ""
-    # ny=n-2
     prepare_partitioning(nx=nx, ny=ny, nz=nz, sx=sx, sy=sy, sz=sz, nparts=nparts, only_advection=only_advection,
                          path=path, prefix=prefix)
 
