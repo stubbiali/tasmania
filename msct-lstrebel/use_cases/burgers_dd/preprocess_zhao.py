@@ -55,40 +55,81 @@ def prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, method, px=0, py=0, pz=
     ddc.pymetis_partitioning(nparts)
 
 
-def prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye, nb, eps):
+def prepare_initial_condition(nx, ny, nz, sx, sy, sz, dxs, dxe, dys, dye, nb, eps):
         domain = [(dxs, dys), (dxe, dye)]
         datatype = np.float64
 
-        # Create the grid
-        x = np.linspace(domain[0][0], domain[1][0], nx - 2 * nb)
-        xv = np.repeat(x[:, np.newaxis], ny - 2 * nb, axis=1)
-        y = np.linspace(domain[0][1], domain[1][1], ny - 2 * nb)
-        yv = np.repeat(y[np.newaxis, :], nx - 2 * nb, axis=0)
+        snx = nx // sx
+        sny = ny // sy
+        snz = nz // sz
 
-        # Instatiate the arrays representing the initial conditions
-        unew = np.zeros((nx, ny, nz), dtype=datatype)
-        vnew = np.zeros((nx, ny, nz), dtype=datatype)
+        x_domain = domain[1][0] - domain[0][0]
+        dx = float(x_domain) / (nx - 1)
+        y_domain = domain[1][1] - domain[0][1]
+        dy = float(y_domain) / (ny - 1)
 
-        # Set the initial conditions
-        unew[nb:-nb, nb:-nb, 0] = (- 4. * eps * np.pi * np.cos(2 * np.pi * xv) * np.sin(np.pi * yv)
-                                   / (2. + np.sin(2. * np.pi * xv) * np.sin(np.pi * yv)))
-        vnew[nb:-nb, nb:-nb, 0] = (- 2. * eps * np.pi * np.sin(2 * np.pi * xv) * np.cos(np.pi * yv)
-                                   / (2. + np.sin(2. * np.pi * xv) * np.sin(np.pi * yv)))
+        for isx in range(sx):
+            for isy in range(sy):
+                for isz in range(sz):
+                    ind = (isx * sy + isy) * sz + isz
+                    # Create the grid
+                    x = np.linspace(isx * snx * dx, (isx + 1) * snx * dx, snx)
+                    # x = np.arange(isx * snx * dx - nb * dx, (isx + 1) * snx * dx + nb * dx, dx)
+                    # print(sx, snx, x_domain, dx)
+                    # print(isx * snx * dx - nb * dx, (isx + 1) * snx * dx + nb * dx, x.shape)
+                    xv = np.repeat(x[:, np.newaxis], sny, axis=1)
+                    y = np.linspace(isy * sny * dy, (isy + 1) * sny * dy, sny)
+                    # y = np.arange(isy * sny * dy - nb * dy, (isy + 1) * sny * dy + nb * dy, dy)
+                    # print(isy * sny * dy - nb * dy, (isy + 1) * sny * dy + nb * dy, y.shape)
+                    # print(y, y.shape)
+                    # print((((isy + 1 ) * sny * dy + nb * dy) - (isy * sny * dy - nb * dy)) / dy)
+                    yv = np.repeat(y[np.newaxis, :], snx, axis=0)
 
-        # Set the boundaries
-        t = 0.0
-        unew[:nb, nb:-nb, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[:nb, :])
-        unew[-nb:, nb:-nb, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(
-            np.pi * yv[-nb:, :])
-        unew[nb:-nb, :nb, 0] = 0.
-        unew[nb:-nb, -nb:, 0] = 0.
-        vnew[:nb, nb:-nb, 0] = 0.
-        vnew[-nb:, nb:-nb, 0] = 0.
-        vnew[nb:-nb, :nb, 0] = - eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, :nb])
-        vnew[nb:-nb, -nb:, 0] = eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, -nb:])
+                    # print(xv.shape, yv.shape)
 
-        np.save(path + prefix + "zhao_initial_conditions_unew.npy", unew)
-        np.save(path + prefix + "zhao_initial_conditions_vnew.npy", vnew)
+                    # Instatiate the arrays representing the initial conditions
+                    unew = np.zeros((snx + 2 * nb, sny + 2 * nb, snz), dtype=datatype)
+                    vnew = np.zeros((snx + 2 * nb, sny + 2 * nb, snz), dtype=datatype)
+                    # Set the initial conditions
+                    # print(x.shape, xv.shape, y.shape, yv.shape)
+                    unew[nb:-nb, nb:-nb, 0] = (- 4. * eps * np.pi * np.cos(2 * np.pi * xv) * np.sin(np.pi * yv)
+                                               / (2. + np.sin(2. * np.pi * xv) * np.sin(np.pi * yv)))
+                    vnew[nb:-nb, nb:-nb, 0] = (- 2. * eps * np.pi * np.sin(2 * np.pi * xv) * np.cos(np.pi * yv)
+                                               / (2. + np.sin(2. * np.pi * xv) * np.sin(np.pi * yv)))
+
+                    np.save(path + prefix + "zhao_initial_conditions_unew_" + str(ind) + ".npy", unew)
+                    np.save(path + prefix + "zhao_initial_conditions_vnew_" + str(ind) + ".npy", vnew)
+
+        # # Create the grid
+        # x = np.linspace(domain[0][0], domain[1][0], nx - 2 * nb)
+        # xv = np.repeat(x[:, np.newaxis], ny - 2 * nb, axis=1)
+        # y = np.linspace(domain[0][1], domain[1][1], ny - 2 * nb)
+        # yv = np.repeat(y[np.newaxis, :], nx - 2 * nb, axis=0)
+        #
+        # # Instatiate the arrays representing the initial conditions
+        # unew = np.zeros((nx, ny, nz), dtype=datatype)
+        # vnew = np.zeros((nx, ny, nz), dtype=datatype)
+        #
+        # # Set the initial conditions
+        # unew[nb:-nb, nb:-nb, 0] = (- 4. * eps * np.pi * np.cos(2 * np.pi * xv) * np.sin(np.pi * yv)
+        #                            / (2. + np.sin(2. * np.pi * xv) * np.sin(np.pi * yv)))
+        # vnew[nb:-nb, nb:-nb, 0] = (- 2. * eps * np.pi * np.sin(2 * np.pi * xv) * np.cos(np.pi * yv)
+        #                            / (2. + np.sin(2. * np.pi * xv) * np.sin(np.pi * yv)))
+        #
+        # # Set the boundaries
+        # t = 0.0
+        # unew[:nb, nb:-nb, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[:nb, :])
+        # unew[-nb:, nb:-nb, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(
+        #     np.pi * yv[-nb:, :])
+        # unew[nb:-nb, :nb, 0] = 0.
+        # unew[nb:-nb, -nb:, 0] = 0.
+        # vnew[:nb, nb:-nb, 0] = 0.
+        # vnew[-nb:, nb:-nb, 0] = 0.
+        # vnew[nb:-nb, :nb, 0] = - eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, :nb])
+        # vnew[nb:-nb, -nb:, 0] = eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, -nb:])
+        #
+        # np.save(path + prefix + "zhao_initial_conditions_unew.npy", unew)
+        # np.save(path + prefix + "zhao_initial_conditions_vnew.npy", vnew)
 
 
 def prepare_boundary_condition(nx, ny, nz, hxm, hxp, hym, hyp, hzm, hzp):
@@ -163,6 +204,6 @@ if __name__ == "__main__":
         nb = 2
 
     prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, method, px, py, pz)
-    prepare_initial_condition(nx, ny, nz, domain[0][0], domain[1][0], domain[0][1], domain[1][1], nb, eps)
+    prepare_initial_condition(nx, ny, nz, sx, sy, sz, domain[0][0], domain[1][0], domain[0][1], domain[1][1], nb, eps)
     # prepare_boundary_condition(nx, ny, nz, 1, 1, 1, 1, 0, 0)
 

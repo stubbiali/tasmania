@@ -142,7 +142,7 @@ class DomainSubdivision:
         self.global_bc_arr[fieldname][direction] = array
 
     def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None,
-                       staggered=None, haloincluded=False):
+                       staggered=None, haloincluded=False, singlefile=True):
         """ Register field to subdivision. Fields need to be register in order for the arrays to be allocated,
         and subdivision boundary indices to be prepared for the communication between subdivisions.
 
@@ -172,7 +172,7 @@ class DomainSubdivision:
                                                self.size[1] - staggered[1] + halo[2] + halo[3],
                                                self.size[2] - staggered[2] + halo[4] + halo[5]))
 
-        if field_ic_file is not None:
+        if field_ic_file is not None and singlefile:
             if not haloincluded:
                 self.fields[fieldname][halo[0]:None if halo[1] == 0 else -halo[1],
                                        halo[2]:None if halo[3] == 0 else -halo[3],
@@ -185,14 +185,15 @@ class DomainSubdivision:
             else:
                 # print(fieldname, self.fields[fieldname].shape)
                 self.fields[fieldname][:, :, :] = np.load(
-                    field_ic_file, mmap_mode='r')[self.global_coords[0]:self.global_coords[1]
+                    field_ic_file, mmap_mode="r")[self.global_coords[0]:self.global_coords[1]
                                                                         + halo[0] + halo[1] - staggered[0],
                                                   self.global_coords[2]:self.global_coords[3]
                                                                         + halo[2] + halo[3] - staggered[1],
                                                   self.global_coords[4]:self.global_coords[5]
                                                                         + halo[4] + halo[5] - staggered[2]]
-
-                # print(np.where(self.fields[fieldname][:, :, :] == 0.0))
+        if field_ic_file is not None and not singlefile:
+            self.fields[fieldname][:, :, :] = np.load(
+                field_ic_file + "_" + str(self.id) + ".npy", mmap_mode="r")[:, :, :]
 
         self.global_bc[fieldname] = field_bc_file
         self.global_bc_arr[fieldname] = [None, None, None, None, None, None]
@@ -901,7 +902,7 @@ class DomainDecomposition:
             return pickle.load(f)
 
     def register_field(self, fieldname, halo, field_ic_file=None, field_bc_file=None,
-                       staggered=None, haloincluded=False):
+                       staggered=None, haloincluded=False, singlefile=True):
         """ Function to register fields to subdivisions. Delegates to DomainSubdivision.register_field().
 
         :param fieldname: Name of the field.
@@ -920,7 +921,7 @@ class DomainDecomposition:
         :return: None
         """
         for sd in self.subdivisions:
-            sd.register_field(fieldname, halo, field_ic_file, field_bc_file, staggered, haloincluded)
+            sd.register_field(fieldname, halo, field_ic_file, field_bc_file, staggered, haloincluded, singlefile)
 
     def register_stencil(self, **kwargs):
         """ Function to register GridTools4Py stencils. Delegates to DomainSubdivision.register_stencil().

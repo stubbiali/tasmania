@@ -29,26 +29,60 @@ The user-facing part of the pre-process implementation is outlined with examples
 
 \subsubsection{Runtime process}
 % TODO Main functionalities / internal boundary exchanges local / external / global boundary etc
+During the runtime of a stencil computation the domain decomposition library has to manage a few tasks.
+Most of them arise because once the domain is decomposed into smaller parts each of these parts needs to be managed separately.
+At the same time the goal for the user facing parts of the library is to avoid adding complexity.
+To achieve both these goals the runtime functions of the domain decomposition library are organized into two main classes:
+The user facing \texttt{DomainDecomposition} class and the internal \texttt{DomainSubdivision} class.
 
+The \texttt{DomainDecomposition} class holds a list of all subdivisions i.e. \texttt{DomainSubdivision} objects belonging to the partition of the corresponding MPI process.
+Specifically, in the initialization of the \texttt{DomainDecomposition} class each MPI process loads the full serialized list of subdivisions from the pre-process and removes all subdivisions given to a different partition by the graph partitioning of the pre-process.
 
+In general the purpose of the \texttt{DomainDecomposition} is mostly to hide the separate subdivisions from the user and give the user a single point of contact with the library functions.
+Internally the \texttt{DomainDecomposition} contains functions that mostly just delegate function calls to all subdivisions.
 
+The \texttt{DomainSubdivision} class in contrast is responsible for the actual stencil computation.
+This includes managing and storing the fields in NumPy arrays, carrying out the GridTools4Py stencils computations, exchanging the boundaries between subdivisions, as well as applying the global boundary condition in the appropriate subdivisions.
+
+The fields and stencils need to be managed in the \texttt{DomainSubdivision} class because each subdivision needs its own fields and each GridTools4Py stencil has to be instantiated with a specific field.
+
+The hierarchical structure and the functions that are delegated between these two classes is illustrated in fig. \ref{fig:classes_chart}.
 
 \begin{figure}
 \centering
-\includegraphics[width=\textwidth]{Classes_Delegation.png}
-\caption{Overview.}
+\includegraphics[width=0.85\textwidth]{Classes_Delegation.png}
+\caption{Hierarchical structure of the main components of the runtime classes of the domain decomposition library.}
 \label{fig:classes_chart}
 \end{figure}
 
+The next paragraphs will describe some implementation details of the main runtime functionalities.
+
+\paragraph{Field registration } replaces for the user the usual call to NumPy to instantiate an array for a field.
+The subdivisions store fields as a dictionary containing the name of the field as the key and the array itself as the value.
+The name of the field needs to be stored alongside the array because of the indirection introduced by the domain decomposition.
+The indirection here is that the user wants to operate on a single array as the field while the decomposed domain consists of many arrays for each field.
+Storing the name of the field in addition to the NumPy arrays is a necessary compromise between these two aspects.
+Basically, this addition allows the user to refer to a field by its name in many functions where in the original code it would return to the NumPy array of the field.
+
+Internally the field registration delegates the array instantiation to the subdivisions and also calls the internal functions to setup the NumPy views to define the halo region used in the communication function.
+The creation of these boundary views is done during field registration because this is the first time the subdivisions get the name of a field as input and it is assumed that any field might need to communicate its boundary with the neighboring subdivisions.
+
+More details on the boundary views are presented in the communication paragraph.
+
+\paragraph{Stencil registration } can be done once all the fields used in the stencil have been registered.
+Stencil registration involves the same keywords that instantiation of a GridTools4Py stencil would.
+With the exception of the \textit{domain} keyword which is ignored since the stencil domain depends on the subdivision size and the stencils halo and not user input.
+However an additional keyword \textit{reductions} allows the user to limit the stencil domain if only a smaller part of the domain should be used.
+
+Otherwise the most obvious difference is that instead of NumPy arrays directly the \textit{inputs} and \textit{outputs} keywords need to be provided with the field names instead since every subdivision has their own NumPy array to give to the GridTools4Py stencil.
+
+To keep the handling of GridTools4Py stencils similar to non-decomposed code the \texttt{register\_field()} function returns a single object that has a \texttt{compute()} function that can be called after instantiation.
+For the domain decomposition library this object is not the GridTool4Py stencil directly but instead an object of the small internal helper class \texttt{DomainDecompositionStencil} which does nothing more than store the subdivisions stencils in a list and provide a \texttt{compute()} function to delegate to the subdivisions \texttt{compute()} functions.
+
+\paragraph{Communicate } functions are needed because the subdivisions of the domain need to exchange their boundaries with each other in between computations.
+
 \subsubsection{Post-process}
 % TODO mainly combining field data from various subdivisions back into one file
-
-\begin{figure}
-\centering
-\includegraphics[width=\textwidth]{mpi_onesided.png}
-\caption{Overview.}
-\label{fig:mpi_onesided_communication_flow}
-\end{figure}
 
 \newpage
 \subsection{User interface}
@@ -333,7 +367,15 @@ postproc.combine_output_files([100, 100, 1], "unew", path=path, prefix=prefix, p
 postproc.combine_output_files([100, 100, 1], "vnew", path=path, prefix=prefix, postfix="t_0", save=True, cleanup=True)
 \end{lstlisting}
 
+\newpage
+\subsection{MPI One-Sided}
 
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{mpi_onesided.png}
+\caption{Overview.}
+\label{fig:mpi_onesided_communication_flow}
+\end{figure}
 
 
 

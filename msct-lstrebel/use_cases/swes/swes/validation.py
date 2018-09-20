@@ -155,9 +155,9 @@ def compare_files(ref_file, target_file, fileoutput=False, path="", prefix="", p
         h_diff, h_abs_err_sum[t], h_abs_err_avg[t], h_rel_err_sum[t], h_rel_err_avg[t] = calculate_difference(
             h_ref[:, :, t], h_tar[:, :, t])
 
-        # if plotting:
-        #         plot_difference_field(t_tar, h_diff, phi_tar, theta_tar,
-        #                               filename=str(path) + str(prefix) + "_" + str(t) + "_" + "ref_vs_dd")
+        if plotting and t > start_time:
+                plot_difference_field(t_tar, h_diff, phi_tar, theta_tar,
+                                      filename=str(path) + str(prefix) + "_" + str(t) + "_" + "ref_vs_dd", ct=t)
 
         if not onlylast:
             h_diff_per_cell_sum[:] += h_diff[:]
@@ -165,8 +165,6 @@ def compare_files(ref_file, target_file, fileoutput=False, path="", prefix="", p
         # if plotting:
         #     plot_difference_field(t_tar, h_diff_per_cell_sum, phi_tar, theta_tar, filename=str(path) + str(prefix)
         #                                                                                   + "_" + str(t) + "_" + "ref_vs_dd")
-
-
 
     if fileoutput:
         save_differences_to_file([h_abs_err_avg, h_rel_err_avg],
@@ -181,7 +179,7 @@ def compare_files(ref_file, target_file, fileoutput=False, path="", prefix="", p
                                                                                            + "ref_vs_dd_time_avg")
 
 
-def plot_difference_field(t, h, phi, theta, filename):
+def plot_difference_field(t, h, phi, theta, filename, ct=-1):
     plt.cla()
     plt.clf()
 
@@ -226,7 +224,7 @@ def plot_difference_field(t, h, phi, theta, filename):
 
     plt.title('Fluid height [m]', loc='left', fontsize=fontsize - 1)
     # plt.title(get_time_string(t[n][0]), loc='right', fontsize=fontsize-1)
-    plt.title(get_time_string(t[-1]), loc='right', fontsize=fontsize - 1)
+    plt.title(get_time_string(t[ct]), loc='right', fontsize=fontsize - 1)
 
 
     cb = plt.colorbar(surf, orientation=cbar_orientation)

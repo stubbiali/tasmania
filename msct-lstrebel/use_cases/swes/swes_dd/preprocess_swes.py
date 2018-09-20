@@ -42,15 +42,21 @@ def prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, only_advection, px=1, p
 
     # Add IC specific stencils:
     if only_advection:
-        ddc.add_stencil({"h": [[0], [1], [0], [1], [0], [0]]})
-        ddc.add_stencil({"u": [[0], [1], [0], [0], [0], [0]]})
-        ddc.add_stencil({"v": [[0], [0], [0], [1], [0], [0]]})
-        ddc.add_stencil({"c": [[0], [0], [0], [1], [0], [0]]})
-        ddc.add_stencil({"u_midx": [[1], [0], [0], [0], [0], [0]]})
-        ddc.add_stencil({"v_midy": [[0], [0], [1], [0], [0], [0]]})
-        ddc.add_stencil({"c_midy": [[0], [0], [1], [0], [0], [0]]})
+        ddc.add_stencil({"h": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"u": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"v": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"c": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"u_midx": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"v_midy": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"c_midy": [[1], [1], [1], [1], [0], [0]]})
     else:
-        pass
+        ddc.add_stencil({"h": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"u": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"v": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"c": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"u_midx": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"v_midy": [[1], [1], [1], [1], [0], [0]]})
+        ddc.add_stencil({"c_midy": [[1], [1], [1], [1], [0], [0]]})
 
     # Once all stencils are added call preprocess and partitioning
     ddc.preprocess()

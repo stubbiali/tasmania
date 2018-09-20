@@ -84,20 +84,24 @@ def run_zhao():
 
     prepared_domain.register_field(fieldname="unow",
                                    halo=halo,
-                                   field_ic_file=path + prefix + "zhao_initial_conditions_unew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_unew",
+                                   singlefile=False)
                                    # field_bc_file=path + prefix + "zhao_boundary_conditions_unew.npy")
     prepared_domain.register_field(fieldname="vnow",
                                    halo=halo,
-                                   field_ic_file=path + prefix + "zhao_initial_conditions_vnew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_vnew",
+                                   singlefile=False)
                                    # field_bc_file=path + prefix + "zhao_boundary_conditions_vnew.npy")
 
     prepared_domain.register_field(fieldname="unew",
                                    halo=halo,
-                                   field_ic_file=path + prefix + "zhao_initial_conditions_unew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_unew",
+                                   singlefile=False)
                                    # field_bc_file=path + prefix + "zhao_boundary_conditions_unew.npy")
     prepared_domain.register_field(fieldname="vnew",
                                    halo=halo,
-                                   field_ic_file=path + prefix + "zhao_initial_conditions_vnew.npy")
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_vnew",
+                                   singlefile=False)
                                    # field_bc_file=path + prefix + "zhao_boundary_conditions_vnew.npy")
 
     # Convert global inputs to GT4Py Global's
@@ -164,7 +168,9 @@ def run_zhao():
 
         timer.start(name="Saving fields during time integration", level=3)
         # Save
-        if ((save_freq > 0) and (n % save_freq == 0)) or (save_freq >= 0 and (n + 1 == nt)):
+        if ((save_freq > 0) and (n % save_freq == 0)):
+            prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n))
+        elif (save_freq >= 0 and (n + 1 == nt)):
             prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n + 1))
         timer.stop(name="Saving fields during time integration")
 
@@ -231,7 +237,7 @@ if __name__ == "__main__":
     timer.start(name="Post processing time", level=1)
     MPI.COMM_WORLD.Barrier()
     if MPI.COMM_WORLD.Get_rank() == 0:
-        if save_freq > 0:
+        if save_freq >= 0:
             postprocess_zhao()
 
     timer.stop(name="Post processing time")

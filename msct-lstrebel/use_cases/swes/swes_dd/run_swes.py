@@ -601,15 +601,15 @@ class LaxWendroffSWES:
 
                     if self.diffusion:
                         for sd in self.prepared_domain.subdivisions:
-                            sd.fields["h_tmp"] = sd.fields["h_new"].copy()
-                            sd.fields["u_tmp"] = sd.fields["u_new"].copy()
-                            sd.fields["v_tmp"] = sd.fields["v_new"].copy()
-                            sd.fields["h_tmp3"] = sd.fields["h_new"].copy()
-                            sd.fields["u_tmp3"] = sd.fields["u_new"].copy()
-                            sd.fields["v_tmp3"] = sd.fields["v_new"].copy()
-                            sd.fields["h_tmp2"] = sd.fields["h"].copy()
-                            sd.fields["u_tmp2"] = sd.fields["u"].copy()
-                            sd.fields["v_tmp2"] = sd.fields["v"].copy()
+                            sd.fields["h_tmp"][:] = sd.fields["h_new"][:]
+                            sd.fields["u_tmp"][:] = sd.fields["u_new"][:]
+                            sd.fields["v_tmp"][:] = sd.fields["v_new"][:]
+                            sd.fields["h_tmp3"][:] = sd.fields["h_new"][:]
+                            sd.fields["u_tmp3"][:] = sd.fields["u_new"][:]
+                            sd.fields["v_tmp3"][:] = sd.fields["v_new"][:]
+                            sd.fields["h_tmp2"][:] = sd.fields["h"][:]
+                            sd.fields["u_tmp2"][:] = sd.fields["u"][:]
+                            sd.fields["v_tmp2"][:] = sd.fields["v"][:]
 
                             # print("before", (sd.fields["h_new"] == sd.fields["h_tmp3"]).all())
 
