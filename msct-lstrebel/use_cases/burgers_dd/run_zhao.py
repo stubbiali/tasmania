@@ -58,25 +58,25 @@ def run_zhao():
 
     # Driver
     #
-    # Infer the grid size
+    # # Infer the grid size
     dx = float(domain[1][0] - domain[0][0]) / nx
     dy = float(domain[1][1] - domain[0][1]) / ny
+    #
+    # # Create the grid
+    # x = np.linspace(domain[0][0], domain[1][0], nx)
+    # xv = np.repeat(x[:, np.newaxis], ny, axis=1)
+    # y = np.linspace(domain[0][1], domain[1][1], ny)
+    # yv = np.repeat(y[np.newaxis, :], nx, axis=0)
 
-    # Create the grid
-    x = np.linspace(domain[0][0], domain[1][0], nx)
-    xv = np.repeat(x[:, np.newaxis], ny, axis=1)
-    y = np.linspace(domain[0][1], domain[1][1], ny)
-    yv = np.repeat(y[np.newaxis, :], nx, axis=0)
-
-    unew_east = np.zeros((nb, ny, nz))
-    unew_west = np.zeros((nb, ny, nz))
-    unew_north = np.zeros((nx, nb, nz))
-    unew_south = np.zeros((nx, nb, nz))
-
-    vnew_east = np.zeros((nb, ny, nz))
-    vnew_west = np.zeros((nb, ny, nz))
-    vnew_north = np.zeros((nx, nb, nz))
-    vnew_south = np.zeros((nx, nb, nz))
+    # unew_east = np.zeros((nb, ny, nz))
+    # unew_west = np.zeros((nb, ny, nz))
+    # unew_north = np.zeros((nx, nb, nz))
+    # unew_south = np.zeros((nx, nb, nz))
+    #
+    # vnew_east = np.zeros((nb, ny, nz))
+    # vnew_west = np.zeros((nb, ny, nz))
+    # vnew_north = np.zeros((nx, nb, nz))
+    # vnew_south = np.zeros((nx, nb, nz))
 
     # Register fields and stencils to the DomainDecomposition class:
     prepared_domain = DomainDecomposition("subdomains_pymetis.dat.part." + str(nparts), "metis",
@@ -103,6 +103,17 @@ def run_zhao():
                                    field_ic_file=path + prefix + "zhao_initial_conditions_vnew",
                                    singlefile=False)
                                    # field_bc_file=path + prefix + "zhao_boundary_conditions_vnew.npy")
+
+    prepared_domain.register_field(fieldname="xv",
+                                   halo=halo,
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_xv",
+                                   singlefile=False)
+
+    prepared_domain.register_field(fieldname="yv",
+                                   halo=halo,
+                                   field_ic_file=path + prefix + "zhao_initial_conditions_yv",
+                                   singlefile=False)
+
 
     # Convert global inputs to GT4Py Global's
     dt_ = gt.Global(dt)
@@ -133,24 +144,47 @@ def run_zhao():
         # Apply the boundary conditions
         # Set the boundaries
         t = (n + 1) * float(dt)
-        unew_west[:, :, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[:nb, :])
-        unew_east[:, :, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[-nb:, :])
-        unew_north[:, :, 0] = np.zeros((nx, nb))
-        unew_south[:, :, 0] = np.zeros((nx, nb))
-        vnew_west[:, :, 0] = np.zeros((nb, ny))
-        vnew_east[:, :, 0] = np.zeros((nb, ny))
-        vnew_north[:, :, 0] = - eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, :nb])
-        vnew_south[:, :, 0] = eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, -nb:])
+        unew_west = {}
+        unew_east = {}
+        unew_north = {}
+        unew_south = {}
+        vnew_west = {}
+        vnew_east = {}
+        vnew_north = {}
+        vnew_south = {}
+        for sd in prepared_domain.subdivisions:
+            unew_west[sd] = (- 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
+                                      * np.sin(np.pi * sd.get_interior_field("yv")[:nb, :, 0]))
+            unew_east[sd] = (- 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
+                                      * np.sin(np.pi * sd.get_interior_field("yv")[-nb:, :, 0]))
+            unew_north[sd] = np.zeros((sd.size[0], nb))
+            unew_south[sd] = np.zeros((sd.size[0], nb))
+            vnew_west[sd] = np.zeros((nb, sd.size[1]))
+            vnew_east[sd] = np.zeros((nb, sd.size[1]))
+            vnew_north[sd] = (- eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
+                                       * np.sin(2. * np.pi * sd.get_interior_field("xv")[:, :nb, 0]))
+            vnew_south[sd] = (eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
+                                       * np.sin(2. * np.pi * sd.get_interior_field("xv")[:, -nb:, 0]))
 
-        prepared_domain.set_boundary_condition("unow", 0, 1, unew_west)
-        prepared_domain.set_boundary_condition("unow", 1, 1, unew_east)
-        prepared_domain.set_boundary_condition("unow", 2, 1, unew_north)
-        prepared_domain.set_boundary_condition("unow", 3, 1, unew_south)
+            unew_west[sd] = unew_west[sd].reshape((halo[0], sd.size[1], sd.size[2]))
+            unew_east[sd] = unew_east[sd].reshape((halo[1], sd.size[1], sd.size[2]))
+            unew_north[sd] = unew_north[sd].reshape((sd.size[0], halo[2], sd.size[2]))
+            unew_south[sd] = unew_south[sd].reshape((sd.size[0], halo[3], sd.size[2]))
 
-        prepared_domain.set_boundary_condition("vnow", 0, 1, vnew_west)
-        prepared_domain.set_boundary_condition("vnow", 1, 1, vnew_east)
-        prepared_domain.set_boundary_condition("vnow", 2, 1, vnew_north)
-        prepared_domain.set_boundary_condition("vnow", 3, 1, vnew_south)
+            vnew_west[sd] = vnew_west[sd].reshape((halo[0], sd.size[1], sd.size[2]))
+            vnew_east[sd] = vnew_east[sd].reshape((halo[1], sd.size[1], sd.size[2]))
+            vnew_north[sd] = vnew_north[sd].reshape((sd.size[0], halo[2], sd.size[2]))
+            vnew_south[sd] = vnew_south[sd].reshape((sd.size[0], halo[3], sd.size[2]))
+
+            sd.set_boundary_condition("unow", 0, unew_west[sd])
+            sd.set_boundary_condition("unow", 1, unew_east[sd])
+            sd.set_boundary_condition("unow", 2, unew_north[sd])
+            sd.set_boundary_condition("unow", 3, unew_south[sd])
+
+            sd.set_boundary_condition("vnow", 0, vnew_west[sd])
+            sd.set_boundary_condition("vnow", 1, vnew_east[sd])
+            sd.set_boundary_condition("vnow", 2, vnew_north[sd])
+            sd.set_boundary_condition("vnow", 3, vnew_south[sd])
 
         prepared_domain.apply_boundary_condition("unow")
         prepared_domain.apply_boundary_condition("vnow")

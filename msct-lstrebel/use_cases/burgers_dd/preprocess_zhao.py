@@ -99,6 +99,12 @@ def prepare_initial_condition(nx, ny, nz, sx, sy, sz, dxs, dxe, dys, dye, nb, ep
 
                     np.save(path + prefix + "zhao_initial_conditions_unew_" + str(ind) + ".npy", unew)
                     np.save(path + prefix + "zhao_initial_conditions_vnew_" + str(ind) + ".npy", vnew)
+                    xvtemp = np.zeros_like(unew)
+                    xvtemp[nb:-nb, nb:-nb, 0] = xv[:, :]
+                    yvtemp = np.zeros_like(unew)
+                    yvtemp[nb:-nb, nb:-nb, 0] = yv[:, :]
+                    np.save(path + prefix + "zhao_initial_conditions_xv_" + str(ind) + ".npy", xvtemp)
+                    np.save(path + prefix + "zhao_initial_conditions_yv_" + str(ind) + ".npy", yvtemp)
 
         # # Create the grid
         # x = np.linspace(domain[0][0], domain[1][0], nx - 2 * nb)

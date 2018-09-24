@@ -632,7 +632,7 @@ class LaxWendroffSWES:
                 #     self.prepared_domain.swap_fields("u", "u_new")
                 #     self.prepared_domain.swap_fields("v", "v_new")
 
-                if n % 100 == 0 and MPI.COMM_WORLD.Get_rank() == 0:
+                if n % save == 0 and MPI.COMM_WORLD.Get_rank() == 0:
                     umax = []
                     for sd in self.prepared_domain.subdivisions:
                         # print("time step " + str(n) + " time " + str(t) + " sd " + str(sd.id) + " u max " + str(np.max(sd.get_interior_field("u_new")[:])))
@@ -709,7 +709,7 @@ if __name__ == "__main__":
                         help="Number of grid points in z direction.")
     parser.add_argument("-ic", default=0, type=int,
                         help="Initial condition either 0 or 2.")
-    parser.add_argument("-nt", default=12, type=int,
+    parser.add_argument("-nt", default=12, type=float,
                         help="Number of days the simulation should run.")
     parser.add_argument("-sf", default=100, type=int,
                         help="Save frequency: Number of time steps between fields are saved to file.")

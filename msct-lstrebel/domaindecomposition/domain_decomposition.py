@@ -368,20 +368,32 @@ class DomainSubdivision:
 
         if self.onesided:
             self.onesided_buffers[fieldname] = [
-                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][0]]),
-                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][1]]),
-                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][2]]),
-                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][3]]),
-                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][4]]),
-                np.zeros_like(self.fields[fieldname][self.recv_slices[fieldname][5]])
+                None if self.halos[fieldname][0] == 0 else np.zeros_like(self.fields[fieldname][
+                                                                             self.recv_slices[fieldname][0]]),
+                None if self.halos[fieldname][1] == 0 else np.zeros_like(self.fields[fieldname][
+                                                                             self.recv_slices[fieldname][1]]),
+                None if self.halos[fieldname][2] == 0 else np.zeros_like(self.fields[fieldname][
+                                                                             self.recv_slices[fieldname][2]]),
+                None if self.halos[fieldname][3] == 0 else np.zeros_like(self.fields[fieldname][
+                                                                             self.recv_slices[fieldname][3]]),
+                None if self.halos[fieldname][4] == 0 else np.zeros_like(self.fields[fieldname][
+                                                                             self.recv_slices[fieldname][4]]),
+                None if self.halos[fieldname][5] == 0 else np.zeros_like(self.fields[fieldname][
+                                                                             self.recv_slices[fieldname][5]])
             ]
             self.onesided_windows[fieldname] = [
-                MPI.Win.Create(self.onesided_buffers[fieldname][0], comm=MPI.COMM_WORLD),
-                MPI.Win.Create(self.onesided_buffers[fieldname][1], comm=MPI.COMM_WORLD),
-                MPI.Win.Create(self.onesided_buffers[fieldname][2], comm=MPI.COMM_WORLD),
-                MPI.Win.Create(self.onesided_buffers[fieldname][3], comm=MPI.COMM_WORLD),
-                MPI.Win.Create(self.onesided_buffers[fieldname][4], comm=MPI.COMM_WORLD),
-                MPI.Win.Create(self.onesided_buffers[fieldname][5], comm=MPI.COMM_WORLD)
+                None if self.halos[fieldname][0] == 0 else MPI.Win.Create(self.onesided_buffers[fieldname][0],
+                                                                          comm=MPI.COMM_WORLD),
+                None if self.halos[fieldname][1] == 0 else MPI.Win.Create(self.onesided_buffers[fieldname][1],
+                                                                          comm=MPI.COMM_WORLD),
+                None if self.halos[fieldname][2] == 0 else MPI.Win.Create(self.onesided_buffers[fieldname][2],
+                                                                          comm=MPI.COMM_WORLD),
+                None if self.halos[fieldname][3] == 0 else MPI.Win.Create(self.onesided_buffers[fieldname][3],
+                                                                          comm=MPI.COMM_WORLD),
+                None if self.halos[fieldname][4] == 0 else MPI.Win.Create(self.onesided_buffers[fieldname][4],
+                                                                          comm=MPI.COMM_WORLD),
+                None if self.halos[fieldname][5] == 0 else MPI.Win.Create(self.onesided_buffers[fieldname][5],
+                                                                          comm=MPI.COMM_WORLD)
             ]
 
     def save_fields(self, fieldnames=None, path="", prefix="", postfix=None):
@@ -706,7 +718,13 @@ class DomainSubdivision:
         # Update halo regions after receiving all boundaries
         if MPI.COMM_WORLD.Get_size() > 1:
             # Wait for all send / receives to finish
-            MPI.Request.waitall(requests)
+            stats = [MPI.Status()] * 2 * len(self.neighbors_id)
+            try:
+                MPI.Request.waitall(requests, statuses=stats)
+            except MPI.MPI.Exception:
+                for st in stats:
+                    if st.Get_error() != 0:
+                        print("MPI Error after waitall: " + str(st.Get_error()))
 
             for d in range(len(self.neighbors_id)):
                 # Check if neighbor in current direction is the global boundary:
