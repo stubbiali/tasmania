@@ -36,7 +36,7 @@ The name "stencil codes" refers to computations using a fixed pattern of values 
 
 These fixed patterns often originate from explicit finite difference approximations on structured meshes.
 Structured meshes guarantee that every point in the mesh, except points on the boundary, has the same number of neighboring points.
-Explicit finite difference approximations use the values on the mesh at a given point in time to compute the values for the next small time step.
+Explicit finite difference approximations use the values on the mesh at a given point in time to compute the values for the next time step.
 Finite difference approximations are one common way to solve partial differential equations (PDEs).
 Numerous scientific fields - such as fluid dynamics or climate dynamics - model the natural phenomena of their studies as PDEs.
 
@@ -127,7 +127,7 @@ The computational cost can be approximated by the number of non-zero entries in 
 
 A source graph to partition a given domain could be built by creating a vertex in the source graph for every grid point in the domain.
 In such a source graph, each vertex would have edges based on the communication patterns and a vertex weight based computational cost approximations of a stencil as previously described.
-However, even for simple stencils, like the one used in the Laplace equation, it becomes impractical to partition such a built source graph for meshes with several millions of elements due to the size of such a source graph.
+However, even for simple stencils, like the one used in the Laplace equation, it is intuitive but unfeasible to have a vertex for each mesh vertex for meshes with several millions of elements due to the size of such a source graph.
 
 Thus we will investigate models and methods to achieve the generation of a practical source graph to partition the domain.
 

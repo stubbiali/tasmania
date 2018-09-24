@@ -309,30 +309,6 @@ class LaxWendroffSWES:
                                                 halo=self.halo,
                                                 field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
                                                 haloincluded=True)
-            self.prepared_domain.register_field(fieldname="h_tmp2",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
-                                                haloincluded=True)
-            self.prepared_domain.register_field(fieldname="u_tmp2",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
-                                                haloincluded=True)
-            self.prepared_domain.register_field(fieldname="v_tmp2",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
-                                                haloincluded=True)
-            self.prepared_domain.register_field(fieldname="h_tmp3",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_h.npy",
-                                                haloincluded=True)
-            self.prepared_domain.register_field(fieldname="u_tmp3",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_u.npy",
-                                                haloincluded=True)
-            self.prepared_domain.register_field(fieldname="v_tmp3",
-                                                halo=self.halo,
-                                                field_ic_file=path + prefix + "swes_ic" + str(ic[0]) + "_v.npy",
-                                                haloincluded=True)
 
         # Compute minimum longitudinal and latitudinal distance between
         # adjacent grid points, needed to compute time step size through
@@ -378,34 +354,34 @@ class LaxWendroffSWES:
                 rdx = [1, 1, 1, 1, 0, 0]
                 self.stencil_hdiff = self.prepared_domain.register_stencil(
                     definitions_func=stencils.definitions_diffusion,
-                    inputs={"in_q": "h_tmp2", "tmp_q": "h_tmp",
+                    inputs={"in_q": "h", "tmp_q": "h_tmp",
                             "Ax": "Ax", "Ay": "Ay",
                             "Bx": "Bx", "By": "By",
                             "Cx": "Cx", "Cy": "Cy"},
                     global_inputs={"dt": self.dt, "nu": self.nu},
-                    outputs={"out_q": "h_tmp3"},
+                    outputs={"out_q": "h_new"},
                     mode=self.backend,
                     reductions=rdx,
                 )
                 self.stencil_udiff = self.prepared_domain.register_stencil(
                     definitions_func=stencils.definitions_diffusion,
-                    inputs={"in_q": "u_tmp2", "tmp_q": "u_tmp",
+                    inputs={"in_q": "u", "tmp_q": "u_tmp",
                             "Ax": "Ax", "Ay": "Ay",
                             "Bx": "Bx", "By": "By",
                             "Cx": "Cx", "Cy": "Cy"},
                     global_inputs={"dt": self.dt, "nu": self.nu},
-                    outputs={"out_q": "u_tmp3"},
+                    outputs={"out_q": "u_new"},
                     mode=self.backend,
                     reductions=rdx,
                 )
                 self.stencil_vdiff = self.prepared_domain.register_stencil(
                     definitions_func=stencils.definitions_diffusion,
-                    inputs={"in_q": "v_tmp2", "tmp_q": "v_tmp",
+                    inputs={"in_q": "v", "tmp_q": "v_tmp",
                             "Ax": "Ax", "Ay": "Ay",
                             "Bx": "Bx", "By": "By",
                             "Cx": "Cx", "Cy": "Cy"},
                     global_inputs={"dt": self.dt, "nu": self.nu},
-                    outputs={"out_q": "v_tmp3"},
+                    outputs={"out_q": "v_new"},
                     mode=self.backend,
                     reductions=rdx,
                 )
@@ -453,41 +429,6 @@ class LaxWendroffSWES:
             # Time marching
             #
             n, t = 0, 0.
-
-            # Communicate partition boundaries
-            # self.prepared_domain.communicate("h")
-            # self.prepared_domain.communicate("h_new")
-            # self.prepared_domain.communicate("dx")
-            # self.prepared_domain.communicate("dxc")
-            # self.prepared_domain.communicate("dy")
-            # self.prepared_domain.communicate("dy1")
-            # self.prepared_domain.communicate("dy1c")
-            # self.prepared_domain.communicate("c")
-            # self.prepared_domain.communicate("c_midy")
-            # self.prepared_domain.communicate("u")
-            # self.prepared_domain.communicate("v")
-            # if self.only_advection:
-            #     self.prepared_domain.communicate("u_midx")
-            #     self.prepared_domain.communicate("v_midy")
-            # if not self.only_advection:
-            #     self.prepared_domain.communicate("u_new")
-            #     self.prepared_domain.communicate("v_new")
-            #     self.prepared_domain.communicate("dyc")
-            #     self.prepared_domain.communicate("f")
-            #     self.prepared_domain.communicate("hs")
-            #     self.prepared_domain.communicate("tg")
-            #     self.prepared_domain.communicate("tg_midx")
-            #     self.prepared_domain.communicate("tg_midy")
-            #
-            # hnew_north = np.zeros((self.m, self.halo[2], 1))
-            # hnew_south = np.zeros((self.m, self.halo[3], 1))
-            #
-            # if not self.only_advection:
-            #     unew_north = np.zeros((self.m, self.halo[2], 1))
-            #     unew_south = np.zeros((self.m, self.halo[3], 1))
-            #
-            #     vnew_north = np.zeros((self.m, self.halo[2], 1))
-            #     vnew_south = np.zeros((self.m, self.halo[3], 1))
 
             if MPI.COMM_WORLD.Get_rank() == 0:
                 tsave = [0.0]
@@ -604,12 +545,12 @@ class LaxWendroffSWES:
                             sd.fields["h_tmp"][:] = sd.fields["h_new"][:]
                             sd.fields["u_tmp"][:] = sd.fields["u_new"][:]
                             sd.fields["v_tmp"][:] = sd.fields["v_new"][:]
-                            sd.fields["h_tmp3"][:] = sd.fields["h_new"][:]
-                            sd.fields["u_tmp3"][:] = sd.fields["u_new"][:]
-                            sd.fields["v_tmp3"][:] = sd.fields["v_new"][:]
-                            sd.fields["h_tmp2"][:] = sd.fields["h"][:]
-                            sd.fields["u_tmp2"][:] = sd.fields["u"][:]
-                            sd.fields["v_tmp2"][:] = sd.fields["v"][:]
+                            # sd.fields["h_tmp3"][:] = sd.fields["h_new"][:]
+                            # sd.fields["u_tmp3"][:] = sd.fields["u_new"][:]
+                            # sd.fields["v_tmp3"][:] = sd.fields["v_new"][:]
+                            # sd.fields["h_tmp2"][:] = sd.fields["h"][:]
+                            # sd.fields["u_tmp2"][:] = sd.fields["u"][:]
+                            # sd.fields["v_tmp2"][:] = sd.fields["v"][:]
 
                             # print("before", (sd.fields["h_new"] == sd.fields["h_tmp3"]).all())
 
@@ -623,19 +564,13 @@ class LaxWendroffSWES:
                 if self.only_advection:
                     self.prepared_domain.swap_fields("h", "h_new")
                 else:
-                    self.prepared_domain.swap_fields("h", "h_tmp3")
-                    self.prepared_domain.swap_fields("u", "u_tmp3")
-                    self.prepared_domain.swap_fields("v", "v_tmp3")
-
-                # self.prepared_domain.swap_fields("h", "h_new")
-                # if not self.only_advection:
-                #     self.prepared_domain.swap_fields("u", "u_new")
-                #     self.prepared_domain.swap_fields("v", "v_new")
+                    self.prepared_domain.swap_fields("h", "h_new")
+                    self.prepared_domain.swap_fields("u", "u_new")
+                    self.prepared_domain.swap_fields("v", "v_new")
 
                 if n % save == 0 and MPI.COMM_WORLD.Get_rank() == 0:
                     umax = []
                     for sd in self.prepared_domain.subdivisions:
-                        # print("time step " + str(n) + " time " + str(t) + " sd " + str(sd.id) + " u max " + str(np.max(sd.get_interior_field("u_new")[:])))
                         norm = np.sqrt(sd.get_interior_field("u")[1:-1, :] * sd.get_interior_field("u")[1:-1, :] +
                                        sd.get_interior_field("v")[1:-1, :] * sd.get_interior_field("v")[1:-1, :])
                         umax.append(norm.max())
@@ -666,10 +601,6 @@ def postprocess_swes(nx, ny, nz, nic, save_freq, path="", prefix=""):
                                       path=path, prefix=prefix,
                                       postfix="t_" + str(0), save=False, cleanup=True)
     hsave = np.append(hsave, hsave[0, :].reshape((1, hsave.shape[1], hsave.shape[2])), axis=0)
-
-    # htemp = np.load("swes_ic{}_h.npy".format(nic))
-    # hsave = htemp[1:-1, 1:-1, :]
-    # hsave = np.append(hsave, hsave[0, :].reshape((1, hsave.shape[1], hsave.shape[2])), axis=0)
 
     tsave = np.load(path + prefix + "t.npy")
     nt = int(tsave[-1])
@@ -745,15 +676,6 @@ if __name__ == "__main__":
     # * pi/2 - 0.05
     # * pi/2
     ic = (aic, 0) #math.pi / 2)
-
-    # Suggested simulation"s length for Williamson"s test cases:
-    # * IC 0: 12 days
-    # * IC 1: 14 days
-    # t_final = 12
-    # t_final = 3
-    # nx = 360
-    # ny = 180
-    # nz = 1
 
     # Let"s go!
     solver = LaxWendroffSWES(planet=0, t_final=days, m=nx, n=ny, ic=ic,

@@ -13,7 +13,7 @@ Additionally it is widely used to test numerical schemes since it has analytical
 
 \subsubsection{Case description}
 
-The two-dimensional, viscid Burger's equation is given by the following system of equations as described in \citet{zhao2011new}:
+The two-dimensional, viscid Burger's equation is given by the following system of scalar equations as described in \citet{zhao2011new}:
 
 \begin{equation}
 \begin{split}
@@ -23,12 +23,12 @@ The two-dimensional, viscid Burger's equation is given by the following system o
 \end{split}
 \end{equation}
 
-These two equations characterize the Burger equation as set of equations for the velocity in x and y direction.
-Both equations describe two parts.
-On the left hand side of the equation the advection of the velocity itself.
-On the right hand side of the equation the diffusion caused by viscosity.
+These two equations characterize the Burger equation as a set of equations for the velocity in x and y direction.
+Both equations consist of two parts.
+On the left hand side, the advection of the velocity itself.
+On the right hand side, the diffusion caused by viscosity.
 
-To complete the full description of the Burger equation the initial and boundary conditions are generally given by the following equations:
+To complete the full description of the Burger equation the initial and boundary conditions are generally given in the following form:
 
 \begin{equation}
 \begin{split}
@@ -45,7 +45,7 @@ v\left(x, y, t\right) = g\left(x, y, t\right) \text{, } \left(x, y, t\right) \in
 
 The first set of initial and boundary conditions are the ones used by Shankar. \footnote{https://ch.mathworks.com/matlabcentral/fileexchange/38087-burgers-equation-in-1d-and-2d}
 
-The following equations describe the Shankar test case fully and fig. \ref{fig:shankar_ic1} and fig. \ref{fig:shankar_ic2} visualizes the initial condition.
+The following equations describe the Shankar test case fully and Fig. \ref{fig:shankar_ic1} and Fig. \ref{fig:shankar_ic2} visualizes the initial condition.
 
 \begin{equation}
 \begin{tabular}{l l}
@@ -151,7 +151,7 @@ v_0\left(x, y\right) = \frac{-2 \varepsilon \pi \sin \left(2 \pi x\right) \cos \
 \label{fig:zhao_ic}
 \end{figure}
 
-Notable about this set of initial and boundary condition is that they have exact solutions.
+Notable about this set of initial and boundary condition is that they admit exact solutions.
 The exact solutions as provided in \citet{zhao2011new} are:
 \\
 \begin{equation}
@@ -168,15 +168,15 @@ Both the Shankar and Zhao conditions can be solved using different numerical ste
 To show some variance and flexibility three stencils can be used to solve the test case.
 
 The forward-backward stencil combines forward finite differences to compute the time derivatives with backward finite differences to compute the first-order space derivatives and a second-order centered scheme to compute the second-order derivatives.
-See fig. \ref{fig:fb_stencil} for a visual representation of this stencil.
+See Fig. \ref{fig:fb_stencil} for a visual representation of this stencil.
 
 The other two stencil are called upwind schemes, since they use the values only from the direction the velocity is coming from.
 The first-order upwind scheme uses the directly neighboring grid points like the forward-backward stencil.
 The difference is that only the values from upwind are used in the actual computation for the next value.
-See fig. \ref{fig:upwind_stencil} for a visual representation of this stencil.
+See Fig. \ref{fig:upwind_stencil} for a visual representation of this stencil.
 
 The third-order upwind stencil needs two neighboring grid points in each direction to increase the accuracy of the approximated space derivative.
-See fig. \ref{fig:upwind_third_stencil} for a visual representation of this stencil.
+See Fig. \ref{fig:upwind_third_stencil} for a visual representation of this stencil.
 
 \begin{figure}[!htbp]
 \centering

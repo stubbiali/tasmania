@@ -5,7 +5,7 @@ Once the domain is decomposed additional functionalities need to be provided to 
 
 Conceptually the library can be separated into three distinct parts:
 Pre-process, runtime, and post-process.
-The flowchart in figure \ref{fig:library_flowchart} gives an abstract overview of the whole automatic domain decomposition process.
+The flowchart in Fig. \ref{fig:library_flowchart} gives an abstract overview of the whole automatic domain decomposition process.
 
 \begin{figure}
 \centering
@@ -23,9 +23,9 @@ The pre-process contains functionalities needed before the main, distributed ste
 Specifically, the actual domain decomposition happens during the pre-process.
 Therefore the pre-process contains functions to prepare the graph partitioning files, perform the actual graph partitioning, and store the results.
 
-The implementation of the pre-process functions follows the descriptions of the source graph generation, and graph partitioning from the previous chapter in the sections \ref{sec:commcost}, \ref{sec:compcost}, and \ref{sec:sourcegraphgeneration} and the pseudo-code of alg. \ref{alg:domaindecomposition} very closely.
+The implementation of the pre-process functions follows the descriptions of the source graph generation, and graph partitioning from the previous chapter in the Sections \ref{sec:commcost}, \ref{sec:compcost}, and \ref{sec:sourcegraphgeneration} and the pseudo-code of Algorithm \ref{alg:domaindecomposition} very closely.
 
-The user-facing part of the pre-process implementation is outlined with examples in section \ref{sec:userpreprocess}.
+The user-facing part of the pre-process implementation is outlined with examples in Section \ref{sec:userpreprocess}.
 
 \subsubsection{Runtime process}
 % TODO Main functionalities / internal boundary exchanges local / external / global boundary etc
@@ -46,7 +46,7 @@ This includes managing and storing the fields in NumPy arrays, carrying out the 
 
 The fields and stencils need to be managed in the \texttt{DomainSubdivision} class because each subdivision needs its own fields and each GridTools4Py stencil has to be instantiated with a specific field.
 
-The hierarchical structure and the functions that are delegated between these two classes is illustrated in fig. \ref{fig:classes_chart}.
+The hierarchical structure and the functions that are delegated between these two classes is illustrated in Fig. \ref{fig:classes_chart}.
 
 \begin{figure}
 \centering
@@ -86,7 +86,7 @@ For the domain decomposition library this object is not the GridTool4Py stencil 
 
 \newpage
 \subsection{User interface}
-The following subsections go through the additional code and code modifications required to transform a non-distributed gridtools code into a domain decomposed and distributed gridtools code.
+The following subsections go through the additional code and code modifications required to transform a non-distributed GridTools4Py code into a domain decomposed and distributed GridTools4Py code.
 
 \subsubsection{Pre-process: Additional setup information.}
 \label{sec:userpreprocess}
@@ -142,7 +142,7 @@ Initializing centrally and sending the initial values out can become a bottlenec
 
 Therefore, at least at the moment the domain decomposition library uses Numpy files generated in the pre-process for initialization of the fields.
 
-An example for this field initialization can be viewed in listing \ref{alg:initfields}.
+An example for this field initialization can be viewed in Listing \ref{alg:initfields}.
 
 \begin{lstlisting}[caption={Example code of the domain pre-process function to initialize to fields "unew" and "vnew"},captionpos=b, label={alg:initfields}, float, floatplacement=H]
 def prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye, nb):
@@ -185,7 +185,7 @@ Optionally, the same path and prefix arguments as in the pre-process have to be 
 
 The subdivision information file uses the name generated in the pre-process and therefore does not need to be provided by the user.
 
-The listing \ref{alg:infoload} shows such an initialization call.
+Listing \ref{alg:infoload} shows such an initialization call.
 
 \begin{lstlisting}[caption={Example code for the loading of the domain decomposition information.},captionpos=b, label={alg:infoload}, float, floatplacement=H]
 prep_domain = DomainDecomposition("subdomains_pymetis.dat.part.4", "metis", path=path, prefix=prefix)
@@ -208,7 +208,7 @@ But in contrast to the stencil access pattern the field halos only need the maxi
 
 The field halo extent here are needed to instantiate fields in the subdivisions in the correct size since they have to contain the interior cells corresponding to the solution as well as the halos to each of their neighbors used in the boundary exchanges.
 
-Listing \ref{alg:refinstant} and listing \ref{alg:ddinstant} show the direct comparison between the original instantiation of four fields and the corresponding registration process needed in the domain decomposition library.
+Listing \ref{alg:refinstant} and Listing \ref{alg:ddinstant} show the direct comparison between the original instantiation of four fields and the corresponding registration process needed in the domain decomposition library.
 This should demonstrate that code needed to be added by the user is kept to a minimum.
 
 \begin{lstlisting}[caption={Example code for the original user field instantiation.},captionpos=b, label={alg:refinstant}, float, floatplacement=H]
@@ -238,7 +238,7 @@ As with the field registration this is due to distributed nature of the domain d
 Each subdivision needs its own gridtools stencil to use for their computations.
 
 However, for stencil instantiation the code modifications needed are very minimal.
-Listing \ref{alg:refstencil} compared to listing \ref{alg:ddstencil} show that the only adjustments needed are the function call from \texttt{gt.NGStencil()} to \texttt{"DomainDecompositionInstance".register\_stencil()} and for each field in the inputs and outputs instead of directly providing the numpy arrays registering their names.
+Listing \ref{alg:refstencil} compared to Listing \ref{alg:ddstencil} show that the only adjustments needed are the function call from \texttt{gt.NGStencil()} to \texttt{"DomainDecompositionInstance".register\_stencil()} and for each field in the inputs and outputs instead of directly providing the numpy arrays registering their names.
 
 Also, note that the \texttt{domain} keyword can be dropped, since the subdivisions need to define their domain based on the halos provided in field registration.
 

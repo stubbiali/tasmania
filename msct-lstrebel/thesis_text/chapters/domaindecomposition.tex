@@ -26,10 +26,10 @@ For domain decomposition the two main cost factors are distributing the same num
 
 Given these over-decomposed domain parts and their corresponding cost factors a graph partitioning algorithm can be applied to get a balanced distribution for each processing unit.
 
-This two step process describes the general approach to domain decomposition and is described in more detail as pseudo-code in algorithm \ref{alg:domaindecomposition}.
+This two step process describes the general approach to domain decomposition and is described in more detail as pseudo-code in Algorithm \ref{alg:domaindecomposition}.
 
-To note in algorithm \ref{alg:domaindecomposition} is that the over-decomposition method introduces one new parameter: the number of subdivisions per dimension.
-This parameter is further explained in section \ref{sec:subdivmodel}.
+To note in Algorithm \ref{alg:domaindecomposition} is that the over-decomposition method introduces one new parameter: the number of subdivisions per dimension.
+This parameter is further explained in Section \ref{sec:subdivmodel}.
 
 \begin{algorithm}[!htbp]
 \basicfont
@@ -99,10 +99,10 @@ CallGraphPartitioningLibrary(SubdivisionWeightedAdjacencyList, NumProcs)
 
 \subsection{Subdivision model for source graph generation}
 \label{sec:subdivmodel}
-As mentioned before source graphs where every source graph node represents a single physical domain grid point would be impractical for large domains.
+As mentioned before, source graphs where every source graph node represents a single physical domain grid point would be impractical for large domains.
 Therefore, any alternative has to combine some of these domain grid points into separate subdivisions even before the domain decomposition occurs.
 
-Any model for over-decomposition of domains should be guided by a few principles described in detail in table \ref{tab:criteria}.
+Any model for over-decomposition of domains should be guided by a few principles described in detail in Table \ref{tab:criteria}.
 
 \begin{table}[!htbp]
 \centering
@@ -124,7 +124,7 @@ The partitioning process will add complexity to the boundary communication, ther
 \\
 Uniform number and direction of neighbors.
 &
-Even though, graph partitioning can decompose graphs with vertices of various degrees for the simplicity and performance of the communication aspect introduced by a domain decomposition the number of neighboring subdivisions should be uniform. Subdivisions at non-periodic boundaries of the physical domain are an unavoidable exception to this criteria.
+Even though, graph partitioning can decompose graphs with vertices of various degrees, for the simplicity and performance of the communication aspect introduced by a domain decomposition the number of neighboring subdivisions should be uniform. Subdivisions at non-periodic boundaries of the physical domain are an unavoidable exception to this criteria.
 \\
 Simple calculations of cost functions.
 &
@@ -141,10 +141,10 @@ Therefore, any subdivision model needs simple but accurate estimates for both of
 This guarantees that every subdivision has the same amount of neighbors, with the exception of sections at the boundary of the physical domain if the boundary is not periodic.
 Also every subdivision has the same size and therefore distributing them equally during the graph partitioning also means distributing the grid points equally.
 
-For this kind of subdivisions it is simple to define the interior and boundary between subdivisions, as visualized for a two-dimensional and three-dimensional example in fig. \ref{fig:2D_subdivision} and fig. \ref{fig:3D_subdivision} respectively.
-This distinction is important for the calculations of the communication and computational cost as described in sections \ref{sec:commcost} and \ref{sec:compcost}.
+For this kind of subdivisions it is simple to define the interior and boundary between subdivisions, as visualized for a two-dimensional and three-dimensional example in Fig. \ref{fig:2D_subdivision} and Fig. \ref{fig:3D_subdivision} respectively.
+This distinction is important for the calculations of the communication and computational cost as described in Sections \ref{sec:commcost} and \ref{sec:compcost}.
 
-One limit to the minimal size of a subdivision in any direction is given by the corresponding stencil extend.
+One limit to the minimal size of a subdivision in any direction is given by the corresponding stencil extent.
 Meaning a stencil can not extend into multiple subdivisions, but only the direct neighbor, otherwise subdivision would have multiple neighbors in the same direction.
 This should not be a problem, since usually stencils are not as large as any reasonable sized subdivision.
 
@@ -154,7 +154,7 @@ Having more subdivisions per dimension gives the graph partitioning finer contro
 However, this finer control comes at the cost of more complex boundaries.
 Complex boundaries meaning boundaries where more subdivisions have to communicate with each other than for more straightforward boundaries, since more communication does not necessarily mean higher communication cost for these simple estimates.
 
-Some of these effects this parameter choice can have on the domain decomposition are mentioned in section \ref{sec:examplesubdivision} and shown in fig. \ref{fig:rectangular1}.
+Some of these effects this parameter choice can have on the domain decomposition are mentioned in Section \ref{sec:examplesubdivision} and shown in Fig. \ref{fig:rectangular1}.
 
 \subsubsection{Communication cost}
 \label{sec:commcost}
@@ -165,15 +165,15 @@ The communication cost for each neighbor of the subdivision is determined by the
 
 For three dimensional domains the communication cost can therefore be computed from the following formula:
 \begin{equation}
-cc\left(i\right) = sds\left(\left(\floor[\Big]{\frac{i}{2}} - 1\right) \% 3 \right) \cdot sds\left(\left(\floor[\Big]{\frac{i}{2}} + 1\right) \% 3 \right) \cdot se\left(i\right)
+cc\left(i\right) = sds\left(\left(\floor[\Big]{\frac{i}{2}} - 1\right) \% 3 \right) \cdot sds\left(\left(\floor[\Big]{\frac{i}{2}} + 1\right) \% 3 \right) \cdot se\left(i\right) \text{ ,}
 \end{equation}
 where $cc\left(i\right)$ is the communication cost for side $i$.
-The index $i \in \left[0, 1, 2, 3, 4, 5\right]$ is combination of side and dimension, i.e. $0$ is negative x direction, $1$ is positive x-direction, $2$ is negative y-direction and so on.
+The index $i \in \left[0, 1, 2, 3, 4, 5\right]$ is combination of side and dimension, i.e. $0$ is negative x-direction, $1$ is positive x-direction, $2$ is negative y-direction, and so on.
 $sds\left(j\right)$ is the subdivision size of dimension $j \in \left[0,1,2\right]$.
 Lastly $se\left(i\right)$ is the stencil extend of side and dimension $i$.
 The division, rounding and modulo in the formula is simply a short version of selecting the index of the other two dimensions for the computation of the area between two subdivisions.
 
-For example, the communication cost for the subdivision shown in fig. \ref{fig:2DBlock} is $cc\left(0\right) = 5, cc\left(1\right) = 10, cc\left(2\right) = 8, cc\left(3\right) = 16, cc\left(4\right) = cc\left(5\right) = 0$ i.e. the same as the number of squares shown in the corresponding halo regions.
+For example, the communication cost for the subdivision shown in Fig. \ref{fig:2DBlock} is $cc\left(0\right) = 5, cc\left(1\right) = 10, cc\left(2\right) = 8, cc\left(3\right) = 16, cc\left(4\right) = cc\left(5\right) = 0$ i.e. the same as the number of squares shown in the corresponding halo regions.
 
 \subsubsection{Computational cost}
 \label{sec:compcost}
@@ -194,7 +194,7 @@ The red and blue lines surrounding the halo region indicates negative and positi
 \begin{subfigure}{0.2\textwidth}
   \centering
   \includegraphics[width=0.9\linewidth]{2D_Block_stencil.png}
-  \caption{Stencil representation corresponding to the subdivision in figure \ref{fig:2DBlock}.}
+  \caption{Stencil representation corresponding to the subdivision on the left panel.}
   \label{fig:2DBlockStencil}
 \end{subfigure}
 \caption{Schematic view of a single two-dimensional domain subdivision.}
@@ -223,16 +223,15 @@ Outside in gray the six halo regions.}
 \subsubsection{Source graph generation}
 \label{sec:sourcegraphgeneration}
 With the subdivision model definition and the two cost functions defined the source graph can be easily generated.
-As shown in lines 14 to 20 of alg. \ref{alg:domaindecomposition} the source graph is generated as a weighted adjacency list by iterating over all subdivisions to determine their neighbors and handle the physical domain boundaries.
+As shown in lines 14 to 20 of Algorithm \ref{alg:domaindecomposition} the source graph is generated as a weighted adjacency list by iterating over all subdivisions to determine their neighbors and handle the physical domain boundaries.
 
-Determining the neighbors is an uncomplicated index calculation, as shown in eq. \ref{eq:index} and handling the physical domain boundaries only requires catching the corresponding cases during the index calculation.
+Determining the neighbors is an uncomplicated index calculation, as shown in Eq. \ref{eq:index} and handling the physical domain boundaries only requires catching the corresponding cases during the index calculation.
 
 \begin{equation}
-neighborindex = \left(\left(i + x\right) \cdot ndy + \left(j + y\right)\right) \cdot ndz + \left(k + z\right)
+neighborindex = \left(\left(i + x\right) \cdot ndy + \left(j + y\right)\right) \cdot ndz + \left(k + z\right) \text{ ,}
 \label{eq:index}
 \end{equation}
-Where $i, j, k$ are the index number of the current subdivision in each dimension.
-$x, y, z$ are either $-1$ for the negative neighbor in the corresponding direction, $+1$ for the positive neighbor in the direction, and $0$ otherwise. 
+where $i, j, k$ are the index number of the current subdivision in each dimension, and $x, y, z$ are either $-1$ for the negative neighbor in the corresponding direction, $+1$ for the positive neighbor in the direction, and $0$ otherwise. 
 Also, $ndy, ndz$ are the number of subdivisions in y-direction and z-direction respectively.
 
 The weighted adjacency list consists of four arrays.
@@ -244,14 +243,14 @@ It starts with the edges of the vertex with index 0, after all edges of vertex 0
 And lastly the array $xadj$ contains for each vertex the $adjncy$-index for the first edge that does not belong to the vertex.
 The array $xadj$ has the length of the total number of subdivisions.
 
-The two arrays containing information about the edges are twice the number of edges since graph partitioning methods do not require undirected graphs, even though for domain decomposition only undirected graphs are used.
+The two arrays containing information about the edges are twice as long as the number of edges since graph partitioning methods do not require undirected graphs, even though for domain decomposition only undirected graphs are used.
 
 An example adjacency list in this format can be seen in fig. \ref{fig:adjacency}, this adjacency list is the one corresponding to the source graph used in fig. \ref{fig:sourcegraph}.
 
 \begin{figure}[!htbp]
   \centering
   \includegraphics[width=0.8\linewidth]{adjacency.png}
-  \caption{Weighted adjacency list arrays for source graph in fig. \ref{fig:sourcegraph}}
+  \caption{Weighted adjacency list arrays for source graph in the left panel.}
   \label{fig:adjacency}
 \end{figure}
 
@@ -264,11 +263,11 @@ More details about the graph partitioning method can be found in \citet{karypis1
 
 The output of the graph partitioning methods is a list of indices for each vertex i.e. subdivision the index corresponds to a partition i.e. the index of a processing unit.
 
-\paragraph{A small example}to demonstrate a few of the key characteristics of graph partitioning is shown in fig. \ref{fig:sourcegraph}.
-Specifically, fig. \ref{fig:sourcegraph} shows three possible partitions for an example source graph.
+\paragraph{A small example}to demonstrate a few of the key characteristics of graph partitioning is shown in Fig. \ref{fig:sourcegraph}.
+Specifically, Fig. \ref{fig:sourcegraph} shows three possible partitions for an example source graph.
 For visual simplicity a two-dimensional domain is used, however a three-dimensional domain would work in the same way.
 The source graph corresponds to a domain of size $30 \times 40$ with three subdivisions in x-direction and two subdivisions in y-direction.
-In this example these six subdivisions are partitioned to two partitions, represented by the color of the circle in the figures \ref{fig:cut1}, \ref{fig:cut2}, and \ref{fig:cut3}.
+In this example these six subdivisions are partitioned into two partitions, represented by the color of the circle in the Fig. \ref{fig:cut1}, Fig. \ref{fig:cut2}, and Fig. \ref{fig:cut3}.
 
 Figure \ref{fig:cut1} shows a case where a graph partitioning cut causes a computational imbalance between the partitions.
 Partitioning one subdivision more to one partition in such a small example causes a very large imbalance.
@@ -276,12 +275,12 @@ Usually the graph partitioning method would not allow a result with this much im
 However, in larger graphs some computational imbalance up to a threshold is very common.
 Most graph partitioning methods allow manipulating the imbalance threshold.
 
-The mixed direction cut shown in fig. \ref{fig:cut2} has the largest communication cost of the three partitions shown here.
+The mixed direction cut shown in Fig. \ref{fig:cut2} has the largest communication cost of the three partitions shown here.
 However, it is a fully valid partition and partition boundaries that look similar are common in partitioning of larger graphs.
-See the boundary between the brown and red partition in fig. \ref{fig:metis1} for example.
+See the boundary between the brown and red partition in Fig. \ref{fig:metis1} for example.
 This should highlight the importance of having defined clear and simple defined boundaries in the subdivision model, since the graph partitioning model already adds complexity to the partition boundaries.
 
-Finally, fig. \ref{fig:cut3} shows the ideal case for this small example.
+Finally, Fig. \ref{fig:cut3} shows the ideal case for this small example.
 Ideal cuts like this are only likely in such small and simple cases.
 
 \begin{figure}[!htbp]
@@ -318,18 +317,18 @@ The thick, black line shows the boundary between the two partitions i.e. the cut
 The following example should highlight some aspects of the discussed subdivision and domain decomposition.
 
 All the following figures in this section use the same domain and stencil.
-The domain has size $2048 \times 1024 \times 40$ and the stencil extends are given as $\left[1, 1, 1, 1, 0, 0\right]$.
+The domain has size $2048 \times 1024 \times 40$ and the stencil extents are given as $\left[1, 1, 1, 1, 0, 0\right]$.
 This means the stencil uses $1$ neighboring grid point in negative and positive x- and y-direction.
 The boundary of the domain is also periodic in x-direction and non-periodic in y- and z- direction.
 
-The figures \ref{fig:metis1}, \ref{fig:pymetis1}, and \ref{fig:scotch1} show the results if the domain is split into $16 \times 8 \times 1$ subdivisions.
+Figures \ref{fig:metis1}, \ref{fig:pymetis1}, and \ref{fig:scotch1} show the results if the domain is split into $16 \times 8 \times 1$ subdivisions.
 This means every box in the figures represents $128 \times 128 \times 40$ grid points.
 
-For comparison the figures \ref{fig:metis2}, \ref{fig:pymetis2}, and \ref{fig:scotch2} show the results if the domain is split into $32 \times 16 \times 1$ subdivisions.
+For comparison Figs. \ref{fig:metis2}, \ref{fig:pymetis2}, and \ref{fig:scotch2} show the results if the domain is split into $32 \times 16 \times 1$ subdivisions.
 This means every box in the figures represents $32 \times 32 \times 40$ grid points and 4 of these boxes correspond to one box in the figures on the left side.
 
 This comparison should highlight the difference the number of subdivisions and their size can make for the overall domain decomposition.
-Also the difference the graph partitioning can make is shown in fig. \ref{fig:rectangular1}.
+Also the difference the graph partitioning can make is shown in Fig. \ref{fig:rectangular1}.
 
 
 \begin{figure}[!htbp]
@@ -376,9 +375,9 @@ Also the difference the graph partitioning can make is shown in fig. \ref{fig:re
 \caption{Domain subdivision and domain decomposition into 5 partitions. 
 Each box represents one subdivision of grid points.
 Each color represents one partition. 
-The domain has the size 2048 x 1024 x 40 and a periodic boundary in x-direction.
-Even though, the domain is fully three dimensional the domain is only decomposed in the x-y plane i.e. the horizontal plane.
-Such a decomposition represents an often encountered use case for domains where the size of the horizontal dimensions are much larger than the size of the vertical dimension e.g. numerical weather prediction models.
+The domain has size 2048 x 1024 x 40 and a periodic boundary in x-direction.
+Even though the domain is fully three dimensional, the domain is only decomposed in the x-y plane i.e. the horizontal plane.
+Such a decomposition represents an often encountered use case for domains where the size of the two horizontal dimensions are much larger than the size of the vertical dimension e.g. numerical weather prediction models.
 Not decomposing in the vertical dimension is important for locality and performance since the vertical dimension is usually the innermost loop dimension.
 This also fits with many parameterizations that use the single column model assumption.
 }
