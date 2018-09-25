@@ -12,6 +12,7 @@ Most commonly it is used as a model for traffic flow or shock waves in a fluid.
 Additionally it is widely used to test numerical schemes since it has analytical solutions for a set of initial conditions.
 
 \subsubsection{Case description}
+\label{sec:case_description}
 
 The two-dimensional, viscid Burger's equation is given by the following system of scalar equations as described in \citet{zhao2011new}:
 
@@ -155,6 +156,7 @@ Notable about this set of initial and boundary condition is that they admit exac
 The exact solutions as provided in \citet{zhao2011new} are:
 \\
 \begin{equation}
+\label{eq:exact_solution}
 \begin{split}
 u\left(x,y,t\right) = -2\varepsilon \frac{2 \pi \exp^{-5 \pi^2 \varepsilon t} \cos\left(2 \pi x\right) \sin\left(\pi y\right)}{2 + \exp^{-5 \pi^2 \varepsilon t}\sin\left(2 \pi x\right) \sin\left(\pi y\right)}
 \\
@@ -202,19 +204,54 @@ See Fig. \ref{fig:upwind_third_stencil} for a visual representation of this sten
 \label{fig:burger_stencils}
 \end{figure}
 
-\paragraph{Domain decomposition details: }
-
-\subsubsection{Experimental setup}
-
-\subsubsection{Experimental results}
+\subsubsection{Validation}
 
 
-\subsection{Case 2: Shallow water equation}
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.45\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{zhao_exact_vs_dd_time_avg_field_u.png}
+  \caption{Difference in velocity u field between exact solution and domain decomposed solution averaged over all time steps.}
+  \label{fig:burgers_val1}
+\end{subfigure} \hfill
+\begin{subfigure}{0.45\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{zhao_exact_vs_ref_time_avg_field_u.png}
+  \caption{Difference in velocity u field between exact solution and reference solution averaged over all time steps.}
+  \label{fig:burgers_val2}
+\end{subfigure}
 
-\subsubsection{Case description}
+\begin{subfigure}{0.45\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{zhao_exact_vs_dd_time_avg_field_v.png}
+  \caption{Difference in velocity v field between exact solution and domain decomposed solution averaged over all time steps.}
+  \label{fig:burgers_val3}
+\end{subfigure} \hfill
+\begin{subfigure}{0.45\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{zhao_exact_vs_ref_time_avg_field_v.png}
+  \caption{Difference in velocity v field between exact solution and reference solution averaged over all time steps.}
+  \label{fig:burgers_val4}
+\end{subfigure}
 
-\subsubsection{Implementation details}
+\begin{subfigure}{0.45\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{zhao_ref_vs_dd_time_avg_field_u.png}
+  \caption{Difference in velocity u field between reference solution and domain decomposed solution averaged over all time steps.}
+  \label{fig:burgers_val5}
+\end{subfigure} \hfill
+\begin{subfigure}{0.45\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{zhao_ref_vs_dd_time_avg_field_v.png}
+  \caption{Difference in velocity v field between reference solution and domain decomposed solution averaged over all time steps.}
+  \label{fig:burgers_val6}
+\end{subfigure}
+\caption{Burger's equation Zhao Setup. 
+Exact solution refers to the analytical solution shown in Eq. \ref{eq:exact_solution}.
+Reference refers to solutions computed using the original, serial Python and GridTools4Py version.
+Lastly, domain decomposed solution refers to solutions computed using the domain decomposition library.
+The domain size for this validation is 100 by 100 grid points and the computations are run for 1000 time steps.
+}
+\end{figure}
 
-\subsubsection{Experimental setup}
-
-\subsubsection{Experimental results}

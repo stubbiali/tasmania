@@ -233,7 +233,7 @@ class DomainSubdivision:
         """
         self.recv_slices[fieldname] = [
             # Halo region in negative x direction
-            np.s_[0:self.halos[fieldname][0],
+            np.s_[0:None if self.halos[fieldname][0] == 0 else self.halos[fieldname][0],
                   self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
                   self.halos[fieldname][4]:None if self.halos[fieldname][5] == 0 else -self.halos[fieldname][5]],
             # Halo region in positive x direction
@@ -251,7 +251,7 @@ class DomainSubdivision:
             # Halo region in negative z direction
             np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
                   self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
-                  0:self.halos[fieldname][4]],
+                  0:None if self.halos[fieldname][4] == 0 else self.halos[fieldname][4]],
             # Halo region in positive z direction
             np.s_[self.halos[fieldname][0]:None if self.halos[fieldname][1] == 0 else -self.halos[fieldname][1],
                   self.halos[fieldname][2]:None if self.halos[fieldname][3] == 0 else -self.halos[fieldname][3],
@@ -625,17 +625,17 @@ class DomainSubdivision:
                         fixed_neighbor = None
 
                     # Determine counter direction number based on direction.
-                    if d % 2 == 0:
-                        cd = d + 1
-                    else:
-                        cd = d - 1
+                    # if d % 2 == 0:
+                    #     cd = d + 1
+                    # else:
+                    #     cd = d - 1
 
                     # Call the one sided communcication function with the local slice in the counter direction,
                     # because Put needs this subdivisions outer most values of the opposite direction
                     # to transfer into the neighbors halo region.
                     self.communicate_external_put(fieldname,
                                                   np.ascontiguousarray(self.fields[fieldname][
-                                                                           self.get_local[fieldname][cd]]),
+                                                                           self.send_slices[fieldname][d]]),
                                                   d,
                                                   fixed_neighbor)
 

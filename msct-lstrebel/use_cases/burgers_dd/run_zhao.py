@@ -154,17 +154,17 @@ def run_zhao():
         vnew_south = {}
         for sd in prepared_domain.subdivisions:
             unew_west[sd] = (- 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
-                                      * np.sin(np.pi * sd.get_interior_field("yv")[:nb, :, 0]))
+                             * np.sin(np.pi * sd.get_interior_field("yv")[:nb, :, 0]))
             unew_east[sd] = (- 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
-                                      * np.sin(np.pi * sd.get_interior_field("yv")[-nb:, :, 0]))
+                             * np.sin(np.pi * sd.get_interior_field("yv")[-nb:, :, 0]))
             unew_north[sd] = np.zeros((sd.size[0], nb))
             unew_south[sd] = np.zeros((sd.size[0], nb))
             vnew_west[sd] = np.zeros((nb, sd.size[1]))
             vnew_east[sd] = np.zeros((nb, sd.size[1]))
             vnew_north[sd] = (- eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
-                                       * np.sin(2. * np.pi * sd.get_interior_field("xv")[:, :nb, 0]))
+                              * np.sin(2. * np.pi * sd.get_interior_field("xv")[:, :nb, 0]))
             vnew_south[sd] = (eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t)
-                                       * np.sin(2. * np.pi * sd.get_interior_field("xv")[:, -nb:, 0]))
+                              * np.sin(2. * np.pi * sd.get_interior_field("xv")[:, -nb:, 0]))
 
             unew_west[sd] = unew_west[sd].reshape((halo[0], sd.size[1], sd.size[2]))
             unew_east[sd] = unew_east[sd].reshape((halo[1], sd.size[1], sd.size[2]))
@@ -203,7 +203,7 @@ def run_zhao():
         timer.start(name="Saving fields during time integration", level=3)
         # Save
         if ((save_freq > 0) and (n % save_freq == 0)):
-            prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n))
+            prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n + 1))
         elif (save_freq >= 0 and (n + 1 == nt)):
             prepared_domain.save_fields(["unew", "vnew"], postfix="t_"+str(n + 1))
         timer.stop(name="Saving fields during time integration")

@@ -17,18 +17,18 @@ The flowchart in Fig. \ref{fig:library_flowchart} gives an abstract overview of 
 The next sections will first outline the design and functionality of each of these three parts and then show and explain the user facing functions in more detail with examples.
 
 \subsection{Design}
-% TODO small intro / abstract design goals 
+
+
 \subsubsection{Pre-process}
 The pre-process contains functionalities needed before the main, distributed stencil computations are performed.
 Specifically, the actual domain decomposition happens during the pre-process.
 Therefore the pre-process contains functions to prepare the graph partitioning files, perform the actual graph partitioning, and store the results.
 
-The implementation of the pre-process functions follows the descriptions of the source graph generation, and graph partitioning from the previous chapter in the Sections \ref{sec:commcost}, \ref{sec:compcost}, and \ref{sec:sourcegraphgeneration} and the pseudo-code of Algorithm \ref{alg:domaindecomposition} very closely.
-
+The design and implementation of the pre-process functions follows the descriptions of the source graph generation, and graph partitioning from the previous chapter in the Sections \ref{sec:commcost}, \ref{sec:compcost}, and \ref{sec:sourcegraphgeneration} and the pseudo-code of Algorithm \ref{alg:domaindecomposition} very closely and is therefore not repeated here.
 The user-facing part of the pre-process implementation is outlined with examples in Section \ref{sec:userpreprocess}.
 
 \subsubsection{Runtime process}
-% TODO Main functionalities / internal boundary exchanges local / external / global boundary etc
+\label{sec:runtime_process}
 During the runtime of a stencil computation the domain decomposition library has to manage a few tasks.
 Most of them arise because once the domain is decomposed into smaller parts each of these parts needs to be managed separately.
 At the same time the goal for the user facing parts of the library is to avoid adding complexity.
@@ -67,7 +67,33 @@ Basically, this addition allows the user to refer to a field by its name in many
 Internally the field registration delegates the array instantiation to the subdivisions and also calls the internal functions to setup the NumPy views to define the halo region used in the communication function.
 The creation of these boundary views is done during field registration because this is the first time the subdivisions get the name of a field as input and it is assumed that any field might need to communicate its boundary with the neighboring subdivisions.
 
-More details on the boundary views are presented in the communication paragraph.
+The following boundary views are created:
+
+The NumPy view called \texttt{recv\_slices} stores the indices of the halo region in each direction.
+The indices of the halo region in a given direction are $0:hs$ for negative directions where $hs$ is the size of the halo in the corresponding direction and $-hs:$ for positive directions.
+Note that the various $hs$ in these descriptions can refer to different values if the halo size varies between dimensions and directions.
+The indices in the two dimensions not corresponding to the direction are both $-hs:hs$.
+The order of directions for \texttt{recv\_slices} is negative x-direction, positive x-direction, negative y-direction, positive y-direction, negative z-direction, and positive z-direction.
+
+The next NumPy view called \texttt{send\_slices} stores the indices of the outermost regions neighboring the halo regions.
+These are the boundary values that are the halo region of the neighboring subdivision.
+For these send regions the indices in a given direction are $hs:hs+hs$ for negative directions and $-hs -hs:-hs$ for positive directions.
+Indices in the two non-direction dimensions are again $-hs:hs$.
+The order of directions for \texttt{send\_slices} is negative x-direction, positive x-direction, negative y-direction, positive y-direction, negative z-direction, and positive z-direction.
+
+The third NumPy view is called \texttt{get\_local} and stores the the same indices as \texttt{send\_slices} in a different order.
+The order is positive x-direction, negative x-direction, positive y-direction, negative y-direction, positive z-direction, and negative z-direction.
+This NumPy view is used for the local communication between subdivisions in the same partition.
+The reason for the difference in order is described in more details in the communication paragraph.
+
+The last NumPy view is called \texttt{get\_global} and combines the same indices as the last two NumPy views with the global coordinates of the subdivision.
+This NumPy view is only used if the global boundary condition is provided in a single file and therefore is not feasible for large computational domains.
+
+%In all the mentioned NumPy views care has to be taken during the index calculations in the case of halo size $0$.
+%NumPy views that have indices like $0:0$ result in empty NumPy arrays instead of valid halo regions.
+%Therefore, in the index calculations $0$ halo sizes have to be replaced with \texttt{None}.
+%Using \texttt{None} results in valid NumPy views instead of empty Numpy arrays.
+%However, the communication functions described later should always catch halo sizes of $0$ and therefore these NumPy views should never actually be used.
 
 \paragraph{Stencil registration } can be done once all the fields used in the stencil have been registered.
 Stencil registration involves the same keywords that instantiation of a GridTools4Py stencil would.
@@ -80,8 +106,32 @@ To keep the handling of GridTools4Py stencils similar to non-decomposed code the
 For the domain decomposition library this object is not the GridTool4Py stencil directly but instead an object of the small internal helper class \texttt{DomainDecompositionStencil} which does nothing more than store the subdivisions stencils in a list and provide a \texttt{compute()} function to delegate to the subdivisions \texttt{compute()} functions.
 
 \paragraph{Communicate } functions are needed because the subdivisions of the domain need to exchange their boundaries with each other in between computations.
+For the user this function needs to be called every time the values of a field need to be up to date i.e. in most cases after or just before the stencil computation.
+Internally this function encompasses all functions updating the halo region of a field or a list of fields.
+Specifically, the \texttt{DomainDecomposition.communicate()} function delegates to each \texttt{DomainSubdivision.communicate()} function which in turn calls either two-way or one-way communication functions depending on the optional flag.
+Additionally, both the two-way and one-way communication have to handle neighboring subdivisions being in the same partition by calling a function to handle local communication.
 
-\subsubsection{Post-process}
+Both the two-way and the one-way communication function are designed to follow the same procedure.
+Section \ref{sec:onesided} gives more details on the differences for the MPI one-sided approach.
+The communication procedure iterates over each direction sequentially, but for the two-way communication non-blocking send and receive functions are used so that the communication of the second direction can start before the communication of the first direction is finished.
+
+For each direction the communication function first checks if it is at the global boundary, because the global boundary is handled in its own function.
+Afterwards, the communication function checks if the neighbor in the given direction belongs to the same partition and if yes calls the local communication function.
+Otherwise the external communication functions are called.
+For non-blocking two-way communication the processors with an even MPI rank send first and receive second, while processors with an odd MPI rank receive first and send second.
+This is done to avoid the situation where two processors both wait to receive from each other.
+
+Local communication is just a copy between \texttt{DomainSubdivision} fields.
+To copy the boundary a NumPy view of the halo region to receive into and a NumPy view to access the boundary are used.
+The halo region NumPy view is the same for local communication as for external communication.
+The NumPy view to access on the neighbor differs from the send NumPy view of the external communication in the order of directions.
+
+For example, if the negative x-direction has to be updated from a local neighbor it is necessary to access the outermost region that is not the halo region in positive x-direction of the neighboring subdivision in negative x-direction.
+However, when sending the negative x-direction to our neighbor the outermost region that is not the halo region in negative x-direction has to be sent to the neighbor in negative x-direction.
+
+This difference is the result of the external communication function combining the sending and receiving of the boundary in a given direction, while the local communication only needs to handle the receiving.
+
+%\subsubsection{Post-process}
 % TODO mainly combining field data from various subdivisions back into one file
 
 \newpage
@@ -361,7 +411,7 @@ Optionally the binary flags \texttt{save} and \texttt{cleanup} can respectively 
 
 Listing \ref{alg:ddpostproc} shows an example initialization and call to combine the subdivision files for time step 0 that deletes the subdivision files after they are combined.
 
-\begin{lstlisting}[caption={Example post-processing.},captionpos=b, label={alg:ddpostproc}, float, floatplacement=H]
+\begin{lstlisting}[caption={Example post-processing.}, captionpos=b, label={alg:ddpostproc}, float, floatplacement=H]
 postproc = DomainPostprocess(path=path, prefix=prefix)
 postproc.combine_output_files([100, 100, 1], "unew", path=path, prefix=prefix, postfix="t_0", save=True, cleanup=True)
 postproc.combine_output_files([100, 100, 1], "vnew", path=path, prefix=prefix, postfix="t_0", save=True, cleanup=True)
@@ -369,6 +419,25 @@ postproc.combine_output_files([100, 100, 1], "vnew", path=path, prefix=prefix, p
 
 \newpage
 \subsection{MPI One-Sided}
+\label{sec:onesided}
+The library includes an option to switch the communication strategy from the common two-way send/receive model to instead use MPI one-sided one-way communication model.
+
+\subsubsection{Communication procedure}
+MPI4Py supports three remote operations, namely \texttt{Put}, \texttt{Get}, and \texttt{Accumulate}.
+These operations can transfer data between specific memory buffers called windows.
+The library uses the \texttt{Put} one-sided operation to keep the communication functionalities similar between the two-way and one-way models.
+In keeping the similarity between both communication models each subdivision has to have a window for each field and each direction, i.e. each halo region is in separate window.
+
+With this setup the communication procedure follows these steps: 
+The one-sided communication iterates over the directions, for each direction it uses \texttt{Put} to transfer the outermost region of that direction into the window of the neighboring subdivision.
+MPI one-sided \texttt{Put} can only transfer contiguous data similar to the MPI \texttt{Isend} operation.
+This is done with the help of NumPys \texttt{ascontiguousarray} function and the indices stored in the \texttt{send\_slices} NumPy views as described in the communication paragraph of Section \ref{sec:runtime_process}.
+For synchronization the MPI one-sided \texttt{Fence()} method is called before and after the \texttt{Put} operation.
+
+Once all the halo regions are transferred into their respective window a local copy operation is necessary to transfer the halo region from the window into the actual NumPy array.
+It has to be placed into the halo region of the opposite direction.
+Copying into to the opposite direction is needed because this corresponds to the boundary received from the neighbor in that opposite direction i.e. the neighbor located in the negative x-direction provides the halo region in positive x-direction.
+Figure \ref{fig:mpi_onesided_communication_flow} illustrates these two steps and should highlight why the data in the window has to be copied to the opposite side.
 
 \begin{figure}
 \centering
@@ -377,5 +446,31 @@ postproc.combine_output_files([100, 100, 1], "vnew", path=path, prefix=prefix, p
 \label{fig:mpi_onesided_communication_flow}
 \end{figure}
 
+\subsubsection{Windows as buffers}
+The communication procedure described in the section before relies on the MPI one-sided windows as buffers for the transfer and as a result requires an additional copy operation.
+An idea to avoid this would be to declare the whole field array as a window.
+However, for all but one dimension the halo regions are not contiguous and it does not seem to be supported to \texttt{Put} data into the window in a non-contiguous way.
+The MPICH documentation of the \texttt{Put} operation mentions displacements from the start of the window can be provided as an argument, but not a stride for non-contiguous data.
+Additionally, the MPI4Py \texttt{Put} function does not even have the displacement as an argument.
 
+Therefore, at least at the moment it seems necessary to use the MPI one-sided windows as a buffer that allows the NumPy \texttt{ascontiguousarray} function and copying using NumPy views to handle the transfer of the halo regions that are non-contiguous in the NumPy array.
+
+\subsubsection{Potential limitations}
+Keeping the implementation of the one-sided communication similar to the two-way communication procedure has some limiting effect on the potential for one-way communication.
+
+Specifically, a limitation arises because of limitations on the number of MPI communicators.
+Each MPI one-sided window is connected to the communicator given at its construction.
+However, each window also internally creates a separate MPI communicator.
+
+As mentioned before, the current implementation requires a MPI one-sided window per direction, per field, and per subdivision.
+Most MPI implementations limit the number of MPI communicators to 2048. 
+\footnote{See for example the following mailing list thread discussing this limit: https://lists.mpich.org/pipermail/discuss/2016-September/004908.html Accessed 25.9.18 12:08}
+With this setup the 2048 limitation can be reached very easily for large domains.
+For example, a stencil running on 8 nodes with 6 MPI processors per node and 1 subdivision per processor already creates $8 \cdot 6 \cdot 1 \cdot 6 = 288$ windows per field.
+In that case, if more than 7 fields are used the MPI communicator limit is reached.
+
+This limitation is accounted for by only creating a MPI one-sided window when it is actually needed e.g. excluding directions with a halo size of 0.
+
+Nevertheless, this limitation can still make it not feasible to use the one-way communication for larger stencil codes.
+By designing the one-sided communication procedure to be less similar to the two-way communication and be more optimized for one-sided communication this limitation could be avoided.
 

@@ -191,7 +191,11 @@ class DomainPreprocess:
         stencil_extent = self.combined_accesses()
         comm_cost = self.communication_cost_estimation(subdiv_size, stencil_extent)
 
-        comp_cost = self.computational_cost_estimation(subdiv_gridpoints)
+        # Since all subdivisions are by design uniform normalize the computational cost to 1.
+        # Needed for large subdivisions to avoid integer overflow
+        # of total vertex weight (max for 32 bit PyMetis 2147483647)
+        # Total edge weight has same limit but edge weights should not get as large as the computational cost
+        comp_cost = 1 #self.computational_cost_estimation(subdiv_gridpoints)
 
         for i in range(self.subdivs_per_dim[0]):
             for j in range(self.subdivs_per_dim[1]):
