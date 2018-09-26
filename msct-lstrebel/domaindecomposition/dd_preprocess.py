@@ -191,11 +191,14 @@ class DomainPreprocess:
         stencil_extent = self.combined_accesses()
         comm_cost = self.communication_cost_estimation(subdiv_size, stencil_extent)
 
-        # Since all subdivisions are by design uniform normalize the computational cost to 1.
+        comp_cost = self.computational_cost_estimation(subdiv_gridpoints)
+
+        # Normalize computational cost if it becomes too large for PyMetis to handle otherwise:
         # Needed for large subdivisions to avoid integer overflow
         # of total vertex weight (max for 32 bit PyMetis 2147483647)
         # Total edge weight has same limit but edge weights should not get as large as the computational cost
-        comp_cost = 1 #self.computational_cost_estimation(subdiv_gridpoints)
+        if comp_cost * self.total_subdivisions > 2147483647:
+            comp_cost = (2147483647 // self.total_subdivisions) - 1
 
         for i in range(self.subdivs_per_dim[0]):
             for j in range(self.subdivs_per_dim[1]):
@@ -407,6 +410,20 @@ class DomainPreprocess:
         with open(self.path + self.prefix + "subdomains_pymetis.dat.part." + str(nparts), "w") as f:
             for i in partitioning[1]:
                 f.write(str(i) + "\n")
+
+        allpartitions = True
+        for partitionid in range(nparts):
+            partitionid_is_in_partitioning = False
+            for partitioning_entry in partitioning[1]:
+                if partitionid == partitioning_entry:
+                    partitionid_is_in_partitioning = True
+
+            if not partitionid_is_in_partitioning:
+                allpartitions = False
+
+        if not allpartitions:
+            warnings.warn("At least one partition has no subdivision.", RuntimeWarning)
+
 
         if verbose:
             print(partitioning[1])

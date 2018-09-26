@@ -205,7 +205,25 @@ See Fig. \ref{fig:upwind_third_stencil} for a visual representation of this sten
 \end{figure}
 
 \subsubsection{Validation}
+Changing stencil computation from serial to distributed can cause various errors to appear.
+Therefore, it is important to validate the solutions obtained using the domain decomposition library against reference solutions.
 
+\paragraph{Comparison with the exact solution} is a useful tool to validate any stencil code.
+The Burger's equation and specifically the Zhao setup presented before provide such reference and exact solutions.
+
+Figure \ref{fig:burgers_validation} shows these validation results. The first four plots in Fig. \ref{fig:burgers_validation} show the spatial distribution of the error of either the domain decomposed solution (left panel) or the reference solution (right panel).
+This is an actual error since it compares the computed solutions against the analytical, exact solution.
+
+This comparison is done to verify that the addition of internal boundaries between subdivisions does not add to the spatial error distribution of the computation.
+These particular plots were generated using 16 subdivisions but the same plots for 8, 4, or 32 subdivisions show the same results.
+
+Additionally, Fig. \ref{fig:burgers_val5} and Fig. \ref{fig:burgers_val6} show the spatial distribution of the difference between the reference solution and the domain decomposed solution.
+There is a difference between the reference solution and the domain decomposed solution because decomposing the domain necessarily changes the ordering of some computations causing the difference due to floating point operations not guaranteeing bit identical results.
+The spatial distribution of this difference is not identical between the velocity u (shown in Fig. \ref{fig:burgers_val5}) and velocity v (shown in Fig. \ref{fig:burgers_val6})
+
+Not shown here is a plot comparing different setups of the domain decomposed solution e.g. the difference between all subdivisions belonging to the same partition (i.e. only local communication) and subdivisions belonging to multiple partitions (i.e. MPI communication).
+These plots are not shown because they would show no spatial distribution and instead a difference of zero everywhere.
+Meaning that for the same number of subdivisions the way of communicating their boundaries between each other has no influence on the computation and produces bit-identical results as expected.
 
 \begin{figure}[!htbp]
 \centering
@@ -253,5 +271,67 @@ Reference refers to solutions computed using the original, serial Python and Gri
 Lastly, domain decomposed solution refers to solutions computed using the domain decomposition library.
 The domain size for this validation is 100 by 100 grid points and the computations are run for 1000 time steps.
 }
+\label{fig:burgers_validation}
 \end{figure}
+
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{Absolute_Error_Time_Evolution.png}
+\caption{Time evolution of the absolute error in a Burger's equation Zhao setup for the reference code and a few different versions of the domain decomposed code.}
+\label{fig:burgers_time_evolution}
+\end{figure}
+
+\paragraph{Error time evolution:}
+The previous plots have focused on the spatial distribution of differences because any coding errors in the subdivision boundary exchange would clearly show up in these comparisons.
+However, changing the code from serial to domain decomposed could potentially introduce erroneous numerical diffusion.
+Such an error would increase over many time steps.
+Therefore, Fig. \ref{fig:burgers_time_evolution} shows that the error does not increase in later time steps.
+The absolute error shown here in fact decreases over time since the solution as a whole decreases over time due to physical diffusion in the Burger's equation.
+
+The time evolution of the error in Fig. \ref{fig:burgers_time_evolution} was measured for the reference solution, a 4 subdivision and 16 subdivision solutions with only local communication, as well as a 16 subdivision solution with MPI communication.
+However, the behavior of the absolute error over time is so similar between all of these that in the lines in Fig. \ref{fig:burgers_time_evolution} overlap for all u velocity solutions and all v velocity solutions.
+
+The difference to the exact solution has a spatial distribution because it originates in the discretization of the analytical initial condition and computations.
+This relationship between the error and the grid discretization can be used to validate the domain decomposed solutions by performing a grid refinement study.
+
+\paragraph{Grid refinement study} is a method to validate code most commonly used in computational fluid mechanics.
+In a grid refinement study the error of a computation is calculated on various grid sizes that are made smaller by a factor.
+It is most common to half the grid spacing per measurement.
+If this refinement is done in the asymptotic range of convergence for a stencil then the leading term of the truncation error dominates the overall error.
+This means that if error for each grid spacing is plotted in a log-log plot the slope of the line is the measured order of accuracy and if the implementation is correct should be equal to the theoretical order of accuracy of the stencil.
+
+Figure \ref{fig:grs} shows such a grid refinement study for the Burger's equation Zhao setup.
+Note that both the forward-backward and the upwind stencil have an order of accuracy of 2.
+The upwind third-order stencil should have, as the name suggests, an order of accuracy of 3.
+However, this is only the order of accuracy of the spatial stencil.
+Since the Burger's equation Zhao setup uses a very simple first-order in time discretization the measured order of accuracy for the third-order upwind scheme is limited by the time discretization.
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.8\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{GRS_FB.png}
+  \caption{Grid refinement for the forward-backward stencil.}
+  \label{fig:grs_1}
+\end{subfigure}
+
+\begin{subfigure}{0.8\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{GRS_UW.png}
+  \caption{Grid refinement for the upwind stencil.}
+  \label{fig:grs_2}
+\end{subfigure}
+
+\begin{subfigure}{0.8\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{GRS_UW3.png}
+  \caption{Grid refinement for the upwind third-order stencil.}
+  \label{fig:grs_3}
+\end{subfigure}
+\caption{Grid refinement study of the Burger's equation Zhao setup for the three stencils described before.}
+\label{fig:grs}
+\end{figure}
+
+\subsubsection{Performance and Scalability}
 

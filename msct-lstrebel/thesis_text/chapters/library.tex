@@ -226,6 +226,7 @@ def prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye, nb):
 \end{lstlisting}
 
 \subsubsection{Main: Loading domain decomposition information.}
+\label{sec:main_loading}
 The main or runtime code needs to be modified in a few places to change a serial code to use the domain decomposition library.
 
 The first change is initializing the \texttt{DomainDecomposition} class and loading the subdivision information and domain partitioning generated in the pre-process.
@@ -421,6 +422,7 @@ postproc.combine_output_files([100, 100, 1], "vnew", path=path, prefix=prefix, p
 \subsection{MPI One-Sided}
 \label{sec:onesided}
 The library includes an option to switch the communication strategy from the common two-way send/receive model to instead use MPI one-sided one-way communication model.
+The option to use MPI one-sided is enabled by initializing the \texttt{DomainDecomposition} (shown in Listing \ref{alg:infoload}) with the optional keyword \texttt{comm\_onesided} set to \texttt{True}.
 
 \subsubsection{Communication procedure}
 MPI4Py supports three remote operations, namely \texttt{Put}, \texttt{Get}, and \texttt{Accumulate}.
@@ -442,7 +444,7 @@ Figure \ref{fig:mpi_onesided_communication_flow} illustrates these two steps and
 \begin{figure}
 \centering
 \includegraphics[width=\textwidth]{mpi_onesided.png}
-\caption{Overview.}
+\caption{Schematic representation of the MPI one-sided communication procedure.}
 \label{fig:mpi_onesided_communication_flow}
 \end{figure}
 
