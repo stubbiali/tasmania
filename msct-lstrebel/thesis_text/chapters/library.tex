@@ -92,7 +92,7 @@ This NumPy view is only used if the global boundary condition is provided in a s
 %In all the mentioned NumPy views care has to be taken during the index calculations in the case of halo size $0$.
 %NumPy views that have indices like $0:0$ result in empty NumPy arrays instead of valid halo regions.
 %Therefore, in the index calculations $0$ halo sizes have to be replaced with \texttt{None}.
-%Using \texttt{None} results in valid NumPy views instead of empty Numpy arrays.
+%Using \texttt{None} results in valid NumPy views instead of empty NumPy arrays.
 %However, the communication functions described later should always catch halo sizes of $0$ and therefore these NumPy views should never actually be used.
 
 \paragraph{Stencil registration } can be done once all the fields used in the stencil have been registered.
@@ -190,11 +190,15 @@ Therefore, if the initial conditions were set during the runtime, either each su
 Distributing the initialization to each subdivision can become complicated for initial conditions that depend on their position in the global domain.
 Initializing centrally and sending the initial values out can become a bottleneck for large domains, if the global domain needs more memory than a single node can provide.
 
-Therefore, at least at the moment the domain decomposition library uses Numpy files generated in the pre-process for initialization of the fields.
+Therefore, at least at the moment the domain decomposition library uses NumPy files generated in the pre-process for initialization of the fields.
 
-An example for this field initialization can be viewed in Listing \ref{alg:initfields}.
+A simple example for this field initialization can be viewed in Listing \ref{alg:initfields}.
 
-\begin{lstlisting}[caption={Example code of the domain pre-process function to initialize to fields "unew" and "vnew"},captionpos=b, label={alg:initfields}, float, floatplacement=H]
+However, for large grids this will run into the size limitation of NumPy arrays and instead the fields need to be initialized into separate files per subdivision.
+This can be done by iterating over subdivisions and saving the appropriate portion of the fields into files with a postfix identifying the corresponding subdivision identification number.
+A detailed example of this is shown in \ref{alg:initfields_per_subdivision}.
+
+\begin{lstlisting}[caption={Example code of the domain pre-process function to initialize the fields "unew" and "vnew" for the Shankar use case.},captionpos=b, label={alg:initfields}, float, floatplacement=H]
 def prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye, nb):
         domain = [(dxs, dys), (dxe, dye)]
         datatype = np.float64
@@ -225,6 +229,61 @@ def prepare_initial_condition(nx, ny, nz, dxs, dxe, dys, dye, nb):
         np.save(path + prefix + "shankar_initial_conditions_vnew.npy", vnew)
 \end{lstlisting}
 
+\begin{lstlisting}[caption={Example code of the domain pre-process function to initialize to fields "unew" and "vnew" into separate files for each subdivision for the Zhao use case.},captionpos=b, label={alg:initfields_per_subdivision}, float, floatplacement=H]
+def prepare_initial_condition(nx, ny, nz, sx, sy, sz, dxs, dxe, dys, dye, nb, eps):
+        domain = [(dxs, dys), (dxe, dye)]
+        datatype = np.float64
+
+        snx = nx // sx
+        sny = ny // sy
+        snz = nz // sz
+
+        x_domain = domain[1][0] - domain[0][0]
+        dx = float(x_domain) / (nx - 1)
+        y_domain = domain[1][1] - domain[0][1]
+        dy = float(y_domain) / (ny - 1)
+
+        for isx in range(sx):
+            for isy in range(sy):
+                for isz in range(sz):
+                    ind = (isx * sy + isy) * sz + isz
+                    # Create the grid
+                    x = np.linspace(isx * snx * dx, 
+                                    (isx + 1) * snx * dx,
+                                    snx)
+                    xv = np.repeat(x[:, np.newaxis], sny, axis=1)
+                    y = np.linspace(isy * sny * dy,
+                                    (isy + 1) * sny * dy,
+                                    sny)
+                    yv = np.repeat(y[np.newaxis, :], snx, axis=0)
+
+                    # Instatiate the arrays representing the initial conditions
+                    unew = np.zeros((snx + 2 * nb,
+                                     sny + 2 * nb,
+                                     snz), dtype=datatype)
+                    vnew = np.zeros((snx + 2 * nb, 
+                                     sny + 2 * nb,
+                                     snz), dtype=datatype)
+                    # Set the initial conditions
+                    unew[nb:-nb, nb:-nb, 0] = (
+                    - 4. * eps * np.pi 
+                    * np.cos(2 * np.pi * xv) * np.sin(np.pi * yv)
+                    / (2. + np.sin(2. * np.pi * xv)
+                    * np.sin(np.pi * yv))
+                    )
+                    vnew[nb:-nb, nb:-nb, 0] = (
+                    - 2. * eps * np.pi * np.sin(2 * np.pi * xv)
+                    * np.cos(np.pi * yv)
+                    / (2. + np.sin(2. * np.pi * xv)
+                    * np.sin(np.pi * yv))
+                    )
+
+                    np.save(path + prefix + 
+                    "zhao_initial_conditions_unew_"+str(ind)+".npy", unew)
+                    np.save(path + prefix +
+                    "zhao_initial_conditions_vnew_"+str(ind)+".npy", vnew)
+\end{lstlisting}
+
 \subsubsection{Main: Loading domain decomposition information.}
 \label{sec:main_loading}
 The main or runtime code needs to be modified in a few places to change a serial code to use the domain decomposition library.
@@ -249,7 +308,7 @@ Usually in the serial code field instantiation corresponds to a single call to \
 
 For the domain decomposition library the fields need to be registered with call to the \texttt{register\_field()} function of the \texttt{DomainDecomposition} class.
 
-The fields need to be registered in this way because the separate subdivision need to instantiate their own Numpy array of the field instead of a global array for each field.
+The fields need to be registered in this way because the separate subdivision need to instantiate their own NumPy array of the field instead of a global array for each field.
 
 Registering the fields to the \texttt{DomainDecomposition} class requires the name of the field, the extent of the halo of the field, and the initial value file generated in the pre-process.
 
@@ -262,6 +321,9 @@ The field halo extent here are needed to instantiate fields in the subdivisions 
 Listing \ref{alg:refinstant} and Listing \ref{alg:ddinstant} show the direct comparison between the original instantiation of four fields and the corresponding registration process needed in the domain decomposition library.
 This should demonstrate that code needed to be added by the user is kept to a minimum.
 
+In the case, where the initial conditions were written in a separate file for each subdivision an additional, optional keyword \texttt{singlefile} has to be set to \texttt{False}.
+Listing \ref{alg:ddinstant_2} shows such a case.
+
 \begin{lstlisting}[caption={Example code for the original user field instantiation.},captionpos=b, label={alg:refinstant}, float, floatplacement=H]
 # Instantiate the arrays representing the solution
 unow = np.zeros((nx, ny, 1), dtype = datatype)
@@ -270,7 +332,7 @@ vnow = np.zeros((nx, ny, 1), dtype = datatype)
 vnew = np.zeros((nx, ny, 1), dtype = datatype)
 \end{lstlisting} 
 
-\begin{lstlisting}[caption={Example code for the same field instantiation using the domain decomposition library.},captionpos=b, label={alg:ddinstant}, float, floatplacement=H]
+\begin{lstlisting}[caption={Example code for the same field instantiation using the domain decomposition library.},captionpos=b, label={alg:ddinstant_2}, float, floatplacement=H]
 halo = [1, 1, 1, 1, 0, 0]
 prep_domain.register_field(fieldname="unow", halo=halo, field_ic_file=path + prefix +"shankar_initial_conditions_unew.npy")
 
@@ -279,6 +341,15 @@ prep_domain.register_field(fieldname="vnow", halo=halo, field_ic_file=path + pre
 prep_domain.register_field(fieldname="unew", halo=halo, field_ic_file=path + prefix +"shankar_initial_conditions_unew.npy")
 
 prep_domain.register_field(fieldname="vnew", halo=halo, field_ic_file=path + prefix +"shankar_initial_conditions_vnew.npy")
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Example code for field instantiation using the domain decomposition library in the case where the initial condtions where written to a file per subdivision.},captionpos=b, label={alg:ddinstant}, float, floatplacement=H]
+halo = [1, 1, 1, 1, 0, 0]
+prep_domain.register_field(fieldname="unow",
+                           halo=halo,
+                           field_ic_file=path + prefix 
+                           + "zhao_initial_conditions_unew",
+                           singlefile=False)
 \end{lstlisting}
 
 \subsubsection{Main: Instantiation of stencils.}
@@ -316,6 +387,24 @@ stencil = prep_domain.register_stencil(
     )
 \end{lstlisting}
 
+\subsubsection{Main: Accessing field values}
+
+In some cases user created code may need to access the values of a field directly.
+Since the domain decomposition library distributes the field values across all subdivisions directly accessing field values becomes more difficult.
+However, in many cases the field values needed in one subdivision are only the field values of that subdivision.
+For this specific case, the \texttt{DomainSubdivision} class provides a \texttt{get\_interior\_field()} function.
+
+Note, that accessing the fields directly also has to involve a manual iteration over all local subdivisions.
+Listing \ref{alg:ddinteriorfield} shows an example of direct field access.
+
+\begin{lstlisting}[caption={Example code for accessing the interior field of a subdivision directly.}, captionpos=b, label={alg:ddinteriorfield}, float, floatplacement=H]
+for sd in prep_domain.subdivisions:
+    internal_field[:, :, :] = sd.get_interior_field("yv")[:, :, :]))
+\end{lstlisting}
+
+Accessing the values of a field at a location that is not in the local subdivision is not supported.
+In the distributed nature of domain decomposition direct field access would have to involve additional communication calls outside of simple boundary exchanges.
+
 \subsubsection{Main: Applying global boundary conditions.}
 Applying the global boundary condition when using the domain decomposition library needs some code modifications to account for the distributed subdivisions.
 Since not all subdivisions contain the global boundary the \texttt{DomainDecomposition} class provides the function \texttt{set\_boundary\_condition()} to handle the transfer of the boundary condition in a given direction to the responsible subdivisions.
@@ -329,33 +418,47 @@ After the boundaries are set this way, calling the \texttt{apply\_boundary\_cond
 The set and apply function are separated so that in cases in which the boundary condition does not change during the runtime it only needs to be set once.
 
 Listing \ref{alg:ddbc} shows an example of setting and applying a boundary condition during time stepping.
+Note that in this example the code has to manually iterate over the local subdivisions to make sure that any subdivision gets the correct boundary condition applied.
 
 \begin{lstlisting}[caption={Example code of handling the global boundary condition.},captionpos=b, label={alg:ddbc}, float, floatplacement=H]
-# Apply the boundary conditions
 # Set the boundaries
 t = (n + 1) * float(dt)
-unew_west[:, :, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[:nb, :])
-unew_east[:, :, 0] = - 2. * eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(np.pi * yv[-nb:, :])
-unew_north[:, :, 0] = np.zeros((nx, nb))
-unew_south[:, :, 0] = np.zeros((nx, nb))
+unew_west = {}
+unew_east = {}
+unew_north = {}
+unew_south = {}
+for sd in prepared_domain.subdivisions:
+    unew_west[sd] = (- 2. * eps * np.pi 
+                     * np.exp(- 5. * np.pi * np.pi * eps * t)
+                     * np.sin(np.pi 
+                     * sd.get_interior_field("yv")[:nb, :, 0]))
+    unew_east[sd] = (- 2. * eps * np.pi 
+                     * np.exp(- 5. * np.pi * np.pi * eps * t)
+                     * np.sin(np.pi 
+                     * sd.get_interior_field("yv")[-nb:, :, 0]))
+    unew_north[sd] = np.zeros((sd.size[0], nb))
+    unew_south[sd] = np.zeros((sd.size[0], nb))
 
-vnew_west[:, :, 0] = np.zeros((nb, ny))
-vnew_east[:, :, 0] = np.zeros((nb, ny))
-vnew_north[:, :, 0] = - eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, :nb])
-vnew_south[:, :, 0] = eps * np.pi * np.exp(- 5. * np.pi * np.pi * eps * t) * np.sin(2. * np.pi * xv[:, -nb:])
+    unew_west[sd] = unew_west[sd].reshape((halo[0], 
+                                           sd.size[1],
+                                           sd.size[2]))
+    unew_east[sd] = unew_east[sd].reshape((halo[1],
+                                           sd.size[1],
+                                           sd.size[2]))
+    unew_north[sd] = unew_north[sd].reshape((sd.size[0],
+                                             halo[2],
+                                             sd.size[2]))
+    unew_south[sd] = unew_south[sd].reshape((sd.size[0],
+                                             halo[3],
+                                             sd.size[2]))
 
-prep_domain.set_boundary_condition("unow", 0, 1, unew_west)
-prep_domain.set_boundary_condition("unow", 1, 1, unew_east)
-prep_domain.set_boundary_condition("unow", 2, 1, unew_north)
-prep_domain.set_boundary_condition("unow", 3, 1, unew_south)
+    sd.set_boundary_condition("unow", 0, unew_west[sd])
+    sd.set_boundary_condition("unow", 1, unew_east[sd])
+    sd.set_boundary_condition("unow", 2, unew_north[sd])
+    sd.set_boundary_condition("unow", 3, unew_south[sd])
 
-prep_domain.set_boundary_condition("vnow", 0, 1, vnew_west)
-prep_domain.set_boundary_condition("vnow", 1, 1, vnew_east)
-prep_domain.set_boundary_condition("vnow", 2, 1, vnew_north)
-prep_domain.set_boundary_condition("vnow", 3, 1, vnew_south)
-
-prep_domain.apply_boundary_condition("unow")
-prep_domain.apply_boundary_condition("vnow")
+# Apply boundary conditions for all subdivisions:
+prepared_domain.apply_boundary_condition("unow")
 \end{lstlisting}
 
 \subsubsection{Main: Swapping and communication of fields.}
@@ -466,7 +569,7 @@ However, each window also internally creates a separate MPI communicator.
 
 As mentioned before, the current implementation requires a MPI one-sided window per direction, per field, and per subdivision.
 Most MPI implementations limit the number of MPI communicators to 2048. 
-\footnote{See for example the following mailing list thread discussing this limit: https://lists.mpich.org/pipermail/discuss/2016-September/004908.html Accessed 25.9.18 12:08}
+\footnote{See for example the following mailing list thread discussing this limit: https://lists.mpich.org/pipermail/discuss/2016-September/004908.html Accessed 25.9.18}
 With this setup the 2048 limitation can be reached very easily for large domains.
 For example, a stencil running on 8 nodes with 6 MPI processors per node and 1 subdivision per processor already creates $8 \cdot 6 \cdot 1 \cdot 6 = 288$ windows per field.
 In that case, if more than 7 fields are used the MPI communicator limit is reached.

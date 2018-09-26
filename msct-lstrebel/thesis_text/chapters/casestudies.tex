@@ -44,7 +44,8 @@ v\left(x, y, t\right) = g\left(x, y, t\right) \text{, } \left(x, y, t\right) \in
 
 \paragraph{Shankar conditions:}
 
-The first set of initial and boundary conditions are the ones used by Shankar. \footnote{https://ch.mathworks.com/matlabcentral/fileexchange/38087-burgers-equation-in-1d-and-2d}
+The first set of initial and boundary conditions are the ones used by Shankar. 
+\footnote{https://ch.mathworks.com/matlabcentral/fileexchange/38087-burgers-equation-in-1d-and-2d Accessed: 25.9.18}
 
 The following equations describe the Shankar test case fully and Fig. \ref{fig:shankar_ic1} and Fig. \ref{fig:shankar_ic2} visualizes the initial condition.
 
@@ -334,4 +335,70 @@ Since the Burger's equation Zhao setup uses a very simple first-order in time di
 \end{figure}
 
 \subsubsection{Performance and Scalability}
+
+\paragraph{Weak scaling}
+
+\begin{table}[!htbp]
+\centering
+\ra{1.5}
+\begin{tabular}{l r r r r r r r}
+\toprule
+Name & GP per Dim [$10^3$] & Total GP [$10^7$] & Nodes & Tasks & SD x & SD y \\
+\midrule
+1N1T	&	4	&	1.6	&	1	&	1	&	0	&	0	\\
+1N2T	&	5.66	&	3.2	&	1	&	2	&	2	&	1	\\
+1N4T	&	8	&	6.4	&	1	&	4	&	2	&	2	\\
+1N6T	&	9.8	&	9.6	&	1	&	6	&	3	&	2	\\
+1N8T	&	11.3	&	12.8	&	1	&	8	&	4	&	2	\\
+2N12T	&	13.9	&	19.2	&	2	&	12	&	4	&	3	\\
+2N16T	&	16	&	25.6	&	2	&	16	&	4	&	4	\\
+3N18T	&	17	&	28.8	&	3	&	18	&	6	&	3	\\
+3N24T	&	19.6	&	38.4	&	3	&	24	&	6	&	4	\\
+4N24T	&	19.6	&	38.4	&	4	&	24	&	6	&	4	\\
+4N32T	&	22.7	&	51.2	&	4	&	32	&	8	&	4	\\
+5N30T	&	21.9	&	48	&	5	&	30	&	6	&	5	\\
+5N40T	&	25.3	&	64	&	5	&	40	&	8	&	5	\\
+6N36T	&	24	&	57.6	&	6	&	36	&	6	&	6	\\
+6N48T	&	27.7	&	76.8	&	6	&	48	&	8	&	6	\\
+7N42T	&	26	&	67.2	&	7	&	42	&	7	&	6	\\
+7N56T	&	30	&	89.6	&	7	&	56	&	8	&	7	\\
+8N48T	&	27.7	&	76.8	&	8	&	48	&	8	&	6	\\
+8N64T	&	32	&	102	&	8	&	64	&	8	&	8	\\
+\bottomrule
+\end{tabular}
+\caption{Setup for the first weak scaling experiment run on Greina.}
+\label{tab:weak_4k}
+\end{table}
+
+\begin{table}[!htbp]
+\centering
+\ra{1.5}
+\begin{tabular}{l r r r r r r r}
+\toprule
+Name & GP per Dim [$10^3$] & Total GP [$10^7$] & Nodes & Tasks & SD x & SD y \\
+\midrule
+1N1T	&	5	&	2.5	&	1	&	1	&	0	&	0	\\
+1N2T	&	7	&	5	&	1	&	2	&	2	&	1	\\
+1N4T	&	10	&	10	&	1	&	4	&	2	&	2	\\
+1N6T	&	12	&	15	&	1	&	6	&	3	&	2	\\
+1N8T	&	14	&	20	&	1	&	8	&	4	&	2	\\
+2N12T	&	16.8	&	30	&	2	&	12	&	4	&	3	\\
+2N16T	&	20	&	40	&	2	&	16	&	4	&	4	\\
+3N18T	&	20.9	&	45	&	3	&	18	&	6	&	3	\\
+3N24T	&	24	&	60	&	3	&	24	&	6	&	4	\\
+4N24T	&	24	&	60	&	4	&	24	&	6	&	4	\\
+4N32T	&	28	&	80	&	4	&	32	&	8	&	4	\\
+5N30T	&	27	&	75	&	5	&	30	&	6	&	5	\\
+5N40T	&	32	&	100	&	5	&	40	&	8	&	5	\\
+6N36T	&	31	&	90	&	6	&	36	&	6	&	6	\\
+6N48T	&	34.6	&	120	&	6	&	48	&	8	&	6	\\
+%7N42T	&	26	&	67.2	&	7	&	42	&	7	&	6	\\
+7N56T	&	37.3	&	140	&	7	&	56	&	8	&	7	\\
+8N48T	&	34.6	&	120	&	8	&	48	&	8	&	6	\\
+8N64T	&	40	&	160	&	8	&	64	&	8	&	8	\\
+\bottomrule
+\end{tabular}
+\caption{Setup for the second weak scaling experiment run on Greina.}
+\label{tab:weak_5k}
+\end{table}
 
