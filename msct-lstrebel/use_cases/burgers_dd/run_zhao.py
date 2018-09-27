@@ -141,7 +141,7 @@ def run_zhao():
 
     # Time integration
     for n in range(nt):
-        start_time = time.perf_counter()
+        start_timer = time.perf_counter()
 
         # Advance the time levels
         prepared_domain.swap_fields("unow", "unew")
