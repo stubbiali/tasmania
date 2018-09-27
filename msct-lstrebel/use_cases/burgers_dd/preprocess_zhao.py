@@ -37,7 +37,8 @@ def prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, method, px=0, py=0, pz=
     slices = np.array([sx, sy, sz])
     periodic = np.array([px, py, pz])
 
-    ddc = DomainPreprocess(domain=domain, periodic=periodic, subdivs_per_dim=slices, path=path, prefix=prefix)
+    ddc = DomainPreprocess(domain=domain, periodic=periodic, subdivs_per_dim=slices, path=path, prefix=prefix,
+                           fileoutput="metis")
 
     # Add Use case specific stencils:
     if method == 'forward_backward':

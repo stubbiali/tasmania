@@ -29,6 +29,7 @@ This module contains
 import numpy as np
 import argparse
 from mpi4py import MPI
+import time
 
 import gridtools as gt
 import stencils
@@ -135,8 +136,13 @@ def run_zhao():
     if save_freq >= 0:
         prepared_domain.save_fields(["unew", "vnew"], postfix="t_" + str(0))
 
+    compute_timer = []
+    commun_timer = []
+
     # Time integration
     for n in range(nt):
+        start_time = time.perf_counter()
+
         # Advance the time levels
         prepared_domain.swap_fields("unow", "unew")
         prepared_domain.swap_fields("vnow", "vnew")
@@ -194,11 +200,17 @@ def run_zhao():
         stencil.compute()
         timer.stop(name="Compute during time integration")
 
+        compute_timer.append(time.perf_counter() - start_timer)
+
+        start_timer = time.perf_counter()
+
         # Communicate partition boundaries
         timer.start(name="Communication during time integration", level=3)
         prepared_domain.communicate("unew")
         prepared_domain.communicate("vnew")
         timer.stop(name="Communication during time integration")
+
+        commun_timer.append(time.perf_counter() - start_timer)
 
         timer.start(name="Saving fields during time integration", level=3)
         # Save
@@ -211,7 +223,10 @@ def run_zhao():
     timer.stop(name="Time integration")
 
     timer.stop(name="Overall Zhao time")
-
+    
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        print("Compute timings per iteration: ", compute_timer)
+        print("Communication timing per iteration: ", commun_timer)
 
 
 def postprocess_zhao():

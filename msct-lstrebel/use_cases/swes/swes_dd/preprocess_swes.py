@@ -38,7 +38,8 @@ def prepare_partitioning(nx, ny, nz, sx, sy, sz, nparts, only_advection, px=1, p
     slices = np.array([sx, sy, sz])
     periodic = np.array([px, py, pz])
 
-    ddc = DomainPreprocess(domain=cdomain, periodic=periodic, subdivs_per_dim=slices, path=path, prefix=prefix)
+    ddc = DomainPreprocess(domain=cdomain, periodic=periodic, subdivs_per_dim=slices, path=path, prefix=prefix,
+                           fileoutput="metis")
 
     # Add IC specific stencils:
     if only_advection:

@@ -335,70 +335,97 @@ Since the Burger's equation Zhao setup uses a very simple first-order in time di
 \end{figure}
 
 \subsubsection{Performance and Scalability}
+The following paragraphs outline the setup and results of a few experiments conducted on the supercomputer cluster called Greina at CSCS.
+
+\paragraph{Baseline and limits}
+The baseline for all scaling experiments is the serial GridTools4Py code.
+By running this stencil code on increasing grid sizes the limit for the serial baseline is determined to be somewhere between grids of size 24 thousand by 24 thousand (576 million grid points) and 32 thousand by 32 thousand (1.024 billion grid points).
+The baseline can compute results for the 24 thousand squared grid but runs into memory errors for the 32 thousand squared grid.
+
+The baseline code allocates 2 grid sized NumPy arrays for the grid spacing used in the boundary condition computation and 6 grid sized NumPy arrays for the two velocity fields.
+These NumPy arrays use \texttt{np.float64} for their data type which uses 8 byte per array item.
+So in theory the baseline should use $24000 \cdot 24000 \cdot 8 \cdot 8 \text{B} = ~34.33 \text{GB}$ of memory for the fields.
+
+However, the SLURM scheduling system on Greina reports for the 24 thousand by 24 thousand test case much larger memory usage.
+Specifically, it reports a maximum resident set size (maxRSS) of ~60.73 GB and a maximum virtual memory size (maxVMSize) of ~74.24 GB.
+Which, is consistent with the observation that for larger grids the baseline runs out of memory for nodes with 64 GB of memory.
+
+This difference of a roughly a factor 2 between theoretical memory usage and measured memory usage is mostly likely a result of the non-optimized, prototype GridTools4Py NumPy back-end as the only available back-end during this thesis.
+At a later time this back-end NumPy back-end will be replaced by the actual performance optimized C++ back-end of GridTools.
+
+Therefore, the scalability experiments using this test case have a hard memory limit of 24 thousand by 24 thousand grid points per node.
+This memory limit also restricts the scope of the scalability experiments.
+For strong scaling having a baseline of just 24 thousand by 24 thousand grid points combined with a non-optimized back-end results in very unsatisfactory strong scaling efficiency.
+
+Additionally, the advantages of domain decomposition should present more clearly in weak scaling since domain decomposition is mainly used to make it feasible to run stencil codes on grids that are larger than the memory of a single node.
 
 \paragraph{Weak scaling}
 
-\begin{table}[!htbp]
-\centering
-\ra{1.5}
-\begin{tabular}{l r r r r r r r}
-\toprule
-Name & GP per Dim [$10^3$] & Total GP [$10^7$] & Nodes & Tasks & SD x & SD y \\
-\midrule
-1N1T	&	4	&	1.6	&	1	&	1	&	0	&	0	\\
-1N2T	&	5.66	&	3.2	&	1	&	2	&	2	&	1	\\
-1N4T	&	8	&	6.4	&	1	&	4	&	2	&	2	\\
-1N6T	&	9.8	&	9.6	&	1	&	6	&	3	&	2	\\
-1N8T	&	11.3	&	12.8	&	1	&	8	&	4	&	2	\\
-2N12T	&	13.9	&	19.2	&	2	&	12	&	4	&	3	\\
-2N16T	&	16	&	25.6	&	2	&	16	&	4	&	4	\\
-3N18T	&	17	&	28.8	&	3	&	18	&	6	&	3	\\
-3N24T	&	19.6	&	38.4	&	3	&	24	&	6	&	4	\\
-4N24T	&	19.6	&	38.4	&	4	&	24	&	6	&	4	\\
-4N32T	&	22.7	&	51.2	&	4	&	32	&	8	&	4	\\
-5N30T	&	21.9	&	48	&	5	&	30	&	6	&	5	\\
-5N40T	&	25.3	&	64	&	5	&	40	&	8	&	5	\\
-6N36T	&	24	&	57.6	&	6	&	36	&	6	&	6	\\
-6N48T	&	27.7	&	76.8	&	6	&	48	&	8	&	6	\\
-7N42T	&	26	&	67.2	&	7	&	42	&	7	&	6	\\
-7N56T	&	30	&	89.6	&	7	&	56	&	8	&	7	\\
-8N48T	&	27.7	&	76.8	&	8	&	48	&	8	&	6	\\
-8N64T	&	32	&	102	&	8	&	64	&	8	&	8	\\
-\bottomrule
-\end{tabular}
-\caption{Setup for the first weak scaling experiment run on Greina.}
-\label{tab:weak_4k}
-\end{table}
-
-\begin{table}[!htbp]
-\centering
-\ra{1.5}
-\begin{tabular}{l r r r r r r r}
-\toprule
-Name & GP per Dim [$10^3$] & Total GP [$10^7$] & Nodes & Tasks & SD x & SD y \\
-\midrule
-1N1T	&	5	&	2.5	&	1	&	1	&	0	&	0	\\
-1N2T	&	7	&	5	&	1	&	2	&	2	&	1	\\
-1N4T	&	10	&	10	&	1	&	4	&	2	&	2	\\
-1N6T	&	12	&	15	&	1	&	6	&	3	&	2	\\
-1N8T	&	14	&	20	&	1	&	8	&	4	&	2	\\
-2N12T	&	16.8	&	30	&	2	&	12	&	4	&	3	\\
-2N16T	&	20	&	40	&	2	&	16	&	4	&	4	\\
-3N18T	&	20.9	&	45	&	3	&	18	&	6	&	3	\\
-3N24T	&	24	&	60	&	3	&	24	&	6	&	4	\\
-4N24T	&	24	&	60	&	4	&	24	&	6	&	4	\\
-4N32T	&	28	&	80	&	4	&	32	&	8	&	4	\\
-5N30T	&	27	&	75	&	5	&	30	&	6	&	5	\\
-5N40T	&	32	&	100	&	5	&	40	&	8	&	5	\\
-6N36T	&	31	&	90	&	6	&	36	&	6	&	6	\\
-6N48T	&	34.6	&	120	&	6	&	48	&	8	&	6	\\
+%\begin{table}[!htbp]
+%\centering
+%\ra{1.5}
+%\begin{tabular}{l r r r r r r r}
+%\toprule
+%Name & GP per Dim [$10^3$] & Total GP [$10^7$] & Nodes & Tasks & SD x & SD y \\
+%\midrule
+%1N1T	&	4	&	1.6	&	1	&	1	&	0	&	0	\\
+%1N2T	&	5.66	&	3.2	&	1	&	2	&	2	&	1	\\
+%1N4T	&	8	&	6.4	&	1	&	4	&	2	&	2	\\
+%1N6T	&	9.8	&	9.6	&	1	&	6	&	3	&	2	\\
+%1N8T	&	11.3	&	12.8	&	1	&	8	&	4	&	2	\\
+%2N12T	&	13.9	&	19.2	&	2	&	12	&	4	&	3	\\
+%2N16T	&	16	&	25.6	&	2	&	16	&	4	&	4	\\
+%3N18T	&	17	&	28.8	&	3	&	18	&	6	&	3	\\
+%3N24T	&	19.6	&	38.4	&	3	&	24	&	6	&	4	\\
+%4N24T	&	19.6	&	38.4	&	4	&	24	&	6	&	4	\\
+%4N32T	&	22.7	&	51.2	&	4	&	32	&	8	&	4	\\
+%5N30T	&	21.9	&	48	&	5	&	30	&	6	&	5	\\
+%5N40T	&	25.3	&	64	&	5	&	40	&	8	&	5	\\
+%6N36T	&	24	&	57.6	&	6	&	36	&	6	&	6	\\
+%6N48T	&	27.7	&	76.8	&	6	&	48	&	8	&	6	\\
 %7N42T	&	26	&	67.2	&	7	&	42	&	7	&	6	\\
-7N56T	&	37.3	&	140	&	7	&	56	&	8	&	7	\\
-8N48T	&	34.6	&	120	&	8	&	48	&	8	&	6	\\
-8N64T	&	40	&	160	&	8	&	64	&	8	&	8	\\
-\bottomrule
-\end{tabular}
-\caption{Setup for the second weak scaling experiment run on Greina.}
-\label{tab:weak_5k}
-\end{table}
+%7N56T	&	30	&	89.6	&	7	&	56	&	8	&	7	\\
+%8N48T	&	27.7	&	76.8	&	8	&	48	&	8	&	6	\\
+%8N64T	&	32	&	102	&	8	&	64	&	8	&	8	\\
+%\bottomrule
+%\end{tabular}
+%\caption{Setup for the first weak scaling experiment run on Greina.}
+%\label{tab:weak_4k}
+%\end{table}
+
+\newpage
+\subsection{Case 2: Burger's equation for heterogeneous load balancing}
+Part of the motivation to use graph partitioning methods for domain decomposition was that these methods can balance heterogeneous loads.
+This sections outlines how the domain decomposition library can be used to distribute subdivisions balanced for heterogeneous systems.
+
+The Metis graph partition library can balance heterogeneous loads according to target weights.
+These target weights have to be specified by the user in a simple text file with the following structure:
+
+
+
+\newpage
+\subsection{Case 3: Shallow Water Equations on a Sphere (SWES)}
+The shallow water equations are like the Burger's equation a well known set of equations used widely in testing and studying implementation of numerical methods.
+The shallow water equation are used to compute the velocities and height of a homogeneous, incompressible, and inviscid shallow layer of fluid.
+
+\subsubsection{Case description}
+The shallow water equations consist of two horizontal momentum equations and one mass continuity equation.
+These equations can be written in many forms, for example the advective form for spherical components as described in \citet{williamson1992standard}:
+
+\begin{equation}
+\begin{split}
+\pdv{u}{t} + \mathbf{v} \cdot \bigtriangledown u - \left( f + \frac{u}{a} \tan \left( \theta \right) \right) v + \frac{g}{a \cos \left( \theta \right)} \pdv{h}{\lambda} = 0 \\
+\pdv{v}{t} + \mathbf{v} \cdot \bigtriangledown v + \left( f + \frac{u}{a} \tan \left( \theta \right) \right) u + \frac{g}{a} \pdv{h}{\theta} = 0  \\
+\pdv{h^*}{t} + \mathbf{v} \cdot \bigtriangledown h^* + \frac{h^*}{a \cos \left( \theta \right)} \left( \pdv{u}{\lambda} + \pdv{v \cos \left( \theta \right)}{\theta} \right) = 0 
+\end{split}
+\end{equation}
+
+Seven test cases are outlined in \citet{williamson1992standard} to facilitate standardized testing of the shallow water equation solvers.
+A modified version of two of these were used in this thesis.
+
+The most significant modification is the reduction of complexity by limiting the spherical domain to a band ranging from $85^\circ$ to $-85^\circ$ to avoid more complex pole treatment.
+The artificial boundary that is created by this simplification uses Neumann conditions i.e. setting the flux of all fields between the north and south boundaries to zero.
+
+
+
 
