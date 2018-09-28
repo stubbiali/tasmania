@@ -355,51 +355,32 @@ At a later time this back-end NumPy back-end will be replaced by the actual perf
 
 Therefore, the scalability experiments using this test case have a hard memory limit of 24 thousand by 24 thousand grid points per node.
 This memory limit also restricts the scope of the scalability experiments.
-For strong scaling having a baseline of just 24 thousand by 24 thousand grid points combined with a non-optimized back-end results in very unsatisfactory strong scaling efficiency.
+For strong scaling having a baseline of just 24 thousand by 24 thousand grid points combined with a non-optimized back-end results in very unsatisfactory strong scaling efficiency for experiments using multiple nodes and multiple processing units per node.
 
 Additionally, the advantages of domain decomposition should present more clearly in weak scaling since domain decomposition is mainly used to make it feasible to run stencil codes on grids that are larger than the memory of a single node.
 
 \paragraph{Weak scaling}
 
-%\begin{table}[!htbp]
-%\centering
-%\ra{1.5}
-%\begin{tabular}{l r r r r r r r}
-%\toprule
-%Name & GP per Dim [$10^3$] & Total GP [$10^7$] & Nodes & Tasks & SD x & SD y \\
-%\midrule
-%1N1T	&	4	&	1.6	&	1	&	1	&	0	&	0	\\
-%1N2T	&	5.66	&	3.2	&	1	&	2	&	2	&	1	\\
-%1N4T	&	8	&	6.4	&	1	&	4	&	2	&	2	\\
-%1N6T	&	9.8	&	9.6	&	1	&	6	&	3	&	2	\\
-%1N8T	&	11.3	&	12.8	&	1	&	8	&	4	&	2	\\
-%2N12T	&	13.9	&	19.2	&	2	&	12	&	4	&	3	\\
-%2N16T	&	16	&	25.6	&	2	&	16	&	4	&	4	\\
-%3N18T	&	17	&	28.8	&	3	&	18	&	6	&	3	\\
-%3N24T	&	19.6	&	38.4	&	3	&	24	&	6	&	4	\\
-%4N24T	&	19.6	&	38.4	&	4	&	24	&	6	&	4	\\
-%4N32T	&	22.7	&	51.2	&	4	&	32	&	8	&	4	\\
-%5N30T	&	21.9	&	48	&	5	&	30	&	6	&	5	\\
-%5N40T	&	25.3	&	64	&	5	&	40	&	8	&	5	\\
-%6N36T	&	24	&	57.6	&	6	&	36	&	6	&	6	\\
-%6N48T	&	27.7	&	76.8	&	6	&	48	&	8	&	6	\\
-%7N42T	&	26	&	67.2	&	7	&	42	&	7	&	6	\\
-%7N56T	&	30	&	89.6	&	7	&	56	&	8	&	7	\\
-%8N48T	&	27.7	&	76.8	&	8	&	48	&	8	&	6	\\
-%8N64T	&	32	&	102	&	8	&	64	&	8	&	8	\\
-%\bottomrule
-%\end{tabular}
-%\caption{Setup for the first weak scaling experiment run on Greina.}
-%\label{tab:weak_4k}
-%\end{table}
 
 \newpage
-\subsection{Case 2: Burger's equation for heterogeneous load balancing}
+\subsection{Case 2: Burger's equation for a small example of  heterogeneous load balancing}
 Part of the motivation to use graph partitioning methods for domain decomposition was that these methods can balance heterogeneous loads.
 This sections outlines how the domain decomposition library can be used to distribute subdivisions balanced for heterogeneous systems.
 
 The Metis graph partition library can balance heterogeneous loads according to target weights.
 These target weights have to be specified by the user in a simple text file with the following structure:
+\\
+partition\_1 = .p1
+\\
+partition\_2 = .p2
+\\
+...
+\\
+Where p1 and p2 are percentages of the total load that should be partitioned into the corresponding partition.
+
+These percentages are the main parameter for heterogeneous load balancing.
+They have to be determined based on both the case and the hardware that the partitions will run on.
+
 
 
 \newpage
@@ -412,12 +393,14 @@ The shallow water equations consist of two horizontal momentum equations and one
 These equations can be written in many forms, for example the advective form for spherical components as described in \citet{williamson1992standard}:
 
 \begin{equation}
+\label{eq:swes}
 \begin{split}
 \pdv{u}{t} + \mathbf{v} \cdot \bigtriangledown u - \left( f + \frac{u}{a} \tan \left( \theta \right) \right) v + \frac{g}{a \cos \left( \theta \right)} \pdv{h}{\lambda} = 0 \\
 \pdv{v}{t} + \mathbf{v} \cdot \bigtriangledown v + \left( f + \frac{u}{a} \tan \left( \theta \right) \right) u + \frac{g}{a} \pdv{h}{\theta} = 0  \\
-\pdv{h^*}{t} + \mathbf{v} \cdot \bigtriangledown h^* + \frac{h^*}{a \cos \left( \theta \right)} \left( \pdv{u}{\lambda} + \pdv{v \cos \left( \theta \right)}{\theta} \right) = 0 
+\pdv{h^*}{t} + \mathbf{v} \cdot \bigtriangledown h^* + \frac{h^*}{a \cos \left( \theta \right)} \left( \pdv{u}{\lambda} + \pdv{v \cos \left( \theta \right)}{\theta} \right) = 0 \text{ , }
 \end{split}
 \end{equation}
+where $f$ is the Coriolis parameter, $g$ is the gravitational constant, and $a$ is the radius of the sphere e.g. the radius of Earth.
 
 Seven test cases are outlined in \citet{williamson1992standard} to facilitate standardized testing of the shallow water equation solvers.
 A modified version of two of these were used in this thesis.
@@ -425,6 +408,64 @@ A modified version of two of these were used in this thesis.
 The most significant modification is the reduction of complexity by limiting the spherical domain to a band ranging from $85^\circ$ to $-85^\circ$ to avoid more complex pole treatment.
 The artificial boundary that is created by this simplification uses Neumann conditions i.e. setting the flux of all fields between the north and south boundaries to zero.
 
+\paragraph{SWES initial conditions 1:}
+The first test case described in the test suite from Williamson is the advection of a cosine bell and is designed to test only the advection component of the shallow water equations.
 
+This is done by prescribing an advecting wind instead of solving the first two equations shown in \ref{eq:swes}.
+Specifically, the two static wind fields and the initial height field are given as:
+
+\begin{equation}
+\label{eq:swes_ic0}
+\begin{split}
+u = u_0 \left( \cos \left( \theta \right) \cos \left( \alpha \right) + \sin \left( \theta \right) \cos \left( \lambda \right) \sin \left( \alpha \right) \right)
+\\
+v = -u_0 \sin \left( \lambda \right) \sin \left( \alpha \right)
+\\
+h \left( \lambda, \theta, t=0 \right) =  \begin{cases}
+\left(h_0 / 2 \right) \left( 1 + \cos \left( \pi r / R \right) \right) \text{ if } r < R \\
+0, \text{ otherwise}
+\end{cases}
+\text{ ,}
+\end{split}
+\end{equation}
+where $\alpha$ is the angle between the axis of the solid body rotation and the polar axis and is set to $0.0$ for these tests, $h_0$ is set to $1000 m$, $u_0 = 2 \pi a$ for a 12 days period, and $\theta$ and $\lambda$ are the spherical coordinates.
+
+The cosine bell is created in the following way:
+\begin{equation}
+\label{eq:swes_cosine_bell}
+\begin{split}
+r = a \arccos \left( \sin \left( \theta_c \right) \sin \left( \theta \right) + \cos \left( \theta_c \right) \cos \left( \theta \right) \cos \left( \lambda - \lambda_c \right) \right)
+\\
+\left( \lambda_c, \theta_c \right) = \left( 3 \pi / 2, 0 \right)
+\\
+R = a / 3
+\end{split}
+\end{equation}
+
+
+\paragraph{SWES initial conditions 2:}
+The second setup used is the third test case in the test suite from Williamson and describes a steady state nonlinear zonal geostrophic flow with compact support.
+
+The setup of the two initial velocities and height fields in this case involves the following equations:
+\begin{equation}
+\label{eq:swes_ic2}
+\begin{split}
+\text{Constants:} \\
+w = 7.848e-6 \\
+K = 7.848e-6 \\
+h0 = 8e3 \\
+R = 4.0 \\
+\text{Intermediate values:} \\
+A = 0.5 w \left(2 \omega + w \right) \cos \left( \theta \right)^2 + 0.25 K^2 \cos\left(\theta\right)^{2 R} \\
+\cdot \left( \left(R + 1\right) \cos \left( \theta \right)^2 + \left(2 R^2 - R - 2 \right) - 2 R^2 \cos \left(\theta \right)^{-2} \right) \\
+B = \left(2 \left(\omega + w\right) K\right) \left(\left(R + 1\right) \left(R + 2\right)\right) \\
+\cdot \cos\left(\theta \right) ^ R \left(R ^ 2 + 2 R + 2 - \left(R + 1\right) ^ 2 \cos\left(\theta\right) ^ 2\right) \\
+C = 0.25 K ^ 2 \cos\left(\theta\right) ^{2 R} \left(\left(R + 1\right) \cos\left(\theta\right) ^ 2 - R + 2 \right) \\
+\text{Actual initial fields:} \\
+h = h0 + \left( a ^ 2 A + a ^ 2 B \cos\left(R \phi\right) + a ^ 2 C \cos \left(2 R \phi \right)\right)  g \\
+u = a w \cos\left(\theta\right) + a K\cos\left(\theta\right) ^ {R - 1} \left(R \sin\left(\theta\right) ^ 2 - \cos\left(\theta\right) ^ 2\right) \cos\left(R \phi\right) \\
+v = - a K R \cos\left(\theta\right) ^ {R - 1} \sin\left(\theta\right) \sin\left(R \phi\right)
+\end{split}
+\end{equation}
 
 
