@@ -5,20 +5,20 @@ Domain decomposition is necessary to distribute and balance the computational lo
 Additionally, including heterogeneous processing units adds further complications to the domain decomposition problem.
 
 Solutions to the domain decomposition problem should be automatic, i.e. require a minimal amount of manual input.
-Automating domain decomposition helps separating concerns between domain scientists and computer scientists.
+Automating domain decomposition helps to separate concerns between domain scientists and computer scientists.
 
 Therefore, the thesis focuses on the creation of an automatic domain decomposition library addressing these problems.
 
 \subsection{Background}
 Most scientific or engineering codes that model and simulate natural phenomena require more computational resources than a single processing unit can provide.
-Distributed systems, such as high performance clusters, are a common way to provide the necessary resources for complex simulations.
+Distributed systems, such as high-performance clusters, are a common way to provide the necessary resources for complex simulations.
 However, porting such codes from their usually serial form to codes that run in parallel on distributed systems creates several challenges.
-These challenges are generally outside the scope of the domain specific developers.
+These challenges are generally outside the scope of the domain-specific developers.
 
 Decomposing the computational domain and distributing it to the processing units is one of these challenges.
 
 \subsubsection{Distributed heterogeneous systems}
-Distributed systems have been used for decades in high performance computing (HPC) to compute simulations for various scientific fields.
+Distributed systems have been used for decades in high-performance computing (HPC) to perform simulations for various scientific fields.
 A more recent development is the introduction of accelerator devices e.g. graphics processing units (GPU) to the nodes in HPC clusters.
 These accelerator devices bring enormous computational power with their large number of cores for throughput-critical computations.
 But their architecture is different compared to CPUs for latency-critical applications.
@@ -79,16 +79,16 @@ However, relaxing the constraint to roughly equal instead of exactly equal parti
 
 A general overview and comparison between different graph partitioning algorithms can be found in \citet{karypis1998fast}.
 Specifically, Table 9 illustrates different criteria for useful graph partitioning and how each algorithm ranks in them.
-Even though this paper is a few years old, both of the most common graph partitioning libraries, METIS \footnote{\href{http://glaros.dtc.umn.edu/gkhome/views/metis}{http://glaros.dtc.umn.edu/gkhome/views/metis Accessed: 25.9.18}} and SCOTCH \footnote{\href{https://gforge.inria.fr/projects/scotch/}{https://gforge.inria.fr/projects/scotch/ Accessed: 25.9.18}}, are based on the basic algorithms described in the paper.
+Even though this paper is a few years old, both of the most common graph partitioning libraries, METIS \footnote{\href{http://glaros.dtc.umn.edu/gkhome/views/metis}{http://glaros.dtc.umn.edu/gkhome/views/metis Accessed: 25.9.18}} and SCOTCH \footnote{\href{https://gforge.inria.fr/projects/scotch/}{https://gforge.inria.fr/projects/scotch/ Accessed: 25.9.18}}, are both based on the basic algorithms described in the paper.
 
 While conceptually very similar the algorithms in these libraries differ in their mathematical description and their modeling approach.
 
 \subsubsection{SCOTCH library}
 The SCOTCH library models the problem as a set of two graphs:
 a valuated, undirected source graph $S(V, E)$ representing the parallel processes (vertices) and communication channels (edges). And a not-valuated target graph $T(V, E)$ representing the topology of the target machine.
-The target graph is not valuated because it assumes an homogeneous architecture.
+The target graph is not valuated because it assumes a homogeneous architecture.
 
-To solve the graph partitioning on these two graphs, the SCOTCH library employs a dual recursive bipartitioning algorithm.
+To solve the graph partitioning on these two graphs, the SCOTCH library employs a dual recursive bi-partitioning algorithm.
 This algorithm is formulated by \citet{pellegrini1994static} in the following way:
 
 The goal of a mapping is then defined as:
@@ -105,6 +105,7 @@ where $c\left(e_S\right)$ is the value of the edge (i.e. the communication cost)
 \subsubsection{METIS library}
 The older METIS library was developed on the basis of a multilevel bipartitioning algorithm.
 In their model, a single valuated, undirected source graph is partitioned, assuming that the target architecture has uniform cost for any communication between two processes.
+Consequently, if METIS is used to model both inter- and intra- node on a cluster communication at the same time then METIS will assume incorrectly that the communication between each processing unit is uniform.
 However, the graph partitioning algorithm in the METIS library has been expanded, as explained in \citet{karypis1998multilevel}, to allow multiple constraints to be balanced.
 
 \subsection{Source graph generation for stencil codes}
@@ -140,9 +141,9 @@ Maintaining such large codes for the ever-changing HPC environment is challengin
 The GridTools library provides a domain specific language (DSL) designed to reduce this effort for stencil codes.
 The main method of the GridTools DSL is to separate the concerns of the scientific model developers (domain experts) from the concerns of the computer scientists (HPC experts).
 Separation is accomplished by letting the domain experts use the DSL in their model development process without the need to think about performance.
-At the same time, computer scientist no longer need to understand the complete details of the model but instead can focus on optimizing the core computations used in stencil codes for different programming models and architectures as separate back-end of the GridTools DSL.
+At the same time, computer scientists no longer need to understand the complete details of the model but instead can focus on optimizing the core computations used in stencil codes for different programming models and architectures as a separate back-end of the GridTools DSL.
 
-The GridTools DSL is written in C++, while domain scientist are often more familiar with higher level languages or simple Fortran as a language close to the mathematical formulations of their models.
+The GridTools DSL is written in C++, while domain scientists are often more familiar with higher level languages or simple Fortran as a language close to the mathematical formulations of their models.
 An additional DSL for Python (GT4Py) aims to overcome this programming language barrier for domain scientist.
 GT4Py adds an additional abstraction layer on top of the GridTools DSL so that domain scientists can use the simple and expressive Python syntax for model development without losing the advantages of the low-level optimizations of the GridTools back-end.
 
@@ -163,14 +164,14 @@ This includes unit tests, continuous integration (CI), version control system, c
 
 \subsubsection{Communication library}
 The communication between processors is a significant part of computations involving domain decomposition.
-Using a high quality communication library is therefore important.
+Using a high-quality communication library is therefore important.
 Message Passing Interface (MPI) is the leading standard for distributed systems.
 The communication model of MPI matches very well with finite difference computations and has been used in various finite difference implementations.
 
 In the context of Python, this thesis will make use of the MPI for Python (MPI4Py) library, which provides bindings for MPI in Python.
 MPI4Py is open source, and as described in \cite{dalcin2005mpi} supports the most important MPI communications, namely point-to-point, as well as collective communications of general Python objects.
 
-Furthermore MPI4Py supports one-sided MPI.
+Furthermore, MPI4Py supports one-sided MPI.
 One-sided MPI is the remote memory access (RMA) communication model of MPI.
 One-sided MPI allows processes to expose part of their memory to other processes, in order for them to directly write or read from this memory.
 In contrast to the two-sided communication model, this allows the decoupling of data movement and process synchronization.
@@ -190,8 +191,9 @@ As mentioned in the state of the art review section \ref{sec:relwork} the two mo
 
 \subsection{Structure of the thesis}
 The remainder of this thesis is split into three additional sections.
-In the next section the domain decomposition approach is described and basic model for the source graph generation is explained in detail.
+In the next section, the domain decomposition approach is described and a basic model for the source graph generation is explained in detail.
 
-The section after that documents the design, implementation, and user facing functionality of the domain decomposition library developed during this thesis.
+The section after that documents the design, implementation, and user-facing functionality of the domain decomposition library developed during this thesis.
 
-The last section showcases the domain decomposition in two case studies used to validate the implemenetation and experiment with the performance and scalability of the domain decomposition library.
+The last section showcases the domain decomposition in two case studies used to validate the implementation and experiment with the performance and scalability of the domain decomposition library.
+

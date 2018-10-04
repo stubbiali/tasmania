@@ -223,9 +223,12 @@ class DomainSubdivision:
          positive y-direction, negative y-direction,
          positive z-direction, negative z-direction,] overlap region
          i.e. boundary values for neighbor and outermost interior values for this subdivision
-         Differs from send_slices in order of indices only, because TODO good explanation for this
+         Differs from send_slices in order of indices only, because it is designed to loop over directions and
+         a local copy in x-direction needs the opposite boundary of that neighboring subdivision than the
+         boundary that the local subdivisions wants to send that same neighbor.
 
-        get_global:
+        get_global: Indices of the halo region for a global, boundary condition file
+        i.e. incorporates global coordination into boundary indices calculation.
 
 
         :param fieldname: Name of the field.
@@ -893,10 +896,16 @@ class DomainDecomposition:
         # If there are more than one MPI processors: remove subdivisions of other partitions from list
         if MPI.COMM_WORLD.Get_size() > 1:
             temp_list = []
+            count = 0
             for sd in self.subdivisions:
                 if sd.partitions_id == MPI.COMM_WORLD.Get_rank():
+                    count += 1
                     temp_list.append(sd)
             self.subdivisions = temp_list
+            if count == 0:
+                    warnings.warn("At least one partition has no subdivision.", RuntimeWarning)
+
+
 
         # Register all subdivisions to each other.
         # Needed to easily communicate / copy between the local (same partition) subdivisions.

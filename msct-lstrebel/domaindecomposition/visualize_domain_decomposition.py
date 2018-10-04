@@ -236,18 +236,36 @@ class VisualizeDomainDecomposition:
         ax.voxels = types.MethodType(voxels, ax)
         ax.voxels(filled, facecolors=colors, edgecolors='k', internal_faces=True, linewidth=0.5)
 
-        ax.set_title("Domain decomposition of \n{0:d}x{1:d}x{2:d} subdivisions "
-                     "into {3:d} partitions".format(self.domain[0], self.domain[1], self.domain[2],
-                                                    1 + int(np.max(self.values))), loc="left")
+        #ax.set_title("Domain decomposition of \n{0:d}x{1:d}x{2:d} subdivisions "
+        #             "into {3:d} partitions".format(self.domain[0], self.domain[1], self.domain[2],
+        #                                            1 + int(np.max(self.values))), loc="left")
 
         ax.grid(which='major', axis='both', linestyle='-', color='k', linewidth=1.5)
+        # ax.legend(labels=["Greina4", "Greina6", "Greina8", "Greina11", "Greina15", "Greina16", "Greina31" "Greina32"])
+
+        ax.text2D(x=0.97, y=1.0, s="Greina6", transform=ax.transAxes,
+                bbox=dict(facecolor=cmap(0 / self.values.max()), alpha=1.0))
+        ax.text2D(x=0.97, y=0.9, s="Greina17", transform=ax.transAxes,
+                bbox=dict(facecolor=cmap(1 / self.values.max()), alpha=1.0))
+        ax.text2D(x=0.97, y=0.8, s="Greina31", transform=ax.transAxes,
+                bbox=dict(facecolor=cmap(2 / self.values.max()), alpha=1.0))
+        ax.text2D(x=0.97, y=0.7, s="Greina32", transform=ax.transAxes,
+                bbox=dict(facecolor=cmap(3 / self.values.max()), alpha=1.0))
+        # ax.text2D(x=0.97, y=0.6, s="Greina15", transform=ax.transAxes,
+        #         bbox=dict(facecolor=cmap(4 / self.values.max()), alpha=1.0))
+        # ax.text2D(x=0.97, y=0.5, s="Greina16", transform=ax.transAxes,
+        #         bbox=dict(facecolor=cmap(5 / self.values.max()), alpha=1.0))
+        # ax.text2D(x=0.97, y=0.4, s="Greina31", transform=ax.transAxes,
+        #         bbox=dict(facecolor=cmap(6 / self.values.max()), alpha=1.0))
+        # ax.text2D(x=0.97, y=0.3, s="Greina32", transform=ax.transAxes,
+        #         bbox=dict(facecolor=cmap(7 / self.values.max()), alpha=1.0))
 
         # ax.set_xticks(np.arange(0.0, self.domain[0], 1))
         # ax.set_xticklabels(np.arange(0, self.domain[0], 1), size='small')
         #
         # ax.set_yticks(np.arange(0.0, self.domain[1], 1))
         # ax.set_yticklabels(np.arange(0, self.domain[1], 1), size='small')
-        #
+
         ax.set_zticks(np.arange(0, self.domain[2]+1, 1))
         ax.set_zticklabels(np.arange(0, self.domain[2]+1, 1))
         ax.set_zlim(0, 1.5)

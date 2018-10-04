@@ -9,7 +9,7 @@ The base implementation of each test case was provided by Stefano Ubbiali writte
 Burger's equation is a well-known nonlinear partial differential equation.
 Burger's equation can be used to model various physical phenomena.
 Most commonly it is used as a model for traffic flow or shock waves in a fluid.
-Additionally it is widely used to test numerical schemes since it has analytical solutions for a set of initial conditions.
+Additionally, it is widely used to test numerical schemes since it has analytical solutions for a considerable set of initial and boundary conditions.
 
 \subsubsection{Case description}
 \label{sec:case_description}
@@ -24,10 +24,10 @@ The two-dimensional, viscid Burger's equation is given by the following system o
 \end{split}
 \end{equation}
 
-These two equations characterize the Burger equation as a set of equations for the velocity in x and y direction.
+These two equations characterize the Burger equation as a set of equations for the velocity in x- and y-direction.
 Both equations consist of two parts.
-On the left hand side, the advection of the velocity itself.
-On the right hand side, the diffusion caused by viscosity.
+On the left-hand side, the advection of the velocity itself.
+On the right-hand side, the diffusion caused by viscosity.
 
 To complete the full description of the Burger equation the initial and boundary conditions are generally given in the following form:
 
@@ -173,8 +173,8 @@ To show some variance and flexibility three stencils can be used to solve the te
 The forward-backward stencil combines forward finite differences to compute the time derivatives with backward finite differences to compute the first-order space derivatives and a second-order centered scheme to compute the second-order derivatives.
 See Fig. \ref{fig:fb_stencil} for a visual representation of this stencil.
 
-The other two stencil are called upwind schemes, since they use the values only from the direction the velocity is coming from.
-The first-order upwind scheme uses the directly neighboring grid points like the forward-backward stencil.
+The other two stencils are called upwind schemes since they use the values only from the direction the velocity is coming from.
+The first-order upwind scheme uses the direct neighboring grid points like the forward-backward stencil.
 The difference is that only the values from upwind are used in the actual computation for the next value.
 See Fig. \ref{fig:upwind_stencil} for a visual representation of this stencil.
 
@@ -201,7 +201,7 @@ See Fig. \ref{fig:upwind_third_stencil} for a visual representation of this sten
   \caption{Upwind third order}
   \label{fig:upwind_third_stencil}
 \end{subfigure}
-\caption{Schematic representation for three possible stencils for the Burger's equation. The large gray circle indicate the grid points necessary for the computation of the Laplacian for the diffusion part of the Burger's equation. The small dark gray circle indicate grid points necessary for the backward finite difference. The red and blue small circles indicate grid points needed for the upwind computations in the case of positive velocity or negative velocity respectively.}
+\caption{Schematic representation for three possible stencils for the Burger's equation. The large gray circles indicate the grid points necessary for the computation of the Laplacian for the diffusion part of the Burger's equation. The small dark gray circles indicate grid points necessary for the backward finite difference. The red and blue small circles indicate grid points needed for the upwind computations in the case of positive velocity or negative velocity respectively. In this graphic up and left is the negative and right and down is the positive direction.}
 \label{fig:burger_stencils}
 \end{figure}
 
@@ -210,9 +210,9 @@ Changing stencil computation from serial to distributed can cause various errors
 Therefore, it is important to validate the solutions obtained using the domain decomposition library against reference solutions.
 
 \paragraph{Comparison with the exact solution} is a useful tool to validate any stencil code.
-The Burger's equation and specifically the Zhao setup presented before provide such reference and exact solutions.
+The Burger's equation and specifically the Zhao setup presented before provides such reference and exact solutions.
 
-Figure \ref{fig:burgers_validation} shows these validation results. The first four plots in Fig. \ref{fig:burgers_validation} show the spatial distribution of the error of either the domain decomposed solution (left panel) or the reference solution (right panel).
+Figure \ref{fig:burgers_validation} shows these validation results. The plots in the uppermost two rows in Fig. \ref{fig:burgers_validation} show the spatial distribution of the error of either the domain decomposed solution (left panel) or the reference solution (right panel).
 This is an actual error since it compares the computed solutions against the analytical, exact solution.
 
 This comparison is done to verify that the addition of internal boundaries between subdivisions does not add to the spatial error distribution of the computation.
@@ -223,7 +223,7 @@ There is a difference between the reference solution and the domain decomposed s
 The spatial distribution of this difference is not identical between the velocity u (shown in Fig. \ref{fig:burgers_val5}) and velocity v (shown in Fig. \ref{fig:burgers_val6})
 
 Not shown here is a plot comparing different setups of the domain decomposed solution e.g. the difference between all subdivisions belonging to the same partition (i.e. only local communication) and subdivisions belonging to multiple partitions (i.e. MPI communication).
-These plots are not shown because they would show no spatial distribution and instead a difference of zero everywhere.
+These plots are not shown because they would show no spatial distribution and but rather a difference of zero everywhere.
 Meaning that for the same number of subdivisions the way of communicating their boundaries between each other has no influence on the computation and produces bit-identical results as expected.
 
 \begin{figure}[!htbp]
@@ -268,7 +268,7 @@ Meaning that for the same number of subdivisions the way of communicating their 
 \end{subfigure}
 \caption{Burger's equation Zhao Setup. 
 Exact solution refers to the analytical solution shown in Eq. \ref{eq:exact_solution}.
-Reference refers to solutions computed using the original, serial Python and GridTools4Py version.
+Reference refers to solutions computed using the original, serial GridTools4Py version.
 Lastly, domain decomposed solution refers to solutions computed using the domain decomposition library.
 The domain size for this validation is 100 by 100 grid points and the computations are run for 1000 time steps.
 }
@@ -279,7 +279,7 @@ The domain size for this validation is 100 by 100 grid points and the computatio
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{Absolute_Error_Time_Evolution.png}
-\caption{Time evolution of the absolute error in a Burger's equation Zhao setup for the reference code and a few different versions of the domain decomposed code.}
+\caption{Time evolution of the sum of the absolute errors for each grid point in a Burger's equation Zhao setup for the reference code and a few different versions of the domain decomposed code.}
 \label{fig:burgers_time_evolution}
 \end{figure}
 
@@ -288,25 +288,25 @@ The previous plots have focused on the spatial distribution of differences becau
 However, changing the code from serial to domain decomposed could potentially introduce erroneous numerical diffusion.
 Such an error would increase over many time steps.
 Therefore, Fig. \ref{fig:burgers_time_evolution} shows that the error does not increase in later time steps.
-The absolute error shown here in fact decreases over time since the solution as a whole decreases over time due to physical diffusion in the Burger's equation.
+The absolute error shown here, in fact, decreases over time since the solution as a whole decreases over time due to physical diffusion in the viscid Burger's equation.
 
 The time evolution of the error in Fig. \ref{fig:burgers_time_evolution} was measured for the reference solution, a 4 subdivision and 16 subdivision solutions with only local communication, as well as a 16 subdivision solution with MPI communication.
-However, the behavior of the absolute error over time is so similar between all of these that in the lines in Fig. \ref{fig:burgers_time_evolution} overlap for all u velocity solutions and all v velocity solutions.
+However, the behavior of the absolute error over time is so similar between all of these that the lines in Fig. \ref{fig:burgers_time_evolution} overlap for all u velocity solutions and all v velocity solutions.
 
 The difference to the exact solution has a spatial distribution because it originates in the discretization of the analytical initial condition and computations.
 This relationship between the error and the grid discretization can be used to validate the domain decomposed solutions by performing a grid refinement study.
 
 \paragraph{Grid refinement study} is a method to validate code most commonly used in computational fluid mechanics.
-In a grid refinement study the error of a computation is calculated on various grid sizes that are made smaller by a factor.
+In a grid refinement study, the error of a computation is calculated on various grid sizes that are made smaller by a factor.
 It is most common to half the grid spacing per measurement.
 If this refinement is done in the asymptotic range of convergence for a stencil then the leading term of the truncation error dominates the overall error.
-This means that if error for each grid spacing is plotted in a log-log plot the slope of the line is the measured order of accuracy and if the implementation is correct should be equal to the theoretical order of accuracy of the stencil.
+This means that if the error for each grid spacing is plotted in a log-log plot the slope of the line represents the measured order of accuracy, which, if the implementation is correct, should be equal to the theoretical order of accuracy of the stencil.
 
 Figure \ref{fig:grs} shows such a grid refinement study for the Burger's equation Zhao setup.
-Note that both the forward-backward and the upwind stencil have an order of accuracy of 2.
+Note that both the forward-backward and the upwind stencil have an order of accuracy of 1.
 The upwind third-order stencil should have, as the name suggests, an order of accuracy of 3.
 However, this is only the order of accuracy of the spatial stencil.
-Since the Burger's equation Zhao setup uses a very simple first-order in time discretization the measured order of accuracy for the third-order upwind scheme is limited by the time discretization.
+Since this implementation uses a very simple first-order time discretization, the measured order of accuracy for the third-order upwind scheme is limited by the time discretization.
 
 \begin{figure}[!htbp]
 \centering
@@ -339,54 +339,219 @@ The following paragraphs outline the setup and results of a few experiments cond
 
 \paragraph{Baseline and limits}
 The baseline for all scaling experiments is the serial GridTools4Py code.
-By running this stencil code on increasing grid sizes the limit for the serial baseline is determined to be somewhere between grids of size 24 thousand by 24 thousand (576 million grid points) and 32 thousand by 32 thousand (1.024 billion grid points).
-The baseline can compute results for the 24 thousand squared grid but runs into memory errors for the 32 thousand squared grid.
+By running this Burger's equation solver with the previously described Zhao setup on increasing grid sizes the limit for the serial baseline is determined to be somewhere between grids of size 24 thousand by 24 thousand (576 million grid points) and 32 thousand by 32 thousand (1.024 billion grid points).
+The baseline can compute results for the $24000 \times 24000$ grid but runs into memory errors for the $32000 \times 32000$ grid.
 
 The baseline code allocates 2 grid sized NumPy arrays for the grid spacing used in the boundary condition computation and 6 grid sized NumPy arrays for the two velocity fields.
-These NumPy arrays use \texttt{np.float64} for their data type which uses 8 byte per array item.
+These NumPy arrays use \texttt{np.float64} for their data type which uses 8 bytes per array item.
 So in theory the baseline should use $24000 \cdot 24000 \cdot 8 \cdot 8 \text{B} = ~34.33 \text{GB}$ of memory for the fields.
 
 However, the SLURM scheduling system on Greina reports for the 24 thousand by 24 thousand test case much larger memory usage.
 Specifically, it reports a maximum resident set size (maxRSS) of ~60.73 GB and a maximum virtual memory size (maxVMSize) of ~74.24 GB.
 Which, is consistent with the observation that for larger grids the baseline runs out of memory for nodes with 64 GB of memory.
 
-This difference of a roughly a factor 2 between theoretical memory usage and measured memory usage is mostly likely a result of the non-optimized, prototype GridTools4Py NumPy back-end as the only available back-end during this thesis.
+This difference of a roughly a factor 2 between theoretical memory usage and measured memory usage is most likely a result of the non-optimized, prototype GridTools4Py NumPy back-end as the only available back-end during this thesis.
 At a later time this back-end NumPy back-end will be replaced by the actual performance optimized C++ back-end of GridTools.
 
-Therefore, the scalability experiments using this test case have a hard memory limit of 24 thousand by 24 thousand grid points per node.
+Therefore, the scalability experiments using this test case have a hard memory limit of $24000 \times 24000$ grid points on nodes with 64 GB of memory.
 This memory limit also restricts the scope of the scalability experiments.
-For strong scaling having a baseline of just 24 thousand by 24 thousand grid points combined with a non-optimized back-end results in very unsatisfactory strong scaling efficiency for experiments using multiple nodes and multiple processing units per node.
+For strong scaling having a baseline of just $24000 \times 24000$ grid points combined with a non-optimized back-end creates unsatisfactory strong scaling efficiency for experiments using multiple nodes and multiple processing units per node.
+Examples of strong scaling on various different hardware are presented in the next subsection.
 
 Additionally, the advantages of domain decomposition should present more clearly in weak scaling since domain decomposition is mainly used to make it feasible to run stencil codes on grids that are larger than the memory of a single node.
 
 \paragraph{Weak scaling}
+For the weak scaling experiments the grid size per node was kept constant at $24000 \times 24000 = 576000000$.
+The experiments were performed on 1, 2, 4, and 8 nodes on the Greina system of CSCS.
+Figure \ref{fig:burgers_weakscaling} shows the results for 2, 4, 8, or 16 tasks per node.
+After the initial increase in time when scaling from a single node to multiple nodes the times stay more or less constant as expected.
 
+The decrease in runtime from single to 2 nodes for the 16 tasks per node experiment is an outlier and is probably the result of the heterogeneous nodes on Greina i.e. the hardware variation on the nodes influence the performance of the weak scaling and not just the performance of the domain decomposition library.
+
+The heterogeneous nature of the nodes on Greina is explored more thoroughly in the next set of experiments.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{Weak_scaling.png}
+\caption{Weak scaling for different number of tasks per node run on 1, 2, 4, and 8 nodes.}
+\label{fig:burgers_weakscaling}
+\end{figure}
 
 \newpage
-\subsection{Case 2: Burger's equation for a small example of  heterogeneous load balancing}
-Part of the motivation to use graph partitioning methods for domain decomposition was that these methods can balance heterogeneous loads.
-This sections outlines how the domain decomposition library can be used to distribute subdivisions balanced for heterogeneous systems.
+\subsection{Case 2: Burger's equation with heterogeneous load balancing}
+Part of the motivation to use graph partitioning methods for domain decomposition is that these methods can balance heterogeneous loads.
+This section outlines how the domain decomposition library can be used to distribute subdivisions balanced for heterogeneous systems.
+
+\begin{table}[!htbp]
+\centering
+\ra{1.5}
+\begin{tabular}{l r r r}
+\toprule
+Name & Memory [GB] & CPUs [\#] & CPU frequency [GHz] \\
+\midrule
+greina4 & 64 & 18 & 2.3 \\
+greina6 & 64 & 12 & 2.2 \\
+greina8 & 64 & 10 & 2.2 \\
+greina11 & 128 & 24 & 2.2 \\
+greina13 & 128 & 24 & 2.5 \\
+greina14 & 128 & 24 & 2.5 \\
+greina15 & 128 & 32 & 2.1 \\
+greina16 & 128 & 64 & 2.1 \\
+greina17 & 64 & 12 & 3.5 \\
+greina28 & 128 & 40 & 2.2 \\
+greina31 & 196 & 64 & 2.1 \\
+greina32 & 196 & 64 & 2.1 \\
+\bottomrule
+\end{tabular}
+\caption{Performance statistics of the various Greina nodes used in these experiments.}
+\label{tab:greina_nodes}
+\end{table}
+
+\subsubsection{Heterogeneous system:}
+The Greina cluster at CSCS is such a heterogeneous system.
+Table \ref{tab:greina_nodes} outlines the various hardware and performance differences between nodes.
+
+To determine the factors to balance the load on these nodes, single node strong scaling experiments were performed.
+In these single node experiments, the domain size was again fixed to $24000 \times 24000$.
+For strong scaling, the domain size stays constant even for an increased number of processing units.
+For each node, the number of tasks was increased by a factor of 2 from the single, reference task up to 128 tasks.
+
+Figure \ref{fig:singlenode} shows the large differences between the performance speedup of various nodes.
+This figure also shows the fast flattening of the speedup for this small problem size.
+
+Nonetheless, the measurements used to generate Fig. \ref{fig:singlenode} was also used to determine the best configuration for the heterogeneous load for each node shown in Table \ref{tab:taskspernode}.
+
+It is noteworthy, that the tasks per node with the best speedup on many nodes exceeds the number of CPUs.
+This can be seen as evidence that processing units are idle if only one task is assigned to them.
+This is most likely the result of a non-efficient overlap between the communication and computation caused by the implementation of the domain decomposition library.
+Efficiently overlapping communication and computation is a key part of performance scaling in multi-node stencil codes.
+
+\begin{figure}[ht]
+\includegraphics[width=1.1\linewidth]{Speed-up.png}
+\caption{Strong scaling - speedup for the various Greina nodes.}
+\label{fig:singlenode}
+\end{figure}
+
+\begin{table}[!htbp]
+\centering
+\ra{1.5}
+\begin{tabular}{l r r r}
+\toprule
+Name & Tasks per Node with best speedup \\
+\midrule
+greina4 & 8 \\
+greina6 & 8 \\
+greina8 & 16 \\
+greina11 & 16 \\
+greina13 & 16 \\
+greina14 & 64 \\
+greina15 & 32 \\
+greina16 & 32 \\
+greina17 & 16 \\
+greina28 & 16 \\
+greina31 & 32 \\
+greina32 & 32 \\
+\bottomrule
+\end{tabular}
+\caption{Table of the task per node ratio that reached the best speedup in the single node experiments.}
+\label{tab:taskspernode}
+\end{table}
+
+\subsubsection{Dynamic load balancing - procedure:}
+Performing domain decomposition for heterogeneous systems requires a few manual steps outlined in the following paragraph.
 
 The Metis graph partition library can balance heterogeneous loads according to target weights.
 These target weights have to be specified by the user in a simple text file with the following structure:
 \\
-partition\_1 = .p1
+partition\_1 - partition\_x = .p1
 \\
-partition\_2 = .p2
+partition\_y - partition\_z = .p2
 \\
 ...
 \\
-Where p1 and p2 are percentages of the total load that should be partitioned into the corresponding partition.
+Where partition\_number correspond to MPI ranks and therefore the range of partitions should be the size of the number of tasks assigned to that particular node.
+Therefore, the file will contain one line for each node with partition ranges increasing by the number of tasks assigned to that node.
+The right-hand side i.e. p1 and p2 are percentages of the total load that should be partitioned into the corresponding partition ranges.
 
 These percentages are the main parameter for heterogeneous load balancing.
-They have to be determined based on both the case and the hardware that the partitions will run on.
+With the target weights, the Metis library can be called with the option \texttt{-tpwgts}.
+Unfortunately, PyMetis does not support the target weight option currently.
+Therefore, this step requires the actual Metis library.
+Then the domain decomposition library pre-process has to save the source graph in the Metis format.
+Once the pre-process produces the Metis formatted source graph, the partitioning can be done with the following command:
+\\
+\texttt{gpmetis subdomains\_metis.dat np -tpwgts="target\_weights.dat" -contig}
+\\
+where \texttt{np} is the total number of partitions i.e. tasks.
+
+The Metis library then produces a partitioning file in the same format as PyMetis would.
+
+In addition to the dynamic load balanced partitioning file also the cluster scheduler and MPI need files to use the correct load balancing.
+Specifically, MPI needs the list of nodes to use and the cluster scheduler needs to assign the correct MPI ranks to the correct node.
+
+On Greina with the job scheduler SLURM this can be achieved by allocating the nodes without a specific program (using \texttt{salloc}) and once the nodes are assigned using \texttt{mpiexec -hostfile dynload\_hostfile} to start the python program using MPI with the specified task distribution.
+
+The host file (e.g. \texttt{dynload\_hostfile} in the example) needs to be a file that contains the nodes to be used in the same order as in the weights file followed by the number of tasks that should be assigned to them.
+The exact format depends on the \texttt{mpiexec} implementation.
+For MPICH the host file format to assign the first 32 tasks to greina6 and another 32 tasks to greina32 is:
+
+\begin{lstlisting}[language=bash]
+  $ cat dynload_hostfile_mpich
+  $ greina6:32
+  $ greina32:32
+\end{lstlisting}
+
+compared to the same assignment in a OpenMPI hostfile:
+
+\begin{lstlisting}[language=bash]
+  $ cat dynload_hostfile_openmpi
+  $ greina6 slots=32
+  $ greina32 slots=32
+\end{lstlisting}
+
+
+\subsubsection{Example results}
+The following example showcases the heterogeneous load balancing in a simple two node setup.
+
+From the range of single node experiments, it can be determined that the node called greina32 is roughly three times as powerful as the node called greina6.
+This performance difference is compared for the number of tasks that give both of them the best performance.
+For greina6 this is after 8 tasks and for greina32 this is after 32 tasks.
+If more than 8 tasks are assigned to greina6 the performance does not significantly decrease.
+Therefore, to have a large difference in compute power greina6 and greina32 are given 32 tasks.
+
+The domain is split into 256 subdivisions of size 1500 by 1500.
+In the uniformly weighted, normal setup this leads to 128 subdivisions assigned to tasks run on greina6 and 128 subdivisions assigned to task run on greina32.
+This is visualized in Fig. \ref{fig:uniform_balance}.
+
+The weights for greina6 or greina32 are calculated as power ratio divided by the number of tasks on the node. 
+Specifically, $ \left(1 / 4\right) / 32 = 0.0078125$ for greina6 and $\left(3 / 4\right) / 32 = 0.023925781$ for greina32.
+
+Graph partitioning with these weights results in a distribution as illustrated in Fig. \ref{fig:weighted_balance}.
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{heterogeneous_uniform_balance.png}
+  \caption{Domain decomposition for uniform weights on tasks for both nodes.}
+  \label{fig:uniform_balance}
+\end{subfigure} \hfill
+\begin{subfigure}[t]{\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{heterogeneous_weighted_balance.png}
+  \caption{Domain decomposition for weighted balance 3 to 4 for greina32.}
+  \label{fig:weighted_balance}
+\end{subfigure}
+\label{fig:dynamic_distributions}
+\caption{Visualization of domain decompositions, colored are not all partitions but all combined partitions for a particular node i.e. red for greina6 and grey for greina32.}
+\end{figure}
 
 
 
 \newpage
 \subsection{Case 3: Shallow Water Equations on a Sphere (SWES)}
-The shallow water equations are like the Burger's equation a well known set of equations used widely in testing and studying implementation of numerical methods.
-The shallow water equation are used to compute the velocities and height of a homogeneous, incompressible, and inviscid shallow layer of fluid.
+The shallow water equations are like the Burger's equation a well-known set of equations used widely in testing and studying the implementation of numerical methods.
+The shallow water equations are used to compute the velocities and height of a homogeneous, incompressible, and inviscid shallow layer of fluid.
 
 \subsubsection{Case description}
 The shallow water equations consist of two horizontal momentum equations and one mass continuity equation.
@@ -403,16 +568,18 @@ These equations can be written in many forms, for example the advective form for
 where $f$ is the Coriolis parameter, $g$ is the gravitational constant, and $a$ is the radius of the sphere e.g. the radius of Earth.
 
 Seven test cases are outlined in \citet{williamson1992standard} to facilitate standardized testing of the shallow water equation solvers.
-A modified version of two of these were used in this thesis.
+Modified versions of two of these test cases were used in this thesis.
 
-The most significant modification is the reduction of complexity by limiting the spherical domain to a band ranging from $85^\circ$ to $-85^\circ$ to avoid more complex pole treatment.
+The most significant modification is the reduction of complexity by limiting the spherical domain to a band ranging from $85^\circ$ to $-85^\circ$ in the latitudinal direction to avoid more complex pole treatment.
 The artificial boundary that is created by this simplification uses Neumann conditions i.e. setting the flux of all fields between the north and south boundaries to zero.
 
-\paragraph{SWES initial conditions 1:}
+The grid uses periodic boundaries in the east and west of the sphere.
+
+\subsubsection{SWES initial conditions 1:}
 The first test case described in the test suite from Williamson is the advection of a cosine bell and is designed to test only the advection component of the shallow water equations.
 
-This is done by prescribing an advecting wind instead of solving the first two equations shown in \ref{eq:swes}.
-Specifically, the two static wind fields and the initial height field are given as:
+This is done by prescribing an advecting wind instead of solving the first two equations shown in Eq. \ref{eq:swes}.
+Specifically, the two stationary wind components and the initial height field are given as:
 
 \begin{equation}
 \label{eq:swes_ic0}
@@ -430,6 +597,21 @@ h \left( \lambda, \theta, t=0 \right) =  \begin{cases}
 \end{equation}
 where $\alpha$ is the angle between the axis of the solid body rotation and the polar axis and is set to $0.0$ for these tests, $h_0$ is set to $1000 m$, $u_0 = 2 \pi a$ for a 12 days period, and $\theta$ and $\lambda$ are the spherical coordinates.
 
+\begin{figure}[ht]
+\begin{subfigure}[t]{.45\textwidth}
+  \includegraphics[width=1.1\linewidth]{swes_ic0_at_t_0.png}
+  \caption{Height field for SWES initial condition 1.}
+  \label{fig:swes_ic0}
+\end{subfigure} \hfill
+\begin{subfigure}[t]{.45\textwidth}
+  \includegraphics[width=1.1\linewidth]{swes_ic0_absdiff_ref_vs_dd_time_avg.png}
+  \caption{Spatial distribution of the absolute difference between reference and domain decomposed solutions averaged over 12 days simulation time.}
+  \label{fig:swes_absdiff}
+\end{subfigure}
+\caption{Shallow Water Equation (SWES) test case 1, initial condition and validation results.}
+\label{fig:swes_ic0_graphs}
+\end{figure}
+
 The cosine bell is created in the following way:
 \begin{equation}
 \label{eq:swes_cosine_bell}
@@ -442,30 +624,94 @@ R = a / 3
 \end{split}
 \end{equation}
 
+This initial cosine bell height field is shown in Fig. \ref{fig:swes_ic0}.
 
-\paragraph{SWES initial conditions 2:}
+
+\paragraph{Advection only stencil:}
+
+As mentioned this test case uses a prescribed wind field and as a consequence has only to use one stencil for the advection of the height field.
+Therefore the advection only Lax-Wendroff stencil differs from the more involved than the Lax-Wendroff stencil for the second test case, which also updates the velocity field components.
+For the advection of the height field, this test case computes the steering velocity components at staggered, mid-points between the grid points.
+The advection only stencil can use the non-staggered velocity fields to compute the height field at the same mid-points.
+The staggered velocity fields are then used in combination with these intermediate mid-point height field values to advect the non-staggered height field accordingly.
+
+In total, this stencil uses 10 fields to perform the advection, including grid spacing fields needed due to the grid layout on the sphere.
+
+\paragraph{Validation}
+The test case is set up so that the cosine bell moves around the sphere in 12 days.
+For this test case, the correct solution is the same as the initial condition, after 12 days of passive transport due to the periodicity in the longitudinal direction.
+The comparison with the result from the reference code is used to validate the domain decomposed version.
+
+The time-averaged spatial distribution of the difference between the reference and domain decomposed solutions can be seen in Fig. \ref{fig:swes_absdiff}.
+Figure \ref{fig:swes_absdiff} clearly shows that there is a difference between the two versions that grows in time and is localized to the path of the cosine bell.
+However, the difference is many magnitudes smaller than the values of the height field and therefore falls into the error tolerance of the solution.
+
+\subsubsection{SWES initial conditions 2:}
 The second setup used is the third test case in the test suite from Williamson and describes a steady state nonlinear zonal geostrophic flow with compact support.
 
-The setup of the two initial velocities and height fields in this case involves the following equations:
+The setup of the initial velocity components and height fields in this case involves the following equations:
 \begin{equation}
-\label{eq:swes_ic2}
+\label{eq:swes_ic2_1}
 \begin{split}
-\text{Constants:} \\
-w = 7.848e-6 \\
-K = 7.848e-6 \\
-h0 = 8e3 \\
-R = 4.0 \\
+\text{Initial value constants:} \\
+w &= 7.848e-6 \\
+K &= 7.848e-6 \\
+h0 &= 8e3 \\
+R &= 4.0 \\
 \text{Intermediate values:} \\
-A = 0.5 w \left(2 \omega + w \right) \cos \left( \theta \right)^2 + 0.25 K^2 \cos\left(\theta\right)^{2 R} \\
-\cdot \left( \left(R + 1\right) \cos \left( \theta \right)^2 + \left(2 R^2 - R - 2 \right) - 2 R^2 \cos \left(\theta \right)^{-2} \right) \\
-B = \left(2 \left(\omega + w\right) K\right) \left(\left(R + 1\right) \left(R + 2\right)\right) \\
-\cdot \cos\left(\theta \right) ^ R \left(R ^ 2 + 2 R + 2 - \left(R + 1\right) ^ 2 \cos\left(\theta\right) ^ 2\right) \\
-C = 0.25 K ^ 2 \cos\left(\theta\right) ^{2 R} \left(\left(R + 1\right) \cos\left(\theta\right) ^ 2 - R + 2 \right) \\
+A &= 0.5 w \left(2 \omega + w \right) \cos \left( \theta \right)^2 + 0.25 K^2 \\
+& \cdot \cos\left(\theta\right)^{2 R} \left( \left(R + 1\right) \cos \left( \theta \right)^2 + \left(2 R^2 - R - 2 \right) - 2 R^2 \cos \left(\theta \right)^{-2} \right) \\
+B &= \left(2 \left(\omega + w\right) K\right) \left(\left(R + 1\right) \left(R + 2\right)\right) \\
+& \cdot \cos\left(\theta \right) ^ R \left(R ^ 2 + 2 R + 2 - \left(R + 1\right) ^ 2 \cos\left(\theta\right) ^ 2\right) \\
+C &= 0.25 K ^ 2 \cos\left(\theta\right) ^{2 R} \left(\left(R + 1\right) \cos\left(\theta\right) ^ 2 - R + 2 \right) \\
 \text{Actual initial fields:} \\
-h = h0 + \left( a ^ 2 A + a ^ 2 B \cos\left(R \phi\right) + a ^ 2 C \cos \left(2 R \phi \right)\right)  g \\
-u = a w \cos\left(\theta\right) + a K\cos\left(\theta\right) ^ {R - 1} \left(R \sin\left(\theta\right) ^ 2 - \cos\left(\theta\right) ^ 2\right) \cos\left(R \phi\right) \\
-v = - a K R \cos\left(\theta\right) ^ {R - 1} \sin\left(\theta\right) \sin\left(R \phi\right)
+h &= h0 + \left( a ^ 2 A + a ^ 2 B \cos\left(R \phi\right) + a ^ 2 C \cos \left(2 R \phi \right)\right)  g \\
+u &= a w \cos\left(\theta\right) + a K\cos\left(\theta\right) ^ {R - 1} \left(R \sin\left(\theta\right) ^ 2 - \cos\left(\theta\right) ^ 2\right) \cos\left(R \phi\right) \\
+v &= - a K R \cos\left(\theta\right) ^ {R - 1} \sin\left(\theta\right) \sin\left(R \phi\right)
 \end{split}
 \end{equation}
+
+
+In the end, these equations result in the initial height field shown in Fig. \ref{fig:swes_ic2}.
+
+\paragraph{Lax-Wendroff and diffusion stencil:}
+In contrast to the first SWES test case, this test case uses non-stationary velocity fields.
+Specifically, it uses the well-known Lax-Wendroff method to advect the velocity fields as well as the height field.
+
+In addition, the test case also applies diffusion to the velocity and the height fields.
+The diffusion stencil has a halo extent of 2 in all directions, while the Lax-Wendroff stencil has a halo extent of 1 in all directions.
+Because of this, the global boundary for the diffusion has to be larger than for the Lax-Wendroff stencil.
+The serial, reference code handles this by copying the field values into extended grids before applying the diffusion stencils.
+
+For larger grids, this increases the memory needed drastically.
+Copying the fields in the code that uses the domain decomposition library would also involve manually looping over the local subdivisions and performing the copy for each subdivision separately.
+
+To avoid these inconveniences the domain decomposition version of the SWES code applies the diffusion on a smaller subset of the fields.
+This means the outermost values on the global boundary are not diffused.
+Overall the effect of these non-diffused grid points at the boundary should be insignificant.
+Especially, since the north and south boundary are already an approximation using the Neumann condition.
+
+\begin{figure}[ht]
+\begin{subfigure}[t]{.45\textwidth}
+  \includegraphics[width=1.1\linewidth]{swes_ic2_at_t_0.png}
+  \caption{Height field for SWES initial condition 2.}
+  \label{fig:swes_ic2}
+\end{subfigure} \hfill
+\begin{subfigure}[t]{.45\textwidth}
+  \includegraphics[width=1.1\linewidth]{swes_ic2_diff_ref_vs_dd_time_avg.png}
+  \caption{Spatial distribution of the difference between reference and domain decomposed solutions averaged over 12 days simulation time.}
+  \label{fig:swes_ic2_diff}
+\end{subfigure}
+\caption{Shallow Water Equation (SWES) test case 2, initial condition and validation results.}
+\label{fig:swes_ic2_graphs}
+\end{figure}
+
+\paragraph{Validation:}
+Similar to the first SWES test case the second test does also not provide an analytical solution and is also designed to be periodic with a 12-day cycle.
+
+Figure \ref{fig:swes_ic2_diff} shows the spatial distribution of the difference between the reference and domain decomposed solutions averaged over 12 days.
+Again in contrast to the validation for the Burger's equation, this plot shows a clear spatial distribution of the difference.
+The fact that the largest difference occurs at both the south and north boundary might be an indication that the different methods to apply diffusion has some influence on the overall solution.
+However, also note that again the difference between the two versions is magnitudes smaller than the values of the height field as seen for example in initial conditions shown in the left panel of the same figure.
 
 
