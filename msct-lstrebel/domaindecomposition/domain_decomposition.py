@@ -867,8 +867,7 @@ class DomainDecomposition:
     and make the interface simpler so that the user has to write less boiler plate code.
     """
     def __init__(self, fileinput=None, fileinputformat=None, path="", prefix="", comm_onesided=False):
-        """ Only one DomainDecomposition object should be instantiated for each simulation.
-        (Except each MPI process has of course it's own)
+        """ Only one DomainDecomposition object per MPI process should be instantiated for each simulation.
 
         :param fileinput: Name of the partition file to be used.
         :param fileinputformat: Format of the partition file, can be "metis" or "scotch".
@@ -904,8 +903,6 @@ class DomainDecomposition:
             self.subdivisions = temp_list
             if count == 0:
                     warnings.warn("At least one partition has no subdivision.", RuntimeWarning)
-
-
 
         # Register all subdivisions to each other.
         # Needed to easily communicate / copy between the local (same partition) subdivisions.
