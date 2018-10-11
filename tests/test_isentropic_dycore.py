@@ -1,6 +1,5 @@
 from datetime import timedelta
 import numpy as np
-import os
 import pytest
 from sympl import DataArray
 
@@ -8,7 +7,6 @@ import gridtools as gt
 from tasmania.dynamics.isentropic_dycore import IsentropicDynamicalCore
 from tasmania.physics.microphysics import Kessler, SaturationAdjustmentKessler, \
 										  RaindropFallVelocity
-from tasmania.utils.storage_utils import NetCDFMonitor
 
 
 def test_dry(isentropic_dry_data):
