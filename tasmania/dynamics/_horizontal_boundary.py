@@ -536,23 +536,22 @@ class _Relaxed(HorizontalBoundary):
 		"""
 		super().__init__(grid, nb)
 
-		# The relaxation coefficients
 		dtype = grid.x.values.dtype
-		self._rel  = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=dtype)
+
+		#self._rel  = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=dtype)
+		self._rel = np.array([1., .54, .24, .09, .036, .013, .005, .002], dtype=dtype)
+
+		self._rel[:nb] = 1.
 		self._rrel = self._rel[::-1]
-		self.nr    = self._rel.size
+		self.nr = self._rel.size
 
 		# The relaxation matrices for a x-staggered field
-		self._stgx_s = np.repeat(self._rel[np.newaxis, :],
-								 grid.nx - 2*self.nr + 1, axis=0)
-		self._stgx_n = np.repeat(self._rrel[np.newaxis, :],
-								 grid.nx - 2*self.nr + 1, axis=0)
+		self._stgx_s = np.repeat(self._rel[np.newaxis, :], grid.nx - 2*self.nr + 1, axis=0)
+		self._stgx_n = np.repeat(self._rrel[np.newaxis, :], grid.nx - 2*self.nr + 1, axis=0)
 
 		# The relaxation matrices for a y-staggered field
-		self._stgy_w = np.repeat(self._rel[:, np.newaxis],
-								 grid.ny - 2*self.nr + 1, axis=1)
-		self._stgy_e = np.repeat(self._rrel[:, np.newaxis],
-								 grid.ny - 2*self.nr + 1, axis=1)
+		self._stgy_w = np.repeat(self._rel[:, np.newaxis], grid.ny - 2*self.nr + 1, axis=1)
+		self._stgy_e = np.repeat(self._rrel[:, np.newaxis], grid.ny - 2*self.nr + 1, axis=1)
 
 		# The corner relaxation matrices
 		cnw = np.zeros((self.nr, self.nr), dtype=dtype)
@@ -632,27 +631,35 @@ class _Relaxed(HorizontalBoundary):
 
 		# Apply the relaxed boundary conditions in the x-direction
 		if nj == ny:  # unstaggered
-			phi_new[ :nr, :, :] = self._stgy_w[:, :-1, :nk] * west + \
-								  (1. - self._stgy_w[:, :-1, :nk]) * phi_new[ :nr, :, :]
-			phi_new[-nr:, :, :] = self._stgy_e[:, :-1, :nk] * east + \
-								  (1. - self._stgy_e[:, :-1, :nk]) * phi_new[-nr:, :, :]
+			#phi_new[ :nr, :, :] = self._stgy_w[:, :-1, :nk] * west + \
+			#					  (1. - self._stgy_w[:, :-1, :nk]) * phi_new[ :nr, :, :]
+			#phi_new[-nr:, :, :] = self._stgy_e[:, :-1, :nk] * east + \
+			#					  (1. - self._stgy_e[:, :-1, :nk]) * phi_new[-nr:, :, :]
+			phi_new[ :nr, :, :] -= self._stgy_w[:, :-1, :nk] * (phi_new[ :nr, :, :] - west)
+			phi_new[-nr:, :, :] -= self._stgy_e[:, :-1, :nk] * (phi_new[-nr:, :, :] - east)
 		else:		  # y-staggered
-			phi_new[ :nr, :, :] = self._stgy_w[:, :, :nk]*west + \
-								  (1. - self._stgy_w[:, :, :nk]) * phi_new[ :nr, :, :]
-			phi_new[-nr:, :, :] = self._stgy_e[:, :, :nk]*east + \
-								  (1. - self._stgy_e[:, :, :nk]) * phi_new[-nr:, :, :]
+			#phi_new[ :nr, :, :] = self._stgy_w[:, :, :nk] * west + \
+			#					  (1. - self._stgy_w[:, :, :nk]) * phi_new[ :nr, :, :]
+			#phi_new[-nr:, :, :] = self._stgy_e[:, :, :nk] * east + \
+			#					  (1. - self._stgy_e[:, :, :nk]) * phi_new[-nr:, :, :]
+			phi_new[ :nr, :, :] -= self._stgy_w[:, :, :nk] * (phi_new[ :nr, :, :] - west)
+			phi_new[-nr:, :, :] -= self._stgy_e[:, :, :nk] * (phi_new[-nr:, :, :] - east)
 
 		# Apply the relaxed boundary conditions in the y-direction
-		if ni == nx: # unstaggered
-			phi_new[:,  :nr, :] = self._stgx_s[:-1, :, :nk] * south + \
-								  (1. - self._stgx_s[:-1, :, :nk]) * phi_new[:,  :nr, :]
-			phi_new[:, -nr:, :] = self._stgx_n[:-1, :, :nk]*north + \
-								  (1. - self._stgx_n[:-1, :, :nk]) * phi_new[:, -nr:, :]
-		else:		 # x-staggered
-			phi_new[:,  :nr, :] = self._stgx_s[:, :, :nk] * south + \
-								  (1. - self._stgx_s[:, :, :nk]) * phi_new[:,  :nr, :]
-			phi_new[:, -nr:, :] = self._stgx_n[:, :, :nk] * north + \
-								  (1. - self._stgx_n[:, :, :nk]) * phi_new[:, -nr:, :]
+		if ni == nx:  # unstaggered
+			#phi_new[:,  :nr, :] = self._stgx_s[:-1, :, :nk] * south + \
+			#					  (1. - self._stgx_s[:-1, :, :nk]) * phi_new[:,  :nr, :]
+			#phi_new[:, -nr:, :] = self._stgx_n[:-1, :, :nk]*north + \
+			#					  (1. - self._stgx_n[:-1, :, :nk]) * phi_new[:, -nr:, :]
+			phi_new[:,  :nr, :] -= self._stgx_s[:-1, :, :nk] * (phi_new[:,  :nr, :] - south)
+			phi_new[:, -nr:, :] -= self._stgx_n[:-1, :, :nk] * (phi_new[:, -nr:, :] - north)
+		else:		  # x-staggered
+			#phi_new[:,  :nr, :] = self._stgx_s[:, :, :nk] * south + \
+			#					  (1. - self._stgx_s[:, :, :nk]) * phi_new[:,  :nr, :]
+			#phi_new[:, -nr:, :] = self._stgx_n[:, :, :nk] * north + \
+			#					  (1. - self._stgx_n[:, :, :nk]) * phi_new[:, -nr:, :]
+			phi_new[:,  :nr, :] -= self._stgx_s[:, :, :nk] * (phi_new[:,  :nr, :] - south)
+			phi_new[:, -nr:, :] -= self._stgx_n[:, :, :nk] * (phi_new[:, -nr:, :] - north)
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
@@ -724,15 +731,17 @@ class _RelaxedXZ(HorizontalBoundary):
 
 		# The relaxation coefficients
 		dtype = grid.x.values.dtype
-		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=datatype)
+
+		#self._rel  = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=dtype)
+		self._rel = np.array([1., .54, .24, .09, .036, .013, .005, .002], dtype=dtype)
+
+		self._rel[:nb] = 1.
 		self._rrel = self._rel[::-1]
 		self.nr = self._rel.size
 
 		# The relaxation matrices
-		self._stg_w = np.repeat(self._rel[:, np.newaxis, np.newaxis],
-								grid.nz+1, axis=2)
-		self._stg_e = np.repeat(self._rrel[:, np.newaxis, np.newaxis],
-								grid.nz+1, axis=2)
+		self._stg_w = np.repeat(self._rel[:, np.newaxis, np.newaxis], grid.nz+1, axis=2)
+		self._stg_e = np.repeat(self._rrel[:, np.newaxis, np.newaxis], grid.nz+1, axis=2)
 
 	@property
 	def mi(self):
@@ -786,10 +795,12 @@ class _RelaxedXZ(HorizontalBoundary):
 		east  = np.repeat(phi_now[-1:, :, :], nr, axis=0)
 
 		# Apply the relaxed boundary conditions in the x-direction
-		phi_new[ :nr, :, :] = self._stg_w[:, :, :nk] * west + \
-							  (1. - self._stg_w[:, :, :nk]) * phi_new[ :nr, :, :]
-		phi_new[-nr:, :, :] = self._stg_e[:, :, :nk] * east + \
-							  (1. - self._stg_e[:, :, :nk]) * phi_new[-nr:, :, :]
+		#phi_new[ :nr, :, :] = self._stg_w[:, :, :nk] * west + \
+		#					  (1. - self._stg_w[:, :, :nk]) * phi_new[ :nr, :, :]
+		#phi_new[-nr:, :, :] = self._stg_e[:, :, :nk] * east + \
+		#					  (1. - self._stg_e[:, :, :nk]) * phi_new[-nr:, :, :]
+		phi_new[ :nr, :, :] -= self._stg_w[:, :, :nk] * (phi_new[ :nr, :, :] - west)
+		phi_new[-nr:, :, :] -= self._stg_e[:, :, :nk] * (phi_new[-nr:, :, :] - east)
 
 	def set_outermost_layers_x(self, phi_new, phi_now):
 		"""
@@ -875,17 +886,18 @@ class _RelaxedYZ(HorizontalBoundary):
 		"""
 		super().__init__(grid, nb)
 
-		# The relaxation coefficients
 		dtype = grid.x.values.dtype
-		self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=dtype)
+
+		#self._rel = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=dtype)
+		self._rel = np.array([1., .54, .24, .09, .036, .013, .005, .002], dtype=dtype)
+
+		self._rel[:nb] = 1.
 		self._rrel = self._rel[::-1]
 		self.nr = self._rel.size
 
 		# The relaxation matrices
-		self._stg_s = np.repeat(self._rel[np.newaxis, :, np.newaxis],
-								grid.nz+1, axis=2)
-		self._stg_n = np.repeat(self._rrel[np.newaxis, :, np.newaxis],
-								grid.nz+1, axis=2)
+		self._stg_s = np.repeat(self._rel[np.newaxis, :, np.newaxis], grid.nz+1, axis=2)
+		self._stg_n = np.repeat(self._rrel[np.newaxis, :, np.newaxis], grid.nz+1, axis=2)
 
 	@property
 	def mi(self):
@@ -939,10 +951,12 @@ class _RelaxedYZ(HorizontalBoundary):
 		north = np.repeat(phi_now[:, -1:, :], nr, axis=1)
 
 		# Apply the relaxed boundary conditions in the x-direction
-		phi_new[:,  :nr, :] = self._stg_s[:, :, :nk] * south + \
-							  (1. - self._stg_s[:, :, :nk]) * phi_new[:,  :nr, :]
-		phi_new[:, -nr:, :] = self._stg_n[:, :, :nk] * north + \
-							  (1. - self._stg_n[:, :, :nk]) * phi_new[:, -nr:, :]
+		#phi_new[:,  :nr, :] = self._stg_s[:, :, :nk] * south + \
+		#					  (1. - self._stg_s[:, :, :nk]) * phi_new[:,  :nr, :]
+		#phi_new[:, -nr:, :] = self._stg_n[:, :, :nk] * north + \
+		#					  (1. - self._stg_n[:, :, :nk]) * phi_new[:, -nr:, :]
+		phi_new[:,  :nr, :] -= self._stg_s[:, :, :nk] * (phi_new[:,  :nr, :] - south)
+		phi_new[:, -nr:, :] -= self._stg_n[:, :, :nk] * (phi_new[:, -nr:, :] - north)
 
 	def set_outermost_layers_x(self, phi_new, phi_now=None):
 		pass

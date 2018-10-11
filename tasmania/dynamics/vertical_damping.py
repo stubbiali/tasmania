@@ -185,7 +185,7 @@ class _Rayleigh(VerticalDamping):
 		Apply vertical damping to a generic field :math:`\phi`. 
 		"""
 		# Update the attributes which will serve as stencil's inputs
-		self._dt.value = 1.e-6 * dt.microseconds if dt.seconds == 0. else dt.seconds
+		self._dt.value = dt.total_seconds()
 		self._phi_now[...] = phi_now[...]
 		self._phi_new[...] = phi_new[...]
 		self._phi_ref[...] = phi_ref[...]

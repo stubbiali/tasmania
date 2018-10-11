@@ -170,8 +170,9 @@ def assert_sequence(seq, reflen=None, reftype=None):
 
 
 def check_property_compatibility(property_1, property_2, name=None):
-	from sympl._core.util import combine_dims, units_are_compatible, \
-								 InvalidPropertyDictError
+	from sympl._core.combine_properties import combine_dims, \
+											   units_are_compatible, \
+								 			   InvalidPropertyDictError
 
 	if 'dims' not in property_1.keys() or 'units' not in property_1.keys() or \
 	   'dims' not in property_2.keys() or 'units' not in property_2.keys():

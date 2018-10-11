@@ -5,15 +5,13 @@ This module contains:
 	RaindropFallVelocity(DiagnosticComponent)
 """
 import numpy as np
-from sympl import DataArray, \
-				  DiagnosticComponent as Diagnostic, \
-				  TendencyComponent as Tendency
+from sympl import DataArray, DiagnosticComponent, TendencyComponent
 
 import gridtools as gt
 from tasmania.utils.data_utils import get_physical_constants
 
 
-class Kessler(Tendency):
+class Kessler(TendencyComponent):
 	"""
 	This class inherits :class:`sympl.Prognostic` to implement the WRF
 	version of the Kessler microphysics scheme.
@@ -41,6 +39,7 @@ class Kessler(Tendency):
 	}
 
 	def __init__(self, grid, pressure_on_interface_levels=True,
+				 potential_temperature_tendency_in_diagnostics=False,
 				 rain_evaporation_on=True, autoconversion_threshold=_d_a,
 				 rate_of_autoconversion=_d_k1, rate_of_collection=_d_k2,
 				 backend=gt.mode.NUMPY, physical_constants=None):
@@ -57,6 +56,10 @@ class Kessler(Tendency):
 			:obj:`True` (respectively, :obj:`False`) if the input pressure
 			field is defined at the interface (resp., main) levels.
 			Defaults to :obj:`True`.
+		potential_temperature_tendency_in_diagnostics : `bool`, optional
+			:obj:`True` to include the tendency for the potential temperature
+			in the output dictionary collecting the diagnostics, :obj:`False`
+			otherwise. Defaults to :obj:`False`.
 		rain_evaporation_on : `bool`, optional
 			:obj:`True` if the evaporation of raindrops should be taken
 			into account, :obj:`False` otherwise. Defaults to :obj:`True`.
@@ -93,6 +96,7 @@ class Kessler(Tendency):
 		"""
 		# Keep track of input arguments
 		self._grid = grid
+		self._pttd = potential_temperature_tendency_in_diagnostics
 		self._pressure_on_interface_levels = pressure_on_interface_levels
 		self._rain_evaporation_on = rain_evaporation_on
 		self._a = autoconversion_threshold.to_units('g g^-1').values.item()
@@ -173,14 +177,22 @@ class Kessler(Tendency):
 		if self._rain_evaporation_on:
 			return_dict['mass_fraction_of_water_vapor_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['air_potential_temperature'] = \
-				{'dims': dims, 'units': 'K s^-1'}
+
+			if not self._pttd:
+				return_dict['air_potential_temperature'] = \
+					{'dims': dims, 'units': 'K s^-1'}
 
 		return return_dict
 
 	@property
 	def diagnostic_properties(self):
-		return {}
+		if self._rain_evaporation_on and self._pttd:
+			grid = self._grid
+			dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
+			return {'tendency_of_air_potential_temperature':
+						{'dims': dims, 'units': 'K s^-1'}}
+		else:
+			return {}
 
 	def array_call(self, state):
 		"""
@@ -237,10 +249,14 @@ class Kessler(Tendency):
 		}
 		if self._rain_evaporation_on:
 			tendencies['mass_fraction_of_water_vapor_in_air'] = self._out_qv_tnd
-			tendencies['air_potential_temperature'] = self._out_theta_tnd
+			if not self._pttd:
+				tendencies['air_potential_temperature'] = self._out_theta_tnd
 
-		# Instantiate an empty dictionary, serving as the output diagnostics dictionary
-		diagnostics = {}
+		# Collect the diagnostics
+		if self._rain_evaporation_on and self._pttd:
+			diagnostics = {'tendency_of_air_potential_temperature': self._out_theta_tnd}
+		else:
+			diagnostics = {}
 
 		return tendencies, diagnostics
 
@@ -418,9 +434,9 @@ class Kessler(Tendency):
 			return out_qc_tnd, out_qr_tnd, out_qv_tnd, out_theta_tnd
 
 
-class SaturationAdjustmentKessler(Diagnostic):
+class SaturationAdjustmentKessler(DiagnosticComponent):
 	"""
-	This class inherits :class:`sympl.Diagnostic` to implement the saturation
+	This class inherits :class:`sympl.DiagnosticComponent` to implement the saturation
 	adjustment as predicted by the WRF implementation of the Kessler scheme.
 	"""
 	# Default values for the physical constants used in the class
@@ -702,9 +718,9 @@ class SaturationAdjustmentKessler(Diagnostic):
 		return out_qv, out_qc
 
 
-class RaindropFallVelocity(Diagnostic):
+class RaindropFallVelocity(DiagnosticComponent):
 	"""
-	This class inherits :class:`sympl.Diagnostic` to calculate
+	This class inherits :class:`sympl.DiagnosticComponent` to calculate
 	the raindrop fall velocity.
 	"""
 	def __init__(self, grid, backend=gt.mode.NUMPY):

@@ -157,3 +157,6 @@ class HorizontalSmoothing:
 				return module._ThirdOrderYZ(*arg_list)
 			else:
 				return module._ThirdOrder(*arg_list)
+		else:
+			raise ValueError('Supported smoothing operators: '
+							 'first_order, second_order, and third_order.')
