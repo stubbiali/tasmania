@@ -223,8 +223,10 @@ def _load_grid(dataset):
 		val = dataset.data_vars[key]
 		if isinstance(val.values.item(), (str, bool)):
 			topo_kwargs[key] = val.values.item()
+		elif isinstance(val.values.item(), int):
+			topo_kwargs[key] = bool(val.values.item())
 		else:
-			topo_kwargs[key] = sympl.DataArray(val)
+			topo_kwargs[key] = sympl.DataArray(val, attrs={'units': val.attrs['units']})
 
 	return GridXYZ(domain_x, nx, domain_y, ny, domain_z, nz, z_interface,
 				   topo_type, topo_time, topo_kwargs, dtype=domain_z.values.dtype)

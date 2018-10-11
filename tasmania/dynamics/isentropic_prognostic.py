@@ -30,8 +30,8 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.dynamics.diagnostics import WaterConstituent
-from tasmania.dynamics.isentropic_fluxes import IsentropicHorizontalFlux, \
-												IsentropicVerticalFlux
+from tasmania.dynamics.isentropic_fluxes import HorizontalIsentropicFlux, \
+												VerticalIsentropicFlux
 from tasmania.dynamics.sedimentation_flux import SedimentationFlux
 from tasmania.physics.microphysics import RaindropFallVelocity
 from tasmania.utils.data_utils import get_physical_constants
@@ -58,12 +58,12 @@ class IsentropicPrognostic:
 			DataArray(1e3, attrs={'units': 'kg m^-3'}),
 	}
 
-	def __init__(self, grid, moist_on, backend, diagnostics,
+	def __init__(self, grid, moist_on, diagnostics,
 				 horizontal_boundary_conditions, horizontal_flux_scheme,
 				 adiabatic_flow=True, vertical_flux_scheme=None,
 				 sedimentation_on=False, sedimentation_flux_scheme=None,
 				 sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
-				 dtype=datatype, physical_constants=None):
+				 backend=gt.mode.NUMPY, dtype=datatype, physical_constants=None):
 		"""
 		Constructor.
 
@@ -73,8 +73,6 @@ class IsentropicPrognostic:
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool 
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		backend : obj 
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 		diagnostics : obj
 			Instance of :class:`~tasmania.dynamics.diagnostics.IsentropicDiagnostics`
 			calculating the diagnostic variables.
@@ -85,14 +83,14 @@ class IsentropicPrognostic:
 			This is modified in-place by setting the number of boundary layers.
 		horizontal_flux_scheme : str
 			String specifying the numerical horizontal flux scheme to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicHorizontalFlux`
+			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalIsentropicFlux`
 			for the complete list of the available options.
 		adiabatic_flow : `bool`, optional
 			:obj:`True` for an adiabatic atmosphere, in which the potential temperature
 			is conserved, :obj:`False` otherwise. Defaults to :obj:`True`.
 		vertical_flux_scheme : `str`, optional
 			String specifying the numerical vertical flux scheme to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
+			See :class:`~tasmania.dynamics.isentropic_fluxes.VerticalIsentropicFlux`
 			for the complete list of the available options. Defaults to :obj:`None`.
 		sedimentation_on : `bool`, optional
 			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
@@ -108,6 +106,9 @@ class IsentropicPrognostic:
 		raindrop_fall_velocity_diagnostic : `obj`
 			Instance of a :class:`sympl.Diagnostic` calculating the raindrop
 			fall velocity. Defaults to :obj:`None`.
+		backend : obj
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
+			Defaults to :class:`gridtools.mode.NUMPY`.
 		dtype : `obj`, optional
 			Instance of :class:`numpy.dtype` specifying the data type for
 			any :class:`numpy.ndarray` used within this class.
@@ -129,7 +130,6 @@ class IsentropicPrognostic:
 		# Keep track of the input parameters
 		self._grid                         = grid
 		self._moist_on                     = moist_on
-		self._backend                      = backend
 		self._diagnostics				   = diagnostics
 		self._hboundary					   = horizontal_boundary_conditions
 		self._hflux_scheme                 = horizontal_flux_scheme
@@ -141,6 +141,7 @@ class IsentropicPrognostic:
 		self._fall_velocity_diagnostic	   = raindrop_fall_velocity_diagnostic \
 											 if raindrop_fall_velocity_diagnostic is not None \
 											 else RaindropFallVelocity(grid, backend)
+		self._backend                      = backend
 		self._dtype						   = dtype
 
 		# Set physical parameters values
@@ -148,10 +149,10 @@ class IsentropicPrognostic:
 														  physical_constants)
 
 		# Instantiate the classes computing the numerical horizontal and vertical fluxes
-		self._hflux = IsentropicHorizontalFlux.factory(self._hflux_scheme, grid, moist_on)
+		self._hflux = HorizontalIsentropicFlux.factory(self._hflux_scheme, grid, moist_on)
 		self._hboundary.nb = self._hflux.nb
 		if not adiabatic_flow:
-			self._vflux = IsentropicVerticalFlux.factory(self._vflux_scheme, grid, moist_on)
+			self._vflux = VerticalIsentropicFlux.factory(self._vflux_scheme, grid, moist_on)
 
 		# Instantiate the classes computing the vertical derivative of the sedimentation flux
 		# and diagnosing the mass fraction of precipitation water
@@ -231,6 +232,8 @@ class IsentropicPrognostic:
             the data for those tendencies.
             The dictionary may contain the following keys:
 
+				* x_velocity [m s^-2];
+				* y_velocity [m s^-2];
             	* mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];
             	* mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];
             	* mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].
@@ -298,7 +301,7 @@ class IsentropicPrognostic:
             	* y_momentum_isentropic [kg m^-1 K^-1 s^-1].
 
 			This may be the output of 
-			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_motion`.
+			:meth:`~tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion`.
 
 		Return
 		------
@@ -339,6 +342,7 @@ class IsentropicPrognostic:
 
             	* accumulated_precipitation [mm] (optional);
             	* air_isentropic_density [kg m^-2 K^-1];
+            	* air_pressure_on_interface_levels [Pa];
             	* mass_fraction_of_precipitation_water_in_air [g g^-1].
 
 		raw_state_prv : obj
@@ -353,9 +357,9 @@ class IsentropicPrognostic:
             	* mass_fraction_of_precipitation_water_in_air [g g^-1].
 
 			This may be the output of
-			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_neglecting_vertical_motion`
+			:meth:`~tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion`
 			or
-			:meth:`~tasmania.dynamics.isentropic_prognostics.IsentropicPrognostics.step_integrating_vertical_advection`.
+			:meth:`~tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection`.
 
 		Return
 		------
@@ -370,12 +374,12 @@ class IsentropicPrognostic:
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist_on, backend, diagnostics,
+	def factory(scheme, grid, moist_on, diagnostics,
 				horizontal_boundary_conditions, horizontal_flux_scheme,
 				adiabatic_flow=True, vertical_flux_scheme=None,
 				sedimentation_on=False, sedimentation_flux_scheme=None,
 				sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
-				dtype=datatype, physical_constants=None):
+				backend=gt.mode.NUMPY, dtype=datatype, physical_constants=None):
 		"""
 		Static method returning an instance of the derived class implementing
 		the time stepping scheme specified by :data:`time_scheme`.
@@ -387,14 +391,16 @@ class IsentropicPrognostic:
 
 			* 'forward_euler', for the forward Euler scheme;
 			* 'centered', for a centered scheme;
-			* 'rk3', for the three-stages Runge-Kutta scheme.
+			* 'rk2', for the explicit two-stages, second-order Runge-Kutta scheme;
+            * 'rk3cosmo', for the three-stages RK scheme as used in the
+                `COSMO model <http://www.cosmo-model.org>`_; this method is
+                nominally second-order, and third-order for linear problems;
+			* 'rk3', for the explicit three-stages, third-order Runge-Kutta scheme.
 
 		grid : grid
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 		diagnostics : obj
 			Instance of :class:`~tasmania.dynamics.diagnostics.IsentropicDiagnostics`
 			calculating the diagnostic variables.
@@ -427,6 +433,9 @@ class IsentropicPrognostic:
 		raindrop_fall_velocity_diagnostic : `obj`
 			Instance of a :class:`sympl.Diagnostic` calculating the raindrop
 			fall velocity. Defaults to :obj:`None`.
+		backend : obj
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
+			Defaults to :class:`gridtools.mode.NUMPY`.
 		dtype : `obj`, optional
 			Instance of :class:`numpy.dtype` specifying the data type for
 			any :class:`numpy.ndarray` used within this class.
@@ -452,19 +461,26 @@ class IsentropicPrognostic:
 			by :data:`scheme`.
 		"""
 		import tasmania.dynamics._isentropic_prognostic as module
-		arg_list = [grid, moist_on, backend, diagnostics, horizontal_boundary_conditions,
+
+		arg_list = [grid, moist_on, diagnostics, horizontal_boundary_conditions,
 					horizontal_flux_scheme, adiabatic_flow, vertical_flux_scheme,
 					sedimentation_on, sedimentation_flux_scheme, sedimentation_substeps,
-					raindrop_fall_velocity_diagnostic, dtype, physical_constants]
+					raindrop_fall_velocity_diagnostic, backend, dtype, physical_constants]
 
 		if scheme == 'forward_euler':
 			return module._ForwardEuler(*arg_list)
 		elif scheme == 'centered':
 			return module._Centered(*arg_list)
+		elif scheme == 'rk2':
+			return module._RK2(*arg_list)
+		elif scheme == 'rk3cosmo':
+			return module._RK3COSMO(*arg_list)
 		elif scheme == 'rk3':
 			return module._RK3(*arg_list)
 		else:
-			raise ValueError('Unknown time integration scheme {}.'.format(scheme))
+			raise ValueError('Unknown time integration scheme {}.\n'
+							 'Available options: forward_euler, centered, rk2, rk3cosmo, rk3.'
+							 .format(scheme))
 
 	def _stencils_stepping_by_neglecting_vertical_motion_allocate_inputs(self, raw_tendencies):
 		"""
@@ -512,6 +528,10 @@ class IsentropicPrognostic:
 		self._in_v   = np.zeros((  mi, mj+1, nz), dtype=dtype)
 		self._in_mtg = np.zeros((  mi,   mj, nz), dtype=dtype)
 		if tendency_names is not None:
+			if 'x_velocity' in tendency_names:
+				self._in_u_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+			if 'y_velocity' in tendency_names:
+				self._in_v_tnd = np.zeros((mi, mj, nz), dtype=dtype)
 			if 'mass_fraction_of_water_vapor_in_air' in tendency_names:
 				self._in_qv_tnd = np.zeros((mi, mj, nz), dtype=dtype)
 			if 'mass_fraction_of_cloud_liquid_water_in_air' in tendency_names:
@@ -564,14 +584,16 @@ class IsentropicPrognostic:
 		# Shortcuts
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		if raw_tendencies is not None:
-			qv_tnd_on = \
-				raw_tendencies.get('mass_fraction_of_water_vapor_in_air', None) is not None
-			qc_tnd_on = \
-				raw_tendencies.get('mass_fraction_of_cloud_liquid_water_in_air', None) is not None
-			qr_tnd_on = \
-				raw_tendencies.get('mass_fraction_of_precipitation_water_in_air', None) is not None
+			u_tnd_on  = raw_tendencies.get('x_velocity', None) is not None
+			v_tnd_on  = raw_tendencies.get('y_velocity', None) is not None
+			qv_tnd_on = raw_tendencies.get('mass_fraction_of_water_vapor_in_air', None) \
+						is not None
+			qc_tnd_on = raw_tendencies.get('mass_fraction_of_cloud_liquid_water_in_air', None) \
+						is not None
+			qr_tnd_on = raw_tendencies.get('mass_fraction_of_precipitation_water_in_air', None) \
+						is not None
 		else:
-			qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			u_tnd_on = v_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
 		# Update the local time step
 		self._dt.value = dt.total_seconds()
@@ -587,6 +609,10 @@ class IsentropicPrognostic:
 			sqv = raw_state['isentropic_density_of_water_vapor']
 			sqc = raw_state['isentropic_density_of_cloud_liquid_water']
 			sqr = raw_state['isentropic_density_of_precipitation_water']
+		if u_tnd_on:
+			u_tnd = raw_tendencies['x_velocity']
+		if v_tnd_on:
+			v_tnd = raw_tendencies['y_velocity']
 		if qv_tnd_on:
 			qv_tnd = raw_tendencies['mass_fraction_of_water_vapor_in_air']
 		if qc_tnd_on:
@@ -605,6 +631,12 @@ class IsentropicPrognostic:
 			self._in_sqv[:mi, :mj, :] = self._hboundary.from_physical_to_computational_domain(sqv)
 			self._in_sqc[:mi, :mj, :] = self._hboundary.from_physical_to_computational_domain(sqc)
 			self._in_sqr[:mi, :mj, :] = self._hboundary.from_physical_to_computational_domain(sqr)
+		if u_tnd_on:
+			self._in_u_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(u_tnd)
+		if v_tnd_on:
+			self._in_v_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(v_tnd)
 		if qv_tnd_on:
 			self._in_qv_tnd[:mi, :mj, :] = \
 				self._hboundary.from_physical_to_computational_domain(qv_tnd)

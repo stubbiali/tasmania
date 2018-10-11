@@ -178,15 +178,18 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 
 def set_plot_properties(ax, *, fontsize=12,
 						title_center='', title_left='', title_right='',
-						x_label='', x_lim=None, x_ticks=None,
-						x_ticklabels=None, xaxis_visible=True,
-						y_label='', y_lim=None, y_ticks=None,
-						y_ticklabels=None, yaxis_visible=True,
-						z_label='', z_lim=None, z_ticks=None,
-						z_ticklabels=None, zaxis_visible=True,
+						x_label='', x_lim=None, invert_xaxis=False,
+						x_scale=None, x_ticks=None, x_ticklabels=None,
+						xaxis_minor_ticks_visible=True, xaxis_visible=True,
+						y_label='', y_lim=None, invert_yaxis=False,
+						y_scale=None, y_ticks=None, y_ticklabels=None,
+						yaxis_minor_ticks_visible=True, yaxis_visible=True,
+						z_label='', z_lim=None, invert_zaxis=False,
+						z_scale=None, z_ticks=None, z_ticklabels=None,
+						zaxis_minor_ticks_visible=True, zaxis_visible=True,
 						legend_on=False, legend_loc='best',
 						text=None, text_loc='',
-						grid_on=False):
+						grid_on=False, grid_properties=None):
 	"""
 	An utility to ease the configuration of two- and three-dimensional plots.
 
@@ -208,10 +211,16 @@ def set_plot_properties(ax, *, fontsize=12,
 	x_lim : `tuple`, optional
 		Data limits for the x-axis. Default is :obj:`None`, i.e., the data limits
 		will be left unchanged.
+	invert_xaxis : `bool`, optional
+		TODO
+	x_scale : `str`, optional
+		TODO
 	x_ticks : `list of float`, optional
 		List of x-axis ticks location.
 	x_ticklabels : `list of str`, optional
 		List of x-axis ticks labels.
+	xaxis_minor_ticks_visible : `bool`, optional
+		TODO
 	xaxis_visible : `bool`, optional
 		:obj:`False` to make the x-axis invisible. Default is :obj:`True`.
 	y_label : `str`, optional
@@ -219,10 +228,16 @@ def set_plot_properties(ax, *, fontsize=12,
 	y_lim : `tuple`, optional
 		Data limits for the y-axis. Default is :obj:`None`, i.e., the data limits
 		will be left unchanged.
+	invert_yaxis : `bool`, optional
+		TODO
+	y_scale : `str`, optional
+		TODO
 	y_ticks : `list of float`, optional
 		List of y-axis ticks location.
 	y_ticklabels : `list of str`, optional
 		List of y-axis ticks labels.
+	yaxis_minor_ticks_visible : `bool`, optional
+		TODO
 	yaxis_visible : `bool`, optional
 		:obj:`False` to make the y-axis invisible. Default is :obj:`True`.
 	z_label : `str`, optional
@@ -230,10 +245,16 @@ def set_plot_properties(ax, *, fontsize=12,
 	z_lim : `tuple`, optional
 		Data limits for the z-axis. Default is :obj:`None`, i.e., the data limits
 		will be left unchanged.
+	invert_zaxis : `bool`, optional
+		TODO
+	z_scale : `str`, optional
+		TODO
 	z_ticks : `list of float`, optional
 		List of z-axis ticks location.
 	z_ticklabels : `list of str`, optional
 		List of z-axis ticks labels.
+	zaxis_minor_ticks_visible : `bool`, optional
+		TODO
 	zaxis_visible : `bool`, optional
 		:obj:`False` to make the z-axis invisible. Default is :obj:`True`.
 	legend_on : `bool`, optional
@@ -251,6 +272,8 @@ def set_plot_properties(ax, *, fontsize=12,
 		for all the available options.
 	grid_on : `bool`, optional
 		:obj:`True` to show the legend, :obj:`False` otherwise. Default is :obj:`False`.
+	grid_properties : `dict`, optional
+		TODO
 	"""
 	rcParams['font.size'] = fontsize
 
@@ -288,6 +311,30 @@ def set_plot_properties(ax, *, fontsize=12,
 		warnings.warn('The plot is not three-dimensional, therefore the '
 					  'argument ''z_lim'' is disregarded.', RuntimeWarning)
 
+	if invert_xaxis:
+		ax.invert_xaxis()
+	if invert_yaxis:
+		ax.invert_yaxis()
+	try:
+		if invert_zaxis:
+			ax.invert_zaxis()
+	except AttributeError:
+		import warnings
+		warnings.warn('The plot is not three-dimensional, therefore the '
+					  'argument ''invert_zaxis'' is disregarded.', RuntimeWarning)
+
+	if x_scale is not None:
+		ax.set_xscale(x_scale)
+	if y_scale is not None:
+		ax.set_yscale(y_scale)
+	try:
+		if z_scale is not None:
+			ax.set_zscale(z_scale)
+	except AttributeError:
+		import warnings
+		warnings.warn('The plot is not three-dimensional, therefore the '
+					  'argument ''z_scale'' is disregarded.', RuntimeWarning)
+
 	if x_ticks is not None:
 		ax.get_xaxis().set_ticks(x_ticks)
 	if y_ticks is not None:
@@ -312,6 +359,22 @@ def set_plot_properties(ax, *, fontsize=12,
 		warnings.warn('The plot is not three-dimensional, therefore the '
 					  'argument ''z_ticklabels'' is disregarded.', RuntimeWarning)
 
+	if not xaxis_minor_ticks_visible:
+		ax.get_xaxis().set_tick_params(which='minor', size=0)
+		ax.get_xaxis().set_tick_params(which='minor', width=0)
+	if not yaxis_minor_ticks_visible:
+		ax.get_yaxis().set_tick_params(which='minor', size=0)
+		ax.get_yaxis().set_tick_params(which='minor', width=0)
+	try:
+		if not zaxis_minor_ticks_visible:
+			ax.get_zaxis().set_tick_params(which='minor', size=0)
+			ax.get_zaxis().set_tick_params(which='minor', width=0)
+	except AttributeError:
+		import warnings
+		warnings.warn('The plot is not three-dimensional, therefore the '
+					  'argument ''zaxis_minor_ticks_visible'' is disregarded.',
+					  RuntimeWarning)
+
 	if not xaxis_visible:
 		ax.get_xaxis().set_visible(False)
 	if not yaxis_visible:
@@ -331,7 +394,8 @@ def set_plot_properties(ax, *, fontsize=12,
 		ax.add_artist(AnchoredText(text, loc=text_loc))
 
 	if grid_on:
-		ax.grid(True)
+		g_props = grid_properties if grid_properties is not None else {}
+		ax.grid(True, **g_props)
 
 
 def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_pos='center',
