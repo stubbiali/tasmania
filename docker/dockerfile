@@ -89,5 +89,5 @@ ENV PYTHONWARNINGS ignore:'numpy.dtype size changed':RuntimeWarning,ignore:'nump
 # change ownership to non-root user
 RUN chown -hR dockeruser $HOME
 
-# switch to non-root user
-USER dockeruser
+# install tasmania at runtime
+ENTRYPOINT /bin/bash -c "python -m pip install -e /home/dockeruser/tasmania && su - dockeruser "

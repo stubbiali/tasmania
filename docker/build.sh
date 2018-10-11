@@ -1,10 +1,9 @@
 #!/bin/bash
 
 IMAGE_NAME=tasmania:master
-GT4PY_BRANCH=merge_ubbiali
 
-echo "About to build the container image $IMAGE_NAME for tasmania."
-read -n 1 -r -p "Press any key to continue, or Ctrl-C to exit."
+echo "About to build the container image '$MAGE_NAME' for tasmania." 
+read -n 1 -s -r -p "Press any key to continue, or Ctrl-C to exit."
 
 cp ../requirements.txt .
 
@@ -13,9 +12,9 @@ if [ ! -d "gridtools4py" ]; then
 fi
 
 cd gridtools4py
-git checkout $GT4PY_BRANCH
+git checkout merge_ubbiali
 cd ..
 
-docker build --rm --build-arg uid=$(id -u) -t $IMAGE_NAME .
+docker build --rm --build-arg uid=$(id -u) -t tasmania-master .
 
 rm requirements.txt

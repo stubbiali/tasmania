@@ -5,30 +5,33 @@ TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
 BUILD_FOLDERS = build .eggs tasmania/tasmania.egg-info
-DOCDIR := doc
-DOCSRC := $(DOCDIR)/source/conf.py $(DOCDIR)/source/api.rst
-PARSERDIR := tasmania/grids/parser
-UMLDIR := $(DOCDIR)/uml
-TESTDIR := tests
+MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+ROOT_DIR := $(dir $(MKFILE_PATH))
+SRC_DIR := $(ROOT_DIR)/tasmania
+DOC_DIR := $(ROOT_DIR)/doc
+DOC_SRC := $(DOC_DIR)/source/conf.py $(DOC_DIR)/source/api.rst
+PARSER_DIR := $(SRC_DIR)/grids/parser
+UML_DIR := $(DOC_DIR)/uml
+TEST_DIR := $(ROOT_DIR)/tests
 
-all: clean parser html test
+all: clean parser html tests
 
 parser:
-	@cd $(PARSERDIR) && $(MAKE)
+	@cd $(PARSER_DIR) && $(MAKE)
 
 html: parser
 	@echo -n "Building HTML documentation ... "
-	@cd $(DOCDIR) && $(MAKE) html > /dev/null 2>&1
+	@cd $(DOC_DIR) && $(MAKE) html > /dev/null 2>&1
 	@echo "OK."
 
 latex: parser
 	@echo -n "Building LaTeX documentation ... "
-	@cd $(DOCDIR) && $(MAKE) latex > /dev/null 2>&1
+	@cd $(DOC_DIR) && $(MAKE) latex > /dev/null 2>&1
 	@echo "OK."
 
 latexpdf: parser
 	@echo -n "Building LaTeX documentation ... "
-	@cd $(DOCDIR) && $(MAKE) latexpdf > /dev/null
+	@cd $(DOC_DIR) && $(MAKE) latexpdf > /dev/null
 	@echo "OK."
 
 uml: parser
@@ -36,27 +39,23 @@ uml: parser
 	@pyreverse -p grids -o eps grids/ > /dev/null
 	@pyreverse -p dycore -f OTHER -o eps dycore/ > /dev/null
 	@pyreverse -p storages -o eps storages/ > /dev/null
-	@mv classes_*.eps $(UMLDIR) > /dev/null
-	@mv packages_*.eps $(UMLDIR) > /dev/null
+	@mv classes_*.eps $(UML_DIR) > /dev/null
+	@mv packages_*.eps $(UML_DIR) > /dev/null
 	@echo "OK."
 
-test:
-	@cd $(TESTDIR) && \
-	 pytest --ignore=test_animation.py --ignore=test_contour_xz.py --ignore=test_contourf_xy.py \
-			--ignore=test_contourf_xz.py --ignore=test_plot_grid.py --ignore=test_plots_overlapper.py \
-			--ignore=test_plot_topography.py --ignore=test_profile_1d.py --ignore=test_quiver_xy.py \
-			--ignore=test_subplots_assembler.py
-	
-.PHONY: clean distclean gitignore
+.PHONY: tests clean distclean gitignore
 
+tests:
+	@cd $(TEST_DIR) && pytest --cov=$(SRC_DIR) .
+	
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null
 	@$(RM) -r $(TMP_FOLDERS) > /dev/null
 	@find . -type f -name "*.sw[klmnop]" -delete
-	@cd $(PARSERDIR) && $(MAKE) clean > /dev/null
-	@cd $(PARSERDIR)/tests && $(MAKE) clean > /dev/null
 
 distclean: clean
+	@cd $(PARSER_DIR) && $(MAKE) clean > /dev/null
+	@cd $(PARSER_DIR)/tests && $(MAKE) clean > /dev/null
 	@$(RM) -r $(BUILD_FOLDERS) > /dev/null
 
 gitignore:

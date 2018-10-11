@@ -4,7 +4,8 @@ IMAGE_NAME=tasmania:master
 CONTAINER_NAME=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
 
 echo "About to fire up a containter named '$CONTAINER_NAME' from the image '$IMAGE_NAME'." 
-read -n 1 -r -p "Press any key to continue, or Ctrl-C to exit."
+read -n 1 -s -r -p "Press any key to continue, or Ctrl-C to exit."
+echo ""
 
 docker run --rm															\
 		   --privileged													\
