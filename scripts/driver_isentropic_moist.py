@@ -1,13 +1,26 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 import gridtools as gt
 import numpy as np
 import os
+from sympl import DataArray
 import tasmania as taz
 
-# Load the computational grid and the initial state
-grid, states = taz.load_netcdf_dataset(
-	'../tests/baseline_datasets/isentropic_moist_sedimentation.nc')
-state = states[0]
+# Build the underlying grid
+domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}).to_units('m'), 101
+domain_y, ny = DataArray([-1., 1.], dims='y', attrs={'units': 'km'}).to_units('m'), 1
+domain_z, nz = DataArray([340., 280.], dims='air_potential_temperature', attrs={'units': 'K'}), 60
+grid = taz.GridXYZ(domain_x, nx, domain_y, ny, domain_z, nz,
+                   topo_type='gaussian', topo_time=timedelta(seconds=1800),
+                   topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
+                                'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
+
+# Instantiate the initial state
+time          = datetime(year=1992, month=2, day=20)
+x_velocity    = DataArray(15., attrs={'units': 'm s^-1'})
+y_velocity    = DataArray(0., attrs={'units': 'm s^-1'})
+brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
+state = taz.get_default_isentropic_state(grid, time, x_velocity, y_velocity, brunt_vaisala, 
+                                         moist_on=True, dtype=np.float64)
 
 # The component calculating the microphysical sources/sinks
 # prescribed by the Kessler scheme; neglect the evaporation of
