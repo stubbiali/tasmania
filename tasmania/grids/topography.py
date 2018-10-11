@@ -241,7 +241,7 @@ class Topography2d:
     Reference
     ---------
 	Schaer, C., and D. R. Durran. (1997). Vortex formation and vortex shedding \
-	in continuosly stratified flows past isolated topography. \
+	in continuously stratified flows past isolated topography. \
 	*Journal of Atmospheric Sciences*, *54*:534-554.
 
 	Attributes

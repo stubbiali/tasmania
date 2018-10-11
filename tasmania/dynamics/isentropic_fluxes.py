@@ -22,16 +22,16 @@
 #
 """
 This module contains:
-    IsentropicHorizontalFlux
-    IsentropicVerticalFlux
-    NonconservativeIsentropicHorizontalFlux
-    NonconservativeIsentropicVerticalFlux
-    HomogeneousIsentropicHorizontalFlux
+    HorizontalIsentropicFlux
+    VerticalIsentropicFlux
+    HorizontalNonconservativeIsentropicFlux
+    VerticalNonconservativeIsentropicFlux
+    HorizontalHomogeneousIsentropicFlux
 """
 import abc
 
 
-class IsentropicHorizontalFlux:
+class HorizontalIsentropicFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the horizontal numerical fluxes for the three-dimensional isentropic
@@ -56,9 +56,8 @@ class IsentropicHorizontalFlux:
 		self._moist_on = moist_on
 
 	@abc.abstractmethod
-	def __call__(self, i, j, k, dt, s, u, v, mtg, su, sv,
-				 sqv=None, sqc=None, sqr=None,
-				 qv_tnd=None, qc_tnd=None, qr_tnd=None):
+	def __call__(self, i, j, k, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
+				 u_tnd=None, v_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None):
 		"""
 		This method returns the :class:`gridtools.Equation`\s representing
 		the :math:`x`- and :math:`y`-fluxes for all the conservative model variables.
@@ -99,6 +98,10 @@ class IsentropicHorizontalFlux:
 		sqr : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density
 			of precipitation water.
+		u_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the :math:`x`-velocity.
+		v_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the :math:`y`-velocity.
 		qv_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the tendency of the mass
 			fraction of water vapor.
@@ -163,6 +166,7 @@ class IsentropicHorizontalFlux:
 			* 'upwind', for the upwind scheme;
 			* 'centered', for a second-order centered scheme;
 			* 'maccormack', for the MacCormack scheme;
+			* 'third_order_upwind', for the third-order upwind scheme;
 			* 'fifth_order_upwind', for the fifth-order upwind scheme.
 
 		grid : obj
@@ -185,20 +189,22 @@ class IsentropicHorizontalFlux:
 		Zeman, C. (2016). An isentropic mountain flow model with iterative \
 			synchronous flux correction. *Master thesis, ETH Zurich*.
 		"""
-		import tasmania.dynamics._isentropic_fluxes as module
+		import tasmania.dynamics._horizontal_isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._UpwindIsentropicHorizontalFlux(grid, moist_on)
+			return module._Upwind(grid, moist_on)
 		elif scheme == 'centered':
-			return module._CenteredIsentropicHorizontalFlux(grid, moist_on)
+			return module._Centered(grid, moist_on)
 		elif scheme == 'maccormack':
-			return module._MacCormackIsentropicHorizontalFlux(grid, moist_on)
+			return module._MacCormack(grid, moist_on)
+		elif scheme == 'third_order_upwind':
+			return module._ThirdOrderUpwind(grid, moist_on)
 		elif scheme == 'fifth_order_upwind':
-			return module._FifthOrderUpwindIsentropicHorizontalFlux(grid, moist_on)
+			return module._FifthOrderUpwind(grid, moist_on)
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
 
 
-class IsentropicVerticalFlux:
+class VerticalIsentropicFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
@@ -339,16 +345,16 @@ class IsentropicVerticalFlux:
 			Instance of the derived class implementing the scheme
 			specified by :data:`scheme`.
 		"""
-		import tasmania.dynamics._isentropic_fluxes as module
+		import tasmania.dynamics._vertical_isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._UpwindIsentropicVerticalFlux(grid, moist_on)
+			return module._Upwind(grid, moist_on)
 		elif scheme == 'centered':
-			return module._CenteredIsentropicVerticalFlux(grid, moist_on)
+			return module._Centered(grid, moist_on)
 		else:
-			return module._MacCormackIsentropicVerticalFlux(grid, moist_on)
+			return module._MacCormack(grid, moist_on)
 
 
-class NonconservativeIsentropicHorizontalFlux:
+class HorizontalNonconservativeIsentropicFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the numerical fluxes for the three-dimensional isentropic
@@ -476,12 +482,12 @@ class NonconservativeIsentropicHorizontalFlux:
 			Instance of the derived class implementing the scheme
 			specified by :data:`scheme`.
 		"""
-		import tasmania.dynamics._isentropic_fluxes as module
+		import tasmania.dynamics._nonconservative_isentropic_fluxes as module
 		if scheme == 'centered':
-			return module._CenteredNonconservativeIsentropicHorizontalFlux(grid, moist_on)
+			return module._CenteredHorizontal(grid, moist_on)
 
 
-class NonconservativeIsentropicVerticalFlux:
+class VerticalNonconservativeIsentropicFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
@@ -620,12 +626,12 @@ class NonconservativeIsentropicVerticalFlux:
 			Instance of the derived class implementing the scheme
 			specified by :data:`scheme`.
 		"""
-		import tasmania.dynamics._isentropic_fluxes as module
+		import tasmania.dynamics._nonconservative_isentropic_fluxes as module
 		if scheme == 'centered':
-			return module._CenteredNonconservativeIsentropicVerticalFlux(grid, moist_on)
+			return module._CenteredVertical(grid, moist_on)
 
 
-class HomogeneousIsentropicHorizontalFlux:
+class HorizontalHomogeneousIsentropicFlux:
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the horizontal numerical fluxes for the three-dimensional
@@ -651,9 +657,8 @@ class HomogeneousIsentropicHorizontalFlux:
 		self._moist_on = moist_on
 
 	@abc.abstractmethod
-	def __call__(self, i, j, k, dt, s, u, v, su, sv,
-				 su_tnd=None, sv_tnd=None, sqv=None, sqc=None, sqr=None,
-				 qv_tnd=None, qc_tnd=None, qr_tnd=None):
+	def __call__(self, i, j, k, dt, s, u, v, su, sv, sqv=None, sqc=None, sqr=None,
+				 u_tnd=None, v_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None):
 		"""
 		This method returns the :class:`gridtools.Equation`\s representing
 		the :math:`x`- and :math:`y`-fluxes for all the conservative model variables.
@@ -683,10 +688,6 @@ class HomogeneousIsentropicHorizontalFlux:
 			:class:`gridtools.Equation` representing the :math:`x`-momentum.
 		sv : obj
 			:class:`gridtools.Equation` representing the :math:`y`-momentum.
-		su_tnd : `obj`, optional
-			:class:`gridtools.Equation` representing the tendency of the :math:`x`-momentum.
-		sv_tnd : `obj`, optional
-			:class:`gridtools.Equation` representing the tendency of the :math:`y`-momentum.
 		sqv : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density
 			of water vapor.
@@ -696,6 +697,10 @@ class HomogeneousIsentropicHorizontalFlux:
 		sqr : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density
 			of precipitation water.
+		u_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the :math:`x`-velocity.
+		v_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the :math:`y`-velocity.
 		qv_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the tendency of the mass
 			fraction of water vapor.
@@ -760,6 +765,7 @@ class HomogeneousIsentropicHorizontalFlux:
 			* 'upwind', for the upwind scheme;
 			* 'centered', for a second-order centered scheme;
 			* 'maccormack', for the MacCormack scheme;
+			* 'third_order_upwind', for the third-order upwind scheme;
 			* 'fifth_order_upwind', for the fifth-order upwind scheme.
 
 		grid : obj
@@ -782,14 +788,16 @@ class HomogeneousIsentropicHorizontalFlux:
 		Zeman, C. (2016). An isentropic mountain flow model with iterative \
 			synchronous flux correction. *Master thesis, ETH Zurich*.
 		"""
-		import tasmania.dynamics._isentropic_fluxes as module
+		import tasmania.dynamics._horizontal_homogeneous_isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._UpwindHomogeneousIsentropicHorizontalFlux(grid, moist_on)
+			return module._Upwind(grid, moist_on)
 		elif scheme == 'centered':
-			return module._CenteredHomogeneousIsentropicHorizontalFlux(grid, moist_on)
+			return module._Centered(grid, moist_on)
 		elif scheme == 'maccormack':
-			return module._MacCormackHomogeneousIsentropicHorizontalFlux(grid, moist_on)
+			return module._MacCormack(grid, moist_on)
+		elif scheme == 'third_order_upwind':
+			return module._ThirdOrderUpwind(grid, moist_on)
 		elif scheme == 'fifth_order_upwind':
-			return module._FifthOrderUpwindHomogeneousIsentropicHorizontalFlux(grid, moist_on)
+			return module._FifthOrderUpwind(grid, moist_on)
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))

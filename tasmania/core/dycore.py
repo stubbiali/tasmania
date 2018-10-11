@@ -31,12 +31,12 @@ from sympl._core.base_components import InputChecker, \
 										TendencyChecker as _TendencyChecker, \
 										OutputChecker
 
-from tasmania.utils.data_utils import add, get_state, get_raw_state
+from tasmania.core.physics_composite import ConcurrentCoupling
+from tasmania.utils.data_utils import add, make_state, make_raw_state
 from tasmania.utils.utils import check_property_compatibility
 
 
 class TendencyChecker(_TendencyChecker):
-
 	def __init__(self, component):
 		super().__init__(component)
 
@@ -51,7 +51,7 @@ class DynamicalCore:
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, grid, moist_on, fast_parameterizations=None):
+	def __init__(self, grid, moist_on, intermediate_parameterizations=None):
 		"""
 		Constructor.
 
@@ -63,15 +63,23 @@ class DynamicalCore:
 			or one of its derived classes.
 		moist_on : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		fast_parameterizations : `obj`, None
-			:class:`~tasmania.physics.composite.PhysicsComponentComposite`
-			object, wrapping the fast physical parameterizations.
-			Here, *fast* refers to the fact that these parameterizations
+		intermediate_parameterizations : `obj`, None
+			Instance of
+			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
+			object, wrapping the intermediate physical parameterizations.
+			Here, *intermediate* refers to the fact that these parameterizations
 			are evaluated *before* each stage of the dynamical core.
+			In essence, feeding the dynamical core with intermediate
+			parameterizations allows to pursue the concurrent splitting strategy
+			when an explicit time marching scheme is employed.
 		"""
 		self._grid, self._moist_on = grid, moist_on
 
-		self._fast_parameterizations = fast_parameterizations
+		self._params = intermediate_parameterizations
+		if self._params is not None:
+			assert isinstance(self._params, ConcurrentCoupling), \
+				"""The input argument ''intermediate_parameterizations'' 
+				   should be an instance of ConcurrentCoupling."""
 
 		self._input_checker    = InputChecker(self)
 		self._tendency_checker = TendencyChecker(self)
@@ -91,32 +99,32 @@ class DynamicalCore:
 			:meth:`~tasmania.dynamics.dycore.DynamicalCore._input_properties`,
 			with the :obj:`input_properties` and :obj:`output_properties`
 			dictionaries of the internal
-			:class:`~tasmania.physics.composite.PhysicsComponentComposite`
+			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
 			attribute (if set).
 		"""
 		return_dict = {}
 
-		if self._fast_parameterizations is None:
+		if self._params is None:
 			return_dict.update(self._input_properties)
 		else:
-			return_dict.update(self._fast_parameterizations.input_properties)
-			params_output_properties = self._fast_parameterizations.output_properties
+			return_dict.update(self._params.current_state_input_properties)
+			params_output_properties = self._params.current_state_output_properties
 			dycore_input_properties  = self._input_properties
 
 			# Ensure that the units and dimensions of the variables output
-			# by the fast parameterizations are compatible with the units and
-			# dimensions being expected by the dycore
-			shared_vars = \
-				set(dycore_input_properties.keys()).intersection(params_output_properties.keys())
+			# by the intermediate parameterizations are compatible with the
+			# units and dimensions being expected by the dycore
+			s = set(dycore_input_properties.keys())
+			shared_vars = s.intersection(params_output_properties.keys())
 			for name in shared_vars:
 				check_property_compatibility(params_output_properties[name],
 											 dycore_input_properties[name],
 											 name=name)
 
-			# Add to the requirements the variables to be fed to the dycore and
-			# which are not output by the fast parameterizations
-			unshared_vars = \
-				set(dycore_input_properties.keys()).difference(params_output_properties.keys())
+			# Add to the requirements the variables to feed the dycore with
+			# and which are not output by the intermediate parameterizations
+			s = set(dycore_input_properties.keys())
+			unshared_vars = s.difference(params_output_properties.keys())
 			for name in unshared_vars:
 				return_dict[name] = {}
 				return_dict[name].update(dycore_input_properties[name])
@@ -149,29 +157,31 @@ class DynamicalCore:
 			specified by the user via
 			:meth:`~tasmania.dynamics.dycore.DynamicalCore._tendency_properties`
 			with the :obj:`tendency_properties` dictionary of the internal
-			:class:`~tasmania.physics.composite.PhysicsComponentComposite`
+			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
 			object (if set).
 		"""
 		return_dict = {}
 
-		if self._fast_parameterizations is None:
+		if self._params is None:
 			return_dict.update(self._tendency_properties)
 		else:
-			return_dict.update(self._fast_parameterizations.tendency_properties)
+			return_dict.update(self._params.tendency_properties)
 
 			# Ensure that the units and dimensions of the tendencies output
-			# by the fast parameterizations are compatible with the units and
-			# dimensions being expected by the dycore
-			shared_vars = set(self._tendency_properties.keys()).intersection(return_dict.keys())
+			# by the intermediate parameterizations are compatible with the
+			# units and dimensions being expected by the dycore
+			s = set(self._tendency_properties.keys())
+			shared_vars = s.intersection(return_dict.keys())
 			for name in shared_vars:
 				check_property_compatibility(self._tendency_properties[name],
 											 return_dict[name],
 											 name=name)
 
 			# Add to the requirements on the input slow tendencies those
-			# tendencies to be fed to the dycore and which are not provided
-			# by the fast parameterizations
-			unshared_vars = set(self._tendency_properties.keys()).difference(return_dict.keys())
+			# tendencies to feed the dycore with and which are not provided
+			# by the intermediate parameterizations
+			s = set(self._tendency_properties.keys())
+			unshared_vars = s.difference(return_dict.keys())
 			for name in unshared_vars:
 				return_dict[name] = {}
 				return_dict[name].update(self._tendency_properties[name])
@@ -197,7 +207,7 @@ class DynamicalCore:
 		Return
 		------
 		dict :
-			Dictionary whose keys are strings denoting variables which
+			Dictionary whose keys are strings denoting variables which are
 			included in the output state, and whose values are fundamental
 			properties (dims, units) of those variables.
 
@@ -207,19 +217,19 @@ class DynamicalCore:
 			For a multi-stage dycore, if the output state misses some
 			variables required by the fast parameterizations.
 		"""
-		if self.stages > 1 and self._fast_parameterizations is not None:
-			params_inputs = self._fast_parameterizations.input_properties
+		if self.stages > 1 and self._params is not None:
+			params_inputs = self._params.current_state_input_properties
 			dycore_outputs = self._output_properties
 
 			# Ensure that the variables output by any stage
-			# can be fed into the fast parameterizations
+			# can feed the intermediate parameterizations
 			shared_vars = set(params_inputs).intersection(dycore_outputs)
 			for name in shared_vars:
 				check_property_compatibility(params_inputs[name], dycore_outputs[name],
 											 name=name)
 
 			# Ensure that the state output by any stage contains
-			# all the variables required by the fast parameterizations
+			# all the variables required by the intermediate parameterizations
 			missing_vars = set(params_inputs).difference(dycore_outputs)
 			if missing_vars != set():
 				raise ComponentMissingOutputError('The output state should contain '
@@ -282,26 +292,29 @@ class DynamicalCore:
 		out_state = {}
 		out_state.update(state)
 
+		# Initialize the dictionary collecting the dictionaries
+		in_tendencies = {}
+
 		for stage in range(self.stages):
-			# Possibly, sequentially call all fast parameterizations,
+			# Possibly, call all intermediate parameterizations,
 			# and summed up fast and slow tendencies
-			if self._fast_parameterizations is None:
-				in_tendencies = tendencies
+			if self._params is None:
+				in_tendencies.update(tendencies)
 			else:
-				fast_tendencies = self._fast_parameterizations(out_state, timestep)
-				in_tendencies = add(fast_tendencies, tendencies)
+				intermediate_tendencies = self._params(state=out_state)
+				in_tendencies.update(add(intermediate_tendencies, tendencies,
+									 	 unshared_variables_in_output=True))
 
 			# Extract Numpy arrays from current state
 			in_state_units = {name: self._input_properties[name]['units']
 							  for name in self._input_properties.keys()}
-			raw_in_state = get_raw_state(out_state, units=in_state_units)
+			raw_in_state = make_raw_state(out_state, units=in_state_units)
 
 			# Extract Numpy arrays from tendencies
-			in_tendencies['time'] = state['time']
 			in_tendencies_units = {name: self._tendency_properties[name]['units']
 							   	   for name in self._tendency_properties.keys()}
-			raw_in_tendencies = get_raw_state(in_tendencies,
-											  units=in_tendencies_units)
+			raw_in_tendencies = make_raw_state(in_tendencies,
+											   units=in_tendencies_units)
 
 			# Stepped the model raw state
 			raw_out_state = self.array_call(stage, raw_in_state, raw_in_tendencies,
@@ -310,14 +323,17 @@ class DynamicalCore:
 			# Create DataArrays out of the Numpy arrays contained in the stepped state
 			out_state_units = {name: self.output_properties[name]['units']
 							   for name in self.output_properties.keys()}
-			out_state = get_state(raw_out_state, self._grid, units=out_state_units)
+			out_state = make_state(raw_out_state, self._grid, units=out_state_units)
 
 			# Ensure the state contains all the required variables
 			# in the right dimensions and units
 			self._output_checker.check_outputs(out_state)
 
-		# Ensure the time specified in the output state is correct
-		out_state['time'] = state['time'] + timestep
+			# Ensure the time specified in the output state is correct
+			if stage == self.stages-1:
+				out_state['time'] = state['time'] + timestep
+			else:
+				out_state['time'] = state['time']
 
 		return out_state
 

@@ -22,18 +22,18 @@
 #
 """
 This module contains:
-	IsentropicDynamicalCore(DynamicalCore)
+	HomogeneousIsentropicDynamicalCore(DynamicalCore)
 """
 import numpy as np
 
 import gridtools as gt
 from tasmania.dynamics.diagnostics import HorizontalVelocity, \
-										  IsentropicDiagnostics, \
 										  WaterConstituent
 from tasmania.core.dycore import DynamicalCore
 from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
 from tasmania.dynamics.horizontal_smoothing import HorizontalSmoothing
-from tasmania.dynamics.isentropic_prognostic import IsentropicPrognostic
+from tasmania.dynamics.homogeneous_isentropic_prognostic \
+	import HomogeneousIsentropicPrognostic
 from tasmania.dynamics.vertical_damping import VerticalDamping
 
 try:
@@ -42,17 +42,20 @@ except ImportError:
 	datatype = np.float32
 
 
-class IsentropicDynamicalCore(DynamicalCore):
+class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 	"""
 	This class inherits :class:`~tasmania.dynamics.dycore.DynamicalCore`
-	to implement the three-dimensional (moist) isentropic dynamical core.
+	to implement the three-dimensional (moist) isentropic homogeneous dynamical core.
+	Here, _homogeneous_ means that the pressure gradient terms, i.e., the terms
+	involving the gradient of the Montgomery potential, are not included in the dynamics,
+	but rather parameterized.
 	The class supports different numerical schemes to carry out the prognostic
 	steps of the dynamical core, and different types of lateral boundary conditions.
 	The conservative form of the governing equations is used.
 	"""
 	def __init__(self, grid, moist_on, time_integration_scheme,
 				 horizontal_flux_scheme, horizontal_boundary_type,
-				 fast_parameterizations=None,
+				 intermediate_parameterizations=None,
 				 damp_on=True, damp_type='rayleigh', damp_depth=15,
 				 damp_max=0.0002, damp_at_every_stage=True,
 				 smooth_on=True, smooth_type='first_order', smooth_damp_depth=10,
@@ -60,10 +63,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 				 smooth_moist_on=False, smooth_moist_type='first_order',
 				 smooth_moist_damp_depth=10, smooth_moist_coeff=.03,
 				 smooth_moist_coeff_max=.24, smooth_moist_at_every_stage=True,
-				 adiabatic_flow=True, vertical_flux_scheme=None,
-				 sedimentation_on=False, sedimentation_flux_type='first_order_upwind',
-				 sedimentation_substeps=2, raindrop_fall_velocity_diagnostic=None,
-				 backend=gt.mode.NUMPY, dtype=datatype, physical_constants=None):
+				 backend=gt.mode.NUMPY, dtype=datatype):
 		"""
 		Constructor.
 
@@ -75,23 +75,23 @@ class IsentropicDynamicalCore(DynamicalCore):
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		time_integration_scheme : str
 			String specifying the time stepping method to implement.
-			See :class:`~tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic`
+			See :class:`~tasmania.dynamics.homogeneous_isentropic_prognostic.HomogeneousIsentropicPrognostic`
 			for all available options.
 		horizontal_flux_scheme : str
 			String specifying the numerical horizontal flux to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalIsentropicFlux`
+			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalHomogeneousIsentropicFlux`
 			for all available options.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions.
 			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
 			for all available options.
-		fast_parameterizations : `obj`, None
-			:class:`~tasmania.physics.composite.PhysicsComponentComposite`
-			object, wrapping the fast physical parameterizations.
-			Here, *fast* refers to the fact that these parameterizations
+		intermediate_parameterizations : `obj`, None
+			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
+			object, wrapping the intermediate physical parameterizations.
+			Here, *intermediate* refers to the fact that these parameterizations
 			are evaluated *before* each stage of the dynamical core.
-			In essence, feeding the dynamical core with fast parameterizations
-			allows to pursue the concurrent splitting strategy.
+			In essence, feeding the dynamical core with intermediate
+			parameterizations allows to pursue the concurrent splitting strategy.
 		damp_on : `bool`, optional
 			:obj:`True` to enable vertical damping, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
@@ -149,19 +149,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 			:obj:`True` to apply numerical smoothing to the water constituents
 			at each stage performed by the dynamical core, :obj:`False` to apply
 			numerical smoothing only at the end of each timestep. Defaults to :obj:`True`.
-		adiabatic_flow : `bool`, optional
-			:obj:`True` for an adiabatic atmosphere, in which the potential temperature
-			is conserved, :obj:`False` otherwise. Defaults to :obj:`True`.
-		sedimentation_on : `bool`, optional
-			:obj:`True` to account for rain sedimentation, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
-		sedimentation_flux_type : `str`, optional
-			String specifying the method seused to compute the numerical sedimentation flux.
-			See :class:`~tasmania.dynamics.sedimentation_flux.SedimentationFlux`
-			for all available options.
-		sedimentation_substeps : `int`, optional
-			Number of sub-timesteps to perform in order to integrate the sedimentation flux.
-			Defaults to 2.
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils
 			implementing the dynamical core. Defaults to :class:`gridtools.mode.NUMPY`.
@@ -170,13 +157,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
-		physical_constants : `dict`, optional
-			Dictionary whose keys are strings indicating physical constants used
-			within this object, and whose values are :class:`sympl.DataArray`\s
-			storing the values and units of those constants. See
-			:class:`~tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic`
-			and	:class:`~tasmania.dynamics.diagnostics.IsentropicDiagnostics`
-			for the physical constants used.
 		"""
 		# Keep track of the input parameters
 		self._damp_on                      = damp_on
@@ -185,22 +165,15 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._smooth_at_every_stage		   = smooth_at_every_stage
 		self._smooth_moist_on              = smooth_moist_on
 		self._smooth_moist_at_every_stage  = smooth_moist_at_every_stage
-		self._adiabatic_flow 			   = adiabatic_flow
-		self._sedimentation_on             = sedimentation_on
 		self._dtype						   = dtype
-
-		# Instantiate the class implementing the diagnostic part of the dycore
-		self._diagnostic = IsentropicDiagnostics(grid, backend, dtype, physical_constants)
 
 		# Instantiate the class taking care of the boundary conditions
 		self._boundary = HorizontalBoundary.factory(horizontal_boundary_type, grid)
 
 		# Instantiate the class implementing the prognostic part of the dycore
-		self._prognostic = IsentropicPrognostic.factory(
-			time_integration_scheme, grid, moist_on, self._diagnostic, self._boundary,
-			horizontal_flux_scheme, adiabatic_flow, vertical_flux_scheme,
-			sedimentation_on, sedimentation_flux_type, sedimentation_substeps,
-			raindrop_fall_velocity_diagnostic, backend, dtype, physical_constants)
+		self._prognostic = HomogeneousIsentropicPrognostic.factory(
+			time_integration_scheme, grid, moist_on, self._boundary,
+			horizontal_flux_scheme, backend, dtype)
 
 		# Instantiate the class in charge of applying vertical damping
 		nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -230,7 +203,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._array_call = self._array_call_dry if not moist_on else self._array_call_moist
 
 		# Call parent constructor
-		super().__init__(grid, moist_on, fast_parameterizations)
+		super().__init__(grid, moist_on, intermediate_parameterizations)
 
 	@property
 	def _input_properties(self):
@@ -239,13 +212,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 					  self._grid.z.dims[0])
 		dims_stg_y = (self._grid.x.dims[0], self._grid.y_at_v_locations.dims[0],
 					  self._grid.z.dims[0])
-		dims_stg_z = (self._grid.x.dims[0], self._grid.y.dims[0],
-					  self._grid.z_on_interface_levels.dims[0])
 
 		return_dict = {
 			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'air_pressure_on_interface_levels': {'dims': dims_stg_z, 'units': 'Pa'},
-			'montgomery_potential': {'dims': dims, 'units': 'm^2 s^-2'},
 			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
 			'x_velocity_at_u_locations': {'dims': dims_stg_x, 'units': 'm s^-1'},
 			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
@@ -259,9 +228,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 				{'dims': dims, 'units': 'g g^-1'}
 			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1'}
-
-			if self._sedimentation_on:
-				return_dict['accumulated_precipitation'] = {'dims': dims, 'units': 'mm'}
 
 		return return_dict
 
@@ -291,15 +257,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 					  self._grid.z.dims[0])
 		dims_stg_y = (self._grid.x.dims[0], self._grid.y_at_v_locations.dims[0],
 					  self._grid.z.dims[0])
-		dims_stg_z = (self._grid.x.dims[0], self._grid.y.dims[0],
-					  self._grid.z_on_interface_levels.dims[0])
 
 		return_dict = {
 			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'air_pressure_on_interface_levels': {'dims': dims_stg_z, 'units': 'Pa'},
-			'exner_function_on_interface_levels': {'dims': dims_stg_z, 'units': 'm^2 s^-2 K^-1'},
-			'height_on_interface_levels': {'dims': dims_stg_z, 'units': 'm'},
-			'montgomery_potential': {'dims': dims, 'units': 'm^2 s^-2'},
 			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
 			'x_velocity_at_u_locations': {'dims': dims_stg_x, 'units': 'm s^-1'},
 			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
@@ -307,18 +267,12 @@ class IsentropicDynamicalCore(DynamicalCore):
 		}
 
 		if self._moist_on:
-			return_dict['air_density'] = {'dims': dims, 'units': 'kg m^-3'}
-			return_dict['air_temperature'] = {'dims': dims, 'units': 'K'}
 			return_dict['mass_fraction_of_water_vapor_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1'}
 			return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1'}
 			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1'}
-
-			if self._sedimentation_on:
-				return_dict['accumulated_precipitation'] = {'dims': dims, 'units': 'mm'}
-				return_dict['precipitation'] = {'dims': dims, 'units': 'mm h^-1'}
 
 		return return_dict
 
@@ -328,7 +282,8 @@ class IsentropicDynamicalCore(DynamicalCore):
 
 	def array_call(self, stage, raw_state, raw_tendencies, timestep):
 		"""
-		Perform a stage of the isentropic dynamical core, either dry or moist.
+		Perform a stage of the homogeneous isentropic dynamical core,
+		either dry or moist.
 		"""
 		return self._array_call(stage, raw_state, raw_tendencies, timestep)
 
@@ -341,8 +296,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 		dtype = self._dtype
 
 		# Perform the prognostic step
-		raw_state_new = self._prognostic.step_neglecting_vertical_motion(
-			stage, timestep, raw_state, raw_tendencies)
+		raw_state_new = self._prognostic(stage, timestep, raw_state, raw_tendencies)
 
 		damped = False
 		if self._damp_on:
@@ -414,18 +368,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._boundary.set_outermost_layers_x(u_out, raw_state['x_velocity_at_u_locations'])
 		self._boundary.set_outermost_layers_y(v_out, raw_state['y_velocity_at_v_locations'])
 
-		# Diagnose the pressure, the Exner function, the Montgomery potential
-		# and the geometric height of the half levels
-		pt = raw_state['air_pressure_on_interface_levels'][0, 0, 0]
-		p_out, exn_out, mtg_out, h_out = self._diagnostic.get_diagnostic_variables(s_out, pt)
-
 		# Instantiate the output state
 		raw_state_out = {
 			'air_isentropic_density': s_out,
-			'air_pressure_on_interface_levels': p_out,
-			'exner_function_on_interface_levels': exn_out,
-			'height_on_interface_levels': h_out,
-			'montgomery_potential': mtg_out,
 			'x_momentum_isentropic': su_out,
 			'x_velocity_at_u_locations': u_out,
 			'y_momentum_isentropic': sv_out,
@@ -461,8 +406,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 		raw_state['isentropic_density_of_precipitation_water'] = self._sqr_now
 
 		# Perform the prognostic step
-		raw_state_new = self._prognostic.step_neglecting_vertical_motion(
-			stage, timestep, raw_state, raw_tendencies)
+		raw_state_new = self._prognostic(stage, timestep, raw_state, raw_tendencies)
 
 		damped = False
 		if self._damp_on:
@@ -582,11 +526,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._boundary.set_outermost_layers_x(u_out, raw_state['x_velocity_at_u_locations'])
 		self._boundary.set_outermost_layers_y(v_out, raw_state['y_velocity_at_v_locations'])
 
-		# Diagnose the pressure, the Exner function, the Montgomery potential
-		# and the geometric height of the half levels
-		pt = raw_state['air_pressure_on_interface_levels'][0, 0, 0]
-		p_out, exn_out, mtg_out, h_out = self._diagnostic.get_diagnostic_variables(s_out, pt)
-
 		# Allocate memory to store the isentropic density of all water constituents
 		if not hasattr(self, '_qv_out'):
 			self._qv_out = np.zeros((nx, ny, nz), dtype=dtype)
@@ -601,38 +540,16 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
 			s_out, sqr_out, self._qr_out, clipping=True)
 
-		# Diagnose the air density and temperature
-		rho_out  = self._diagnostic.get_air_density(s_out, h_out)
-		temp_out = self._diagnostic.get_air_temperature(exn_out)
-
 		# Instantiate the output state
 		raw_state_out = {
-			'air_density': rho_out,
 			'air_isentropic_density': s_out,
-			'air_pressure_on_interface_levels': p_out,
-			'air_temperature': temp_out,
-			'exner_function_on_interface_levels': exn_out,
-			'height_on_interface_levels': h_out,
 			'mass_fraction_of_water_vapor_in_air': self._qv_out,
 			'mass_fraction_of_cloud_liquid_water_in_air': self._qc_out,
 			'mass_fraction_of_precipitation_water_in_air': self._qr_out,
-			'montgomery_potential': mtg_out,
 			'x_momentum_isentropic': su_out,
 			'x_velocity_at_u_locations': u_out,
 			'y_momentum_isentropic': sv_out,
 			'y_velocity_at_v_locations': v_out,
 		}
-
-		if self._sedimentation_on:
-			if np.any(qr_now > 0.) or np.any(self._qr_out > 0.):
-				# Integrate the sedimentation flux
-				raw_state_out_ = self._prognostic.step_integrating_sedimentation_flux(
-					stage, timestep, raw_state, raw_state_out)
-
-				# Update the output state and the output diagnostics
-				raw_state_out.update(raw_state_out_)
-			else:
-				raw_state_out['accumulated_precipitation'] = raw_state['accumulated_precipitation']
-				raw_state_out['precipitation'] = np.zeros((nx, ny, 1))
 
 		return raw_state_out
