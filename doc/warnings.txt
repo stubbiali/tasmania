@@ -59,7 +59,11 @@ Traceback (most recent call last):
     __import__(self.modname)
 ImportError: No module named 'tasmania.storages'
 /tasmania/doc/source/api.rst:75: WARNING: missing attribute __cinit__ in object tasmania.grids.parser.parser_1d.Parser1d
+docstring of tasmania.grids.parser.parser_1d.Parser1d:0: WARNING: duplicate object description of tasmania.grids.parser.parser_1d.Parser1d, other instance in /tasmania/doc/source/domain.rst, use :noindex: for one of them
+docstring of tasmania.grids.parser.parser_1d.Parser1d.evaluate:0: WARNING: duplicate object description of tasmania.grids.parser.parser_1d.Parser1d.evaluate, other instance in /tasmania/doc/source/domain.rst, use :noindex: for one of them
 /tasmania/doc/source/api.rst:78: WARNING: missing attribute __cinit__ in object tasmania.grids.parser.parser_2d.Parser2d
+docstring of tasmania.grids.parser.parser_2d.Parser2d:0: WARNING: duplicate object description of tasmania.grids.parser.parser_2d.Parser2d, other instance in /tasmania/doc/source/domain.rst, use :noindex: for one of them
+docstring of tasmania.grids.parser.parser_2d.Parser2d.evaluate:0: WARNING: duplicate object description of tasmania.grids.parser.parser_2d.Parser2d.evaluate, other instance in /tasmania/doc/source/domain.rst, use :noindex: for one of them
 /tasmania/doc/source/api.rst:97: WARNING: autodoc: failed to import module 'tasmania.utils.utils_meteo'; the following exception was raised:
 Traceback (most recent call last):
   File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
@@ -208,3 +212,10 @@ Parameters
 Return
 ------
 /tasmania/doc/source/api.rst: WARNING: document isn't included in any toctree
+/tasmania/doc/source/installation.rst:5: WARNING: unknown option: BRANCH
+/tasmania/doc/source/installation.rst:13: WARNING: unknown option: docker/
+/tasmania/doc/source/installation.rst:23: WARNING: unknown option: tasmania
+/tasmania/doc/source/installation.rst:35: WARNING: unknown option: -v $PWD:/tasmania
+/tasmania/doc/source/installation.rst:35: WARNING: unknown option: /tasmania
+/tasmania/doc/source/installation.rst:35: WARNING: unknown option: --privileged -e DISPLAY -e XAUTHORITY:$XAUTHORITY -v /tmp/.X11-unix:/tmp/.X11-unix
+/tasmania/doc/source/installation.rst:43: WARNING: unknown option: CONTAINER_ID
