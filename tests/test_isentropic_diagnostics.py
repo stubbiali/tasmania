@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.physics.isentropic import IsentropicDiagnostics, \
-										IsentropicVelocityComponents
+from tasmania.physics.isentropic_diagnostics import IsentropicDiagnostics, \
+													IsentropicVelocityComponents
 
 
 def test_dry(isentropic_dry_data):

@@ -39,6 +39,7 @@ pyqt5>=5.10.1
 pyqtgraph==0.9.10
 pytest>=3.6.0
 pytest-cov>=2.6.0
+pytest-mpl==0.10
 pytest-xdist>=1.15.0
 python-dateutil==2.5.3
 pytz==2014.10

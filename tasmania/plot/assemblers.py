@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 
 from tasmania.plot.plot_monitors import Plot1d, Plot2d, Plot3d
-from tasmania.utils import plot_utils
+from plot import plot_utils
 from tasmania.utils import utils
 
 
@@ -82,6 +82,10 @@ class PlotsOverlapper:
 
 		# Initialize the figure attribute
 		self._figure = None
+
+	@property
+	def figure(self):
+		return self._figure
 
 	@property
 	def projection(self):
@@ -295,6 +299,10 @@ class SubplotsAssembler:
 
 		# Initialize the figure attribute
 		self._figure = None
+
+	@property
+	def figure(self):
+		return self._figure
 
 	def store(self, states, fig=None, save_dest=None, show=False):
 		"""

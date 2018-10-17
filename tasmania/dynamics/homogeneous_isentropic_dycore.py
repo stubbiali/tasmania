@@ -33,7 +33,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 	"""
 	def __init__(self, grid, moist_on, time_integration_scheme,
 				 horizontal_flux_scheme, horizontal_boundary_type,
-				 intermediate_parameterizations=None,
+				 intermediate_parameterizations=None, diagnostics=None,
 				 damp_on=True, damp_type='rayleigh', damp_depth=15,
 				 damp_max=0.0002, damp_at_every_stage=True,
 				 smooth_on=True, smooth_type='first_order', smooth_damp_depth=10,
@@ -70,6 +70,10 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 			are evaluated *before* each stage of the dynamical core.
 			In essence, feeding the dynamical core with intermediate
 			parameterizations allows to pursue the concurrent splitting strategy.
+		diagnostics : `obj`, None
+			:class:`sympl.DiagnosticComponentComposite` object 
+			wrapping a set of diagnostical parameterizations, evaluated
+			at the end of each stage of the dynamical core.
 		damp_on : `bool`, optional
 			:obj:`True` to enable vertical damping, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
@@ -181,7 +185,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 		self._array_call = self._array_call_dry if not moist_on else self._array_call_moist
 
 		# Call parent constructor
-		super().__init__(grid, moist_on, intermediate_parameterizations)
+		super().__init__(grid, moist_on, intermediate_parameterizations, diagnostics)
 
 	@property
 	def _input_properties(self):

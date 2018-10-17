@@ -43,18 +43,20 @@ def test_moist(isentropic_moist_data):
 	state       = isentropic_moist_data[1][0]
 	state_final = isentropic_moist_data[1][-1]
 
-	kessler = Kessler(grid, pressure_on_interface_levels=True,
-					  rain_evaporation_on=False, backend=gt.mode.NUMPY)
+	kessler = Kessler(grid, air_pressure_on_interface_levels=True,
+					  rain_evaporation=False, backend=gt.mode.NUMPY)
 
-	saturation = SaturationAdjustmentKessler(grid, pressure_on_interface_levels=True,
+	saturation = SaturationAdjustmentKessler(grid, air_pressure_on_interface_levels=True,
 											 backend=gt.mode.NUMPY)
 
 	dycore = IsentropicDynamicalCore(grid, moist_on=True,
 									 time_integration_scheme='forward_euler',
 									 horizontal_flux_scheme='upwind',
 									 horizontal_boundary_type='relaxed',
+									 damp_on=False,
 									 smooth_on=True, smooth_type='first_order',
-									 smooth_coeff=0.20, smooth_at_every_stage=True,
+									 smooth_coeff=0.20, smooth_coeff_max=1.00,
+									 smooth_damp_depth=30, smooth_at_every_stage=True,
 									 adiabatic_flow=True,
 									 backend=gt.mode.NUMPY, dtype=np.float64)
 
@@ -82,13 +84,13 @@ def test_moist_sedimentation(isentropic_moist_sedimentation_data):
 	state       = isentropic_moist_sedimentation_data[1][0]
 	state_final = isentropic_moist_sedimentation_data[1][-1]
 
-	kessler = Kessler(grid, pressure_on_interface_levels=True,
-					  rain_evaporation_on=False, backend=gt.mode.NUMPY,
+	kessler = Kessler(grid, air_pressure_on_interface_levels=True,
+					  rain_evaporation=False, backend=gt.mode.NUMPY,
 					  autoconversion_threshold=DataArray(0.1, attrs={'units': 'g kg^-1'}))
 
 	rfv = RaindropFallVelocity(grid, backend=gt.mode.NUMPY)
 
-	saturation = SaturationAdjustmentKessler(grid, pressure_on_interface_levels=True,
+	saturation = SaturationAdjustmentKessler(grid, air_pressure_on_interface_levels=True,
 											 backend=gt.mode.NUMPY)
 
 	dycore = IsentropicDynamicalCore(grid, moist_on=True,
@@ -127,13 +129,13 @@ def test_moist_sedimentation_evaporation(isentropic_moist_sedimentation_evaporat
 	state       = isentropic_moist_sedimentation_evaporation_data[1][0]
 	state_final = isentropic_moist_sedimentation_evaporation_data[1][-1]
 
-	kessler = Kessler(grid, pressure_on_interface_levels=True,
-					  rain_evaporation_on=True, backend=gt.mode.NUMPY,
+	kessler = Kessler(grid, air_pressure_on_interface_levels=True,
+					  rain_evaporation=True, backend=gt.mode.NUMPY,
 					  autoconversion_threshold=DataArray(0.1, attrs={'units': 'g kg^-1'}))
 
 	rfv = RaindropFallVelocity(grid, backend=gt.mode.NUMPY)
 
-	saturation = SaturationAdjustmentKessler(grid, pressure_on_interface_levels=True,
+	saturation = SaturationAdjustmentKessler(grid, air_pressure_on_interface_levels=True,
 											 backend=gt.mode.NUMPY)
 
 	dycore = IsentropicDynamicalCore(grid, moist_on=True,
@@ -169,3 +171,5 @@ def test_moist_sedimentation_evaporation(isentropic_moist_sedimentation_evaporat
 
 if __name__ == '__main__':
 	pytest.main([__file__])
+	#from conftest import isentropic_moist_data
+	#test_moist(isentropic_moist_data())

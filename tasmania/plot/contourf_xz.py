@@ -7,7 +7,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tasmania.utils import plot_utils
+from plot import plot_utils
 from tasmania.utils.data_utils import get_numpy_arrays
 from tasmania.utils.utils import equal_to as eq, smaller_or_equal_than as lt
 
@@ -304,7 +304,7 @@ def plot_contourf_xz(x, z, field, topography, fig, ax, **kwargs):
 								cbar_ticks_step=cbar_ticks_step,
 								cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
 								cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-				 				cbar_orientation=cbar_orientation, cbar_ax=cbar_ax)
+								cbar_orientation=cbar_orientation, cbar_ax=cbar_ax)
 
 	# Bring axes and field back to original units
 	x		   /= x_factor

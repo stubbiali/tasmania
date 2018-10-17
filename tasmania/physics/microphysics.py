@@ -38,9 +38,9 @@ class Kessler(TendencyComponent):
 			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 	}
 
-	def __init__(self, grid, pressure_on_interface_levels=True,
-				 potential_temperature_tendency_in_diagnostics=False,
-				 rain_evaporation_on=True, autoconversion_threshold=_d_a,
+	def __init__(self, grid, air_pressure_on_interface_levels=True,
+				 tendency_of_air_potential_temperature_in_diagnostics=False,
+				 rain_evaporation=True, autoconversion_threshold=_d_a,
 				 rate_of_autoconversion=_d_k1, rate_of_collection=_d_k2,
 				 backend=gt.mode.NUMPY, physical_constants=None):
 		"""
@@ -52,15 +52,15 @@ class Kessler(TendencyComponent):
 			The underlying grid, as an instance of
 			:class:`~tasmania.grids.grid_xyz.GridXYZ`,
 			or one of its derived classes.
-		pressure_on_interface_levels : `bool`, optional
+		air_pressure_on_interface_levels : `bool`, optional
 			:obj:`True` (respectively, :obj:`False`) if the input pressure
 			field is defined at the interface (resp., main) levels.
 			Defaults to :obj:`True`.
-		potential_temperature_tendency_in_diagnostics : `bool`, optional
+		tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
 			:obj:`True` to include the tendency for the potential temperature
 			in the output dictionary collecting the diagnostics, :obj:`False`
 			otherwise. Defaults to :obj:`False`.
-		rain_evaporation_on : `bool`, optional
+		rain_evaporation : `bool`, optional
 			:obj:`True` if the evaporation of raindrops should be taken
 			into account, :obj:`False` otherwise. Defaults to :obj:`True`.
 		autoconversion_threshold : `dataarray_like`, optional
@@ -96,9 +96,9 @@ class Kessler(TendencyComponent):
 		"""
 		# Keep track of input arguments
 		self._grid = grid
-		self._pttd = potential_temperature_tendency_in_diagnostics
-		self._pressure_on_interface_levels = pressure_on_interface_levels
-		self._rain_evaporation_on = rain_evaporation_on
+		self._pttd = tendency_of_air_potential_temperature_in_diagnostics
+		self._air_pressure_on_interface_levels = air_pressure_on_interface_levels
+		self._rain_evaporation = rain_evaporation
 		self._a = autoconversion_threshold.to_units('g g^-1').values.item()
 		self._k1 = rate_of_autoconversion.to_units('s^-1').values.item()
 		self._k2 = rate_of_collection.to_units('s^-1').values.item()
@@ -151,7 +151,7 @@ class Kessler(TendencyComponent):
 				{'dims': dims, 'units': 'g g^-1'},
 		}
 
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			return_dict['air_pressure_on_interface_levels'] = \
 				{'dims': dims_on_interface_levels, 'units': 'Pa'}
 			return_dict['exner_function_on_interface_levels'] = \
@@ -174,7 +174,7 @@ class Kessler(TendencyComponent):
 				{'dims': dims, 'units': 'g g^-1 s^-1'},
 		}
 
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			return_dict['mass_fraction_of_water_vapor_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1 s^-1'}
 
@@ -186,7 +186,7 @@ class Kessler(TendencyComponent):
 
 	@property
 	def diagnostic_properties(self):
-		if self._rain_evaporation_on and self._pttd:
+		if self._rain_evaporation and self._pttd:
 			grid = self._grid
 			dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 			return {'tendency_of_air_potential_temperature':
@@ -227,7 +227,7 @@ class Kessler(TendencyComponent):
 		self._in_qv[...]  = state['mass_fraction_of_water_vapor_in_air'][...]
 		self._in_qc[...]  = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
 		self._in_qr[...]  = state['mass_fraction_of_precipitation_water_in_air'][...]
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			self._in_p[...]   = state['air_pressure_on_interface_levels'][...]
 			self._in_exn[...] = state['exner_function_on_interface_levels'][...]
 		else:
@@ -247,13 +247,13 @@ class Kessler(TendencyComponent):
 			'mass_fraction_of_cloud_liquid_water_in_air': self._out_qc_tnd,
 			'mass_fraction_of_precipitation_water_in_air': self._out_qr_tnd,
 		}
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			tendencies['mass_fraction_of_water_vapor_in_air'] = self._out_qv_tnd
 			if not self._pttd:
 				tendencies['air_potential_temperature'] = self._out_theta_tnd
 
 		# Collect the diagnostics
-		if self._rain_evaporation_on and self._pttd:
+		if self._rain_evaporation and self._pttd:
 			diagnostics = {'tendency_of_air_potential_temperature': self._out_theta_tnd}
 		else:
 			diagnostics = {}
@@ -280,7 +280,7 @@ class Kessler(TendencyComponent):
 		self._in_qv  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_qc  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_qr  = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			self._in_p   = np.zeros((nx, ny, nz+1), dtype=dtype)
 			self._in_exn = np.zeros((nx, ny, nz+1), dtype=dtype)
 		else:
@@ -290,7 +290,7 @@ class Kessler(TendencyComponent):
 		# Allocate the numpy arrays which will serve as stencil outputs
 		self._out_qc_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 		self._out_qr_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			self._out_qv_tnd    = np.zeros((nx, ny, nz), dtype=dtype)
 			self._out_theta_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 
@@ -299,7 +299,7 @@ class Kessler(TendencyComponent):
 					'in_ps': self._in_ps, 'in_exn': self._in_exn,
 				    'in_qv': self._in_qv, 'in_qc': self._in_qc, 'in_qr': self._in_qr}
 		_outputs = {'out_qc_tnd': self._out_qc_tnd, 'out_qr_tnd': self._out_qr_tnd}
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			_outputs['out_qv_tnd']    = self._out_qv_tnd
 			_outputs['out_theta_tnd'] = self._out_theta_tnd
 
@@ -370,29 +370,29 @@ class Kessler(TendencyComponent):
 		tmp_qvs      = gt.Equation()
 		tmp_ar       = gt.Equation()
 		tmp_cr       = gt.Equation()
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			tmp_p 	 = gt.Equation()
 			tmp_exn	 = gt.Equation()
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			tmp_c    = gt.Equation()
 			tmp_er   = gt.Equation()
 
 		# Instantiate the output fields
 		out_qc_tnd = gt.Equation()
 		out_qr_tnd = gt.Equation()
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			out_qv_tnd    = gt.Equation()
 			out_theta_tnd = gt.Equation()
 
 		# Interpolate the pressure and the Exner function at the vertical main levels
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			tmp_p[k]   = 0.5 * (in_p[k] + in_p[k+1])
 			tmp_exn[k] = 0.5 * (in_exn[k] + in_exn[k+1])
 
 		# Set pointers to equations representing pressure and Exner function
 		# at the main levels
-		p   = tmp_p if self._pressure_on_interface_levels else in_p
-		exn = tmp_exn if self._pressure_on_interface_levels else in_exn
+		p   = tmp_p if self._air_pressure_on_interface_levels else in_p
+		exn = tmp_exn if self._air_pressure_on_interface_levels else in_exn
 
 		# Perform units conversion
 		tmp_rho_gcm3[k] = 1.e3 * in_rho[k]
@@ -407,7 +407,7 @@ class Kessler(TendencyComponent):
 		# Compute the contribution of accretion to rain development
 		tmp_cr[k] = self._k2 * in_qc[k] * (in_qr[k] ** 0.875)
 
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			# Compute the contribution of evaporation to rain development
 			tmp_c[k]  = 1.6 + 124.9 * ((tmp_rho_gcm3[k] * in_qr[k]) ** 0.2046)
 			tmp_er[k] = (1. - in_qv[k] / tmp_qvs[k]) * tmp_c[k] * \
@@ -415,7 +415,7 @@ class Kessler(TendencyComponent):
 						(tmp_rho_gcm3[k] * (5.4e5 + 2.55e6 / (tmp_p_mbar[k] * tmp_qvs[k])))
 
 		# Calculate the tendencies
-		if not self._rain_evaporation_on:
+		if not self._rain_evaporation:
 			out_qc_tnd[k] = - (tmp_ar[k] + tmp_cr[k])
 			out_qr_tnd[k] = tmp_ar[k] + tmp_cr[k]
 		else:
@@ -424,11 +424,11 @@ class Kessler(TendencyComponent):
 			out_qr_tnd[k] = tmp_ar[k] + tmp_cr[k] - tmp_er[k]
 
 		# Compute the change over time in potential temperature
-		if self._rain_evaporation_on:
+		if self._rain_evaporation:
 			lhvw = self._physical_constants['latent_heat_of_vaporization_of_water']
 			out_theta_tnd[k] = - lhvw / exn[k] * tmp_er[k]
 
-		if not self._rain_evaporation_on:
+		if not self._rain_evaporation:
 			return out_qc_tnd, out_qr_tnd
 		else:
 			return out_qc_tnd, out_qr_tnd, out_qv_tnd, out_theta_tnd
@@ -451,7 +451,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 	}
 
-	def __init__(self, grid, pressure_on_interface_levels=True,
+	def __init__(self, grid, air_pressure_on_interface_levels=True,
 				 backend=gt.mode.NUMPY, physical_constants=None):
 		"""
 		Constructor.
@@ -462,7 +462,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 			The underlying grid, as an instance of
 			:class:`~tasmania.grids.grid_xyz.GridXYZ`,
 			 or one of its derived classes.
-		pressure_on_interface_levels : `bool`, optional
+		air_pressure_on_interface_levels : `bool`, optional
 			:obj:`True` (respectively, :obj:`False`) if the input pressure
 			field is defined at the interface (resp., main) levels.
 			Defaults to :obj:`True`.
@@ -490,7 +490,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		"""
 		# Keep track of input arguments
 		self._grid = grid
-		self._pressure_on_interface_levels = pressure_on_interface_levels
+		self._air_pressure_on_interface_levels = air_pressure_on_interface_levels
 		self._backend = backend
 
 		# Call parent's constructor
@@ -537,7 +537,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 				{'dims': dims, 'units': 'g g^-1'},
 		}
 
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			return_dict['air_pressure_on_interface_levels'] = \
 				{'dims': dims_on_interface_levels, 'units': 'Pa'}
 		else:
@@ -587,7 +587,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		self._in_T[...]	  = state['air_temperature'][...]
 		self._in_qv[...]  = state['mass_fraction_of_water_vapor_in_air'][...]
 		self._in_qc[...]  = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			self._in_p[...]   = state['air_pressure_on_interface_levels'][...]
 		else:
 			self._in_p[...]   = state['air_pressure'][...]
@@ -619,7 +619,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		self._in_T  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_qv = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_qc = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			self._in_p = np.zeros((nx, ny, nz+1), dtype=dtype)
 		else:
 			self._in_p = np.zeros((nx, ny, nz), dtype=dtype)
@@ -683,7 +683,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		tmp_qvs = gt.Equation()
 		tmp_sat = gt.Equation()
 		tmp_dlt = gt.Equation()
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			tmp_p = gt.Equation()
 
 		# Instantiate the output fields
@@ -691,11 +691,11 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		out_qc = gt.Equation()
 
 		# Interpolate the pressure at the vertical main levels
-		if self._pressure_on_interface_levels:
+		if self._air_pressure_on_interface_levels:
 			tmp_p[k] = 0.5 * (in_p[k] + in_p[k+1])
 
 		# Set the pointer to the equation representing the pressure
-		p = tmp_p if self._pressure_on_interface_levels else in_p
+		p = tmp_p if self._air_pressure_on_interface_levels else in_p
 
 		# Compute the saturation mixing ratio of water vapor
 		tmp_qvs[k] = self._beta * in_ps[k] / (p[k] - self._beta_c * in_ps[k])

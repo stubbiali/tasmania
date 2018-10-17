@@ -45,11 +45,13 @@ def test_leapfrog(isentropic_moist_data):
 	grid.update_topography(state['time'] - states[0]['time'])
 
 	backend = gt.mode.NUMPY
+	dtype = state['air_isentropic_density'].values.dtype
+
 	hb = HorizontalBoundary.factory('periodic', grid, 1)
 
 	ip_centered = IsentropicPrognostic.factory('centered', grid, True, hb,
 											   horizontal_flux_scheme='centered',
-											   backend=backend, dtype=np.float64)
+											   backend=backend, dtype=dtype)
 
 	dt = timedelta(seconds=10)
 
@@ -77,13 +79,13 @@ def test_leapfrog(isentropic_moist_data):
 	sqc = raw_state['isentropic_density_of_cloud_liquid_water']
 	sqr = raw_state['isentropic_density_of_precipitation_water']
 
-	s_new = np.zeros_like(s, dtype=np.float64)
+	s_new = np.zeros_like(s, dtype=dtype)
 	s_new[1:-1, :, :] = s[1:-1, :, :] - \
 						dt.seconds * (su[2:, :, :] - su[:-2, :, :]) / dx
 	assert 'air_isentropic_density' in raw_state_new.keys()
 	assert np.allclose(s_new[1:-1, :, :], raw_state_new['air_isentropic_density'][1:-1, :, :])
 
-	su_new = np.zeros_like(su, dtype=np.float64)
+	su_new = np.zeros_like(su, dtype=dtype)
 	su_new[1:-1, :, :] = su[1:-1, :, :] - \
 						 dt.seconds / dx * (u[2:-1, :, :] * (su[2:, :, :] + su[1:-1, :, :]) -
 											u[1:-2, :, :] * (su[1:-1, :, :] + su[:-2, :, :]))
@@ -93,7 +95,7 @@ def test_leapfrog(isentropic_moist_data):
 	assert 'y_momentum_isentropic' in raw_state_new.keys()
 	assert np.allclose(sv, raw_state_new['y_momentum_isentropic'])
 
-	sqv_new = np.zeros_like(sqv, dtype=np.float64)
+	sqv_new = np.zeros_like(sqv, dtype=dtype)
 	sqv_new[1:-1, :, :] = sqv[1:-1, :, :] - \
 						  dt.seconds / dx * (u[2:-1, :, :] * (sqv[2:, :, :] + sqv[1:-1, :, :]) -
 											 u[1:-2, :, :] * (sqv[1:-1, :, :] + sqv[:-2, :, :]))
@@ -101,7 +103,7 @@ def test_leapfrog(isentropic_moist_data):
 	assert np.allclose(sqv_new[1:-1, :, :],
 					   raw_state_new['isentropic_density_of_water_vapor'][1:-1, :, :])
 
-	sqc_new = np.zeros_like(sqc, dtype=np.float64)
+	sqc_new = np.zeros_like(sqc, dtype=dtype)
 	sqc_new[1:-1, :, :] = sqc[1:-1, :, :] - \
 						  dt.seconds / dx * (u[2:-1, :, :] * (sqc[2:, :, :] + sqc[1:-1, :, :]) -
 											 u[1:-2, :, :] * (sqc[1:-1, :, :] + sqc[:-2, :, :]))
@@ -109,7 +111,7 @@ def test_leapfrog(isentropic_moist_data):
 	assert np.allclose(sqc_new[1:-1, :, :],
 					   raw_state_new['isentropic_density_of_cloud_liquid_water'][1:-1, :, :])
 
-	sqr_new = np.zeros_like(sqr, dtype=np.float64)
+	sqr_new = np.zeros_like(sqr, dtype=dtype)
 	sqr_new[1:-1, :, :] = sqr[1:-1, :, :] - \
 						  dt.seconds / dx * (u[2:-1, :, :] * (sqr[2:, :, :] + sqr[1:-1, :, :]) -
 											 u[1:-2, :, :] * (sqr[1:-1, :, :] + sqr[:-2, :, :]))
@@ -124,11 +126,13 @@ def test_upwind(isentropic_moist_data):
 	grid.update_topography(state['time'] - states[0]['time'])
 
 	backend = gt.mode.NUMPY
+	dtype = state['air_isentropic_density'].values.dtype
+
 	hb = HorizontalBoundary.factory('periodic', grid, 1)
 
 	ip_euler = IsentropicPrognostic.factory('forward_euler', grid, True, hb,
 											horizontal_flux_scheme='upwind',
-											backend=backend, dtype=np.float64)
+											backend=backend, dtype=dtype)
 
 	dt = timedelta(seconds=10)
 
@@ -170,7 +174,7 @@ def test_upwind(isentropic_moist_data):
 	assert 'x_momentum_isentropic' in raw_state_new.keys()
 	assert np.allclose(su_new, raw_state_new['x_momentum_isentropic'])
 
-	assert np.allclose(np.zeros_like(sv, dtype=np.float64),
+	assert np.allclose(np.zeros_like(sv, dtype=dtype),
 					   raw_state_new['y_momentum_isentropic'])
 
 	flux = (u[1:-1, :, :] > 0) * u[1:-1, :, :] * sqv[:-1, :, :] + \
@@ -201,13 +205,15 @@ def test_rk2(isentropic_moist_data):
 	grid.update_topography(state['time'] - states[0]['time'])
 
 	backend = gt.mode.NUMPY
+	dtype = state['air_isentropic_density'].values.dtype
+
 	hb = HorizontalBoundary.factory('periodic', grid)
 
-	hv = HorizontalVelocity(grid, dtype=np.float64)
+	hv = HorizontalVelocity(grid, dtype=dtype)
 
 	ip_rk2 = IsentropicPrognostic.factory('rk2', grid, True, hb,
 										  horizontal_flux_scheme='third_order_upwind',
-										  backend=backend, dtype=np.float64)
+										  backend=backend, dtype=dtype)
 
 	dt = timedelta(seconds=10)
 
@@ -339,13 +345,15 @@ def test_rk3cosmo(isentropic_moist_data):
 	grid.update_topography(state['time'] - states[0]['time'])
 
 	backend = gt.mode.NUMPY
+	dtype = state['air_isentropic_density'].values.dtype
+
 	hb = HorizontalBoundary.factory('periodic', grid)
 
-	hv = HorizontalVelocity(grid, dtype=np.float64)
+	hv = HorizontalVelocity(grid, dtype=dtype)
 
 	ip_rk3 = IsentropicPrognostic.factory('rk3cosmo', grid, True, hb,
 										  horizontal_flux_scheme='fifth_order_upwind',
-										  backend=backend, dtype=np.float64)
+										  backend=backend, dtype=dtype)
 
 	dt = timedelta(seconds=10)
 
@@ -558,14 +566,16 @@ def test_rk3(isentropic_moist_data):
 	grid, states = isentropic_moist_data
 	state = states[-1]
 	grid.update_topography(state['time'] - states[0]['time'])
+
 	backend = gt.mode.NUMPY
+	dtype = state['air_isentropic_density'].values.dtype
 
 	hb = HorizontalBoundary.factory('periodic', grid)
-	hv = HorizontalVelocity(grid, dtype=np.float64)
+	hv = HorizontalVelocity(grid, dtype=dtype)
 
 	ip_rk3 = IsentropicPrognostic.factory('rk3', grid, True, hb,
 										  horizontal_flux_scheme='fifth_order_upwind',
-										  backend=backend, dtype=np.float64)
+										  backend=backend, dtype=dtype)
 	a1, a2 = ip_rk3._alpha1, ip_rk3._alpha2
 	b21 = ip_rk3._beta21
 	g0, g1, g2 = ip_rk3._gamma0, ip_rk3._gamma1, ip_rk3._gamma2
@@ -794,3 +804,5 @@ def test_rk3(isentropic_moist_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
+	#from conftest import isentropic_moist_data
+	#test_leapfrog(isentropic_moist_data())

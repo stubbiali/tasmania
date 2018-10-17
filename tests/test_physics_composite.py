@@ -4,14 +4,82 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.core.physics_composite import ConcurrentCoupling, \
+from tasmania.core.physics_composite import DiagnosticComponentComposite, \
+											ConcurrentCoupling, \
 											ParallelSplitting, \
 											SequentialUpdateSplitting
-from tasmania.physics.isentropic import ConservativeIsentropicPressureGradient, \
-										NonconservativeIsentropicPressureGradient, \
-										IsentropicDiagnostics, \
-										IsentropicVelocityComponents
+from tasmania.physics.isentropic_diagnostics import IsentropicDiagnostics, \
+													IsentropicVelocityComponents
+from tasmania.physics.isentropic_tendencies import ConservativeIsentropicPressureGradient, \
+												   NonconservativeIsentropicPressureGradient
 from tasmania.physics.microphysics import Kessler, SaturationAdjustmentKessler
+
+
+def test_diagnostic(isentropic_moist_data):
+	grid, states = isentropic_moist_data
+	state = copy.deepcopy(states[-1])
+	grid.update_topography(state['time'] - states[0]['time'])
+
+	backend = gt.mode.NUMPY
+	dtype = np.float64
+
+	dv = IsentropicDiagnostics(grid, True,
+							   pt=state['air_pressure_on_interface_levels'][0, 0, 0],
+							   backend=backend, dtype=dtype)
+	sa = SaturationAdjustmentKessler(grid, backend=backend)
+
+	dcc = DiagnosticComponentComposite(dv, sa)
+
+	assert 'air_isentropic_density' in dcc.input_properties
+	assert 'mass_fraction_of_water_vapor_in_air' in dcc.input_properties
+	assert 'mass_fraction_of_cloud_liquid_water_in_air' in dcc.input_properties
+	assert len(dcc.input_properties) == 3
+
+	assert 'air_density' in dcc.diagnostic_properties
+	assert 'air_pressure_on_interface_levels' in dcc.diagnostic_properties
+	assert 'air_temperature' in dcc.diagnostic_properties
+	assert 'exner_function_on_interface_levels' in dcc.diagnostic_properties
+	assert 'height_on_interface_levels' in dcc.diagnostic_properties
+	assert 'mass_fraction_of_water_vapor_in_air' in dcc.diagnostic_properties
+	assert 'mass_fraction_of_cloud_liquid_water_in_air' in dcc.diagnostic_properties
+	assert 'montgomery_potential' in dcc.diagnostic_properties
+	assert len(dcc.diagnostic_properties) == 8
+
+	assert 'air_density' in dcc.output_properties
+	assert 'air_isentropic_density' in dcc.output_properties
+	assert 'air_pressure_on_interface_levels' in dcc.output_properties
+	assert 'air_temperature' in dcc.output_properties
+	assert 'exner_function_on_interface_levels' in dcc.output_properties
+	assert 'height_on_interface_levels' in dcc.output_properties
+	assert 'mass_fraction_of_water_vapor_in_air' in dcc.output_properties
+	assert 'mass_fraction_of_cloud_liquid_water_in_air' in dcc.output_properties
+	assert 'montgomery_potential' in dcc.output_properties
+	assert len(dcc.output_properties) == 9
+
+	state.pop('air_pressure_on_interface_levels')
+	state.pop('exner_function_on_interface_levels')
+	state.pop('height_on_interface_levels')
+	state.pop('montgomery_potential')
+
+	diagnostics = dcc(state)
+
+	assert np.allclose(state['air_pressure_on_interface_levels'],
+					   states[-1]['air_pressure_on_interface_levels'])
+	assert np.allclose(state['exner_function_on_interface_levels'],
+					   states[-1]['exner_function_on_interface_levels'])
+	assert np.allclose(state['height_on_interface_levels'],
+					   states[-1]['height_on_interface_levels'])
+	assert np.allclose(state['montgomery_potential'],
+					   states[-1]['montgomery_potential'])
+
+	assert np.allclose(state['air_pressure_on_interface_levels'],
+					   diagnostics['air_pressure_on_interface_levels'])
+	assert np.allclose(state['exner_function_on_interface_levels'],
+					   diagnostics['exner_function_on_interface_levels'])
+	assert np.allclose(state['height_on_interface_levels'],
+					   diagnostics['height_on_interface_levels'])
+	assert np.allclose(state['montgomery_potential'],
+					   diagnostics['montgomery_potential'])
 
 
 def test_cc_serial(isentropic_dry_data):
@@ -381,13 +449,13 @@ def test_ps_asparallel_moist(isentropic_moist_data):
 								  pt=state['air_pressure_on_interface_levels'][0, 0, 0],
 								  backend=backend, dtype=dtype)
 	pg = ConservativeIsentropicPressureGradient(grid, 4, 'relaxed', backend, dtype)
-	kessler = Kessler(grid, potential_temperature_tendency_in_diagnostics=True,
+	kessler = Kessler(grid, tendency_of_air_potential_temperature_in_diagnostics=True,
 					  backend=backend)
 	sa = SaturationAdjustmentKessler(grid, backend=backend)
 
 	dt = timedelta(seconds=10)
 
-	ps = ParallelSplitting(diags, pg, kessler, sa, mode='asparallel',
+	ps = ParallelSplitting(diags, pg, kessler, sa, mode='as_parallel',
 						   grid=grid, time_integration_scheme='rk2')
 	assert isinstance(ps, ParallelSplitting)
 
@@ -555,7 +623,7 @@ def test_sus_moist(isentropic_moist_data):
 	pg	  = ConservativeIsentropicPressureGradient(grid, 2, 'relaxed', backend, dtype)
 	vc	  = IsentropicVelocityComponents(grid, 'relaxed', state,
 										 backend=backend, dtype=dtype)
-	ks	  = Kessler(grid, potential_temperature_tendency_in_diagnostics=True,
+	ks	  = Kessler(grid, tendency_of_air_potential_temperature_in_diagnostics=True,
 					backend=backend)
 	sa 	  = SaturationAdjustmentKessler(grid, backend=backend)
 
