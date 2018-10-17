@@ -31,7 +31,9 @@ from sympl._core.base_components import InputChecker, \
 										TendencyChecker as _TendencyChecker, \
 										OutputChecker
 
-from tasmania.core.physics_composite import ConcurrentCoupling
+from tasmania.core.physics_composite import ConcurrentCoupling, \
+											DiagnosticComponentComposite, \
+											PhysicsComponentComposite
 from tasmania.utils.data_utils import add, make_state, make_raw_state
 from tasmania.utils.utils import check_property_compatibility
 
@@ -51,7 +53,8 @@ class DynamicalCore:
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, grid, moist_on, intermediate_parameterizations=None):
+	def __init__(self, grid, moist_on, 
+				 intermediate_parameterizations=None, diagnostics=None):
 		"""
 		Constructor.
 
@@ -72,6 +75,10 @@ class DynamicalCore:
 			In essence, feeding the dynamical core with intermediate
 			parameterizations allows to pursue the concurrent splitting strategy
 			when an explicit time marching scheme is employed.
+		diagnostics : `obj`, None
+			:class:`~tasmania.core.physics_composite.DiagnosticComponentComposite` 
+			object  wrapping a set of diagnostic parameterizations, evaluated
+			at the end of each stage of the dynamical core.
 		"""
 		self._grid, self._moist_on = grid, moist_on
 
@@ -80,6 +87,12 @@ class DynamicalCore:
 			assert isinstance(self._params, ConcurrentCoupling), \
 				"""The input argument ''intermediate_parameterizations'' 
 				   should be an instance of ConcurrentCoupling."""
+
+		self._diags = diagnostics
+		if self._diags is not None:
+			assert isinstance(self._diags, DiagnosticComponentComposite), \
+				"""The input argument ''diagnostics'' 
+				   should be an instance of DiagnosticComponentComposite."""
 
 		self._input_checker    = InputChecker(self)
 		self._tendency_checker = TendencyChecker(self)
@@ -215,27 +228,57 @@ class DynamicalCore:
 		------
 		ComponentMissingOutputError :
 			For a multi-stage dycore, if the output state misses some
-			variables required by the fast parameterizations.
+			variables required by the intermediate parameterizations.
+		ComponentMissingOutputError :
+			If the state feeding the internal 
+			:class:`sympl.DiagnosticComponentComposite` misses some
+			variables required to retrieve the diagnostics.
 		"""
+		# Initialize the return dictionary with the variables included in
+		# the output state before retrieving the diagnostics
+		return_dict = self._output_properties
+
+		if self._diags is not None:
+			diags_inputs = self._diags.input_properties
+
+			# Ensure that the variables output by any stage
+			# can feed the DiagnosticComponentComposite object
+			shared_vars = set(diags_inputs).intersection(return_dict)
+			for name in shared_vars:
+				check_property_compatibility(diags_inputs[name], return_dict[name],
+											 name=name)
+
+			# Ensure that the state output by any stage contains all the 
+			# variables required by the DiagnosticComponentComposite object
+			missing_vars = set(diags_inputs).difference(return_dict)
+			if missing_vars != set():
+				raise ComponentMissingOutputError('The state passed to the internal '
+												  'DiagnosticComponentComposite should contain '
+												  'the variables: {}.'.format(missing_vars))
+
+			# Add the retrieved diagnostics to the return dictionary
+			for name in self._diags.diagnostic_properties.keys():
+				return_dict[name] = {}
+				return_dict[name].update(self._diags.diagnostic_properties[name])
+
 		if self.stages > 1 and self._params is not None:
 			params_inputs = self._params.current_state_input_properties
-			dycore_outputs = self._output_properties
 
 			# Ensure that the variables output by any stage
 			# can feed the intermediate parameterizations
-			shared_vars = set(params_inputs).intersection(dycore_outputs)
+			shared_vars = set(params_inputs).intersection(return_dict)
 			for name in shared_vars:
-				check_property_compatibility(params_inputs[name], dycore_outputs[name],
+				check_property_compatibility(params_inputs[name], return_dict[name],
 											 name=name)
 
 			# Ensure that the state output by any stage contains
 			# all the variables required by the intermediate parameterizations
-			missing_vars = set(params_inputs).difference(dycore_outputs)
+			missing_vars = set(params_inputs).difference(return_dict)
 			if missing_vars != set():
 				raise ComponentMissingOutputError('The output state should contain '
 												  'the variables: {}.'.format(missing_vars))
 
-		return self._output_properties
+		return return_dict
 
 	@property
 	@abc.abstractmethod
@@ -244,9 +287,10 @@ class DynamicalCore:
 		Return
 		------
 		dict :
-			Dictionary whose keys are strings denoting variables which
-			included in the output state, and whose values are fundamental
-			properties (dims, units) of those variables.
+			Dictionary whose keys are strings denoting variables which are
+			included in the output state before retrieving the diagnostics,
+			and whose values are fundamental properties (dims, units) of 
+			those variables.
 		"""
 
 	@property
@@ -325,15 +369,20 @@ class DynamicalCore:
 							   for name in self.output_properties.keys()}
 			out_state = make_state(raw_out_state, self._grid, units=out_state_units)
 
-			# Ensure the state contains all the required variables
-			# in the right dimensions and units
-			self._output_checker.check_outputs(out_state)
-
 			# Ensure the time specified in the output state is correct
 			if stage == self.stages-1:
 				out_state['time'] = state['time'] + timestep
 			else:
 				out_state['time'] = state['time']
+
+			if self._diags is not None:
+				# Retrieve the diagnostics, and update the output state
+				_ = self._diags(out_state)
+
+			# Ensure the state contains all the required variables
+			# in the right dimensions and units
+			self._output_checker.check_outputs({name: out_state[name] 
+												for name in out_state if name != 'time'})
 
 		return out_state
 

@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import os
 from sympl import Monitor
 
-from tasmania.utils import plot_utils
+from plot import plot_utils
 
 
 class Plot1d(Monitor):
@@ -112,6 +112,10 @@ class Plot1d(Monitor):
 									else plot_function_kwargs
 
 		self._figure = None
+
+	@property
+	def figure(self):
+		return self._figure
 
 	def store(self, state, fig=None, ax=None, save_dest=None, show=False):
 		"""
@@ -286,6 +290,10 @@ class Plot2d(Monitor):
 
 		self._figure = None
 
+	@property
+	def figure(self):
+		return self._figure
+
 	def store(self, state, fig=None, ax=None, save_dest=None, show=False):
 		"""
 		Update the plot using the given state.
@@ -456,6 +464,10 @@ class Plot3d(Monitor):
 									else plot_function_kwargs
 
 		self._figure = None
+
+	@property
+	def figure(self):
+		return self._figure
 
 	def store(self, state, fig=None, ax=None, save_dest=None, show=False):
 		"""

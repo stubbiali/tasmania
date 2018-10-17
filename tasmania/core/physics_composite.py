@@ -25,6 +25,7 @@ This module contains:
 	get_input_properties
 	get_output_properties
 	tendencystepper_factory
+	DiagnosticComponentComposite
 	PhysicsComponentComposite
 	ConcurrentCoupling
 	ParallelSplitting
@@ -33,9 +34,9 @@ This module contains:
 import abc
 from sympl import DiagnosticComponent as Diagnostic, \
 				  TendencyComponent as Tendency, \
-				  AdamsBashforth, combine_component_properties
+				  combine_component_properties
 
-from tasmania.core.timesteppers import ForwardEuler, \
+from tasmania.core.time_steppers import ForwardEuler, \
 									   RungeKutta2 as RK2, \
 									   RungeKutta3COSMO as RK3COSMO, \
 									   RungeKutta3 as RK3
@@ -158,6 +159,50 @@ def tendencystepper_factory(scheme):
 		raise ValueError('Unsupported time integration scheme ''{}''. '
 						 'Available integrators: forward_euler, rk2, rk3cosmo, rk3.'
 						 .format(scheme))
+
+
+class DiagnosticComponentComposite:
+	"""
+	TODO
+	"""
+	def __init__(self, *args):
+		assert_sequence(args, reftype=Diagnostic)
+		self._components_list = args
+
+	@property
+	def input_properties(self):
+		"""
+		TODO
+		"""
+		return get_input_properties(self._components_list)
+
+	@property
+	def diagnostic_properties(self):
+		"""
+		TODO
+		"""
+		return combine_component_properties(self._components_list, 
+											'diagnostic_properties')
+
+	@property
+	def output_properties(self):
+		"""
+		TODO
+		"""
+		return get_output_properties(self._components_list)
+
+	def __call__(self, state):
+		"""
+		TODO
+		"""
+		return_dict = {}
+
+		for component in self._components_list:
+			diagnostics = component(state)
+			state.update(diagnostics)
+			return_dict.update(diagnostics)
+
+		return return_dict
 
 
 class PhysicsComponentComposite:

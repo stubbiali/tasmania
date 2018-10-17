@@ -24,8 +24,8 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.physics.isentropic import NonconservativeIsentropicPressureGradient, \
-										ConservativeIsentropicPressureGradient
+from tasmania.physics.isentropic_tendencies import NonconservativeIsentropicPressureGradient, \
+												   ConservativeIsentropicPressureGradient
 
 
 def test_nonconservative_relaxed_bcs(isentropic_dry_data):
