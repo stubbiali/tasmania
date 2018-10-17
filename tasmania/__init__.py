@@ -22,7 +22,8 @@
 #
 from tasmania.core.dycore import DynamicalCore
 from tasmania.core.model import Model
-from tasmania.core.physics_composite import PhysicsComponentComposite, \
+from tasmania.core.physics_composite import DiagnosticComponentComposite, \
+											PhysicsComponentComposite, \
 											ConcurrentCoupling, \
 											ParallelSplitting, \
 											SequentialUpdateSplitting
@@ -45,10 +46,10 @@ from tasmania.grids.grid_xy import GridXY
 from tasmania.grids.grid_xyz import GridXYZ
 from tasmania.grids.grid_xz import GridXZ
 from tasmania.grids.topography import Topography1d, Topography2d
-from tasmania.physics.isentropic import IsentropicDiagnostics, \
-										IsentropicVelocityComponents, \
-										NonconservativeIsentropicPressureGradient, \
-										ConservativeIsentropicPressureGradient
+from tasmania.physics.isentropic_diagnostics import IsentropicDiagnostics, \
+													IsentropicVelocityComponents
+from tasmania.physics.isentropic_tendencies import NonconservativeIsentropicPressureGradient, \
+												   ConservativeIsentropicPressureGradient
 from tasmania.physics.microphysics import Kessler, RaindropFallVelocity, \
 										  SaturationAdjustmentKessler
 from tasmania.plot.animation import Animation
@@ -67,7 +68,7 @@ from tasmania.utils.data_utils import make_data_array_2d, make_data_array_3d, \
 from tasmania.utils.meteo_utils import get_isothermal_isentropic_analytical_solution
 from tasmania.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
 from tasmania.utils.storage_utils import load_netcdf_dataset, NetCDFMonitor
-from tasmania.utils.plot_utils import get_figure_and_axes, set_plot_properties
+from plot.plot_utils import get_figure_and_axes, set_plot_properties
 
 
 __version__ = '0.2.0'
@@ -75,7 +76,7 @@ __version__ = '0.2.0'
 __all__ = (
 	DynamicalCore,
 	Model,
-	PhysicsComponentComposite,
+	DiagnosticComponentComposite, PhysicsComponentComposite,
 	ConcurrentCoupling, ParallelSplitting, SequentialUpdateSplitting,
 	HorizontalBoundary, HorizontalSmoothing, VerticalDamping,
 	HorizontalIsentropicFlux, VerticalIsentropicFlux,

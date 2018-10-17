@@ -68,7 +68,7 @@ uml: parser
 .PHONY: tests clean distclean gitignore
 
 tests:
-	@cd $(TEST_DIR) && pytest --cov=$(SRC_DIR) .
+	@cd $(TEST_DIR) && pytest --mpl --cov=$(SRC_DIR) .
 	
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null

@@ -52,7 +52,8 @@ class IsentropicDynamicalCore(DynamicalCore):
 	"""
 	def __init__(self, grid, moist_on, time_integration_scheme,
 				 horizontal_flux_scheme, horizontal_boundary_type,
-				 fast_parameterizations=None,
+				 intermediate_parameterizations=None,
+				 diagnostics=None,
 				 damp_on=True, damp_type='rayleigh', damp_depth=15,
 				 damp_max=0.0002, damp_at_every_stage=True,
 				 smooth_on=True, smooth_type='first_order', smooth_damp_depth=10,
@@ -85,13 +86,17 @@ class IsentropicDynamicalCore(DynamicalCore):
 			String specifying the horizontal boundary conditions.
 			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
 			for all available options.
-		fast_parameterizations : `obj`, None
+		intermediate_parameterizations : `obj`, None
 			:class:`~tasmania.physics.composite.PhysicsComponentComposite`
 			object, wrapping the fast physical parameterizations.
 			Here, *fast* refers to the fact that these parameterizations
 			are evaluated *before* each stage of the dynamical core.
 			In essence, feeding the dynamical core with fast parameterizations
 			allows to pursue the concurrent splitting strategy.
+		diagnostics : `obj`, None
+			:class:`~tasmania.core.physics_composite.DiagnosticComponentComposite`
+			object  wrapping a set of diagnostic parameterizations, evaluated
+			at the end of each stage of the dynamical core.
 		damp_on : `bool`, optional
 			:obj:`True` to enable vertical damping, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
@@ -230,7 +235,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._array_call = self._array_call_dry if not moist_on else self._array_call_moist
 
 		# Call parent constructor
-		super().__init__(grid, moist_on, fast_parameterizations)
+		super().__init__(grid, moist_on, intermediate_parameterizations, diagnostics)
 
 	@property
 	def _input_properties(self):
