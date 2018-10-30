@@ -196,6 +196,12 @@ def plot_quiver_xy(x, y, vx, vy, topography, scalar, fig, ax, **kwargs):
 		:obj:`scalar_factor * scalar`. If a bias is specified, then the arrows will be
 		colored based on :obj:`scalar_factor * (scalar - scalar_bias)` are drawn.
 		Default is 1.
+	arrow_scale : float
+		TODO
+	arrow_scale_units : float
+		TODO
+	arrow_headwidth : float
+		TODO
 	cmap_name : str
 		Name of the Matplotlib's color map to be used. All the color maps provided
 		by Matplotlib, as well as the corresponding inverted versions, are available.
@@ -229,6 +235,18 @@ def plot_quiver_xy(x, y, vx, vy, topography, scalar, fig, ax, **kwargs):
 		is stolen. If multiple indices are given, the corresponding axes are
 		all evenly resized to make room for the color bar. If no indices are given,
 		only the current axes are resized.
+	quiverkey_on : bool
+		TODO
+	quiverkey_loc : tuple
+		TODO
+	quiverkey_length : float
+		TODO
+	quiverkey_label : str
+		TODO
+	quiverkey_label_loc : str
+		TODO
+	quiverkey_fontproperties : dict
+		TODO
 
 	Returns
 	-------
@@ -238,25 +256,34 @@ def plot_quiver_xy(x, y, vx, vy, topography, scalar, fig, ax, **kwargs):
 		The :class:`matplotlib.axes.Axes` enclosing the plot.
 	"""
 	# Get keyword arguments
-	fontsize         = kwargs.get('fontsize', 12)
-	x_factor         = kwargs.get('x_factor', 1.)
-	x_step           = kwargs.get('x_step', 2)
-	y_factor         = kwargs.get('y_factor', 1.)
-	y_step           = kwargs.get('y_step', 2)
-	scalar_bias		 = kwargs.get('scalar_bias', 0.)
-	scalar_factor    = kwargs.get('scalar_factor', 1.)
-	cmap_name        = kwargs.get('cmap_name', None)
-	cbar_on			 = kwargs.get('cbar_on', True)
-	cbar_levels		 = kwargs.get('cbar_levels', 14)
-	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
-	cbar_ticks_pos	 = kwargs.get('cbar_ticks_pos', 'center')
-	cbar_center		 = kwargs.get('cbar_center', None)
-	cbar_half_width  = kwargs.get('cbar_half_width', None)
-	cbar_x_label	 = kwargs.get('cbar_x_label', '')
-	cbar_y_label	 = kwargs.get('cbar_y_label', '')
-	cbar_title		 = kwargs.get('cbar_title', '')
-	cbar_orientation = kwargs.get('cbar_orientation', 'vertical')
-	cbar_ax			 = kwargs.get('cbar_ax', None)
+	fontsize          	= kwargs.get('fontsize', 12)
+	x_factor          	= kwargs.get('x_factor', 1.)
+	x_step            	= kwargs.get('x_step', 2)
+	y_factor          	= kwargs.get('y_factor', 1.)
+	y_step            	= kwargs.get('y_step', 2)
+	scalar_bias		  	= kwargs.get('scalar_bias', 0.)
+	scalar_factor     	= kwargs.get('scalar_factor', 1.)
+	arrow_scale		  	= kwargs.get('arrow_scale', None)
+	arrow_scale_units 	= kwargs.get('arrow_scale_units', None)
+	arrow_headwidth 	= kwargs.get('arrow_headwidth', 3.0)
+	cmap_name         	= kwargs.get('cmap_name', None)
+	cbar_on			  	= kwargs.get('cbar_on', True)
+	cbar_levels		  	= kwargs.get('cbar_levels', 14)
+	cbar_ticks_step   	= kwargs.get('cbar_ticks_step', 1)
+	cbar_ticks_pos	  	= kwargs.get('cbar_ticks_pos', 'center')
+	cbar_center		  	= kwargs.get('cbar_center', None)
+	cbar_half_width   	= kwargs.get('cbar_half_width', None)
+	cbar_x_label	  	= kwargs.get('cbar_x_label', '')
+	cbar_y_label	  	= kwargs.get('cbar_y_label', '')
+	cbar_title		  	= kwargs.get('cbar_title', '')
+	cbar_orientation  	= kwargs.get('cbar_orientation', 'vertical')
+	cbar_ax			  	= kwargs.get('cbar_ax', None)
+	quiverkey_on	  	= kwargs.get('quiverkey_on', False)
+	quiverkey_loc	  	= kwargs.get('quiverkey_loc', (1, 1))
+	quiverkey_length	= kwargs.get('quiverkey_length', 1.0)
+	quiverkey_label	  	= kwargs.get('quiverkey_label', '1 m s$^{-1}$')
+	quiverkey_label_loc	= kwargs.get('quiverkey_label_loc', 'E')
+	quiverkey_fontproperties = kwargs.get('quiverkey_fontproperties', {})
 
 	# Global settings
 	mpl.rcParams['font.size'] = fontsize
@@ -269,7 +296,8 @@ def plot_quiver_xy(x, y, vx, vy, topography, scalar, fig, ax, **kwargs):
 		scalar *= scalar_factor
 
 	# Draw topography isolevels
-	plt.contour(x, y, topography, colors='gray')
+	if topography.max() > 0:
+		plt.contour(x, y, topography, colors='gray')
 
 	if cmap_name is not None:
 		# Create color bar for colormap
@@ -296,20 +324,30 @@ def plot_quiver_xy(x, y, vx, vy, topography, scalar, fig, ax, **kwargs):
 
 	# Generate quiver-plot
 	if cm is None:
-		plt.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step],
-					   vx[::x_step, ::y_step], vy[::x_step, ::y_step])
+		q = ax.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step],
+				   	  vx[::x_step, ::y_step], vy[::x_step, ::y_step],
+				   	  scale=arrow_scale, scale_units=arrow_scale_units,
+					  headwidth=arrow_headwidth)
 	else:	
-		surf = plt.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step],
-					   	  vx[::x_step, ::y_step], vy[::x_step, ::y_step],
-				   	   	  scalar[::x_step, ::y_step], cmap=cm)
+		q = ax.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step],
+				   	  vx[::x_step, ::y_step], vy[::x_step, ::y_step],
+				   	  scalar[::x_step, ::y_step], cmap=cm,
+					  scale=arrow_scale, scale_units=arrow_scale_units,
+					  headwidth=arrow_headwidth)
 
 	# Set the color bar
 	if cm is not None and cbar_on:
-		plot_utils.set_colorbar(fig, surf, color_levels,
+		plot_utils.set_colorbar(fig, q, color_levels,
 								cbar_ticks_step=cbar_ticks_step,
 								cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
 								cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
 								cbar_orientation=cbar_orientation, cbar_ax=cbar_ax)
+
+	# Set quiverkey
+	if quiverkey_on:
+		ax.quiverkey(q, quiverkey_loc[0], quiverkey_loc[1], quiverkey_length,
+					 quiverkey_label, coordinates='axes', labelpos=quiverkey_label_loc,
+					 fontproperties=quiverkey_fontproperties)
 
 	# Bring axes and field back to original units
 	x      /= x_factor

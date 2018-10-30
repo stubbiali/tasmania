@@ -26,9 +26,8 @@ This module contains:
 	_Centered(VerticalIsentropicFlux)
 	_MacCormack(VerticalIsentropicFlux)
 """
-from tasmania.dynamics.isentropic_fluxes import VerticalIsentropicFlux
-
 import gridtools as gt
+from tasmania.dynamics.isentropic_fluxes import VerticalIsentropicFlux
 
 
 class _Upwind(VerticalIsentropicFlux):

@@ -24,13 +24,16 @@
 This module contains:
 	NonconservativeIsentropicPressureGradient
 	ConservativeIsentropicPressureGradient
-	IsentropicVerticalFlux
+	VerticalIsentropicAdvection
+	PrescribedSurfaceHeating
 """
 import numpy as np
 from sympl import DataArray, TendencyComponent
 
 import gridtools as gt
 from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
+from tasmania.dynamics.isentropic_fluxes import VerticalHomogeneousIsentropicFlux
+from tasmania.utils.data_utils import get_physical_constants
 
 try:
 	from tasmania.namelist import datatype
@@ -45,7 +48,7 @@ class NonconservativeIsentropicPressureGradient(TendencyComponent):
 	in the isentropic system.
 	"""
 	def __init__(self, grid, order, horizontal_boundary_type,
-				 backend=gt.mode.NUMPY, dtype=datatype):
+				 backend=gt.mode.NUMPY, dtype=datatype, **kwargs):
 		"""
 		The constructor.
 
@@ -73,6 +76,9 @@ class NonconservativeIsentropicPressureGradient(TendencyComponent):
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.TendencyComponent`.
 		"""
 		# Keep track of input parameters
 		self._grid     = grid
@@ -81,7 +87,7 @@ class NonconservativeIsentropicPressureGradient(TendencyComponent):
 		self._dtype	   = dtype
 
 		# Call parent's constructor
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Instantiate the class taking care of the lateral boundary conditions
 		self._hboundary = HorizontalBoundary.factory(horizontal_boundary_type,
@@ -251,7 +257,7 @@ class ConservativeIsentropicPressureGradient(TendencyComponent):
 	isentropic system.
 	"""
 	def __init__(self, grid, order, horizontal_boundary_type,
-				 backend=gt.mode.NUMPY, dtype=datatype):
+				 backend=gt.mode.NUMPY, dtype=datatype, **kwargs):
 		"""
 		The constructor.
 
@@ -279,6 +285,9 @@ class ConservativeIsentropicPressureGradient(TendencyComponent):
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.TendencyComponent`.
 		"""
 		# Keep track of input parameters
 		self._grid     = grid
@@ -287,7 +296,7 @@ class ConservativeIsentropicPressureGradient(TendencyComponent):
 		self._dtype	   = dtype
 
 		# Call parent's constructor
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Instantiate the class taking care of the lateral boundary conditions
 		self._hboundary = HorizontalBoundary.factory(horizontal_boundary_type,
@@ -462,13 +471,16 @@ class ConservativeIsentropicPressureGradient(TendencyComponent):
 		return out_su_tnd, out_sv_tnd
 
 
-class IsentropicVerticalFlux(TendencyComponent):
+class VerticalIsentropicAdvection(TendencyComponent):
 	"""
 	This class inherits :class:`sympl.TendencyComponent` to calculate
-	the conservative vertical advection flux in isentropic coordinates
-	for any prognostic variable included in the isentropic system.
+	the vertical derivative of the conservative vertical advection flux
+	in isentropic coordinates for any prognostic variable included in
+	the isentropic system.
 	"""
-	def __init__(self, grid, moist_on=False, backend=gt.mode.NUMPY):
+	def __init__(self, grid, moist_on=False, flux_scheme='upwind',
+				 tendency_of_air_potential_temperature_on_interface_levels=False,
+				 backend=gt.mode.NUMPY, **kwargs):
 		"""
 		The constructor.
 
@@ -478,16 +490,27 @@ class IsentropicVerticalFlux(TendencyComponent):
 			TODO
 		moist_on : `bool`, optional
 			TODO
+		flux_scheme : `str`, optional
+			TODO
+		tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
+			TODO
 		backend : `obj`, optional
 			TODO
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.TendencyComponent`.
 		"""
 		# Keep track of input arguments
 		self._grid     = grid
 		self._moist_on = moist_on
+		self._stgz     = tendency_of_air_potential_temperature_on_interface_levels
 		self._backend  = backend
 
 		# Call parent's constructor
-		super().__init__()
+		super().__init__(**kwargs)
+
+		# Instantiate the object calculating the flux
+		self._vflux = VerticalHomogeneousIsentropicFlux.factory(flux_scheme, grid, moist_on)
 
 		# Initialize the pointer to the underlying GT4Py stencil;
 		# this will be properly redirected the first time the call
@@ -501,10 +524,19 @@ class IsentropicVerticalFlux(TendencyComponent):
 
 		return_dict = {
 			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'tendency_of_air_potential_temperature': {'dims': dims, 'units': 'K s^-1'},
 			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
 			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
 		}
+
+		if self._stgz:
+			dims_stgz = (grid.x.dims[0], grid.y.dims[0],
+						 grid.z_on_interface_levels.dims[0])
+			return_dict['tendency_of_air_potential_temperature_on_interface_levels'] = \
+				{'dims': dims_stgz, 'units': 'K s^-1'}
+		else:
+			return_dict['tendency_of_air_potential_temperature'] = \
+				{'dims': dims, 'units': 'K s^-1'}
+
 		if self._moist_on:
 			return_dict['mass_fraction_of_water_vapor_in_air'] = \
 				{'dims': dims, 'units': 'g g^-1'}
@@ -541,11 +573,12 @@ class IsentropicVerticalFlux(TendencyComponent):
 
 	@property
 	def nb(self):
-		return 1
+		return self._vflux.nb
 
 	def array_call(self, state):
 		# Shortcuts
-		dtype = state['air_isentropic_density'].values.dtype
+		nb = self.nb
+		dtype = state['air_isentropic_density'].dtype
 
 		# Instantiate the stencil object
 		if self._stencil is None:
@@ -556,6 +589,9 @@ class IsentropicVerticalFlux(TendencyComponent):
 
 		# Run the stencil
 		self._stencil.compute()
+
+		# Set lower layers
+		self._set_lower_layers()
 
 		# Collect the output arrays in a dictionary
 		tendencies = {
@@ -573,10 +609,11 @@ class IsentropicVerticalFlux(TendencyComponent):
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+		mk = nz + 1 if self._stgz else nz
 		nb = self.nb
 
 		# Allocate arrays serving as stencil's inputs
-		self._in_theta = np.zeros((nx, ny, nz), dtype=dtype)
+		self._in_theta = np.zeros((nx, ny, mk), dtype=dtype)
 		self._in_s     = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_su    = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_sv    = np.zeros((nx, ny, nz), dtype=dtype)
@@ -619,14 +656,20 @@ class IsentropicVerticalFlux(TendencyComponent):
 			inputs 			 = inputs,
 			outputs 		 = outputs,
 			domain 			 = gt.domain.Rectangle((0, 0, nb), (nx-1, ny-1, nz-nb-1)),
-			backend 		 = self._backend
+			mode	 		 = self._backend
 		)
 
 	def _stencil_set_inputs(self, state):
-		self._in_theta[...] = state['tendency_of_air_potential_temperature'][...]
+		if self._stgz:
+			self._in_theta[...] = \
+				state['tendency_of_air_potential_temperature_on_interface_levels'][...]
+		else:
+			self._in_theta[...] = state['tendency_of_air_potential_temperature'][...]
+
 		self._in_s[...] 	= state['air_isentropic_density'][...]
 		self._in_su[...]    = state['x_momentum_isentropic'][...]
 		self._in_sv[...]    = state['y_momentum_isentropic'][...]
+
 		if self._moist_on:
 			self._in_qv[...] = state['mass_fraction_of_water_vapor_in_air'][...]
 			self._in_qc[...] = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
@@ -644,21 +687,277 @@ class IsentropicVerticalFlux(TendencyComponent):
 		out_s  = gt.Equation()
 		out_su = gt.Equation()
 		out_sv = gt.Equation()
-		if self._moist:
+		if self._moist_on:
 			out_qv = gt.Equation()
 			out_qc = gt.Equation()
 			out_qr = gt.Equation()
 
-		# Computations
-		out_s[k]  = 0.5 * (in_theta[k-1] * in_s[k-1] - in_theta[k+1] * in_s[k+1]) / dz
-		out_su[k] = 0.5 * (in_theta[k-1] * in_su[k-1] - in_theta[k+1] * in_su[k+1]) / dz
-		out_sv[k] = 0.5 * (in_theta[k-1] * in_sv[k-1] - in_theta[k+1] * in_sv[k+1]) / dz
+		# Vertical velocity
+		if self._stgz:
+			w = in_theta
+		else:
+			w = gt.Equation()
+			w[k] = 0.5 * (in_theta[k] + in_theta[k-1])
+
+		# Vertical fluxes
+		if not self._moist_on:
+			flux_s, flux_su, flux_sv = self._vflux(k, w, in_s, in_su, in_sv)
+		else:
+			flux_s, flux_su, flux_sv, flux_qv, flux_qc, flux_qr = \
+				self._vflux(k, w, in_s, in_su, in_sv, in_qv, in_qc, in_qr)
+
+		# Vertical advection
+		out_s[k]  = (flux_s[k+1]  - flux_s[k] ) / dz
+		out_su[k] = (flux_su[k+1] - flux_su[k]) / dz
+		out_sv[k] = (flux_sv[k+1] - flux_sv[k]) / dz
 		if self._moist_on:
-			out_qv[k] = 0.5 * (in_theta[k-1] * in_qv[k-1] - in_theta[k+1] * in_qv[k+1]) / dz
-			out_qc[k] = 0.5 * (in_theta[k-1] * in_qc[k-1] - in_theta[k+1] * in_qc[k+1]) / dz
-			out_qr[k] = 0.5 * (in_theta[k-1] * in_qr[k-1] - in_theta[k+1] * in_qr[k+1]) / dz
+			out_qv[k] = (flux_qv[k+1] - flux_qv[k]) / dz
+			out_qc[k] = (flux_qc[k+1] - flux_qc[k]) / dz
+			out_qr[k] = (flux_qr[k+1] - flux_qr[k]) / dz
 
 		if not self._moist_on:
 			return out_s, out_su, out_sv
 		else:
 			return out_s, out_su, out_sv, out_qv, out_qc, out_qr
+
+	def _set_lower_layers(self):
+		dz = self._grid.dz.to_units('K').values.item()
+		nb = self.nb
+		w  = self._in_theta if not self._stgz \
+			 else 0.5 * (self._in_theta[:, :, -nb-2:] + self._in_theta[:, :, -nb-3:-1])
+
+		if self._vflux.order == 1:
+			self._out_s[:, :, -nb:] = \
+				(w[:, :, -nb-1:-1] * self._in_s[:, :, -nb-1:-1] -
+				 w[:, :, -nb:    ] * self._in_s[:, :, -nb:    ]) / dz
+			self._out_su[:, :, -nb:] = \
+				(w[:, :, -nb-1:-1] * self._in_su[:, :, -nb-1:-1] -
+				 w[:, :, -nb:    ] * self._in_su[:, :, -nb:    ]) / dz
+			self._out_sv[:, :, -nb:] = \
+				(w[:, :, -nb-1:-1] * self._in_sv[:, :, -nb-1:-1] -
+				 w[:, :, -nb:    ] * self._in_sv[:, :, -nb:    ]) / dz
+
+			if self._moist_on:
+				self._out_qv[:, :, -nb:] = \
+					(w[:, :, -nb-1:-1] * self._in_qv[:, :, -nb-1:-1] -
+					 w[:, :, -nb:    ] * self._in_qv[:, :, -nb:    ]) / dz
+				self._out_qc[:, :, -nb:] = \
+					(w[:, :, -nb-1:-1] * self._in_qc[:, :, -nb-1:-1] -
+					 w[:, :, -nb:    ] * self._in_qc[:, :, -nb:    ]) / dz
+				self._out_qr[:, :, -nb:] = \
+					(w[:, :, -nb-1:-1] * self._in_qr[:, :, -nb-1:-1] -
+					 w[:, :, -nb:    ] * self._in_qr[:, :, -nb:    ]) / dz
+		else:
+			self._out_s[:, :, -nb:] = \
+				0.5 * (- 3.0 * w[:, :, -nb:    ] * self._in_s[:, :, -nb:    ]
+				 	   + 4.0 * w[:, :, -nb-1:-1] * self._in_s[:, :, -nb-1:-1]
+				 	   - 1.0 * w[:, :, -nb-2:-2] * self._in_s[:, :, -nb-2:-2]) / dz
+			self._out_su[:, :, -nb:] = \
+				0.5 * (- 3.0 * w[:, :, -nb:    ] * self._in_su[:, :, -nb:    ]
+					   + 4.0 * w[:, :, -nb-1:-1] * self._in_su[:, :, -nb-1:-1]
+					   - 1.0 * w[:, :, -nb-2:-2] * self._in_su[:, :, -nb-2:-2]) / dz
+			self._out_sv[:, :, -nb:] = \
+				0.5 * (- 3.0 * w[:, :, -nb:    ] * self._in_sv[:, :, -nb:    ]
+					   + 4.0 * w[:, :, -nb-1:-1] * self._in_sv[:, :, -nb-1:-1]
+					   - 1.0 * w[:, :, -nb-2:-2] * self._in_sv[:, :, -nb-2:-2]) / dz
+
+			if self._moist_on:
+				self._out_qv[:, :, -nb:] = \
+					0.5 * (- 3.0 * w[:, :, -nb:    ] * self._in_qv[:, :, -nb:    ]
+						   + 4.0 * w[:, :, -nb-1:-1] * self._in_qv[:, :, -nb-1:-1]
+						   - 1.0 * w[:, :, -nb-2:-2] * self._in_qv[:, :, -nb-2:-2]) / dz
+				self._out_qc[:, :, -nb:] = \
+					0.5 * (- 3.0 * w[:, :, -nb:    ] * self._in_qc[:, :, -nb:    ]
+						   + 4.0 * w[:, :, -nb-1:-1] * self._in_qc[:, :, -nb-1:-1]
+						   - 1.0 * w[:, :, -nb-2:-2] * self._in_qc[:, :, -nb-2:-2]) / dz
+				self._out_qr[:, :, -nb:] = \
+					0.5 * (- 3.0 * w[:, :, -nb:    ] * self._in_qr[:, :, -nb:    ]
+						   + 4.0 * w[:, :, -nb-1:-1] * self._in_qr[:, :, -nb-1:-1]
+						   - 1.0 * w[:, :, -nb-2:-2] * self._in_qr[:, :, -nb-2:-2]) / dz
+
+
+class PrescribedSurfaceHeating(TendencyComponent):
+	"""
+	TODO
+
+	References
+	----------
+	Reisner, J. M., and P. K. Smolarkiewicz. (1994). \
+		Thermally forced low Froude number flow past three-dimensional obstacles. \
+		*Journal of Atmospheric Sciences*, *51*(1):117-133.
+	"""
+	# Default values for the physical constants used in the class
+	_d_physical_constants = {
+		'gas_constant_of_dry_air':
+			DataArray(287.05, attrs={'units': 'J K^-1 kg^-1'}),
+		'specific_heat_of_dry_air_at_constant_pressure':
+			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
+	}
+
+	def __init__(self, grid, tendency_of_air_potential_temperature_in_diagnostics=False,
+				 air_pressure_on_interface_levels=True,
+				 amplitude_during_daytime=None, amplitude_at_night=None,
+				 attenuation_coefficient_during_daytime=None,
+				 attenuation_coefficient_at_night=None,
+				 characteristic_length=None, frequency=None, starting_time=None,
+				 backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
+		"""
+		The constructor.
+
+		Parameters
+		----------
+		grid : grid
+			TODO
+		tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
+			TODO
+		air_pressure_on_interface_levels : `bool`, optional
+			TODO
+		amplitude_during_daytime : `dataarray_like`, optional
+			TODO
+		amplitude_at_night : `dataarray_like`, optional
+			TODO
+		attenuation_coefficient_during_daytime : `dataarray_like`, optional
+			TODO
+		attenuation_coefficient_at_night : `dataarray_like`, optional
+			TODO
+		characteristic_length : `dataarray_like`, optional
+			TODO
+		frequency : `dataarray_like`, optional
+			TODO
+		starting_time : `datetime`, optional
+			TODO
+		backend : `obj`, optional
+			TODO
+		physical_constants : `dict`, optional
+			TODO
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.TendencyComponent`.
+		"""
+		self._grid    = grid
+		self._tid	  = tendency_of_air_potential_temperature_in_diagnostics
+		self._apil	  = air_pressure_on_interface_levels
+		self._backend = backend
+
+		super().__init__(**kwargs)
+
+		self._f0d = amplitude_during_daytime.to_units('W m^-2').values.item() \
+					if amplitude_during_daytime is not None else 800.0
+		self._f0n = amplitude_at_night.to_units('W m^-2').values.item() \
+					if amplitude_at_night is not None else -75.0
+		self._ad  = attenuation_coefficient_during_daytime.to_units('m^-1').values.item() \
+					if attenuation_coefficient_during_daytime is not None else 1.0/600.0
+		self._an  = attenuation_coefficient_at_night.to_units('m^-1').values.item() \
+					if attenuation_coefficient_at_night is not None else 1.0/75.0
+		self._cl  = characteristic_length.to_units('m').values.item() \
+					if characteristic_length is not None else 25000.0
+		self._w   = frequency.to_units('h^-1').values.item() \
+					if frequency is not None else np.pi/12.0
+		self._t0  = starting_time
+
+		pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+		self._rd = pcs['gas_constant_of_dry_air']
+		self._cp = pcs['specific_heat_of_dry_air_at_constant_pressure']
+
+	@property
+	def input_properties(self):
+		g = self._grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+		dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+
+		return_dict = {
+			'height_on_interface_levels': {'dims': dims_stgz, 'units': 'm'},
+		}
+
+		if self._apil:
+			return_dict['air_pressure_on_interface_levels'] = \
+				{'dims': dims_stgz, 'units': 'Pa'}
+		else:
+			return_dict['air_pressure'] = {'dims': dims, 'units': 'Pa'}
+
+		return return_dict
+
+	@property
+	def tendency_properties(self):
+		g = self._grid
+
+		return_dict = {}
+
+		if not self._tid:
+			if self._apil:
+				dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+				return_dict['air_potential_temperature_on_interface_levels'] = \
+					{'dims': dims, 'units': 'K s^-1'}
+			else:
+				dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+				return_dict['air_potential_temperature'] = {'dims': dims, 'units': 'K s^-1'}
+
+		return return_dict
+
+	@property
+	def diagnostic_properties(self):
+		g = self._grid
+
+		return_dict = {}
+
+		if self._tid:
+			if self._apil:
+				dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+				return_dict['tendency_of_air_potential_temperature_on_interface_levels'] = \
+					{'dims': dims, 'units': 'K s^-1'}
+			else:
+				dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+				return_dict['tendency_of_air_potential_temperature'] = \
+					{'dims': dims, 'units': 'K s^-1'}
+
+		return return_dict
+
+	def array_call(self, state):
+		g = self._grid
+		mi, mj = g.nx, g.ny
+		mk = g.nz + 1 if self._apil else g.nz
+
+		t    = state['time']
+		dt   = (t - self._t0).total_seconds() / 3600.0 if self._t0 is not None \
+			else t.hour
+
+		if dt <= 0.0:
+			out = np.zeros((mi, mj, mk), dtype=state['height_on_interface_levels'].dtype)
+		else:
+			x1d, y1d = g.x.to_units('m').values, g.y.to_units('m').values
+			theta1d  = g.z_on_interface_levels.to_units('K').values if self._apil \
+				else g.z.to_units('K').values
+
+			x 	  = np.tile(x1d[:, np.newaxis, np.newaxis], (1, mj, mk))
+			y 	  = np.tile(y1d[np.newaxis, :, np.newaxis], (mi, 1, mk))
+			theta = np.tile(theta1d[np.newaxis, np.newaxis, :], (mi, mj, 1))
+
+			p  = state['air_pressure_on_interface_levels'] if self._apil \
+				else state['air_pressure']
+			zv = state['height_on_interface_levels']
+			z  = zv if self._apil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
+			h  = np.repeat(zv[:, :, -1:], mk, axis=2)
+
+			f0 = self._f0d if (8.0 <= t.hour < 20) else self._f0n
+			a  = self._ad if (8.0 <= t.hour < 20) else self._an
+			cl = self._cl
+			w  = self._w
+
+			out = (theta * self._rd * a / (p * self._cp) *
+				   f0 * np.exp(- a * (z - h)) * np.sin(w * dt)) * (x**2 + y**2 < cl**2)
+
+		tendencies = {}
+		if not self._tid:
+			if self._apil:
+				tendencies['air_potential_temperature_on_interface_levels'] = out
+			else:
+				tendencies['air_potential_temperature'] = out
+
+		diagnostics = {}
+		if self._tid:
+			if self._apil:
+				diagnostics['tendency_of_air_potential_temperature_on_interface_levels'] = out
+			else:
+				diagnostics['tendency_of_air_potential_temperature'] = out
+
+		return tendencies, diagnostics

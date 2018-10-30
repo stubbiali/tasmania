@@ -32,6 +32,7 @@ This module contains:
 	SequentialUpdateSplitting
 """
 import abc
+from copy import deepcopy
 from sympl import DiagnosticComponent as Diagnostic, \
 				  TendencyComponent as Tendency, \
 				  combine_component_properties
@@ -835,6 +836,7 @@ class SequentialUpdateSplitting(PhysicsComponentComposite):
 
 	def _call(self, state, state_prv, timestep):
 		out_tendencies = {}
+		current_time = deepcopy(state['time'])
 
 		for component in self.components_list:
 			if isinstance(component, self._time_integrator):
@@ -844,5 +846,8 @@ class SequentialUpdateSplitting(PhysicsComponentComposite):
 			else:
 				diagnostics = component(state)
 				state.update(diagnostics)
+
+			# Ensure state is still defined at current time level
+			state['time'] = current_time
 
 		return out_tendencies

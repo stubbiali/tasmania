@@ -361,8 +361,9 @@ class DynamicalCore:
 											   units=in_tendencies_units)
 
 			# Stepped the model raw state
-			raw_out_state = self.array_call(stage, raw_in_state, raw_in_tendencies,
-											timestep)
+			raw_out_state = self.array_call(
+				stage, raw_in_state, raw_in_tendencies, timestep
+			)
 
 			# Create DataArrays out of the Numpy arrays contained in the stepped state
 			out_state_units = {name: self.output_properties[name]['units']
@@ -373,7 +374,7 @@ class DynamicalCore:
 			if stage == self.stages-1:
 				out_state['time'] = state['time'] + timestep
 			else:
-				out_state['time'] = state['time']
+				out_state['time'] = raw_out_state['time']
 
 			if self._diags is not None:
 				# Retrieve the diagnostics, and update the output state

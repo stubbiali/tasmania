@@ -46,10 +46,13 @@ from tasmania.grids.grid_xy import GridXY
 from tasmania.grids.grid_xyz import GridXYZ
 from tasmania.grids.grid_xz import GridXZ
 from tasmania.grids.topography import Topography1d, Topography2d
+from tasmania.physics.coriolis import ConservativeIsentropicCoriolis
 from tasmania.physics.isentropic_diagnostics import IsentropicDiagnostics, \
 													IsentropicVelocityComponents
 from tasmania.physics.isentropic_tendencies import NonconservativeIsentropicPressureGradient, \
-												   ConservativeIsentropicPressureGradient
+												   ConservativeIsentropicPressureGradient, \
+												   VerticalIsentropicAdvection, \
+												   PrescribedSurfaceHeating
 from tasmania.physics.microphysics import Kessler, RaindropFallVelocity, \
 										  SaturationAdjustmentKessler
 from tasmania.plot.animation import Animation
@@ -88,8 +91,10 @@ __all__ = (
 	HorizontalVelocity, WaterConstituent,
 	GridXY, GridXZ, GridXYZ,
 	Topography1d, Topography2d,
+	ConservativeIsentropicCoriolis,
 	IsentropicDiagnostics, IsentropicVelocityComponents,
 	ConservativeIsentropicPressureGradient, NonconservativeIsentropicPressureGradient,
+	PrescribedSurfaceHeating, VerticalIsentropicAdvection,
 	Kessler, RaindropFallVelocity, SaturationAdjustmentKessler,
 	Plot1d, Plot2d, Plot3d,
 	PlotsOverlapper, SubplotsAssembler, Animation,

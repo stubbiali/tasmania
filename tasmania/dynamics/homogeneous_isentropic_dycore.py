@@ -240,8 +240,9 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
 
 		return_dict = {
-			'x_velocity': {'dims': dims, 'units': 'm s^-2'},
-			'y_velocity': {'dims': dims, 'units': 'm s^-2'},
+			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1 s^-1'},
+			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
+			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
 		}
 
 		if self._moist_on:
@@ -374,6 +375,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 
 		# Instantiate the output state
 		raw_state_out = {
+			'time': raw_state_new['time'],
 			'air_isentropic_density': s_out,
 			'x_momentum_isentropic': su_out,
 			'x_velocity_at_u_locations': u_out,
@@ -546,6 +548,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 
 		# Instantiate the output state
 		raw_state_out = {
+			'time': raw_state_new['time'],
 			'air_isentropic_density': s_out,
 			'mass_fraction_of_water_vapor_in_air': self._qv_out,
 			'mass_fraction_of_cloud_liquid_water_in_air': self._qc_out,

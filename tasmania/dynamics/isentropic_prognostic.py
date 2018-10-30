@@ -42,6 +42,12 @@ except ImportError:
 	datatype = np.float32
 
 
+# Convenient aliases
+mf_wv  = 'mass_fraction_of_water_vapor_in_air'
+mf_clw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mf_pw  = 'mass_fraction_of_precipitation_water_in_air'
+
+
 class IsentropicPrognostic:
 	"""
 	Abstract base class whose derived classes implement different
@@ -232,11 +238,12 @@ class IsentropicPrognostic:
             the data for those tendencies.
             The dictionary may contain the following keys:
 
-				* x_velocity [m s^-2];
-				* y_velocity [m s^-2];
+				* air_isentropic_density [kg m^-2 K^-1 s^-1];
             	* mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];
             	* mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];
             	* mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].
+				* x_momentum_isentropic [kg m^-1 K^-1 s^-2];
+				* y_momentum_isentropic [kg m^-1 K^-1 s^-2];
 
 		Return
 		------
@@ -441,7 +448,7 @@ class IsentropicPrognostic:
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
-        physical_constants : `dict`, optional
+		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
 			storing the values and units of those constants. The constants might be:
@@ -468,15 +475,15 @@ class IsentropicPrognostic:
 					raindrop_fall_velocity_diagnostic, backend, dtype, physical_constants]
 
 		if scheme == 'forward_euler':
-			return module._ForwardEuler(*arg_list)
+			return module.ForwardEuler(*arg_list)
 		elif scheme == 'centered':
-			return module._Centered(*arg_list)
+			return module.Centered(*arg_list)
 		elif scheme == 'rk2':
-			return module._RK2(*arg_list)
+			return module.RK2(*arg_list)
 		elif scheme == 'rk3cosmo':
-			return module._RK3COSMO(*arg_list)
+			return module.RK3COSMO(*arg_list)
 		elif scheme == 'rk3':
-			return module._RK3(*arg_list)
+			return module.RK3(*arg_list)
 		else:
 			raise ValueError('Unknown time integration scheme {}.\n'
 							 'Available options: forward_euler, centered, rk2, rk3cosmo, rk3.'
@@ -528,16 +535,18 @@ class IsentropicPrognostic:
 		self._in_v   = np.zeros((  mi, mj+1, nz), dtype=dtype)
 		self._in_mtg = np.zeros((  mi,   mj, nz), dtype=dtype)
 		if tendency_names is not None:
-			if 'x_velocity' in tendency_names:
-				self._in_u_tnd = np.zeros((mi, mj, nz), dtype=dtype)
-			if 'y_velocity' in tendency_names:
-				self._in_v_tnd = np.zeros((mi, mj, nz), dtype=dtype)
-			if 'mass_fraction_of_water_vapor_in_air' in tendency_names:
+			if 'air_isentropic_density' in tendency_names:
+				self._in_s_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+			if mf_wv in tendency_names:
 				self._in_qv_tnd = np.zeros((mi, mj, nz), dtype=dtype)
-			if 'mass_fraction_of_cloud_liquid_water_in_air' in tendency_names:
+			if mf_clw in tendency_names:
 				self._in_qc_tnd = np.zeros((mi, mj, nz), dtype=dtype)
-			if 'mass_fraction_of_precipitation_water_in_air' in tendency_names:
+			if mf_pw in tendency_names:
 				self._in_qr_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+			if 'x_momentum_isentropic' in tendency_names:
+				self._in_su_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+			if 'y_momentum_isentropic' in tendency_names:
+				self._in_sv_tnd = np.zeros((mi, mj, nz), dtype=dtype)
 
 	def _stencils_stepping_by_neglecting_vertical_motion_allocate_outputs(self):
 		"""
@@ -584,16 +593,14 @@ class IsentropicPrognostic:
 		# Shortcuts
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		if raw_tendencies is not None:
-			u_tnd_on  = raw_tendencies.get('x_velocity', None) is not None
-			v_tnd_on  = raw_tendencies.get('y_velocity', None) is not None
-			qv_tnd_on = raw_tendencies.get('mass_fraction_of_water_vapor_in_air', None) \
-						is not None
-			qc_tnd_on = raw_tendencies.get('mass_fraction_of_cloud_liquid_water_in_air', None) \
-						is not None
-			qr_tnd_on = raw_tendencies.get('mass_fraction_of_precipitation_water_in_air', None) \
-						is not None
+			s_tnd_on  = raw_tendencies.get('air_isentropic_density', None) is not None
+			qv_tnd_on = raw_tendencies.get(mf_wv, None) is not None
+			qc_tnd_on = raw_tendencies.get(mf_clw, None) is not None
+			qr_tnd_on = raw_tendencies.get(mf_pw, None) is not None
+			su_tnd_on = raw_tendencies.get('x_momentum_isentropic', None) is not None
+			sv_tnd_on = raw_tendencies.get('y_momentum_isentropic', None) is not None
 		else:
-			u_tnd_on = v_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
 		# Update the local time step
 		self._dt.value = dt.total_seconds()
@@ -609,17 +616,19 @@ class IsentropicPrognostic:
 			sqv = raw_state['isentropic_density_of_water_vapor']
 			sqc = raw_state['isentropic_density_of_cloud_liquid_water']
 			sqr = raw_state['isentropic_density_of_precipitation_water']
-		if u_tnd_on:
-			u_tnd = raw_tendencies['x_velocity']
-		if v_tnd_on:
-			v_tnd = raw_tendencies['y_velocity']
+		if s_tnd_on:
+			s_tnd = raw_tendencies['air_isentropic_density']
 		if qv_tnd_on:
-			qv_tnd = raw_tendencies['mass_fraction_of_water_vapor_in_air']
+			qv_tnd = raw_tendencies[mf_wv]
 		if qc_tnd_on:
-			qc_tnd = raw_tendencies['mass_fraction_of_cloud_liquid_water_in_air']
+			qc_tnd = raw_tendencies[mf_clw]
 		if qr_tnd_on:
-			qr_tnd = raw_tendencies['mass_fraction_of_precipitation_water_in_air']
-		
+			qr_tnd = raw_tendencies[mf_pw]
+		if su_tnd_on:
+			su_tnd = raw_tendencies['x_momentum_isentropic']
+		if sv_tnd_on:
+			sv_tnd = raw_tendencies['y_momentum_isentropic']
+
 		# Update the Numpy arrays which serve as inputs to the GT4Py stencils
 		self._in_s  [  :mi,   :mj, :] = self._hboundary.from_physical_to_computational_domain(s)
 		self._in_u  [:mi+1,   :mj, :] = self._hboundary.from_physical_to_computational_domain(u)
@@ -631,12 +640,9 @@ class IsentropicPrognostic:
 			self._in_sqv[:mi, :mj, :] = self._hboundary.from_physical_to_computational_domain(sqv)
 			self._in_sqc[:mi, :mj, :] = self._hboundary.from_physical_to_computational_domain(sqc)
 			self._in_sqr[:mi, :mj, :] = self._hboundary.from_physical_to_computational_domain(sqr)
-		if u_tnd_on:
-			self._in_u_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(u_tnd)
-		if v_tnd_on:
-			self._in_v_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(v_tnd)
+		if s_tnd_on:
+			self._in_s_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(s_tnd)
 		if qv_tnd_on:
 			self._in_qv_tnd[:mi, :mj, :] = \
 				self._hboundary.from_physical_to_computational_domain(qv_tnd)
@@ -646,3 +652,9 @@ class IsentropicPrognostic:
 		if qr_tnd_on:
 			self._in_qr_tnd[:mi, :mj, :] = \
 				self._hboundary.from_physical_to_computational_domain(qr_tnd)
+		if su_tnd_on:
+			self._in_su_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(su_tnd)
+		if sv_tnd_on:
+			self._in_sv_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(sv_tnd)

@@ -25,29 +25,33 @@ import gridtools as gt
 import numpy as np
 from sympl import DataArray
 
-
-dtype   = np.float64
+# Backend settings
 backend = gt.mode.NUMPY
+dtype   = np.float64
 
+# Computational domain
 domain_x = DataArray([-250, 250], dims='x', attrs={'units': 'km'}).to_units('m')
 nx       = 51
 domain_y = DataArray([-250, 250], dims='y', attrs={'units': 'km'}).to_units('m')
 ny       = 51
 domain_z = DataArray([400, 300], dims='potential_temperature', attrs={'units': 'K'})
-nz       = 60
+nz       = 50
 
+# Topography
+_width = DataArray(50.0, attrs={'units': 'km'})
 topo_type   = 'gaussian'
 topo_time   = timedelta(seconds=1800)
 topo_kwargs = {
 	#'topo_str': '1 * 10000. * 10000. / (x*x + 10000.*10000.)',
     #'topo_str': '3000. * pow(1. + (x*x + y*y) / 25000.*25000., -1.5)',
-    'topo_max_height': DataArray(2.0, attrs={'units': 'km'}),
-    'topo_width_x': DataArray(50.0, attrs={'units': 'km'}),
-    'topo_width_y': DataArray(50.0, attrs={'units': 'km'}),
+    'topo_max_height': DataArray(1.0, attrs={'units': 'km'}),
+    'topo_width_x': _width,
+    'topo_width_y': _width,
 	'topo_smooth': False,
 }
 
-init_time       = datetime(year=1992, month=2, day=20)
+# Initial conditions
+init_time       = datetime(year=1992, month=2, day=20, hour=0)
 init_x_velocity = DataArray(15.0, attrs={'units': 'm s^-1'})
 init_y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 isothermal      = False
@@ -56,24 +60,36 @@ if isothermal:
 else:
     init_brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
 
-time_integration_scheme  = 'rk3cosmo'
-horizontal_flux_scheme   = 'fifth_order_upwind'
+# Numerical scheme
+time_integration_scheme  = 'rk2'
+horizontal_flux_scheme   = 'third_order_upwind'
 horizontal_boundary_type = 'relaxed'
 
+# Damping, i.e., wave absorber
 damp_on             = True
 damp_type           = 'rayleigh'
 damp_depth          = 15
 damp_max            = 0.0002
 damp_at_every_stage = False
 
+# Smoothing, i.e., digital filtering
 smooth_on             = True
-smooth_type           = 'first_order'
+smooth_type           = 'second_order'
 smooth_coeff          = 0.24
 smooth_coeff_max      = 0.24
 smooth_at_every_stage = False
 
-timestep = timedelta(seconds=30)
-niter    = int(21600 / timestep.total_seconds())
+# Prescribed surface heating
+tendencies_in_diagnostics              = True
+amplitude_during_daytime               = DataArray(800.0, attrs={'units': 'W m^-2'})
+amplitude_at_night                     = DataArray(-75.0, attrs={'units': 'W m^-2'})
+attenuation_coefficient_during_daytime = DataArray(1.0/600.0, attrs={'units': 'm^-1'})
+attenuation_coefficient_at_night       = DataArray(1.0/75.0, attrs={'units': 'm^-1'})
+characteristic_length                  = _width
+starting_time                          = init_time + timedelta(seconds=18000)
+
+timestep = timedelta(seconds=24)
+niter    = int(5*60*60 / timestep.total_seconds())
 
 filename        = None #'../data/isentropic_convergence_{}_{}.nc'.format(horizontal_flux_scheme, nx)
 save_frequency  = -1

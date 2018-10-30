@@ -27,6 +27,7 @@ This module contains:
     HorizontalNonconservativeIsentropicFlux
     VerticalNonconservativeIsentropicFlux
     HorizontalHomogeneousIsentropicFlux
+    VerticalHomogeneousIsentropicFlux
 """
 import abc
 
@@ -55,9 +56,31 @@ class HorizontalIsentropicFlux:
 		self._grid = grid
 		self._moist_on = moist_on
 
+	@property
 	@abc.abstractmethod
-	def __call__(self, i, j, k, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
-				 u_tnd=None, v_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None):
+	def nb(self):
+		"""
+		Returns
+		-------
+		int :
+			Number of boundary layers.
+		"""
+
+	@property
+	@abc.abstractmethod
+	def order(self):
+		"""
+		Returns
+		-------
+		int :
+			Order of accuracy
+		"""
+
+	@abc.abstractmethod
+	def __call__(self, i, j, k, dt, s, u, v, mtg, su, sv,
+				 sqv=None, sqc=None, sqr=None,
+				 s_tnd=None, su_tnd=None, sv_tnd=None,
+				 qv_tnd=None, qc_tnd=None, qr_tnd=None):
 		"""
 		This method returns the :class:`gridtools.Equation`\s representing
 		the :math:`x`- and :math:`y`-fluxes for all the conservative model variables.
@@ -98,10 +121,15 @@ class HorizontalIsentropicFlux:
 		sqr : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density
 			of precipitation water.
-		u_tnd : `obj`, optional
-			:class:`gridtools.Equation` representing the tendency of the :math:`x`-velocity.
-		v_tnd : `obj`, optional
-			:class:`gridtools.Equation` representing the tendency of the :math:`y`-velocity.
+		s_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the
+			isentropic density.
+		su_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the
+			:math:`x`-momentum.
+		sv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the
+			:math:`y`-momentum.
 		qv_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the tendency of the mass
 			fraction of water vapor.
@@ -191,15 +219,15 @@ class HorizontalIsentropicFlux:
 		"""
 		import tasmania.dynamics._horizontal_isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._Upwind(grid, moist_on)
+			return module.Upwind(grid, moist_on)
 		elif scheme == 'centered':
-			return module._Centered(grid, moist_on)
+			return module.Centered(grid, moist_on)
 		elif scheme == 'maccormack':
-			return module._MacCormack(grid, moist_on)
+			return module.MacCormack(grid, moist_on)
 		elif scheme == 'third_order_upwind':
-			return module._ThirdOrderUpwind(grid, moist_on)
+			return module.ThirdOrderUpwind(grid, moist_on)
 		elif scheme == 'fifth_order_upwind':
-			return module._FifthOrderUpwind(grid, moist_on)
+			return module.FifthOrderUpwind(grid, moist_on)
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
 
@@ -656,9 +684,31 @@ class HorizontalHomogeneousIsentropicFlux:
 		self._grid = grid
 		self._moist_on = moist_on
 
+	@property
 	@abc.abstractmethod
-	def __call__(self, i, j, k, dt, s, u, v, su, sv, sqv=None, sqc=None, sqr=None,
-				 u_tnd=None, v_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None):
+	def nb(self):
+		"""
+		Returns
+		-------
+		int :
+			Number of boundary layers.
+		"""
+
+	@property
+	@abc.abstractmethod
+	def order(self):
+		"""
+		Returns
+		-------
+		int :
+			Order of accuracy
+		"""
+
+	@abc.abstractmethod
+	def __call__(self, i, j, k, dt, s, u, v, su, sv,
+				 sqv=None, sqc=None, sqr=None,
+				 s_tnd=None, su_tnd=None, sv_tnd=None,
+				 qv_tnd=None, qc_tnd=None, qr_tnd=None):
 		"""
 		This method returns the :class:`gridtools.Equation`\s representing
 		the :math:`x`- and :math:`y`-fluxes for all the conservative model variables.
@@ -697,10 +747,15 @@ class HorizontalHomogeneousIsentropicFlux:
 		sqr : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density
 			of precipitation water.
-		u_tnd : `obj`, optional
-			:class:`gridtools.Equation` representing the tendency of the :math:`x`-velocity.
-		v_tnd : `obj`, optional
-			:class:`gridtools.Equation` representing the tendency of the :math:`y`-velocity.
+		s_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the
+			isentropic density.
+		su_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the
+			:math:`x`-momentum.
+		sv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the tendency of the
+			:math:`y`-momentum.
 		qv_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the tendency of the mass
 			fraction of water vapor.
@@ -790,14 +845,163 @@ class HorizontalHomogeneousIsentropicFlux:
 		"""
 		import tasmania.dynamics._horizontal_homogeneous_isentropic_fluxes as module
 		if scheme == 'upwind':
-			return module._Upwind(grid, moist_on)
+			return module.Upwind(grid, moist_on)
 		elif scheme == 'centered':
-			return module._Centered(grid, moist_on)
+			return module.Centered(grid, moist_on)
 		elif scheme == 'maccormack':
-			return module._MacCormack(grid, moist_on)
+			return module.MacCormack(grid, moist_on)
 		elif scheme == 'third_order_upwind':
-			return module._ThirdOrderUpwind(grid, moist_on)
+			return module.ThirdOrderUpwind(grid, moist_on)
 		elif scheme == 'fifth_order_upwind':
-			return module._FifthOrderUpwind(grid, moist_on)
+			return module.FifthOrderUpwind(grid, moist_on)
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
+
+
+class VerticalHomogeneousIsentropicFlux:
+	"""
+	Abstract base class whose derived classes implement different schemes
+	to compute the vertical numerical fluxes for the three-dimensional
+	isentropic and *homogeneous* dynamical core. The conservative form of the
+	governing equations is used.
+	"""
+	# Make the class abstract
+	__metaclass__ = abc.ABCMeta
+
+	def __init__(self, grid, moist_on):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		grid : grid
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing
+			the underlying grid.
+		moist_on : bool
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+		"""
+		self._grid = grid
+		self._moist_on = moist_on
+
+	@property
+	@abc.abstractmethod
+	def nb(self):
+		"""
+		Returns
+		-------
+		int :
+			Number of boundary layers.
+		"""
+
+	@property
+	@abc.abstractmethod
+	def order(self):
+		"""
+		Returns
+		-------
+		int :
+			Order of accuracy
+		"""
+
+	@abc.abstractmethod
+	def __call__(self, k, w, s, su, sv, qv=None, qc=None, qr=None):
+		"""
+		This method returns the :class:`gridtools.Equation`\s representing
+		the :math:`z`-flux for all the conservative model variables.
+		As this method is marked as abstract, its implementation is delegated
+		to the derived classes.
+
+		Parameters
+		----------
+		k : obj
+			:class:`gridtools.Index` representing the index running
+			along the :math:`\\theta`-axis.
+		w : obj
+			:class:`gridtools.Equation` representing the vertical velocity,
+			i.e., the time derivative of the potential temperature, defined
+			at the vertical interface levels.
+		s : obj
+			:class:`gridtools.Equation` representing the isentropic density.
+		su : obj
+			:class:`gridtools.Equation` representing the :math:`x`-momentum.
+		sv : obj
+			:class:`gridtools.Equation` representing the :math:`y`-momentum.
+		qv : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction
+			of water vapor.
+		qc : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction
+			of cloud water.
+		qr : `obj`, optional
+			:class:`gridtools.Equation` representing the mass fraction
+			of precipitation water.
+
+		Returns
+		-------
+		flux_s : obj
+			:class:`gridtools.Equation` representing the flux for
+			the isentropic density.
+		flux_su : obj
+			:class:`gridtools.Equation` representing the flux for
+			the :math:`x`-momentum.
+		flux_sv : obj
+			:class:`gridtools.Equation` representing the flux for
+			the :math:`y`-momentum.
+		flux_qv : `obj`, optional
+			:class:`gridtools.Equation` representing the flux for
+			the isentropic density of water vapor.
+		flux_qc : `obj`, optional
+			:class:`gridtools.Equation` representing the flux for
+			the isentropic density of cloud liquid water.
+		flux_qr : `obj`, optional
+			:class:`gridtools.Equation` representing the flux for
+			the isentropic density of precipitation water.
+		"""
+
+	@staticmethod
+	def factory(scheme, grid, moist_on):
+		"""
+		Static method which returns an instance of the derived class
+		implementing the numerical scheme specified by :data:`scheme`.
+
+		Parameters
+		----------
+		scheme : str
+			String specifying the numerical scheme to implement. Either:
+
+			* 'upwind', for the upwind scheme;
+			* 'centered', for a second-order centered scheme;
+			* 'third_order_upwind', for the third-order upwind scheme;
+			* 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+		grid : obj
+			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing
+			the underlying grid.
+		moist_on : bool
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+
+		Return
+		------
+		obj :
+			Instance of the derived class implementing the scheme
+			specified by :data:`scheme`.
+
+		References
+		----------
+		Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
+			elastic models using forward time schemes. *Monthly Weather Review*, \
+			*130*:2088-2097.
+		Zeman, C. (2016). An isentropic mountain flow model with iterative \
+			synchronous flux correction. *Master thesis, ETH Zurich*.
+		"""
+		import tasmania.dynamics._vertical_homogeneous_isentropic_fluxes as module
+		if scheme == 'upwind':
+			return module.Upwind(grid, moist_on)
+		elif scheme == 'centered':
+			return module.Centered(grid, moist_on)
+		elif scheme == 'third_order_upwind':
+			return module.ThirdOrderUpwind(grid, moist_on)
+		elif scheme == 'fifth_order_upwind':
+			return module.FifthOrderUpwind(grid, moist_on)
+		else:
+			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))

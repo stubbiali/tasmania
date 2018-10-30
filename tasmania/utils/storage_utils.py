@@ -27,6 +27,7 @@ This module contains:
 	_load_grid
 	_load_states
 """
+from copy import deepcopy
 from datetime import timedelta
 import netCDF4 as nc4
 import numpy as np
@@ -74,6 +75,13 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 		super().__init__(filename, time_units, store_names, write_on_store,
 						 aliases)
 		self._grid = grid
+
+	def store(self, state):
+		"""
+		Make a deep copy of the input state before calling the parent's method.
+		"""
+		state_dc = deepcopy(state)
+		super().store(state_dc)
 
 	def write(self):
 		"""
