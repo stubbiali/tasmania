@@ -177,6 +177,7 @@ class RungeKutta2(TendencyStepper):
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 = add(state, multiply(0.5, k0), units=out_units,
 					  unshared_variables_in_output=True)
+		state_1['time'] = state['time'] + 0.5*timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -188,6 +189,7 @@ class RungeKutta2(TendencyStepper):
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		out_state = add(state, k1, units=out_units,
 						unshared_variables_in_output=True)
+		out_state['time'] = state['time'] + timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -239,6 +241,7 @@ class RungeKutta3COSMO(TendencyStepper):
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 = add(state, multiply(1./3., k0), units=out_units,
 					  unshared_variables_in_output=True)
+		state_1['time'] = state['time'] + 1.0/3.0 * timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -250,6 +253,7 @@ class RungeKutta3COSMO(TendencyStepper):
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		state_2 = add(state, multiply(1./2., k1), units=out_units,
 					  unshared_variables_in_output=True)
+		state_2['time'] = state['time'] + 1.0/2.0 * timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -260,6 +264,7 @@ class RungeKutta3COSMO(TendencyStepper):
 		k2, _ = get_increment(state_2, timestep, self.prognostic)
 		out_state = add(state, k2, units=out_units,
 						unshared_variables_in_output=True)
+		out_state['time'] = state['time'] + timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -324,6 +329,7 @@ class RungeKutta3(TendencyStepper):
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 		= add(state, multiply(a1, k0), units=out_units,
 					  		  unshared_variables_in_output=True)
+		state_1['time'] = state['time'] + a1 * timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -336,6 +342,7 @@ class RungeKutta3(TendencyStepper):
 		state_2 = add(state,
 					  add(multiply(b21, k0), multiply((a2 - b21), k1)),
 					  units=out_units, unshared_variables_in_output=True)
+		state_2['time'] = state['time'] + a2 * timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable
@@ -348,6 +355,7 @@ class RungeKutta3(TendencyStepper):
 		k0k1k2 	  = add(multiply(g0, k0), k1k2)
 		out_state = add(state, k0k1k2, units=out_units,
 						unshared_variables_in_output=True)
+		out_state['time'] = state['time'] + timestep
 
 		if self._bnd is not None:
 			# Enforce the boundary conditions on each prognostic variable

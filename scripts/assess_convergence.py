@@ -4,21 +4,6 @@ import numpy as np
 import tasmania as taz
 
 
-def _get_raw_field(state, name, units):
-	if name in state.keys():
-		return state[name].to_units(units).values
-	elif name == 'x_velocity':
-		try:
-			s  = state['air_isentropic_density'].to_units('kg m^-2 K^-1')
-			su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1')
-			u  = su / s
-			u.attrs['units'] = 'm s^-1'
-
-			return u.to_units(units).values
-		except KeyError:
-			pass
-
-
 #
 # User inputs
 #
@@ -87,7 +72,7 @@ datasets = [
 	],
 ]
 
-figsize = (8, 7)
+figsize = (7, 7)
 fontsize = 16
 
 xs = [
@@ -97,12 +82,12 @@ xs = [
 
 refs_x = [
 	[np.log(x) for x in [10, 5, 2.5]],
-	[np.log(x) for x in [10, 5, 2.5]],
+	#[np.log(x) for x in [10, 5, 2.5]],
 	[np.log(x) for x in [10, 5, 2.5]],
 ]
 refs_y = [
 	[4e-4 * (x/2.5)**2 for x in [10, 5, 2.5]],
-	[3e-3 * (x/10)**2.5 for x in [10, 5, 2.5]],
+	#[3e-3 * (x/10)**2.5 for x in [10, 5, 2.5]],
 	[3e-3 * (x/10)**3 for x in [10, 5, 2.5]],
 ]
 
@@ -112,8 +97,8 @@ linestyles = [
 ]
 
 linecolors = [
-	'black',
-	'black',
+	'blue',
+	'red',
 ]
 
 linewidths = [
@@ -137,32 +122,66 @@ markerfacecolors = [
 ]
 
 labels = [
-	'RK2 + UW3 + CD2 [CC]',
-	'RK3 + UW5 + CD4 [CC]',
+	'RK2',
+	'RK3',
 ]
 
-plot_properties = dict(
-	fontsize = 16,
-	title_left = '',
-	title_center = '',
-	title_right = '',
-	x_label = '$\\Delta t$ [s]',
-	x_lim = [np.log(30), np.log(1.5)],
-	invert_xaxis = False,
-	x_ticks = [np.log(2.5), np.log(5), np.log(10), np.log(20)],
-	x_ticklabels = (2.5, 5, 10, 20),
-	xaxis_minor_ticks_visible = False,
-	y_label = 'TRER [m s$^{-1}$]',
-	y_lim = (4e-5, 1e-2),
-	y_scale = 'log',
-	y_ticks = [1e-4, 1e-3, 1e-2],
-	y_ticklabels = ['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
-	yaxis_minor_ticks_visible = False,
-	legend_on = True,
-	legend_loc = 'best',
-	grid_on = True,
-	grid_properties = {'linestyle': ':'},
-)
+plot_properties = {
+	'fontsize': 16,
+	'title_center': '',
+	'title_left': '',
+	'title_right': '',
+	'x_label': '$\\Delta x$ [km]',
+	'x_lim': [np.log(30), np.log(1.5)],
+	'invert_xaxis': False,
+	'x_scale': None,
+	'x_ticks': [np.log(2.5), np.log(5), np.log(10), np.log(20)],
+	'x_ticklabels': [0.55, 1.1, 2.2, 4.4],
+	'xaxis_minor_ticks_visible': False,
+	'xaxis_visible': True,
+	'y_label': 'TRER [m s$^{-1}$]',
+	'y_lim': (4e-5, 1e-2),
+	'invert_yaxis': False,
+	'y_scale': 'log',
+	'y_ticks': [1e-4, 1e-3, 1e-2],
+	'y_ticklabels': ['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
+	'yaxis_minor_ticks_visible': False,
+	'yaxis_visible': True,
+	'z_label': '',
+	'z_lim': None,
+	'invert_zaxis': False,
+	'z_scale': None,
+	'z_ticks': None,
+	'z_ticklabels': None,
+	'zaxis_minor_ticks_visible': True,
+	'zaxis_visible': True,
+	'legend_on': True,
+	'legend_loc': 'best',
+	'legend_framealpha': 1.0,
+	'text': None,
+	'text_loc': '',
+	'grid_on': True,
+	'grid_properties': {'linestyle': ':'},
+}
+
+
+#
+# Code
+#
+def _get_raw_field(state, name, units):
+	if name in state.keys():
+		return state[name].to_units(units).values
+	elif name == 'x_velocity':
+		try:
+			s  = state['air_isentropic_density'].to_units('kg m^-2 K^-1')
+			su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1')
+			u  = su / s
+			u.attrs['units'] = 'm s^-1'
+
+			return u.to_units(units).values
+		except KeyError:
+			pass
+
 
 if __name__ == '__main__':
 	# Get reference solution
@@ -207,14 +226,20 @@ if __name__ == '__main__':
 	# Print some text
 	plt.text(np.log(2.4), refs_y[0][-1], '$\mathcal{O}(\Delta t^2)$', horizontalalignment='left',
 			 verticalalignment='center')
-	plt.text(np.log(2.4), refs_y[1][-1], '$\mathcal{O}(\Delta t^{2.5})$', horizontalalignment='left',
+	#plt.text(np.log(2.4), refs_y[1][-1], '$\mathcal{O}(\Delta t^{2.5})$', horizontalalignment='left',
+	#		 verticalalignment='center')
+	plt.text(np.log(2.4), refs_y[1][-1], '$\mathcal{O}(\Delta t^3)$', horizontalalignment='left',
 			 verticalalignment='center')
-	plt.text(np.log(2.4), refs_y[2][-1], '$\mathcal{O}(\Delta t^3)$', horizontalalignment='left',
-			 verticalalignment='center')
+
+	ax2 = ax.twiny()
+	ax2.set_xlim(ax.get_xlim())
+	ax2.set_xticks([np.log(2.5), np.log(5), np.log(10), np.log(20)])
+	ax2.set_xticklabels([2.5, 5.0, 10.0, 20.0])
+	ax2.set_xlabel('$\\Delta t$ [s]')
 
 	# Show
 	fig.tight_layout()
 	plt.show()
 
-	print(err[1])
-	print([np.log(err1/err2)/np.log(2) for err1, err2 in zip(err[1][:-1], err[1][1:])])
+	#print(err[1])
+	#print([np.log(err1/err2)/np.log(2) for err1, err2 in zip(err[1][:-1], err[1][1:])])

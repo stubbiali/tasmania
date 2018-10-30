@@ -1,9 +1,10 @@
 """
 This module contains:
-	_Centered(IsentropicPrognostic)
-	_ForwardEuler(IsentropicPrognostic)
-	_RK2(IsentropicPrognostic)
-	_RK3(IsentropicPrognostic)
+	Centered(IsentropicPrognostic)
+	ForwardEuler(IsentropicPrognostic)
+	RK2(IsentropicPrognostic)
+	RK3COSMO(RK2)
+	RK3(IsentropicPrognostic)
 """
 import numpy as np
 
@@ -23,7 +24,7 @@ mf_clw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mf_pw  = 'mass_fraction_of_precipitation_water_in_air'
 
 
-class _Centered(IsentropicPrognostic):
+class Centered(IsentropicPrognostic):
 	"""
 	This class inherits
 	:class:`~tasmania.dynamics.prognostic_isentropic.PrognosticIsentropic`
@@ -40,7 +41,7 @@ class _Centered(IsentropicPrognostic):
 		Constructor.
 		"""
 		super().__init__(grid, moist_on, diagnostics, horizontal_boundary_conditions,
-						 horizontal_flux_scheme, adiabatic_flow,	vertical_flux_scheme,
+						 horizontal_flux_scheme, adiabatic_flow, vertical_flux_scheme,
 						 sedimentation_on, sedimentation_flux_scheme, sedimentation_substeps,
 						 raindrop_fall_velocity_diagnostic, backend, dtype, physical_constants)
 
@@ -283,23 +284,25 @@ class _Centered(IsentropicPrognostic):
 			_outputs.update({'out_sqv': self._out_sqv, 'out_sqc': self._out_sqc,
 							 'out_sqr': self._out_sqr})
 		if raw_tendencies is not None:
-			if raw_tendencies.get('x_velocity', None) is not None:
-				_inputs['in_u_tnd'] = self._in_u_tnd
-			if raw_tendencies.get('y_velocity', None) is not None:
-				_inputs['in_v_tnd'] = self._in_v_tnd
+			if raw_tendencies.get('air_isentropic_density', None) is not None:
+				_inputs['in_s_tnd'] = self._in_s_tnd
 			if raw_tendencies.get(mf_wv, None) is not None:
 				_inputs['in_qv_tnd'] = self._in_qv_tnd
 			if raw_tendencies.get(mf_clw, None) is not None:
 				_inputs['in_qc_tnd'] = self._in_qc_tnd
 			if raw_tendencies.get(mf_pw, None) is not None:
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
+			if raw_tendencies.get('x_momentum_isentropic', None) is not None:
+				_inputs['in_su_tnd'] = self._in_su_tnd
+			if raw_tendencies.get('y_momentum_isentropic', None) is not None:
+				_inputs['in_sv_tnd'] = self._in_sv_tnd
 
 		# Set the stencil's computational domain and backend
 		nz, nb = self._grid.nz, self.nb
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		ni, nj, nk = mi - 2 * nb, mj - 2 * nb, nz
 		_domain = gt.domain.Rectangle((nb, nb, 0),
-									  (nb + ni - 1, nb + nj - 1, nk - 1))
+									  (nb+ni-1, nb+nj-1, nk-1))
 		_mode = self._backend
 
 		# Instantiate the stencil
@@ -375,9 +378,12 @@ class _Centered(IsentropicPrognostic):
 					raw_state['isentropic_density_of_precipitation_water'])
 
 	def _stencil_stepping_by_neglecting_vertical_motion_defs(
-		self, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv, in_s_old, in_su_old, in_sv_old,
-		in_sqv=None, in_sqc=None, in_sqr=None, in_sqv_old=None, in_sqc_old=None, in_sqr_old=None,
-		in_u_tnd=None, in_v_tnd=None, in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
+		self, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
+		in_s_old, in_su_old, in_sv_old,
+		in_sqv=None, in_sqc=None, in_sqr=None,
+		in_sqv_old=None, in_sqc_old=None, in_sqr_old=None,
+		in_s_tnd=None, in_su_tnd=None, in_sv_tnd=None,
+		in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
 		GT4Py stencil implementing the centered time-integration scheme.
 
@@ -430,12 +436,15 @@ class _Centered(IsentropicPrognostic):
 		in_sqr_old : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density of
 			precipitation water at the previous time level.
-		in_u_tnd : `obj`, optional
+		in_s_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the parameterized tendency of
-			the :math:`x`-velocity.
-		in_v_tnd : `obj`, optional
+			isentropic density.
+		in_su_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the parameterized tendency of
-			the :math:`y`-velocity.
+			the :math:`x`-momentum.
+		in_sv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the parameterized tendency of
+			the :math:`y`-momentum.
 		in_qv_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the parameterized tendency of
 			the mass fraction of water vapor.
@@ -483,21 +492,27 @@ class _Centered(IsentropicPrognostic):
 		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
 				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
-							u_tnd=in_u_tnd, v_tnd=in_v_tnd)
+							s_tnd=in_s_tnd, su_tnd=in_su_tnd, sv_tnd=in_sv_tnd)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \
 				flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = \
 				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
-							in_sqv, in_sqc, in_sqr,
-							in_u_tnd, in_v_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
+							in_sqv, in_sqc, in_sqr, in_s_tnd, in_su_tnd, in_sv_tnd,
+							in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
 		# Advance the isentropic density
-		out_s[i, j] = in_s_old[i, j] \
-						 - 2. * dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-									  (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		if in_s_tnd is None:
+			out_s[i, j] = in_s_old[i, j] \
+						  - 2. * dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+									   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		else:
+			out_s[i, j] = in_s_old[i, j] \
+						  - 2. * dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+									   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
+									   in_s_tnd[i, j])
 
 		# Advance the x-momentum
-		if in_u_tnd is None:
+		if in_su_tnd is None:
 			out_su[i, j] = in_su_old[i, j] \
 						   - 2. * dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 										(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy) \
@@ -506,11 +521,11 @@ class _Centered(IsentropicPrognostic):
 			out_su[i, j] = in_su_old[i, j] \
 						   - 2. * dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 										(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy -
-										in_s[i, j] * in_u_tnd[i, j]) \
+										in_su_tnd[i, j]) \
 						   - dt * in_s[i, j] * (in_mtg[i+1, j] - in_mtg[i-1, j]) / dx
 
 		# Advance the y-momentum
-		if in_v_tnd is None:
+		if in_sv_tnd is None:
 			out_sv[i, j] = in_sv_old[i, j] \
 						   - 2. * dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 										(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy) \
@@ -519,7 +534,7 @@ class _Centered(IsentropicPrognostic):
 			out_sv[i, j] = in_sv_old[i, j] \
 						   - 2. * dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 										(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy -
-										in_s[i, j] * in_v_tnd[i, j]) \
+										in_sv_tnd[i, j]) \
 						   - dt * in_s[i, j] * (in_mtg[i, j+1] - in_mtg[i, j-1]) / dy
 
 		if self._moist_on:
@@ -769,7 +784,7 @@ class _Centered(IsentropicPrognostic):
 		return out_s, out_qr
 
 
-class _ForwardEuler(IsentropicPrognostic):
+class ForwardEuler(IsentropicPrognostic):
 	"""
 	This class inherits
 	:class:`~tasmania.dynamics.prognostic_isentropic.PrognosticIsentropic`
@@ -1043,16 +1058,18 @@ class _ForwardEuler(IsentropicPrognostic):
 			_outputs.update({'out_sqv': self._out_sqv, 'out_sqc': self._out_sqc,
 							 'out_sqr': self._out_sqr})
 		if raw_tendencies is not None:
-			if raw_tendencies.get('x_velocity', None) is not None:
-				_inputs['in_u_tnd'] = self._in_u_tnd
-			if raw_tendencies.get('y_velocity', None) is not None:
-				_inputs['in_v_tnd'] = self._in_v_tnd
+			if raw_tendencies.get('air_isentropic_density', None) is not None:
+				_inputs['in_s_tnd'] = self._in_s_tnd
 			if raw_tendencies.get(mf_wv, None) is not None:
 				_inputs['in_qv_tnd'] = self._in_qv_tnd
 			if raw_tendencies.get(mf_clw, None) is not None:
 				_inputs['in_qc_tnd'] = self._in_qc_tnd
 			if raw_tendencies.get(mf_pw, None) is not None:
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
+			if raw_tendencies.get('x_momentum_isentropic', None) is not None:
+				_inputs['in_su_tnd'] = self._in_su_tnd
+			if raw_tendencies.get('y_momentum_isentropic', None) is not None:
+				_inputs['in_sv_tnd'] = self._in_sv_tnd
 
 		# Instantiate the first stencil
 		self._stencil_stepping_by_neglecting_vertical_motion_first = gt.NGStencil(
@@ -1097,8 +1114,10 @@ class _ForwardEuler(IsentropicPrognostic):
 		self._in_mtg_prv = np.zeros((li, lj, nz), dtype=self._dtype)
 
 	def _stencil_stepping_by_neglecting_vertical_motion_first_defs(
-		self, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv, in_sqv=None, in_sqc=None, in_sqr=None,
-		in_u_tnd=None, in_v_tnd=None, in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
+		self, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
+		in_sqv=None, in_sqc=None, in_sqr=None,
+		in_s_tnd=None, in_su_tnd=None, in_sv_tnd=None,
+		in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
 		GT4Py stencil stepping the isentropic density and the water constituents
 		via the forward Euler scheme. Further, it computes provisional values for
@@ -1136,12 +1155,15 @@ class _ForwardEuler(IsentropicPrognostic):
 		in_sqr : `obj`, optional
 			:class:`gridtools.Equation` representing the isentropic density
 			mass of precipitation water at the current time level.
-		in_u_tnd : `obj`, optional
+		in_s_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the parameterized tendency
-			of the :math:`x`-velocity.
-		in_v_tnd : `obj`, optional
+			of the isentropic density.
+		in_su_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the parameterized tendency
-			of the :math:`y`-velocity.
+			of the :math:`x`-momentum.
+		in_sv_tnd : `obj`, optional
+			:class:`gridtools.Equation` representing the parameterized tendency
+			of the :math:`y`-momentum.
 		in_qv_tnd : `obj`, optional
 			:class:`gridtools.Equation` representing the parameterized tendency
 			of the mass fraction of water vapor.
@@ -1195,35 +1217,40 @@ class _ForwardEuler(IsentropicPrognostic):
 		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
 				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
-							u_tnd=in_u_tnd, v_tnd=in_v_tnd)
+							s_tnd=in_s_tnd, su_tnd=in_su_tnd, sv_tnd=in_sv_tnd)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \
 			flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = \
 				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
-							in_sqv, in_sqc, in_sqr,
-							in_u_tnd, in_v_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
+							in_sqv, in_sqc, in_sqr,	in_s_tnd, in_su_tnd, in_sv_tnd,
+							in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
 		# Advance the isentropic density
-		out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-										 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		if in_s_tnd is None:
+			out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+											 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		else:
+			out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+											 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
+											 in_s_tnd[i, j])
 
 		# Advance the x-momentum
-		if in_u_tnd is None:
+		if in_su_tnd is None:
 			out_su[i, j] = in_su[i, j] - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 											   (flux_su_y[i, j] - flux_su_y[i, j-1]) / dy)
 		else:
 			out_su[i, j] = in_su[i, j] - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 											   (flux_su_y[i, j] - flux_su_y[i, j-1]) / dy -
-											   in_s[i, j] * in_u_tnd[i, j])
+											   in_su_tnd[i, j])
 
 		# Advance the y-momentum
-		if in_v_tnd is None:
+		if in_sv_tnd is None:
 			out_sv[i, j] = in_sv[i, j] - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 											   (flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy)
 		else:
 			out_sv[i, j] = in_sv[i, j] - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 											   (flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy -
-											   in_s[i, j] * in_u_tnd[i, j])
+											   in_sv_tnd[i, j])
 
 		if self._moist_on:
 			# Advance the isentropic density of water vapor
@@ -1524,7 +1551,7 @@ class _ForwardEuler(IsentropicPrognostic):
 		return out_s, out_qr
 
 
-class _RK2(IsentropicPrognostic):
+class RK2(IsentropicPrognostic):
 	"""
 	This class inherits
 	:class:`~tasmania.dynamics.prognostic_isentropic.PrognosticIsentropic`
@@ -1686,16 +1713,18 @@ class _RK2(IsentropicPrognostic):
 			_outputs.update({'out_sqv': self._out_sqv, 'out_sqc': self._out_sqc,
 							 'out_sqr': self._out_sqr})
 		if raw_tendencies is not None:
-			if raw_tendencies.get('x_velocity', None) is not None:
-				_inputs['in_u_tnd'] = self._in_u_tnd
-			if raw_tendencies.get('y_velocity', None) is not None:
-				_inputs['in_v_tnd'] = self._in_v_tnd
+			if raw_tendencies.get('air_isentropic_density', None) is not None:
+				_inputs['in_s_tnd'] = self._in_s_tnd
 			if raw_tendencies.get(mf_wv, None) is not None:
 				_inputs['in_qv_tnd'] = self._in_qv_tnd
 			if raw_tendencies.get(mf_clw, None) is not None:
 				_inputs['in_qc_tnd'] = self._in_qc_tnd
 			if raw_tendencies.get(mf_pw, None) is not None:
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
+			if raw_tendencies.get('x_momentum_isentropic', None) is not None:
+				_inputs['in_su_tnd'] = self._in_su_tnd
+			if raw_tendencies.get('y_momentum_isentropic', None) is not None:
+				_inputs['in_sv_tnd'] = self._in_sv_tnd
 
 		# Instantiate the stencil
 		self._stencil_stepping_by_neglecting_vertical_motion = gt.NGStencil(
@@ -1745,13 +1774,14 @@ class _RK2(IsentropicPrognostic):
 		# Shortcuts
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		if raw_tendencies is not None:
-			u_tnd_on  = raw_tendencies.get('x_velocity', None) is not None
-			v_tnd_on  = raw_tendencies.get('y_velocity', None) is not None
+			s_tnd_on  = raw_tendencies.get('air_isentropic_density', None) is not None
 			qv_tnd_on = raw_tendencies.get(mf_wv, None) is not None
 			qc_tnd_on = raw_tendencies.get(mf_clw, None) is not None
 			qr_tnd_on = raw_tendencies.get(mf_pw, None) is not None
+			su_tnd_on = raw_tendencies.get('x_momentum_isentropic', None) is not None
+			sv_tnd_on = raw_tendencies.get('y_momentum_isentropic', None) is not None
 		else:
-			u_tnd_on = v_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
 		# Update the local time step
 		self._dt.value = (1./2. + 1./2.*(stage > 0)) * dt.total_seconds()
@@ -1810,14 +1840,10 @@ class _RK2(IsentropicPrognostic):
 
 		# Extract the Numpy arrays representing the provided tendencies,
 		# and update the Numpy arrays which serve as inputs to the GT4Py stencils
-		if u_tnd_on:
-			u_tnd = raw_tendencies['x_velocity']
-			self._in_u_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(u_tnd)
-		if v_tnd_on:
-			v_tnd = raw_tendencies['y_velocity']
-			self._in_v_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(v_tnd)
+		if s_tnd_on:
+			s_tnd = raw_tendencies['air_isentropic_density']
+			self._in_s_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(s_tnd)
 		if qv_tnd_on:
 			qv_tnd = raw_tendencies[mf_wv]
 			self._in_qv_tnd[:mi, :mj, :] = \
@@ -1830,6 +1856,14 @@ class _RK2(IsentropicPrognostic):
 			qr_tnd = raw_tendencies[mf_pw]
 			self._in_qr_tnd[:mi, :mj, :] = \
 				self._hboundary.from_physical_to_computational_domain(qr_tnd)
+		if su_tnd_on:
+			su_tnd = raw_tendencies['x_momentum_isentropic']
+			self._in_su_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(su_tnd)
+		if sv_tnd_on:
+			sv_tnd = raw_tendencies['y_momentum_isentropic']
+			self._in_sv_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(sv_tnd)
 
 	def _stencil_stepping_by_neglecting_vertical_motion_defs(
 		self, dt, in_s, in_s_int, in_u_int, in_v_int, in_mtg_int,
@@ -1837,7 +1871,7 @@ class _RK2(IsentropicPrognostic):
 		in_sqv=None, in_sqv_int=None,
 		in_sqc=None, in_sqc_int=None,
 		in_sqr=None, in_sqr_int=None,
-		in_u_tnd=None, in_v_tnd=None,
+		in_s_tnd=None, in_su_tnd=None, in_sv_tnd=None,
 		in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
 		GT4Py stencil stepping the prognostic variables via a stage of the RK2 scheme.
@@ -1864,40 +1898,46 @@ class _RK2(IsentropicPrognostic):
 		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
 				self._hflux(i, j, k, dt, in_s_int, in_u_int, in_v_int, in_mtg_int,
-							in_su_int, in_sv_int, u_tnd=in_u_tnd, v_tnd=in_v_tnd)
+							in_su_int, in_sv_int, s_tnd=in_s_tnd, su_tnd=in_su_tnd,
+							sv_tnd=in_sv_tnd)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \
 			flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = \
 				self._hflux(i, j, k, dt, in_s_int, in_u_int, in_v_int, in_mtg_int,
 							in_su_int, in_sv_int, in_sqv_int, in_sqc_int, in_sqr_int,
-							in_u_tnd, in_v_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
+							in_s_tnd, in_su_tnd, in_sv_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
 		# Calculate the pressure gradient
 		pgx, pgy = self._get_pressure_gradient(i, j, in_mtg_int)
 
 		# Advance the isentropic density
-		out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-										 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		if in_s_tnd is None:
+			out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+											 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		else:
+			out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+											 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
+											 in_s_tnd[i, j])
 
 		# Advance the x-momentum
-		if in_u_tnd is None:
+		if in_su_tnd is None:
 			out_su[i, j] = in_su[i, j] - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 											   (flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
 											   in_s_int[i, j] * pgx[i, j])
 		else:
 			out_su[i, j] = in_su[i, j] - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 											   (flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
-											   in_s_int[i, j] * (pgx[i, j] - in_u_tnd[i, j]))
+											   in_s_int[i, j] * pgx[i, j] - in_su_tnd[i, j])
 
 		# Advance the y-momentum
-		if in_v_tnd is None:
+		if in_sv_tnd is None:
 			out_sv[i, j] = in_sv[i, j] - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 											   (flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
 											   in_s_int[i, j] * pgy[i, j])
 		else:
 			out_sv[i, j] = in_sv[i, j] - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 											   (flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
-											   in_s_int[i, j] * (pgy[i, j] - in_v_tnd[i, j]))
+											   in_s_int[i, j] * pgy[i, j] - in_sv_tnd[i, j])
 
 		if self._moist_on:
 			# Advance the isentropic density of water vapor
@@ -1960,7 +2000,7 @@ class _RK2(IsentropicPrognostic):
 		return pgx, pgy
 
 
-class _RK3COSMO(_RK2):
+class RK3COSMO(RK2):
 	"""
 	This class inherits
 	:class:`~tasmania.dynamics._prognostic_isentropic._RK2`
@@ -2024,7 +2064,7 @@ class _RK3COSMO(_RK2):
 		return pgx, pgy
 
 
-class _RK3(IsentropicPrognostic):
+class RK3(IsentropicPrognostic):
 	"""
 	This class inherits
 	:class:`~tasmania.dynamics.prognostic_isentropic.PrognosticIsentropic`
@@ -2205,16 +2245,18 @@ class _RK3(IsentropicPrognostic):
 							 'out_sqc0': self._sqc0, 'out_sqc': self._out_sqc,
 							 'out_sqr0': self._sqr0, 'out_sqr': self._out_sqr})
 		if raw_tendencies is not None:
-			if raw_tendencies.get('x_velocity', None) is not None:
-				_inputs['in_u_tnd'] = self._in_u_tnd
-			if raw_tendencies.get('y_velocity', None) is not None:
-				_inputs['in_v_tnd'] = self._in_v_tnd
+			if raw_tendencies.get('air_isentropic_density', None) is not None:
+				_inputs['in_s_tnd'] = self._in_s_tnd
 			if raw_tendencies.get(mf_wv, None) is not None:
 				_inputs['in_qv_tnd'] = self._in_qv_tnd
 			if raw_tendencies.get(mf_clw, None) is not None:
 				_inputs['in_qc_tnd'] = self._in_qc_tnd
 			if raw_tendencies.get(mf_pw, None) is not None:
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
+			if raw_tendencies.get('x_momentum_isentropic', None) is not None:
+				_inputs['in_su_tnd'] = self._in_su_tnd
+			if raw_tendencies.get('y_momentum_isentropic', None) is not None:
+				_inputs['in_sv_tnd'] = self._in_sv_tnd
 
 		# Instantiate the first stencil
 		self._stencil_stepping_by_neglecting_vertical_motion_first = gt.NGStencil(
@@ -2246,16 +2288,18 @@ class _RK3(IsentropicPrognostic):
 							 'out_sqc1': self._sqc1, 'out_sqc': self._out_sqc,
 							 'out_sqr1': self._sqr1, 'out_sqr': self._out_sqr})
 		if raw_tendencies is not None:
-			if raw_tendencies.get('x_velocity', None) is not None:
-				_inputs['in_u_tnd'] = self._in_u_tnd
-			if raw_tendencies.get('y_velocity', None) is not None:
-				_inputs['in_v_tnd'] = self._in_v_tnd
+			if raw_tendencies.get('air_isentropic_density', None) is not None:
+				_inputs['in_s_tnd'] = self._in_s_tnd
 			if raw_tendencies.get(mf_wv, None) is not None:
 				_inputs['in_qv_tnd'] = self._in_qv_tnd
 			if raw_tendencies.get(mf_clw, None) is not None:
 				_inputs['in_qc_tnd'] = self._in_qc_tnd
 			if raw_tendencies.get(mf_pw, None) is not None:
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
+			if raw_tendencies.get('x_momentum_isentropic', None) is not None:
+				_inputs['in_su_tnd'] = self._in_su_tnd
+			if raw_tendencies.get('y_momentum_isentropic', None) is not None:
+				_inputs['in_sv_tnd'] = self._in_sv_tnd
 
 		# Instantiate the second stencil
 		self._stencil_stepping_by_neglecting_vertical_motion_second = gt.NGStencil(
@@ -2286,16 +2330,18 @@ class _RK3(IsentropicPrognostic):
 			_outputs.update({'out_sqv': self._out_sqv, 'out_sqc': self._out_sqc,
 							 'out_sqr': self._out_sqr})
 		if raw_tendencies is not None:
-			if raw_tendencies.get('x_velocity', None) is not None:
-				_inputs['in_u_tnd'] = self._in_u_tnd
-			if raw_tendencies.get('y_velocity', None) is not None:
-				_inputs['in_v_tnd'] = self._in_v_tnd
+			if raw_tendencies.get('air_isentropic_density', None) is not None:
+				_inputs['in_s_tnd'] = self._in_s_tnd
 			if raw_tendencies.get(mf_wv, None) is not None:
 				_inputs['in_qv_tnd'] = self._in_qv_tnd
 			if raw_tendencies.get(mf_clw, None) is not None:
 				_inputs['in_qc_tnd'] = self._in_qc_tnd
 			if raw_tendencies.get(mf_pw, None) is not None:
 				_inputs['in_qr_tnd'] = self._in_qr_tnd
+			if raw_tendencies.get('x_momentum_isentropic', None) is not None:
+				_inputs['in_su_tnd'] = self._in_su_tnd
+			if raw_tendencies.get('y_momentum_isentropic', None) is not None:
+				_inputs['in_sv_tnd'] = self._in_sv_tnd
 
 		# Instantiate the third stencil
 		self._stencil_stepping_by_neglecting_vertical_motion_third = gt.NGStencil(
@@ -2382,13 +2428,14 @@ class _RK3(IsentropicPrognostic):
 		# Shortcuts
 		mi, mj = self._hboundary.mi, self._hboundary.mj
 		if raw_tendencies is not None:
-			u_tnd_on  = raw_tendencies.get('x_velocity', None) is not None
-			v_tnd_on  = raw_tendencies.get('y_velocity', None) is not None
+			s_tnd_on  = raw_tendencies.get('air_isentropic_density', None) is not None
 			qv_tnd_on = raw_tendencies.get(mf_wv, None) is not None
 			qc_tnd_on = raw_tendencies.get(mf_clw, None) is not None
 			qr_tnd_on = raw_tendencies.get(mf_pw, None) is not None
+			su_tnd_on = raw_tendencies.get('x_momentum_isentropic', None) is not None
+			sv_tnd_on = raw_tendencies.get('y_momentum_isentropic', None) is not None
 		else:
-			u_tnd_on = v_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
 		# Update the local time step
 		self._dt.value = dt.total_seconds()
@@ -2451,14 +2498,10 @@ class _RK3(IsentropicPrognostic):
 
 		# Extract the Numpy arrays representing the provided tendencies,
 		# and update the Numpy arrays which serve as inputs to the GT4Py stencils
-		if u_tnd_on:
-			u_tnd = raw_tendencies['x_velocity']
-			self._in_u_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(u_tnd)
-		if v_tnd_on:
-			v_tnd = raw_tendencies['y_velocity']
-			self._in_v_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(v_tnd)
+		if s_tnd_on:
+			s_tnd = raw_tendencies['air_isentropic_density']
+			self._in_s_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(s_tnd)
 		if qv_tnd_on:
 			qv_tnd = raw_tendencies[mf_wv]
 			self._in_qv_tnd[:mi, :mj, :] = \
@@ -2471,6 +2514,14 @@ class _RK3(IsentropicPrognostic):
 			qr_tnd = raw_tendencies[mf_pw]
 			self._in_qr_tnd[:mi, :mj, :] = \
 				self._hboundary.from_physical_to_computational_domain(qr_tnd)
+		if su_tnd_on:
+			su_tnd = raw_tendencies['x_momentum_isentropic']
+			self._in_su_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(su_tnd)
+		if sv_tnd_on:
+			sv_tnd = raw_tendencies['y_momentum_isentropic']
+			self._in_sv_tnd[:mi, :mj, :] = \
+				self._hboundary.from_physical_to_computational_domain(sv_tnd)
 
 	def _stencils_stepping_by_neglecting_vertical_motion_compute(self, stage):
 		if stage == 0:
@@ -2483,7 +2534,8 @@ class _RK3(IsentropicPrognostic):
 	def _stencil_stepping_by_neglecting_vertical_motion_first_defs(
 		self, dt, in_s, in_u, in_v, in_mtg,	in_su, in_sv,
 		in_sqv=None, in_sqc=None, in_sqr=None,
-		in_u_tnd=None, in_v_tnd=None, in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
+		in_s_tnd=None, in_su_tnd=None, in_sv_tnd=None,
+		in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
 		GT4Py stencil stepping the prognostic variables via the first stage
 		of the RK3 scheme.
@@ -2519,43 +2571,49 @@ class _RK3(IsentropicPrognostic):
 		# Calculate the fluxes
 		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
-				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg,
-							in_su, in_sv, u_tnd=in_u_tnd, v_tnd=in_v_tnd)
+				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_su, in_sv,
+							s_tnd=in_s_tnd, su_tnd=in_su_tnd, sv_tnd=in_sv_tnd)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \
 			flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = \
 				self._hflux(i, j, k, dt, in_s, in_u, in_v, in_mtg,
 							in_su, in_sv, in_sqv, in_sqc, in_sqr,
-							in_u_tnd, in_v_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
+							in_s_tnd, in_su_tnd, in_sv_tnd,
+							in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
 		# Calculate the pressure gradient
 		pgx, pgy = self._get_pressure_gradient(i, j, in_mtg)
 
 		# Advance the isentropic density
-		out_s0[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-							   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		if in_s_tnd is None:
+			out_s0[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+							   	   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		else:
+			out_s0[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+								   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
+								   in_s_tnd[i, j])
 		out_s[i, j] = in_s[i, j] + a1 * out_s0[i, j]
 
 		# Advance the x-momentum
-		if in_u_tnd is None:
+		if in_su_tnd is None:
 			out_su0[i, j] = - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 									(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
 									in_s[i, j] * pgx[i, j])
 		else:
 			out_su0[i, j] = - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 									(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
-									in_s[i, j] * (pgx[i, j] - in_u_tnd[i, j]))
+									in_s[i, j] * pgx[i, j] - in_su_tnd[i, j])
 		out_su[i, j] = in_su[i, j] + a1 * out_su0[i, j]
 
 		# Advance the y-momentum
-		if in_v_tnd is None:
+		if in_sv_tnd is None:
 			out_sv0[i, j] = - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 							  	    (flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
 									in_s[i, j] * pgy[i, j])
 		else:
 			out_sv0[i, j] = - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 									(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
-									in_s[i, j] * (pgy[i, j] - in_v_tnd[i, j]))
+									in_s[i, j] * pgy[i, j] - in_sv_tnd[i, j])
 		out_sv[i, j] = in_sv[i, j] + a1 * out_sv0[i, j]
 
 		if self._moist_on:
@@ -2601,7 +2659,8 @@ class _RK3(IsentropicPrognostic):
 		in_sqv=None, in_sqv_int=None, in_sqv0=None,
 		in_sqc=None, in_sqc_int=None, in_sqc0=None,
 		in_sqr=None, in_sqr_int=None, in_sqr0=None,
-		in_u_tnd=None, in_v_tnd=None, in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
+		in_s_tnd=None, in_su_tnd=None, in_sv_tnd=None,
+		in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
 		GT4Py stencil stepping the prognostic variables via the second stage
 		of the RK3 scheme.
@@ -2638,42 +2697,48 @@ class _RK3(IsentropicPrognostic):
 		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
 				self._hflux(i, j, k, dt, in_s_int, in_u_int, in_v_int, in_mtg_int,
-							in_su_int, in_sv_int, u_tnd=in_u_tnd, v_tnd=in_v_tnd)
+							in_su_int, in_sv_int, s_tnd=in_s_tnd, su_tnd=in_su_tnd,
+							sv_tnd=in_sv_tnd)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \
 			flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = \
 				self._hflux(i, j, k, dt, in_s_int, in_u_int, in_v_int, in_mtg_int,
 							in_su_int, in_sv_int, in_sqv_int, in_sqc_int, in_sqr_int,
-							in_u_tnd, in_v_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
+							in_s_tnd, in_su_tnd, in_sv_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
 		# Calculate the pressure gradient
 		pgx, pgy = self._get_pressure_gradient(i, j, in_mtg_int)
 
 		# Advance the isentropic density
-		out_s1[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-							   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		if in_s_tnd is None:
+			out_s1[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+								   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		else:
+			out_s1[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+								   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
+								   in_s_tnd[i, j])
 		out_s[i, j] = in_s[i, j] + b21 * in_s0[i, j] + (a2 - b21) * out_s1[i, j]
 
 		# Advance the x-momentum
-		if in_u_tnd is None:
+		if in_su_tnd is None:
 			out_su1[i, j] = - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 									(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
 									in_s_int[i, j] * pgx[i, j])
 		else:
 			out_su1[i, j] = - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 									(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
-									in_s_int[i, j] * (pgx[i, j] - in_u_tnd[i, j]))
+									in_s_int[i, j] * pgx[i, j] - in_su_tnd[i, j])
 		out_su[i, j] = in_su[i, j] + b21 * in_su0[i, j] + (a2 - b21) * out_su1[i, j]
 
 		# Advance the y-momentum
-		if in_v_tnd is None:
+		if in_sv_tnd is None:
 			out_sv1[i, j] = - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 									(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
 									in_s_int[i, j] * pgy[i, j])
 		else:
 			out_sv1[i, j] = - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 									(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
-									in_s_int[i, j] * (pgy[i, j] - in_v_tnd[i, j]))
+									in_s_int[i, j] * pgy[i, j] - in_sv_tnd[i, j])
 		out_sv[i, j] = in_sv[i, j] + b21 * in_sv0[i, j] + (a2 - b21) * out_sv1[i, j]
 
 		if self._moist_on:
@@ -2719,7 +2784,8 @@ class _RK3(IsentropicPrognostic):
 		in_sqv=None, in_sqv_int=None, in_sqv0=None, in_sqv1=None,
 		in_sqc=None, in_sqc_int=None, in_sqc0=None, in_sqc1=None,
 		in_sqr=None, in_sqr_int=None, in_sqr0=None, in_sqr1=None,
-		in_u_tnd=None, in_v_tnd=None, in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
+		in_s_tnd=None, in_su_tnd=None, in_sv_tnd=None,
+		in_qv_tnd=None, in_qc_tnd=None, in_qr_tnd=None):
 		"""
 		GT4Py stencil stepping the prognostic variables via the second stage
 		of the RK3 scheme.
@@ -2756,46 +2822,52 @@ class _RK3(IsentropicPrognostic):
 		if not self._moist_on:
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
 				self._hflux(i, j, k, dt, in_s_int, in_u_int, in_v_int, in_mtg_int,
-							in_su_int, in_sv_int, u_tnd=in_u_tnd, v_tnd=in_v_tnd)
+							in_su_int, in_sv_int, s_tnd=in_s_tnd, su_tnd=in_su_tnd,
+							sv_tnd=in_sv_tnd)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \
 			flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = \
 				self._hflux(i, j, k, dt, in_s_int, in_u_int, in_v_int, in_mtg_int,
 							in_su_int, in_sv_int, in_sqv_int, in_sqc_int, in_sqr_int,
-							in_u_tnd, in_v_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
+							in_s_tnd, in_su_tnd, in_sv_tnd, in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
 		# Calculate the pressure gradient
 		pgx, pgy = self._get_pressure_gradient(i, j, in_mtg_int)
 
 		# Advance the isentropic density
-		tmp_s2[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-							   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		if in_s_tnd is None:
+			tmp_s2[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+								   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+		else:
+			tmp_s2[i, j] = - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
+								   (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
+								   in_s_tnd[i, j])
 		out_s[i, j] = in_s[i, j] + g0 * in_s0[i, j] \
 					  			 + g1 * in_s1[i, j] \
 					  			 + g2 * tmp_s2[i, j]
 
 		# Advance the x-momentum
-		if in_u_tnd is None:
+		if in_su_tnd is None:
 			tmp_su2[i, j] = - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 									(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
 									in_s_int[i, j] * pgx[i, j])
 		else:
 			tmp_su2[i, j] = - dt * ((flux_su_x[i, j] - flux_su_x[i-1, j]) / dx +
 									(flux_su_y[i, j] - flux_su_y[i, j-1]) / dy +
-									in_s_int[i, j] * (pgx[i, j] - in_u_tnd[i, j]))
+									in_s_int[i, j] * pgx[i, j] - in_su_tnd[i, j])
 		out_su[i, j] = in_su[i, j] + g0 * in_su0[i, j] \
 					   			   + g1 * in_su1[i, j] \
 					   			   + g2 * tmp_su2[i, j]
 
 		# Advance the y-momentum
-		if in_v_tnd is None:
+		if in_sv_tnd is None:
 			tmp_sv2[i, j] = - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 									(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
 									in_s_int[i, j] * pgy[i, j])
 		else:
 			tmp_sv2[i, j] = - dt * ((flux_sv_x[i, j] - flux_sv_x[i-1, j]) / dx +
 									(flux_sv_y[i, j] - flux_sv_y[i, j-1]) / dy +
-									in_s_int[i, j] * (pgy[i, j] - in_v_tnd[i, j]))
+									in_s_int[i, j] * pgy[i, j] - in_sv_tnd[i, j])
 		out_sv[i, j] = in_sv[i, j] + g0 * in_sv0[i, j] \
 					   			   + g1 * in_sv1[i, j] \
 					   			   + g2 * tmp_sv2[i, j]

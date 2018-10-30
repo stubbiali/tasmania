@@ -42,7 +42,7 @@ class Kessler(TendencyComponent):
 				 tendency_of_air_potential_temperature_in_diagnostics=False,
 				 rain_evaporation=True, autoconversion_threshold=_d_a,
 				 rate_of_autoconversion=_d_k1, rate_of_collection=_d_k2,
-				 backend=gt.mode.NUMPY, physical_constants=None):
+				 backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
 		"""
 		Constructor.
 
@@ -93,6 +93,9 @@ class Kessler(TendencyComponent):
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
 			:obj:`tasmania.physics.microphysics.Kessler._d_physical_constants`
 			for the default values.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.TendencyComponent`.
 		"""
 		# Keep track of input arguments
 		self._grid = grid
@@ -105,7 +108,7 @@ class Kessler(TendencyComponent):
 		self._backend = backend
 
 		# Call parent's constructor
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Set physical parameters values
 		self._physical_constants = get_physical_constants(self._d_physical_constants,
@@ -452,7 +455,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 	}
 
 	def __init__(self, grid, air_pressure_on_interface_levels=True,
-				 backend=gt.mode.NUMPY, physical_constants=None):
+				 backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
 		"""
 		Constructor.
 
@@ -487,6 +490,9 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
 			:obj:`tasmania.physics.microphysics.SaturationAdjustmentKessler._d_physical_constants`
 			for the default values.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.DiagnosticComponent`.
 		"""
 		# Keep track of input arguments
 		self._grid = grid
@@ -494,7 +500,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		self._backend = backend
 
 		# Call parent's constructor
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Set physical parameters values
 		self._physical_constants = get_physical_constants(self._d_physical_constants,
@@ -723,7 +729,7 @@ class RaindropFallVelocity(DiagnosticComponent):
 	This class inherits :class:`sympl.DiagnosticComponent` to calculate
 	the raindrop fall velocity.
 	"""
-	def __init__(self, grid, backend=gt.mode.NUMPY):
+	def __init__(self, grid, backend=gt.mode.NUMPY, **kwargs):
 		"""
 		Constructor.
 
@@ -736,6 +742,9 @@ class RaindropFallVelocity(DiagnosticComponent):
 		backend : `obj`, optional
 			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
 			Defaults to :obj:`gridtools.mode.NUMPY`.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.DiagnosticComponent`.
 		"""
 		# Keep track of input arguments
 		self._grid = grid

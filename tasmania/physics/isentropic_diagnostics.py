@@ -37,7 +37,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
 	}
 
 	def __init__(self, grid, moist_on, pt, backend=gt.mode.NUMPY,
-				 dtype=datatype, physical_constants=None):
+				 dtype=datatype, physical_constants=None, **kwargs):
 		"""
 		The constructor.
 
@@ -73,13 +73,16 @@ class IsentropicDiagnostics(DiagnosticComponent):
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
 			:obj:`tasmania.physics.isentropic.IsentropicDiagnostics._d_physical_constants`
 			for the default values.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.DiagnosticComponent`.
 		"""
 		# Keep track of some input parameters
 		self._grid, self._moist_on = grid, moist_on
 		self._pt = pt.to_units('Pa').values.item()
 
 		# Call parent's constructor
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Instantiate the class computing the diagnostic variables
 		self._helper = Helper(grid, backend, dtype, physical_constants)
@@ -145,7 +148,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 	momenta and the isentropic density.
 	"""
 	def __init__(self, grid, horizontal_boundary_type, reference_state,
-				 backend=gt.mode.NUMPY, dtype=datatype):
+				 backend=gt.mode.NUMPY, dtype=datatype, **kwargs):
 		"""
 		The constructor.
 
@@ -176,10 +179,13 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`sympl.DiagnosticComponent`.
 		"""
 		self._grid = grid
 
-		super().__init__()
+		super().__init__(**kwargs)
 
 		self._helper = HorizontalVelocity(grid, backend, dtype)
 		self._hboundary = HorizontalBoundary.factory(horizontal_boundary_type, grid, 1)
