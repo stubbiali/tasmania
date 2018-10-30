@@ -30,7 +30,7 @@ from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
 from tasmania.dynamics.homogeneous_isentropic_prognostic \
 	import HomogeneousIsentropicPrognostic as IsentropicPrognostic
 from tasmania.dynamics._homogeneous_isentropic_prognostic \
-	import _Centered, _ForwardEuler, _RK2, _RK3COSMO, _RK3
+	import Centered, ForwardEuler, RK2, RK3COSMO, RK3
 from tasmania.utils.data_utils import make_raw_state
 
 
@@ -54,11 +54,11 @@ def test_factory(grid):
 	ip_rk3 = IsentropicPrognostic.factory('rk3', grid, True, hb,
 		horizontal_flux_scheme='fifth_order_upwind', backend=backend)
 
-	assert isinstance(ip_centered, _Centered)
-	assert isinstance(ip_euler, _ForwardEuler)
-	assert isinstance(ip_rk2, _RK2)
-	assert isinstance(ip_rk3cosmo, _RK3COSMO)
-	assert isinstance(ip_rk3, _RK3)
+	assert isinstance(ip_centered, Centered)
+	assert isinstance(ip_euler, ForwardEuler)
+	assert isinstance(ip_rk2, RK2)
+	assert isinstance(ip_rk3cosmo, RK3COSMO)
+	assert isinstance(ip_rk3, RK3)
 
 
 def test_leapfrog(isentropic_moist_data):

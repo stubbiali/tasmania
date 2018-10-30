@@ -28,8 +28,8 @@ import gridtools as gt
 from tasmania.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
 from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
 from tasmania.dynamics.isentropic_prognostic import IsentropicPrognostic
-from tasmania.dynamics._isentropic_prognostic import _Centered, _ForwardEuler, \
-													 _RK2, _RK3COSMO, _RK3
+from tasmania.dynamics._isentropic_prognostic import Centered, ForwardEuler, \
+													 RK2, RK3COSMO, RK3
 from tasmania.physics.microphysics import RaindropFallVelocity
 from tasmania.utils.data_utils import make_raw_state
 
@@ -87,11 +87,11 @@ def test_factory(grid):
 										  raindrop_fall_velocity_diagnostic=rfv,
 										  backend=backend)
 
-	assert isinstance(ip_centered, _Centered)
-	assert isinstance(ip_euler, _ForwardEuler)
-	assert isinstance(ip_rk2, _RK2)
-	assert isinstance(ip_rk3c, _RK3COSMO)
-	assert isinstance(ip_rk3, _RK3)
+	assert isinstance(ip_centered, Centered)
+	assert isinstance(ip_euler, ForwardEuler)
+	assert isinstance(ip_rk2, RK2)
+	assert isinstance(ip_rk3c, RK3COSMO)
+	assert isinstance(ip_rk3, RK3)
 
 
 def test_leapfrog(isentropic_moist_data):

@@ -750,4 +750,4 @@ def test_sus_moist(isentropic_moist_data):
 if __name__ == '__main__':
 	pytest.main([__file__])
 	#from conftest import isentropic_dry_data, isentropic_moist_data
-	#test_parallel_splitting_asparallel_moist(isentropic_moist_data())
+	#test_ps_asparallel_moist(isentropic_moist_data())
