@@ -1,0 +1,118 @@
+from datetime import datetime, timedelta
+import gridtools as gt
+import numpy as np
+import os
+from sympl import DataArray
+import tasmania as taz
+
+# Build the underlying grid
+domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}).to_units('m'), 101
+domain_y, ny = DataArray([-1., 1.], dims='y', attrs={'units': 'km'}).to_units('m'), 1
+domain_z, nz = DataArray([340., 280.], dims='air_potential_temperature', attrs={'units': 'K'}), 60
+grid = taz.GridXYZ(domain_x, nx, domain_y, ny, domain_z, nz,
+                   topo_type='gaussian', topo_time=timedelta(seconds=1800),
+                   topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
+                                'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
+
+# Instantiate the initial state
+time          = datetime(year=1992, month=2, day=20)
+x_velocity    = DataArray(15., attrs={'units': 'm s^-1'})
+y_velocity    = DataArray(0., attrs={'units': 'm s^-1'})
+brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
+state = taz.get_default_isentropic_state(grid, time, x_velocity, y_velocity, brunt_vaisala, 
+                                         moist_on=True, dtype=np.float64)
+
+# The component calculating the microphysical sources/sinks
+# prescribed by the Kessler scheme; neglect the evaporation of
+# rain in the subcloud layers
+kessler = taz.Kessler(grid, pressure_on_interface_levels=True,
+                      rain_evaporation_on=False, backend=gt.mode.NUMPY)
+
+# The component performing the saturation adjustment
+# as prescribed by the Kessler scheme
+saturation = taz.SaturationAdjustmentKessler(grid, pressure_on_interface_levels=True,
+                                             backend=gt.mode.NUMPY)
+
+# Instantiate the dry isentropic dynamical core
+dycore = taz.IsentropicDynamicalCore(grid, moist_on=True,
+                                     time_integration_scheme='forward_euler',
+                                     horizontal_flux_scheme='upwind',
+                                     horizontal_boundary_type='relaxed',
+                                     smooth_on=True, smooth_type='first_order',
+                                     smooth_coeff=0.20, smooth_at_every_stage=True,
+                                     adiabatic_flow=True, sedimentation_on=False,
+                                     backend=gt.mode.NUMPY, dtype=np.float64)
+
+# The artist generating the left subplot
+subplot1 = taz.Plot2d(grid, plot_function=taz.make_contourf_xz,
+                      field_to_plot='x_velocity_at_u_locations', level=0,
+                      plot_properties={'fontsize': 16,
+                                       'title_left': '$x$-velocity [m s$^{-1}$]',
+                                       'x_label': '$x$ [km]', 'x_lim': [0, 500],
+                                       'y_label': '$z$ [km]', 'y_lim': [0, 14]},
+                      plot_function_kwargs={'fontsize': 16,
+                                            'x_factor': 1e-3, 'z_factor': 1e-3,
+                                            'cmap_name': 'BuRd', 'cbar_on': True,
+                                            'cbar_levels': 18, 'cbar_ticks_step': 2,
+                                            'cbar_center': 15, 'cbar_half_width': 8.5,
+                                            'cbar_orientation': 'horizontal'})
+
+# The artist generating the right subplot
+subplot2 = taz.Plot2d(grid, plot_function=taz.make_contourf_xz,
+                      field_to_plot='mass_fraction_of_cloud_liquid_water_in_air', level=0,
+                      plot_properties={'fontsize': 16,
+                                       'title_left': 'Cloud liquid water [g kg$^{-1}$]',
+                                       'x_label': '$x$ [km]', 'x_lim': [0, 500],
+                                       'y_lim': [0, 14], 'yaxis_visible': False},
+                      plot_function_kwargs={'fontsize': 16,
+                                            'x_factor': 1e-3, 'z_factor': 1e-3,
+                                            'field_factor': 1e3,
+                                            'cmap_name': 'Blues', 'cbar_on': True,
+                                            'cbar_levels': 18, 'cbar_ticks_step': 4,
+                                            'cbar_orientation': 'horizontal'})
+
+# The monitor encompassing and coordinating the two artists
+monitor = taz.SubplotsAssembler(nrows=1, ncols=2, artists=(subplot1, subplot2),
+                                interactive=True, figsize=(12, 7), fontsize=16,
+                                tight_layout=True)
+
+# Create a monitor to dump the solution into a NetCDF file
+filename = '../tests/baseline_datasets/isentropic_moist.nc'
+if os.path.exists(filename):
+	os.remove(filename)
+netcdf_monitor = taz.NetCDFMonitor(filename, grid)
+netcdf_monitor.store(state)
+
+# Simulation settings
+timestep = timedelta(seconds=10)
+niter = 2160
+
+# Integrate
+for i in range(niter):
+	# Update the (time-dependent) topography
+	dycore.update_topography((i + 1) * timestep)
+
+	# Calculate the microphysical tendencies
+	tendencies, _ = kessler(state)
+
+	# Step the solution
+	state_new = dycore(state, tendencies, timestep)
+	state.update(state_new)
+
+	# Perform the saturation adjustment
+	state_new = saturation(state)
+	state.update(state_new)
+
+	if (i + 1) % 60 == 0:
+		# Plot the solution
+		subplot1.plot_properties['title_right'] = str((i + 1) * timestep)
+		subplot2.plot_properties['title_right'] = str((i + 1) * timestep)
+		fig = monitor.store((state, state))
+
+		# Save the solution
+		netcdf_monitor.store(state)
+
+# Write solution to file
+netcdf_monitor.write()
+
+print('Simulation successfully completed. HOORAY!')
