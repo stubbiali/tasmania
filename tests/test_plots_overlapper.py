@@ -89,6 +89,7 @@ def test_plot_1d_x(isentropic_moist_sedimentation_data,
 		'y_lim': [0, 1.0],
 		'legend_on': True,
 		'legend_loc': 'best',
+		'legend_framealpha': 1.0,
 		'grid_on': True,
 	}
 
