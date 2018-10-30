@@ -201,7 +201,7 @@ def set_plot_properties(ax, *, fontsize=12,
 						z_label='', z_lim=None, invert_zaxis=False,
 						z_scale=None, z_ticks=None, z_ticklabels=None,
 						zaxis_minor_ticks_visible=True, zaxis_visible=True,
-						legend_on=False, legend_loc='best',
+						legend_on=False, legend_loc='best', legend_framealpha=0.5,
 						text=None, text_loc='',
 						grid_on=False, grid_properties=None):
 	"""
@@ -277,6 +277,8 @@ def set_plot_properties(ax, *, fontsize=12,
 		String specifying the location where the legend box should be placed.
 		Default is 'best'; please see :func:`matplotlib.pyplot.legend` for all
 		the available options.
+	legend_framealpha : `float`, optional
+		TODO
 	text : str
 		Text to be added to the figure as anchored text. Default is :obj:`None`,
 		and no text box is shown.
@@ -402,7 +404,7 @@ def set_plot_properties(ax, *, fontsize=12,
 					  'argument ''zaxis_visible'' is disregarded.', RuntimeWarning)
 
 	if legend_on:
-		ax.legend(loc=legend_loc)
+		ax.legend(loc=legend_loc, framealpha=legend_framealpha)
 
 	if text is not None:
 		ax.add_artist(AnchoredText(text, loc=text_locations[text_loc]))

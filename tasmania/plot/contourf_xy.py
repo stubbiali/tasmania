@@ -250,7 +250,8 @@ def plot_contourf_xy(x, y, field, topography, fig, ax, **kwargs):
 	field *= field_factor
 
 	# Draw topography isolevels
-	plt.contour(x, y, topography, colors='gray')
+	if topography.max() > 0:
+		plt.contour(x, y, topography, colors='gray')
 
 	# Create color bar for colormap
 	field_min, field_max = np.amin(field), np.amax(field)
