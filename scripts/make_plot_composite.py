@@ -9,47 +9,52 @@ nrows = 1
 ncols = 2
 
 modules = [
-	'make_contourf_xz',
-	'make_contourf_xz_1',
+	'make_plot',
+	'make_plot_1',
 ]
 
-fontsize = 16
-figsize = (12, 7)
-tight_layout = True
+tlevel = -1
+
+figure_properties = {
+	'fontsize': 16,
+	'figsize': (9, 6),
+	'tight_layout': True
+}
+
+save_dest = None
 
 
 #
 # Code
 #
-def get_artist(tlevel=None):
-	slaves = []
+def get_plot():
+	subplots = []
+
+	for module in modules:
+		import_str = 'from {} import get_plot as get_subplot'.format(module)
+		exec(import_str)
+		subplots.append(locals()['get_subplot']())
+
+	plot = taz.PlotComposite(nrows, ncols, subplots, interactive=False,
+							 figure_properties=figure_properties)
+
+	return plot
+
+
+def get_states(tlevel, plot):
+	subplots = plot.artists
 	states = []
 
-	for module in modules:
-		import_str = 'from {} import get_artist as get_slave'.format(module)
+	for module, subplot in zip(modules, subplots):
+		import_str = 'from {} import get_states'.format(module)
 		exec(import_str)
-		slave, state = locals()['get_slave'](tlevel)
-		slaves.append(slave)
-		states.append(state)
+		states.append(locals()['get_states'](tlevel, subplot))
 
-	artist = taz.SubplotsAssembler(nrows, ncols, slaves, interactive=False,
-								   fontsize=fontsize, figsize=figsize,
-								   tight_layout=tight_layout)
-
-	return artist, states
-
-
-def get_loader():
-	subloaders = []
-
-	for module in modules:
-		import_str = 'from {} import get_loader'.format(module)
-		exec(import_str)
-		subloaders.append(locals()['get_loader']())
-
-	return LoaderComposite(subloaders)
+	return states
 
 
 if __name__ == '__main__':
-	artist, states = get_artist()
-	artist.store(states, show=True)
+	plot = get_plot()
+	states = get_states(tlevel, plot)
+	plot.store(states, save_dest=save_dest, show=True)
+

@@ -5,8 +5,10 @@ import pytest
 def test_import():
 	try:
 		import sympl
+		assert True
 	except ImportError:
 		print('Hint: did you install sympl?')
+		assert False
 
 	import sys
 	assert 'sympl' in sys.modules
@@ -38,6 +40,43 @@ def test_constants():
 
 	from sympl import reset_constants
 	reset_constants()
+
+
+def test_diagnostics(isentropic_dry_data):
+	from sympl import DiagnosticComponent
+
+	class TestDiagnostic(DiagnosticComponent):
+		def __init__(self, grid):
+			self._grid = grid
+			super().__init__()
+
+		@property
+		def input_properties(self):
+			dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
+
+			return {'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'}}
+
+		@property
+		def diagnostic_properties(self):
+			dims = (self._grid.x.dims[0], self._grid.z.dims[0])
+
+			return {'maxy_air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'}}
+
+		def array_call(self, state):
+			maxy = np.max(state['air_isentropic_density'], axis=1)
+			return {'maxy_air_isentropic_density': maxy}
+
+	grid, states = isentropic_dry_data
+	state = states[-1]
+	grid.update_topography(state['time'] - states[0]['time'])
+
+	td = TestDiagnostic(grid)
+	diagnostics = td(state)
+	maxy = diagnostics['maxy_air_isentropic_density']
+
+	assert len(maxy.shape) == 2
+	assert maxy.shape[0] == grid.nx
+	assert maxy.shape[1] == grid.nz
 
 
 if __name__ == '__main__':

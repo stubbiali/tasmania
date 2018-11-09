@@ -7,11 +7,11 @@ from tasmania.plot.profile import LineProfile
 from tasmania.plot.quiver import Quiver
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots_overlapper')
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
 def test_profile_x(isentropic_moist_sedimentation_data,
 				   isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plots_overlapper does exist
-	baseline_dir = 'baseline_images/test_plots_overlapper'
+	# Make sure the folder tests/baseline_images/test_plots does exist
+	baseline_dir = 'baseline_images/test_plots'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -22,7 +22,7 @@ def test_profile_x(isentropic_moist_sedimentation_data,
 
 	# Field to plot
 	field_name  = 'accumulated_precipitation'
-	field_units = 'g kg^-1'
+	field_units = 'mm'
 
 	#
 	# Drawer#1
@@ -107,11 +107,11 @@ def test_profile_x(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots_overlapper')
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
 def test_profile_z(isentropic_moist_sedimentation_data,
 				   isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plots_overlapper does exist
-	baseline_dir = 'baseline_images/test_plots_overlapper'
+	# Make sure the folder tests/baseline_images/test_plots does exist
+	baseline_dir = 'baseline_images/test_plots'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -203,10 +203,10 @@ def test_profile_z(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots_overlapper')
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
 def test_plot2d(isentropic_dry_data):
-	# Make sure the folder tests/baseline_images/test_plots_overlapper does exist
-	baseline_dir = 'baseline_images/test_plots_overlapper'
+	# Make sure the folder tests/baseline_images/test_plots does exist
+	baseline_dir = 'baseline_images/test_plots'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -241,8 +241,8 @@ def test_plot2d(isentropic_dry_data):
 	}
 
 	# Instantiate the drawer
-	drawer1 = LineProfile(grid, 'horizontal_velocity', 'm s^-1', z=z,
-						  xaxis_units='km', yaxis_units='km', **drawer_properties)
+	drawer1 = Contourf(grid, 'horizontal_velocity', 'm s^-1', z=z,
+					   xaxis_units='km', yaxis_units='km', **drawer_properties)
 
 	#
 	# Drawer#2
@@ -253,6 +253,7 @@ def test_plot2d(isentropic_dry_data):
 		'x_step': 2,
 		'y_step': 2,
 		'cmap_name': None,
+		'alpha': 0.5,
 	}
 
 	# Instantiate the monitor
@@ -266,7 +267,7 @@ def test_plot2d(isentropic_dry_data):
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
-		'figsize': (7, 7),
+		'figsize': (7, 8),
 		'tight_layout': True,
 	}
 	axes_properties = {

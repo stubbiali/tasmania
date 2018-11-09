@@ -1,113 +1,82 @@
-import matplotlib.pyplot as plt
-import numpy as np
+from datetime import datetime
+from loader import LoaderFactory
 import tasmania as taz
-
 
 #
 # User inputs
 #
-first_dataset = '../data/'
-exts = ['cc_gaussian_L25000_H2250_u7.nc', 'sus_gaussian_L25000_H2250_u7.nc']
+filename1 = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+	'nx51_ny51_nz50_dt20_nt4320_flat_terrain_L25000_u0_wf4_f_sus_bis.nc'
+filename2 = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+	'nx51_ny51_nz50_dt20_nt4320_flat_terrain_L25000_u0_wf4_f_cc_bis.nc'
 
-figsize = (7, 7)
-fontsize = 16
+field_name  = 'x_velocity_at_u_locations'
+field_units = 'm s^-1'
 
-linestyles = [
-	'-',
-	'--',
-	':'
-]
+x1, x2 = None, None
+y1, y2 = None, None
+z1, z2 = None, None
 
-linecolors = [
-	'black',
-	'blue',
-	'red',
-]
+time_mode     = 'elapsed'
+init_time     = datetime(year=1992, month=2, day=20, hour=8)
+time_units    = 'hr'
+time_on_xaxis = True
 
-linewidths = [
-	1.0,
-	1.5,
-	1.5,
-]
-
-labels = [
-	'CC',
-	'SUS',
-	'SSUS',
-]
-
-plot_properties = {
+drawer_properties = {
 	'fontsize': 16,
-	'title_center': '',
-	'title_left': '',
-	'title_right': '',
-	'x_label': 'Elapsed time [h]',
-	'x_lim': (0, 6),
-	'invert_xaxis': False,
-	'x_scale': None,
-	'x_ticks': range(0, 7),
-	'x_ticklabels': range(0, 7),
-	'xaxis_minor_ticks_visible': False,
-	'xaxis_visible': True,
-	'y_label': 'RRMSE [-]',
-	'y_lim': None, #(0, 1),
-	'invert_yaxis': False,
-	'y_scale': None,
-	'y_ticks': None,
-	'y_ticklabels': None, #['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
-	'yaxis_minor_ticks_visible': False,
-	'yaxis_visible': True,
-	'z_label': '',
-	'z_lim': None,
-	'invert_zaxis': False,
-	'z_scale': None,
-	'z_ticks': None,
-	'z_ticklabels': None,
-	'zaxis_minor_ticks_visible': True,
-	'zaxis_visible': True,
-	'legend_on': True,
-	'legend_loc': 'best',
-	'legend_framealpha': 1.0,
-	'text': None,
-	'text_loc': '',
-	'grid_on': True,
-	'grid_properties': {'linestyle': ':'},
+	'linestyle': '-',
+	'linewidth': 1.5,
+	'linecolor': 'blue',
+	'marker': '^',
+	'markersize': 7,
+	'markeredgewidth': 1,
+	'markerfacecolor': 'white',
+	'markeredgecolor': 'blue',
+	'legend_label': 'SUS'
 }
 
 
 #
 # Code
 #
-if __name__ == '__main__':
-	fig, ax = taz.get_figure_and_axes(figsize=figsize, fontsize=fontsize)
+def get_drawer():
+	loader1 = LoaderFactory.factory(filename1)
+	grid1 = loader1.get_grid()
 
-	grid, states_ref = taz.load_netcdf_dataset(root + exts[0])
-	ns = grid.nx * grid.ny * grid.nz
+	drawer = taz.TimeSeries(
+		grid1, 'rrmsd_of_' + field_name, None,
+		time_mode=time_mode, init_time=init_time,
+		time_units=time_units, time_on_xaxis=time_on_xaxis,
+		**drawer_properties
+	)
 
-	for k in range(1, len(exts)):
-		fname = root + exts[k]
-		grid, states = taz.load_netcdf_dataset(fname)
+	return drawer
 
-		t = []
-		y = []
 
-		for n in range(len(states)):
-			su = states[n]['x_momentum_isentropic'].values
-			s  = states[n]['air_isentropic_density'].values
+def get_state(tlevel, drawer, axes_properties=None, print_time=None):
+	loader1 = LoaderFactory.factory(filename1)
+	loader2 = LoaderFactory.factory(filename2)
 
-			su_ref = states_ref[n]['x_momentum_isentropic'].values
-			s_ref  = states_ref[n]['air_isentropic_density'].values
+	grid1 = loader1.get_grid()
+	grid2 = loader2.get_grid()
 
-			t.append((states[n]['time'] - states[0]['time']).total_seconds() / 3600.0)
-			y.append(np.linalg.norm(su / s - su_ref / s_ref) / np.linalg.norm(su_ref / s_ref))
+	rrmsd = taz.RRMSD(
+		(grid1, grid2), {field_name: field_units},
+		x=(x1, x2), y=(y1, y2), z=(z1, z2)
+	)
 
-		ax.plot(t, y, linestyle=linestyles[k], linewidth=linewidths[k],
-				color=linecolors[k], label=labels[k])
+	drawer.reset()
 
-		print('{} done.'.format(fname))
+	tlevel = loader1.nt + tlevel if tlevel < 0 else tlevel
 
-	taz.set_plot_properties(ax, **plot_properties)
-	fig.tight_layout()
+	for k in range(0, tlevel-1):
+		state1, state2 = loader1.get_state(k), loader2.get_state(k)
+		diagnostics = rrmsd(state1, state2)
+		state1.update(diagnostics)
+		drawer(state1)
 
-	plt.show()
+	state1, state2 = loader1.get_state(tlevel), loader2.get_state(tlevel)
+	diagnostics = rrmsd(state1, state2)
+	state1.update(diagnostics)
 
+	return state1

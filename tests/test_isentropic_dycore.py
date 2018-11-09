@@ -20,7 +20,7 @@ def test_dry(isentropic_dry_data):
 									 horizontal_boundary_type='relaxed',
 									 damp_on=True, damp_type='rayleigh', damp_depth=15,
 									 damp_max=0.0002, damp_at_every_stage=False,
-									 smooth_on=True, smooth_type='first_order',
+									 smooth_on=True, smooth_type='second_order',
 									 smooth_coeff=0.12, smooth_at_every_stage=False,
 									 backend=gt.mode.NUMPY, dtype=np.float32)
 

@@ -1,0 +1,95 @@
+import tasmania as taz
+
+
+#
+# User inputs
+#
+modules = [
+	'make_rrmsd',
+	'make_rrmsd_1',
+]
+
+tlevel = -1
+
+figure_properties = {
+	'fontsize': 16,
+	'figsize': (7, 7),
+	'tight_layout': True,
+}
+
+axes_properties = {
+	'fontsize': 16,
+	'title_center': '',
+	'title_left': '',
+	'title_right': '',
+	'x_label': 'Time (UTC)',
+	'x_lim': (-0.5, 24.5),
+	'invert_xaxis': False,
+	'x_scale': None,
+	'x_ticks': range(0, 25, 6),
+	'x_ticklabels': ('8:00', '14:00', '20:00', '2:00', '8:00'),
+	'xaxis_minor_ticks_visible': False,
+	'xaxis_visible': True,
+	'y_label': 'RRMSD of $x$-velocity [-]',
+	'y_lim': (0.01, 0.15),
+	'invert_yaxis': False,
+	'y_scale': None,
+	'y_ticks': None,
+	'y_ticklabels': None, #['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
+	'yaxis_minor_ticks_visible': False,
+	'yaxis_visible': True,
+	'z_label': '',
+	'z_lim': None,
+	'invert_zaxis': False,
+	'z_scale': None,
+	'z_ticks': None,
+	'z_ticklabels': None,
+	'zaxis_minor_ticks_visible': True,
+	'zaxis_visible': True,
+	'legend_on': True,
+	'legend_loc': 'best',
+	'legend_framealpha': 1.0,
+	'text': None,
+	'text_loc': '',
+	'grid_on': True,
+	'grid_properties': {'linestyle': ':'},
+}
+
+print_time = None  # 'elapsed', 'absolute'
+
+save_dest = None
+
+
+#
+# Code
+#
+def get_plot():
+	drawers = []
+
+	for module in modules:
+		import_str = 'from {} import get_drawer'.format(module)
+		exec(import_str)
+		drawer = locals()['get_drawer']()
+		drawers.append(drawer)
+
+	return taz.Plot(drawers, False, figure_properties, axes_properties)
+
+
+def get_states(tlevel, plot):
+	drawers = plot.artists
+	axes_properties = plot.axes_properties
+	states  = []
+
+	for module, drawer in zip(modules, drawers):
+		import_str = 'from {} import get_state'.format(module)
+		exec(import_str)
+		state = locals()['get_state'](tlevel, drawer, axes_properties, print_time)
+		states.append(state)
+
+	return states
+
+
+if __name__ == '__main__':
+	plot = get_plot()
+	states = get_states(tlevel, plot)
+	plot.store(states, save_dest=save_dest, show=True)

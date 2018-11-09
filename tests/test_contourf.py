@@ -1,21 +1,23 @@
-from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
 
+from tasmania.plot.contourf import Contourf
+from tasmania.plot.monitors import Plot
 
-#@image_comparison(baseline_images=['test_contourf_xy_velocity'], extensions=['eps'])
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf_xy')
+
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
 def test_contourf_xy_velocity(isentropic_dry_data):
 	# Field to plot
-	field_to_plot = 'horizontal_velocity'
+	field_name  = 'horizontal_velocity'
+	field_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_contourf_xy does exist
-	baseline_dir = 'baseline_images/test_contourf_xy'
+	# Make sure the folder tests/baseline_images/test_contourf does exist
+	baseline_dir = 'baseline_images/test_contourf'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_contourf_xy_velocity.eps')
+	save_dest = os.path.join(baseline_dir, 'test_contourf_xy_velocity_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
@@ -25,44 +27,44 @@ def test_contourf_xy_velocity(isentropic_dry_data):
 	state = states[-1]
 
 	# Index identifying the cross-section to visualize
-	z_level = -1
+	z = -1
 
-	# Plot properties
-	plot_properties = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'title_left': 'Horizontal velocity [m s$^{-1}$]',
+		'cmap_name': 'BuRd',
+		'cbar_levels': 18,
+		'cbar_ticks_step': 4,
+		'cbar_center': 15.0,
+		'cbar_orientation': 'horizontal',
+		'alpha': 0.1,
+		'colors': 'black',
+	}
+
+	# Instantiate the drawer
+	drawer = Contourf(grid, field_name, field_units, z=z,
+					  xaxis_units='km', yaxis_units='km', **drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 8),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'Surface horizontal velocity [m s$^{-1}$]',
+		'title_right': str(state['time'] - states[0]['time']),
 		'x_label': '$x$ [km]',
 		'x_lim': None,
 		'y_label': '$y$ [km]',
 		'y_lim': None,
-		'text': 'MC',
-		'text_loc': 'upper right',
 	}
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1e-3,
-		'field_bias': 0.,
-		'field_factor': 1.,
-		'cmap_name': 'BuRd',
-		'cbar_levels': 14,
-		'cbar_ticks_step': 2,
-		'cbar_center': 15,
-		'cbar_half_width': 6.5,
-		'cbar_x_label': '',
-		'cbar_y_label': '',
-		'cbar_title': '',
-		'cbar_orientation': 'horizontal',
-	}
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
 
 	# Plot
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.contourf_xy import make_contourf_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
-				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
@@ -70,19 +72,19 @@ def test_contourf_xy_velocity(isentropic_dry_data):
 	return monitor.figure
 
 
-#@image_comparison(baseline_images=['test_contourf_xy_pressure'], extensions=['eps'])
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf_xy')
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
 def test_contourf_xy_pressure(isentropic_dry_data):
 	# Field to plot
-	field_to_plot = 'air_pressure_on_interface_levels'
+	field_name  = 'air_pressure_on_interface_levels'
+	field_units = 'hPa'
 
-	# Make sure the folder tests/baseline_images/test_contourf_xy does exist
-	baseline_dir = 'baseline_images/test_contourf_xy'
+	# Make sure the folder tests/baseline_images/test_contourf does exist
+	baseline_dir = 'baseline_images/test_contourf'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_contourf_xy_pressure.eps')
+	save_dest = os.path.join(baseline_dir, 'test_contourf_xy_pressure_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
@@ -92,45 +94,180 @@ def test_contourf_xy_pressure(isentropic_dry_data):
 	state = states[-1]
 
 	# Index identifying the cross-section to visualize
-	z_level = -1
+	z = -1
 
-	# Plot properties
-	plot_properties = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'title_left': 'Pressure [hPa]',
+		'cmap_name': 'Blues',
+		'cbar_levels': 18,
+		'cbar_ticks_step': 4,
+		'cbar_orientation': 'horizontal',
+		'alpha': 0.1,
+	}
+
+	# Instantiate the drawer
+	drawer = Contourf(grid, field_name, field_units, z=z,
+					  xaxis_units='km', yaxis_units='km', **drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 8),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'Surface pressure [hPa]',
+		'title_right': str(state['time'] - states[0]['time']),
 		'x_label': '$x$ [km]',
 		'x_lim': None,
 		'y_label': '$y$ [km]',
 		'y_lim': None,
-		'text': 'MC',
-		'text_loc': 'upper right',
 	}
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1e-3,
-		'field_bias': 0.,
-		'field_factor': 1.e-2,
-		'cmap_name': 'Blues',
-		'cbar_levels': 11,
-		'cbar_ticks_step': 2,
-		'cbar_ticks_pos': 'interface',
-		'cbar_center': None,
-		'cbar_half_width': None,
-		'cbar_x_label': '',
-		'cbar_y_label': '',
-		'cbar_title': '',
-		'cbar_orientation': 'horizontal',
-	}
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
 
 	# Plot
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.contourf_xy import make_contourf_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
-				   plot_function_kwargs=plot_function_kwargs)
+	monitor.store(state, save_dest=save_dest)
+
+	assert os.path.exists(save_dest)
+
+	return monitor.figure
+
+
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
+def test_contourf_xz_velocity(isentropic_dry_data):
+	# Field to plot
+	field_name  = 'x_velocity_at_u_locations'
+	field_units = 'm s^-1'
+
+	# Make sure the folder tests/baseline_images/test_contourf does exist
+	baseline_dir = 'baseline_images/test_contourf'
+	if not os.path.exists(baseline_dir):
+		os.makedirs(baseline_dir)
+
+	# Make sure the baseline image will exist at the end of this run
+	save_dest = os.path.join(baseline_dir, 'test_contourf_xz_velocity_nompl.eps')
+	if os.path.exists(save_dest):
+		os.remove(save_dest)
+
+	# Grab data from dataset
+	grid, states = isentropic_dry_data
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
+
+	# Index identifying the cross-section to visualize
+	y = int(grid.ny/2)
+
+	# Drawer properties
+	drawer_properties = {
+		'fontsize': 16,
+		'cmap_name': 'BuRd',
+		'cbar_levels': 18,
+		'cbar_ticks_step': 4,
+		'cbar_center': 15.0,
+		'cbar_orientation': 'horizontal',
+		'draw_vertical_levels': True,
+		'linecolor': 'black',
+		'linewidth': 1.0,
+	}
+
+	# Instantiate the drawer
+	drawer = Contourf(grid, field_name, field_units, y=y,
+					  xaxis_units='km', zaxis_name='height', zaxis_units='km',
+					  **drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 8),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': '$x$-velocity [m s$^{-1}$]',
+		'title_right': str(state['time'] - states[0]['time']),
+		'x_label': '$x$ [km]',
+		'x_lim': None,
+		'y_label': '$z$ [km]',
+		'y_lim': [0, 15],
+	}
+
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
+
+	# Plot
+	monitor.store(state, save_dest=save_dest)
+
+	assert os.path.exists(save_dest)
+
+	return monitor.figure
+
+
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
+def test_contourf_yz_velocity(isentropic_dry_data):
+	# Field to plot
+	field_name  = 'y_velocity_at_v_locations'
+	field_units = 'km hr^-1'
+
+	# Make sure the folder tests/baseline_images/test_contourf does exist
+	baseline_dir = 'baseline_images/test_contourf'
+	if not os.path.exists(baseline_dir):
+		os.makedirs(baseline_dir)
+
+	# Make sure the baseline image will exist at the end of this run
+	save_dest = os.path.join(baseline_dir, 'test_contourf_yz_velocity_nompl.eps')
+	if os.path.exists(save_dest):
+		os.remove(save_dest)
+
+	# Grab data from dataset
+	grid, states = isentropic_dry_data
+	grid.update_topography(states[-1]['time']-states[0]['time'])
+	state = states[-1]
+
+	# Index identifying the cross-section to visualize
+	x = int(grid.nx/2)
+
+	# Drawer properties
+	drawer_properties = {
+		'fontsize': 16,
+		'cmap_name': 'BuRd',
+		'cbar_levels': 18,
+		'cbar_ticks_step': 4,
+		'cbar_center': 15.0 * 3.6,
+		'cbar_orientation': 'horizontal',
+		'draw_vertical_levels': True,
+		'linecolor': 'black',
+		'linewidth': 1.0,
+	}
+
+	# Instantiate the drawer
+	drawer = Contourf(grid, field_name, field_units, x=x, yaxis_units='km',
+					  zaxis_name='height_on_interface_levels', zaxis_units='km',
+					  **drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 8),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': '$y$-velocity [km h$^{-1}$]',
+		'title_right': str(state['time'] - states[0]['time']),
+		'x_label': '$y$ [km]',
+		'x_lim': None,
+		'y_label': '$z$ [km]',
+		'y_lim': [0, 15],
+	}
+
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
+
+	# Plot
 	monitor.store(state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
@@ -140,3 +277,5 @@ def test_contourf_xy_pressure(isentropic_dry_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
+	#from conftest import isentropic_dry_data
+	#test_contourf_xz_velocity(isentropic_dry_data())

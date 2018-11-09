@@ -152,7 +152,7 @@ def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the artist which generates the frames
-	from tasmania.plot.assemblers import PlotsOverlapper
+	from tasmania.plot.composite import PlotsOverlapper
 	assembler = PlotsOverlapper([monitor1, monitor2], interactive=False,
 							   plot_properties=plot_properties)
 
