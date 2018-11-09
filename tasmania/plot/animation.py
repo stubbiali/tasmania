@@ -25,59 +25,26 @@ This module contains:
 	Animation
 """
 import matplotlib.animation as manimation
-import matplotlib.pyplot as plt
 
-from tasmania.plot.assemblers import SubplotsAssembler
-from tasmania.utils import utils
+from tasmania.plot.monitors import Plot, PlotComposite
 
 
 class Animation:
 	"""
-	This class creates an animation by sequentially invoking a wrapped
-	:class:`~tasmania.plot.plot_monitors.Plot1d`,
-	:class:`~tasmania.plot.plot_monitors.Plot2d`,
-	:class:`~tasmania.plot.assemblers.PlotsOverlapper`,
-	or :class:`~tasmania.plot.plot_monitors.SubplotsAssembler` object
-	on a list of model states, and grabbing the so-generated frames.
-
-	Attributes
-	----------
-    fontsize : int
-        The fontsize to be used.
-    figsize : tuple
-        The size which the figure should have.
-    tight_layout : bool
-        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
-    print_time : str
-        String specifying if time should be printed above the plot,
-        flush with the right edge. Options are:
-
-            * 'elapsed', to print the time elapsed from the first snapshot stored;
-            * 'absolute', to print the absolute time of the snapshot.
-            * anything else, not to print anything.
-
-    fps : int
-        Frames per second.
+	This class creates an animation by leveraging a wrapped
+	:class:`~tasmania.plot.monitors.Plot` or
+	:class:`~tasmania.plot.monitors.PlotComposite`
+	to generate the frames.
 	"""
-	def __init__(self, artist, fontsize=16, figsize=(8, 8), tight_layout=True,
-				 print_time=None, fps=15):
+	def __init__(self, artist, print_time=None, fps=15):
 		"""
 		The constructor.
 
 		Parameters
 		----------
 		artist : artist
-			Instance of :class:`~tasmania.plot.plot_monitors.Plot1d`,
-			:class:`~tasmania.plot.plot_monitors.Plot2d`,
-			:class:`~tasmania.plot.assemblers.PlotsOverlapper`,
-			or :class:`~tasmania.plot.assemblers.SubplotsAssembler`.
-		fontsize : `int`, optional
-			The fontsize to be used. Default is 16.
-		figsize : `tuple`, optional
-			The size which the figure should have. Default is (8, 8).
-		tight_layout : `bool`, optional
-            :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
-            Default is :obj:`True`.
+			Instance of :class:`~tasmania.plot.monitors.Plot` or
+			:class:`~tasmania.plot.monitors.PlotComposite`.
 		print_time : str
 			String specifying if time should be printed above the plot,
 			flush with the right edge. Options are:
@@ -91,14 +58,9 @@ class Animation:
 			Frames per second. Default is 15.
 		"""
 		# Store input arguments as private attributes
-		self._artist 	 = artist
-
-		# Store input arguments as public attributes
-		self.fontsize	  = fontsize
-		self.figsize	  = figsize
-		self.tight_layout = tight_layout
-		self.print_time	  = print_time
-		self.fps		  = fps
+		self._artist = artist
+		self._print_time = print_time
+		self._fps = fps
 
 		# Ensure the artist is in non-interactive mode
 		self._artist.interactive = False
@@ -137,16 +99,17 @@ class Animation:
 		nt = len(self._states)
 		if nt == 0:
 			import warnings
-			warnings.warn('This object does not contain any model state, so no movie will be created.')
+			warnings.warn('This object does not contain any model state, '
+						  'so no movie will be created.')
 			return
 
 		# Instantiate writer class
 		ffmpeg_writer = manimation.writers['ffmpeg']
 		metadata = {'title': ''}
-		writer = ffmpeg_writer(fps=self.fps, metadata=metadata)
+		writer = ffmpeg_writer(fps=self._fps, metadata=metadata)
 
-		# Instantiate the figure object
-		fig = plt.figure(figsize=self.figsize)
+		# Retrieve the figure object from the artist
+		fig = self._artist.figure
 
 		# Save initial time
 		try:
@@ -166,28 +129,23 @@ class Animation:
 					time = self._states[n][0]['time']
 
 				# Get the string with the time
-				if self.print_time == 'elapsed':
-					time_str = str(utils.convert_datetime64_to_datetime(time) -
-								   utils.convert_datetime64_to_datetime(init_time))
-				elif self.print_time == 'absolute':
-					time_str = str(utils.convert_datetime64_to_datetime(time))
+				if self._print_time == 'elapsed':
+					time_str = str(time - init_time)
+				elif self._print_time == 'absolute':
+					time_str = str(time)
 				else:
 					time_str = None
 
 				# Update artist(s)'s properties
 				if time_str is not None:
-					if isinstance(self._artist, SubplotsAssembler):
+					if isinstance(self._artist, PlotComposite):
 						for subplot_artist in self._artist.artists:
-							subplot_artist.plot_properties['title_right'] = time_str
+							subplot_artist.axes_properties['title_right'] = time_str
 					else:
-						self._artist.plot_properties['title_right'] = time_str
+						self._artist.axes_properties['title_right'] = time_str
 
 				# Create the frame
 				fig, _ = self._artist.store(self._states[n], fig=fig, show=False)
-
-				# Set the frame layout
-				if self.tight_layout:
-					fig.tight_layout()
 
 				# Let the writer grab the frame
 				writer.grab_frame()
