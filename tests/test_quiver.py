@@ -20,24 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
 
+from tasmania.plot.monitors import Plot
+from tasmania.plot.quiver import Quiver
 
-#@image_comparison(baseline_images=['test_quiver_xy_velocity'], extensions=['eps'], tol=1.5e-1)
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver_xy')
+
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')
 def test_quiver_xy_velocity(isentropic_dry_data):
 	# Field to plot
-	field_to_plot = 'horizontal_velocity'
+	xcomp_name  = 'x_velocity'
+	xcomp_units = 'm s^-1'
+	ycomp_name  = 'y_velocity'
+	ycomp_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_quiver_xy does exist
-	baseline_dir = 'baseline_images/test_quiver_xy'
+	# Make sure the folder tests/baseline_images/test_quiver does exist
+	baseline_dir = 'baseline_images/test_quiver'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_quiver_xy_velocity.eps')
+	save_dest = os.path.join(baseline_dir, 'test_quiver_xy_velocity_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
@@ -47,30 +51,15 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 	state = states[-1]
 
 	# Index identifying the cross-section to visualize
-	z_level = -1
+	z = -1
 
-	# Plot properties
-	plot_properties = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'title_left': 'Horizontal velocity [m s$^{-1}$]',
-		'x_label': '$x$ [km]',
-		'x_lim': None,
-		'y_label': '$y$ [km]',
-		'y_lim': None,
-		'text': 'MC',
-		'text_loc': 'upper right',
-	}
-
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'fontsize': 16,
-		'x_factor': 1e-3,
 		'x_step': 2,
-		'y_factor': 1e-3,
 		'y_step': 2,
-		'field_bias': 0.,
-		'field_factor': 1.,
 		'cmap_name': 'BuRd',
+		'cbar_on': True,
 		'cbar_levels': 14,
 		'cbar_ticks_step': 2,
 		'cbar_center': 15,
@@ -79,14 +68,34 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 		'cbar_y_label': '',
 		'cbar_title': '',
 		'cbar_orientation': 'horizontal',
+		'alpha': 0.5,
 	}
-	
+
+	# Instantiate the drawer
+	drawer = Quiver(grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
+					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
+					xaxis_units='km', yaxis_units='km', **drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 8),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'Surface horizontal velocity [m s$^{-1}$]',
+		'title_right': str(state['time'] - states[0]['time']),
+		'x_label': '$x$ [km]',
+		'x_lim': None,
+		'y_label': '$y$ [km]',
+		'y_lim': None,
+	}
+
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
+
 	# Plot
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.quiver_xy import make_quiver_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-				   fontsize=16, figsize=[7, 8], plot_properties=plot_properties,
-				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
@@ -94,19 +103,21 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 	return monitor.figure
 
 
-#@image_comparison(baseline_images=['test_quiver_xy_velocity_bw'], extensions=['eps'], tol=1.5e-1)
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver_xy')
+@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')
 def test_quiver_xy_velocity_bw(isentropic_dry_data):
 	# Field to plot
-	field_to_plot = 'horizontal_velocity'
+	xcomp_name  = 'x_velocity'
+	xcomp_units = 'm s^-1'
+	ycomp_name  = 'y_velocity'
+	ycomp_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_quiver_xy does exist
-	baseline_dir = 'baseline_images/test_quiver_xy'
+	# Make sure the folder tests/baseline_images/test_quiver does exist
+	baseline_dir = 'baseline_images/test_quiver'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_quiver_xy_velocity_bw.eps')
+	save_dest = os.path.join(baseline_dir, 'test_quiver_xy_velocity_bw_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
@@ -116,38 +127,41 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data):
 	state = states[-1]
 
 	# Index identifying the cross-section to visualize
-	z_level = -1
+	z = -1
 
-	# Plot properties
-	plot_properties = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'title_left': 'Horizontal velocity [m s$^{-1}$]',
+		'x_step': 2,
+		'y_step': 2,
+		'alpha': 0.5,
+	}
+
+	# Instantiate the drawer
+	drawer = Quiver(grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
+					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
+					xaxis_units='km', yaxis_units='km', **drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 7),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'Surface horizontal velocity [m s$^{-1}$]',
+		'title_right': str(state['time'] - states[0]['time']),
 		'x_label': '$x$ [km]',
 		'x_lim': None,
 		'y_label': '$y$ [km]',
 		'y_lim': None,
-		'text': 'MC',
-		'text_loc': 'upper right',
 	}
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'fontsize': 16,
-		'x_factor': 1e-3,
-		'x_step': 2,
-		'y_factor': 1e-3,
-		'y_step': 2,
-		'field_bias': 0.,
-		'field_factor': 1.,
-		'cmap_name': None,
-	}
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
 
 	# Plot
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.quiver_xy import make_quiver_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-				   fontsize=16, figsize=[8, 8], plot_properties=plot_properties,
-				   plot_function_kwargs=plot_function_kwargs)
 	monitor.store(state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
@@ -157,3 +171,5 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
+	#from conftest import isentropic_dry_data
+	#test_quiver_xy_velocity(isentropic_dry_data())
