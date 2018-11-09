@@ -21,10 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-IMAGE_NAME=tasmania:master
+IMAGE_NAME=tasmania:develop
 
-echo "About to build the container image '$MAGE_NAME' for tasmania." 
+echo "About to build the container image '$IMAGE_NAME' for tasmania." 
 read -n 1 -s -r -p "Press any key to continue, or Ctrl-C to exit."
+
+echo ""
 
 cp ../requirements.txt .
 
@@ -36,6 +38,6 @@ cd gridtools4py
 git checkout merge_ubbiali
 cd ..
 
-docker build --rm --build-arg uid=$(id -u) -t tasmania-master .
+docker build --rm --build-arg uid=$(id -u) -t $IMAGE_NAME .
 
-rm requirements.txt
+#rm requirements.txt
