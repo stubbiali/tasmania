@@ -1,0 +1,412 @@
+\RequirePackage[hyphens]{url}
+
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{listings}
+\usepackage{amsmath}
+\allowdisplaybreaks
+\usepackage{amsfonts}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{empheq}
+\usepackage{cases}
+\usepackage{anyfontsize}
+\usepackage{enumitem}
+\usepackage{pdfpages}
+\usepackage{fourier}	% Style
+\usepackage{bm}
+\usepackage{epstopdf}
+\usepackage{lipsum}
+\usepackage[top=3cm, bottom=3cm, left=2cm, right=2cm, scale=0.75]{geometry}	% Set the margins
+\usepackage{fancyhdr}
+\usepackage[letterspace=150]{microtype}
+\usepackage{textcomp}
+\usepackage{gensymb}
+\usepackage{booktabs}
+\usepackage{amsmath,etoolbox}
+\usepackage{mathtools}
+\usepackage{anyfontsize}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{float}
+\usepackage{subfig}
+\usepackage[labelfont=bf,labelsep=period,font=small]{caption}
+\usepackage{newunicodechar}
+\usepackage{nicefrac}	% For diagonal fractions
+\usepackage{bbm}
+\usepackage{csvsimple}
+
+% Set header and footer
+\usepackage{fancyhdr}
+
+% Packages needed for tables
+\usepackage{longtable}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{array}
+
+\PassOptionsToPackage{hyphens}{url}\usepackage{hyperref}
+\usepackage{breakurl}
+\usepackage{url}
+
+% To put footnotes at the bottom of the page
+\usepackage[bottom]{footmisc}
+
+\usepackage{empheq}
+
+\usepackage{tikz}
+
+% Default fixed font does not support bold face
+\DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{10.25} % for bold
+\DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{10.25}  % for normal
+
+% Custom colors
+\usepackage{color}
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+
+% To insert code snippets
+\usepackage{listings}
+
+% For argmin
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+% To insert verbatim within a command
+\usepackage{fancyvrb}
+
+% For pseudocode
+\usepackage[section]{algorithm}
+\usepackage{algpseudocode}
+
+\usepackage[many]{tcolorbox}
+
+\usepackage{stackengine}
+
+% Equations enumeration options
+\numberwithin{equation}{section}
+
+% Set interline
+\usepackage{setspace}
+
+% Colored boxes around equations
+\usepackage{xcolor}
+
+\newcommand*{\colorboxed}{}
+\def\colorboxed#1#{%
+	\colorboxedAux{#1}%
+}
+
+\newcommand*{\colorboxedAux}[3]{%
+	% #1: optional argument for color model
+	% #2: color specification
+	% #3: formula
+	\begingroup
+	\colorlet{cb@saved}{.}%
+	\color#1{#2}%
+	\boxed{%
+		\color{cb@saved}%
+		#3%
+	}%
+	\endgroup
+}
+
+\begin{document}
+	\noindent \textbf{\LARGE{Numerical methods for the 3D isentropic dynamical core}}
+	\normalsize
+
+	\section{Notation}
+		\begin{itemize}
+			\item $N_i$, $N_j$ and $N_{k}$ are the number of grid points in $x$-, $y$- and $\theta$-direction, respectively.
+			\item $\Delta x$, $\Delta y$ and $\Delta \theta$ are the grid spacings in $x$-, $y$ and $\theta$-direction, respectively, and $\Delta t$ is the timestep.
+			\item Grid points may be:
+				\begin{itemize}
+					\item unstaggered, i.e., $\lbrace (x_i = i \Delta x, \, y_j = j \Delta y, \, \theta_k = k \Delta \theta) \rbrace_{1 \leq i \leq N_i, \, 1 \leq j \leq N_j, \, 1 \leq k \leq N_k}$;
+					\item staggered in the $x$-direction, i.e., $\lbrace (x_{i+1/2} = (i + 1/2) \Delta x, \, y_j = j \Delta y, \, \theta_k = k \Delta \theta) \rbrace_{0 \leq i \leq N_i, \, 1 \leq j \leq N_j, \, 1 \leq k \leq N_k}$;
+					\item staggered in the $y$-direction, i.e., $\lbrace (x_i = i \Delta x, \, y_{j + 1/2} = (j + 1/2) \Delta y, \, \theta_k = k \Delta \theta) \rbrace_{1 \leq i \leq N_i, \, 0 \leq j \leq N_j, \, 1 \leq k \leq N_k}$;
+					\item staggered in the $\theta$-direction, i.e., $\lbrace (x_i = i \Delta x, \, y_j = j \Delta y, \, \theta_{k+1/2} = (k + 1/2) \Delta \theta) \rbrace_{1 \leq i \leq N_i, \, 1 \leq j \leq N_j, \, 0 \leq k \leq N_k}$.
+				\end{itemize}
+			\item $\sigma_{i,j,k}^n$ is the isentropic density at $(x_i, \, y_j, \, \theta_k)$ at time $t^n = n \Delta t$.
+			\item $u_{i+1/2,j,k}^n$ is the \emph{staggered} $x$-velocity at $(x_{i+1/2}, \, y_j, \, \theta_k)$ at time $t^n$; the \emph{unstaggered} $x$-velocity at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$ is then defined as \[ u_{i,j,k}^n = \dfrac{u_{i-1/2,j,k}^n + u_{i+1/2,j,k}^n}{2} \, . \]
+			\item $U_{i,j,k}^n = \sigma_{i,j,k}^n \, u_{i,j,k}^n$ is the $x$-momentum at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
+			\item $v_{i,j+1/2,k}^n$ is the \emph{staggered} $y$-velocity at $(x_i, \, y_{j+1/2}, \, \theta_k)$ at time $t^n$; the \emph{unstaggered} $y$-velocity at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$ is then defined as \[ v_{i,j,k}^n = \dfrac{v_{i,j-1/2,k}^n + u_{i,j+1/2,k}^n}{2} \, . \]
+			\item $V_{i,j,k}^n = \sigma_{i,j,k}^n \, v_{i,j,k}^n$ is the $y$-momentum at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
+			\item $(q_v)_{i,j,k}^n$ is the mass fraction of water vapour at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
+			\item $(Q_v)_{i,j,k}^n = \sigma_{i,j,k}^n \, (q_v)_{i,j,k}^n$.
+			\item $(q_c)_{i,j,k}^n$ is the mass fraction of cloud water at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
+			\item $(Q_c)_{i,j,k}^n = \sigma_{i,j,k}^n \, (q_c)_{i,j,k}^n$.
+			\item $(q_r)_{i,j,k}^n$ is the mass fraction of rain at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
+			\item $(Q_r)_{i,j,k}^n = \sigma_{i,j,k}^n \, (q_v)_{i,j,k}^n$.
+			\item $p_{i,j,k+1/2}^n$ is the pressure at $(x_i, \, y_j, \, \theta_{k+1/2})$ at time $t^n$.
+			\item $\pi_{i,j,k+1/2}^n$ is the Exner function at $(x_i, \, y_j, \, \theta_{k+1/2})$ at time $t^n$.
+			\item $M_{i,j,k}^n$ is the Montgomery potential at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
+		\end{itemize}
+
+	\section{Prognostic equations}
+		The conservative form of the prognostic equations for the isentropic density, the momentums and the air constituents reads:
+		\begin{subequations}
+			\label{eq:prognostic}
+			\begin{align}
+				\dfrac{\partial \sigma}{\partial t} + \dfrac{\partial u \sigma}{\partial x} + \dfrac{\partial v \sigma}{\partial y} & = 0 \, , \\
+				\dfrac{\partial U}{\partial t} + \dfrac{\partial u U}{\partial x} + \dfrac{\partial v U}{\partial y} & = -\sigma \, \dfrac{\partial M}{\partial x} \, , \\
+				\dfrac{\partial V}{\partial t} + \dfrac{\partial u V}{\partial x} + \dfrac{\partial v V}{\partial y} & = -\sigma \, \dfrac{\partial M}{\partial y} \, , \\
+				\dfrac{\partial Q}{\partial t} + \dfrac{\partial u Q}{\partial x} + \dfrac{\partial v Q}{\partial y} & = 0 \, .
+			\end{align}
+		\end{subequations}
+		with $Q = \lbrace Q_v, \, Q_c, \, Q_r $. In the upcoming subsections, we present three numerical techniques for the discretization of \eqref{eq:prognostic}: the leapfrog (Subsection \ref{section:Leapfrog method}), upwind (Subsection \ref{section:Upwind method}) and MacCormack (Subsection \ref{section:MacCormack method}) methods. All the algorithms will be cast in the flux form:
+		\begin{subequations}
+			\label{eq:flux-form}
+			\begin{align}
+				\sigma_{i,j}^{n+1} & = \sigma_{i,j}^* - \Delta t \dfrac{F_{i+1/2,j}^{\sigma,x} - F_{i-1/2,j}^{\sigma,x}}{\Delta x} - \Delta t \dfrac{F_{i,j+1/2}^{\sigma,y} - F_{i,j-1/2}^{\sigma,y}}{\Delta y} \, , \\
+				U_{i,j}^{n+1} & = U_{i,j}^* - \Delta t \dfrac{F_{i+1/2,j}^{U,x} - F_{i-1/2,j}^{U,x}}{\Delta x} - \Delta t \dfrac{F_{i,j+1/2}^{U,y} - F_{i,j-1/2}^{U,y}}{\Delta y} - c \, \Delta t \, \sigma_{i,j}^n \, \dfrac{M_{i+1,j}^n - M_{i-1,j}^n}{2 \Delta x} \, , \\
+				V_{i,j}^{n+1} & = V_{i,j}^* - \Delta t \dfrac{F_{i+1/2,j}^{V,x} - F_{i-1/2,j}^{V,x}}{\Delta x} - \Delta t \dfrac{F_{i,j+1/2}^{V,y} - F_{i,j-1/2}^{V,y}}{\Delta y} - c \, \Delta t \, \sigma_{i,j}^n \, \dfrac{M_{i,j+1}^n - M_{i,j-1}^n}{2 \Delta y} \, , \\
+				Q_{i,j}^{n+1} & = Q_{i,j}^* - \Delta t \dfrac{F_{i+1/2,j}^{Q,x} - Q_{i-1/2,j}^{Q,x}}{\Delta x} - \Delta t \dfrac{F_{i,j+1/2}^{Q,y} - F_{i,j-1/2}^{Q,y}}{\Delta y} \, ,
+			\end{align}
+		\end{subequations}
+		where 
+		\[
+			\phi_{i,j}^* = 
+			\begin{cases}
+				& \phi_{i,j}^{n-1} \hspace*{0.33cm} \text{for the leapfrog scheme} \, , \\
+				& \phi_{i,j}^n \hspace*{0.5cm} \text{otherwise} \, ,
+			\end{cases}
+		\]
+		with $\phi = \lbrace \sigma, \, U, \, V, \, Q_v, \, Q_c, \, Q_r \rbrace$, and
+		\[
+			c = 
+			\begin{cases}
+				& 2 \hspace*{0.5cm} \text{for the leapfrog scheme} \, , \\
+				& 1 \hspace*{0.5cm} \text{otherwise} \, ,
+			\end{cases}
+		\]
+		 
+		
+		The original variables are then recovered by
+		\begin{subequations}
+			\begin{align}
+				u_{i+1/2,j}^{n+1} & = \dfrac{U_{i,j}^{n+1} + U_{i+1,j}^{n+1}}{\sigma_{i,j}^{n+1} + \sigma_{i,j}^{n+1}} \, , \\
+				v_{i+1/2,j}^{n+1} & = \dfrac{V_{i,j}^{n+1} + V_{i+1,j}^{n+1}}{\sigma_{i,j}^{n+1} + \sigma_{i,j}^{n+1}} \, , \\
+				q_{i,j}^{n+1} & = \dfrac{Q_{i,j}^{n+1}}{\sigma_{i,j}^{n+1}} \, ,
+			\end{align}
+		\end{subequations}
+		with $q = \lbrace q_v, \, q_c, \, q_r \rbrace$. Note that each variable considered in this section is defined at the same $\theta$-level. Hence, we can safely drop the subscript refering to the $\theta$-position.
+
+	\subsection{Leapfrog method}
+	\label{section:Leapfrog method}
+		By discretizing both the space and time derivatives via centered finite difference, we get:
+		\begin{subequations}
+			\begin{align}
+				F_{i+1/2,j}^{\sigma,x} & = U_{i+1,j}^n - U_{i,j}^n \, , \\
+				F_{i,j+1/2}^{\sigma,y} & = V_{i,j+1}^n - V_{i,j}^n \, , \\
+				F_{i+1/2,j}^{\psi,x} & = u_{i+1,j}^n \, \psi_{i+1,j}^n - u_{i,j}^n \, \psi_{i,j}^n = \dfrac{U_{i+1,j}^n \, \psi_{i+1,j}^n}{\sigma_{i+1,j}^n} - \dfrac{U_{i,j}^n \, \psi_{i,j}^n}{\sigma_{i,j}^n} \, , \\
+				F_{i,j+1/2}^{\psi,y} & = v_{i,j+1}^n \, \psi_{i,j+1}^n - v_{i,j}^n \, \psi_{i,j}^n = \dfrac{V_{i,j+1}^n \, \psi_{i,j+1}^n}{\sigma_{i,j+1}^n} - \dfrac{V_{i,j}^n \, \psi_{i,j}^n}{\sigma_{i,j}^n} \, ,
+			\end{align}
+		\end{subequations}
+		with $\psi = \lbrace U, \, V, \, Q_v, \, Q_c, \, Q_r \rbrace$.
+
+	\subsection{Upwind method}
+	\label{section:Upwind method}
+		The upwind method couples the forward Euler scheme in time with a space discretization relying upon the sign of the advective field. In particular:
+		\begin{subequations}
+			\begin{align}
+				F_{i+1/2,j}^{\phi,x} & = \max \left( 0, \, u_{i+1/2,j}^n \right) \, \phi_{i,j}^n + \min \left( 0, \, u_{i+1/2,j}^n \right) \, \phi_{i+1,j}^n \, , \\
+				F_{i,j+1/2}^{\phi,y} & = \max \left( 0, \, v_{i,j+1/2}^n \right) \, \phi_{i,j}^n + \min \left( 0, \, v_{i,j+1/2}^n \right) \, \phi_{i,j+1}^n \, ,
+			\end{align}
+		\end{subequations}
+		with $\phi = \lbrace \sigma, \, U, \, V, \, Q_v, \, Q_c, \, Q_r \rbrace$. As a result, the scheme is first-order accurate in space and time.
+		
+	\subsection{MacCormack method}
+	\label{section:MacCormack method}
+		As the leapfrog method, the MacCormack method is second-order accurate in space and time. For a generic conserved variable $\phi$, it reads:
+		\begin{equation}
+			\label{eq:mc}
+			\phi_{i,j}^{n+1} = \phi_{i,j}^n + \Delta t \left( \dfrac{\partial \phi}{\partial t} \right)_{i,j}^{avg} \, ,
+		\end{equation}
+		where the average derivative is defined as
+		\begin{equation}
+			\label{eq:average-derivative}
+			\left( \dfrac{\partial \phi}{\partial t} \right)_{i,j}^{avg} = \dfrac{1}{2} \left[ \left( \dfrac{\partial \phi}{\partial t} \right)_{i,j}^n + \overline{\left( \dfrac{\partial \phi}{\partial t} \right)}_{i,j}^{n+1} \right] \, .
+		\end{equation}
+		The average derivatives for the isentropic density, momentums and water components are derived in the following paragraphs.
+
+	\subsubsection{Continuity equation}
+		\begin{enumerate}
+			\item Approximate the time derivatives of $\sigma$, $U$ and $V$ at current time using forward finite differences:
+				\begin{subequations}
+					\label{eq:mc-density-1}
+					\begin{align}
+						\label{eq:mc-density-1-1}
+						\left( \dfrac{\partial \sigma}{\partial t} \right)_{i,j}^n & = - \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y} \, , \\
+						\left( \dfrac{\partial U}{\partial t} \right)_{i,j}^n & = - \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} - \sigma_{i,j}^n \dfrac{M_{i+1,j}^n - M_{i,j}^n}{\Delta x} \, , \\
+						\left( \dfrac{\partial V}{\partial t} \right)_{i,j}^n & = - \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} - \sigma_{i,j}^n \dfrac{M_{i+1,j}^n - M_{i,j}^n}{\Delta y} \, .
+					\end{align}
+				\end{subequations}
+			\item Compute provisional values at time $t^{n+1}$ exploiting Taylor expansion and \eqref{eq:mc-density-1}:
+				\begin{subequations}
+					\label{eq:mc-density-2}
+					\begin{align}
+						\overline{\sigma}_{i,j}^{n+1} & = \sigma_{i,j}^n + \Delta t \left( \dfrac{\partial \sigma}{\partial t} \right)_{i,j}^n = \sigma_{i,j}^n - \Delta t \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \Delta t \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y} \, , \\
+						\label{eq:mc-density-2-2}
+						\overline{U}_{i,j}^{n+1} & = U_{i,j}^n + \Delta t \left( \dfrac{\partial U}{\partial t} \right)_{i,j}^n = U_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} - \Delta t \, \sigma_{i,j}^n \dfrac{M_{i+1,j}^n - M_{i,j}^n}{\Delta x} \, , \\
+						\label{eq:mc-density-2-3}
+						\overline{V}_{i,j}^{n+1} & = V_{i,j}^n + \Delta t \left( \dfrac{\partial V}{\partial t} \right)_{i,j}^n = V_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} - \Delta t \, \sigma_{i,j}^n \dfrac{M_{i+1,j}^n - M_{i,j}^n}{\Delta y} \, .
+					\end{align}
+				\end{subequations}
+			\item Approximate the provisional time derivative for $\sigma$ using backward finite differences:
+				\begin{equation}
+					\label{eq:mc-density-3}
+					\overline{\left( \dfrac{\partial \sigma}{\partial t} \right)}_{i,j}^{n+1} = - \dfrac{\overline{U}_{i,j}^{n+1} - \overline{U}_{i-1,j}^{n+1}}{\Delta x} - \dfrac{\overline{V}_{i,j}^{n+1} - \overline{V}_{i,j-1}^{n+1}}{\Delta y} \, .
+				\end{equation}
+			\item Step $\sigma$ using \eqref{eq:mc}, \eqref{eq:mc-density-1-1} and \eqref{eq:mc-density-3}:
+				\begin{equation}
+					\label{eq:mc-density-4}
+					\sigma_{i,j}^{n+1} = \sigma_{i,j}^n + \dfrac{\Delta t}{2} \left[ - \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y} - \dfrac{\overline{U}_{i,j}^{n+1} - \overline{U}_{i-1,j}^{n+1}}{\Delta x} - \dfrac{\overline{V}_{i,j}^{n+1} - \overline{V}_{i,j-1}^{n+1}}{\Delta y} \right] \, .
+				\end{equation}
+				Inserting \eqref{eq:mc-density-2-2} and \eqref{eq:mc-density-2-3} in \eqref{eq:mc-density-4} yields:
+				\begin{equation}
+					\label{eq:mc-density-5}
+					\begin{aligned}
+						\sigma_{i,j}^{n+1} = \sigma_{i,j}^n & - \dfrac{\Delta t}{2 \Delta x} \left[ U_{i+1,j}^n - \Delta t \left( \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} + \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} + \sigma_{i,j}^n \dfrac{M_{i+1,j}^n - M_{i,j}^n}{\Delta x} \right) \right] \\
+						& + \dfrac{\Delta t}{2 \Delta x} \left[ U_{i-1,j}^n - \Delta t \left( \dfrac{u_{i,j}^n \, U_{i,j}^n + u_{i-1,j}^n \, U_{i-1,j}^n}{\Delta x} + \dfrac{v_{i-1,j+1}^n \, U_{i-1,j+1}^n - v_{i-1,j}^n \, U_{i-1,j}^n}{\Delta y} + \sigma_{i-1,j}^n \dfrac{M_{i,j}^n + M_{i-1,j}^n}{\Delta x} \right) \right] \\
+						& - \dfrac{\Delta t}{2 \Delta y} \left[ V_{i,j+1}^n - \Delta t \left( \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} + \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} + \sigma_{i,j}^n \dfrac{M_{i,j+1}^n - M_{i,j}^n}{\Delta y} \right) \right] \\
+						& - \dfrac{\Delta t}{2 \Delta y} \left[ V_{i,j-1}^n - \Delta t \left( \dfrac{u_{i+1,j-1}^n \, V_{i+1,j-1}^n - u_{i,j-1}^n \, V_{i,j-1}^n}{\Delta x} + \dfrac{v_{i,j}^n \, V_{i,j}^n - v_{i,j-1}^n \, V_{i,j-1}^n}{\Delta y} + \sigma_{i,j-1}^n \dfrac{M_{i,j}^n - M_{i,j-1}^n}{\Delta y} \right) \right] \, .
+					\end{aligned}
+				\end{equation}
+				The fluxes finally follows from \eqref{eq:mc-density-5}:
+				\begin{subequations}
+					\begin{align}
+						F_{i+1/2,j}^{\sigma,x} & = \dfrac{U_{i+1,j}^n + U_{i,j}^n}{2} - \dfrac{\Delta t}{2} \left( \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} + \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} + \sigma_{i,j}^n \dfrac{M_{i+1,j}^n - M_{i,j}^n}{\Delta x} \right) \, , \\
+						F_{i,j+1/2}^{\sigma,y} & = \dfrac{U_{i,j+1}^n + U_{i,j}^n}{2} - \dfrac{\Delta t}{2} \left( \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} + \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} + \sigma_{i,j}^n \dfrac{M_{i,j+1}^n - M_{i,j}^n}{\Delta y} \right) \, .
+					\end{align}
+				\end{subequations}
+		\end{enumerate}
+
+	\subsubsection{Momentum equations}
+		\begin{enumerate}
+			\label{point}
+			\item Approximate the time derivatives of $\sigma$, $U$ and $V$ at current time using forward finite differences. For $U$ and $V$, disregard the terms involving the Montgomery potential:
+				\begin{subequations}
+					\label{eq:mc-momentum-1}
+					\begin{align}
+						\left( \dfrac{\partial \sigma}{\partial t} \right)_{i,j}^n & = - \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y} \, , \\
+						\label{eq:mc-momentum-1-2}
+						\left( \dfrac{\partial U}{\partial t} \right)_{i,j}^n & = - \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} \, , \\
+						\label{eq:mc-momentum-1-3}
+						\left( \dfrac{\partial V}{\partial t} \right)_{i,j}^n & = - \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} \, .
+					\end{align}
+				\end{subequations}
+			\item Compute provisional values at time $t^{n+1}$ exploiting Taylor expansion and \eqref{eq:mc-momentum-1}:
+				\begin{subequations}
+					\label{eq:mc-momentum-2}
+					\begin{align}
+						\label{eq:mc-momentum-2-1}
+						\overline{\sigma}_{i,j}^{n+1} & = \sigma_{i,j}^n + \Delta t \left( \dfrac{\partial \sigma}{\partial t} \right)_{i,j}^n = \sigma_{i,j}^n - \Delta t \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \Delta t \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y} \, , \\
+						\label{eq:mc-momentum-2-2}
+						\overline{U}_{i,j}^{n+1} & = U_{i,j}^n + \Delta t \left( \dfrac{\partial U}{\partial t} \right)_{i,j}^n = U_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} \, , \\
+						\label{eq:mc-momentum-2-3}
+						\overline{V}_{i,j}^{n+1} & = V_{i,j}^n + \Delta t \left( \dfrac{\partial V}{\partial t} \right)_{i,j}^n = V_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} \, .
+					\end{align}
+				\end{subequations}
+			\item Approximate the provisional time derivative for $U$ and $V$ using backward finite differences. As in \ref{point}, neglect the terms involving the Montgomery potential:
+				\begin{subequations}
+					\label{eq:mc-momentum-3}
+					\begin{align}
+						\overline{\left( \dfrac{\partial U}{\partial t} \right)}_{i,j}^{n+1} & = - \dfrac{1}{\Delta x} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{U}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i-1,j}^{n+1} \, \overline{U}_{i-1,j}^{n+1}}{\overline{\sigma}_{i-1,j}^{n+1}} \right) - \dfrac{1}{\Delta y} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{V}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i,j-1}^{n+1} \, \overline{V}_{i,j-1}^{n+1}}{\overline{\sigma}_{i,j-1}^{n+1}} \right) \, , \\
+						\overline{\left( \dfrac{\partial V}{\partial t} \right)}_{i,j}^{n+1} & = - \dfrac{1}{\Delta x} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{V}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i-1,j}^{n+1} \, \overline{V}_{i-1,j}^{n+1}}{\overline{\sigma}_{i-1,j}^{n+1}} \right) - \dfrac{1}{\Delta y} \left( \dfrac{\overline{V}_{i,j}^{n+1} \, \overline{V}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{V}_{i,j-1}^{n+1} \, \overline{V}_{i,j-1}^{n+1}}{\overline{\sigma}_{i,j-1}^{n+1}} \right) \, .
+					\end{align}
+				\end{subequations}
+			\item Step $U$ and $V$ using \eqref{eq:mc}, \eqref{eq:mc-momentum-1-2}, \eqref{eq:mc-momentum-1-3} and \eqref{eq:mc-momentum-3}:
+				\begin{equation}
+					\tag{2.17a}
+					\begin{aligned}
+						U_{i,j}^{n+1} = U_{i,j}^n + \dfrac{\Delta t}{2} \Biggl[ & - \dfrac{1}{\Delta x} \left( u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n \right) - \dfrac{1}{\Delta y} \left( v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n \right)  \\ 
+						& - \dfrac{1}{\Delta x} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{U}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i-1,j}^{n+1} \, \overline{U}_{i-1,j}^{n+1}}{\overline{\sigma}_{i-1,j}^{n+1}} \right) - \dfrac{1}{\Delta y} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{V}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i,j-1}^{n+1} \, \overline{V}_{i,j-1}^{n+1}}{\overline{\sigma}_{i,j-1}^{n+1}} \right) \Biggr] \, , 
+					\end{aligned}
+				\end{equation}
+				\begin{equation}
+					\tag{2.17b}
+					\begin{aligned}
+						V_{i,j}^{n+1} = V_{i,j}^n + \dfrac{\Delta t}{2} \Biggl[ & - \dfrac{1}{\Delta x} \left( u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n \right) - \dfrac{1}{\Delta y} \left( v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n \right)  \\ 
+						& - \dfrac{1}{\Delta x} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{V}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i-1,j}^{n+1} \, \overline{V}_{i-1,j}^{n+1}}{\overline{\sigma}_{i-1,j}^{n+1}} \right) - \dfrac{1}{\Delta y} \left( \dfrac{\overline{V}_{i,j}^{n+1} \, \overline{V}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{V}_{i,j-1}^{n+1} \, \overline{V}_{i,j-1}^{n+1}}{\overline{\sigma}_{i,j-1}^{n+1}} \right) \Biggr] \, .
+					\end{aligned}
+				\end{equation}
+				Inserting \eqref{eq:mc-momentum-3} yields
+				\tiny
+				\begin{align*}
+					& U_{i,j}^{n+1} = U_{i,j}^n 
+					- \dfrac{\Delta t}{\Delta x} \colorboxed{red}{ \Biggl[ \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n}{2}  
+					+ \dfrac{1}{2} \dfrac{ \left[ U_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} \right] \left[ U_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} \right]}{\sigma_{i,j}^n - \Delta t \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \Delta t \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i+1/2,j}^{U,x}$} \tiny} \\[0.1cm]
+					& + \dfrac{\Delta t}{\Delta x} \colorboxed{red}{ \Biggl[ \dfrac{u_{i,j}^n \, U_{i,j}^n}{2}
+					+ \dfrac{ \left[ U_{i-1,j}^n - \Delta t \dfrac{u_{i,j}^n \, U_{i,j}^n - u_{i-1,j}^n \, U_{i-1,j}^n}{\Delta x} - \Delta t \dfrac{v_{i-1,j+1}^n \, U_{i-1,j+1}^n - v_{i-1,j}^n \, U_{i-1,j}^n}{\Delta y} \right] \left[ U_{i-1,j}^n - \Delta t \dfrac{u_{i,j}^n \, U_{i,j}^n - u_{i-1,j}^n \, U_{i-1,j}^n}{\Delta x} - \Delta t \dfrac{v_{i-1,j+1}^n \, U_{i-1,j+1}^n - v_{i-1,j}^n \, U_{i-1,j}^n}{\Delta y} \right]}{\sigma_{i-1,j}^n - \Delta t \dfrac{U_{i,j}^n - U_{i-1,j}^n}{\Delta x} - \Delta t \dfrac{V_{i-1,j+1}^n - V_{i-1,j}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i-1/2,j}^{U,x}$} \tiny} \\[0.1cm]
+					& - \dfrac{\Delta t}{\Delta y} \colorboxed{red}{ \Biggl[ \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n}{2} 
+					+ \dfrac{ \left[ U_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} \right] \left[ V_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} \right]}{\sigma_{i,j}^n - \Delta t \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \Delta t \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i,j+1/2}^{U,y}$} \tiny} \\[0.1cm]
+					& + \dfrac{\Delta t}{\Delta y} \colorboxed{red}{ \Biggl[ \dfrac{v_{i,j}^n \, U_{i,j}^n}{2}  
+					+ \dfrac{ \left[ U_{i,j-1}^n - \Delta t \dfrac{u_{i+1,j-1}^n \, U_{i+1,j-1}^n - u_{i,j-1}^n \, U_{i,j-1}^n}{\Delta x} - \Delta t \dfrac{v_{i,j}^n \, U_{i,j}^n - v_{i,j-1}^n \, U_{i,j-1}^n}{\Delta y} \right] \left[ V_{i,j-1}^n - \Delta t \dfrac{u_{i+1,j-1}^n \, V_{i+1,j-1}^n - u_{i,j-1}^n \, V_{i,j-1}^n}{\Delta x} - \Delta t \dfrac{v_{i,j}^n \, V_{i,j}^n - v_{i,j-1}^n \, V_{i,j-1}^n}{\Delta y} \right]}{\sigma_{i,j-1}^n - \Delta t \dfrac{U_{i+1,j-1}^n - U_{i,j-1}^n}{\Delta x} - \Delta t \dfrac{V_{i,j}^n - V_{i,j-1}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i,j-1/2}^{U,y}$} \tiny} \\[0.1cm] 
+				\end{align*}
+				\normalsize 
+				and
+				\tiny
+				\begin{align*}
+					& V_{i,j}^{n+1} = V_{i,j}^n 
+					- \dfrac{\Delta t}{\Delta x} \colorboxed{red}{ \Biggl[ \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n}{2}  
+					+ \dfrac{1}{2} \dfrac{ \left[ U_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, U_{i+1,j}^n - u_{i,j}^n \, U_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, U_{i,j+1}^n - v_{i,j}^n \, U_{i,j}^n}{\Delta y} \right] \left[ V_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} \right]}{\sigma_{i,j}^n - \Delta t \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \Delta t \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i+1/2,j}^{V,x}$} \tiny} \\[0.1cm]
+					& + \dfrac{\Delta t}{\Delta x} \colorboxed{red}{ \Biggl[ \dfrac{u_{i,j}^n \, V_{i,j}^n}{2}
+					+ \dfrac{ \left[ U_{i-1,j}^n - \Delta t \dfrac{u_{i,j}^n \, U_{i,j}^n - u_{i-1,j}^n \, U_{i-1,j}^n}{\Delta x} - \Delta t \dfrac{v_{i-1,j+1}^n \, U_{i-1,j+1}^n - v_{i-1,j}^n \, U_{i-1,j}^n}{\Delta y} \right] \left[ V_{i-1,j}^n - \Delta t \dfrac{u_{i,j}^n \, V_{i,j}^n - u_{i-1,j}^n \, V_{i-1,j}^n}{\Delta x} - \Delta t \dfrac{v_{i-1,j+1}^n \, V_{i-1,j+1}^n - v_{i-1,j}^n \, V_{i-1,j}^n}{\Delta y} \right]}{\sigma_{i-1,j}^n - \Delta t \dfrac{U_{i,j}^n - U_{i-1,j}^n}{\Delta x} - \Delta t \dfrac{V_{i-1,j+1}^n - V_{i-1,j}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i-1/2,j}^{V,x}$} \tiny} \\[0.1cm]
+					& - \dfrac{\Delta t}{\Delta y} \colorboxed{red}{ \Biggl[ \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n}{2} 
+					+ \dfrac{ \left[ V_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} \right] \left[ V_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, V_{i+1,j}^n - u_{i,j}^n \, V_{i,j}^n}{\Delta x} - \Delta t \dfrac{v_{i,j+1}^n \, V_{i,j+1}^n - v_{i,j}^n \, V_{i,j}^n}{\Delta y} \right]}{\sigma_{i,j}^n - \Delta t \dfrac{U_{i+1,j}^n - U_{i,j}^n}{\Delta x} - \Delta t \dfrac{V_{i,j+1}^n - V_{i,j}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i,j+1/2}^{V,y}$} \tiny} \\[0.1cm]
+					& + \dfrac{\Delta t}{\Delta y} \colorboxed{red}{ \Biggl[ \dfrac{v_{i,j}^n \, V_{i,j}^n}{2}  
+					+ \dfrac{ \left[ V_{i,j-1}^n - \Delta t \dfrac{u_{i+1,j-1}^n \, V_{i+1,j-1}^n - u_{i,j-1}^n \, V_{i,j-1}^n}{\Delta x} - \Delta t \dfrac{v_{i,j}^n \, V_{i,j}^n - v_{i,j-1}^n \, V_{i,j-1}^n}{\Delta y} \right] \left[ V_{i,j-1}^n - \Delta t \dfrac{u_{i+1,j-1}^n \, V_{i+1,j-1}^n - u_{i,j-1}^n \, V_{i,j-1}^n}{\Delta x} - \Delta t \dfrac{v_{i,j}^n \, V_{i,j}^n - v_{i,j-1}^n \, V_{i,j-1}^n}{\Delta y} \right]}{\sigma_{i,j-1}^n - \Delta t \dfrac{U_{i+1,j-1}^n - U_{i,j-1}^n}{\Delta x} - \Delta t \dfrac{V_{i,j}^n - V_{i,j-1}^n}{\Delta y}} \Biggr]}\text{\normalsize ~ \textcolor{red}{$F_{i,j-1/2}^{V,y}$} \tiny} \\[0.1cm] 
+				\end{align*}
+				\normalsize
+			\item Finally taking the forcing terms into account and slightly differencing ourselves from the general form \eqref{eq:flux-form}, the update values for the momentums are
+				\begin{subequations}
+					\label{eq:mc-momentums-6}
+					\begin{align}
+						U_{i,j}^{n+1} = U_{i,j}^n - \Delta t \dfrac{F_{i+1/2,j}^{U,x} - F_{i-1/2,j}^{U,x}}{\Delta x} - \Delta t \dfrac{F_{i,j+1/2}^{U,y} - F_{i,j-1/2}^{U,y}}{\Delta y} - \Delta t \, \sigma_{i,j}^{n+1/2} \dfrac{M_{i+1,j}^{n+1/2} - M_{i-1,j}^{n+1/2}}{2 \Delta x} \, , \\
+						V_{i,j}^{n+1} = V_{i,j}^n - \Delta t \dfrac{F_{i+1/2,j}^{V,x} - F_{i-1/2,j}^{V,x}}{\Delta x} - \Delta t \dfrac{F_{i,j+1/2}^{V,y} - F_{i,j-1/2}^{V,y}}{\Delta y} - \Delta t \, \sigma_{i,j}^{n+1/2} \dfrac{M_{i,j+1}^{n+1/2} - M_{i,j-1}^{n+1/2}}{2 \Delta y} \, ,
+					\end{align}
+				\end{subequations}
+				with \[ \sigma_{i,j} = \dfrac{\sigma_{i,j}^n + \sigma_{i,j}^{n+1}}{2} \] and $M_{i,j}^{n+1/2}$ diagnosed from $\sigma_{i,j}^{n+1/2}$ (see Subsection \ref{}).
+		\end{enumerate}
+		\textbf{Note}: since the diagnosis of the Montgomery potential requires the vertical axis to be spanned sequentially, \eqref{eq:mc-momentums-6} may be hard to implement in GT4Py.
+
+	\subsubsection{Water constituents equations}
+		\begin{enumerate}
+			\item Approximate the current time derivative of $Q = \lbrace Q_v, \, Q_c, \, Q_r \rbrace$ using forward finite differences:
+				\begin{equation}
+					\label{eq:mc-constituents-1}
+					\left( \dfrac{\partial Q}{\partial t} \right)_{i,j}^n = - \dfrac{u_{i+1,j}^n \, Q_{i+1,j}^n - u_{i,j}^n \, Q_{i,j}^n}{\Delta x} - \dfrac{v_{i,j+1}^n \, Q_{i,j+1}^n - v_{i,j}^n \, Q_{i,j}^n}{\Delta y} \, .
+				\end{equation}
+			\item Compute provisional value for $\sigma$, $U$ and $V$ via \eqref{eq:mc-density-2};
+			\item Compute provisional value for $Q$ exploiting Taylor expansion and \eqref{eq:mc-constituents-1}:
+				\begin{equation}
+					\label{eq:mc-constituents-2}
+					\overline{Q}_{i,j}^{n+1} = Q_{i,j}^n - \Delta t \dfrac{u_{i+1,j}^n \, Q_{i+1,j}^n - u_{i,j}^n \, Q_{i,j}^n}{\Delta x} -\Delta t \dfrac{v_{i,j+1}^n \, Q_{i,j+1}^n - v_{i,j}^n \, Q_{i,j}^n}{\Delta y} \, .
+				\end{equation}
+			\item Approximate provisional time derivative of $Q$ using backward finite differences:
+				\begin{equation}
+					\label{eq:mc-constituents-3}
+					\overline{\left( \dfrac{\partial Q}{\partial t} \right)}_{i,j}^{n+1} = - \dfrac{1}{\Delta x} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{Q}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i-1,j}^{n+1} \, \overline{Q}_{i-1,j}^{n+1}}{\overline{\sigma}_{i-1,j}^{n+1}} \right) - \dfrac{1}{\Delta y} \left( \dfrac{\overline{V}_{i,j}^{n+1} \, \overline{Q}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{V}_{i,j-1}^{n+1} \, \overline{Q}_{i,j-1}^{n+1}}{\overline{\sigma}_{i,j-1}^{n+1}} \right) \, .
+				\end{equation}
+			\item Step $Q$ via \eqref{eq:mc}:
+				\begin{equation}
+					\label{eq:mc-constituents-4}
+					\begin{aligned}
+						Q_{i,j}^{n+1} = Q_{i,j}^n + \dfrac{\Delta t}{2} \Biggl[ & - \dfrac{u_{i+1,j}^n \, Q_{i+1,j}^n - u_{i,j}^n \, Q_{i,j}^n}{\Delta x} - \dfrac{v_{i,j+1}^n \, Q_{i,j+1}^n - v_{i,j}^n \, Q_{i,j}^n}{\Delta y} \\
+						& - \dfrac{1}{\Delta x} \left( \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{Q}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{U}_{i-1,j}^{n+1} \, \overline{Q}_{i-1,j}^{n+1}}{\overline{\sigma}_{i-1,j}^{n+1}} \right) - \dfrac{1}{\Delta y} \left( \dfrac{\overline{V}_{i,j}^{n+1} \, \overline{Q}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} - \dfrac{\overline{V}_{i,j-1}^{n+1} \, \overline{Q}_{i,j-1}^{n+1}}{\overline{\sigma}_{i,j-1}^{n+1}} \right) \Biggr] \, .
+					\end{aligned}
+				\end{equation}
+			Hence:
+				\begin{subequations}
+					\begin{align}
+						F_{i+1/2,j}^{Q,x} & = \dfrac{1}{2} \left( u_{i+1,j}^n \, Q_{i+1,j}^n + \dfrac{\overline{U}_{i,j}^{n+1} \, \overline{Q}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} \right) \, , \\
+						F_{i,j+1/2}^{Q,y} & = \dfrac{1}{2} \left( v_{i,j+1}^n \, Q_{i,j+1}^n + \dfrac{\overline{V}_{i,j}^{n+1} \, \overline{Q}_{i,j}^{n+1}}{\overline{\sigma}_{i,j}^{n+1}} \right) \, .
+					\end{align}
+				\end{subequations}
+		\end{enumerate}
+
+\end{document}

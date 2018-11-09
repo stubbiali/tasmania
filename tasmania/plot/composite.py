@@ -67,7 +67,7 @@ class PlotsOverlapper:
 			Default is :obj:`None`.
 		"""
 		# Assert the list of artists
-		utils.assert_sequence(artists, reftype=(Plot1d, Plot2d, Plot3d))
+		plot_utils.assert_sequence(artists, reftype=(Plot1d, Plot2d, Plot3d))
 
 		# Input arguments stored as private attributes
 		self._artists = artists
@@ -154,7 +154,7 @@ class PlotsOverlapper:
 			The :class:`matplotlib.axes.Axes` enclosing the plot.
 		"""
 		# Assert the list of states
-		utils.assert_sequence(states, reftype=dict, reflen=len(self._artists))
+		plot_utils.assert_sequence(states, reftype=dict, reflen=len(self._artists))
 
 		# Set the figure attribute, if necessary
 		self._set_figure(fig)
@@ -283,8 +283,8 @@ class SubplotsAssembler:
             Default is :obj:`True`.
 		"""
 		# Check input artists list
-		utils.assert_sequence(artists, reflen=nrows*ncols,
-							  reftype=(Plot1d, Plot2d, Plot3d, PlotsOverlapper))
+		plot_utils.assert_sequence(artists, reflen=nrows * ncols,
+								   reftype=(Plot1d, Plot2d, Plot3d, PlotsOverlapper))
 
 		# Store input arguments as private attributes
 		self._nrows	= nrows
@@ -329,7 +329,7 @@ class SubplotsAssembler:
 			The :class:`matplotlib.pyplot.figure` containing the plot.
 		"""
 		# Assert the list of states
-		utils.assert_sequence(states, reflen=len(self.artists))
+		plot_utils.assert_sequence(states, reflen=len(self.artists))
 
 		# Set the figure attribute, if needed
 		self._set_figure(fig)
