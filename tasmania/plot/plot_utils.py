@@ -20,6 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	get_figure_and_axes
+	set_plot_properties
+	reverse_colormap
+	set_colorbar
+	make_lineplot
+"""
 from matplotlib import rcParams
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
@@ -38,48 +46,6 @@ text_locations = {
 	'upper center' : 9,
 	'center'       : 10,
 }
-
-
-def reverse_colormap(cmap, name=None):
-	"""
-	Reverse a Matplotlib colormap.
-
-	Parameters
-	----------
-	cmap : obj 
-		The :class:`matplotlib.colors.LinearSegmentedColormap` to invert.
-	name : `str`, optional 
-		The name of the reversed colormap. By default, this is obtained by appending '_r' 
-		to the name of the input colormap.
-
-	Return
-	------
-	obj :
-		The reversed :class:`matplotlib.colors.LinearSegmentedColormap`.
-
-	References
-	----------
-	https://stackoverflow.com/questions/3279560/invert-colormap-in-matplotlib.
-	"""
-	keys = []
-	reverse = []
-
-	for key in cmap._segmentdata:
-		# Extract the channel
-		keys.append(key)
-		channel = cmap._segmentdata[key]
-
-		# Reverse the channel
-		data = []
-		for t in channel:
-			data.append((1-t[0], t[2], t[1]))
-		reverse.append(sorted(data))
-
-	# Set the name for the reversed map
-	if name is None:
-		name = cmap.name + '_r'
-
-	return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
 
 
 def get_figure_and_axes(fig=None, ax=None, default_fig=None,
@@ -414,6 +380,48 @@ def set_plot_properties(ax, *, fontsize=12,
 		ax.grid(True, **g_props)
 
 
+def reverse_colormap(cmap, name=None):
+	"""
+	Reverse a Matplotlib colormap.
+
+	Parameters
+	----------
+	cmap : obj
+		The :class:`matplotlib.colors.LinearSegmentedColormap` to invert.
+	name : `str`, optional
+		The name of the reversed colormap. By default, this is obtained by appending '_r'
+		to the name of the input colormap.
+
+	Return
+	------
+	obj :
+		The reversed :class:`matplotlib.colors.LinearSegmentedColormap`.
+
+	References
+	----------
+	https://stackoverflow.com/questions/3279560/invert-colormap-in-matplotlib.
+	"""
+	keys = []
+	reverse = []
+
+	for key in cmap._segmentdata:
+		# Extract the channel
+		keys.append(key)
+		channel = cmap._segmentdata[key]
+
+		# Reverse the channel
+		data = []
+		for t in channel:
+			data.append((1-t[0], t[2], t[1]))
+		reverse.append(sorted(data))
+
+	# Set the name for the reversed map
+	if name is None:
+		name = cmap.name + '_r'
+
+	return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
+
+
 def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_pos='center',
 				 cbar_title='', cbar_x_label='', cbar_y_label='',
 				 cbar_orientation='vertical', cbar_ax=None):
@@ -470,3 +478,63 @@ def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_p
 		cb.set_ticks(0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step])
 	else:
 		cb.set_ticks(color_levels[::cbar_ticks_step])
+
+
+def make_lineplot(x, y, ax, **kwargs):
+	"""
+	Utility plotting a line.
+
+	Parameters
+	----------
+	x : array_like
+		1-D :class:`numpy.ndarray` gathering the x-coordinates
+		of the points to plot.
+	y : array_like
+		1-D :class:`numpy.ndarray` gathering the y-coordinates
+		of the points to plot.
+	ax : axes
+		An instance of :class:`matplotlib.axes.Axes`.
+
+	Keyword arguments
+	-----------------
+	fontsize : int
+		The fontsize to be used. Default is 16.
+	x_factor : float
+		Scaling factor for the :math:`x`-axis. Default is 1.
+	y_factor : float
+		Scaling factor for the field. Default is 1.
+	linecolor : str
+		String specifying the line color. Default is 'blue'.
+	linestyle : str
+		String specifying the line style. The default line style is '-'.
+	linewidth : float
+		The line width. Default is 1.5.
+	legend_label : str
+		The legend label for the line. Default is an empty string.
+	"""
+	# Get keyword arguments
+	fontsize     = kwargs.get('fontsize', 16)
+	x_factor     = kwargs.get('x_factor', 1.)
+	y_factor     = kwargs.get('y_factor', 1.)
+	linecolor	 = kwargs.get('linecolor', 'blue')
+	linestyle    = kwargs.get('linestyle', '-')
+	linewidth    = kwargs.get('linewidth', 1.5)
+	legend_label = kwargs.get('legend_label', '')
+
+	# Global settings
+	rcParams['font.size'] = fontsize
+
+	# Rescale the axes and the field for visualization purposes
+	x *= x_factor
+	y *= y_factor
+
+	# Plot the field
+	if legend_label == '' or legend_label is None:
+		ax.plot(x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth)
+	else:
+		ax.plot(x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
+				label=legend_label)
+
+	# Bring axes back to original units
+	x /= x_factor
+	y /= y_factor

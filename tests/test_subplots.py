@@ -121,7 +121,7 @@ def test_plot_1d(isentropic_moist_sedimentation_data,
 	# SubplotsAssembler
 	#
 	# Plot
-	from tasmania.plot.assemblers import SubplotsAssembler
+	from tasmania.plot.composite import SubplotsAssembler
 	assembler = SubplotsAssembler(1, 2, [monitor1, monitor2],
 								  interactive=False, fontsize=16, figsize=[8, 7])
 	assembler.store([state1, state2], save_dest=save_dest, show=False)
@@ -226,7 +226,7 @@ def test_plot_1d_share_yaxis(isentropic_moist_sedimentation_data,
 	# SubplotsAssembler
 	#
 	# Plot
-	from tasmania.plot.assemblers import SubplotsAssembler
+	from tasmania.plot.composite import SubplotsAssembler
 	assembler = SubplotsAssembler(1, 2, [monitor1, monitor2],
 								  interactive=False, fontsize=16, figsize=[8, 7])
 	assembler.store([state1, state2], save_dest=save_dest, show=False)
@@ -331,7 +331,7 @@ def test_plot_1d_share_xaxis(isentropic_moist_sedimentation_data,
 	# SubplotsAssembler
 	#
 	# Plot
-	from tasmania.plot.assemblers import SubplotsAssembler
+	from tasmania.plot.composite import SubplotsAssembler
 	assembler = SubplotsAssembler(2, 1, [monitor1, monitor2],
 								  interactive=False, fontsize=16, figsize=[7, 8])
 	assembler.store([state1, state2], save_dest=save_dest, show=False)
@@ -448,7 +448,7 @@ def test_plot_2d_one_row_two_columns(isentropic_moist_sedimentation_data,
 	# SubplotsAssembler
 	#
 	# Plot
-	from tasmania.plot.assemblers import SubplotsAssembler
+	from tasmania.plot.composite import SubplotsAssembler
 	assembler = SubplotsAssembler(1, 2, [monitor1, monitor2], interactive=False,
 								  fontsize=12, figsize=[10, 5], tight_layout=False)
 	assembler.store([state1, state2], save_dest=save_dest, show=False)
@@ -635,7 +635,7 @@ def test_plot_2d_two_rows_two_columns(isentropic_moist_sedimentation_data,
 	# SubplotsAssembler
 	#
 	# Plot
-	from tasmania.plot.assemblers import SubplotsAssembler
+	from tasmania.plot.composite import SubplotsAssembler
 	assembler = SubplotsAssembler(2, 2, [monitor1, monitor2, monitor3, monitor4],
 								  interactive=False, fontsize=12, figsize=[8, 8],
 								  tight_layout=False)

@@ -28,10 +28,7 @@ import tasmania as taz
 #
 # User inputs
 #
-#root = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_centered_' \
-#	   'nx51_ny51_nz50_dt20_nt1080_flat_terrain_L25000_u0_f_w6'
-#root = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_centered_' \
-#	   'nx51_ny51_nz50_dt15_nt5760_'
+first_dataset = '../data/'
 exts = ['cc_gaussian_L25000_H2250_u7.nc', 'sus_gaussian_L25000_H2250_u7.nc']
 
 figsize = (7, 7)

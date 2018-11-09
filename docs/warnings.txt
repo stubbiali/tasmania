@@ -1,0 +1,363 @@
+/home/dockeruser/tasmania/docs/source/api.rst:1: WARNING: Title overline too short.
+
+=================
+Computational domain
+=================
+/home/dockeruser/tasmania/docs/source/api.rst:14: WARNING: autodoc: failed to import class 'Model' from module 'tasmania.model'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.model'
+/home/dockeruser/tasmania/docs/source/api.rst:28: WARNING: autodoc: failed to import class 'Adjustment' from module 'tasmania.parameterizations.adjustments'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:31: WARNING: autodoc: failed to import class 'SlowTendency' from module 'tasmania.parameterizations.slow_tendencies'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:34: WARNING: autodoc: failed to import class 'FastTendency' from module 'tasmania.parameterizations.fast_tendencies'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:40: WARNING: autodoc: failed to import class 'AdjustmentMicrophysics' from module 'tasmania.parameterizations.adjustments'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:43: WARNING: autodoc: failed to import class 'AdjustmentMicrophysicsKesslerWRF' from module 'tasmania.parameterizations.adjustment_microphysics_kessler_wrf'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:46: WARNING: autodoc: failed to import class 'AdjustmentMicrophysicsKesslerWRFSaturation' from module 'tasmania.parameterizations.adjustment_microphysics_kessler_wrf_saturation'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:49: WARNING: autodoc: failed to import class 'SlowTendencyMicrophysics' from module 'tasmania.parameterizations.slow_tendencies'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:52: WARNING: autodoc: failed to import class 'SlowTendencyMicrophysicsKesslerWRF' from module 'tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:55: WARNING: autodoc: failed to import class 'SlowTendencyMicrophysicsKesslerWRFSaturation' from module 'tasmania.parameterizations.slow_tendency_microphysics_kessler_wrf_saturation'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.parameterizations'
+/home/dockeruser/tasmania/docs/source/api.rst:61: WARNING: autodoc: failed to import class 'GridData' from module 'tasmania.storages.grid_data'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.storages'
+/home/dockeruser/tasmania/docs/source/api.rst:64: WARNING: autodoc: failed to import class 'StateIsentropic' from module 'tasmania.storages.state_isentropic'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.storages'
+/home/dockeruser/tasmania/docs/source/api.rst:75: WARNING: missing attribute __cinit__ in object tasmania.grids.parser.parser_1d.Parser1d
+/home/dockeruser/tasmania/docs/source/api.rst:78: WARNING: missing attribute __cinit__ in object tasmania.grids.parser.parser_2d.Parser2d
+/home/dockeruser/tasmania/docs/source/api.rst:97: WARNING: autodoc: failed to import module 'tasmania.utils.utils_meteo'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.utils.utils_meteo'
+/home/dockeruser/tasmania/docs/source/api.rst:103: WARNING: autodoc: failed to import module 'tasmania.utils.utils_plot'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.utils.utils_plot'
+/home/dockeruser/tasmania/tasmania/grids/topography.py:docstring of tasmania.grids.topography.Topography1d:25: WARNING: Unexpected section title.
+
+Attributes
+----------
+/home/dockeruser/tasmania/docs/source/domain.rst:11: WARNING: missing attribute __cinit__ in object tasmania.grids.parser.parser_1d.Parser1d
+docstring of tasmania.grids.parser.parser_1d.Parser1d:0: WARNING: duplicate object description of tasmania.grids.parser.parser_1d.Parser1d, other instance in /home/dockeruser/tasmania/docs/source/api.rst, use :noindex: for one of them
+docstring of tasmania.grids.parser.parser_1d.Parser1d.evaluate:0: WARNING: duplicate object description of tasmania.grids.parser.parser_1d.Parser1d.evaluate, other instance in /home/dockeruser/tasmania/docs/source/api.rst, use :noindex: for one of them
+/home/dockeruser/tasmania/tasmania/grids/topography.py:docstring of tasmania.grids.topography.Topography2d:30: WARNING: Unexpected section title.
+
+Reference
+---------
+/home/dockeruser/tasmania/tasmania/grids/topography.py:docstring of tasmania.grids.topography.Topography2d:34: WARNING: Unexpected section title.
+
+Attributes
+----------
+/home/dockeruser/tasmania/docs/source/domain.rst:17: WARNING: missing attribute __cinit__ in object tasmania.grids.parser.parser_2d.Parser2d
+docstring of tasmania.grids.parser.parser_2d.Parser2d:0: WARNING: duplicate object description of tasmania.grids.parser.parser_2d.Parser2d, other instance in /home/dockeruser/tasmania/docs/source/api.rst, use :noindex: for one of them
+docstring of tasmania.grids.parser.parser_2d.Parser2d.evaluate:0: WARNING: duplicate object description of tasmania.grids.parser.parser_2d.Parser2d.evaluate, other instance in /home/dockeruser/tasmania/docs/source/api.rst, use :noindex: for one of them
+/home/dockeruser/tasmania/docs/source/domain.rst:3: WARNING: Duplicate explicit target name: "cosmo model".
+/home/dockeruser/tasmania/docs/source/dynamics.rst:11: WARNING: autodoc: failed to import class 'DynamicalCore' from module 'tasmania.dynamics.dycore'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.dynamics.dycore'
+/home/dockeruser/tasmania/docs/source/dynamics.rst:17: WARNING: autodoc: failed to import class 'HorizontalVelocity' from module 'tasmania.dynamics'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.dynamics' has no attribute 'HorizontalVelocity'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: HorizontalVelocity
+/home/dockeruser/tasmania/docs/source/dynamics.rst:20: WARNING: autodoc: failed to import class 'WaterConstituent' from module 'tasmania.dynamics'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.dynamics' has no attribute 'WaterConstituent'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: WaterConstituent
+/home/dockeruser/tasmania/docs/source/dynamics.rst:50: WARNING: autodoc: failed to import class 'IsentropicHorizontalFlux' from module 'tasmania.dynamics.isentropic_fluxes'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.dynamics.isentropic_fluxes' has no attribute 'IsentropicHorizontalFlux'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: IsentropicHorizontalFlux
+/home/dockeruser/tasmania/docs/source/dynamics.rst:53: WARNING: autodoc: failed to import class 'IsentropicVerticalFlux' from module 'tasmania.dynamics.isentropic_fluxes'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.dynamics.isentropic_fluxes' has no attribute 'IsentropicVerticalFlux'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: IsentropicVerticalFlux
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.__init__:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.__init__:50: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.factory:5: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.factory:12: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.factory:15: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.factory:74: WARNING: Unexpected section title.
+
+Return
+------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:9: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:14: WARNING: Definition list ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:15: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:26: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:31: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:42: WARNING: Unexpected section title.
+
+Return
+------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_sedimentation_flux:43: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:8: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:13: WARNING: Definition list ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:14: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:30: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:35: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:48: WARNING: Unexpected section title.
+
+Return
+------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_integrating_vertical_advection:49: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:8: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:13: WARNING: Definition list ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:14: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:31: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:37: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:44: WARNING: Unexpected section title.
+
+Return
+------
+/home/dockeruser/tasmania/tasmania/dynamics/isentropic_prognostic.py:docstring of tasmania.dynamics.isentropic_prognostic.IsentropicPrognostic.step_neglecting_vertical_motion:46: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/dynamics/diagnostics.py:docstring of tasmania.dynamics.diagnostics.IsentropicDiagnostics.__init__:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/dynamics/diagnostics.py:docstring of tasmania.dynamics.diagnostics.IsentropicDiagnostics.__init__:16: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/docs/source/model.rst:5: WARNING: invalid signature for autoclass ('tasmania.model.Model\n:members')
+/home/dockeruser/tasmania/docs/source/model.rst:5: WARNING: don't know which module to import for autodocumenting 'tasmania.model.Model\n:members' (try placing a "module" or "currentmodule" directive in the document, or giving an explicit module name)
+/home/dockeruser/tasmania/docs/source/physics.rst:8: WARNING: autodoc: failed to import class 'PhysicsComponentComposite' from module 'tasmania.physics.composite'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 658, in import_object
+    __import__(self.modname)
+ImportError: No module named 'tasmania.physics.composite'
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.__init__:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.__init__:32: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.__init__:46: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.__init__:47: WARNING: Inline strong start-string without end-string.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.array_call:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.array_call:5: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.array_call:12: WARNING: Unexpected section title.
+
+Returns
+-------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.array_call:14: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.array_call:17: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.Kessler.array_call:18: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.RaindropFallVelocity.__init__:5: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.RaindropFallVelocity.array_call:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.RaindropFallVelocity.array_call:5: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.RaindropFallVelocity.array_call:12: WARNING: Unexpected section title.
+
+Returns
+-------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.RaindropFallVelocity.array_call:14: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.__init__:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.__init__:8: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.__init__:16: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.__init__:30: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.__init__:31: WARNING: Inline strong start-string without end-string.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.array_call:5: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.array_call:6: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.array_call:13: WARNING: Unexpected section title.
+
+Returns
+-------
+/home/dockeruser/tasmania/tasmania/physics/microphysics.py:docstring of tasmania.physics.microphysics.SaturationAdjustmentKessler.array_call:15: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/docs/source/state.rst:5: WARNING: autodoc: failed to import function 'make_dataarray_3d' from module 'tasmania.utils.data_utils'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.utils.data_utils' has no attribute 'make_dataarray_3d'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: make_dataarray_3d
+/home/dockeruser/tasmania/docs/source/state.rst:7: WARNING: autodoc: failed to import function 'get_state' from module 'tasmania.utils.data_utils'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.utils.data_utils' has no attribute 'get_state'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: get_state
+/home/dockeruser/tasmania/docs/source/state.rst:9: WARNING: autodoc: failed to import function 'get_raw_state' from module 'tasmania.utils.data_utils'; the following exception was raised:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 169, in safe_getattr
+    return getattr(obj, name, *defargs)
+AttributeError: module 'tasmania.utils.data_utils' has no attribute 'get_raw_state'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 665, in import_object
+    obj = self.get_attr(obj, part)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/ext/autodoc.py", line 554, in get_attr
+    return safe_getattr(obj, name, *defargs)
+  File "/usr/local/lib/python3.5/site-packages/sphinx/util/inspect.py", line 185, in safe_getattr
+    raise AttributeError(name)
+AttributeError: get_raw_state
+/home/dockeruser/tasmania/tasmania/utils/data_utils.py:docstring of tasmania.utils.data_utils.add:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/utils/data_utils.py:docstring of tasmania.utils.data_utils.add:26: WARNING: Unexpected section title.
+
+Return
+------
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.NetCDFMonitor.__init__:4: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.NetCDFMonitor.__init__:6: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.NetCDFMonitor.__init__:7: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.NetCDFMonitor.__init__:19: WARNING: Unexpected indentation.
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.NetCDFMonitor.__init__:21: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.NetCDFMonitor.__init__:24: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.load_netcdf_dataset:5: WARNING: Unexpected section title.
+
+Parameters
+----------
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.load_netcdf_dataset:10: WARNING: Unexpected section title.
+
+Returns
+-------
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.load_netcdf_dataset:13: WARNING: Definition list ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/tasmania/utils/storage_utils.py:docstring of tasmania.utils.storage_utils.load_netcdf_dataset:14: WARNING: Block quote ends without a blank line; unexpected unindent.
+/home/dockeruser/tasmania/docs/source/api.rst: WARNING: document isn't included in any toctree
+/home/dockeruser/tasmania/docs/source/installation.rst:5: WARNING: unknown option: BRANCH
+/home/dockeruser/tasmania/docs/source/installation.rst:13: WARNING: unknown option: docker/
+/home/dockeruser/tasmania/docs/source/installation.rst:23: WARNING: unknown option: tasmania
+/home/dockeruser/tasmania/docs/source/installation.rst:35: WARNING: unknown option: -v $PWD:/tasmania
+/home/dockeruser/tasmania/docs/source/installation.rst:35: WARNING: unknown option: /tasmania
+/home/dockeruser/tasmania/docs/source/installation.rst:35: WARNING: unknown option: --privileged -e DISPLAY -e XAUTHORITY:$XAUTHORITY -v /tmp/.X11-unix:/tmp/.X11-unix
+/home/dockeruser/tasmania/docs/source/installation.rst:43: WARNING: unknown option: CONTAINER_ID
+WARNING: html_static_path entry '/home/dockeruser/tasmania/docs/source/_static' does not exist

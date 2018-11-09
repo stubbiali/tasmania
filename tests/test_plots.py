@@ -20,30 +20,34 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
 
+from tasmania.plot.contourf import Contourf
+from tasmania.plot.monitors import Plot
+from tasmania.plot.profile import LineProfile
+from tasmania.plot.quiver import Quiver
 
-#@image_comparison(baseline_images=['test_plot_1d_x'], extensions=['eps'])
+
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots_overlapper')
-def test_plot_1d_x(isentropic_moist_sedimentation_data,
+def test_profile_x(isentropic_moist_sedimentation_data,
 				   isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plots_assembler does exist
+	# Make sure the folder tests/baseline_images/test_plots_overlapper does exist
 	baseline_dir = 'baseline_images/test_plots_overlapper'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_plot_1d_x.eps')
+	save_dest = os.path.join(baseline_dir, 'test_profile_x_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
 	# Field to plot
-	field_to_plot = 'accumulated_precipitation'
+	field_name  = 'accumulated_precipitation'
+	field_units = 'g kg^-1'
 
 	#
-	# Plot1d#1
+	# Drawer#1
 	#
 	# Load data
 	grid, states = isentropic_moist_sedimentation_evaporation_data
@@ -51,27 +55,23 @@ def test_plot_1d_x(isentropic_moist_sedimentation_data,
 	state1 = states[-1]
 
 	# Indices identifying the cross-line to visualize
-	levels = {1: 0, 2: -1}
+	y, z = 0, -1
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1.,
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
 		'legend_label': 'LF, evap. ON',
 	}
 	
-	# Instantiate the monitor
-	from tasmania.plot.plot_monitors import Plot1d as Plot
-	from tasmania.plot.profile_1d import plot_horizontal_profile as plot_function
-	monitor1 = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
+	# Instantiate the drawer
+	drawer1 = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
+						  **drawer_properties)
 
 	#
-	# Plot1d#2
+	# Drawer#2
 	#
 	# Load data
 	grid, states = isentropic_moist_sedimentation_data
@@ -79,31 +79,34 @@ def test_plot_1d_x(isentropic_moist_sedimentation_data,
 	state2 = states[-1]
 
 	# Indices identifying the cross-line to visualize
-	levels = {1: 0, 2: -1}
+	y, z = 0, -1
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1.,
 		'linecolor': 'green',
 		'linestyle': '--',
 		'linewidth': 1.5,
 		'legend_label': 'MC, evap. OFF',
 	}
 
-	# Instantiate the monitor
-	monitor2 = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
+	# Instantiate the drawer
+	drawer2 = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
+						  **drawer_properties)
 
 	#
-	# PlotsOverlapper
+	# Plot
 	#
-	# Plot properties
-	plot_properties = {
+	# Figure and axes properties
+	figure_properties = {
 		'fontsize': 16,
-		'title_left': '$y = ${} km, $\\theta = ${} K'.format(grid.y.values[0]/1e3,
-															 grid.z.values[-1]),
+		'figsize': (7, 7),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': '$y = ${} km, $\\theta = ${} K'.format(
+			grid.y.values[0]/1e3, grid.z.values[-1]),
 		'title_right': str(state1['time'] - states[0]['time']),
 		'x_label': '$x$ [km]',
 		'x_lim': [0, 500],
@@ -115,36 +118,36 @@ def test_plot_1d_x(isentropic_moist_sedimentation_data,
 		'grid_on': True,
 	}
 
-	# Plot
-	from tasmania.plot.assemblers import PlotsOverlapper as Assembler
-	assembler = Assembler([monitor1, monitor2], interactive=False,
-						  figsize=[8, 8], plot_properties=plot_properties)
-	assembler.store([state1, state2], save_dest=save_dest, show=False)
+	# Instantiate the monitor
+	monitor = Plot((drawer1, drawer2), False, figure_properties, axes_properties)
+
+	# plot
+	monitor.store((state1, state2), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
-	return assembler.figure
+	return monitor.figure
 
 
-#@image_comparison(baseline_images=['test_plot_1d_z'], extensions=['eps'])
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots_overlapper')
-def test_plot_1d_z(isentropic_moist_sedimentation_data,
+def test_profile_z(isentropic_moist_sedimentation_data,
 				   isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plots_assembler does exist
+	# Make sure the folder tests/baseline_images/test_plots_overlapper does exist
 	baseline_dir = 'baseline_images/test_plots_overlapper'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_plot_1d_z.eps')
+	save_dest = os.path.join(baseline_dir, 'test_profile_z_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
 	# Field to plot
-	field_to_plot = 'mass_fraction_of_cloud_liquid_water_in_air'
+	field_name  = 'mass_fraction_of_cloud_liquid_water_in_air'
+	field_units = 'g kg^-1'
 
 	#
-	# Plot1d#1
+	# Drawer#1
 	#
 	# Load data
 	grid, states = isentropic_moist_sedimentation_evaporation_data
@@ -152,13 +155,11 @@ def test_plot_1d_z(isentropic_moist_sedimentation_data,
 	state1 = states[-1]
 
 	# Indices identifying the cross-line to visualize
-	levels = {0: 40, 1: 0}
+	x, y = 40, 0
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'x_factor': 1e3,
-		'y_factor': 1.,
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
@@ -166,13 +167,10 @@ def test_plot_1d_z(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the monitor
-	from tasmania.plot.plot_monitors import Plot1d as Plot
-	from tasmania.plot.profile_1d import plot_vertical_profile as plot_function
-	monitor1 = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
+	drawer1 = LineProfile(grid, field_name, field_units, x=x, y=y, **drawer_properties)
 
 	#
-	# Plot1d#2
+	# Drawer#2
 	#
 	# Load data
 	grid, states = isentropic_moist_sedimentation_data
@@ -180,13 +178,11 @@ def test_plot_1d_z(isentropic_moist_sedimentation_data,
 	state2 = states[-1]
 
 	# Indices identifying the cross-section to visualize
-	levels = {0: 40, 1: 0}
+	x, y = 40, 0
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'x_factor': 1e3,
-		'y_factor': 1.,
 		'linecolor': 'lightblue',
 		'linestyle': '--',
 		'linewidth': 1.5,
@@ -194,17 +190,21 @@ def test_plot_1d_z(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the monitor
-	monitor2 = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
+	drawer2 = LineProfile(grid, field_name, field_units, x=x, y=y, **drawer_properties)
 
 	#
-	# PlotAssembler
+	# Plot
 	#
-	# Plot properties
-	plot_properties = {
+	# Figure and axes properties
+	figure_properties = {
 		'fontsize': 16,
-		'title_left': '$x = ${} km, $y = ${} km'.format(grid.x.values[40]/1e3,
-														grid.y.values[0]/1e3),
+		'figsize': (7, 7),
+		'tight_layout': True,
+	}
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': '$x = ${} km, $y = ${} km'.format(
+			grid.x.values[40]/1e3, grid.y.values[0]/1e3),
 		'title_right': str(state1['time'] - states[0]['time']),
 		'x_label': 'Cloud liquid water [g kg$^{-1}$]',
 		'x_lim': [0, 0.12],
@@ -214,51 +214,43 @@ def test_plot_1d_z(isentropic_moist_sedimentation_data,
 		'grid_on': True,
 	}
 
-	# Plot
-	from tasmania.plot.assemblers import PlotsOverlapper as Assembler
-	assembler = Assembler([monitor1, monitor2], interactive=False,
-						  figsize=[8, 8], plot_properties=plot_properties)
-	assembler.store([state1, state2], save_dest=save_dest, show=False)
+	# Instantiate the monitor
+	monitor = Plot((drawer1, drawer2), False, figure_properties, axes_properties)
+
+	# plot
+	monitor.store((state1, state2), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
-	return assembler.figure
+	return monitor.figure
 
 
-#@image_comparison(baseline_images=['test_plot_2d'], extensions=['eps'])
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots_overlapper')
-def test_plot_2d(isentropic_dry_data):
-	# Make sure the folder tests/baseline_images/test_plots_assembler does exist
+def test_plot2d(isentropic_dry_data):
+	# Make sure the folder tests/baseline_images/test_plots_overlapper does exist
 	baseline_dir = 'baseline_images/test_plots_overlapper'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_plot_2d.eps')
+	save_dest = os.path.join(baseline_dir, 'test_plot2d_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Field to plot
-	field_to_plot = 'horizontal_velocity'
-
 	#
-	# Plot2d#1
+	# Drawer#1
 	#
 	# Load data
 	grid, states = isentropic_dry_data
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state1 = states[-1]
+	state = states[-1]
 
 	# Index identifying the cross-section
-	z_level = -1
+	z = -1
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1e-3,
-		'field_bias': 0.,
-		'field_factor': 1.,
 		'cmap_name': 'BuRd',
 		'cbar_levels': 14,
 		'cbar_ticks_step': 2,
@@ -270,55 +262,54 @@ def test_plot_2d(isentropic_dry_data):
 		'cbar_orientation': 'horizontal',
 	}
 
-	# Instantiate the monitor
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.contourf_xy import make_contourf_xy as plot_function
-	monitor1 = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
+	# Instantiate the drawer
+	drawer1 = LineProfile(grid, 'horizontal_velocity', 'm s^-1', z=z,
+						  xaxis_units='km', yaxis_units='km', **drawer_properties)
 
 	#
-	# Plot2d#2
+	# Drawer#2
 	#
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'x_factor': 1e-3,
 		'x_step': 2,
-		'y_factor': 1e-3,
 		'y_step': 2,
-		'field_bias': 0.,
-		'field_factor': 1.,
 		'cmap_name': None,
 	}
 
 	# Instantiate the monitor
-	from tasmania.plot.quiver_xy import make_quiver_xy as plot_function
-	monitor2 = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
+	drawer2 = Quiver(grid, z=z,
+					 xcomp_name='x_velocity', ycomp_name='y_velocity',
+					 xaxis_units='km', yaxis_units='km', **drawer_properties)
 
 	#
-	# PlotsOverlapper
+	# Plot
 	#
-	# Plot properties
-	plot_properties = {
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 7),
+		'tight_layout': True,
+	}
+	axes_properties = {
 		'fontsize': 16,
 		'title_left': 'Horizontal velocity [m s$^{-1}$] at the surface',
-		'title_right': str(state1['time'] - states[0]['time']),
+		'title_right': str(state['time'] - states[0]['time']),
 		'x_label': '$x$ [km]',
 		'x_lim': [0, 500],
 		'y_label': '$y$ [km]',
 		'y_lim': [-250, 250],
 	}
 
-	# Plot
-	from tasmania.plot.assemblers import PlotsOverlapper as Assembler
-	assembler = Assembler([monitor1, monitor2], interactive=False,
-						  figsize=[7, 8], plot_properties=plot_properties)
-	assembler.store([state1, state1], save_dest=save_dest, show=False)
+	# Instantiate the monitor
+	monitor = Plot((drawer1, drawer2), False, figure_properties, axes_properties)
+
+	# plot
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
-	return assembler.figure
+	return monitor.figure
 
 
 if __name__ == '__main__':
