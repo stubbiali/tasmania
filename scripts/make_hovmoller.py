@@ -57,7 +57,7 @@ def get_drawer():
 		axis_name=axis_name, axis_units=axis_units,
 		axis_x=axis_x, axis_y=axis_y, axis_z=axis_z,
 		time_mode=time_mode, init_time=init_time,
-		time_units=time_units, **drawer_properties
+		time_units=time_units, properties=drawer_properties
 	)
 
 	return drawer

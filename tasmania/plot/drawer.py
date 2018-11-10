@@ -15,20 +15,22 @@ class Drawer:
 
 	Attributes
 	----------
-	settings : dict
-		Dictionary specifying plot-specific settings.
+	properties : dict
+		Dictionary whose keys are strings denoting plot-specific
+		properties, and whose values specify values for those properties.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, **kwargs):
+	def __init__(self, properties):
 		"""
 		Parameters
 		----------
-		**kwargs :
-			Keyword arguments specifying plot-specific settings.
+		properties : dict
+			Dictionary whose keys are strings denoting plot-specific
+			properties, and whose values specify values for those properties.
 		"""
-		self.properties = kwargs
+		self.properties = {} if properties is None else properties
 
 	@abc.abstractmethod
 	def __call__(self, state, fig, ax):

@@ -42,7 +42,7 @@ def test_x(isentropic_dry_data):
 
 	# Instantiate the drawer
 	drawer = HovmollerDiagram(grid, field_name, field_units, y=y, z=z, axis_units='km',
-							  time_mode='elapsed', time_units='hr', **drawer_properties)
+							  time_mode='elapsed', time_units='hr', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -106,7 +106,7 @@ def test_z(isentropic_dry_data):
 
 	# Instantiate the drawer
 	drawer = HovmollerDiagram(grid, field_name, field_units, x=x, y=y,
-							  time_mode='elapsed', **drawer_properties)
+							  time_mode='elapsed', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {

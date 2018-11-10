@@ -38,8 +38,8 @@ def test_datapoint(isentropic_dry_data):
 	}
 
 	# Instantiate the drawer
-	drawer = TimeSeries(grid, field_name, field_units, x=x, y=y, z=z, axis_units='km',
-						time_mode='elapsed', **drawer_properties)
+	drawer = TimeSeries(grid, field_name, field_units, x=x, y=y, z=z,
+						time_mode='elapsed', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -118,8 +118,8 @@ def test_diagnostic(isentropic_dry_data):
 	}
 
 	# Instantiate the drawer
-	drawer = TimeSeries(grid, field_name, field_units, axis_units='km',
-						time_mode='elapsed', **drawer_properties)
+	drawer = TimeSeries(grid, field_name, field_units,
+						time_mode='elapsed', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {

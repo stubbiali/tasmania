@@ -26,7 +26,7 @@ class LineProfile(Drawer):
 				 x=None, y=None, z=None,
 				 axis_name=None, axis_units=None,
 				 axis_x=None, axis_y=None, axis_z=None,
-				 **kwargs):
+				 properties=None):
 		"""
 		Parameters
 		----------
@@ -75,11 +75,12 @@ class LineProfile(Drawer):
 			to visualize. Defaults to :obj:`x`.
 			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
 			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
-		**kwargs :
-			Keyword arguments specifying plot-specific settings.
+		properties : `dict`, optional
+			Dictionary whose keys are strings denoting plot-specific
+			properties, and whose values specify values for those properties.
 			See :func:`tasmania.plot.utils.make_lineplot`.
 		"""
-		super().__init__(**kwargs)
+		super().__init__(properties)
 
 		flag_x = 0 if x is None else 1
 		flag_y = 0 if y is None else 1
@@ -101,10 +102,10 @@ class LineProfile(Drawer):
 
 		if not flag_x:
 			self._slave = lambda state, ax: make_xplot(grid, axis_units, retriever,
-													   state, ax, **kwargs)
+													   state, ax, **self.properties)
 		elif not flag_y:
 			self._slave = lambda state, ax: make_yplot(grid, axis_units, retriever,
-													   state, ax, **kwargs)
+													   state, ax, **self.properties)
 		else:
 			aname = 'z' if axis_name is None else axis_name
 			if aname != 'z':
@@ -115,10 +116,10 @@ class LineProfile(Drawer):
 				axis_retriever = DataRetriever(grid, aname, axis_units,
 											   aslice_x, aslice_y)
 				self._slave = lambda state, ax: make_hplot(axis_retriever, retriever,
-														   state, ax, **kwargs)
+														   state, ax, **self.properties)
 			else:
 				self._slave = lambda state, ax: make_zplot(grid, axis_units, retriever,
-														   state, ax, **kwargs)
+														   state, ax, **self.properties)
 
 	def __call__(self, state, fig=None, ax=None):
 		"""

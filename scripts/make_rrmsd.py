@@ -47,7 +47,7 @@ def get_drawer():
 		grid1, 'rrmsd_of_' + field_name, None,
 		time_mode=time_mode, init_time=init_time,
 		time_units=time_units, time_on_xaxis=time_on_xaxis,
-		**drawer_properties
+		properties=drawer_properties
 	)
 
 	return drawer

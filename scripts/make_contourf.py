@@ -71,7 +71,7 @@ def get_drawer():
 		zaxis_x=zaxis_x, zaxis_y=zaxis_y,
 		topography_units=topography_units,
 		topography_x=topography_x, topography_y=topography_y,
-		**drawer_properties
+		properties=drawer_properties
 	)
 
 	return drawer
