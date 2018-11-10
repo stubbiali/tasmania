@@ -66,8 +66,8 @@ def test_profile(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -102,8 +102,8 @@ def test_profile(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -176,8 +176,8 @@ def test_profile_share_yaxis(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -212,8 +212,8 @@ def test_profile_share_yaxis(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -286,8 +286,8 @@ def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -322,8 +322,8 @@ def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -402,7 +402,7 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 
 	# Instantiate the drawer
 	drawer = Contourf(grid, field_name, field_units, y=y, xaxis_units='km',
-					  zaxis_name='height', zaxis_units='km', **drawer_properties)
+					  zaxis_name='height', zaxis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -447,7 +447,7 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 
 	# Instantiate the drawer
 	drawer = Contourf(grid, field_name, field_units, y=y, xaxis_units='km',
-					  zaxis_name='height', zaxis_units='km', **drawer_properties)
+					  zaxis_name='height', zaxis_units='km', properties=drawer_properties)
 
 	# Axes properties
 	axes_properties = {
@@ -526,7 +526,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	drawer = Contourf(
 		grid, 'x_velocity_at_u_locations', 'm s^-1', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		**drawer_properties,
+		properties=drawer_properties,
 	)
 
 	# Axes properties
@@ -574,7 +574,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	drawer = Contourf(
 		grid, 'x_velocity_at_u_locations', 'm s^-1', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		**drawer_properties,
+		properties=drawer_properties,
 	)
 
 	# Axes properties
@@ -613,7 +613,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	drawer = Contourf(
 		grid, 'air_pressure_on_interface_levels', 'hPa', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		**drawer_properties,
+		properties=drawer_properties,
 	)
 
 	# Axes properties
@@ -653,7 +653,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	drawer = Contourf(
 		grid, 'air_pressure_on_interface_levels', 'hPa', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		**drawer_properties,
+		properties=drawer_properties,
 	)
 
 	# Axes properties

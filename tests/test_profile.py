@@ -59,8 +59,8 @@ def test_profile_x(isentropic_moist_sedimentation_data):
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -122,8 +122,8 @@ def test_profile_y(isentropic_dry_data):
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, x=x, z=z, axis_units='km',
-						 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, x=x, z=z,
+						 axis_units='km', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -185,8 +185,8 @@ def test_profile_z(isentropic_moist_sedimentation_data):
 	}
 
 	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, x=x, y=y, axis_units='K',
-					  	 **drawer_properties)
+	drawer = LineProfile(grid, field_name, field_units, x=x, y=y,
+						 axis_units='K', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -250,7 +250,7 @@ def test_profile_h(isentropic_moist_sedimentation_data):
 
 	# Instantiate the drawer
 	drawer = LineProfile(grid, field_name, field_units, x=x, y=y,
-						 axis_name='height', axis_units='km', **drawer_properties)
+						 axis_name='height', axis_units='km', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {

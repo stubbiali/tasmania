@@ -67,8 +67,8 @@ def test_profile_x(isentropic_moist_sedimentation_data,
 	}
 	
 	# Instantiate the drawer
-	drawer1 = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						  **drawer_properties)
+	drawer1 = LineProfile(grid, field_name, field_units, y=y, z=z,
+						  axis_units='km', properties=drawer_properties)
 
 	#
 	# Drawer#2
@@ -91,8 +91,8 @@ def test_profile_x(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer2 = LineProfile(grid, field_name, field_units, y=y, z=z, axis_units='km',
-						  **drawer_properties)
+	drawer2 = LineProfile(grid, field_name, field_units, y=y, z=z,
+						  axis_units='km', properties=drawer_properties)
 
 	#
 	# Plot
@@ -167,7 +167,8 @@ def test_profile_z(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the monitor
-	drawer1 = LineProfile(grid, field_name, field_units, x=x, y=y, **drawer_properties)
+	drawer1 = LineProfile(grid, field_name, field_units, x=x, y=y,
+						  properties=drawer_properties)
 
 	#
 	# Drawer#2
@@ -190,7 +191,8 @@ def test_profile_z(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the monitor
-	drawer2 = LineProfile(grid, field_name, field_units, x=x, y=y, **drawer_properties)
+	drawer2 = LineProfile(grid, field_name, field_units, x=x, y=y,
+						  properties=drawer_properties)
 
 	#
 	# Plot
@@ -264,7 +266,7 @@ def test_plot2d(isentropic_dry_data):
 
 	# Instantiate the drawer
 	drawer1 = Contourf(grid, 'horizontal_velocity', 'm s^-1', z=z,
-					   xaxis_units='km', yaxis_units='km', **drawer_properties)
+					   xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
 	#
 	# Drawer#2
@@ -281,7 +283,7 @@ def test_plot2d(isentropic_dry_data):
 	# Instantiate the monitor
 	drawer2 = Quiver(grid, z=z,
 					 xcomp_name='x_velocity', ycomp_name='y_velocity',
-					 xaxis_units='km', yaxis_units='km', **drawer_properties)
+					 xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
 	#
 	# Plot
