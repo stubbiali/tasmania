@@ -60,7 +60,8 @@ def test_contour_xy_velocity(isentropic_dry_data):
 
 	# Instantiate the drawer
 	drawer = Contour(grid, field_name, field_units, z=z,
-					 xaxis_units='km', yaxis_units='km', **drawer_properties)
+					 xaxis_units='km', yaxis_units='km',
+					 properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -121,7 +122,8 @@ def test_contour_xy_pressure(isentropic_dry_data):
 
 	# Instantiate the drawer
 	drawer = Contour(grid, field_name, field_units, z=z,
-					 xaxis_units='km', yaxis_units='km', **drawer_properties)
+					 xaxis_units='km', yaxis_units='km',
+					 properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -185,7 +187,7 @@ def test_contour_xz_velocity(isentropic_dry_data):
 	# Instantiate the drawer
 	drawer = Contour(grid, field_name, field_units, y=y,
 					 xaxis_units='km', zaxis_name='height', zaxis_units='km',
-					 **drawer_properties)
+					 properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -249,7 +251,7 @@ def test_contour_yz_velocity(isentropic_dry_data):
 	# Instantiate the drawer
 	drawer = Contour(grid, field_name, field_units, x=x, yaxis_units='km',
 					 zaxis_name='height_on_interface_levels', zaxis_units='km',
-					 **drawer_properties)
+					 properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {

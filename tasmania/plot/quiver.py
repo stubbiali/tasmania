@@ -51,7 +51,7 @@ class Quiver(Drawer):
 				 yaxis_name=None, yaxis_units=None, yaxis_x=None, yaxis_z=None,
 				 zaxis_name=None, zaxis_units=None, zaxis_x=None, zaxis_y=None,
 				 topography_units=None, topography_x=None, topography_y=None,
-				 **kwargs):
+				 properties=None):
 		"""
 		Parameters
 		----------
@@ -163,14 +163,15 @@ class Quiver(Drawer):
 			the cross-section to visualize. Defaults to :obj:`y`.
 			Only effective if :obj:`zaxis_name` is either 'height' or
 			'height_on_interface_levels', and :obj:`y` is given.
-		**kwargs :
-			Keyword arguments specifying plot-specific settings.
+		properties : `dict`, optional
+			Dictionary whose keys are strings denoting plot-specific
+			properties, and whose values specify values for those properties.
 			:func:`tasmania.plot.utils.make_quiver`,
 			:func:`tasmania.plot.utils.make_contour` and
 			:func:`tasmania.plot.utils.make_lineplot`.
 			The latter two utilities are leveraged to draw the topography.
 		"""
-		super().__init__(**kwargs)
+		super().__init__(properties)
 
 		flag_x = 0 if x is None else 1
 		flag_y = 0 if y is None else 1
@@ -219,7 +220,7 @@ class Quiver(Drawer):
 
 			self._slave = lambda state, fig, ax: make_quiver_xy(
 				grid, xaxis_units, yaxis_units, xcomp_retriever, ycomp_retriever,
-				scalar_retriever, topo_retriever, state, fig, ax, **kwargs)
+				scalar_retriever, topo_retriever, state, fig, ax, **self.properties)
 		else:
 			if zaxis_name != 'z':
 				zax = zaxis_x if zaxis_x is not None else x
@@ -246,23 +247,23 @@ class Quiver(Drawer):
 				if flag_x:
 					self._slave = lambda state, fig, ax: make_quiver_yh(
 						grid, yaxis_units, zaxis_retriever, ycomp_retriever, zcomp_retriever,
-						scalar_retriever, topo_retriever, state, fig, ax, **kwargs
+						scalar_retriever, topo_retriever, state, fig, ax, **self.properties
 					)
 				else:
 					self._slave = lambda state, fig, ax: make_quiver_xh(
 						grid, xaxis_units, zaxis_retriever, xcomp_retriever, zcomp_retriever,
-						scalar_retriever, topo_retriever, state, fig, ax, **kwargs
+						scalar_retriever, topo_retriever, state, fig, ax, **self.properties
 					)
 			else:
 				if flag_x:
 					self._slave = lambda state, fig, ax: make_quiver_yz(
 						grid, yaxis_units, zaxis_units, ycomp_retriever, zcomp_retriever,
-						scalar_retriever, state, fig, ax, **kwargs
+						scalar_retriever, state, fig, ax, **self.properties
 					)
 				else:
 					self._slave = lambda state, fig, ax: make_quiver_xz(
 						grid, xaxis_units, zaxis_units, xcomp_retriever, zcomp_retriever,
-						scalar_retriever, state, fig, ax, **kwargs
+						scalar_retriever, state, fig, ax, **self.properties
 					)
 
 	def __call__(self, state, fig, ax):

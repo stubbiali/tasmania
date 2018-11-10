@@ -74,7 +74,7 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 	# Instantiate the drawer
 	drawer = Quiver(grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
 					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
-					xaxis_units='km', yaxis_units='km', **drawer_properties)
+					xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
@@ -140,7 +140,7 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data):
 	# Instantiate the drawer
 	drawer = Quiver(grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
 					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
-					xaxis_units='km', yaxis_units='km', **drawer_properties)
+					xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
 	# Figure and axes properties
 	figure_properties = {
