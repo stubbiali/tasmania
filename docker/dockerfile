@@ -18,6 +18,7 @@ RUN echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb stable main' >>
 	apt-get install -y google-chrome-stable 
 
 # install a miscellaneous of useful software
+RUN apt-get update
 RUN apt-get install -y cmake                \
 					   firefox-esr			\
 					   libfreetype6-dev     \
