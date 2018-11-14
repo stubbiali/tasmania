@@ -168,7 +168,7 @@ def convert_datetime64_to_datetime(time):
 	if type(time) == datetime:
 		return time
 
-	ts = (time - np.datetime64('0', 's')) / np.timedelta64(1, 's')
+	ts = (time - np.datetime64('1970-01-01')) / np.timedelta64(1, 's')
 	return datetime.utcfromtimestamp(ts)
 
 

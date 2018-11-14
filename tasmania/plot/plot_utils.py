@@ -148,8 +148,9 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 	if (fig is not None) and (ax is None):
 		try:
 			out_fig = fig
-			out_ax = fig.get_axes()[index] if len(fig.get_axes()) > index \
-					 else fig.add_subplot(nrows, ncols, index, projection=projection)
+			#out_ax = fig.get_axes()[index-1] if len(fig.get_axes()) > index \
+			#		 else fig.add_subplot(gs[i, j], projection=projection)
+			out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 		except AttributeError:
 			import warnings
 			warnings.warn("""Input argument ''fig'' does not seem to be a figure, 
@@ -167,8 +168,9 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 		else:
 			try:
 				out_fig = default_fig
-				out_ax = out_fig.get_axes()[index] if len(out_fig.get_axes()) > index \
-						 else out_fig.add_subplot(nrows, ncols, index, projection=projection)
+				#out_ax = out_fig.get_axes()[index] if len(out_fig.get_axes()) > index \
+				#		 else out_fig.add_subplot(gs[i, j], projection=projection)
+				out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 			except AttributeError:
 				import warnings
 				warnings.warn("""The argument ''default_fig'' does not actually seem 
@@ -197,17 +199,23 @@ def set_figure_properties(fig, **kwargs):
 	tight_layout : `bool`, optional
         :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
         Defaults to :obj:`True`.
+    tight_layout_rect : tuple
+    	TODO
 	suptitle : `str`, optional
 		The figure title. Defaults to an empty string.
 	"""
-	fontsize     = kwargs.get('fontsize', 12)
-	tight_layout = kwargs.get('tight_layout', True)
-	suptitle     = kwargs.get('suptitle', '')
+	fontsize     	  = kwargs.get('fontsize', 12)
+	tight_layout 	  = kwargs.get('tight_layout', True)
+	tight_layout_rect = kwargs.get('tight_layout_rect', None)
+	suptitle     	  = kwargs.get('suptitle', '')
 
 	rcParams['font.size'] = fontsize
 
 	if tight_layout:
-		fig.tight_layout()
+		if tight_layout_rect is None:
+			fig.tight_layout()
+		else:
+			fig.tight_layout(rect=tight_layout_rect)
 
 	if suptitle != '':
 		fig.suptitle(suptitle, fontsize=fontsize+1)
@@ -290,7 +298,11 @@ def set_axes_properties(ax, **kwargs):
 		String specifying the location where the legend box should be placed.
 		Defaults to 'best'; please see :func:`matplotlib.pyplot.legend` for all
 		the available options.
+	legend_bbox_to_anchor : tuple
+		TODO
 	legend_framealpha : `float`, optional
+		TODO
+	legend_ncol : int
 		TODO
 	text : str
 		Text to be added to the figure as anchored text. Defaults to :obj:`None`,
@@ -334,7 +346,9 @@ def set_axes_properties(ax, **kwargs):
 	zaxis_visible             = kwargs.get('zaxis_visible', True)
 	legend_on                 = kwargs.get('legend_on', False)
 	legend_loc                = kwargs.get('legend_loc', 'best')
+	legend_bbox_to_anchor     = kwargs.get('legend_bbox_to_anchor', None)
 	legend_framealpha         = kwargs.get('legend_framealpha', 0.5)
+	legend_ncol				  = kwargs.get('legend_ncol', 1)
 	text                      = kwargs.get('text', None)
 	text_loc                  = kwargs.get('text_loc', '')
 	grid_on                   = kwargs.get('grid_on', False)
@@ -453,7 +467,11 @@ def set_axes_properties(ax, **kwargs):
 					  'argument ''zaxis_visible'' is disregarded.', RuntimeWarning)
 
 	if legend_on:
-		ax.legend(loc=legend_loc, framealpha=legend_framealpha)
+		if legend_bbox_to_anchor is None:
+			ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
+		else:
+			ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol,
+					  bbox_to_anchor=legend_bbox_to_anchor)
 
 	if text is not None:
 		ax.add_artist(AnchoredText(text, loc=text_locations[text_loc]))
@@ -710,7 +728,8 @@ def make_contour(x, y, field, ax, **kwargs):
 			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
 
 	# Plot the field
-	plt.contour(x, y, field, colors=colors, alpha=alpha)
+	if field.min() != field.max():
+		plt.contour(x, y, field, colors=colors, alpha=alpha)
 
 	# Bring axes and field back to original units
 	x     /= x_factor
@@ -834,6 +853,8 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	# Create colormap
 	if cmap_name == 'BuRd':
 		cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
+	elif cmap_name == 'BuYlRd':
+		cm = reverse_colormap(plt.get_cmap('RdYlBu'), 'BuYlRd')
 	else:
 		cm = plt.get_cmap(cmap_name)
 
@@ -961,6 +982,8 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		TODO
 	quiverkey_label_loc : str
 		TODO
+	quiverkey_color : str
+		TODO
 	quiverkey_fontproperties : dict
 		TODO
 	draw_vertical_levels : bool
@@ -995,6 +1018,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 	quiverkey_length	= kwargs.get('quiverkey_length', 1.0)
 	quiverkey_label	  	= kwargs.get('quiverkey_label', '1 m s$^{-1}$')
 	quiverkey_label_loc	= kwargs.get('quiverkey_label_loc', 'E')
+	quiverkey_color		= kwargs.get('quiverkey_color', None)
 	quiverkey_fontproperties = kwargs.get('quiverkey_fontproperties', {})
 	draw_grid 	 	 	= kwargs.get('draw_vertical_levels', False)
 
@@ -1026,6 +1050,8 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		# Create colormap
 		if cmap_name == 'BuRd':
 			cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
+		elif cmap_name == 'BuYlRd':
+			cm = reverse_colormap(plt.get_cmap('RdYlBu'), 'BuYlRd')
 		else:
 			cm = plt.get_cmap(cmap_name)
 	else:
@@ -1059,9 +1085,13 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 
 	# Set quiverkey
 	if quiverkey_on:
-		ax.quiverkey(q, quiverkey_loc[0], quiverkey_loc[1], quiverkey_length,
-					 quiverkey_label, coordinates='axes', labelpos=quiverkey_label_loc,
-					 fontproperties=quiverkey_fontproperties)
+		qk = ax.quiverkey(
+			q, quiverkey_loc[0], quiverkey_loc[1], quiverkey_length,
+			quiverkey_label, coordinates='axes', labelpos=quiverkey_label_loc,
+			fontproperties=quiverkey_fontproperties,
+		)
+		if quiverkey_color is not None:
+			qk.text.set_backgroundcolor(quiverkey_color)
 
 	# Bring axes and field back to original units
 	x /= x_factor

@@ -262,7 +262,7 @@ class PlotComposite:
 			Defaults to :obj:`None`.
 		"""
 		# Check input artists list
-		assert_sequence(artists, reflen=nrows*ncols, reftype=Plot)
+		assert_sequence(artists, reftype=Plot)
 
 		# Store input arguments as private attributes
 		self._nrows	  = nrows
