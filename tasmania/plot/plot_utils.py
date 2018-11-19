@@ -31,10 +31,12 @@ This module contains:
 	make_contour
 	make_contourf
 	make_quiver
+	make_rectangle
 """
 from matplotlib import rcParams
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -1099,3 +1101,76 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 	if scalar is not None:
 		scalar /= scalar_factor
 		scalar += scalar_bias
+
+
+def make_circle(ax, **kwargs):
+	"""
+	TODO
+
+	Parameters
+	----------
+	ax : axes
+        An instance of :class:`matplotlib.axes.Axes`.
+
+    Keyword arguments
+    -----------------
+	xy : (float, float)
+		TODO
+	radius : float
+		TODO
+	linewidth : float
+		TODO
+	edgecolor : str
+		TODO
+	facecolor : str
+		TODO
+	"""
+	xy 		  = kwargs.get('xy', (0.0, 0.0))
+	radius 	  = kwargs.get('radius', 1.0)
+	linewidth = kwargs.get('linewidth', 1.0)
+	edgecolor = kwargs.get('edgecolor', 'black')
+	facecolor = kwargs.get('facecolor', 'white')
+
+	circ = patches.Circle(xy, radius, linewidth=linewidth, edgecolor=edgecolor,
+						  facecolor=facecolor)
+	ax.add_patch(circ)
+
+
+def make_rectangle(ax, **kwargs):
+	"""
+	TODO
+
+	Parameters
+	----------
+	ax : axes
+        An instance of :class:`matplotlib.axes.Axes`.
+
+    Keyword arguments
+    -----------------
+	xy : (float, float)
+		TODO
+	width : float
+		TODO
+	height : float
+		TODO
+	angle : float
+		TODO
+	linewidth : float
+		TODO
+	edgecolor : str
+		TODO
+	facecolor : str
+		TODO
+	"""
+	xy 		  = kwargs.get('xy', (0.0, 0.0))
+	width 	  = kwargs.get('width', 1.0)
+	height 	  = kwargs.get('height', 1.0)
+	angle 	  = kwargs.get('angle', 0.0)
+	linewidth = kwargs.get('linewidth', 1.0)
+	edgecolor = kwargs.get('edgecolor', 'black')
+	facecolor = kwargs.get('facecolor', 'white')
+
+	rect = patches.Rectangle(xy, width, height, angle=angle,
+							 linewidth=linewidth, edgecolor=edgecolor,
+							 facecolor=facecolor)
+	ax.add_patch(rect)
