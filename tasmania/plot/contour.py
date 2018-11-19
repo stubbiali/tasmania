@@ -47,7 +47,6 @@ class Contour(Drawer):
 				 xaxis_name=None, xaxis_units=None, xaxis_y=None, xaxis_z=None,
 				 yaxis_name=None, yaxis_units=None, yaxis_x=None, yaxis_z=None,
 				 zaxis_name=None, zaxis_units=None, zaxis_x=None, zaxis_y=None,
-				 topography_units=None, topography_x=None, topography_y=None,
 				 properties=None):
 		"""
 		Parameters
@@ -130,19 +129,6 @@ class Contour(Drawer):
 			Index along the second dimension of the :obj:`zaxis_name` computational
 			axis array identifying the cross-section to visualize. Defaults to :obj:`y`.
 			Only effective if :obj:`zaxis_name` is not 'z' and :obj:`y` is given.
-		topography_units : `str`, optional
-			Units for the topography. If not specified, the native units for the
-			topography are used. Only effective if :obj:`z` is given.
-		topography_x : `int`, optional
-			Index along the first dimension of the topography array identifying
-			the cross-section to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`zaxis_name` is either 'height' or
-			'height_on_interface_levels', and :obj:`x` is given.
-		topography_y : `int`, optional
-			Index along the second dimension of the topography array identifying
-			the cross-section to visualize. Defaults to :obj:`y`.
-			Only effective if :obj:`zaxis_name` is either 'height' or
-			'height_on_interface_levels', and :obj:`y` is given.
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			properties, and whose values specify values for those properties.
@@ -150,6 +136,8 @@ class Contour(Drawer):
 			The latter utility is leveraged to draw the topography.
 		"""
 		super().__init__(properties)
+
+		self.grid = grid
 
 		flag_x = 0 if x is None else 1
 		flag_y = 0 if y is None else 1
@@ -170,9 +158,8 @@ class Contour(Drawer):
 								  slice_x, slice_y, slice_z)
 
 		if flag_z:
-			topo_retriever = DataRetriever(grid, 'topography', topography_units)
 			self._slave = lambda state, ax: make_contour_xy(
-				grid, xaxis_units, yaxis_units, topo_retriever, retriever,
+				grid, xaxis_units, yaxis_units, retriever,
 				state, ax, **self.properties
 			)
 		else:
@@ -186,36 +173,26 @@ class Contour(Drawer):
 				zaxis_retriever = DataRetriever(grid, zaxis_name, zaxis_units,
 												zaslice_x, zaslice_y)
 
-				if zaxis_name in ['height', 'height_on_interface_levels']:
-					tx = topography_x if topography_x is not None else x
-					ty = topography_y if topography_y is not None else y
-					tslice_x = slice(tx, tx+1 if tx != -1 else None, None) if tx is not None \
-						else None
-					tslice_y = slice(ty, ty+1 if ty != -1 else None, None) if ty is not None \
-						else None
-					topo_retriever = DataRetriever(grid, 'topography', zaxis_units,
-												   tslice_x, tslice_y)
-				else:
-					topo_retriever = None
-
 				if flag_x:
 					self._slave = lambda state, ax: make_contour_yh(
-						grid, yaxis_units, zaxis_retriever, topo_retriever, retriever,
+						grid, yaxis_units, zaxis_retriever, retriever,
 						state, ax, **self.properties
 					)
 				else:
 					self._slave = lambda state, ax: make_contour_xh(
-						grid, xaxis_units, zaxis_retriever, topo_retriever, retriever,
+						grid, xaxis_units, zaxis_retriever, retriever,
 						state, ax, **self.properties
 					)
 			else:
 				if flag_x:
 					self._slave = lambda state, ax: make_contour_yz(
-						grid, yaxis_units, zaxis_units, retriever, state, ax, **self.properties
+						grid, yaxis_units, zaxis_units, retriever,
+						state, ax, **self.properties
 					)
 				else:
 					self._slave = lambda state, ax: make_contour_xz(
-						grid, xaxis_units, zaxis_units, retriever, state, ax, **self.properties
+						grid, xaxis_units, zaxis_units, retriever,
+						state, ax, **self.properties
 					)
 
 	def __call__(self, state, fig, ax):
@@ -225,7 +202,7 @@ class Contour(Drawer):
 		self._slave(state, ax)
 
 
-def make_contour_xy(grid, xaxis_units, yaxis_units, topo_retriever, field_retriever,
+def make_contour_xy(grid, xaxis_units, yaxis_units, field_retriever,
 					state, ax, **kwargs):
 	field = np.squeeze(field_retriever(state))
 
@@ -237,12 +214,6 @@ def make_contour_xy(grid, xaxis_units, yaxis_units, topo_retriever, field_retrie
 	y  = np.repeat(yv[np.newaxis, :], xv.shape[0], axis=0)
 
 	make_contour(x, y, field, ax, **kwargs)
-
-	topo = topo_retriever(state)
-	topo = 0.5 * (topo[:-1, :] + topo[1:, :]) if topo.shape[0] > x.shape[0] else topo
-	topo = 0.5 * (topo[:, :-1] + topo[:, 1:]) if topo.shape[1] > y.shape[1] else topo
-
-	make_contour(x, y, topo, ax, colors='black', alpha=0.5)
 
 
 def make_contour_xz(grid, xaxis_units, zaxis_units, field_retriever,
@@ -259,8 +230,8 @@ def make_contour_xz(grid, xaxis_units, zaxis_units, field_retriever,
 	make_contour(x, z, field, ax, **kwargs)
 
 
-def make_contour_xh(grid, xaxis_units, zaxis_retriever, topo_retriever,
-					field_retriever, state, ax, **kwargs):
+def make_contour_xh(grid, xaxis_units, zaxis_retriever, field_retriever,
+					state, ax, **kwargs):
 	field = np.squeeze(field_retriever(state))
 
 	zv    = np.squeeze(zaxis_retriever(state))
@@ -274,13 +245,6 @@ def make_contour_xh(grid, xaxis_units, zaxis_retriever, topo_retriever,
 	x  = np.repeat(xv[:, np.newaxis], z.shape[1], axis=1)
 
 	make_contour(x, z, field, ax, **kwargs)
-
-	if topo_retriever is not None:
-		topo  = np.squeeze(topo_retriever(state))
-		topo  = 0.5 * (topo[:-1] + topo[1:]) if topo.shape[0] > xv.shape[0] else topo
-		topox = 0.5 * (xv[:-1] + xv[1:]) if xv.shape[0] > topo.shape[0] else xv
-
-		make_lineplot(topox, topo, ax, **kwargs)
 
 
 def make_contour_yz(grid, yaxis_units, zaxis_units, field_retriever,
@@ -297,8 +261,8 @@ def make_contour_yz(grid, yaxis_units, zaxis_units, field_retriever,
 	make_contour(y, z, field, ax, **kwargs)
 
 
-def make_contour_yh(grid, yaxis_units, zaxis_retriever, topo_retriever,
-					field_retriever, state, ax, **kwargs):
+def make_contour_yh(grid, yaxis_units, zaxis_retriever, field_retriever,
+					state, ax, **kwargs):
 	field = np.squeeze(field_retriever(state))
 
 	zv    = np.squeeze(zaxis_retriever(state))
@@ -312,10 +276,3 @@ def make_contour_yh(grid, yaxis_units, zaxis_retriever, topo_retriever,
 	y  = np.repeat(yv[:, np.newaxis], z.shape[1], axis=1)
 
 	make_contour(y, z, field, ax, **kwargs)
-
-	if topo_retriever is not None:
-		topo  = np.squeeze(topo_retriever(state))
-		topo  = 0.5 * (topo[:-1] + topo[1:]) if topo.shape[0] > yv.shape[0] else topo
-		topoy = 0.5 * (yv[:-1] + yv[1:]) if yv.shape[0] > topo.shape[0] else yv
-
-		make_lineplot(topoy, topo, ax, **kwargs)

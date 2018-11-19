@@ -50,7 +50,6 @@ class Quiver(Drawer):
 				 xaxis_name=None, xaxis_units=None, xaxis_y=None, xaxis_z=None,
 				 yaxis_name=None, yaxis_units=None, yaxis_x=None, yaxis_z=None,
 				 zaxis_name=None, zaxis_units=None, zaxis_x=None, zaxis_y=None,
-				 topography_units=None, topography_x=None, topography_y=None,
 				 properties=None):
 		"""
 		Parameters
@@ -150,19 +149,6 @@ class Quiver(Drawer):
 			Index along the second dimension of the :obj:`zaxis_name` computational
 			axis array identifying the cross-section to visualize. Defaults to :obj:`y`.
 			Only effective if :obj:`zaxis_name` is not 'z' and :obj:`y` is given.
-		topography_units : `str`, optional
-			Units for the topography. If not specified, the native units for the
-			topography are used. Only effective if :obj:`z` is given.
-		topography_x : `int`, optional
-			Index along the first dimension of the topography array identifying
-			the cross-section to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`zaxis_name` is either 'height' or
-			'height_on_interface_levels', and :obj:`x` is given.
-		topography_y : `int`, optional
-			Index along the second dimension of the topography array identifying
-			the cross-section to visualize. Defaults to :obj:`y`.
-			Only effective if :obj:`zaxis_name` is either 'height' or
-			'height_on_interface_levels', and :obj:`y` is given.
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			properties, and whose values specify values for those properties.
@@ -216,11 +202,9 @@ class Quiver(Drawer):
 			scalar_retriever = None
 
 		if flag_z:
-			topo_retriever   = DataRetriever(grid, 'topography', topography_units)
-
 			self._slave = lambda state, fig, ax: make_quiver_xy(
 				grid, xaxis_units, yaxis_units, xcomp_retriever, ycomp_retriever,
-				scalar_retriever, topo_retriever, state, fig, ax, **self.properties)
+				scalar_retriever, state, fig, ax, **self.properties)
 		else:
 			if zaxis_name != 'z':
 				zax = zaxis_x if zaxis_x is not None else x
@@ -232,27 +216,15 @@ class Quiver(Drawer):
 				zaxis_retriever = DataRetriever(grid, zaxis_name, zaxis_units,
 												zaslice_x, zaslice_y)
 
-				if zaxis_name in ['height', 'height_on_interface_levels']:
-					tx = topography_x if topography_x is not None else x
-					ty = topography_y if topography_y is not None else y
-					tslice_x = slice(tx, tx+1 if tx != -1 else None, None) if tx is not None \
-						else None
-					tslice_y = slice(ty, ty+1 if ty != -1 else None, None) if ty is not None \
-						else None
-					topo_retriever = DataRetriever(grid, 'topography', zaxis_units,
-												   tslice_x, tslice_y)
-				else:
-					topo_retriever = None
-
 				if flag_x:
 					self._slave = lambda state, fig, ax: make_quiver_yh(
 						grid, yaxis_units, zaxis_retriever, ycomp_retriever, zcomp_retriever,
-						scalar_retriever, topo_retriever, state, fig, ax, **self.properties
+						scalar_retriever, state, fig, ax, **self.properties
 					)
 				else:
 					self._slave = lambda state, fig, ax: make_quiver_xh(
 						grid, xaxis_units, zaxis_retriever, xcomp_retriever, zcomp_retriever,
-						scalar_retriever, topo_retriever, state, fig, ax, **self.properties
+						scalar_retriever, state, fig, ax, **self.properties
 					)
 			else:
 				if flag_x:
@@ -274,7 +246,7 @@ class Quiver(Drawer):
 
 
 def make_quiver_xy(grid, xaxis_units, yaxis_units, xcomp_retriever, ycomp_retriever,
-				   scalar_retriever, topo_retriever, state, fig, ax, **kwargs):
+				   scalar_retriever,  state, fig, ax, **kwargs):
 	vx = np.squeeze(xcomp_retriever(state))
 	vy = np.squeeze(ycomp_retriever(state))
 
@@ -311,12 +283,6 @@ def make_quiver_xy(grid, xaxis_units, yaxis_units, xcomp_retriever, ycomp_retrie
 	y  = np.repeat(yv[np.newaxis, :], xv.shape[0], axis=0)
 
 	make_quiver(x, y, vx, vy, sc, fig, ax, **kwargs)
-
-	topo = topo_retriever(state)
-	topo = 0.5 * (topo[:-1, :] + topo[1:, :]) if topo.shape[0] > x.shape[0] else topo
-	topo = 0.5 * (topo[:, :-1] + topo[:, 1:]) if topo.shape[1] > y.shape[1] else topo
-
-	make_contour(x, y, topo, ax, **kwargs)
 
 
 def make_quiver_xz(grid, xaxis_units, zaxis_units, xcomp_retriever, zcomp_retriever,
@@ -360,7 +326,7 @@ def make_quiver_xz(grid, xaxis_units, zaxis_units, xcomp_retriever, zcomp_retrie
 
 
 def make_quiver_xh(grid, xaxis_units, zaxis_retriever, xcomp_retriever, zcomp_retriever,
-				   scalar_retriever, topo_retriever, state, fig, ax, **kwargs):
+				   scalar_retriever, state, fig, ax, **kwargs):
 	raise NotImplementedError()
 
 
@@ -405,5 +371,5 @@ def make_quiver_yz(grid, yaxis_units, zaxis_units, ycomp_retriever, zcomp_retrie
 
 
 def make_quiver_yh(grid, yaxis_units, zaxis_retriever, xcomp_retriever, zcomp_retriever,
-				   scalar_retriever, topo_retriever, state, fig, ax, **kwargs):
+				   scalar_retriever, state, fig, ax, **kwargs):
 	raise NotImplementedError()
