@@ -37,7 +37,7 @@ dycore = taz.IsentropicDynamicalCore(grid, moist_on=False,
                                      horizontal_boundary_type='relaxed',
                                      damp_on=True, damp_type='rayleigh', damp_depth=15,
                                      damp_max=0.0002, damp_at_every_stage=False,
-                                     smooth_on=True, smooth_type='first_order',
+                                     smooth_on=True, smooth_type='second_order',
                                      smooth_coeff=0.12, smooth_at_every_stage=False,
                                      backend=gt.mode.NUMPY, dtype=np.float32)
 
@@ -82,11 +82,11 @@ monitor = taz.SubplotsAssembler(nrows=1, ncols=2, artists=(subplot1, subplot2),
                                 tight_layout=True)
 
 # Create a monitor to dump the solution into a NetCDF file
-filename = '../tests/baseline_datasets/isentropic_dry.nc'
-#if os.path.exists(filename):
-#	os.remove(filename)
-#netcdf_monitor = taz.NetCDFMonitor(filename, grid)
-#netcdf_monitor.store(state)
+filename = '../tests/baseline_datasets/isentropic_dry_bis.nc'
+if os.path.exists(filename):
+	os.remove(filename)
+netcdf_monitor = taz.NetCDFMonitor(filename, grid)
+netcdf_monitor.store(state)
 
 # Simulation settings
 timestep = timedelta(seconds=24)
@@ -108,9 +108,9 @@ for i in range(niter):
 		fig = monitor.store(((state, state), state))
 
 		# Save the solution
-		#netcdf_monitor.store(state)
+		netcdf_monitor.store(state)
 
 # Write solution to file
-#netcdf_monitor.write()
+netcdf_monitor.write()
 
 print('Simulation successfully completed. HOORAY!')
