@@ -56,12 +56,15 @@ pg = taz.ConservativeIsentropicPressureGradient(
 psh = taz.PrescribedSurfaceHeating(
 	grid, tendency_of_air_potential_temperature_in_diagnostics=True,
 	air_pressure_on_interface_levels=True,
-	amplitude_during_daytime=nl.amplitude_during_daytime,
-	amplitude_at_night=nl.amplitude_at_night,
-	attenuation_coefficient_during_daytime=nl.attenuation_coefficient_during_daytime,
+	amplitude_at_day_sw=nl.amplitude_at_day_sw,
+	amplitude_at_day_fw=nl.amplitude_at_day_fw,
+	amplitude_at_night_sw=nl.amplitude_at_night_sw,
+	amplitude_at_night_fw=nl.amplitude_at_night_fw,
+	frequency_sw=nl.frequency_sw,
+	frequency_fw=nl.frequency_fw,
+	attenuation_coefficient_at_day=nl.attenuation_coefficient_at_day,
 	attenuation_coefficient_at_night=nl.attenuation_coefficient_at_night,
 	characteristic_length=nl.characteristic_length,
-	frequency=nl.frequency,
 	starting_time=nl.starting_time,
 	backend=nl.backend
 )
@@ -77,6 +80,12 @@ vf = taz.VerticalIsentropicAdvection(
 cf = taz.ConservativeIsentropicCoriolis(grid, coriolis_parameter=nl.coriolis_parameter,
 										dtype=nl.dtype)
 
+# The component calculating the velocity components
+vc = taz.IsentropicVelocityComponents(
+	grid, horizontal_boundary_type=nl.horizontal_boundary_type,
+	reference_state=state, backend=nl.backend, dtype=nl.dtype
+)
+
 # Instantiate the component retrieving the diagnostic variables
 pt = state['air_pressure_on_interface_levels'][0, 0, 0]
 dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt,
@@ -84,12 +93,13 @@ dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt,
 
 # Wrap the components in a SequentialUpdateSplitting object
 sus_bd = taz.SequentialUpdateSplitting(
-	cf, pg, psh, vf, #dv,
+	cf, pg, psh, vf, dv, vc,
+	#pg, psh, vf, dv, vc,
 	time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )
 sus_ad = taz.SequentialUpdateSplitting(
-	psh, vf, pg, cf, #dv,
+	dv, psh, vf, dv, pg, cf, vc,
 	time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )
@@ -102,7 +112,7 @@ dycore = taz.HomogeneousIsentropicDynamicalCore(
 	horizontal_flux_scheme=nl.horizontal_flux_scheme,
 	horizontal_boundary_type=nl.horizontal_boundary_type,
 	# Parameterizations
-	diagnostics=taz.DiagnosticComponentComposite(dv),
+	#diagnostics=taz.DiagnosticComponentComposite(dv),
 	# Damping (wave absorber)
 	damp_on=nl.damp_on, damp_type=nl.damp_type,
 	damp_depth=nl.damp_depth, damp_max=nl.damp_max,

@@ -208,8 +208,12 @@ class NonconservativeIsentropicPressureGradient(TendencyComponent):
 			mode			 = self._backend
 		)
 
+	#a = 2
+	#@gt.stencil_function(globals=dict(BOOL=))
+	#def __init_subclass__(cls):
+	#	gt.stencil_function(definition=ClassName._stenc)
+
 	def _stencil_second_order_defs(self, in_mtg):
-		# Shortcuts
 		dx = self._grid.dx.to_units('m').values.item()
 		dy = self._grid.dy.to_units('m').values.item()
 

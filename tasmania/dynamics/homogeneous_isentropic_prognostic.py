@@ -59,7 +59,6 @@ class HomogeneousIsentropicPrognostic:
 				 horizontal_flux_scheme, backend, dtype=datatype):
 		"""
 		Constructor.
-
 		Parameters
 		----------
 		grid : grid
@@ -84,11 +83,11 @@ class HomogeneousIsentropicPrognostic:
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
 		# Keep track of the input parameters
-		self._grid          = grid
-		self._moist_on      = moist_on
+		self._grid			= grid
+		self._moist_on		= moist_on
 		self._hboundary		= horizontal_boundary_conditions
-		self._hflux_scheme  = horizontal_flux_scheme
-		self._backend       = backend
+		self._hflux_scheme	= horizontal_flux_scheme
+		self._backend		= backend
 		self._dtype			= dtype
 
 		# Instantiate the classes computing the numerical horizontal and vertical fluxes
@@ -103,7 +102,6 @@ class HomogeneousIsentropicPrognostic:
 		Get the number of stages carried out by the time-integration scheme.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
-
 		Return
 		------
 		int :
@@ -138,7 +136,6 @@ class HomogeneousIsentropicPrognostic:
 		possible vertical derivatives are disregarded.
 		As this method is marked as abstract, its implementation is
 		delegated to the derived classes.
-
 		Parameters
 		----------
 		stage : int
@@ -146,47 +143,42 @@ class HomogeneousIsentropicPrognostic:
 		dt : timedelta
 			:class:`datetime.timedelta` representing the time step.
 		raw_state : dict
-            Dictionary whose keys are strings indicating the model
-            variables, and values are :class:`numpy.ndarray`\s containing
-            the data for those variables at current time.
-            The dictionary should contain the following keys:
-
-            	* air_isentropic_density [kg m^-2 K^-1];
-            	* isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);
-            	* isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);
-            	* isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);
-            	* x_velocity_at_u_locations [m s^-1];
-            	* x_momentum_isentropic [kg m^-1 K^-1 s^-1];
-            	* y_velocity_at_v_locations [m s^-1];
-            	* y_momentum_isentropic [kg m^-1 K^-1 s^-1].
-
+			Dictionary whose keys are strings indicating the model
+			variables, and values are :class:`numpy.ndarray`\s containing
+			the data for those variables at current time.
+			The dictionary should contain the following keys:
+				* air_isentropic_density [kg m^-2 K^-1];
+				* isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);
+				* isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);
+				* isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);
+				* x_velocity_at_u_locations [m s^-1];
+				* x_momentum_isentropic [kg m^-1 K^-1 s^-1];
+				* y_velocity_at_v_locations [m s^-1];
+				* y_momentum_isentropic [kg m^-1 K^-1 s^-1].
 		raw_tendencies : dict
-            Dictionary whose keys are strings indicating tendencies,
-            tendencies, and values are :class:`numpy.ndarray`\s containing
-            the data for those tendencies.
-            The dictionary may contain the following keys:
-
+			Dictionary whose keys are strings indicating tendencies,
+			tendencies, and values are :class:`numpy.ndarray`\s containing
+			the data for those tendencies.
+			The dictionary may contain the following keys:
 				* air_isentropic_density [kg m^-2 K^-1 s^-1];
-            	* mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];
-            	* mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];
-            	* mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].
+				* mass_fraction_of_water_vapor_in_air [g g^-1 s^-1];
+				* mass_fraction_of_cloud_liquid_water_in_air [g g^-1 s^-1];
+				* mass_fraction_of_precipitation_water_in_air [g g^-1 s^-1].
 				* x_momentum_isentropic [kg m^-1 K^-1 s^-2];
 				* y_momentum_isentropic [kg m^-1 K^-1 s^-2];
-
 		Return
 		------
 		dict :
-            Dictionary whose keys are strings indicating the conservative
-            prognostic model variables, and values are :class:`numpy.ndarray`\s
-            containing the sub-stepped data for those variables.
-            The dictionary contains the following keys:
-
-            	* air_isentropic_density [kg m^-2 K^-1];
-            	* isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);
-            	* isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);
-            	* isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);
-            	* x_momentum_isentropic [kg m^-1 K^-1 s^-1];
-            	* y_momentum_isentropic [kg m^-1 K^-1 s^-1].
+			Dictionary whose keys are strings indicating the conservative
+			prognostic model variables, and values are :class:`numpy.ndarray`\s
+			containing the sub-stepped data for those variables.
+			The dictionary contains the following keys:
+				* air_isentropic_density [kg m^-2 K^-1];
+				* isentropic_density_of_water_vapor [kg m^-2 K^-1] (optional);
+				* isentropic_density_of_cloud_liquid_water [kg m^-2 K^-1] (optional);
+				* isentropic_density_of_precipitation_water [kg m^-2 K^-1] (optional);
+				* x_momentum_isentropic [kg m^-1 K^-1 s^-1];
+				* y_momentum_isentropic [kg m^-1 K^-1 s^-1].
 		"""
 
 	@staticmethod
@@ -195,20 +187,17 @@ class HomogeneousIsentropicPrognostic:
 		"""
 		Static method returning an instance of the derived class implementing
 		the time stepping scheme specified by :data:`time_scheme`.
-
 		Parameters
 		----------
 		scheme : str
 			String specifying the time stepping method to implement. Either:
-
 			* 'forward_euler', for the forward Euler scheme;
 			* 'centered', for a centered scheme;
 			* 'rk2', for the two-stages, second-order Runge-Kutta (RK) scheme;
-            * 'rk3cosmo', for the three-stages RK scheme as used in the
-                `COSMO model <http://www.cosmo-model.org>`_; this method is
-                nominally second-order, and third-order for linear problems;
+			* 'rk3cosmo', for the three-stages RK scheme as used in the
+				`COSMO model <http://www.cosmo-model.org>`_; this method is
+				nominally second-order, and third-order for linear problems;
 			* 'rk3', for the three-stages, third-order RK scheme.
-
 		grid : grid
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
@@ -228,7 +217,6 @@ class HomogeneousIsentropicPrognostic:
 			any :class:`numpy.ndarray` used within this class.
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
-
 		Return
 		------
 		obj :
@@ -270,11 +258,11 @@ class HomogeneousIsentropicPrognostic:
 
 		# Allocate the Numpy arrays which will store the current solution
 		# and serve as stencil's inputs
-		self._in_s  = np.zeros((  mi,   mj, nz), dtype=dtype)
-		self._in_u  = np.zeros((mi+1,   mj, nz), dtype=dtype)
-		self._in_v  = np.zeros((  mi, mj+1, nz), dtype=dtype)
-		self._in_su = np.zeros((  mi,   mj, nz), dtype=dtype)
-		self._in_sv = np.zeros((  mi,   mj, nz), dtype=dtype)
+		self._in_s	= np.zeros((  mi,	mj, nz), dtype=dtype)
+		self._in_u	= np.zeros((mi+1,	mj, nz), dtype=dtype)
+		self._in_v	= np.zeros((  mi, mj+1, nz), dtype=dtype)
+		self._in_su = np.zeros((  mi,	mj, nz), dtype=dtype)
+		self._in_sv = np.zeros((  mi,	mj, nz), dtype=dtype)
 		if self._moist_on:
 			self._in_sqv = np.zeros((mi, mj, nz), dtype=dtype)
 			self._in_sqc = np.zeros((mi, mj, nz), dtype=dtype)
@@ -337,11 +325,11 @@ class HomogeneousIsentropicPrognostic:
 		self._dt.value = dt.total_seconds()
 
 		# Extract the Numpy arrays representing the current solution
-		s   = raw_state['air_isentropic_density']
-		u   = raw_state['x_velocity_at_u_locations']
-		v   = raw_state['y_velocity_at_v_locations']
-		su  = raw_state['x_momentum_isentropic']
-		sv  = raw_state['y_momentum_isentropic']
+		s	= raw_state['air_isentropic_density']
+		u	= raw_state['x_velocity_at_u_locations']
+		v	= raw_state['y_velocity_at_v_locations']
+		su	= raw_state['x_momentum_isentropic']
+		sv	= raw_state['y_momentum_isentropic']
 		if self._moist_on:
 			sqv = raw_state['isentropic_density_of_water_vapor']
 			sqc = raw_state['isentropic_density_of_cloud_liquid_water']
@@ -360,9 +348,9 @@ class HomogeneousIsentropicPrognostic:
 			sv_tnd = raw_tendencies['y_momentum_isentropic']
 
 		# Update the Numpy arrays which serve as inputs to the GT4Py stencils
-		self._in_s  [  :mi,   :mj, :] = self._hboundary.from_physical_to_computational_domain(s)
-		self._in_u  [:mi+1,   :mj, :] = self._hboundary.from_physical_to_computational_domain(u)
-		self._in_v  [  :mi, :mj+1, :] = self._hboundary.from_physical_to_computational_domain(v)
+		self._in_s	[  :mi,   :mj, :] = self._hboundary.from_physical_to_computational_domain(s)
+		self._in_u	[:mi+1,   :mj, :] = self._hboundary.from_physical_to_computational_domain(u)
+		self._in_v	[  :mi, :mj+1, :] = self._hboundary.from_physical_to_computational_domain(v)
 		self._in_su [  :mi,   :mj, :] = self._hboundary.from_physical_to_computational_domain(su)
 		self._in_sv [  :mi,   :mj, :] = self._hboundary.from_physical_to_computational_domain(sv)
 		if self._moist_on:
