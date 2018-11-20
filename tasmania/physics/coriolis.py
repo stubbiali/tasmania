@@ -94,8 +94,8 @@ class ConservativeIsentropicCoriolis(TendencyComponent):
 		return {}
 
 	def array_call(self, state):
-		self._out_su[...] = self._f * state['y_momentum_isentropic'][...]
-		self._out_sv[...] = - self._f * state['x_momentum_isentropic'][...]
+		self._out_su[3:-3, 3:-3, :] = self._f * state['y_momentum_isentropic'][3:-3, 3:-3, :]
+		self._out_sv[3:-3, 3:-3, :] = - self._f * state['x_momentum_isentropic'][3:-3, 3:-3, :]
 
 		tendencies = {
 			'x_momentum_isentropic': self._out_su,
