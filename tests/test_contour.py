@@ -28,7 +28,7 @@ from tasmania.plot.monitors import Plot
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contour')
-def test_contour_xy_velocity(isentropic_dry_data):
+def test_contour_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	field_name  = 'horizontal_velocity'
 	field_units = 'm s^-1'
@@ -63,6 +63,9 @@ def test_contour_xy_velocity(isentropic_dry_data):
 					 xaxis_units='km', yaxis_units='km',
 					 properties=drawer_properties)
 
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
@@ -80,10 +83,10 @@ def test_contour_xy_velocity(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
 
 	# Plot
-	monitor.store(state, save_dest=save_dest)
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -91,7 +94,7 @@ def test_contour_xy_velocity(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contour')
-def test_contour_xy_pressure(isentropic_dry_data):
+def test_contour_xy_pressure(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	field_name  = 'air_pressure_on_interface_levels'
 	field_units = 'hPa'
@@ -125,6 +128,9 @@ def test_contour_xy_pressure(isentropic_dry_data):
 					 xaxis_units='km', yaxis_units='km',
 					 properties=drawer_properties)
 
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
@@ -142,10 +148,10 @@ def test_contour_xy_pressure(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
 
 	# Plot
-	monitor.store(state, save_dest=save_dest)
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -153,7 +159,7 @@ def test_contour_xy_pressure(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contour')
-def test_contour_xz_velocity(isentropic_dry_data):
+def test_contour_xz_velocity(isentropic_dry_data, drawer_topography1d):
 	# Field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
@@ -189,6 +195,9 @@ def test_contour_xz_velocity(isentropic_dry_data):
 					 xaxis_units='km', zaxis_name='height', zaxis_units='km',
 					 properties=drawer_properties)
 
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography1d(grid, topo_units='km', y=y, axis_units='km')
+
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
@@ -206,10 +215,10 @@ def test_contour_xz_velocity(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
 
 	# Plot
-	monitor.store(state, save_dest=save_dest)
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -217,7 +226,7 @@ def test_contour_xz_velocity(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contour')
-def test_contour_yz_velocity(isentropic_dry_data):
+def test_contour_yz_velocity(isentropic_dry_data, drawer_topography1d):
 	# Field to plot
 	field_name  = 'y_velocity_at_v_locations'
 	field_units = 'km hr^-1'
@@ -253,6 +262,9 @@ def test_contour_yz_velocity(isentropic_dry_data):
 					 zaxis_name='height_on_interface_levels', zaxis_units='km',
 					 properties=drawer_properties)
 
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography1d(grid, topo_units='km', x=x, axis_units='km')
+
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
@@ -270,10 +282,10 @@ def test_contour_yz_velocity(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
 
 	# Plot
-	monitor.store(state, save_dest=save_dest)
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 

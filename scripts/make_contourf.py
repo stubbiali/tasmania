@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import datetime
 from loader import LoaderFactory
 import tasmania as taz
 
@@ -28,14 +27,15 @@ import tasmania as taz
 #
 # User inputs
 #
-filename = '../tests/baseline_datasets/isentropic_dry.nc'
+filename = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+		   'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_f_cc.nc'
 
-field_name  = 'x_velocity'
-field_units = 'km hr^-1'
+field_name  = 'horizontal_velocity'
+field_units = 'm s^-1'
 
 x = None
-y = 25
-z = None
+y = None
+z = -1
 
 xaxis_name  = 'x'
 xaxis_units = 'km'
@@ -52,10 +52,6 @@ zaxis_units = 'km'
 zaxis_x = None
 zaxis_y = None
 
-topography_units = 'km'
-topography_x = None
-topography_y = None
-
 drawer_properties = {
 	'fontsize': 16,
 	'cmap_name': 'BuRd',
@@ -63,16 +59,14 @@ drawer_properties = {
 	'cbar_levels': 18,
 	'cbar_ticks_step': 4,
 	'cbar_ticks_pos': 'center',
-	'cbar_center': 15 * 3.6,
+	'cbar_center': 1,
 	'cbar_half_width': None, #8.5, #470, #220,
 	'cbar_x_label': '',
 	'cbar_y_label': '',
 	'cbar_title': '',
 	'cbar_orientation': 'horizontal',
 	'cbar_ax': None,
-	'draw_vertical_levels': True,
-	'linecolor': 'black',
-	'linewidth': 1.2,
+	'draw_vertical_levels': False,
 }
 
 
@@ -91,8 +85,6 @@ def get_drawer():
 		yaxis_x=yaxis_x, yaxis_z=yaxis_z,
 		zaxis_name=zaxis_name, zaxis_units=zaxis_units,
 		zaxis_x=zaxis_x, zaxis_y=zaxis_y,
-		topography_units=topography_units,
-		topography_x=topography_x, topography_y=topography_y,
 		properties=drawer_properties
 	)
 

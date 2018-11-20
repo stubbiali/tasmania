@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from loader import LoaderComposite
 import tasmania as taz
 
 
@@ -28,19 +27,20 @@ import tasmania as taz
 # User inputs
 #
 nrows = 1
-ncols = 2
+ncols = 3
 
 modules = [
-	'make_plot',
-	'make_plot_1',
+	'make_plot_rrmsd',
+	'make_plot_rrmsd_1',
+	'make_plot_rrmsd_2',
 ]
 
-tlevel = -1
+tlevels = 40
 
 figure_properties = {
 	'fontsize': 16,
-	'figsize': (9, 6),
-	'tight_layout': True
+	'figsize': (15, 7), # (15, 7), (10.5, 7)
+	'tight_layout': True,
 }
 
 save_dest = None
@@ -63,20 +63,22 @@ def get_plot():
 	return plot
 
 
-def get_states(tlevel, plot):
+def get_states(tlevels, plot):
 	subplots = plot.artists
 	states = []
 
-	for module, subplot in zip(modules, subplots):
-		import_str = 'from {} import get_states'.format(module)
+	tlevels = (tlevels, ) * len(subplots) if isinstance(tlevels, int) else tlevels
+
+	for i in range(len(subplots)):
+		import_str = 'from {} import get_states'.format(modules[i])
 		exec(import_str)
-		states.append(locals()['get_states'](tlevel, subplot))
+		states.append(locals()['get_states'](tlevels[i], subplots[i]))
 
 	return states
 
 
 if __name__ == '__main__':
 	plot = get_plot()
-	states = get_states(tlevel, plot)
+	states = get_states(tlevels, plot)
 	plot.store(states, save_dest=save_dest, show=True)
 

@@ -56,6 +56,7 @@ from tasmania.plot.animation import Animation
 from tasmania.plot.contour import Contour
 from tasmania.plot.contourf import Contourf
 from tasmania.plot.monitors import Plot, PlotComposite
+from tasmania.plot.patches import Circle, Rectangle
 from tasmania.plot.plot_utils import \
 	get_figure_and_axes, set_axes_properties, set_figure_properties
 from tasmania.plot.profile import LineProfile
@@ -94,6 +95,7 @@ __all__ = (
 	Plot, PlotComposite, Animation,
 	LineProfile, TimeSeries, HovmollerDiagram,
 	Contour, Contourf, Quiver,
+	Circle, Rectangle,
 	get_figure_and_axes, set_axes_properties, set_figure_properties,
 	make_data_array_2d, make_data_array_3d,
 	make_raw_state, make_state,

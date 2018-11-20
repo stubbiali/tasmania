@@ -26,6 +26,8 @@ from sympl import DataArray
 
 from tasmania.grids.grid_xyz import GridXYZ as Grid
 from tasmania.grids.grid_xz import GridXZ
+from tasmania.plot.contour import Contour
+from tasmania.plot.profile import LineProfile
 from tasmania.utils.storage_utils import load_netcdf_dataset
 
 
@@ -112,3 +114,27 @@ def physical_constants():
 		'specific_heat_of_dry_air_at_constant_pressure':
 			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 	}
+
+
+@pytest.fixture(scope='module')
+def drawer_topography1d():
+	def _drawer_topography1d(grid, topo_units='m', x=None, y=None,
+							 axis_name=None, axis_units=None):
+		properties = {'linecolor': 'black', 'linewidth': 1.3}
+		return LineProfile(grid, 'topography', topo_units, x=x, y=y, z=-1,
+						   axis_name=axis_name, axis_units=axis_units, properties=properties)
+
+	return _drawer_topography1d
+
+
+@pytest.fixture(scope='module')
+def drawer_topography2d():
+	def _drawer_topography2d(grid, topo_units='m', xaxis_name=None, xaxis_units=None,
+							 yaxis_name=None, yaxis_units=None):
+		properties = {'colors': 'darkgray', 'draw_vertical_levels': False}
+		return Contour(grid, 'topography', topo_units, z=-1,
+					   xaxis_name=xaxis_name, xaxis_units=xaxis_units,
+					   yaxis_name=yaxis_name, yaxis_units=yaxis_units,
+					   properties=properties)
+
+	return _drawer_topography2d

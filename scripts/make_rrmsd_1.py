@@ -27,20 +27,20 @@ import tasmania as taz
 #
 # User inputs
 #
-filename1 = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-			'nx51_ny51_nz50_dt20_nt4320_flat_terrain_L25000_u0_wf4_f_ssus_bis.nc'
-filename2 = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-			'nx51_ny51_nz50_dt20_nt4320_flat_terrain_L25000_u0_wf4_f_cc_bis.nc'
+filename1 = '../data/compressed/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+			'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_wf1_f_sus.nc'
+filename2 = '../data/compressed/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+			'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_wf1_f_cc.nc'
 
-field_name  = 'x_velocity_at_u_locations'
+field_name  = 'y_velocity_at_v_locations'
 field_units = 'm s^-1'
 
-x1, x2 = None, None
-y1, y2 = None, None
+x1, x2 = slice(3, -3, None), slice(3, -3, None)
+y1, y2 = slice(3, -3, None), slice(3, -3, None)
 z1, z2 = None, None
 
 time_mode     = 'elapsed'
-init_time     = datetime(year=1992, month=2, day=20, hour=8)
+init_time     = datetime(year=1992, month=2, day=20, hour=0)
 time_units    = 'hr'
 time_on_xaxis = True
 
@@ -49,12 +49,12 @@ drawer_properties = {
 	'linestyle': '-',
 	'linewidth': 1.5,
 	'linecolor': 'red',
-	'marker': 'v',
+	'marker': '^',
 	'markersize': 7,
 	'markeredgewidth': 1,
-	'markerfacecolor': 'white',
+	'markerfacecolor': 'red',
 	'markeredgecolor': 'red',
-	'legend_label': 'SSUS'
+	'legend_label': 'SUS'
 }
 
 
@@ -102,3 +102,4 @@ def get_state(tlevel, drawer, axes_properties=None, print_time=None):
 	state1.update(diagnostics)
 
 	return state1
+

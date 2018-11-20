@@ -228,7 +228,7 @@ def test_profile_z(isentropic_moist_sedimentation_data,
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
-def test_plot2d(isentropic_dry_data):
+def test_plot2d(isentropic_dry_data, drawer_topography2d):
 	# Make sure the folder tests/baseline_images/test_plots does exist
 	baseline_dir = 'baseline_images/test_plots'
 	if not os.path.exists(baseline_dir):
@@ -285,6 +285,9 @@ def test_plot2d(isentropic_dry_data):
 					 xcomp_name='x_velocity', ycomp_name='y_velocity',
 					 xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
+	# Drawer#3
+	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+
 	#
 	# Plot
 	#
@@ -305,10 +308,10 @@ def test_plot2d(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot((drawer1, drawer2), False, figure_properties, axes_properties)
+	monitor = Plot((drawer1, drawer2, topo_drawer), False, figure_properties, axes_properties)
 
-	# plot
-	monitor.store((state, state), save_dest=save_dest)
+	# Plot
+	monitor.store((state, state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 

@@ -28,7 +28,7 @@ from tasmania.plot.quiver import Quiver
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')
-def test_quiver_xy_velocity(isentropic_dry_data):
+def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	xcomp_name  = 'x_velocity'
 	xcomp_units = 'm s^-1'
@@ -76,6 +76,9 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
 					xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
@@ -93,10 +96,10 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	monitor = Plot((topo_drawer, drawer), False, figure_properties, axes_properties)
 
 	# Plot
-	monitor.store(state, save_dest=save_dest)
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -104,7 +107,7 @@ def test_quiver_xy_velocity(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')
-def test_quiver_xy_velocity_bw(isentropic_dry_data):
+def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	xcomp_name  = 'x_velocity'
 	xcomp_units = 'm s^-1'
@@ -142,6 +145,9 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data):
 					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
 					xaxis_units='km', yaxis_units='km', properties=drawer_properties)
 
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+
 	# Figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
@@ -159,10 +165,10 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data):
 	}
 
 	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	monitor = Plot((topo_drawer, drawer), False, figure_properties, axes_properties)
 
 	# Plot
-	monitor.store(state, save_dest=save_dest)
+	monitor.store((state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
