@@ -1671,6 +1671,7 @@ class RK2(IsentropicPrognostic):
 
 		# Instantiate the output state
 		raw_state_new = {
+			'time': raw_state['time'] + 0.5*dt,
 			'air_isentropic_density': s_new,
 			'x_momentum_isentropic': su_new,
 			'y_momentum_isentropic': sv_new,
@@ -2051,6 +2052,21 @@ class RK3COSMO(RK2):
 		"""
 		return 3
 
+	def step_neglecting_vertical_motion(self, stage, dt, raw_state, raw_tendencies=None):
+		"""
+		Method advancing the conservative, prognostic model variables
+		one stage forward in time. Only horizontal derivatives are considered;
+		possible vertical derivatives are disregarded.
+		"""
+		raw_state_new = super().step_neglecting_vertical_motion(
+			stage, dt, raw_state, raw_tendencies
+		)
+
+		raw_state_new['time'] = raw_state['time'] + \
+			(1./3.*(stage == 0) + 1./6.*(stage == 1) + 1./2.*(stage == 2)) * dt
+
+		return raw_state_new
+
 	def _stencils_stepping_by_neglecting_vertical_motion_set_inputs(
 		self, stage, dt, raw_state, raw_tendencies):
 		"""
@@ -2198,6 +2214,9 @@ class RK3(IsentropicPrognostic):
 
 		# Instantiate the output state
 		raw_state_new = {
+			'time': raw_state['time'] + (self._alpha1 * (stage==0) +
+										 self._alpha2 * (stage==1) +
+										 (stage == 2)) * dt,
 			'air_isentropic_density': s_new,
 			'x_momentum_isentropic': su_new,
 			'y_momentum_isentropic': sv_new,

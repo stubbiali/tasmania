@@ -796,10 +796,12 @@ class PrescribedSurfaceHeating(TendencyComponent):
 
 	def __init__(self, grid, tendency_of_air_potential_temperature_in_diagnostics=False,
 				 air_pressure_on_interface_levels=True,
-				 amplitude_during_daytime=None, amplitude_at_night=None,
-				 attenuation_coefficient_during_daytime=None,
+				 amplitude_at_day_sw=None, amplitude_at_day_fw=None, 
+				 amplitude_at_night_sw=None, amplitude_at_night_fw=None,
+				 frequency_sw=None, frequency_fw=None,
+				 attenuation_coefficient_at_day=None,
 				 attenuation_coefficient_at_night=None,
-				 characteristic_length=None, frequency=None, starting_time=None,
+				 characteristic_length=None, starting_time=None,
 				 backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
 		"""
 		The constructor.
@@ -812,17 +814,23 @@ class PrescribedSurfaceHeating(TendencyComponent):
 			TODO
 		air_pressure_on_interface_levels : `bool`, optional
 			TODO
-		amplitude_during_daytime : `dataarray_like`, optional
+		amplitude_at_day_sw : `dataarray_like`, optional
 			TODO
-		amplitude_at_night : `dataarray_like`, optional
+		amplitude_at_day_fw : `dataarray_like`, optional
 			TODO
-		attenuation_coefficient_during_daytime : `dataarray_like`, optional
+		amplitude_at_night_sw : `dataarray_like`, optional
+			TODO
+		amplitude_at_night_fw : `dataarray_like`, optional
+			TODO
+		frequency_sw : `dataarray_like`, optional
+			TODO
+		frequency_fw : `dataarray_like`, optional
+			TODO
+		attenuation_coefficient_at_day : `dataarray_like`, optional
 			TODO
 		attenuation_coefficient_at_night : `dataarray_like`, optional
 			TODO
 		characteristic_length : `dataarray_like`, optional
-			TODO
-		frequency : `dataarray_like`, optional
 			TODO
 		starting_time : `datetime`, optional
 			TODO
@@ -841,19 +849,25 @@ class PrescribedSurfaceHeating(TendencyComponent):
 
 		super().__init__(**kwargs)
 
-		self._f0d = amplitude_during_daytime.to_units('W m^-2').values.item() \
-					if amplitude_during_daytime is not None else 800.0
-		self._f0n = amplitude_at_night.to_units('W m^-2').values.item() \
-					if amplitude_at_night is not None else -75.0
-		self._ad  = attenuation_coefficient_during_daytime.to_units('m^-1').values.item() \
-					if attenuation_coefficient_during_daytime is not None else 1.0/600.0
-		self._an  = attenuation_coefficient_at_night.to_units('m^-1').values.item() \
-					if attenuation_coefficient_at_night is not None else 1.0/75.0
-		self._cl  = characteristic_length.to_units('m').values.item() \
-					if characteristic_length is not None else 25000.0
-		self._w   = frequency.to_units('h^-1').values.item() \
-					if frequency is not None else np.pi/12.0
-		self._t0  = starting_time
+		self._f0d_sw = amplitude_at_day_sw.to_units('W m^-2').values.item() \
+					   if amplitude_at_day_sw is not None else 800.0
+		self._f0d_fw = amplitude_at_day_fw.to_units('W m^-2').values.item() \
+					   if amplitude_at_day_fw is not None else 400.0
+		self._f0n_sw = amplitude_at_night_sw.to_units('W m^-2').values.item() \
+					   if amplitude_at_night_sw is not None else -75.0
+		self._f0n_fw = amplitude_at_night_fw.to_units('W m^-2').values.item() \
+					   if amplitude_at_night_fw is not None else -37.5
+		self._w_sw   = frequency_sw.to_units('h^-1').values.item() \
+					   if frequency_sw is not None else np.pi/12.0
+		self._w_fw   = frequency_fw.to_units('h^-1').values.item() \
+					   if frequency_fw is not None else np.pi
+		self._ad  	 = attenuation_coefficient_at_day.to_units('m^-1').values.item() \
+					   if attenuation_coefficient_at_day is not None else 1.0/600.0
+		self._an  	 = attenuation_coefficient_at_night.to_units('m^-1').values.item() \
+					   if attenuation_coefficient_at_night is not None else 1.0/75.0
+		self._cl  	 = characteristic_length.to_units('m').values.item() \
+					   if characteristic_length is not None else 25000.0
+		self._t0  	 = starting_time
 
 		pcs = get_physical_constants(self._d_physical_constants, physical_constants)
 		self._rd = pcs['gas_constant_of_dry_air']
@@ -938,13 +952,15 @@ class PrescribedSurfaceHeating(TendencyComponent):
 			z  = zv if self._apil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
 			h  = np.repeat(zv[:, :, -1:], mk, axis=2)
 
-			f0 = self._f0d if (8.0 <= t.hour < 20) else self._f0n
-			a  = self._ad if (8.0 <= t.hour < 20) else self._an
-			cl = self._cl
-			w  = self._w
+			f0_sw = self._f0d_sw if (8.0 <= t.hour < 20) else self._f0n_sw
+			f0_fw = self._f0d_fw if (8.0 <= t.hour < 20) else self._f0n_fw
+			w_sw  = self._w_sw
+			w_fw  = self._w_fw
+			a  	  = self._ad if (8.0 <= t.hour < 20) else self._an
+			cl    = self._cl
 
-			out = (theta * self._rd * a / (p * self._cp) *
-				   f0 * np.exp(- a * (z - h)) * np.sin(w * dt)) * (x**2 + y**2 < cl**2)
+			out = theta * self._rd * a / (p * self._cp) * np.exp(- a * (z - h)) * \
+				  (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt)) * (x**2 + y**2 < cl**2)
 
 		tendencies = {}
 		if not self._tid:
