@@ -20,10 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 import os
 import tasmania as taz
 
-import namelist_smolarkiewicz_cc as nl
+import namelist_smolarkiewicz_ssus_1 as nl
 
 # Create the underlying grid
 grid = taz.GridXYZ(nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,
@@ -39,6 +40,9 @@ else:
 	state = taz.get_default_isentropic_state(grid, nl.init_time,
 											 nl.init_x_velocity, nl.init_y_velocity,
 											 nl.init_brunt_vaisala, dtype=nl.dtype)
+state['tendency_of_air_potential_temperature_on_interface_levels'] = \
+	taz.make_data_array_3d(np.zeros((nl.nx, nl.ny, nl.nz+1), dtype=nl.dtype),
+						   grid, 'K s^-1')
 
 # Instantiate the component calculating the pressure gradient in isentropic coordinates
 order = 4 if nl.horizontal_flux_scheme == 'fifth_order_upwind' else 2
@@ -76,16 +80,22 @@ vf = taz.VerticalIsentropicAdvection(
 cf = taz.ConservativeIsentropicCoriolis(grid, coriolis_parameter=nl.coriolis_parameter,
 										dtype=nl.dtype)
 
-# Wrap the components in a ConcurrentCoupling object
-cc = taz.ConcurrentCoupling(pg, psh, vf, cf,
-							mode='serial')
-
-# Instantiate the component retrieving the diagnostic variables, and wrap it in a
-# DiagnosticComponentComposite object
+# Instantiate the component retrieving the diagnostic variables
 pt = state['air_pressure_on_interface_levels'][0, 0, 0]
 dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt,
 							   backend=nl.backend, dtype=nl.dtype)
-dcc = taz.DiagnosticComponentComposite(dv)
+
+# Wrap the components in a SequentialUpdateSplitting object
+sus_bd = taz.SequentialUpdateSplitting(
+	cf, pg, psh, vf, 
+	time_integration_scheme=nl.coupling_time_integration_scheme,
+	grid=grid, horizontal_boundary_type=None,
+)
+sus_ad = taz.SequentialUpdateSplitting(
+	dv, psh, vf, pg, cf,
+	time_integration_scheme=nl.coupling_time_integration_scheme,
+	grid=grid, horizontal_boundary_type=None,
+)
 
 # Instantiate the dynamical core
 dycore = taz.HomogeneousIsentropicDynamicalCore(
@@ -95,8 +105,7 @@ dycore = taz.HomogeneousIsentropicDynamicalCore(
 	horizontal_flux_scheme=nl.horizontal_flux_scheme,
 	horizontal_boundary_type=nl.horizontal_boundary_type,
 	# Parameterizations
-	intermediate_parameterizations=cc,
-	diagnostics=dcc,
+	#diagnostics=taz.DiagnosticComponentComposite(dv),
 	# Damping (wave absorber)
 	damp_on=nl.damp_on, damp_type=nl.damp_type,
 	damp_depth=nl.damp_depth, damp_max=nl.damp_max,
@@ -138,7 +147,7 @@ subplot2 = taz.Plot2d(grid, plot_function=taz.make_contourf_xz,
 					  level=int(nl.ny / 2), fontsize=16,
 					  plot_properties={'fontsize': 16, 'title_left': '$y = 0$ km',
 									   'x_label': '$x$ [km]', 'x_lim': [-250, 250],
-									   'y_label': '$z$ [km]', 'y_lim': [0, 4]},
+									   'y_label': '$z$ [km]', 'y_lim': [0, 14]},
 					  plot_function_kwargs={'fontsize': 16,
 											'x_factor': 1e-3, 'z_factor': 1e-3,
 											'cmap_name': 'BuRd', 'cbar_on': True,
@@ -168,9 +177,37 @@ for i in range(nt):
 	# Update the (time-dependent) topography
 	dycore.update_topography((i + 1) * dt)
 
-	# Step the solution
+	#if i % nl.save_frequency == 0:
+	#	# Compute the physics before the dynamics
+	#	_ = sus_bd(state=state, timestep=0.5*dt)
+
+	_ = sus_bd(state=state, timestep=0.5*dt)
+
+	# Compute the dynamics
 	state_new = dycore(state, {}, dt)
 	state.update(state_new)
+
+	#if (i+1) % nl.save_frequency == 0:
+	#	# Ensure the state is still defined at the mid time level
+	#	state['time'] = nl.init_time + (i+0.5) * dt
+	#
+	#	# Calculate the physics, and couple it with the dynamics
+	#	_ = sus_ad(state=state, timestep=0.5*dt)
+	#else:
+	#	# Ensure the state is still defined at the current time level
+	#	state['time'] = nl.init_time + i * dt
+	#
+	#	# Fuse two consecutive calls to sus_ad/sus_bd into a single call to sus_ad
+	#	_ = sus_ad(state=state, timestep=dt)
+
+	# Ensure the state is still defined at the mid time level
+	state['time'] = nl.init_time + (i+0.5) * dt
+
+	# Calculate the physics, and couple it with the dynamics
+	_ = sus_ad(state=state, timestep=0.5*dt)
+
+	# Ensure the state is defined at the next time level
+	state['time'] = nl.init_time + (i+1) * dt
 
 	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
 		u = state['x_velocity_at_u_locations'].to_units('m s^-1').values[...]
@@ -188,7 +225,7 @@ for i in range(nt):
 	# Shortcuts
 	to_save = (nl.filename is not None) and \
 			  (((nl.save_frequency > 0) and
-			   ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
+				((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
 	to_plot = (nl.plot_frequency > 0) and ((i + 1) % nl.plot_frequency == 0)
 
 	if to_save:
@@ -200,7 +237,6 @@ for i in range(nt):
 		subplot1.plot_properties['title_right'] = str((i + 1) * dt)
 		subplot2.plot_properties['title_right'] = str((i + 1) * dt)
 		fig = monitor.store(((state, state), state), show=True)
-		#fig = monitor.store((state, state), show=True)
 
 print('Simulation successfully completed. HOORAY!')
 

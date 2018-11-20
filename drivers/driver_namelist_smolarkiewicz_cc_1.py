@@ -23,7 +23,7 @@
 import os
 import tasmania as taz
 
-import namelist_smolarkiewicz_cc as nl
+import namelist_smolarkiewicz_cc_1 as nl
 
 # Create the underlying grid
 grid = taz.GridXYZ(nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,

@@ -48,6 +48,6 @@ docker exec -it				\
 					 python get-pip.py --user; \
 					 cd tasmania; \
 					 make distclean; \
-					 python -m pip install --user -e .; \
+					 python -m pip install -vvv --user -e .; \
 					 cd ..; \
 					 bash"

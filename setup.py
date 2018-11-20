@@ -23,7 +23,7 @@
 from distutils.core import Extension
 import os
 import sys
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 if sys.version_info.major < 3:
@@ -61,7 +61,7 @@ setup(
 	url='https://github.com/eth-cscs/tasmania',
 	license='',
 	package_dir={'': 'tasmania'},
-	packages=['grids', 'dynamics', 'physics', 'plot'],
+	packages=find_packages('tasmania'),
 	#package_data={'': ['tests/*', '*.pickle']},
 	setup_requires=['setuptools_scm', 'pytest-runner'],
 	tests_require=['pytest'],

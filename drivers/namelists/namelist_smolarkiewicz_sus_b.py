@@ -52,7 +52,7 @@ topo_kwargs = {
 
 # Initial conditions
 init_time       = datetime(year=1992, month=2, day=20, hour=0)
-init_x_velocity = DataArray(1.0, attrs={'units': 'm s^-1'})
+init_x_velocity = DataArray(5.0, attrs={'units': 'm s^-1'})
 init_y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 isothermal      = False
 if isothermal:
@@ -87,11 +87,11 @@ smooth_at_every_stage = False
 # Prescribed surface heating
 tendency_of_air_potential_temperature_in_diagnostics = True
 amplitude_at_day_sw            		= DataArray(800.0, attrs={'units': 'W m^-2'})
-amplitude_at_day_fw            		= DataArray(800.0, attrs={'units': 'W m^-2'})
+amplitude_at_day_fw            		= DataArray(0.0, attrs={'units': 'W m^-2'})
 amplitude_at_night_sw               = DataArray(-75.0, attrs={'units': 'W m^-2'})
-amplitude_at_night_fw               = DataArray(-75.0, attrs={'units': 'W m^-2'})
+amplitude_at_night_fw               = DataArray(0.0, attrs={'units': 'W m^-2'})
 frequency_sw						= DataArray(np.pi/12.0, attrs={'units': 'h^-1'})
-frequency_fw						= DataArray(4.0*np.pi, attrs={'units': 'h^-1'})
+frequency_fw						= DataArray(0.0*np.pi, attrs={'units': 'h^-1'})
 attenuation_coefficient_at_day		= DataArray(1.0/600.0, attrs={'units': 'm^-1'})
 attenuation_coefficient_at_night    = DataArray(1.0/75.0, attrs={'units': 'm^-1'})
 characteristic_length               = DataArray(3.0 * _width.values.item(),
@@ -104,7 +104,7 @@ coriolis_parameter = None
 timestep = timedelta(seconds=10)
 niter    = int(20*60*60 / timestep.total_seconds())
 
-filename        = '../data/smolarkiewicz_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_wf4_f_cc.nc'.format(
+filename        = '../data/smolarkiewicz_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_f_sus.nc'.format(
 					time_integration_scheme, horizontal_flux_scheme, vertical_flux_scheme,
 					nx, ny, nz, int(timestep.total_seconds()), niter, topo_type,
 					int(_width.to_units('m').values.item()),

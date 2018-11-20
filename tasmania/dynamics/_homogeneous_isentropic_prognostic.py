@@ -937,7 +937,7 @@ class RK2(HomogeneousIsentropicPrognostic):
 		# Advance the isentropic density
 		if in_s_tnd is None:
 			out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
-										 	 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
+											 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy)
 		else:
 			out_s[i, j] = in_s[i, j] - dt * ((flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
 											 (flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
@@ -1485,7 +1485,7 @@ class RK3(HomogeneousIsentropicPrognostic):
 		k = gt.Index()
 
 		# Instantiate fields representing the first increments
-		out_s0  = gt.Equation()
+		out_s0	= gt.Equation()
 		out_su0 = gt.Equation()
 		out_sv0 = gt.Equation()
 		if self._moist_on:
@@ -1604,7 +1604,7 @@ class RK3(HomogeneousIsentropicPrognostic):
 		k = gt.Index()
 
 		# Instantiate fields representing the first increments
-		out_s1  = gt.Equation()
+		out_s1	= gt.Equation()
 		out_su1 = gt.Equation()
 		out_sv1 = gt.Equation()
 		if self._moist_on:

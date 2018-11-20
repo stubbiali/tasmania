@@ -66,7 +66,6 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				 backend=gt.mode.NUMPY, dtype=datatype):
 		"""
 		Constructor.
-
 		Parameters
 		----------
 		grid : grid
@@ -163,11 +162,11 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
 		# Keep track of the input parameters
-		self._damp_on                      = damp_on
+		self._damp_on					   = damp_on
 		self._damp_at_every_stage		   = damp_at_every_stage
-		self._smooth_on                    = smooth_on
+		self._smooth_on					   = smooth_on
 		self._smooth_at_every_stage		   = smooth_at_every_stage
-		self._smooth_moist_on              = smooth_moist_on
+		self._smooth_moist_on			   = smooth_moist_on
 		self._smooth_moist_at_every_stage  = smooth_moist_at_every_stage
 		self._dtype						   = dtype
 
@@ -314,7 +313,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 
 			# ...and allocate memory to store damped fields
 			if not hasattr(self, '_s_damped'):
-				self._s_damped  = np.zeros((nx, ny, nz), dtype=dtype)
+				self._s_damped	= np.zeros((nx, ny, nz), dtype=dtype)
 				self._su_damped = np.zeros((nx, ny, nz), dtype=dtype)
 				self._sv_damped = np.zeros((nx, ny, nz), dtype=dtype)
 
@@ -322,17 +321,17 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				damped = True
 
 				# Extract the current prognostic model variables
-				s_now_  = raw_state['air_isentropic_density']
+				s_now_	= raw_state['air_isentropic_density']
 				su_now_ = raw_state['x_momentum_isentropic']
 				sv_now_ = raw_state['y_momentum_isentropic']
 
 				# Extract the stepped prognostic model variables
-				s_new_  = raw_state_new['air_isentropic_density']
+				s_new_	= raw_state_new['air_isentropic_density']
 				su_new_ = raw_state_new['x_momentum_isentropic']
 				sv_new_ = raw_state_new['y_momentum_isentropic']
 
 				# Apply vertical damping
-				self._damper(timestep, s_now_,  s_new_,  self._s_ref,  self._s_damped)
+				self._damper(timestep, s_now_,	s_new_,  self._s_ref,  self._s_damped)
 				self._damper(timestep, su_now_, su_new_, self._su_ref, self._su_damped)
 				self._damper(timestep, sv_now_, sv_new_, self._sv_ref, self._sv_damped)
 
@@ -407,7 +406,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 		self._water_constituent.get_density_of_water_constituent(s_now, qv_now, self._sqv_now)
 		self._water_constituent.get_density_of_water_constituent(s_now, qc_now, self._sqc_now)
 		self._water_constituent.get_density_of_water_constituent(s_now, qr_now, self._sqr_now)
-		raw_state['isentropic_density_of_water_vapor']         = self._sqv_now
+		raw_state['isentropic_density_of_water_vapor']		   = self._sqv_now
 		raw_state['isentropic_density_of_cloud_liquid_water']  = self._sqc_now
 		raw_state['isentropic_density_of_precipitation_water'] = self._sqr_now
 
@@ -428,7 +427,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 
 			# ...and allocate memory to store damped fields
 			if not hasattr(self, '_s_damped'):
-				self._s_damped   = np.zeros((nx, ny, nz), dtype=dtype)
+				self._s_damped	 = np.zeros((nx, ny, nz), dtype=dtype)
 				self._su_damped  = np.zeros((nx, ny, nz), dtype=dtype)
 				self._sv_damped  = np.zeros((nx, ny, nz), dtype=dtype)
 				self._sqv_damped = np.zeros((nx, ny, nz), dtype=dtype)
@@ -439,7 +438,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				damped = True
 
 				# Extract the current prognostic model variables
-				s_now_   = raw_state['air_isentropic_density']
+				s_now_	 = raw_state['air_isentropic_density']
 				su_now_  = raw_state['x_momentum_isentropic']
 				sv_now_  = raw_state['y_momentum_isentropic']
 				sqv_now_ = raw_state['isentropic_density_of_water_vapor']
@@ -447,7 +446,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				sqr_now_ = raw_state['isentropic_density_of_precipitation_water']
 
 				# Extract the stepped prognostic model variables
-				s_new_   = raw_state_new['air_isentropic_density']
+				s_new_	 = raw_state_new['air_isentropic_density']
 				su_new_  = raw_state_new['x_momentum_isentropic']
 				sv_new_  = raw_state_new['y_momentum_isentropic']
 				sqv_new_ = raw_state_new['isentropic_density_of_water_vapor']
@@ -455,7 +454,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				sqr_new_ = raw_state_new['isentropic_density_of_precipitation_water']
 
 				# Apply vertical damping
-				self._damper(timestep, s_now_,   s_new_,   self._s_ref,   self._s_damped)
+				self._damper(timestep, s_now_,	 s_new_,   self._s_ref,   self._s_damped)
 				self._damper(timestep, su_now_,  su_new_,  self._su_ref,  self._su_damped)
 				self._damper(timestep, sv_now_,  sv_new_,  self._sv_ref,  self._sv_damped)
 				self._damper(timestep, sqv_now_, sqv_new_, self._sqv_ref, self._sqv_damped)
@@ -463,9 +462,9 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				self._damper(timestep, sqr_now_, sqr_new_, self._sqr_ref, self._sqr_damped)
 
 		# Properly set pointers to current solution
-		s_new   = self._s_damped if damped else raw_state_new['air_isentropic_density']
-		su_new  = self._su_damped if damped else raw_state_new['x_momentum_isentropic']
-		sv_new  = self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
+		s_new	= self._s_damped if damped else raw_state_new['air_isentropic_density']
+		su_new	= self._su_damped if damped else raw_state_new['x_momentum_isentropic']
+		sv_new	= self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
 		sqv_new = self._sqv_damped if damped else \
 				  raw_state_new['isentropic_density_of_water_vapor']
 		sqc_new = self._sqc_damped if damped else \
