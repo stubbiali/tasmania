@@ -27,7 +27,8 @@ import tasmania as taz
 #
 # User inputs
 #
-filename = '../tests/baseline_datasets/isentropic_dry.nc'
+filename = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+		   'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_f_cc.nc'
 
 x = None
 y = None
@@ -60,16 +61,12 @@ zaxis_units = 'km'
 zaxis_x = None
 zaxis_y = None
 
-topography_units = 'km'
-topography_x = None
-topography_y = None
-
 drawer_properties = {
 	'fontsize': 16,
 	'x_step': 2,
 	'y_step': 2,
-	'arrow_scale': None,
-	'arrow_scale_units': None, # 'width', 'height', 'dots', 'inches', 'x', 'y', 'xy'
+	'arrow_scale': 0.06,
+	'arrow_scale_units': 'dots', # 'width', 'height', 'dots', 'inches', 'x', 'y', 'xy'
 	'arrow_headwidth': 5.0,
 	'cmap_name': None,
 	'cbar_on': False,
@@ -84,10 +81,11 @@ drawer_properties = {
 	'cbar_orientation': 'horizontal',
 	'cbar_ax': None,
 	'quiverkey_on': True,
-	'quiverkey_loc': (0.83, 1.03),
+	'quiverkey_loc': (0.75, 0.03), #(0.83, 1.03),
 	'quiverkey_length': 1.0,
 	'quiverkey_label': '1 m s$^{-1}$',
 	'quiverkey_label_loc': 'E',
+	'quiverkey_color': None,
 	'quiverkey_fontproperties': {'size': 15},
 	'draw_vertical_levels': False,
 }
@@ -112,8 +110,6 @@ def get_drawer():
 		yaxis_x=yaxis_x, yaxis_z=yaxis_z,
 		zaxis_name=zaxis_name, zaxis_units=zaxis_units,
 		zaxis_x=zaxis_x, zaxis_y=zaxis_y,
-		topography_units=topography_units,
-		topography_x=topography_x, topography_y=topography_y,
 		properties=drawer_properties
 	)
 

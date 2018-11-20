@@ -20,6 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	FakeComponent
+	OfflineDiagnosticComponent
+	RMSD(OfflineDiagnosticComponent)
+	RRMSD(OfflineDiagnosticComponent)
+"""
 import abc
 import numpy as np
 from sympl._core.base_components import InputChecker, DiagnosticChecker

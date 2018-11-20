@@ -27,36 +27,40 @@ import tasmania as taz
 # User inputs
 #
 modules = [
-	'make_rrmsd',
-	'make_rrmsd_1',
+	'make_contourf',
+	'make_rectangle',
+	'make_circle',
+	'make_topography2d',
+	'make_quiver',
 ]
 
-tlevel = -1
+tlevel = 48
 
 figure_properties = {
-	'fontsize': 16,
-	'figsize': (7, 7),
-	'tight_layout': True,
+	#'fontsize': 16,
+	#'figsize': (6, 7),
+	#'tight_layout': False,
+	#'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
 }
 
 axes_properties = {
 	'fontsize': 16,
 	'title_center': '',
-	'title_left': '',
-	'title_right': '',
-	'x_label': 'Time (UTC)',
-	'x_lim': (-0.5, 24.5),
+	'title_left': 'Surface velocity [m s$^{-1}$]',
+	'title_right': '08:00:00',
+	'x_label': '$x$ [km]', #'Time (UTC)',
+	'x_lim': (-200, 200), #(-190, 210),
 	'invert_xaxis': False,
 	'x_scale': None,
-	'x_ticks': range(0, 25, 6),
-	'x_ticklabels': ('8:00', '14:00', '20:00', '2:00', '8:00'),
+	'x_ticks': (-200, -100, 0, 100, 200), #(-190, -90, 10, 110, 210),
+	'x_ticklabels': (-200, -100, 0, 100, 200),
 	'xaxis_minor_ticks_visible': False,
 	'xaxis_visible': True,
-	'y_label': 'RRMSD of $x$-velocity [-]',
-	'y_lim': (0.01, 0.15),
+	'y_label': '$y$ [km]',
+	'y_lim': (-200, 200), # (0.01, 0.15),
 	'invert_yaxis': False,
 	'y_scale': None,
-	'y_ticks': None,
+	'y_ticks': (-200, -100, 0, 100, 200),
 	'y_ticklabels': None, #['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
 	'yaxis_minor_ticks_visible': False,
 	'yaxis_visible': True,
@@ -68,12 +72,14 @@ axes_properties = {
 	'z_ticklabels': None,
 	'zaxis_minor_ticks_visible': True,
 	'zaxis_visible': True,
-	'legend_on': True,
-	'legend_loc': 'best',
+	'legend_on': False,
+	'legend_loc': 'upper right', #'center left',
+	'legend_bbox_to_anchor': None, #(1.04, 0.5),
 	'legend_framealpha': 1.0,
-	'text': None,
-	'text_loc': '',
-	'grid_on': True,
+	'legend_ncol': 1,
+	'text': None, #'$w_{\\mathtt{FW}} = 0$',
+	'text_loc': 'upper right',
+	'grid_on': False,
 	'grid_properties': {'linestyle': ':'},
 }
 

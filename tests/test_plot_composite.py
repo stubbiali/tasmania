@@ -362,7 +362,8 @@ def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
 def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
-								    isentropic_moist_sedimentation_evaporation_data):
+					 isentropic_moist_sedimentation_evaporation_data,
+					 drawer_topography1d):
 	# Make sure the folder tests/baseline_images/test_plot_composite does exist
 	baseline_dir = 'baseline_images/test_plot_composite'
 	if not os.path.exists(baseline_dir):
@@ -381,8 +382,8 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	# Plot#1
 	#
 	# Load data
-	grid, states = isentropic_moist_sedimentation_evaporation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	grid1, states = isentropic_moist_sedimentation_evaporation_data
+	grid1.update_topography(states[-1]['time'] - states[0]['time'])
 	state1 = states[-1]
 
 	# Index identifying the cross-section to visualize
@@ -401,8 +402,11 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = Contourf(grid, field_name, field_units, y=y, xaxis_units='km',
+	drawer = Contourf(grid1, field_name, field_units, y=y, xaxis_units='km',
 					  zaxis_name='height', zaxis_units='km', properties=drawer_properties)
+
+	# Instantiate the drawer plotting the topography
+	topo_drawer1 = drawer_topography1d(grid1, topo_units='km', y=y, axis_units='km')
 
 	# Axes properties
 	axes_properties = {
@@ -418,14 +422,14 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the left collaborator
-	plot1 = Plot(drawer, False, axes_properties=axes_properties)
+	plot1 = Plot((drawer, topo_drawer1), False, axes_properties=axes_properties)
 
 	#
 	# Plot#2
 	#
 	# Load data
-	grid, states = isentropic_moist_sedimentation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	grid2, states = isentropic_moist_sedimentation_data
+	grid2.update_topography(states[-1]['time'] - states[0]['time'])
 	state2 = states[-1]
 
 	# Index identifying the cross-section to visualize
@@ -446,8 +450,11 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the drawer
-	drawer = Contourf(grid, field_name, field_units, y=y, xaxis_units='km',
+	drawer = Contourf(grid2, field_name, field_units, y=y, xaxis_units='km',
 					  zaxis_name='height', zaxis_units='km', properties=drawer_properties)
+
+	# Instantiate the drawer plotting the topography
+	topo_drawer2 = drawer_topography1d(grid2, topo_units='km', y=y, axis_units='km')
 
 	# Axes properties
 	axes_properties = {
@@ -463,7 +470,7 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the right collaborator
-	plot2 = Plot(drawer, False, axes_properties=axes_properties)
+	plot2 = Plot((drawer, topo_drawer2), False, axes_properties=axes_properties)
 
 	#
 	# PlotComposite
@@ -479,7 +486,7 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	monitor = PlotComposite(1, 2, (plot1, plot2), False, figure_properties)
 
 	# Plot
-	monitor.store((state1, state2), save_dest=save_dest)
+	monitor.store(((state1, state1), (state2, state2)), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -488,7 +495,8 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
 def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
-					 isentropic_moist_sedimentation_evaporation_data):
+					 isentropic_moist_sedimentation_evaporation_data,
+					 drawer_topography1d):
 	# Make sure the folder tests/baseline_images/test_plot_composite does exist
 	baseline_dir = 'baseline_images/test_plot_composite'
 	if not os.path.exists(baseline_dir):
@@ -503,8 +511,8 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	# Plot#1
 	#
 	# Load data
-	grid, states = isentropic_moist_sedimentation_evaporation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	grid1, states = isentropic_moist_sedimentation_evaporation_data
+	grid1.update_topography(states[-1]['time'] - states[0]['time'])
 	state1 = states[-1]
 
 	# Index identifying the cross-section to visualize
@@ -524,10 +532,13 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 
 	# Instantiate the drawer
 	drawer = Contourf(
-		grid, 'x_velocity_at_u_locations', 'm s^-1', y=y,
+		grid1, 'x_velocity_at_u_locations', 'm s^-1', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
 		properties=drawer_properties,
 	)
+
+	# Instantiate the drawer plotting the topography
+	topo_drawer1 = drawer_topography1d(grid1, topo_units='km', y=y, axis_units='km')
 
 	# Axes properties
 	axes_properties = {
@@ -543,14 +554,14 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the upper-left collaborator
-	plot1 = Plot(drawer, False, axes_properties=axes_properties)
+	plot1 = Plot((drawer, topo_drawer1), False, axes_properties=axes_properties)
 
 	#
 	# Plot#2
 	#
 	# Load data
-	grid, states = isentropic_moist_sedimentation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	grid2, states = isentropic_moist_sedimentation_data
+	grid2.update_topography(states[-1]['time'] - states[0]['time'])
 	state2 = states[-1]
 
 	# Index identifying the cross-section to visualize
@@ -572,10 +583,13 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 
 	# Instantiate the drawer
 	drawer = Contourf(
-		grid, 'x_velocity_at_u_locations', 'm s^-1', y=y,
+		grid2, 'x_velocity_at_u_locations', 'm s^-1', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
 		properties=drawer_properties,
 	)
+
+	# Instantiate the drawer plotting the topography
+	topo_drawer2 = drawer_topography1d(grid2, topo_units='km', y=y, axis_units='km')
 
 	# Axes properties
 	axes_properties = {
@@ -591,7 +605,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the upper-right collaborator
-	plot2 = Plot(drawer, False, axes_properties=axes_properties)
+	plot2 = Plot((topo_drawer2, drawer), False, axes_properties=axes_properties)
 
 	#
 	# Plot#3
@@ -611,7 +625,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 
 	# Instantiate the drawer
 	drawer = Contourf(
-		grid, 'air_pressure_on_interface_levels', 'hPa', y=y,
+		grid1, 'air_pressure_on_interface_levels', 'hPa', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
 		properties=drawer_properties,
 	)
@@ -630,7 +644,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the lower-left collaborator
-	plot3 = Plot(drawer, False, axes_properties=axes_properties)
+	plot3 = Plot((drawer, topo_drawer1), False, axes_properties=axes_properties)
 
 	#
 	# Plot#4
@@ -651,7 +665,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 
 	# Instantiate the drawer
 	drawer = Contourf(
-		grid, 'air_pressure_on_interface_levels', 'hPa', y=y,
+		grid2, 'air_pressure_on_interface_levels', 'hPa', y=y,
 		xaxis_units='km', zaxis_name='height', zaxis_units='km',
 		properties=drawer_properties,
 	)
@@ -670,7 +684,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	}
 
 	# Instantiate the lower-left collaborator
-	plot4 = Plot(drawer, False, axes_properties=axes_properties)
+	plot4 = Plot((drawer, topo_drawer2), False, axes_properties=axes_properties)
 
 	#
 	# PlotComposite
@@ -686,7 +700,7 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 	monitor = PlotComposite(2, 2, (plot1, plot2, plot3, plot4), False, figure_properties)
 
 	# Plot
-	monitor.store((state1, state2, state1, state2), save_dest=save_dest)
+	monitor.store(((state1, )*2, (state2, )*2, )*2, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
