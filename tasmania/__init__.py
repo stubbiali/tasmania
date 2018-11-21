@@ -20,21 +20,24 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.core.dycore import DynamicalCore
+from tasmania.core.dycore import DynamicalCore, SequentialSplittingDynamicalCore
 from tasmania.core.model import Model
 from tasmania.core.offline_diagnostics import OfflineDiagnosticComponent, RMSD, RRMSD
 from tasmania.core.physics_composite import \
 	DiagnosticComponentComposite, PhysicsComponentComposite, \
 	ConcurrentCoupling, ParallelSplitting, SequentialUpdateSplitting
 from tasmania.dynamics.diagnostics import \
-	HorizontalVelocity, IsentropicDiagnostics as RawIsentropicDiagnostics, WaterConstituent
-from tasmania.dynamics.homogeneous_isentropic_dycore import HomogeneousIsentropicDynamicalCore
+	HorizontalVelocity, \
+	IsentropicDiagnostics as RawIsentropicDiagnostics, \
+	WaterConstituent
+from tasmania.dynamics.homogeneous_isentropic_dycore import \
+	HomogeneousIsentropicDynamicalCore, SUSHomogeneousIsentropicDynamicalCore, \
+	SSUSHomogeneousIsentropicDynamicalCore
 from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
 from tasmania.dynamics.horizontal_smoothing import HorizontalSmoothing
 from tasmania.dynamics.isentropic_dycore import IsentropicDynamicalCore
 from tasmania.dynamics.isentropic_fluxes import \
-	HorizontalIsentropicFlux, VerticalIsentropicFlux, \
-	HorizontalHomogeneousIsentropicFlux
+	HorizontalIsentropicFlux, VerticalIsentropicFlux, HorizontalHomogeneousIsentropicFlux
 from tasmania.dynamics.isentropic_prognostic import IsentropicPrognostic
 from tasmania.dynamics.isentropic_state import \
 	get_default_isentropic_state, get_isothermal_isentropic_state
@@ -72,7 +75,7 @@ from tasmania.utils.storage_utils import load_netcdf_dataset, NetCDFMonitor
 __version__ = '0.2.0'
 
 __all__ = (
-	DynamicalCore,
+	DynamicalCore, SequentialSplittingDynamicalCore,
 	Model,
 	DiagnosticComponentComposite, PhysicsComponentComposite,
 	OfflineDiagnosticComponent, RMSD, RRMSD,
@@ -82,6 +85,7 @@ __all__ = (
 	HorizontalHomogeneousIsentropicFlux,
 	IsentropicPrognostic, RawIsentropicDiagnostics,
 	IsentropicDynamicalCore, HomogeneousIsentropicDynamicalCore,
+	SUSHomogeneousIsentropicDynamicalCore, SSUSHomogeneousIsentropicDynamicalCore,
 	get_default_isentropic_state, get_isothermal_isentropic_state,
 	SedimentationFlux,
 	HorizontalVelocity, WaterConstituent,
