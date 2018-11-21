@@ -22,8 +22,8 @@
 #
 
 NAMELISTS_FROM=(
-	namelists/namelist_smolarkiewicz_sus_1.py
-	namelists/namelist_smolarkiewicz_ssus_1.py
+	namelists/namelist_smolarkiewicz_sus.py
+	namelists/namelist_smolarkiewicz_ssus.py
 	namelists/namelist_smolarkiewicz_sus_4.py
 	namelists/namelist_smolarkiewicz_ssus_4.py
 )

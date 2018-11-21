@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-IMAGE_NAME=tasmania:develop
+IMAGE_NAME=tasmania:master
 CONTAINER_NAME=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
 
 echo "About to fire up a containter named '$CONTAINER_NAME' from the image '$IMAGE_NAME'." 
@@ -48,6 +48,6 @@ docker exec -it				\
 					 python get-pip.py --user; \
 					 cd tasmania; \
 					 make distclean; \
-					 python -m pip install -vvv --user -e .; \
+					 python -m pip install --user -e .; \
 					 cd ..; \
 					 bash"

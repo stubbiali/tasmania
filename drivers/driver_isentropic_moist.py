@@ -65,39 +65,6 @@ dycore = taz.IsentropicDynamicalCore(grid, moist_on=True,
                                      adiabatic_flow=True, sedimentation_on=False,
                                      backend=gt.mode.NUMPY, dtype=np.float64)
 
-# The artist generating the left subplot
-subplot1 = taz.Plot2d(grid, plot_function=taz.make_contourf_xz,
-                      field_to_plot='x_velocity_at_u_locations', level=0,
-                      plot_properties={'fontsize': 16,
-                                       'title_left': '$x$-velocity [m s$^{-1}$]',
-                                       'x_label': '$x$ [km]', 'x_lim': [0, 500],
-                                       'y_label': '$z$ [km]', 'y_lim': [0, 14]},
-                      plot_function_kwargs={'fontsize': 16,
-                                            'x_factor': 1e-3, 'z_factor': 1e-3,
-                                            'cmap_name': 'BuRd', 'cbar_on': True,
-                                            'cbar_levels': 18, 'cbar_ticks_step': 2,
-                                            'cbar_center': 15, 'cbar_half_width': 8.5,
-                                            'cbar_orientation': 'horizontal'})
-
-# The artist generating the right subplot
-subplot2 = taz.Plot2d(grid, plot_function=taz.make_contourf_xz,
-                      field_to_plot='mass_fraction_of_cloud_liquid_water_in_air', level=0,
-                      plot_properties={'fontsize': 16,
-                                       'title_left': 'Cloud liquid water [g kg$^{-1}$]',
-                                       'x_label': '$x$ [km]', 'x_lim': [0, 500],
-                                       'y_lim': [0, 14], 'yaxis_visible': False},
-                      plot_function_kwargs={'fontsize': 16,
-                                            'x_factor': 1e-3, 'z_factor': 1e-3,
-                                            'field_factor': 1e3,
-                                            'cmap_name': 'Blues', 'cbar_on': True,
-                                            'cbar_levels': 18, 'cbar_ticks_step': 4,
-                                            'cbar_orientation': 'horizontal'})
-
-# The monitor encompassing and coordinating the two artists
-monitor = taz.SubplotsAssembler(nrows=1, ncols=2, artists=(subplot1, subplot2),
-                                interactive=True, figsize=(12, 7), fontsize=16,
-                                tight_layout=True)
-
 # Create a monitor to dump the solution into a NetCDF file
 filename = '../tests/baseline_datasets/isentropic_moist.nc'
 if os.path.exists(filename):
@@ -126,11 +93,6 @@ for i in range(niter):
 	state.update(state_new)
 
 	if (i + 1) % 60 == 0:
-		# Plot the solution
-		subplot1.plot_properties['title_right'] = str((i + 1) * timestep)
-		subplot2.plot_properties['title_right'] = str((i + 1) * timestep)
-		fig = monitor.store((state, state))
-
 		# Save the solution
 		netcdf_monitor.store(state)
 

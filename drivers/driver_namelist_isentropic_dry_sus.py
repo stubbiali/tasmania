@@ -57,21 +57,26 @@ vc = taz.IsentropicVelocityComponents(grid, horizontal_boundary_type=nl.horizont
 									  reference_state=state, backend=nl.backend, dtype=nl.dtype)
 
 # Wrap the physical components in a SequentialUpdateSplitting object
-sus = taz.SequentialUpdateSplitting(dv, pg, vc, time_integration_scheme='forward_euler',
-									grid=grid, horizontal_boundary_type=nl.horizontal_boundary_type)
+sus = taz.SequentialUpdateSplitting(
+	dv, pg, vc, 
+	time_integration_scheme=nl.coupling_time_integration_scheme,
+	grid=grid, horizontal_boundary_type=nl.horizontal_boundary_type
+)
 
 # Instantiate the dry isentropic dynamical core
-dycore = taz.HomogeneousIsentropicDynamicalCore(grid, moist_on=False,
-									 			time_integration_scheme=nl.time_integration_scheme,
-									 			horizontal_flux_scheme=nl.horizontal_flux_scheme,
-									 			horizontal_boundary_type=nl.horizontal_boundary_type,
-												damp_on=nl.damp_on, damp_type=nl.damp_type,
-												damp_depth=nl.damp_depth, damp_max=nl.damp_max,
-												damp_at_every_stage=nl.damp_at_every_stage,
-												smooth_on=nl.smooth_on, smooth_type=nl.smooth_type,
-												smooth_coeff=nl.smooth_coeff,
-												smooth_at_every_stage=nl.smooth_at_every_stage,
-												backend=nl.backend, dtype=nl.dtype)
+dycore = taz.HomogeneousIsentropicDynamicalCore(
+	grid, moist_on=False,
+	time_integration_scheme=nl.time_integration_scheme,
+	horizontal_flux_scheme=nl.horizontal_flux_scheme,
+	horizontal_boundary_type=nl.horizontal_boundary_type,
+	damp_on=nl.damp_on, damp_type=nl.damp_type,
+	damp_depth=nl.damp_depth, damp_max=nl.damp_max,
+	damp_at_every_stage=False,
+	smooth_on=nl.smooth_on, smooth_type=nl.smooth_type,
+	smooth_coeff=nl.smooth_coeff,
+	smooth_at_every_stage=False,
+	backend=nl.backend, dtype=nl.dtype
+)
 
 # Create a monitor to dump the solution into a NetCDF file
 if nl.filename is not None:
