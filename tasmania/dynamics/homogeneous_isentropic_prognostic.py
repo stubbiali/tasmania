@@ -55,12 +55,14 @@ class HomogeneousIsentropicPrognostic:
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, grid, moist_on, horizontal_boundary_conditions,
+	def __init__(self, mode, grid, moist_on, horizontal_boundary_conditions,
 				 horizontal_flux_scheme, backend, dtype=datatype):
 		"""
 		Constructor.
 		Parameters
 		----------
+		mode : str
+			TODO
 		grid : grid
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
@@ -83,8 +85,9 @@ class HomogeneousIsentropicPrognostic:
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
 		# Keep track of the input parameters
-		self._grid			= grid
-		self._moist_on		= moist_on
+		self._mode			= mode if mode in ['x', 'y', 'xy'] else 'xy'
+		self._grid          = grid
+		self._moist_on      = moist_on
 		self._hboundary		= horizontal_boundary_conditions
 		self._hflux_scheme	= horizontal_flux_scheme
 		self._backend		= backend
@@ -182,7 +185,7 @@ class HomogeneousIsentropicPrognostic:
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist_on, horizontal_boundary_conditions,
+	def factory(scheme, mode, grid, moist_on, horizontal_boundary_conditions,
 				horizontal_flux_scheme, backend, dtype=datatype):
 		"""
 		Static method returning an instance of the derived class implementing
@@ -198,6 +201,9 @@ class HomogeneousIsentropicPrognostic:
 				`COSMO model <http://www.cosmo-model.org>`_; this method is
 				nominally second-order, and third-order for linear problems;
 			* 'rk3', for the three-stages, third-order RK scheme.
+
+		mode : str
+			TODO
 		grid : grid
 			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
 		moist_on : bool
@@ -224,7 +230,7 @@ class HomogeneousIsentropicPrognostic:
 			by :data:`scheme`.
 		"""
 		import tasmania.dynamics._homogeneous_isentropic_prognostic as module
-		arg_list = [grid, moist_on, horizontal_boundary_conditions,
+		arg_list = [mode, grid, moist_on, horizontal_boundary_conditions,
 					horizontal_flux_scheme, backend, dtype]
 
 		if scheme == 'forward_euler':
