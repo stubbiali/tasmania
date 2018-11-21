@@ -145,7 +145,7 @@ class Animation:
 						self._artist.axes_properties['title_right'] = time_str
 
 				# Create the frame
-				fig, _ = self._artist.store(self._states[n], fig=fig, show=False)
+				_ = self._artist.store(self._states[n], fig=fig, show=False)
 
 				# Let the writer grab the frame
 				writer.grab_frame()

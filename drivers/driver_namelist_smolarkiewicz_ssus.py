@@ -93,13 +93,14 @@ dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt,
 
 # Wrap the components in a SequentialUpdateSplitting object
 sus_bd = taz.SequentialUpdateSplitting(
-	cf, pg, psh, vf, dv, vc,
-	#pg, psh, vf, dv, vc,
+	#cf, pg, psh, vf, dv, vc,
+	cf, pg, psh, vf, vc,
 	time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )
 sus_ad = taz.SequentialUpdateSplitting(
-	dv, psh, vf, dv, pg, cf, vc,
+	#dv, psh, vf, dv, pg, cf, vc,
+	dv, psh, vf, pg, cf, vc,
 	time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )
@@ -126,47 +127,6 @@ dycore = taz.HomogeneousIsentropicDynamicalCore(
 	# Implementation details
 	backend=nl.backend, dtype=nl.dtype
 )
-
-# The artist and its collaborators generating the left subplot
-coll1 = taz.Plot2d(grid, plot_function=taz.make_contourf_xy,
-				   field_to_plot='horizontal_velocity', level=-1,
-				   plot_function_kwargs={'fontsize': 16,
-										 'x_factor': 1e-3, 'y_factor': 1e-3,
-										 'cmap_name': 'BuRd', 'cbar_on': True,
-										 'cbar_levels': 18, 'cbar_ticks_step': 4,
-										 'cbar_center': 15,  # 'cbar_half_width': 9.5,
-										 'cbar_orientation': 'horizontal',
-										 'cbar_x_label': 'Horizontal velocity [m s$^{-1}$]'})
-coll2 = taz.Plot2d(grid, plot_function=taz.make_quiver_xy,
-				   field_to_plot='horizontal_velocity', level=-1,
-				   plot_function_kwargs={'fontsize': 16,
-										 'x_factor': 1e-3, 'x_step': 2,
-										 'y_factor': 1e-3, 'y_step': 2})
-subplot1 = taz.PlotsOverlapper((coll1, coll2), fontsize=16,
-							   plot_properties={'fontsize': 16,
-												'title_left': '$\\theta = 300$ K',
-												'x_label': '$x$ [km]', 'x_lim': [-250, 250],
-												'y_label': '$y$ [km]', 'y_lim': [-250, 250]})
-
-# The artist generating the right subplot
-subplot2 = taz.Plot2d(grid, plot_function=taz.make_contourf_xz,
-					  field_to_plot='x_velocity_at_u_locations',
-					  level=int(nl.ny / 2), fontsize=16,
-					  plot_properties={'fontsize': 16, 'title_left': '$y = 0$ km',
-									   'x_label': '$x$ [km]', 'x_lim': [-250, 250],
-									   'y_label': '$z$ [km]', 'y_lim': [0, 14]},
-					  plot_function_kwargs={'fontsize': 16,
-											'x_factor': 1e-3, 'z_factor': 1e-3,
-											'cmap_name': 'BuRd', 'cbar_on': True,
-											'cbar_levels': 18, 'cbar_ticks_step': 4,
-											'cbar_center': 15,  # 'cbar_half_width': 9.5,
-											'cbar_orientation': 'horizontal',
-											'cbar_x_label': '$x$-velocity [m s$^{-1}$]'})
-
-# The monitor encompassing and coordinating the two artists
-monitor = taz.SubplotsAssembler(nrows=1, ncols=2, artists=(subplot1, subplot2),
-								interactive=True, figsize=(12, 7), fontsize=16,
-								tight_layout=True)
 
 # Create a monitor to dump to the solution into a NetCDF file
 if nl.filename is not None and nl.save_frequency > 0:
@@ -233,17 +193,10 @@ for i in range(nt):
 	to_save = (nl.filename is not None) and \
 			  (((nl.save_frequency > 0) and
 				((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
-	to_plot = (nl.plot_frequency > 0) and ((i + 1) % nl.plot_frequency == 0)
 
 	if to_save:
 		# Save the solution
 		netcdf_monitor.store(state)
-
-	if to_plot:
-		# Plot the solution
-		subplot1.plot_properties['title_right'] = str((i + 1) * dt)
-		subplot2.plot_properties['title_right'] = str((i + 1) * dt)
-		fig = monitor.store(((state, state), state), show=True)
 
 print('Simulation successfully completed. HOORAY!')
 

@@ -23,8 +23,13 @@
 import os
 import pytest
 
+from tasmania.plot.animation import Animation
+from tasmania.plot.contourf import Contourf
+from tasmania.plot.monitors import Plot, PlotComposite
+from tasmania.plot.profile import LineProfile
 
-def test_animation_plot_1d(isentropic_moist_sedimentation_data):
+
+def test_profile(isentropic_moist_sedimentation_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
 	baseline_dir = 'baseline_images/test_animation'
 	if not os.path.exists(baseline_dir):
@@ -36,22 +41,39 @@ def test_animation_plot_1d(isentropic_moist_sedimentation_data):
 		os.makedirs(result_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	filename = 'test_animation_plot_1d.mp4'
+	filename = 'test_profile.mp4'
 	baseline_img = os.path.join(baseline_dir, filename)
 	result_img = os.path.join(result_dir, filename)
 	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
 
 	# Field to plot
-	field_to_plot = 'precipitation'
+	field_name  = 'precipitation'
+	field_units = 'mm h^-1'
 
 	# Grab data
 	grid, states = isentropic_moist_sedimentation_data
 
 	# Indices identifying the cross-line to visualize
-	levels = {1: 0, 2: -1}
+	y, z = 0, -1
 
-	# Plot properties
-	plot_properties = {
+	# Drawer properties
+	drawer_properties = {
+		'linecolor': 'blue',
+		'linestyle': '-',
+		'linewidth': 1.5,
+	}
+
+	# Instantiate the drawer
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
+
+	# Figure and axes properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (7, 7),
+		'tight_layout': True,
+	}
+	axes_properties = {
 		'fontsize': 16,
 		'title_left': 'Precipitation [mm h$^{-1}$]',
 		'x_label': '$x$ [km]',
@@ -60,25 +82,11 @@ def test_animation_plot_1d(isentropic_moist_sedimentation_data):
 		'grid_on': True,
 	}
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'x_factor': 1e-3,
-		'y_factor': 1.,
-		'linecolor': 'blue',
-		'linestyle': '-',
-		'linewidth': 1.5,
-	}
-		
-	# Instantiate the monitor which generates the framework
-	from tasmania.plot.plot_monitors import Plot1d as Plot
-	from tasmania.plot.profile_1d import plot_horizontal_profile as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
-				   fontsize=16, plot_properties=plot_properties,
-				   plot_function_kwargs=plot_function_kwargs)
+	# Instantiate the monitor
+	monitor = Plot(drawer, False, figure_properties, axes_properties)
 
 	# Create the animation
-	from tasmania.plot.animation import Animation
-	animation = Animation(monitor, fontsize=16, figsize=[7, 7], print_time='elapsed', fps=8)
+	animation = Animation(monitor, print_time='elapsed', fps=8)
 	for state in states:
 		animation.store(state)
 	animation.run(save_dest=save_dest)
@@ -87,8 +95,8 @@ def test_animation_plot_1d(isentropic_moist_sedimentation_data):
 	assert os.path.exists(save_dest)
 
 
-def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
-									isentropic_moist_sedimentation_evaporation_data):
+def test_plot_composite(isentropic_moist_sedimentation_data,
+						isentropic_moist_sedimentation_evaporation_data):
 	# Make sure the folder tests/baseline_images/test_animation does exist
 	baseline_dir = 'baseline_images/test_animation'
 	if not os.path.exists(baseline_dir):
@@ -100,87 +108,98 @@ def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
 		os.makedirs(result_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	filename = 'test_animation_plot_1d_overlapper.mp4'
+	filename = 'test_plot_composite.mp4'
 	baseline_img = os.path.join(baseline_dir, filename)
 	result_img = os.path.join(result_dir, filename)
 	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
 
 	# Field to plot
-	field_to_plot = 'accumulated_precipitation'
+	field_name  = 'accumulated_precipitation'
+	field_units = 'mm'
 
 	#
-	# Plot1d#1
+	# Plot#1
 	#
-	# Grab data
+	# Load data
 	grid, states1 = isentropic_moist_sedimentation_evaporation_data
 
 	# Indices identifying the cross-line to visualize
-	levels = {1: 0, 2: -1}
+	y, z = 0, -1
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1.,
+	# Drawer properties
+	drawer_properties = {
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
-		'legend_label': 'LF, evap. ON',
 	}
-	
-	# Instantiate the monitor
-	from tasmania.plot.plot_monitors import Plot1d as Plot
-	from tasmania.plot.profile_1d import plot_horizontal_profile as plot_function
-	monitor1 = Plot(grid, plot_function, field_to_plot, levels,
-					interactive=False, plot_function_kwargs=plot_function_kwargs)
+
+	# Instantiate the drawer
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
+
+	# Axes properties
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'Leapfrog',
+		'x_label': '$x$ [km]',
+		'x_lim': [0, 500],
+		'y_label': 'Accumulated precipitation [mm]',
+		'y_lim': [0, 2.0],
+		'grid_on': True,
+	}
+
+	# Instantiate the left collaborator
+	plot1 = Plot(drawer, False, axes_properties=axes_properties)
 
 	#
-	# Plot1d#2
+	# Plot#2
 	#
-	# Grab data
+	# Load data
 	grid, states2 = isentropic_moist_sedimentation_data
 
 	# Indices identifying the cross-line to visualize
-	levels = {1: 0, 2: -1}
+	y, z = 0, -1
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
-		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1.,
-		'linecolor': 'green',
+	# Drawer properties
+	drawer_properties = {
+		'linecolor': 'red',
 		'linestyle': '--',
 		'linewidth': 1.5,
-		'legend_label': 'MC, evap. OFF',
+	}
+
+	# Instantiate the drawer
+	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
+						 axis_units='km', properties=drawer_properties)
+
+	# Axes properties
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'MacCormack',
+		'x_label': '$x$ [km]',
+		'x_lim': [0, 500],
+		'y_label': 'Accumulated precipitation [mm]',
+		'y_lim': [0, 2.0],
+		'grid_on': True,
+	}
+
+	# Instantiate the right collaborator
+	plot2 = Plot(drawer, False, axes_properties=axes_properties)
+
+	#
+	# PlotComposite
+	#
+	# Figure properties
+	figure_properties = {
+		'fontsize': 16,
+		'figsize': (8, 7),
+		'tight_layout': True,
 	}
 
 	# Instantiate the monitor
-	monitor2 = Plot(grid, plot_function, field_to_plot, levels, interactive=False,
-					plot_function_kwargs=plot_function_kwargs)
-
-	#
-	# PlotsOverlapper
-	#
-	# Plot properties
-	plot_properties = {
-		'fontsize': 16,
-		'title_left': 'Accumulated precipitation [mm]',
-		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_lim': [0, 1.0],
-		'grid_on': True,
-		'legend_on': True,
-		'legend_loc': 'best',
-	}
-
-	# Instantiate the artist which generates the frames
-	from tasmania.plot.composite import PlotsOverlapper
-	assembler = PlotsOverlapper([monitor1, monitor2], interactive=False,
-							   plot_properties=plot_properties)
+	monitor = PlotComposite(1, 2, (plot1, plot2), False, figure_properties)
 
 	# Create the animation
-	from tasmania.plot.animation import Animation
-	animation = Animation(assembler, fontsize=16, print_time='elapsed', fps=8)
+	animation = Animation(monitor, print_time='elapsed', fps=8)
 	for state1, state2 in zip(states1, states2):
 		animation.store([state1, state2])
 	animation.run(save_dest=save_dest)
@@ -189,7 +208,7 @@ def test_animation_plots_overlapper(isentropic_moist_sedimentation_data,
 	assert os.path.exists(save_dest)
 
 
-def test_animation_plot_2d(isentropic_dry_data):
+def test_contourf(isentropic_dry_data, drawer_topography2d):
 	# Make sure the folder tests/baseline_images/test_animation does exist
 	baseline_dir = 'baseline_images/test_animation'
 	if not os.path.exists(baseline_dir):
@@ -201,53 +220,64 @@ def test_animation_plot_2d(isentropic_dry_data):
 		os.makedirs(result_dir)
 
 	# Make sure the baseline image will exist at the end of this run
-	filename = 'test_animation_plot_2d.mp4'
+	filename = 'test_contourf.mp4'
 	baseline_img = os.path.join(baseline_dir, filename)
 	result_img = os.path.join(result_dir, filename)
 	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
 
 	# Field to plot
-	field_to_plot = 'horizontal_velocity'
+	field_name  = 'horizontal_velocity'
+	field_units = 'm s^-1'
 
-	# Index identifying the cross-section to visualize
-	z_level = -1
-
-	# Load data
+	# Grab data from dataset
 	grid, states = isentropic_dry_data
 
-	# Plot properties
-	plot_properties = {
+	# Index identifying the cross-section to visualize
+	z = -1
+
+	# Drawer properties
+	drawer_properties = {
 		'fontsize': 16,
-		'title_left': 'Horizontal velocity [m s$^{-1}$]',
-		'x_label': '$x$ [km]',
-		'y_label': '$y$ [km]',
-		'text': 'MC',
-		'text_loc': 'upper right',
+		'cmap_name': 'BuRd',
+		'cbar_levels': 18,
+		'cbar_ticks_step': 4,
+		'cbar_center': 15.0,
+		'cbar_orientation': 'horizontal',
+		'alpha': 0.1,
+		'colors': 'black',
 	}
 
-	# Plot function keyword arguments
-	plot_function_kwargs = {
+	# Instantiate the drawer
+	drawer = Contourf(grid, field_name, field_units, z=z,
+					  xaxis_units='km', yaxis_units='km',
+					  properties=drawer_properties)
+
+	# Instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+
+	# Figure and axes properties
+	figure_properties = {
 		'fontsize': 16,
-		'x_factor': 1e-3,
-		'y_factor': 1e-3,
-		'cmap_name': 'BuRd',
-		'cbar_levels': 14,
-		'cbar_ticks_step': 2,
-		'cbar_center': 15,
-		'cbar_half_width': 6.5,
+		'figsize': (7, 8),
+		'tight_layout': True,
 	}
-		
-	# Instantiate the monitor which generates the frames
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.contourf_xy import make_contourf_xy as plot_function
-	monitor = Plot(grid, plot_function, field_to_plot, z_level, interactive=False,
-				   plot_properties=plot_properties, plot_function_kwargs=plot_function_kwargs)
+	axes_properties = {
+		'fontsize': 16,
+		'title_left': 'Surface horizontal velocity [m s$^{-1}$]',
+		'x_label': '$x$ [km]',
+		'x_lim': None,
+		'y_label': '$y$ [km]',
+		'y_lim': None,
+	}
+
+	# Instantiate the monitor
+	monitor = Plot((topo_drawer, drawer), False, figure_properties, axes_properties)
 
 	# Create the animation
-	from tasmania.plot.animation import Animation
-	animation = Animation(monitor, fontsize=16, print_time='elapsed', fps=8)
+	animation = Animation(monitor, print_time='elapsed', fps=8)
 	for state in states:
-		animation.store(state)
+		grid.update_topography(state['time'] - states[0]['time'])
+		animation.store((state, state))
 	animation.run(save_dest=save_dest)
 
 	# Asserts
