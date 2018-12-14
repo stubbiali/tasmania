@@ -65,10 +65,21 @@ uml: parser
 	@mv packages_*.eps $(UML_DIR) > /dev/null
 	@echo "OK."
 
-.PHONY: tests clean distclean gitignore
+.PHONY: tests prepare_tests clean distclean gitignore
 
-tests:
+tests: prepare_tests
 	@cd $(TEST_DIR) && pytest --mpl --cov=$(SRC_DIR) .
+
+prepare_tests:
+	@cd $(TEST_DIR) && \
+	 pytest --mpl-generate-path=baseline_images/test_contour 		test_contour.py && \
+	 pytest --mpl-generate-path=baseline_images/test_contourf 		test_contourf.py && \
+	 pytest --mpl-generate-path=baseline_images/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/test_plot_composite	test_plot_composite.py && \
+	 pytest --mpl-generate-path=baseline_images/test_plots			test_plots.py && \
+	 pytest --mpl-generate-path=baseline_images/test_profile 		test_profile.py && \
+	 pytest --mpl-generate-path=baseline_images/test_quiver 		test_quiver.py && \
+	 pytest --mpl-generate-path=baseline_images/test_timeseries 	test_timeseries.py
 	
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null
@@ -90,5 +101,5 @@ gitignore:
 	@echo '# of the makefile. To prevent this target from failing,'		>> .gitignore
 	@echo '# no modifications should be applied by non-expert users.\n'	>> .gitignore
 	@echo '# Files which exceed maximum size allowed by GitHub'			>> .gitignore 
-	@find . -size +100M | cat >> .gitignore
+	@find . -size +50M | cat 											>> .gitignore
 	@echo '\n# END OF AUTOMATICALLY GENERATED TEXT'						>> .gitignore
