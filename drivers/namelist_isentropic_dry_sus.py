@@ -30,7 +30,7 @@ dtype   = np.float64
 backend = gt.mode.NUMPY
 
 domain_x = DataArray([-220, 220], dims='x', attrs={'units': 'km'}).to_units('m')
-nx       = 51
+nx       = 401
 domain_y = DataArray([-1, 1], dims='y', attrs={'units': 'km'}).to_units('m')
 ny       = 1
 domain_z = DataArray([765, 300], dims='potential_temperature', attrs={'units': 'K'})
@@ -71,12 +71,12 @@ smooth_damp_depth     = 0
 smooth_coeff          = 0.03
 smooth_coeff_max      = 0.03
 
-timestep = timedelta(seconds=20)
+timestep = timedelta(seconds=2.5)
 niter    = int(120000 / timestep.total_seconds())
 
 filename        = '../data/isentropic_convergence_{}_{}_nx{}_dt{}_nt{}_sus.nc'.format(
 					time_integration_scheme, horizontal_flux_scheme, nx, ny, nz, 
 					int(timestep.total_seconds()), niter)
 save_frequency  = int(niter/2)
-print_frequency = 200
+print_frequency = 1600
 plot_frequency  = -1

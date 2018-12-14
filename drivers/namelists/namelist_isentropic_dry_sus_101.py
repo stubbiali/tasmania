@@ -75,7 +75,7 @@ timestep = timedelta(seconds=10)
 niter    = int(120000 / timestep.total_seconds())
 
 filename        = '../data/isentropic_convergence_{}_{}_nx{}_dt{}_nt{}_sus.nc'.format(
-					time_integration_scheme, horizontal_flux_scheme, nx, ny, nz, 
+					time_integration_scheme, horizontal_flux_scheme, nx,  
 					int(timestep.total_seconds()), niter)
 save_frequency  = int(niter/2)
 print_frequency = 400

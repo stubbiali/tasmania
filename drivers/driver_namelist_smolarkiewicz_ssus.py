@@ -95,12 +95,14 @@ dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt,
 sus_bd = taz.SequentialUpdateSplitting(
 	#cf, pg, psh, vf, dv, vc,
 	cf, pg, psh, vf, vc,
+	#pg, psh, vf, vc,
 	time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )
 sus_ad = taz.SequentialUpdateSplitting(
 	#dv, psh, vf, dv, pg, cf, vc,
 	dv, psh, vf, pg, cf, vc,
+	#dv, psh, vf, pg, vc,
 	time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )

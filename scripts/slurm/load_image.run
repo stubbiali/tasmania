@@ -1,0 +1,12 @@
+#!/bin/bash -l
+#SBATCH --account=s299m
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=normal
+#SBATCH --constraint=mc
+
+module load daint-mc
+module load shifter-ng
+
+srun shifter load docker/tasmania.master.tar
+

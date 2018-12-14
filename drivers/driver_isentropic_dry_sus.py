@@ -26,14 +26,25 @@ import numpy as np
 import os
 import tasmania as taz
 
-# Load the computational grid and the initial state
-grid, states = taz.load_netcdf_dataset('../tests/baseline_datasets/isentropic_dry.nc')
-state = states[0]
+# Create the underlying grid
+grid = taz.GridXYZ(nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,
+				   topo_type=nl.topo_type, topo_time=nl.topo_time, topo_kwargs=nl.topo_kwargs,
+				   dtype=nl.dtype)
+
+# Instantiate the initial state
+if nl.isothermal:
+	state = taz.get_isothermal_isentropic_state(grid, nl.init_time,
+												nl.init_x_velocity, nl.init_y_velocity,
+												nl.init_temperature, dtype=nl.dtype)
+else:
+	state = taz.get_default_isentropic_state(grid, nl.init_time,
+											 nl.init_x_velocity, nl.init_y_velocity,
+											 nl.init_brunt_vaisala, dtype=nl.dtype)
 
 # The component retrieving the diagnostic variables
 pt = state['air_pressure_on_interface_levels'][0, 0, 0]
 dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt, 
-							   backend=gt.mode.NUMPY, dtype=np.float32)
+								   backend=gt.mode.NUMPY, dtype=np.float32)
 
 # The component calculating the pressure gradient in isentropic coordinates
 pg = taz.ConservativeIsentropicPressureGradient(grid, order=4, horizontal_boundary_type='relaxed',

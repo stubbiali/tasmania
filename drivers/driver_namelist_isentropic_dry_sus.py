@@ -98,8 +98,14 @@ for i in range(nt):
 	state_new = dycore(state, {}, dt)
 	state.update(state_new)
 
+	# Ensure the state is still defined at the current time level
+	state['time'] = nl.init_time + i * dt
+
 	# Compute the physics, and couple it with the dynamics
 	_ = sus(state=state, timestep=dt)
+
+	# Ensure the state is defined at the next time level
+	state['time'] = nl.init_time + (i+1) * dt
 
 	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
 		u = state['x_velocity_at_u_locations'].to_units('m s^-1').values[...]
@@ -114,8 +120,12 @@ for i in range(nt):
 		print('Iteration {:6d}: CFL = {:4f}, umax = {:8.4f} m/s, umin = {:8.4f} m/s, '
 			  'vmax = {:8.4f} m/s, vmin = {:8.4f} m/s'.format(i+1, cfl, umax, umin, vmax, vmin))
 
-	if (nl.filename is not None) and \
-		(((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt):
+	# Shortcuts
+	to_save = (nl.filename is not None) and \
+			  (((nl.save_frequency > 0) and
+				((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
+
+	if to_save:
 		# Save the solution
 		netcdf_monitor.store(state)
 
