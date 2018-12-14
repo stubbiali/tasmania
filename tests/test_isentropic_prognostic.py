@@ -951,4 +951,6 @@ def test_rk3(isentropic_moist_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
+	#from conftest import isentropic_moist_data
+	#test_leapfrog(isentropic_moist_data())
 
