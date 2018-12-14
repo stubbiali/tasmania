@@ -44,15 +44,15 @@ topo_time   = timedelta(seconds=1800)
 topo_kwargs = {
 	#'topo_str': '1 * 10000. * 10000. / (x*x + 10000.*10000.)',
     #'topo_str': '3000. * pow(1. + (x*x + y*y) / 25000.*25000., -1.5)',
-    'topo_max_height': DataArray(1.0, attrs={'units': 'km'}),
-    'topo_width_x': DataArray(2*_width.to_units('km').values.item(), attrs={'units': 'km'}),
-    'topo_width_y': DataArray(2*_width.to_units('km').values.item(), attrs={'units': 'km'}),
+    'topo_max_height': DataArray(0.5, attrs={'units': 'km'}),
+    'topo_width_x': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
+    'topo_width_y': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
 	'topo_smooth': False,
 }
 
 # Initial conditions
 init_time       = datetime(year=1992, month=2, day=20, hour=0)
-init_x_velocity = DataArray(15.0, attrs={'units': 'm s^-1'})
+init_x_velocity = DataArray(1.0, attrs={'units': 'm s^-1'})
 init_y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 isothermal      = False
 if isothermal:
@@ -98,7 +98,7 @@ starting_time                       = init_time + timedelta(hours=8)
 # Coriolis
 coriolis_parameter = None
 
-timestep = timedelta(seconds=24)
+timestep = timedelta(seconds=10)
 niter    = int(20*60*60 / timestep.total_seconds())
 
 filename        = '../data/smolarkiewicz_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_wf4_f_cc.nc'.format(
@@ -107,6 +107,6 @@ filename        = '../data/smolarkiewicz_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{
 					int(_width.to_units('m').values.item()),
 					int(topo_kwargs['topo_max_height'].to_units('m').values.item()),
 					int(init_x_velocity.to_units('m s^-1').values.item()))
-save_frequency  = 75
-print_frequency = 75
+save_frequency  = 180
+print_frequency = 180
 plot_frequency  = -1

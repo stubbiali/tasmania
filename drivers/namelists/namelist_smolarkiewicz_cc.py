@@ -45,8 +45,8 @@ topo_kwargs = {
 	#'topo_str': '1 * 10000. * 10000. / (x*x + 10000.*10000.)',
     #'topo_str': '3000. * pow(1. + (x*x + y*y) / 25000.*25000., -1.5)',
     'topo_max_height': DataArray(0.5, attrs={'units': 'km'}),
-    'topo_width_x': _width,
-    'topo_width_y': _width,
+    'topo_width_x': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
+    'topo_width_y': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
 	'topo_smooth': False,
 }
 

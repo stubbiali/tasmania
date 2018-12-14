@@ -22,24 +22,24 @@
 #
 
 NAMELISTS_FROM=(
-	namelists/namelist_smolarkiewicz_sus.py
-	namelists/namelist_smolarkiewicz_ssus.py
-	namelists/namelist_smolarkiewicz_sus_4.py
-	namelists/namelist_smolarkiewicz_ssus_4.py
+	namelists/namelist_isentropic_dry_ssus_51.py
+	namelists/namelist_isentropic_dry_ssus_101.py
+	namelists/namelist_isentropic_dry_ssus_201.py
+	namelists/namelist_isentropic_dry_ssus_401.py
 )
 
 NAMELISTS_TO=(
-	namelist_smolarkiewicz_sus.py
-	namelist_smolarkiewicz_ssus.py
-	namelist_smolarkiewicz_sus.py
-	namelist_smolarkiewicz_ssus.py
+	namelist_isentropic_dry_ssus.py
+	namelist_isentropic_dry_ssus.py
+	namelist_isentropic_dry_ssus.py
+	namelist_isentropic_dry_ssus.py
 )
 
 DRIVERS=(
-	driver_namelist_smolarkiewicz_sus.py
-	driver_namelist_smolarkiewicz_ssus.py
-	driver_namelist_smolarkiewicz_sus.py
-	driver_namelist_smolarkiewicz_ssus.py
+	driver_namelist_isentropic_dry_ssus.py
+	driver_namelist_isentropic_dry_ssus.py
+	driver_namelist_isentropic_dry_ssus.py
+	driver_namelist_isentropic_dry_ssus.py
 )
 
 for i in $(seq 0 $((${#NAMELISTS_FROM[@]} - 1))); do

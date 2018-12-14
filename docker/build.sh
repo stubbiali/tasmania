@@ -21,23 +21,50 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-IMAGE_NAME=tasmania:develop
+GT4PY_BRANCH=merge_ubbiali
+IMAGE_NAME=tasmania:master
+IMAGE_SAVE=tasmania_master.tar
 
-echo "About to build the container image '$IMAGE_NAME' for tasmania." 
-read -n 1 -s -r -p "Press any key to continue, or Ctrl-C to exit."
-
+echo "About to clone the gridtools4py repository under $PWD/gridtools4py, and check out the '$GT4PY_BRANCH' branch."
+read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
-cp ../requirements.txt .
+if [[ $key = "" ]]; then
+	cp ../requirements.txt .
 
-if [ ! -d "gridtools4py" ]; then
-	git clone https://github.com/eth-cscs/gridtools4py.git
+	if [ ! -d "gridtools4py" ]; then
+		git clone https://github.com/eth-cscs/gridtools4py.git
+	fi
+
+	cd gridtools4py
+	git checkout $GT4PY_BRANCH
+	cd ..
 fi
 
-cd gridtools4py
-git checkout merge_ubbiali
-cd ..
+echo ""
+echo "About to remove the tar archive $PWD/$IMAGE_SAVE (if existing)."
+read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
+echo ""
 
-docker build --rm --build-arg uid=$(id -u) -t $IMAGE_NAME .
+if [[ $key = "" ]]; then
+	rm $PWD/$IMAGE_SAVE
+fi
 
-#rm requirements.txt
+echo ""
+echo "About to build the Docker image '$IMAGE_NAME' for tasmania."
+read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
+echo ""
+
+if [[ $key = "" ]]; then
+	cd .. && make distclean && cd docker 
+	docker build --rm --build-arg uid=$(id -u) -t $IMAGE_NAME .
+fi
+
+echo ""
+echo "About to save the Docker image '$IMAGE_NAME' to the tar archive $PWD/$IMAGE_SAVE."
+read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
+echo ""
+
+if [[ $key = "" ]]; then
+	docker save --output $IMAGE_SAVE $IMAGE_NAME
+fi

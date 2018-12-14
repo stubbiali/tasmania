@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 import os
 import tasmania as taz
 
@@ -40,32 +39,21 @@ else:
 	state = taz.get_default_isentropic_state(grid, nl.init_time,
 											 nl.init_x_velocity, nl.init_y_velocity,
 											 nl.init_brunt_vaisala, dtype=nl.dtype)
-state['tendency_of_air_potential_temperature_on_interface_levels'] = \
-	taz.make_data_array_3d(np.zeros((nl.nx, nl.ny, nl.nz+1), dtype=nl.dtype),
-						   grid, 'K s^-1')
+
+# Instantiate the component inferring the diagnostic variables
+pt = state['air_pressure_on_interface_levels'][0, 0, 0]
+dv = taz.IsentropicDiagnostics(grid, moist_on=False, pt=pt,
+							   backend=nl.backend, dtype=nl.dtype)
 
 # Instantiate the component calculating the pressure gradient in isentropic coordinates
 order = 4 if nl.horizontal_flux_scheme == 'fifth_order_upwind' else 2
-pg = taz.ConservativeIsentropicPressureGradient(
-	grid, order=order,
-	horizontal_boundary_type=nl.horizontal_boundary_type,
-	backend=nl.backend, dtype=nl.dtype
-)
+pg = taz.ConservativeIsentropicPressureGradient(grid, order=order,
+												horizontal_boundary_type=nl.horizontal_boundary_type,
+												backend=nl.backend, dtype=nl.dtype)
 
-# Instantiate the component calculating the Coriolis forcing term
-cf = taz.ConservativeIsentropicCoriolis(grid, dtype=nl.dtype)
-
-# The component calculating the velocity components
-vc = taz.IsentropicVelocityComponents(
-	grid, horizontal_boundary_type=nl.horizontal_boundary_type,
-	reference_state=state, backend=nl.backend, dtype=nl.dtype
-)
-
-# Instantiate the component retrieving the diagnostic variables
-pt = state['air_pressure_on_interface_levels'][0, 0, 0]
-dv = taz.IsentropicDiagnostics(
-	grid, moist_on=False, pt=pt, backend=nl.backend, dtype=nl.dtype
-)
+# Instantiate the component retrieving the velocity components
+vc = taz.IsentropicVelocityComponents(grid, horizontal_boundary_type=nl.horizontal_boundary_type,
+									  reference_state=state, backend=nl.backend, dtype=nl.dtype)
 
 # Wrap the components in a SequentialUpdateSplitting object
 sus_bd = taz.SequentialUpdateSplitting(
@@ -79,24 +67,18 @@ sus_ad = taz.SequentialUpdateSplitting(
 	grid=grid, horizontal_boundary_type=None,
 )
 
-# Instantiate the dynamical core
-dycore = taz.SSUSHomogeneousIsentropicDynamicalCore(
+# Instantiate the dry isentropic dynamical core
+dycore = taz.HomogeneousIsentropicDynamicalCore(
 	grid, moist_on=False,
-	# Numerical scheme
 	time_integration_scheme=nl.time_integration_scheme,
 	horizontal_flux_scheme=nl.horizontal_flux_scheme,
 	horizontal_boundary_type=nl.horizontal_boundary_type,
-	# Parameterizations
-	#diagnostics=taz.DiagnosticComponentComposite(dv),
-	# Damping (wave absorber)
 	damp_on=nl.damp_on, damp_type=nl.damp_type,
 	damp_depth=nl.damp_depth, damp_max=nl.damp_max,
-	# Smoothing
+	damp_at_every_stage=False,
 	smooth_on=nl.smooth_on, smooth_type=nl.smooth_type,
-	smooth_moist_damp_depth=nl.smooth_damp_depth,
 	smooth_coeff=nl.smooth_coeff,
-	smooth_coeff_max=nl.smooth_coeff_max,
-	# Implementation details
+	smooth_at_every_stage=False,
 	backend=nl.backend, dtype=nl.dtype
 )
 
@@ -119,7 +101,7 @@ for i in range(nt):
 	_ = sus_bd(state=state, timestep=0.5*dt)
 
 	# Compute the dynamics
-	state_new = dycore(state, dt)
+	state_new = dycore(state, {}, dt)
 	state.update(state_new)
 
 	# Ensure the state is still defined at the mid time level

@@ -45,8 +45,11 @@ from tasmania.utils.data_utils import add, subtract
 from tasmania.utils.utils import assert_sequence, check_property_compatibility
 
 
-def get_input_properties(components_list, component_attribute_name='input_properties',
-						 consider_diagnostics=True, return_dict=None):
+def get_input_properties(
+	components_list, component_attribute_name='input_properties',
+	consider_diagnostics=True,
+	return_dict=None
+):
 	# Initialize the return dictionary, i.e., the list of requirements
 	return_dict = {} if return_dict is None else return_dict
 
@@ -98,8 +101,11 @@ def get_input_properties(components_list, component_attribute_name='input_proper
 	return return_dict
 
 
-def get_output_properties(components_list, component_attribute_name='input_properties',
-						  consider_diagnostics=True):
+def get_output_properties(
+	components_list,
+	component_attribute_name='input_properties',
+	consider_diagnostics=True
+):
 	"""
 	Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
 	component is a subset of its input property component.

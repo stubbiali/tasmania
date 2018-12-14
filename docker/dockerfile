@@ -59,8 +59,8 @@ ENV 	HOME /home/dockeruser
 COPY . $HOME/docker
 
 # install tasmania's dependencies
-RUN python -m pip install -e $HOME/docker/gridtools4py && \
-	python -m pip install -r $HOME/docker/requirements.txt
+RUN python -m pip install -r $HOME/docker/requirements.txt && \
+	python -m pip install -e $HOME/docker/gridtools4py/
 
 # set firefox as default browser for jupyter
 RUN jupyter notebook --generate-config && \

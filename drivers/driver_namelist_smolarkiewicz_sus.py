@@ -96,7 +96,8 @@ dv = taz.IsentropicDiagnostics(
 # Wrap the components in a SequentialUpdateSplitting object
 sus = taz.SequentialUpdateSplitting(
 	#dv, psh, vf, dv, pg, cf, vc,
-	dv, psh, vf, pg, cf, vc,
+	#dv, psh, vf, pg, cf, vc,
+	dv, psh, vf, pg, vc,
     time_integration_scheme=nl.coupling_time_integration_scheme,
 	grid=grid, horizontal_boundary_type=None,
 )
@@ -164,7 +165,7 @@ for i in range(nt):
 
 		# Print useful info
 		print('Iteration {:6d}: CFL = {:4f}, umax = {:8.4f} m/s, umin = {:8.4f} m/s, '
-			  'vmax = {:8.4f} m/s, vmin = {:8.4f} m/s'.format(i + 1, cfl, umax, umin, vmax, vmin))
+			  'vmax = {:8.4f} m/s, vmin = {:8.4f} m/s'.format(i+1, cfl, umax, umin, vmax, vmin))
 
 	# Shortcuts
 	to_save = (nl.filename is not None) and \

@@ -1,0 +1,11 @@
+#!/bin/bash -l
+#SBATCH --account=s299m
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=xfer
+#SBATCH --constraint=mc
+
+module load daint-mc
+
+srun cp -ruv /scratch/snx3000/tasmania/ /project/s299/subbiali/ 
+
