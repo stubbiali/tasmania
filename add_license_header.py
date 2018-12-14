@@ -26,9 +26,9 @@ import shutil
 import tempfile
 
 
-license_header_name = "LICENSE_HEADER.sh"
-single_line_header = "bin/bash"
-file_pattern = "**/*.sh"
+license_header_name = "LICENSE_HEADER.cpp"
+single_line_header = "jefnbekwhfb"
+file_pattern = "**/*.hpp"
 exclude_patterns = (
     license_header_name,
     "docker/external/gridtools4py",
