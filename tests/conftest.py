@@ -22,7 +22,7 @@
 #
 from datetime import timedelta
 import pytest
-from sympl import DataArray
+from sympl import DataArray, TendencyComponent
 
 from tasmania.grids.grid_xyz import GridXYZ as Grid
 from tasmania.grids.grid_xz import GridXZ
@@ -138,3 +138,121 @@ def drawer_topography2d():
 					   properties=properties)
 
 	return _drawer_topography2d
+
+
+class FakeTendency1(TendencyComponent):
+	def __init__(self, grid):
+		self._grid = grid
+		super().__init__()
+
+	@property
+	def input_properties(self):
+		g = self._grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+
+		return_dict = {
+			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'}
+		}
+
+		return return_dict
+
+	@property
+	def tendency_properties(self):
+		g = self._grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+
+		return_dict = {
+			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1 s^-1'},
+			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
+		}
+
+		return return_dict
+
+	@property
+	def diagnostic_properties(self):
+		g = self._grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+
+		return_dict = {
+			'fake_variable': {'dims': dims, 'units': 'm'},
+		}
+
+		return return_dict
+
+	def array_call(self, state):
+		s = state['air_isentropic_density']
+
+		tendencies = {
+			'air_isentropic_density': s**2,
+			'x_momentum_isentropic': s**3,
+		}
+
+		diagnostics = {
+			'fake_variable': 2*s,
+		}
+
+		return tendencies, diagnostics
+
+
+@pytest.fixture(scope='module')
+def make_fake_tendency_1():
+	def _make_fake_tendency_1(grid):
+		return FakeTendency1(grid)
+
+	return _make_fake_tendency_1
+
+
+class FakeTendency2(TendencyComponent):
+	def __init__(self, grid):
+		self._grid = grid
+		super().__init__()
+
+	@property
+	def input_properties(self):
+		g = self._grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+		dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
+
+		return_dict = {
+			'fake_variable': {'dims': dims, 'units': 'km'},
+			'y_velocity_at_v_locations': {'dims': dims_y, 'units': 'km hr^-1'},
+		}
+
+		return return_dict
+
+	@property
+	def tendency_properties(self):
+		g = self._grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+
+		return_dict = {
+			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1 s^-1'},
+			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
+		}
+
+		return return_dict
+
+	@property
+	def diagnostic_properties(self):
+		return {}
+
+	def array_call(self, state):
+		f = state['fake_variable']
+		v = state['y_velocity_at_v_locations']
+
+		tendencies = {
+			'air_isentropic_density': f/100,
+			'y_momentum_isentropic': 0.5*(v[:, :-1, :] + v[:, 1:, :]),
+		}
+
+		diagnostics = {}
+
+		return tendencies, diagnostics
+
+
+@pytest.fixture(scope='module')
+def make_fake_tendency_2():
+	def _make_fake_tendency_2(grid):
+		return FakeTendency2(grid)
+
+	return _make_fake_tendency_2

@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import pytest
-import xarray as xr
 
 from tasmania.utils.storage_utils import load_netcdf_dataset
 
@@ -54,7 +53,7 @@ def test_load_netcdf_dataset():
 	assert topo.topo_kwargs['topo_center_x'] == 250e3
 	assert topo.topo_kwargs['topo_center_y'] == 0.0
 
-	assert len(states) == 61
+	assert len(states) == 31
 	assert all(['time' in state.keys() for state in states])
 	assert all(['air_isentropic_density' in state.keys() for state in states])
 	assert all(['air_pressure_on_interface_levels' in state.keys() for state in states])

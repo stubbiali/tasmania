@@ -40,18 +40,19 @@ mf_pw  = 'mass_fraction_of_precipitation_water_in_air'
 
 
 def test_factory(grid):
+	mode = 'xy'
 	backend = gt.mode.NUMPY
 	hb = HorizontalBoundary.factory('relaxed', grid, 1)
 
-	ip_centered = IsentropicPrognostic.factory('centered', grid, True, hb,
+	ip_centered = IsentropicPrognostic.factory('centered', mode, grid, True, hb,
 		horizontal_flux_scheme='centered', backend=backend)
-	ip_euler = IsentropicPrognostic.factory('forward_euler', grid, True, hb,
+	ip_euler = IsentropicPrognostic.factory('forward_euler', mode, grid, True, hb,
 		horizontal_flux_scheme='upwind', backend=backend)
-	ip_rk2 = IsentropicPrognostic.factory('rk2', grid, True, hb,
+	ip_rk2 = IsentropicPrognostic.factory('rk2', mode, grid, True, hb,
 		horizontal_flux_scheme='third_order_upwind', backend=backend)
-	ip_rk3cosmo = IsentropicPrognostic.factory('rk3cosmo', grid, True, hb,
+	ip_rk3cosmo = IsentropicPrognostic.factory('rk3cosmo', mode, grid, True, hb,
 		horizontal_flux_scheme='fifth_order_upwind', backend=backend)
-	ip_rk3 = IsentropicPrognostic.factory('rk3', grid, True, hb,
+	ip_rk3 = IsentropicPrognostic.factory('rk3', mode, grid, True, hb,
 		horizontal_flux_scheme='fifth_order_upwind', backend=backend)
 
 	assert isinstance(ip_centered, Centered)
@@ -66,12 +67,13 @@ def test_leapfrog(isentropic_moist_data):
 	state = states[-1]
 	grid.update_topography(state['time'] - states[0]['time'])
 
+	mode = 'xy'
 	backend = gt.mode.NUMPY
 	dtype = state['air_isentropic_density'].values.dtype
 
 	hb = HorizontalBoundary.factory('periodic', grid, 1)
 
-	ip_centered = IsentropicPrognostic.factory('centered', grid, True, hb,
+	ip_centered = IsentropicPrognostic.factory('centered', mode, grid, True, hb,
 											   horizontal_flux_scheme='centered',
 											   backend=backend, dtype=dtype)
 
@@ -147,12 +149,13 @@ def test_upwind(isentropic_moist_data):
 	state = states[-1]
 	grid.update_topography(state['time'] - states[0]['time'])
 
+	mode = 'xy'
 	backend = gt.mode.NUMPY
 	dtype = state['air_isentropic_density'].values.dtype
 
 	hb = HorizontalBoundary.factory('periodic', grid, 1)
 
-	ip_euler = IsentropicPrognostic.factory('forward_euler', grid, True, hb,
+	ip_euler = IsentropicPrognostic.factory('forward_euler', mode, grid, True, hb,
 											horizontal_flux_scheme='upwind',
 											backend=backend, dtype=dtype)
 
@@ -226,6 +229,7 @@ def test_rk2(isentropic_moist_data):
 	state = states[-1]
 	grid.update_topography(state['time'] - states[0]['time'])
 
+	mode = 'xy'
 	backend = gt.mode.NUMPY
 	dtype = state['air_isentropic_density'].values.dtype
 
@@ -233,7 +237,7 @@ def test_rk2(isentropic_moist_data):
 
 	hv = HorizontalVelocity(grid, dtype=dtype)
 
-	ip_rk2 = IsentropicPrognostic.factory('rk2', grid, True, hb,
+	ip_rk2 = IsentropicPrognostic.factory('rk2', mode, grid, True, hb,
 										  horizontal_flux_scheme='third_order_upwind',
 										  backend=backend, dtype=dtype)
 
@@ -366,6 +370,7 @@ def test_rk3cosmo(isentropic_moist_data):
 	state = states[-1]
 	grid.update_topography(state['time'] - states[0]['time'])
 
+	mode = 'xy'
 	backend = gt.mode.NUMPY
 	dtype = state['air_isentropic_density'].values.dtype
 
@@ -373,7 +378,7 @@ def test_rk3cosmo(isentropic_moist_data):
 
 	hv = HorizontalVelocity(grid, dtype=dtype)
 
-	ip_rk3 = IsentropicPrognostic.factory('rk3cosmo', grid, True, hb,
+	ip_rk3 = IsentropicPrognostic.factory('rk3cosmo', mode, grid, True, hb,
 										  horizontal_flux_scheme='fifth_order_upwind',
 										  backend=backend, dtype=dtype)
 
@@ -589,13 +594,14 @@ def test_rk3(isentropic_moist_data):
 	state = states[-1]
 	grid.update_topography(state['time'] - states[0]['time'])
 
+	mode = 'xy'
 	backend = gt.mode.NUMPY
 	dtype = state['air_isentropic_density'].values.dtype
 
 	hb = HorizontalBoundary.factory('periodic', grid)
 	hv = HorizontalVelocity(grid, dtype=dtype)
 
-	ip_rk3 = IsentropicPrognostic.factory('rk3', grid, True, hb,
+	ip_rk3 = IsentropicPrognostic.factory('rk3', mode, grid, True, hb,
 										  horizontal_flux_scheme='fifth_order_upwind',
 										  backend=backend, dtype=dtype)
 	a1, a2 = ip_rk3._alpha1, ip_rk3._alpha2

@@ -35,9 +35,9 @@ def test(isentropic_dry_data):
 	state = deepcopy(states[-1])
 	grid.update_topography(state['time'] - states[0]['time'])
 
-	amplitude_during_daytime = DataArray(0.8, attrs={'units': 'kW m^-2'})
+	amplitude_at_day = DataArray(0.8, attrs={'units': 'kW m^-2'})
 	amplitude_at_night = DataArray(-75000.0, attrs={'units': 'mW m^-2'})
-	attenuation_coefficient_during_daytime = DataArray(1.0/6.0, attrs={'units': 'hm^-1'})
+	attenuation_coefficient_at_day = DataArray(1.0/6.0, attrs={'units': 'hm^-1'})
 	attenuation_coefficient_at_night = DataArray(1.0/75.0, attrs={'units': 'm^-1'})
 	characteristic_length = DataArray(25.0, attrs={'units': 'km'})
 
@@ -84,16 +84,18 @@ def test(isentropic_dry_data):
 	psh = PrescribedSurfaceHeating(
 		grid, tendency_of_air_potential_temperature_in_diagnostics=True,
 		air_pressure_on_interface_levels=True,
-		amplitude_during_daytime=amplitude_during_daytime,
-		amplitude_at_night=amplitude_at_night,
-		attenuation_coefficient_during_daytime=attenuation_coefficient_during_daytime,
+		amplitude_at_day_sw=amplitude_at_day,
+		amplitude_at_night_sw=amplitude_at_night,
+		attenuation_coefficient_at_day=attenuation_coefficient_at_day,
 		attenuation_coefficient_at_night=attenuation_coefficient_at_night,
 		characteristic_length=characteristic_length,
 		starting_time=starting_time,
 	)
 
-	assert equal_to(psh._f0d, 800.0)
-	assert equal_to(psh._f0n, -75.0)
+	assert equal_to(psh._f0d_sw, 800.0)
+	assert equal_to(psh._f0d_fw, 400.0)
+	assert equal_to(psh._f0n_sw, -75.0)
+	assert equal_to(psh._f0n_fw, -37.5)
 	assert equal_to(psh._ad, 1.0/600.0)
 	assert equal_to(psh._an, 1.0/75.0)
 	assert equal_to(psh._cl, 25000.0)
@@ -117,16 +119,18 @@ def test(isentropic_dry_data):
 	psh = PrescribedSurfaceHeating(
 		grid, tendency_of_air_potential_temperature_in_diagnostics=False,
 		air_pressure_on_interface_levels=False,
-		amplitude_during_daytime=amplitude_during_daytime,
-		amplitude_at_night=amplitude_at_night,
-		attenuation_coefficient_during_daytime=attenuation_coefficient_during_daytime,
+		amplitude_at_day_fw=amplitude_at_day,
+		amplitude_at_night_fw=amplitude_at_night,
+		attenuation_coefficient_at_day=attenuation_coefficient_at_day,
 		attenuation_coefficient_at_night=attenuation_coefficient_at_night,
 		characteristic_length=characteristic_length,
 		starting_time=starting_time,
 	)
 
-	assert equal_to(psh._f0d, 800.0)
-	assert equal_to(psh._f0n, -75.0)
+	assert equal_to(psh._f0d_sw, 800.0)
+	assert equal_to(psh._f0d_fw, 800.0)
+	assert equal_to(psh._f0n_sw, -75.0)
+	assert equal_to(psh._f0n_fw, -75.0)
 	assert equal_to(psh._ad, 1.0/600.0)
 	assert equal_to(psh._an, 1.0/75.0)
 	assert equal_to(psh._cl, 25000.0)

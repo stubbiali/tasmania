@@ -73,13 +73,11 @@ def test_moist(isentropic_moist_data):
 
 	dycore = IsentropicDynamicalCore(grid, moist_on=True,
 									 time_integration_scheme='forward_euler',
-									 horizontal_flux_scheme='upwind',
+									 horizontal_flux_scheme='maccormack',
 									 horizontal_boundary_type='relaxed',
-									 damp_on=False,
 									 smooth_on=True, smooth_type='first_order',
-									 smooth_coeff=0.20, smooth_coeff_max=1.00,
-									 smooth_damp_depth=30, smooth_at_every_stage=True,
-									 adiabatic_flow=True,
+									 smooth_coeff=0.2, smooth_at_every_stage=True,
+									 adiabatic_flow=True, sedimentation_on=False,
 									 backend=gt.mode.NUMPY, dtype=np.float64)
 
 	timestep   = timedelta(seconds=10)
