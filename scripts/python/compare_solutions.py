@@ -27,16 +27,16 @@ import tasmania as taz
 #
 # User inputs
 #
-filename1 = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-			'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_wf4_f_sus_1.nc'
-filename2 = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-			'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_wf4_f_ssus.nc'
+filename1 = '../../data/verification_dry_rk3cosmo_fifth_order_upwind_' \
+    'nx51_ny51_nz50_dt24_nt1800_cc.nc'
+filename2 = '../../data/isentropic_precipitation_rk3cosmo_fifth_order_upwind_' \
+	'third_order_upwind_nx51_ny51_nz50_dt24_nt1800_ns0_cc.nc'
 
-tlevels1 = range(18, 19)
-tlevels2 = range(18, 19)
+tlevels1 = range(0, 31)
+tlevels2 = range(0, 31)
 
-fieldname1 = 'y_velocity_at_v_locations'
-fieldname2 = 'y_velocity_at_v_locations'
+fieldname1 = 'x_velocity_at_u_locations'
+fieldname2 = 'x_velocity_at_u_locations'
 
 units1 = 'm s^-1'
 units2 = 'm s^-1'

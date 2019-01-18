@@ -23,11 +23,9 @@
 """
 Test Sigma2d class. Data are retrieved from COSMO documentation, Part I.
 """
-import math
-import numpy as np
 
 import namelist as nl
-from grids.sigma import Sigma2d as Grid
+from python.grids.sigma import Sigma2d as Grid
 
 # Define zonal and vertical domain
 domain_x, nx = [0., 500.e3], 51

@@ -23,11 +23,9 @@
 """
 Test GalChen2d class. Data are retrieved from COSMO documentation, Part I.
 """
-import math
-import numpy as np
 
-from utils import set_namelist; set_namelist()
-from grids.gal_chen import GalChen2d as Grid
+from python.utils import set_namelist; set_namelist()
+from python.grids import GalChen2d as Grid
 
 # Define zonal and vertical domain
 domain_x, nx = [0., 100.], 101

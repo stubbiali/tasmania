@@ -29,12 +29,11 @@ from tasmania.dycore.horizontal_boundary import HorizontalBoundary
 from tasmania.dycore.horizontal_smoothing import HorizontalSmoothing
 from tasmania.dycore.prognostic_isentropic_nonconservative import PrognosticIsentropicNonconservative
 from tasmania.dycore.vertical_damping import VerticalDamping
-import gridtools as gt
 from tasmania.namelist import cp, datatype, g, p_ref, Rd
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
-import tasmania.utils.utils as utils
-import tasmania.utils.utils_meteo as utils_meteo
+import python.utils.utils as utils
+import python.utils.utils_meteo as utils_meteo
 
 class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 	"""

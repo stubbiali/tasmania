@@ -28,8 +28,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from plot import plot_utils
-from tasmania.utils.utils import equal_to as eq, smaller_than as lt
+from python.plot import plot_utils
+from python.utils import equal_to as eq, smaller_than as lt
 
 
 def plot_topography_3d(grid, state=None, field_to_plot='topography',

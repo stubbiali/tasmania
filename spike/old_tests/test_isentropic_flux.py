@@ -24,7 +24,7 @@
 Test IsentropicFlux class.
 """
 from dycore.isentropic_flux import IsentropicFlux as Flux
-from grids.xyz_grid import XYZGrid as Grid
+from python.grids import XYZGrid as Grid
 import gridtools as gt
 
 # 

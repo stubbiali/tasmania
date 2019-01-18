@@ -23,9 +23,7 @@
 ## @package gt4ess
 #  Test PotentialTemperature2d class.
 
-import numpy as np
-
-from grids.potential_temperature import PotentialTemperature2d as Grid
+from python.grids import PotentialTemperature2d as Grid
 
 # Set domain and number of grid points
 domain_x = (0., 100.)

@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
 
@@ -64,8 +63,8 @@ def test_plot_topography_3d(isentropic_dry_data):
 		'cbar_orientation': 'vertical',
 	}
 
-	from tasmania.plot.topography import plot_topography_3d as plot_function
-	from tasmania.plot.plot_monitors import Plot3d
+	from python.plot import plot_topography_3d as plot_function
+	from python.plot import Plot3d
 	monitor = Plot3d(grid, plot_function, 'topography', interactive=False,
 					 fontsize=16, figsize=[8, 7],
 					 plot_properties=plot_properties, plot_function_kwargs=plot_function_kwargs)

@@ -20,17 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import copy
 import numpy as np
 
 import gridtools as gt
-from tasmania.dycore.flux_isentropic import FluxIsentropic
 from tasmania.dycore.horizontal_boundary_relaxed import RelaxedSymmetricXZ, RelaxedSymmetricYZ
 from tasmania.dycore.prognostic_isentropic import PrognosticIsentropic
 from tasmania.namelist import datatype, rho_water
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
-import tasmania.utils.utils as utils
+import python.utils.utils as utils
 
 class PrognosticIsentropicCentered(PrognosticIsentropic):
 	"""

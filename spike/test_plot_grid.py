@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from matplotlib.testing.decorators import image_comparison
 import os
 import pytest
 
@@ -70,8 +69,8 @@ def test_plot_grid_xz(isentropic_dry_data):
 	}
 
 	# Plot
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.grid import plot_grid_xz as plot_function
+	from python.plot import Plot2d as Plot
+	from python.plot import plot_grid_xz as plot_function
 	monitor = Plot(grid, plot_function, field_to_plot, y_level, interactive=False,
 				   fontsize=16, figsize=[7, 7], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)
@@ -127,8 +126,8 @@ def test_plot_grid_yz(isentropic_dry_data):
 	}
 
 	# Plot
-	from tasmania.plot.plot_monitors import Plot2d as Plot
-	from tasmania.plot.grid import plot_grid_yz as plot_function
+	from python.plot import Plot2d as Plot
+	from python.plot import plot_grid_yz as plot_function
 	monitor = Plot(grid, plot_function, field_to_plot, x_level, interactive=False,
 				   fontsize=16, figsize=[7, 7], plot_properties=plot_properties,
 				   plot_function_kwargs=plot_function_kwargs)

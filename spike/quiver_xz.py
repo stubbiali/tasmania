@@ -21,15 +21,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import matplotlib as mpl
-import matplotlib.animation as manimation
-from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.offsetbox import AnchoredText
 import matplotlib.pyplot as plt
 import numpy as np
 
 from tasmania.namelist import datatype
-import tasmania.plot.plot_utils as plot_utils
-import tasmania.utils.utils as utils
+import python.utils.utils as utils
 
 def make_plot_quiver_xz(grid, state, field_to_plot, y_level, fig = None, **kwargs):
 	"""
@@ -77,7 +73,7 @@ def make_plot_quiver_xz(grid, state, field_to_plot, y_level, fig = None, **kwarg
 		assert y_level == 0, 'As the grid consists of only one point in the y-direction, y_level must be 0.'
 
 		# Extract the variables which are needed
-		s, U, h = utils.get_numpy_arrays(state, (slice(0,None), y_level, slice(0,None)), 
+		s, U, h = utils.get_numpy_arrays(state, (slice(0, None), y_level, slice(0, None)), 
 			'air_isentropic_density', 'x_momentum_isentropic', 'height_on_interface_levels')
 
 		# Compute the x-velocity

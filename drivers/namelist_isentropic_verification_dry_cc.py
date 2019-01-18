@@ -26,7 +26,7 @@ import numpy as np
 from sympl import DataArray
 
 
-dtype   = np.float64
+dtype   = np.float32
 backend = gt.mode.NUMPY
 
 domain_x = DataArray([0, 500], dims='x', attrs={'units': 'km'}).to_units('m')
@@ -70,16 +70,16 @@ damp_at_every_stage = False
 smooth_on             = True
 smooth_type           = 'second_order'
 smooth_damp_depth     = 0
-smooth_coeff          = 0.15
-smooth_coeff_max      = 0.15
+smooth_coeff          = 0.03
+smooth_coeff_max      = 0.03
 smooth_at_every_stage = False
 
-timestep = timedelta(seconds=35)
-niter    = 1240
+timestep = timedelta(seconds=24)
+niter    = 1800
 
-filename        = '../data/verification_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_f_cc.nc'.format(
+filename        = '../data/verification_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_cc.nc'.format(
 					time_integration_scheme, horizontal_flux_scheme, nx, ny, nz, 
 					int(timestep.total_seconds()), niter)
-save_frequency  = 20
-print_frequency = 20
+save_frequency  = 60
+print_frequency = 60
 plot_frequency  = -1

@@ -44,7 +44,7 @@ class Loader:
 
 class LoaderComposite:
 	def __init__(self, loaders):
-		from tasmania.utils.utils import assert_sequence
+		from python.utils import assert_sequence
 		assert_sequence(loaders, reftype=(Loader, LoaderComposite))
 
 		self._loaders = loaders
