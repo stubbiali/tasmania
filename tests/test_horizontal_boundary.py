@@ -23,7 +23,7 @@
 import numpy as np
 import pytest
 
-from tasmania.dynamics.horizontal_boundary import HorizontalBoundary as HB
+from tasmania.python.dynamics.horizontal_boundary import HorizontalBoundary as HB
 
 
 def test_periodic(grid):

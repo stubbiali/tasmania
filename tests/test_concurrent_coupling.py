@@ -25,7 +25,7 @@ import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
-from tasmania.core.physics_composite import ConcurrentCoupling
+from tasmania.python.core.physics_composite import ConcurrentCoupling
 
 
 def test_compatibility(
@@ -42,7 +42,7 @@ def test_compatibility(
 	# failing
 	#
 	state_dc = deepcopy(state)
-	cc1 = ConcurrentCoupling(tendency1, tendency2, mode='as_parallel')
+	cc1 = ConcurrentCoupling(tendency1, tendency2, execution_policy='as_parallel')
 	try:
 		_ = cc1(state=state_dc)
 		assert False
@@ -53,7 +53,7 @@ def test_compatibility(
 	# failing
 	#
 	state_dc = deepcopy(state)
-	cc2 = ConcurrentCoupling(tendency2, tendency1, mode='serial')
+	cc2 = ConcurrentCoupling(tendency2, tendency1, execution_policy='serial')
 	try:
 		_ = cc2(state=state_dc)
 		assert False
@@ -64,7 +64,7 @@ def test_compatibility(
 	# successful
 	#
 	state_dc = deepcopy(state)
-	cc3 = ConcurrentCoupling(tendency1, tendency2, mode='serial')
+	cc3 = ConcurrentCoupling(tendency1, tendency2, execution_policy='serial')
 	try:
 		_ = cc3(state=state_dc)
 		assert True
@@ -82,7 +82,7 @@ def test_numerics(
 	tendency1 = make_fake_tendency_1(grid)
 	tendency2 = make_fake_tendency_2(grid)
 
-	cc = ConcurrentCoupling(tendency1, tendency2, mode='serial')
+	cc = ConcurrentCoupling(tendency1, tendency2, execution_policy='serial')
 	tendencies = cc(state=state)
 
 	assert 'fake_variable' in state

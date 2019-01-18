@@ -23,8 +23,8 @@
 import os
 import pytest
 
-from tasmania.plot.trackers import HovmollerDiagram
-from tasmania.plot.monitors import Plot
+from tasmania.python.plot.trackers import HovmollerDiagram
+from tasmania.python.plot.monitors import Plot
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_hovmoller')

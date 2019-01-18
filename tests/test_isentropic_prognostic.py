@@ -25,13 +25,13 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
-from tasmania.dynamics.horizontal_boundary import HorizontalBoundary
-from tasmania.dynamics.isentropic_prognostic import IsentropicPrognostic
-from tasmania.dynamics._isentropic_prognostic import Centered, ForwardEuler, \
-													 RK2, RK3COSMO, RK3
-from tasmania.physics.microphysics import RaindropFallVelocity
-from tasmania.utils.data_utils import make_raw_state
+from tasmania.python.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
+from tasmania.python.dynamics.horizontal_boundary import HorizontalBoundary
+from tasmania.python.dynamics.isentropic_prognostic import IsentropicPrognostic
+from tasmania.python.dynamics._isentropic_prognostic import \
+	Centered, ForwardEuler, RK2, RK3COSMO, RK3
+from tasmania.python.physics.microphysics import RaindropFallVelocity
+from tasmania.python.utils.data_utils import make_raw_state
 
 
 mf_wv  = 'mass_fraction_of_water_vapor_in_air'

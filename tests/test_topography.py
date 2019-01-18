@@ -35,7 +35,7 @@ def test_topography_1d_flat():
 		 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
 	x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x', attrs={'units': units_x})
 
-	from tasmania.grids.topography import Topography1d as Topography
+	from tasmania.python.grids.topography import Topography1d as Topography
 	topo = Topography(x, topo_type='flat_terrain')
 
 	assert np.count_nonzero(topo.topo.values) == 0
@@ -50,7 +50,7 @@ def test_topography_1d_gaussian():
 		 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
 	x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x', attrs={'units': units_x})
 
-	from tasmania.grids.topography import Topography1d as Topography
+	from tasmania.python.grids.topography import Topography1d as Topography
 	topo = Topography(x, topo_type='gaussian',
 					  topo_max_height=DataArray(1., attrs={'units': 'km'}),
 					  topo_width_x=DataArray(10., attrs={'units': 'km'}))
@@ -69,7 +69,7 @@ def test_topography_1d_update():
 		 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
 	x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x', attrs={'units': units_x})
 
-	from tasmania.grids.topography import Topography1d as Topography
+	from tasmania.python.grids.topography import Topography1d as Topography
 	from datetime import timedelta
 	topo = Topography(x, topo_type='gaussian', topo_time=timedelta(seconds=60),
 					  topo_max_height=DataArray(1., attrs={'units': 'km'}),
@@ -100,10 +100,10 @@ def test_topography_2d_flat():
 	domain_x, nx = DataArray([0, 500], dims='x', attrs={'units': 'km'}), 201
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 101
 
-	from tasmania.grids.grid_xy import GridXY as Grid
+	from tasmania.python.grids.grid_xy import GridXY as Grid
 	g = Grid(domain_x, nx, domain_y, ny)
 
-	from tasmania.grids.topography import Topography2d as Topography
+	from tasmania.python.grids.topography import Topography2d as Topography
 	topo = Topography(g, topo_type='flat_terrain')
 
 	assert np.count_nonzero(topo.topo.values) == 0
@@ -115,10 +115,10 @@ def test_topography_2d_gaussian():
 	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 201
 	domain_y, ny = DataArray([-50., 50.], dims='y', attrs={'units': 'km'}), 101
 
-	from tasmania.grids.grid_xy import GridXY as Grid
+	from tasmania.python.grids.grid_xy import GridXY as Grid
 	g = Grid(domain_x, nx, domain_y, ny)
 
-	from tasmania.grids.topography import Topography2d as Topography
+	from tasmania.python.grids.topography import Topography2d as Topography
 	topo = Topography(g, topo_type='gaussian',
 					  topo_max_height=DataArray(1., attrs={'units': 'km'}),
 					  topo_width_x=DataArray(10., attrs={'units': 'km'}),
@@ -141,10 +141,10 @@ def test_topography_2d_schaer():
 	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 201
 	domain_y, ny = DataArray([-50., 50.], dims='y', attrs={'units': 'km'}), 101
 
-	from tasmania.grids.grid_xy import GridXY as Grid
+	from tasmania.python.grids.grid_xy import GridXY as Grid
 	g = Grid(domain_x, nx, domain_y, ny)
 
-	from tasmania.grids.topography import Topography2d as Topography
+	from tasmania.python.grids.topography import Topography2d as Topography
 	topo = Topography(g, topo_type='gaussian',
 					  topo_max_height=DataArray(1., attrs={'units': 'km'}),
 					  topo_width_x=DataArray(10., attrs={'units': 'km'}),
@@ -167,10 +167,10 @@ def test_topography_2d_update():
 	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 201
 	domain_y, ny = DataArray([-50., 50.], dims='y', attrs={'units': 'km'}), 101
 
-	from tasmania.grids.grid_xy import GridXY as Grid
+	from tasmania.python.grids.grid_xy import GridXY as Grid
 	g = Grid(domain_x, nx, domain_y, ny)
 
-	from tasmania.grids.topography import Topography2d as Topography
+	from tasmania.python.grids.topography import Topography2d as Topography
 	from datetime import timedelta
 	topo = Topography(g, topo_type='gaussian', topo_time=timedelta(seconds=60),
 					  topo_max_height=DataArray(1., attrs={'units': 'km'}),

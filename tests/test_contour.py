@@ -23,8 +23,8 @@
 import os
 import pytest
 
-from tasmania.plot.contour import Contour
-from tasmania.plot.monitors import Plot
+from tasmania.python.plot.contour import Contour
+from tasmania.python.plot.monitors import Plot
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contour')

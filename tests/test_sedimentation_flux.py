@@ -23,6 +23,7 @@
 import pytest
 
 import gridtools as gt
+from tasmania.python.physics.microphysics import SedimentationFlux
 
 
 def test_first_order_upwind():
@@ -33,8 +34,22 @@ def test_first_order_upwind():
 	qr	= gt.Equation()
 	vt  = gt.Equation()
 
-	from tasmania.dynamics.sedimentation_flux import SedimentationFlux
 	fluxer = SedimentationFlux.factory('first_order_upwind')
+
+	flux = fluxer(k, rho, h, qr, vt)
+
+	assert flux.get_name() == 'tmp_dfdz'
+
+
+def test_second_order_upwind():
+	k = gt.Index(axis=2)
+
+	rho = gt.Equation()
+	h   = gt.Equation()
+	qr	= gt.Equation()
+	vt  = gt.Equation()
+
+	fluxer = SedimentationFlux.factory('second_order_upwind')
 
 	flux = fluxer(k, rho, h, qr, vt)
 

@@ -23,10 +23,10 @@
 import os
 import pytest
 
-from tasmania.plot.animation import Animation
-from tasmania.plot.contourf import Contourf
-from tasmania.plot.monitors import Plot, PlotComposite
-from tasmania.plot.profile import LineProfile
+from tasmania.python.plot.animation import Animation
+from tasmania.python.plot.contourf import Contourf
+from tasmania.python.plot.monitors import Plot, PlotComposite
+from tasmania.python.plot.profile import LineProfile
 
 
 def test_profile(isentropic_moist_sedimentation_data):

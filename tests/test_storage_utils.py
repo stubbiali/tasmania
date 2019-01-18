@@ -22,7 +22,7 @@
 #
 import pytest
 
-from tasmania.utils.storage_utils import load_netcdf_dataset
+from tasmania.python.utils.storage_utils import load_netcdf_dataset
 
 
 def test_load_netcdf_dataset():
