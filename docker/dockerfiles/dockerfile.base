@@ -1,0 +1,103 @@
+FROM debian:jessie
+
+MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
+
+# environment variables
+ENV DEBIAN_FRONTEND noninteractive
+
+# install a miscellaneous of useful software
+RUN apt-get update
+RUN apt-get install -y ca-certificates		\
+					   cmake				\
+					   curl					\
+					   firefox-esr			\
+					   libfreetype6-dev     \
+					   libpng12-dev         \
+					   locales				\
+					   g++					\
+					   git					\
+					   graphviz				\
+					   pkg-config           \
+					   qt-sdk				\
+					   sudo					\
+					   vim					\
+					   wget					\
+					   x11-apps				\
+					--no-install-recommends
+
+# install FFmpeg
+RUN echo 'deb http://ftp.uk.debian.org/debian jessie-backports main' >> /etc/apt/sources.list
+RUN	apt-get update --fix-missing
+RUN	apt-get install -y ffmpeg
+
+# install chrome
+RUN echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb stable main' >> /etc/apt/sources.list
+RUN	wget https://dl.google.com/linux/linux_signing_key.pub
+RUN	apt-key add linux_signing_key.pub
+RUN	apt-get update
+RUN	apt-get install -y google-chrome-stable 
+
+# packages required to install python with SSL/TLS support
+RUN apt-get install -y make \
+					   build-essential \
+					   libssl-dev \
+					   zlib1g-dev \
+					   libbz2-dev \
+					   libsqlite3-dev \
+					   libffi-dev
+
+# install python3.4
+RUN wget -q 'https://www.python.org/ftp/python/3.4.9/Python-3.4.9.tar.xz'
+RUN tar xf Python-3.4.9.tar.xz
+RUN cd Python-3.4.9 && \
+	./configure && \
+	make && make install && \
+	cd .. \
+	rm -rf Python-3.4.9
+
+# install python3.5
+RUN wget -q 'https://www.python.org/ftp/python/3.5.6/Python-3.5.6.tar.xz'
+RUN tar xf Python-3.5.6.tar.xz
+RUN cd Python-3.5.6 && \
+	./configure && \
+	make && make install && \
+	cd .. \
+	rm -rf Python-3.5.6
+
+# install python3.6
+RUN wget -q 'https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tar.xz'
+RUN tar xf Python-3.6.7.tar.xz
+RUN cd Python-3.6.7 && \
+	./configure && \
+	make && make install && \
+	cd .. \
+	rm -rf Python-3.6.7
+
+# install python3.7
+RUN wget -q 'https://www.python.org/ftp/python/3.7.1/Python-3.7.1.tar.xz'
+RUN tar xf Python-3.7.1.tar.xz
+RUN cd Python-3.7.1 && \
+	./configure && \
+	make && make install && \
+	cd .. \
+	rm -rf Python-3.7.1
+
+# install git lfs
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+RUN	apt-get install -y git-lfs
+RUN	git lfs install
+
+# install Boost-1.58.0
+RUN wget -q -O boost_1_58_0.tar.gz 'http://downloads.sourceforge.net/project/boost/boost/1.58.0/boost_1_58_0.tar.gz?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.58.0%2F&ts=1446134333&use_mirror=kent'
+RUN	tar xvzf boost_1_58_0.tar.gz
+RUN	cd boost_1_58_0 && \
+	./bootstrap.sh --with-libraries=timer,system,chrono --exec-prefix=/usr/local && \
+	./b2 install && \
+	cd ..
+RUN	rm -rf boost_1_58_0 boost_1_58_0.tar.gz
+ENV BOOST_ROOT /usr/local                           					
+
+# set useful environmental variables
+ENV TERM xterm-256color
+ENV QT_X11_NO_MITSHM 1
+ENV PYTHONWARNINGS ignore:'numpy.dtype size changed':RuntimeWarning,ignore:'numpy.ufunc size changed':RuntimeWarning
