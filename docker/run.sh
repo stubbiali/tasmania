@@ -21,33 +21,39 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-IMAGE_NAME=tasmania:master
+TASMANIA_ROOT=$(cd ..; pwd)
+IMAGE_NAME=tasmania:develop
 CONTAINER_NAME=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
 
-echo "About to fire up a containter named '$CONTAINER_NAME' from the image '$IMAGE_NAME'." 
+echo "About to run and connect to a containter named '$CONTAINER_NAME', spawn from the image '$IMAGE_NAME'." 
 read -n 1 -s -r -p "Press CTRL-C to exit, or any other key to continue."
 echo ""
 
-docker run --rm															\
-		   --privileged													\
-		   -dit															\
-		   -e DISPLAY 													\
-		   -e XAUTHORITY=$XAUTHORITY 									\
-		   -e PYTHONPATH=/home/dockeruser/tasmania						\
-		   -P															\
-		   --name $CONTAINER_NAME										\
-		   --mount type=bind,src=$PWD/..,dst=/home/dockeruser/tasmania	\
-		   --mount type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix		\
-		   $IMAGE_NAME													\
+docker run --rm							\
+		   --privileged					\
+		   -dit							\
+		   -e DISPLAY 					\
+		   -e XAUTHORITY=$XAUTHORITY 	\
+		   -P							\
+		   --name $CONTAINER_NAME		\
+		   --mount type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix \
+		   --mount type=bind,src=$TASMANIA_ROOT/buffer,dst=/home/tasmania-user/tasmania/buffer \
+		   --mount type=bind,src=$TASMANIA_ROOT/data,dst=/home/tasmania-user/tasmania/data \
+		   --mount type=bind,src=$TASMANIA_ROOT/docker/gridtools4py,dst=/home/tasmania-user/tasmania/docker/gridtools4py \
+		   --mount type=bind,src=$TASMANIA_ROOT/docs,dst=/home/tasmania-user/tasmania/docs \
+		   --mount type=bind,src=$TASMANIA_ROOT/drivers,dst=/home/tasmania-user/tasmania/drivers \
+		   --mount type=bind,src=$TASMANIA_ROOT/makefile,dst=/home/tasmania-user/tasmania/makefile \
+		   --mount type=bind,src=$TASMANIA_ROOT/notebooks,dst=/home/tasmania-user/tasmania/notebooks \
+		   --mount type=bind,src=$TASMANIA_ROOT/README.md,dst=/home/tasmania-user/tasmania/README.md \
+		   --mount type=bind,src=$TASMANIA_ROOT/requirements.txt,dst=/home/tasmania-user/tasmania/requirements.txt \
+		   --mount type=bind,src=$TASMANIA_ROOT/results,dst=/home/tasmania-user/tasmania/results \
+		   --mount type=bind,src=$TASMANIA_ROOT/scripts,dst=/home/tasmania-user/tasmania/scripts \
+		   --mount type=bind,src=$TASMANIA_ROOT/setup.cfg,dst=/home/tasmania-user/tasmania/setup.cfg \
+		   --mount type=bind,src=$TASMANIA_ROOT/setup.py,dst=/home/tasmania-user/tasmania/setup.py \
+		   --mount type=bind,src=$TASMANIA_ROOT/tasmania/__init__.py,dst=/home/tasmania-user/tasmania/tasmania/__init__.py \
+		   --mount type=bind,src=$TASMANIA_ROOT/tasmania/python,dst=/home/tasmania-user/tasmania/tasmania/python \
+		   --mount type=bind,src=$TASMANIA_ROOT/tests,dst=/home/tasmania-user/tasmania/tests \
+		   $IMAGE_NAME					\
 		   bash
 
-docker exec -it				\
-			$CONTAINER_NAME \
-			bash -c "set -ex; \
-					 curl -LO https://bootstrap.pypa.io/get-pip.py; \
-					 python get-pip.py --user; \
-					 cd tasmania; \
-					 make distclean; \
-					 python -m pip install --user -e .; \
-					 cd ..; \
-					 bash"
+docker exec -it $CONTAINER_NAME bash 

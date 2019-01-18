@@ -1,0 +1,101 @@
+FROM python:3.5-jessie
+
+MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
+
+# environment variables
+ENV DEBIAN_FRONTEND noninteractive
+
+# install FFmpeg
+RUN echo 'deb http://ftp.uk.debian.org/debian jessie-backports main' >> /etc/apt/sources.list && \
+	apt-get update --fix-missing && \
+	apt-get install -y ffmpeg
+
+# install chrome
+RUN echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb stable main' >> /etc/apt/sources.list && \
+	wget https://dl.google.com/linux/linux_signing_key.pub && \
+	apt-key add linux_signing_key.pub && \
+	apt-get update && \
+	apt-get install -y google-chrome-stable 
+
+# install a miscellaneous of useful software
+RUN apt-get update
+RUN apt-get install -y cmake                \
+					   firefox-esr			\
+					   libfreetype6-dev     \
+					   libpng12-dev         \
+					   locales				\
+					   git					\
+					   graphviz				\
+					   pkg-config           \
+					   qt-sdk				\
+					   sudo					\
+					   vim					\
+					   x11-apps				\
+					--no-install-recommends
+
+# install git lfs
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
+	apt-get install -y git-lfs && \
+	git lfs install
+
+# create a non-root user called dockeruser, whose uid might be specified at building time
+ARG uid=1000
+RUN useradd -r -u $uid dockeruser
+
+# make home directory for dockeruser
+RUN mkdir /home/dockeruser && \
+	chmod a+w /home/dockeruser && \
+	chown -R dockeruser /home/dockeruser
+
+# locale configuration
+RUN cp /usr/share/zoneinfo/Europe/Zurich /etc/localtime && \
+	dpkg-reconfigure locales
+
+# set the working directory to /home/dockeruser
+WORKDIR /home/dockeruser
+ENV 	HOME /home/dockeruser
+
+# add essential files to the container's filesystem
+COPY . $HOME/docker
+
+# install tasmania's dependencies
+RUN python -m pip install -r $HOME/docker/requirements.txt && \
+	python -m pip install -e $HOME/docker/gridtools4py/
+
+# set firefox as default browser for jupyter
+RUN jupyter notebook --generate-config && \
+	cat $HOME/.jupyter/jupyter_notebook_config.py | \
+	sed -e "s@\#c.NotebookApp.browser = ''@c.NotebookApp.browser = '/usr/bin/firefox'@g" > /tmp/jupyter_notebook_config.py && \
+	cp /tmp/jupyter_notebook_config.py $HOME/.jupyter/jupyter_notebook_config.py
+
+# set Qt5 as matplotlib backend
+RUN cat /usr/local/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	cp /tmp/.matplotlibrc /usr/local/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc
+
+# install Boost-1.58.0
+RUN wget -q -O boost_1_58_0.tar.gz 'http://downloads.sourceforge.net/project/boost/boost/1.58.0/boost_1_58_0.tar.gz?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.58.0%2F&ts=1446134333&use_mirror=kent' && \
+	tar xvzf boost_1_58_0.tar.gz && \
+	cd boost_1_58_0 && \
+	./bootstrap.sh --with-libraries=timer,system,chrono --exec-prefix=/usr/local && \
+	./b2 install && \
+	cd .. && \
+	rm -rf boost_1_58_0 boost_1_58_0.tar.gz
+ENV BOOST_ROOT /usr/local                           					
+
+# personalize bashrc configuration file
+RUN cat $HOME/docker/bashrc >> ~/.bashrc
+
+# set vimrc configuration file
+RUN cp $HOME/docker/vimrc ~/.vimrc
+
+# set useful environmental variables
+ENV TERM xterm-256color
+ENV QT_X11_NO_MITSHM 1
+ENV PYTHONWARNINGS ignore:'numpy.dtype size changed':RuntimeWarning,ignore:'numpy.ufunc size changed':RuntimeWarning
+
+# change ownership to non-root user
+RUN chown -hR dockeruser $HOME
+
+# switch to dockeruser
+USER dockeruser

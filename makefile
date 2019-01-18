@@ -32,9 +32,10 @@ ROOT_DIR := $(dir $(MKFILE_PATH))
 SRC_DIR := $(ROOT_DIR)/tasmania
 DOC_DIR := $(ROOT_DIR)/docs
 DOC_SRC := $(DOC_DIR)/source/conf.py $(DOC_DIR)/source/api.rst
-PARSER_DIR := $(SRC_DIR)/grids/parser
+PARSER_DIR := $(SRC_DIR)/cpp/parser
 UML_DIR := $(DOC_DIR)/uml
 TEST_DIR := $(ROOT_DIR)/tests
+DOCKER_DIR := $(ROOT_DIR)/docker
 
 all: clean parser html tests
 
@@ -65,7 +66,7 @@ uml: parser
 	@mv packages_*.eps $(UML_DIR) > /dev/null
 	@echo "OK."
 
-.PHONY: tests prepare_tests clean distclean gitignore
+.PHONY: tests prepare_tests clean distclean gitignore docker-build docker-run
 
 tests: prepare_tests
 	@cd $(TEST_DIR) && pytest --mpl --cov=$(SRC_DIR) .
@@ -103,3 +104,9 @@ gitignore:
 	@echo '# Files which exceed maximum size allowed by GitHub'			>> .gitignore 
 	@find . -size +50M | cat 											>> .gitignore
 	@echo '\n# END OF AUTOMATICALLY GENERATED TEXT'						>> .gitignore
+
+docker-build:
+	@cd $(DOCKER_DIR) && ./build_base.sh && ./build_tasmania.sh
+
+docker-run:
+	@cd $(DOCKER_DIR) && ./run.sh
