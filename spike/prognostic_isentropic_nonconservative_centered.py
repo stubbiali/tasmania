@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import copy
 import numpy as np
 
 import gridtools as gt
@@ -29,7 +28,7 @@ from tasmania.dycore.prognostic_isentropic_nonconservative import PrognosticIsen
 from tasmania.namelist import datatype, rho_water
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
-import tasmania.utils.utils as utils
+import python.utils.utils as utils
 
 class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconservative):
 	"""

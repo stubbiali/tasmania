@@ -52,7 +52,7 @@ pg = taz.ConservativeIsentropicPressureGradient(
 cf = taz.ConservativeIsentropicCoriolis(grid, dtype=nl.dtype)
 
 # Wrap the components in a ConcurrentCoupling object
-cc = taz.ConcurrentCoupling(pg, cf, 
+cc = taz.ConcurrentCoupling(pg, #cf, 
 							mode='serial')
 
 # Instantiate the component retrieving the diagnostic variables, and wrap it in a

@@ -24,7 +24,7 @@ from sympl import DataArray
 from loader import LoaderFactory
 import tasmania as taz
 
-from tasmania.utils.data_utils import subtract
+from python.utils.data_utils import subtract
 
 
 #

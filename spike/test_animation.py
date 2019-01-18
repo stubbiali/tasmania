@@ -21,14 +21,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-import pytest
+
 
 def _create_grid():
 	domain_x, nx = [0,500e3], 101
 	domain_y, ny = [0,500e3], 91
 	domain_z, nz = [400,300], 50
 
-	from tasmania.grids.grid_xyz import GridXYZ as Grid
+	from python.grids.grid_xyz import GridXYZ as Grid
 	grid = Grid(domain_x, nx, domain_y, ny, domain_z, nz, 
 				units_x = 'm', dims_x = 'x',
 				units_y = 'm', dims_y = 'y',
@@ -145,8 +145,8 @@ def test_monitor_contour_xz():
 		text_loc		 = 'upper right',
 	)
 	
-	from tasmania.plot.animation_monitor import Animation
-	from tasmania.plot.contour_xz import make_animation_contour_xz as plot_function
+	from python.plot import Animation
+	from python.plot import make_animation_contour_xz as plot_function
 	monitor = Animation(plot_function, grid, field_to_plot, y_level, **kwargs)
 	for state in states_list:
 		monitor.store(state)

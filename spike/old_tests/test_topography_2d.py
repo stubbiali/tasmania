@@ -23,10 +23,9 @@
 """ 
 Test Topography2d class. 
 """
-import numpy as np
 
-from grids.grid_xy import GridXY
-from grids.topography import Topography2d
+from python.grids import GridXY
+from python.grids.topography import Topography2d
 
 domain_x, nx = [0.,10.], 1e2+1
 domain_y, ny = [0.,10.], 1e2+1

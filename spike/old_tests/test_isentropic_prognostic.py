@@ -26,7 +26,7 @@ Test IsentropicPrognostic class.
 import numpy as np
 
 from dycore.isentropic_prognostic import IsentropicPrognostic
-from grids.xyz_grid import XYZGrid as Grid
+from python.grids import XYZGrid as Grid
 import gridtools as gt
 from namelist import datatype
 

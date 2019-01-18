@@ -21,16 +21,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-import copy
 import numpy as np
 
 import gridtools as gt
 from tasmania.dycore.flux_isentropic_nonconservative import FluxIsentropicNonconservative
 from tasmania.dycore.flux_sedimentation import FluxSedimentation
 from tasmania.namelist import datatype
-from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
-import tasmania.utils.utils as utils
+import python.utils.utils as utils
 
 class PrognosticIsentropicNonconservative:
 	"""

@@ -23,11 +23,7 @@
 ## @package gt4ess
 #  Test Planar class.
 
-import math
-import numpy as np
-
-import config as cfg
-from grids.planar import Planar as Grid
+from python.grids import Planar as Grid
 
 #
 # Data

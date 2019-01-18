@@ -23,10 +23,8 @@
 """
 Test GalChen3d class.
 """
-import math
-import numpy as np
 
-from grids.gal_chen import GalChen3d as Grid
+from python.grids import GalChen3d as Grid
 
 # Define zonal, meridional and vertical domain
 domain_x, nx = [0.,90.], 91

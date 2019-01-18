@@ -23,10 +23,8 @@
 """
 Test Sigma3d class.
 """
-import math
-import numpy as np
 
-from grids.sigma import Sigma3d as Grid
+from python.grids.sigma import Sigma3d as Grid
 
 # Define zonal, meridional and vertical domain
 domain_x, nx = [0.,90.], 91

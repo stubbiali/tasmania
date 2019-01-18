@@ -29,7 +29,7 @@ This module contains:
 import matplotlib as mpl
 import numpy as np
 
-from tasmania.utils.data_utils import get_numpy_arrays
+from python.utils.data_utils import get_numpy_arrays
 
 
 def plot_grid_xz(grid, state, field_to_plot, y_level, fig, ax, **kwargs):
