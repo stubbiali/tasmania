@@ -20,19 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
-from datetime import datetime, timedelta
 import numpy as np
 import pytest
-from sympl import DataArray
 
 import gridtools as gt
-from tasmania.physics.isentropic_tendencies import NonconservativeIsentropicPressureGradient, \
-												   ConservativeIsentropicPressureGradient, \
-												   VerticalIsentropicAdvection, \
-												   PrescribedSurfaceHeating
-from tasmania.utils.data_utils import make_data_array_3d
-from tasmania.utils.utils import equal_to
+from tasmania.python.physics.isentropic_tendencies import \
+	NonconservativeIsentropicPressureGradient, \
+	ConservativeIsentropicPressureGradient
 
 
 def test_nonconservative_relaxed_bcs(isentropic_dry_data):

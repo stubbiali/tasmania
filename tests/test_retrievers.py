@@ -23,7 +23,7 @@
 import numpy as np
 import pytest
 
-from tasmania.plot.retrievers import DataRetriever, DataRetrieverComposite
+from tasmania.python.plot.retrievers import DataRetriever, DataRetrieverComposite
 
 
 def test_field(isentropic_dry_data, isentropic_moist_sedimentation_data):

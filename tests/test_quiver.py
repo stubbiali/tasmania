@@ -23,8 +23,8 @@
 import os
 import pytest
 
-from tasmania.plot.monitors import Plot
-from tasmania.plot.quiver import Quiver
+from tasmania.python.plot.monitors import Plot
+from tasmania.python.plot.quiver import Quiver
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')

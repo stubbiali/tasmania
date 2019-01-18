@@ -25,8 +25,8 @@ import os
 import pytest
 from sympl import DiagnosticComponent
 
-from tasmania.plot.trackers import TimeSeries
-from tasmania.plot.monitors import Plot
+from tasmania.python.plot.trackers import TimeSeries
+from tasmania.python.plot.monitors import Plot
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_timeseries')

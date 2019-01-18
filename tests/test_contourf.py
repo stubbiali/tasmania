@@ -23,8 +23,8 @@
 import os
 import pytest
 
-from tasmania.plot.contourf import Contourf
-from tasmania.plot.monitors import Plot
+from tasmania.python.plot.contourf import Contourf
+from tasmania.python.plot.monitors import Plot
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')

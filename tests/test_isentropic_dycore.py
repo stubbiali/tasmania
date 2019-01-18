@@ -26,8 +26,8 @@ import pytest
 from sympl import DataArray
 
 import gridtools as gt
-from tasmania.dynamics.isentropic_dycore import IsentropicDynamicalCore
-from tasmania.physics.microphysics import Kessler, SaturationAdjustmentKessler, \
+from python.dynamics.isentropic_dycore import IsentropicDynamicalCore
+from python.physics import Kessler, SaturationAdjustmentKessler, \
 										  RaindropFallVelocity
 
 
@@ -36,7 +36,7 @@ def test_dry(isentropic_dry_data):
 	state       = isentropic_dry_data[1][0]
 	state_final = isentropic_dry_data[1][-1]
 
-	dycore = IsentropicDynamicalCore(grid, moist_on=False,
+	dycore = IsentropicDynamicalCore(grid, moist=False,
 									 time_integration_scheme='forward_euler',
 									 horizontal_flux_scheme='maccormack',
 									 horizontal_boundary_type='relaxed',
@@ -71,7 +71,7 @@ def test_moist(isentropic_moist_data):
 	saturation = SaturationAdjustmentKessler(grid, air_pressure_on_interface_levels=True,
 											 backend=gt.mode.NUMPY)
 
-	dycore = IsentropicDynamicalCore(grid, moist_on=True,
+	dycore = IsentropicDynamicalCore(grid, moist=True,
 									 time_integration_scheme='forward_euler',
 									 horizontal_flux_scheme='maccormack',
 									 horizontal_boundary_type='relaxed',
@@ -113,7 +113,7 @@ def test_moist(isentropic_moist_data):
 #	saturation = SaturationAdjustmentKessler(grid, air_pressure_on_interface_levels=True,
 #											 backend=gt.mode.NUMPY)
 #
-#	dycore = IsentropicDynamicalCore(grid, moist_on=True,
+#	dycore = IsentropicDynamicalCore(grid, moist=True,
 #									 time_integration_scheme='forward_euler',
 #									 horizontal_flux_scheme='maccormack',
 #									 horizontal_boundary_type='relaxed',
@@ -158,7 +158,7 @@ def test_moist_sedimentation_evaporation(isentropic_moist_sedimentation_evaporat
 	saturation = SaturationAdjustmentKessler(grid, air_pressure_on_interface_levels=True,
 											 backend=gt.mode.NUMPY)
 
-	dycore = IsentropicDynamicalCore(grid, moist_on=True,
+	dycore = IsentropicDynamicalCore(grid, moist=True,
 									 time_integration_scheme='centered',
 									 horizontal_flux_scheme='centered',
 									 horizontal_boundary_type='relaxed',

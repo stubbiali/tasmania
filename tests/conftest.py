@@ -24,11 +24,11 @@ from datetime import timedelta
 import pytest
 from sympl import DataArray, TendencyComponent
 
-from tasmania.grids.grid_xyz import GridXYZ as Grid
-from tasmania.grids.grid_xz import GridXZ
-from tasmania.plot.contour import Contour
-from tasmania.plot.profile import LineProfile
-from tasmania.utils.storage_utils import load_netcdf_dataset
+from tasmania.python.grids.grid_xyz import GridXYZ as Grid
+from tasmania.python.grids.grid_xz import GridXZ
+from tasmania.python.plot.contour import Contour
+from tasmania.python.plot.profile import LineProfile
+from tasmania.python.utils.storage_utils import load_netcdf_dataset
 
 
 @pytest.fixture(scope='module')

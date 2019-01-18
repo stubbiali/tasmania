@@ -23,7 +23,7 @@
 import numpy as np
 import pytest
 
-from tasmania.dynamics.horizontal_smoothing import HorizontalSmoothing as HS
+from tasmania.python.dynamics.horizontal_smoothing import HorizontalSmoothing as HS
 
 
 def test_first_order(grid):

@@ -20,10 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
 import pytest
 
-from tasmania.core.offline_diagnostics import \
+from tasmania.python.core.offline_diagnostics import \
 	FakeComponent, OfflineDiagnosticComponent, RMSD, RRMSD
 
 

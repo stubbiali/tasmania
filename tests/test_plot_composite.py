@@ -24,10 +24,9 @@ from datetime import timedelta
 import os
 import pytest
 
-from tasmania.plot.contourf import Contourf
-from tasmania.plot.monitors import Plot, PlotComposite
-from tasmania.plot.profile import LineProfile
-from tasmania.plot.quiver import Quiver
+from tasmania.python.plot.contourf import Contourf
+from tasmania.python.plot.monitors import Plot, PlotComposite
+from tasmania.python.plot.profile import LineProfile
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')

@@ -24,14 +24,14 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-from tasmania.utils.utils import equal_to as eq
+from tasmania.python.utils.utils import equal_to as eq
 
 
 def test_grid_xy():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
 
-	from tasmania.grids.grid_xy import GridXY as Grid
+	from tasmania.python.grids.grid_xy import GridXY as Grid
 	g = Grid(domain_x, nx, domain_y, ny)
 
 	assert g.nx == nx
@@ -57,7 +57,7 @@ def test_grid_xz():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_z, nz = DataArray([400, 300], dims='isentropic_density', attrs={'units': 'K'}), 50
 
-	from tasmania.grids.grid_xz import GridXZ as Grid
+	from tasmania.python.grids.grid_xz import GridXZ as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -90,7 +90,7 @@ def test_grid_xyz():
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
 	domain_z, nz = DataArray([400, 300], dims='isentropic_density', attrs={'units': 'K'}), 50
 
-	from tasmania.grids.grid_xyz import GridXYZ as Grid
+	from tasmania.python.grids.grid_xyz import GridXYZ as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_y, ny, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -127,7 +127,7 @@ def test_gal_chen_2d():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_z, nz = DataArray([100, 0], attrs={'units': 'm'}), 50
 
-	from tasmania.grids.gal_chen import GalChen2d as Grid
+	from tasmania.python.grids.gal_chen import GalChen2d as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -166,7 +166,7 @@ def test_gal_chen_2d():
 
 def test_gal_chen_2d_exceptions():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
-	from tasmania.grids.gal_chen import GalChen2d as Grid
+	from tasmania.python.grids.gal_chen import GalChen2d as Grid
 	from datetime import timedelta
 
 	domain_z, nz = DataArray([100, 1], attrs={'units': 'm'}), 50
@@ -205,7 +205,7 @@ def test_gal_chen_3d():
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
 	domain_z, nz = DataArray([100, 0], attrs={'units': 'm'}), 50
 
-	from tasmania.grids.gal_chen import GalChen3d as Grid
+	from tasmania.python.grids.gal_chen import GalChen3d as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_y, ny, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -252,7 +252,7 @@ def test_gal_chen_3d():
 def test_gal_chen_3d_exceptions():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
-	from tasmania.grids.gal_chen import GalChen3d as Grid
+	from tasmania.python.grids.gal_chen import GalChen3d as Grid
 	from datetime import timedelta
 
 	domain_z, nz = DataArray([100, 1], attrs={'units': 'm'}), 50
@@ -290,7 +290,7 @@ def test_sigma_2d():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_z, nz = DataArray([0.2, 1.], attrs={'units': '1'}), 50
 
-	from tasmania.grids.sigma import Sigma2d as Grid
+	from tasmania.python.grids.sigma import Sigma2d as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -332,7 +332,7 @@ def test_sigma_2d():
 
 def test_sigma_2d_exceptions():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
-	from tasmania.grids.sigma import Sigma2d as Grid
+	from tasmania.python.grids.sigma import Sigma2d as Grid
 	from datetime import timedelta
 
 	domain_z, nz = DataArray([2., 1.], attrs={'units': '1'}), 50
@@ -381,7 +381,7 @@ def test_sigma_3d():
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
 	domain_z, nz = DataArray([0.2, 1.], attrs={'units': '1'}), 50
 
-	from tasmania.grids.sigma import Sigma3d as Grid
+	from tasmania.python.grids.sigma import Sigma3d as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_y, ny, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -429,7 +429,7 @@ def test_sigma_3d():
 def test_sigma_3d_exceptions():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
-	from tasmania.grids.sigma import Sigma3d as Grid
+	from tasmania.python.grids.sigma import Sigma3d as Grid
 	from datetime import timedelta
 
 	domain_z, nz = DataArray([3., 1.], attrs={'units': '1'}), 50
@@ -481,7 +481,7 @@ def test_sleve_2d():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_z, nz = DataArray([100, 0], attrs={'units': 'm'}), 50
 
-	from tasmania.grids.sleve import SLEVE2d as Grid
+	from tasmania.python.grids.sleve import SLEVE2d as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -520,7 +520,7 @@ def test_sleve_2d():
 
 def test_sleve_2d_exceptions():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
-	from tasmania.grids.sleve import SLEVE2d as Grid
+	from tasmania.python.grids.sleve import SLEVE2d as Grid
 	from datetime import timedelta
 
 	domain_z, nz = DataArray([100, 1], attrs={'units': 'm'}), 50
@@ -559,7 +559,7 @@ def test_sleve_3d():
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
 	domain_z, nz = DataArray([100, 0], attrs={'units': 'm'}), 50
 
-	from tasmania.grids.sleve import SLEVE3d as Grid
+	from tasmania.python.grids.sleve import SLEVE3d as Grid
 	from datetime import timedelta
 	g = Grid(domain_x, nx, domain_y, ny, domain_z, nz,
 			 topo_type='gaussian', topo_time=timedelta(seconds=30),
@@ -606,7 +606,7 @@ def test_sleve_3d():
 def test_sleve_3d_exceptions():
 	domain_x, nx = DataArray([0, 100e3], dims='x', attrs={'units': 'm'}), 101
 	domain_y, ny = DataArray([-50, 50], dims='y', attrs={'units': 'km'}), 201
-	from tasmania.grids.sleve import SLEVE3d as Grid
+	from tasmania.python.grids.sleve import SLEVE3d as Grid
 	from datetime import timedelta
 
 	domain_z, nz = DataArray([100, 1], attrs={'units': 'm'}), 50

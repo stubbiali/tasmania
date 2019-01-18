@@ -23,8 +23,8 @@
 import os
 import pytest
 
-from tasmania.plot.profile import LineProfile
-from tasmania.plot.monitors import Plot
+from tasmania.python.plot.profile import LineProfile
+from tasmania.python.plot.monitors import Plot
 
 
 @pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_profile')

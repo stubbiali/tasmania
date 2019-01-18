@@ -24,7 +24,7 @@ import pytest
 
 
 def test_kessler(isentropic_moist_sedimentation_evaporation_data):
-	from tasmania.physics.microphysics import Kessler
+	from tasmania.python.physics.microphysics import Kessler
 	grid, states = isentropic_moist_sedimentation_evaporation_data
 	state = states[-1]
 
@@ -65,7 +65,7 @@ def test_kessler(isentropic_moist_sedimentation_evaporation_data):
 
 
 def test_saturation_adjustment_kessler(isentropic_moist_sedimentation_evaporation_data):
-	from tasmania.physics.microphysics import SaturationAdjustmentKessler
+	from tasmania.python.physics.microphysics import SaturationAdjustmentKessler
 	grid, states = isentropic_moist_sedimentation_evaporation_data
 	state = states[-1]
 
@@ -91,7 +91,7 @@ def test_saturation_adjustment_kessler(isentropic_moist_sedimentation_evaporatio
 
 
 def test_raindrop_fall_velocity(isentropic_moist_sedimentation_evaporation_data):
-	from tasmania.physics.microphysics import RaindropFallVelocity
+	from tasmania.python.physics.microphysics import RaindropFallVelocity
 	grid, states = isentropic_moist_sedimentation_evaporation_data
 	state = states[-1]
 

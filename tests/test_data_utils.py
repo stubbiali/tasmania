@@ -24,8 +24,8 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-from tasmania.utils import data_utils as du
-from tasmania.utils.exceptions import ConstantNotFoundError
+from tasmania.python.utils import data_utils as du
+from tasmania.python.utils.exceptions import ConstantNotFoundError
 
 
 def test_get_constant():
