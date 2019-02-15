@@ -22,6 +22,7 @@
 #
 import os
 import pytest
+import sys
 
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot
@@ -29,13 +30,17 @@ from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.quiver import Quiver
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
+baseline_dir = 'baseline_images/py{}{}/test_plots'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_x(
 	isentropic_moist_sedimentation_data,
 	isentropic_moist_sedimentation_evaporation_data
 ):
-	# Make sure the folder tests/baseline_images/test_plots does exist
-	baseline_dir = 'baseline_images/test_plots'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -131,11 +136,10 @@ def test_profile_x(
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_z(isentropic_moist_sedimentation_data,
 				   isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plots does exist
-	baseline_dir = 'baseline_images/test_plots'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -229,10 +233,9 @@ def test_profile_z(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plots')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_plot2d(isentropic_dry_data, drawer_topography2d):
-	# Make sure the folder tests/baseline_images/test_plots does exist
-	baseline_dir = 'baseline_images/test_plots'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

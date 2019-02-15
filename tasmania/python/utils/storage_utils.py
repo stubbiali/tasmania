@@ -44,36 +44,39 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 	caches stored states and then write them to a NetCDF file,
 	together with some grid properties.
 	"""
-	def __init__(self, filename, grid, time_units='seconds',
-				 store_names=None, write_on_store=False, aliases=None):
+	def __init__(
+		self, filename, grid, time_units='seconds',
+		store_names=None, write_on_store=False, aliases=None
+	):
 		"""
 		The constructor.
 
 		Parameters
 		----------
 		filename : str
-            The file to which the NetCDF file will be written.
-        grid : grid
-        	Instance of :class:`~tasmania.dynamics.grids.grid_xyz.GridXYZ`
-        	representing the underlying computational grid.
-        time_units : str, optional
+			The file to which the NetCDF file will be written.
+		grid : grid
+			Instance of :class:`~tasmania.dynamics.grids.grid_xyz.GridXYZ`
+			representing the underlying computational grid.
+		time_units : str, optional
 			The units in which time will be
 			stored in the NetCDF file. Time is stored as an integer
 			number of these units. Default is seconds.
-        store_names : iterable of str, optional
-        	Names of quantities to store. If not given,
-        	all quantities are stored.
+		store_names : iterable of str, optional
+			Names of quantities to store. If not given,
+			all quantities are stored.
 		write_on_store : bool, optional
-	        If True, stored changes are immediately written to file.
+			If True, stored changes are immediately written to file.
 			This can result in many file open/close operations.
 			Default is to write only when the write() method is
-            called directly.
-        aliases : dict
+			called directly.
+		aliases : dict
 			A dictionary of string replacements to apply to state variable
-            names before saving them in netCDF files.
+			names before saving them in netCDF files.
 		"""
-		super().__init__(filename, time_units, store_names, write_on_store,
-						 aliases)
+		super().__init__(
+			filename, time_units, store_names, write_on_store, aliases
+		)
 		self._grid = grid
 
 	def store(self, state):
@@ -100,54 +103,71 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 			# List of model state variable names
 			names = [var for var in dataset.variables if var != 'time']
 			dataset.createDimension('strvec1_dim', len(names))
-			state_variable_names 	= dataset.createVariable('state_variable_names', str,
-														  	 ('strvec1_dim',))
+			state_variable_names = dataset.createVariable(
+				'state_variable_names', str, ('strvec1_dim',)
+			)
 			state_variable_names[:] = np.array(names, dtype='object')
 
 			# x-axis
-			dim1_name    = dataset.createVariable('dim1_name', str, ('str_dim',))
+			dim1_name = dataset.createVariable('dim1_name', str, ('str_dim',))
 			dim1_name[:] = np.array([g.x.dims[0]], dtype='object')
-			dim1     	 = dataset.createVariable(g.x.dims[0], g.x.values.dtype, (g.x.dims[0],))
-			dim1[:]  	 = g.x.values[:]
+			dim1 = dataset.createVariable(g.x.dims[0], g.x.values.dtype, (g.x.dims[0],))
+			dim1[:] = g.x.values[:]
 			dim1.setncattr('units', g.x.attrs['units'])
-			dim1_u    	 = dataset.createVariable(g.x_at_u_locations.dims[0],
-											  	  g.x_at_u_locations.values.dtype,
-											  	  (g.x_at_u_locations.dims[0],))
-			dim1_u[:] 	 = g.x_at_u_locations.values[:]
-			dim1_u.setncattr('units', g.x_at_u_locations.attrs['units'])
+			try:
+				dim1_u = dataset.createVariable(
+						g.x_at_u_locations.dims[0], 
+						g.x_at_u_locations.values.dtype,
+						(g.x_at_u_locations.dims[0],)
+				)
+				dim1_u[:] = g.x_at_u_locations.values[:]
+				dim1_u.setncattr('units', g.x_at_u_locations.attrs['units'])
+			except ValueError:
+				pass
 
 			# y-axis
-			dim2_name    = dataset.createVariable('dim2_name', str, ('str_dim',))
+			dim2_name = dataset.createVariable('dim2_name', str, ('str_dim',))
 			dim2_name[:] = np.array([g.y.dims[0]], dtype='object')
-			dim2     	 = dataset.createVariable(g.y.dims[0], g.y.values.dtype, (g.y.dims[0],))
-			dim2[:]  	 = g.y.values[:]
+			dim2 = dataset.createVariable(g.y.dims[0], g.y.values.dtype, (g.y.dims[0],))
+			dim2[:] = g.y.values[:]
 			dim2.setncattr('units', g.y.attrs['units'])
-			dim2_v    	 = dataset.createVariable(g.y_at_v_locations.dims[0],
-												  g.y_at_v_locations.values.dtype,
-												  (g.y_at_v_locations.dims[0],))
-			dim2_v[:] 	 = g.y_at_v_locations.values[:]
-			dim2_v.setncattr('units', g.y_at_v_locations.attrs['units'])
+			try:
+				dim2_v = dataset.createVariable(
+						g.y_at_v_locations.dims[0],
+						g.y_at_v_locations.values.dtype,
+						(g.y_at_v_locations.dims[0],)
+				)
+				dim2_v[:] = g.y_at_v_locations.values[:]
+				dim2_v.setncattr('units', g.y_at_v_locations.attrs['units'])
+			except ValueError:
+				pass
 
 			# z-axis
-			dim3_name    = dataset.createVariable('dim3_name', str, ('str_dim',))
+			dim3_name = dataset.createVariable('dim3_name', str, ('str_dim',))
 			dim3_name[:] = np.array([g.z.dims[0]], dtype='object')
-			dim3     	 = dataset.createVariable(g.z.dims[0], g.z.values.dtype, (g.z.dims[0],))
-			dim3[:]  	 = g.z.values[:]
+			dim3 = dataset.createVariable(g.z.dims[0], g.z.values.dtype, (g.z.dims[0],))
+			dim3[:] = g.z.values[:]
 			dim3.setncattr('units', g.z.attrs['units'])
-			dim3_hl    	 = dataset.createVariable(g.z_on_interface_levels.dims[0],
-												  g.z_on_interface_levels.values.dtype,
-												  (g.z_on_interface_levels.dims[0],))
-			dim3_hl[:] 	 = g.z_on_interface_levels.values[:]
-			dim3_hl.setncattr('units', g.z_on_interface_levels.attrs['units'])
+			try:
+				dim3_hl = dataset.createVariable(
+						g.z_on_interface_levels.dims[0],
+						g.z_on_interface_levels.values.dtype,
+						(g.z_on_interface_levels.dims[0],)
+				)
+				dim3_hl[:] = g.z_on_interface_levels.values[:]
+				dim3_hl.setncattr('units', g.z_on_interface_levels.attrs['units'])
+			except ValueError:
+				pass
 
 			# Interface level
-			z_interface    = dataset.createVariable('z_interface', g.z_interface.values.dtype,
-													('scalar_dim',))
+			z_interface = dataset.createVariable(
+				'z_interface', g.z_interface.values.dtype, ('scalar_dim',)
+			)
 			z_interface[:] = g.z_interface.values.item()
 			z_interface.setncattr('units', g.z_interface.attrs['units'])
 
 			# Topography type
-			topo 		 = self._grid.topography
+			topo         = self._grid.topography
 			topo_type    = dataset.createVariable('topo_type', str, ('str_dim',))
 			topo_type[:] = np.array([topo.topo_type], dtype='object')
 
@@ -192,32 +212,38 @@ def load_netcdf_dataset(filename):
 	-------
 	grid : grid
 		Instance of :class:`~tasmania.dynamics.grids.grid_xyz.GridXYZ`
-        representing the underlying computational grid.
-    states : list of dict
-    	List of state dictionaries stored in the NetCDF file.
+		representing the underlying computational grid.
+	states : list of dict
+		List of state dictionaries stored in the NetCDF file.
 	"""
 	with xr.open_dataset(filename) as dataset:
 		return _load_grid(dataset), _load_states(dataset)
 
 
 def _load_grid(dataset):
-	dims_x   = dataset.data_vars['dim1_name'].values.item()
-	x		 = dataset.coords[dims_x]
-	domain_x = sympl.DataArray([x.values[0], x.values[-1]],
-							   dims=[dims_x], attrs={'units': x.attrs['units']})
-	nx		 = x.shape[0]
+	dims_x = dataset.data_vars['dim1_name'].values.item()
+	x = dataset.coords[dims_x]
+	domain_x = sympl.DataArray(
+		[x.values[0], x.values[-1]],
+		dims=[dims_x], attrs={'units': x.attrs['units']}
+	)
+	nx = x.shape[0]
 
-	dims_y   = dataset.data_vars['dim2_name'].values.item()
-	y		 = dataset.coords[dims_y]
-	domain_y = sympl.DataArray([y.values[0], y.values[-1]],
-							   dims=[dims_y], attrs={'units': y.attrs['units']})
-	ny		 = y.shape[0]
+	dims_y = dataset.data_vars['dim2_name'].values.item()
+	y = dataset.coords[dims_y]
+	domain_y = sympl.DataArray(
+		[y.values[0], y.values[-1]],
+		dims=[dims_y], attrs={'units': y.attrs['units']}
+	)
+	ny = y.shape[0]
 
-	dims_z   = dataset.data_vars['dim3_name'].values.item()
-	z_hl     = dataset.coords[dims_z + '_on_interface_levels']
-	domain_z = sympl.DataArray([z_hl.values[0], z_hl.values[-1]],
-							   dims=[dims_z], attrs={'units': z_hl.attrs['units']})
-	nz		 = z_hl.shape[0]-1
+	dims_z = dataset.data_vars['dim3_name'].values.item()
+	z_hl = dataset.coords[dims_z + '_on_interface_levels']
+	domain_z = sympl.DataArray(
+		[z_hl.values[0], z_hl.values[-1]],
+		dims=[dims_z], attrs={'units': z_hl.attrs['units']}
+	)
+	nz = z_hl.shape[0]-1
 
 	z_interface = sympl.DataArray(dataset.data_vars['z_interface'])
 
@@ -236,8 +262,10 @@ def _load_grid(dataset):
 		else:
 			topo_kwargs[key] = sympl.DataArray(val, attrs={'units': val.attrs['units']})
 
-	return GridXYZ(domain_x, nx, domain_y, ny, domain_z, nz, z_interface,
-				   topo_type, topo_time, topo_kwargs, dtype=domain_z.values.dtype)
+	return GridXYZ(
+		domain_x, nx, domain_y, ny, domain_z, nz, z_interface,
+		topo_type, topo_time, topo_kwargs, dtype=domain_z.values.dtype
+	)
 
 
 def _load_states(dataset):

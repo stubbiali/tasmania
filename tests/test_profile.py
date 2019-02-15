@@ -22,19 +22,24 @@
 #
 import os
 import pytest
+import sys
 
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.monitors import Plot
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_profile')
+baseline_dir = 'baseline_images/py{}{}/test_profile'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_x(isentropic_moist_sedimentation_data):
 	# Field to plot
 	field_name  = 'accumulated_precipitation'
 	field_units = 'mm'
 
-	# Make sure the folder tests/baseline_images/test_profile does exist
-	baseline_dir = 'baseline_images/test_profile'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -90,14 +95,13 @@ def test_profile_x(isentropic_moist_sedimentation_data):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_profile')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_y(isentropic_dry_data):
 	# Field to plot
 	field_name  = 'y_velocity_at_v_locations'
 	field_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_profile does exist
-	baseline_dir = 'baseline_images/test_profile'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -153,14 +157,13 @@ def test_profile_y(isentropic_dry_data):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_profile')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_z(isentropic_moist_sedimentation_data):
 	# Field to plot
 	field_name  = 'mass_fraction_of_cloud_liquid_water_in_air'
 	field_units = 'g kg^-1'
 
-	# Make sure the folder tests/baseline_images/test_profile does exist
-	baseline_dir = 'baseline_images/test_profile'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -216,14 +219,13 @@ def test_profile_z(isentropic_moist_sedimentation_data):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_profile')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_h(isentropic_moist_sedimentation_data):
 	# Field to plot
 	field_name  = 'mass_fraction_of_cloud_liquid_water_in_air'
 	field_units = 'g kg^-1'
 
-	# Make sure the folder tests/baseline_images/test_profile does exist
-	baseline_dir = 'baseline_images/test_profile'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

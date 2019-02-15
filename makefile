@@ -37,27 +37,29 @@ UML_DIR := $(DOC_DIR)/uml
 TEST_DIR := $(ROOT_DIR)/tests
 DOCKER_DIR := $(ROOT_DIR)/docker
 
-all: clean parser html tests
+.PHONY: docker-build docker-run docs uml prepare-tests tests clean distclean
 
-parser:
-	@cd $(PARSER_DIR) && $(MAKE)
+docker-build:
+	@cd $(DOCKER_DIR) && ./build_base.sh && echo "" && ./build_tasmania.sh
 
-html: 
+docker-run:
+	@cd $(DOCKER_DIR) && ./run.sh
+
+docker-run-mac:
+	@cd $(DOCKER_DIR) && ./run_mac.sh
+
+docs: 
 	@echo -n "Building HTML documentation ... "
 	@cd $(DOC_DIR) && $(MAKE) html > /dev/null 2>&1
 	@echo "OK."
-
-latex: parser
 	@echo -n "Building LaTeX documentation ... "
 	@cd $(DOC_DIR) && $(MAKE) latex > /dev/null 2>&1
 	@echo "OK."
-
-latexpdf: parser
-	@echo -n "Building LaTeX documentation ... "
+	@echo -n "Building LaTeX-pdf documentation ... "
 	@cd $(DOC_DIR) && $(MAKE) latexpdf > /dev/null
 	@echo "OK."
 
-uml: parser
+uml:
 	@echo -n "Building UML diagrams ... "
 	@pyreverse -p grids -o eps grids/ > /dev/null
 	@pyreverse -p dycore -f OTHER -o eps dycore/ > /dev/null
@@ -66,21 +68,52 @@ uml: parser
 	@mv packages_*.eps $(UML_DIR) > /dev/null
 	@echo "OK."
 
-.PHONY: tests prepare_tests clean distclean gitignore docker-build docker-run
-
-tests: prepare_tests
+tests:
 	@cd $(TEST_DIR) && pytest --mpl --cov=$(SRC_DIR) .
 
-prepare_tests:
+prepare-tests-py34:
 	@cd $(TEST_DIR) && \
-	 pytest --mpl-generate-path=baseline_images/test_contour 		test_contour.py && \
-	 pytest --mpl-generate-path=baseline_images/test_contourf 		test_contourf.py && \
-	 pytest --mpl-generate-path=baseline_images/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/test_plots			test_plots.py && \
-	 pytest --mpl-generate-path=baseline_images/test_profile 		test_profile.py && \
-	 pytest --mpl-generate-path=baseline_images/test_quiver 		test_quiver.py && \
-	 pytest --mpl-generate-path=baseline_images/test_timeseries 	test_timeseries.py
+	 pytest --mpl-generate-path=baseline_images/py34/test_contour 			test_contour.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_contourf 			test_contourf.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_plot_composite	test_plot_composite.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_plots				test_plots.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_profile 			test_profile.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_quiver 			test_quiver.py && \
+	 pytest --mpl-generate-path=baseline_images/py34/test_timeseries 		test_timeseries.py
+
+prepare-tests-py35:
+	@cd $(TEST_DIR) && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_contour 			test_contour.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_contourf 			test_contourf.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_plot_composite	test_plot_composite.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_plots				test_plots.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_profile 			test_profile.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_quiver 			test_quiver.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_timeseries 		test_timeseries.py
+
+prepare-tests-py36:
+	@cd $(TEST_DIR) && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_contour 			test_contour.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_contourf 			test_contourf.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_plot_composite	test_plot_composite.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_plots				test_plots.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_profile 			test_profile.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_quiver 			test_quiver.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_timeseries 		test_timeseries.py
+
+prepare-tests-py37:
+	@cd $(TEST_DIR) && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_contour 			test_contour.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_contourf 			test_contourf.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_plot_composite	test_plot_composite.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_plots				test_plots.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_profile 			test_profile.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_quiver 			test_quiver.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_timeseries 		test_timeseries.py
 	
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null
@@ -104,9 +137,3 @@ gitignore:
 	@echo '# Files which exceed maximum size allowed by GitHub'			>> .gitignore 
 	@find . -size +50M | cat 											>> .gitignore
 	@echo '\n# END OF AUTOMATICALLY GENERATED TEXT'						>> .gitignore
-
-docker-build:
-	@cd $(DOCKER_DIR) && ./build_base.sh && ./build_tasmania.sh
-
-docker-run:
-	@cd $(DOCKER_DIR) && ./run.sh

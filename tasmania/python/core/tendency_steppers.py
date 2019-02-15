@@ -22,6 +22,7 @@
 #
 """
 This module contain:
+	get_increment
 	tendencystepper_factory
 	ForwardEuler
 	RungeKutta2
@@ -29,12 +30,18 @@ This module contain:
 	RungeKutta3
 """
 import abc
-from sympl import DataArray, TendencyStepper as SymplTendencyStepper
+import copy
+from sympl import \
+	DataArray, TendencyComponent, TendencyComponentComposite, \
+	ImplicitTendencyComponent, ImplicitTendencyComponentComposite
 from sympl._components.timesteppers import convert_tendencies_units_for_state
+from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
+from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.dynamics.horizontal_boundary import HorizontalBoundary
-from tasmania.python.utils.data_utils import add, multiply
+from tasmania.python.utils.dict_utils import add, multiply
+from tasmania.python.utils.utils import assert_sequence
 
 
 def get_increment(state, timestep, prognostic):
@@ -72,41 +79,68 @@ def tendencystepper_factory(scheme):
 		)
 
 
-class TendencyStepper(SymplTendencyStepper):
+class TendencyStepper:
 	"""
-	As its parent :class:`sympl.TendencyStepper`, this abstract base
-	class heads a hierarchy of components which integrate some
-	prognostic model variables based on the tendencies computed
-	by a set of internal :class:`sympl.TendencyComponent` objects.
-	In addition to :class:`sympl.TendencyStepper`, this class is
-	equipped with utilities to handle the horizontal boundary
-	conditions are provided.
+	Callable abstract base class which steps a model state based on the 
+	tendencies calculated by a set of wrapped prognostic components.
 	"""
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, *args, grid=None, horizontal_boundary_type=None):
+	allowed_component_type = (
+		TendencyComponent,
+		TendencyComponentComposite,
+		ImplicitTendencyComponent,
+		ImplicitTendencyComponentComposite,
+		ConcurrentCoupling,
+	)
+
+	def __init__(self, *args, **kwargs): 
 		"""
 		Parameters
 		----------
-		*args : obj
+		obj :
 			Instances of
 
 				* :class:`sympl.TendencyComponent`,
 				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`, or
-				* :class:`sympl.ImplicitTendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
 
 			providing tendencies for the prognostic variables.
+
+		Keyword arguments
+		-----------------
+		execution_policy : `str`, optional
+			String specifying the runtime mode in which parameterizations
+			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
 		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` object representing
+			:class:`tasmania.GridXYZ` object representing
 			the underlying grid.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions.
-			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
+			See :class:`tasmania.HorizontalBoundary`
 			for all available options.
+		time_units : `str`, optional
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
-		super().__init__(*args)
+		assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
+		self._prognostic_list = args
+		self._prognostic = \
+			args[0] if (len(args) == 1 and isinstance(args[0], ConcurrentCoupling)) \
+			else ConcurrentCoupling(
+				*args, execution_policy=kwargs.get('execution_policy', 'serial'),
+				time_units=kwargs.get('time_units', 's')
+			)
+
+		self._tunits = kwargs.get('time_units', 's')
+
+		self._input_checker = InputChecker(self)
+		self._diagnostic_checker = DiagnosticChecker(self)
+		self._output_checker = OutputChecker(self)
+
+		horizontal_boundary_type = kwargs.get('horizontal_boundary_type', None)
 		if horizontal_boundary_type is not None:
 			# Determine the number of boundary layers by inspecting
 			# the attribute nb of each prognostic component
@@ -114,45 +148,158 @@ class TendencyStepper(SymplTendencyStepper):
 			for component in self.prognostic_list:
 				nb = max(nb, getattr(component, 'nb', 1))
 
-			# Instantiate the object which will take care of
-			# boundary conditions
+			# Instantiate the object which will take care of boundary conditions
+			grid = kwargs.get('grid')
 			self._bnd = HorizontalBoundary.factory(horizontal_boundary_type, grid, nb)
 		else:
 			self._bnd = None
 
-		self._damp_on = True
+	@property
+	def prognostic(self):
+		"""
+		obj :
+			The :class:`tasmania.ConcurrentCoupling` calculating the tendencies.
+		"""
+		return self._prognostic
+
+	@property
+	def input_properties(self):
+		"""
+		dict :
+			Dictionary whose keys are strings denoting model variables
+			which should be present in the input state dictionary, and
+			whose values are dictionaries specifying fundamental properties
+			(dims, units) of those variables.
+		"""
+		return self._prognostic.input_properties
+
+	@property
+	def diagnostic_properties(self):
+		"""
+		dict :
+			Dictionary whose keys are strings denoting diagnostics
+			which are retrieved from the input state dictionary, and 
+			whose values are dictionaries specifying fundamental 
+			properties (dims, units) of those diagnostics.
+		"""
+		return self._prognostic.diagnostic_properties
+
+	@property
+	def output_properties(self):
+		"""
+		dict :
+			Dictionary whose keys are strings denoting model variables
+			present in the output state dictionary, and whose values are 
+			dictionaries specifying fundamental properties (dims, units) 
+			of those variables.
+		"""
+		return_dict = {}
+
+		for key, val in self._prognostic.tendency_properties.items():
+			return_dict[key] = copy.deepcopy(val)
+			if 'units' in return_dict[key]:
+				return_dict[key]['units'] = \
+					clean_units(return_dict[key]['units'] + self._tunits)
+
+		return return_dict
+
+	def __call__(self, state, timestep):
+		"""
+		Step the model state.
+
+		Parameters
+		----------
+		state : dict
+			Dictionary whose keys are strings denoting the input model 
+			variables, and whose values are :class:`sympl.DataArray`\s
+			storing values for those variables.
+		timestep : timedelta
+			:class:`datetime.timedelta` representing the time step.
+			
+		Return
+		------
+		dict :
+			Dictionary whose keys are strings denoting the output model 
+			variables, and whose values are :class:`sympl.DataArray`\s
+			storing values for those variables.
+		"""
+		self._input_checker.check_inputs(state)
+
+		diagnostics, out_state = self._call(state, timestep)
+
+		self._diagnostic_checker.check_diagnostics(
+			{key: val for key, val in diagnostics.items() if key != 'time'}
+		)
+		diagnostics['time'] = state['time']
+
+		self._output_checker.check_outputs(
+			{key: val for key, val in out_state.items() if key != 'time'}
+		)
+		out_state['time'] = state['time'] + timestep
+
+		return diagnostics, out_state
+
+	@abc.abstractmethod
+	def _call(self, state, timestep):
+		"""
+		Step the model state. As this method is marked as abstract, 
+		its implementation is delegated to the derived classes.
+
+		Parameters
+		----------
+		state : dict
+			Dictionary whose keys are strings denoting the input model 
+			variables, and whose values are :class:`sympl.DataArray`\s
+			storing values for those variables.
+		timestep : timedelta
+			:class:`datetime.timedelta` representing the time step.
+			
+		Return
+		------
+		dict :
+			Dictionary whose keys are strings denoting the output model 
+			variables, and whose values are :class:`sympl.DataArray`\s
+			storing values for those variables.
+		"""
+		pass
 
 
 class ForwardEuler(TendencyStepper):
 	"""
-	This class inherits :class:`sympl.TendencyStepper` to
+	This class inherits :class:`tasmania.TendencyStepper` to
 	implement the forward Euler time integration scheme.
 	"""
-	def __init__(self, *args, grid=None, horizontal_boundary_type=None):
+	def __init__(self, *args, **kwargs): 
 		"""
 		Parameters
 		----------
-		*args : obj
+		obj :
 			Instances of
 
 				* :class:`sympl.TendencyComponent`,
 				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`, or
-				* :class:`sympl.ImplicitTendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
 
 			providing tendencies for the prognostic variables.
+
+		Keyword arguments
+		-----------------
+		execution_policy : `str`, optional
+			String specifying the runtime mode in which parameterizations
+			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
 		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` object representing
+			:class:`tasmania.GridXYZ` object representing
 			the underlying grid.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions.
-			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
+			See :class:`tasmania.HorizontalBoundary`
 			for all available options.
+		time_units : `str`, optional
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
-		super().__init__(
-			*args, grid=grid,
-			horizontal_boundary_type=horizontal_boundary_type
-		)
+		super().__init__(*args, **kwargs)
 
 	def _call(self, state, timestep):
 		# Shortcuts
@@ -162,22 +309,13 @@ class ForwardEuler(TendencyStepper):
 			for name, properties in self.output_properties.items()
 		}
 
-		# Calculate tendencies and diagnostics
-		tendencies, diagnostics = self.prognostic(state, timestep)
-
-		# Convert tendencies in units compatible with the state
-		convert_tendencies_units_for_state(tendencies, state)
-
-		# Set the correct units for the increment of each variable
-		for key, val in tendencies.items():
-			if isinstance(val, DataArray) and 'units' in val.attrs.keys():
-				val.attrs['units'] += ' s'
-				val.attrs['units'] = clean_units(val.attrs['units'])
+		# Calculate the increment and the diagnostics
+		increment, diagnostics = get_increment(state, timestep, self.prognostic)
 
 		# Step the solution
 		out_state = add(
-			state, multiply(dt, tendencies),
-			units=out_units, unshared_variables_in_output=True
+			state, increment,
+			units=out_units, unshared_variables_in_output=False
 		)
 
 		if self._bnd is not None:
@@ -202,31 +340,37 @@ class RungeKutta2(TendencyStepper):
 	Gear, C. W. (1971). *Numerical initial value problems in \
 		ordinary differential equations.* Prentice Hall PTR.
 	"""
-	def __init__(self, *args, grid=None, horizontal_boundary_type=None):
+	def __init__(self, *args, **kwargs): 
 		"""
 		Parameters
 		----------
-		*args : obj
+		obj :
 			Instances of
 
 				* :class:`sympl.TendencyComponent`,
 				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`, or
-				* :class:`sympl.ImplicitTendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
 
 			providing tendencies for the prognostic variables.
+
+		Keyword arguments
+		-----------------
+		execution_policy : `str`, optional
+			String specifying the runtime mode in which parameterizations
+			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
 		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` object representing
+			:class:`tasmania.GridXYZ` object representing
 			the underlying grid.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions.
-			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
+			See :class:`tasmania.HorizontalBoundary`
 			for all available options.
+		time_units : `str`, optional
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
-		super().__init__(
-			*args, grid=grid,
-			horizontal_boundary_type=horizontal_boundary_type
-		)
+		super().__init__(*args, **kwargs)
 
 	def _call(self, state, timestep):
 		# Shortcuts
@@ -255,7 +399,7 @@ class RungeKutta2(TendencyStepper):
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		out_state = add(
 			state, k1,
-			units=out_units, unshared_variables_in_output=True
+			units=out_units, unshared_variables_in_output=False
 		)
 		out_state['time'] = state['time'] + timestep
 
@@ -280,31 +424,37 @@ class RungeKutta3COSMO(TendencyStepper):
 		regional COSMO-model. Part I: Dynamics and numerics.* \
 		Deutscher Wetterdienst, Germany.
 	"""
-	def __init__(self, *args, grid=None, horizontal_boundary_type=None):
+	def __init__(self, *args, **kwargs): 
 		"""
 		Parameters
 		----------
-		*args : obj
+		obj :
 			Instances of
 
 				* :class:`sympl.TendencyComponent`,
 				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`, or
-				* :class:`sympl.ImplicitTendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
 
 			providing tendencies for the prognostic variables.
+
+		Keyword arguments
+		-----------------
+		execution_policy : `str`, optional
+			String specifying the runtime mode in which parameterizations
+			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
 		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` object representing
+			:class:`tasmania.GridXYZ` object representing
 			the underlying grid.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions.
-			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
+			See :class:`tasmania.HorizontalBoundary`
 			for all available options.
+		time_units : `str`, optional
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
-		super().__init__(
-			*args, grid=grid,
-			horizontal_boundary_type=horizontal_boundary_type
-		)
+		super().__init__(*args, **kwargs)
 
 	def _call(self, state, timestep):
 		# Shortcuts
@@ -344,7 +494,7 @@ class RungeKutta3COSMO(TendencyStepper):
 		k2, _ = get_increment(state_2, timestep, self.prognostic)
 		out_state = add(
 			state, k2,
-			units=out_units, unshared_variables_in_output=True
+			units=out_units, unshared_variables_in_output=False
 		)
 		out_state['time'] = state['time'] + timestep
 
@@ -367,31 +517,37 @@ class RungeKutta3(TendencyStepper):
 	Gear, C. W. (1971). *Numerical initial value problems in \
 		ordinary differential equations.* Prentice Hall PTR.
 	"""
-	def __init__(self, *args, grid=None, horizontal_boundary_type=None):
+	def __init__(self, *args, **kwargs): 
 		"""
 		Parameters
 		----------
-		*args : obj
+		obj :
 			Instances of
 
 				* :class:`sympl.TendencyComponent`,
 				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`, or
-				* :class:`sympl.ImplicitTendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
 
 			providing tendencies for the prognostic variables.
+
+		Keyword arguments
+		-----------------
+		execution_policy : `str`, optional
+			String specifying the runtime mode in which parameterizations
+			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
 		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` object representing
+			:class:`tasmania.GridXYZ` object representing
 			the underlying grid.
 		horizontal_boundary_type : str
 			String specifying the horizontal boundary conditions.
-			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
+			See :class:`tasmania.HorizontalBoundary`
 			for all available options.
+		time_units : `str`, optional
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
-		super().__init__(
-			*args, grid=grid,
-			horizontal_boundary_type=horizontal_boundary_type
-		)
+		super().__init__(*args, **kwargs)
 
 		# Free parameters for RK3
 		self._alpha1 = 1./2.
@@ -450,7 +606,7 @@ class RungeKutta3(TendencyStepper):
 		k0k1k2 	  = add(multiply(g0, k0), k1k2)
 		out_state = add(
 			state, k0k1k2,
-			units=out_units, unshared_variables_in_output=True
+			units=out_units, unshared_variables_in_output=False
 		)
 		out_state['time'] = state['time'] + timestep
 

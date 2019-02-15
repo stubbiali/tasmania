@@ -24,8 +24,8 @@
 TASMANIA_ROOT=$(cd ..; pwd)
 GT4PY_BRANCH=merge_ubbiali
 DOCKERFILE=dockerfile.tasmania
-IMAGE_NAME=tasmania:develop
-IMAGE_SAVE=tasmania_develop.tar
+IMAGE_NAME=tasmania:master
+IMAGE_SAVE=tasmania_master.tar
 
 echo "About to clone the gridtools4py repository under '$PWD/gridtools4py', and check out the '$GT4PY_BRANCH' branch."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
@@ -53,12 +53,14 @@ if [[ $key = "" ]]; then
 		rm -rf tasmania/*
 	fi
 
-	rsync -avuzhr --progress -r ../README.md tasmania
-	rsync -avuzhr --progress -r ../requirements.txt tasmania
-	rsync -avuzhr --progress -r ../setup.cfg tasmania
-	rsync -avuzhr --progress -r ../setup.py tasmania
-	rsync -avuzhr --progress -r ../tasmania tasmania
-	rsync -avuzhr --progress -r ../tests tasmania
+	cp -r ../makefile tasmania
+	cp -r ../notebooks tasmania
+	cp -r ../README.md tasmania
+	cp -r ../requirements.txt tasmania
+	cp -r ../setup.cfg tasmania
+	cp -r ../setup.py tasmania
+	cp -r ../tasmania tasmania
+	cp -r ../tests tasmania
 fi
 
 echo ""
@@ -80,6 +82,15 @@ echo ""
 if [[ $key = "" ]]; then
 	cd .. && make distclean && cd docker 
 	docker build --rm --build-arg uid=$(id -u) -f dockerfiles/$DOCKERFILE -t $IMAGE_NAME .
+fi
+
+echo ""
+echo "About to delete the folder '$PWD/tasmania'."
+read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
+echo ""
+
+if [[ $key = "" ]]; then
+	rm -rf tasmania
 fi
 
 echo ""

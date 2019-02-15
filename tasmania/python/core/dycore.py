@@ -26,14 +26,19 @@ This module contains:
 	DynamicalCore
 """
 import abc
-from sympl import DiagnosticComponent, DiagnosticComponentComposite
+from sympl import \
+	DiagnosticComponent, DiagnosticComponentComposite as SymplDiagnosticComponentComposite, \
+	TendencyComponent, TendencyComponentComposite, \
+	ImplicitTendencyComponent, ImplicitTendencyComponentComposite
 from sympl._core.base_components import \
 	InputChecker, TendencyChecker as _TendencyChecker, OutputChecker
 
-from tasmania.python.core.physics_composite import \
-	ConcurrentCoupling, TasmaniaDiagnosticComponentComposite
-from tasmania.python.utils.data_utils import add, make_state, make_raw_state
-from tasmania.python.utils.utils import \
+from tasmania.python.core.composite import \
+	DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite
+from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.utils.data_utils import make_state, make_raw_state
+from tasmania.python.utils.dict_utils import add
+from tasmania.python.utils.framework_utils import \
 	check_properties_compatibility, check_missing_properties
 
 
@@ -42,20 +47,29 @@ class TendencyChecker(_TendencyChecker):
 		super().__init__(component)
 
 	def check_tendencies(self, tendency_dict):
-		self._check_extra_tendencies(tendency_dict)
+		__tendency_dict = {
+			key: value for key, value in tendency_dict.items() if key != 'time'
+		}
+		self._check_extra_tendencies(__tendency_dict)
 
 
 class DynamicalCore:
 	"""     
-	Abstract base class representing a generic dynamical core supporting
-	the partial time-splitting methodology.
-	Specification of the input requirements, implementation of the differential
-	operators, and definition of the output properties are delegated to the
-	derived classes.
+	Abstract base class representing a generic dynamical core based on the
+	partial time-splitting method. Specification of the input requirements, 
+	implementation of the differential operators, and definition of the 
+	output properties are delegated to the derived classes.
 	"""
+	allowed_tendency_type = (
+		TendencyComponent,
+		TendencyComponentComposite,
+		ImplicitTendencyComponent,
+		ImplicitTendencyComponentComposite,
+		ConcurrentCoupling,
+	)
 	allowed_diagnostic_type = (
 		DiagnosticComponent,
-		DiagnosticComponentComposite,
+		SymplDiagnosticComponentComposite,
 		TasmaniaDiagnosticComponentComposite,
 	)
 
@@ -71,45 +85,70 @@ class DynamicalCore:
 		Parameters
 		----------
 		grid : obj 
-			The underlying grid, as an instance of :class:`~tasmania.grids.grid_xyz.GridXYZ`
+			The underlying grid, as an instance of :class:`tasmania.GridXYZ`
 			or one of its derived classes.
 		time_units : `str`, optional
-			The time units used within the class. Defaults to 's', i.e., seconds.
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		intermediate_tendencies : `obj`, optional
-			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
-			wrapping the intermediate physical parameterizations.
-			Here, *intermediate* refers to the fact that these physical packages
-			are called *before* each stage of the dynamical core to calculate
-			the physical tendencies.
+			An instance of either
+
+				* :class:`sympl.TendencyComponent`,
+				* :class:`sympl.TendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
+
+			calculating the intermediate physical tendencies.
+			Here, *intermediate* refers to the fact that these physical 
+			packages are called *before* each stage of the dynamical core 
+			to calculate the physical tendencies.
 		intermediate_diagnostics : `obj`, optional
-			:class:`sympl.DiagnosticComponent` or
-			:class:`sympl.DiagnosticComponentComposite`
-			representing diagnostic parameterizations which should be called
-			at the end of each stage, once the sub-timestepping routine is over.
+			An instance of either
+
+				* :class:`sympl.DiagnosticComponent`,
+				* :class:`sympl.DiagnosticComponentComposite`, or
+				* :class:`tasmania.DiagnosticComponentComposite`
+
+			retrieving diagnostics at the end of each stage, once the 
+			sub-timestepping routine is over.
 		substeps : `int`, optional
 			Number of sub-steps to perform. Defaults to 0, meaning that no
 			sub-stepping technique is implemented.
 		fast_tendencies : `obj`, optional
-			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
-			wrapping the fast physical parameterizations.
+			An instance of either
+
+				* :class:`sympl.TendencyComponent`,
+				* :class:`sympl.TendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
+
+			calculating the fast physical tendencies.
 			Here, *fast* refers to the fact that these physical packages are
 			called *before* each sub-step of any stage of the dynamical core
 			to calculate the physical tendencies.
 			This parameter is ignored if `substeps` argument is not positive.
 		fast_diagnostics : `obj`, optional
-			:class:`sympl.DiagnosticComponent` or
-			:class:`sympl.DiagnosticComponentComposite`
-			representing diagnostic parameterizations which should be called
-			at the end of each sub-step of any stage of the dynamical core.
+			An instance of either
+
+				* :class:`sympl.DiagnosticComponent`,
+				* :class:`sympl.DiagnosticComponentComposite`, or
+				* :class:`tasmania.DiagnosticComponentComposite`
+
+			retrieving diagnostics at the end of each sub-step of any stage 
+			of the dynamical core.
 			This parameter is ignored if `substeps` argument is not positive.
 		"""
 		self._grid, self._tunits = grid, time_units
 
 		self._inter_tends = intermediate_tendencies
 		if self._inter_tends is not None:
-			assert isinstance(self._inter_tends, ConcurrentCoupling), \
+			ttype = self.__class__.allowed_tendency_type
+			assert isinstance(self._inter_tends, ttype), \
 				"The input argument ''intermediate_tendencies'' " \
-				"should be an instance of ConcurrentCoupling."
+				"should be an instance of either {}.".format(
+					', '.join(str(item) for item in ttype)
+				)
 
 		self._inter_diags = intermediate_diagnostics
 		if self._inter_diags is not None:
@@ -125,9 +164,12 @@ class DynamicalCore:
 		if self._substeps >= 0:
 			self._fast_tends = fast_tendencies
 			if self._fast_tends is not None:
-				assert isinstance(self._fast_tends, ConcurrentCoupling), \
+				ttype = self.__class__.allowed_tendency_type
+				assert isinstance(self._fast_tends, ttype), \
 					"The input argument ''fast_tendencies'' " \
-					"should be an instance of ConcurrentCoupling."
+					"should be an instance of either {}.".format(
+						', '.join(str(item) for item in ttype)
+					)
 
 			self._fast_diags = fast_diagnostics
 			if self._fast_diags is not None:
@@ -153,100 +195,134 @@ class DynamicalCore:
 		Perform some controls aiming to verify internal consistency.
 		In more detail:
 
-			* variables contained in both `_input_properties` and
+			* #1: variables contained in both `_input_properties` and
 				`_output_properties` should have compatible properties
 				across the two dictionaries;
-			* variables contained in both `_substep_input_properties` and
+			* #2: variables contained in both `_substep_input_properties` and
 				`_substep_output_properties` should have compatible properties
 				across the two dictionaries;
-			* dimensions and units of the variables output by
+			* #3: variables contained in both `_input_properties` and the 
+				`input_properties` dictionary of `intermediate_tendencies` 
+				should have compatible properties across the two dictionaries;
+			* #4: dimensions and units of the variables diagnosed by
 				`intermediate_tendencies` should be compatible with
 				the dimensions and units specified in `_input_properties`;
-			* dimensions and units of the variables output by
+			* #5: any intermediate tendency calculated by `intermediate_tendencies` 
+				should be present in the `_tendency_properties` dictionary, 
+				with compatible dimensions and units;
+			* #6: dimensions and units of the variables diagnosed by
 				`intermediate_tendencies` should be compatible with
 				the dimensions and units specified in the `input_properties`
 				dictionary of `fast_tendencies`, or the `_substep_input_properties`
 				dictionary if `fast_tendencies` is not given;
-			* variables output by `fast_tendencies` should have dimensions
+			* #7: variables diagnosed by `fast_tendencies` should have dimensions
 				and units compatible with those specified in the
 				`_substep_input_properties` dictionary;
-			* variables contained in `_output_properties` for which
+			* #8: variables contained in `_output_properties` for which
 				`fast_tendencies` calculates a (fast) tendency should
 				 have dimensions and units compatible with those specified
 				 in the `tendency_properties` dictionary of `fast_tendencies`;
-			* any fast tendency calculated by `fast_tendencies`
+			* #9: any fast tendency calculated by `fast_tendencies`
 				should be present in the `_substep_tendency_properties`
 				dictionary, with compatible dimensions and units;
-			* any variable for which the `fast_tendencies`
+			* #10: any variable for which the `fast_tendencies`
 				calculates a (fast) tendency should be present both in
 				the `_substep_input_property` and `_substep_output_property`
 				dictionaries, with compatible dimensions and units;
-			* any variable being expected by `fast_diagnostics` should be
+			* #11: any variable being expected by `fast_diagnostics` should be
 				present in `_substep_output_properties`, with compatible
 				dimensions and units;
-			* any variable being expected by `intermediate_diagnostics`
+			* #12: any variable being expected by `intermediate_diagnostics`
 				should be present either in `_output_properties` or
 				`_substep_output_properties`, with compatible dimensions
 				and units.
 		"""
-		#
+		#============================================================
 		# Check #1
-		#
+		#============================================================
 		check_properties_compatibility(
 			self._input_properties, self._output_properties,
 			properties1_name='_input_properties',
 			properties2_name='_output_properties',
 		)
 
-		#
+		#============================================================
 		# Check #2
-		#
+		#============================================================
 		check_properties_compatibility(
 			self._substep_input_properties, self._substep_output_properties,
 			properties1_name='_substep_input_properties',
 			properties2_name='_substep_output_properties',
 		)
 
-		#
+		#============================================================
 		# Check #3
-		#
+		#============================================================
 		if self._inter_tends is not None:
 			check_properties_compatibility(
-				self._inter_tends.output_properties, self._input_properties,
-				properties1_name='intermediate_tendencies.output_properties',
+				self._inter_tends.input_properties, self._input_properties,
+				properties1_name='intermediate_tendencies.input_properties',
 				properties2_name='_input_properties',
 			)
 
-		#
+		#============================================================
 		# Check #4
-		#
+		#============================================================
+		if self._inter_tends is not None:
+			check_properties_compatibility(
+				self._inter_tends.diagnostic_properties, self._input_properties,
+				properties1_name='intermediate_tendencies.diagnostic_properties',
+				properties2_name='_input_properties',
+			)
+
+		#============================================================
+		# Check #5
+		#============================================================
+		if self._inter_tends is not None: 
+			check_properties_compatibility(
+				self._inter_tends.tendency_properties, self._tendency_properties,
+				properties1_name='intermediate_tendencies.tendency_properties',
+				properties2_name='_tendency_properties',
+			)
+
+			check_missing_properties(
+				self._inter_tends.tendency_properties, self._tendency_properties,
+				properties1_name='intermediate_tendencies.tendency_properties',
+				properties2_name='_tendency_properties',
+			)
+
+		#============================================================
+		# Check #6
+		#============================================================
 		if self._inter_tends is not None:
 			if self._fast_tends is not None:
 				check_properties_compatibility(
-					self._inter_tends.output_properties, self._fast_tends.input_properties,
-					properties1_name='intermediate_tendencies.output_properties',
+					self._inter_tends.diagnostic_properties, 
+					self._fast_tends.input_properties,
+					properties1_name='intermediate_tendencies.diagnostic_properties',
 					properties2_name='fast_tendencies.input_properties',
 				)
 			else:
 				check_properties_compatibility(
-					self._inter_tends.output_properties, self._substep_input_properties,
-					properties1_name='intermediate_tendencies.output_properties',
+					self._inter_tends.diagnostic_properties, 
+					self._substep_input_properties,
+					properties1_name='intermediate_tendencies.diagnostics_properties',
 					properties2_name='_substep_input_properties',
 				)
 
-		#
-		# Check #5
-		#
+		#============================================================
+		# Check #7
+		#============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
-				self._fast_tends.output_properties, self._substep_input_properties,
-				properties1_name='fast_tendencies.output_properties',
+				self._fast_tends.diagnostics_properties, self._substep_input_properties,
+				properties1_name='fast_tendencies.diagnostic_properties',
 				properties2_name='_substep_input_properties',
 			)
 
-		#
-		# Check #6
-		#
+		#============================================================
+		# Check #8
+		#============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.tendency_properties, self._output_properties,
@@ -255,9 +331,9 @@ class DynamicalCore:
 				properties2_name='_output_properties',
 			)
 
-		#
-		# Check #7
-		#
+		#============================================================
+		# Check #9
+		#============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.tendency_properties, self._substep_tendency_properties,
@@ -272,9 +348,9 @@ class DynamicalCore:
 				properties2_name='_substep_tendency_properties',
 			)
 
-		#
-		# Check #8
-		#
+		#============================================================
+		# Check #10
+		#============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.tendency_properties, self._substep_input_properties,
@@ -302,9 +378,9 @@ class DynamicalCore:
 				properties2_name='_substep_output_properties',
 			)
 
-		#
-		# Check #9
-		#
+		#============================================================
+		# Check #11
+		#============================================================
 		if self._fast_diags is not None:
 			check_properties_compatibility(
 				self._fast_diags.input_properties, self._substep_output_properties,
@@ -318,9 +394,9 @@ class DynamicalCore:
 				properties2_name='_substep_output_properties',
 			)
 
-		#
-		# Check #10
-		#
+		#============================================================
+		# Check #12
+		#============================================================
 		if self._inter_diags is not None:
 			fused_output_properties = {}
 			fused_output_properties.update(self._output_properties)
@@ -343,33 +419,33 @@ class DynamicalCore:
 		Perform some controls aiming to verify input-output consistency.
 		In more detail:
 
-			* variables contained in both `input_properties` and
+			* #1: variables contained in both `input_properties` and
 				`output_properties` should have compatible properties
 				across the two dictionaries;
-			* in case of a multi-stage dynamical core, any variable
+			* #2: in case of a multi-stage dynamical core, any variable
 				present in `output_properties` should be also contained
 				in `input_properties`.
 		"""
-		#
+		#============================================================
 		# Safety-guard preamble
-		#
+		#============================================================
 		assert hasattr(self, 'input_properties'), \
 			'Hint: did you call _initialize_input_properties?'
 		assert hasattr(self, 'output_properties'), \
 			'Hint: did you call _initialize_output_properties?'
 
-		#
+		#============================================================
 		# Check #1
-		#
+		#============================================================
 		check_properties_compatibility(
 			self.input_properties, self.output_properties,
 			properties1_name='input_properties',
 			properties2_name='output_properties',
 		)
 
-		#
+		#============================================================
 		# Check #2
-		#
+		#============================================================
 		if self.stages > 1:
 			check_missing_properties(
 				self.output_properties, self.input_properties,
@@ -399,13 +475,14 @@ class DynamicalCore:
 			return_dict.update(self._input_properties)
 		else:
 			return_dict.update(self._inter_tends.input_properties)
-			inter_params_output_properties = self._inter_tends.output_properties
+			inter_params_diag_properties = self._inter_tends.diagnostic_properties
 			stage_input_properties = self._input_properties
 
 			# Add to the requirements the variables to feed the stage with
 			# and which are not output by the intermediate parameterizations
-			unshared_vars = set(stage_input_properties.keys()).difference(
-				inter_params_output_properties.keys()
+			unshared_vars = tuple(
+				name for name in stage_input_properties
+				if not (name in inter_params_diag_properties or name in return_dict)
 			)
 			for name in unshared_vars:
 				return_dict[name] = {}
@@ -414,24 +491,25 @@ class DynamicalCore:
 		if self._substeps >= 0:
 			fast_params_input_properties = \
 				{} if self._fast_tends is None else self._fast_tends.input_properties
-			fast_params_output_properties = \
-				{} if self._fast_tends is None else self._fast_tends.output_properties
+			fast_params_diag_properties = \
+				{} if self._fast_tends is None else self._fast_tends.diagnostic_properties
 
 			# Add to the requirements the variables to feed the fast
 			# parameterizations with
-			unshared_vars = set(fast_params_input_properties.keys()).difference(
-				return_dict.keys()
-			)
+			unshared_vars = tuple(
+				name for name in fast_params_input_properties
+				if name not in return_dict
+			)        
 			for name in unshared_vars:
 				return_dict[name] = {}
 				return_dict[name].update(fast_params_input_properties[name])
 
-			# Add to the requirements the variables to feed the substep with
+			# Add to the requirements the variables to feed the sub-step with
 			# and which are not output by the either the intermediate parameterizations
 			# or the fast parameterizations
 			unshared_vars = tuple(
 				name for name in self._substep_input_properties
-				if not (name in fast_params_output_properties or name in return_dict)
+				if not (name in fast_params_diag_properties or name in return_dict)
 			)
 			for name in unshared_vars:
 				return_dict[name] = {}
@@ -475,7 +553,7 @@ class DynamicalCore:
 			values are fundamental properties (dims, units) of those
 			tendencies. This dictionary results from fusing the requirements
 			specified by the user via
-			:meth:`~tasmania.dynamics.dycore.DynamicalCore._tendency_properties`
+			:meth:`~tasmania.DynamicalCore._tendency_properties`
 			with the :obj:`tendency_properties` dictionary of the internal
 			attribute representing the intermediate tendency component (if set).
 		"""
@@ -489,8 +567,9 @@ class DynamicalCore:
 			# Add to the requirements on the input slow tendencies those
 			# tendencies to feed the dycore with and which are not provided
 			# by the intermediate parameterizations
-			unshared_vars = set(self._tendency_properties.keys()).difference(
-				return_dict.keys()
+			unshared_vars = tuple(
+				name for name in self._tendency_properties
+				if name not in return_dict
 			)
 			for name in unshared_vars:
 				return_dict[name] = {}
@@ -547,7 +626,7 @@ class DynamicalCore:
 			return_dict.update(self._output_properties)
 		else:
 			# Add to the return dictionary the variables included in
-			# the state output by a substep
+			# the state output by a sub-step
 			return_dict.update(self._substep_output_properties)
 
 			if self._fast_diags is not None:
@@ -556,7 +635,7 @@ class DynamicalCore:
 					return_dict[name] = {}
 					return_dict[name].update(properties)
 
-			# Add to the return dictionary the non-substepped variables
+			# Add to the return dictionary the non-sub-stepped variables
 			return_dict.update(self._output_properties)
 
 		if self._inter_diags is not None:
@@ -587,7 +666,7 @@ class DynamicalCore:
 		------
 		dict :
 			Dictionary whose keys are strings denoting variables which are
-			included in the output state returned by any substep, and whose
+			included in the output state returned by any sub-step, and whose
 			values are fundamental properties (dims, units) of those variables.
 		"""
 
@@ -641,9 +720,9 @@ class DynamicalCore:
 		----
 		Currently, variable aliasing is not supported.
 		"""
-		#
+		#============================================================
 		# Preamble
-		#
+		#============================================================
 		# Ensure the input state and tendency dictionaries contain all the
 		# required variables in proper units and dimensions
 		self._input_checker.check_inputs(state)
@@ -657,15 +736,20 @@ class DynamicalCore:
 		tends = {}
 
 		for stage in range(self.stages):
-			#
+			#============================================================
 			# Calculating intermediate tendencies
-			#
-			# Call the intermediate tendency components, and summed up
-			# slow and intermediate tendencies
-			if self._inter_tends is None:
+			#============================================================
+			if self._inter_tends is None and stage == 0:
+				# Collect the slow tendencies
 				tends.update(tendencies)
-			else:
-				inter_tends = self._inter_tends(out_state, timestep)
+			elif self._inter_tends is not None:
+				# Calculate the intermediate tendencies 
+				try:
+					inter_tends, diags = self._inter_tends(out_state)
+				except TypeError:
+					inter_tends, diags = self._inter_tends(out_state, timestep)
+
+				# Sum up the slow and intermediate tendencies
 				tends.update(
 					add(
 						inter_tends, tendencies,
@@ -673,36 +757,39 @@ class DynamicalCore:
 					)
 				)
 
-			#
+				# Update the state with the just computed diagnostics
+				out_state.update(diags)
+
+			#============================================================
 			# Stage pre-processing
-			#
-			# Extract NumPy arrays from tendencies
+			#============================================================
+			# Extract numpy arrays from state
 			out_state_units = {
 				name: self._input_properties[name]['units']
 				for name in self._input_properties
 			}
 			raw_out_state = make_raw_state(out_state, units=out_state_units)
 
-			# Extract NumPy arrays from tendencies
+			# Extract numpy arrays from tendencies
 			tends_units = {
 				name: self._tendency_properties[name]['units']
 				for name in self._tendency_properties
 			}
 			raw_tends = make_raw_state(tends, units=tends_units)
 
-			#
+			#============================================================
 			# Staging
-			#
+			#============================================================
 			# Carry out the stage
 			raw_stage_state = self.array_call(
 				stage, raw_out_state, raw_tends, timestep
 			)
 
 			if self._substeps == 0 or len(self._substep_output_properties) == 0:
-				#
+				#============================================================
 				# Stage post-processing, sub-stepping disabled
-				#
-				# Create DataArrays out of the NumPy arrays contained in the stepped state
+				#============================================================
+				# Create dataarrays out of the numpy arrays contained in the stepped state
 				stage_state_units = {
 					name: self._output_properties[name]['units']
 					for name in self._output_properties
@@ -715,10 +802,10 @@ class DynamicalCore:
 				out_state = {}
 				out_state.update(stage_state)
 			else:
-				#
+				#============================================================
 				# Stage post-processing, sub-stepping enabled
-				#
-				# Create DataArrays out of the NumPy arrays contained in the stepped state
+				#============================================================
+				# Create dataarrays out of the numpy arrays contained in the stepped state
 				# which represent variables which will not be affected by the sub-stepping
 				raw_nosubstep_stage_state = {
 					name: raw_stage_state[name]
@@ -737,42 +824,50 @@ class DynamicalCore:
 				substep_frac = 1.0 if self.stages == 1 else self.substep_fractions[stage]
 				substeps = int(substep_frac * self._substeps)
 				for substep in range(substeps):
-					#
+					#============================================================
 					# Calculating fast tendencies
-					#
-					tends = {} if self._fast_tends is None \
-						else self._fast_tends(out_state, timestep/self._substeps)
+					#============================================================
+					if self._fast_tends is None:
+						tends = {}
+					else:
+						try:
+							tends, diags = self._fast_tends(out_state)
+						except TypeError:
+							tends, diags = \
+								self._fast_tends(out_state, timestep/self._substeps)
 
-					#
+						out_state.update(diags)
+
+					#============================================================
 					# Sub-step pre-processing
-					#
-					# Extract NumPy arrays from the latest state
+					#============================================================
+					# Extract numpy arrays from the latest state
 					out_state_units = {
 						name: self._substep_input_properties[name]['units']
 						for name in self._substep_input_properties.keys()
 					}
 					raw_out_state = make_raw_state(out_state, units=out_state_units)
 
-					# Extract NumPy arrays from fast tendencies
+					# Extract numpy arrays from fast tendencies
 					tends_units = {
 						name: self._substep_tendency_properties[name]['units']
 						for name in self._substep_tendency_properties.keys()
 					}
 					raw_tends = make_raw_state(tends, units=tends_units)
 
-					#
+					#============================================================
 					# Sub-stepping
-					#
-					# Carry out the substep
+					#============================================================
+					# Carry out the sub-step
 					raw_substep_state = self.substep_array_call(
 						stage, substep, state, raw_stage_state, raw_out_state,
 						raw_tends, timestep
 					)
 
-					#
+					#============================================================
 					# Sub-step post-processing
-					#
-					# Create DataArrays out of the NumPy arrays contained in sub-stepped state
+					#============================================================
+					# Create dataarrays out of the numpy arrays contained in sub-stepped state
 					substep_state_units = {
 						name: self._substep_output_properties[name]['units']
 						for name in self._substep_output_properties
@@ -781,9 +876,9 @@ class DynamicalCore:
 						raw_substep_state, self._grid, units=substep_state_units
 					)
 
-					#
+					#============================================================
 					# Retrieving fast diagnostics
-					#
+					#============================================================
 					if self._fast_diags is not None:
 						fast_diags = self._fast_diags(substep_state)
 						substep_state.update(fast_diags)
@@ -795,14 +890,14 @@ class DynamicalCore:
 						out_state = {}
 						out_state.update(substep_state)
 
-				#
+				#============================================================
 				# Including non-sub-stepped variables
-				#
+				#============================================================
 				out_state.update(nosubstep_stage_state)
 
-			#
+			#============================================================
 			# Retrieving intermediate diagnostics
-			#
+			#============================================================
 			if self._inter_diags is not None:
 				inter_diags = self._inter_diags(out_state)
 				out_state.update(inter_diags)
@@ -813,9 +908,9 @@ class DynamicalCore:
 			else:
 				out_state['time'] = out_state['time']
 
-			#
+			#============================================================
 			# Final checks
-			#
+			#============================================================
 			self._output_checker.check_outputs({
 				name: out_state[name] for name in out_state if name != 'time'
 			})
@@ -859,7 +954,7 @@ class DynamicalCore:
 		stage : int
 			The stage we are in.
 		substep : int
-			The sub-tep we are in.
+			The sub-step we are in.
 		raw_state : dict
 			The raw state at the current *main* time level, i.e.,
 			the raw version of the state dictionary passed to the call operator.

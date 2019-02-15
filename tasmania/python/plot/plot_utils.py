@@ -199,10 +199,10 @@ def set_figure_properties(fig, **kwargs):
 		Font size to use for the plot titles, and axes ticks and labels.
 		Defaults to 12.
 	tight_layout : `bool`, optional
-        :obj:`True` to fit plot to the figure, :obj:`False` otherwise.
-        Defaults to :obj:`True`.
-    tight_layout_rect : tuple
-    	TODO
+		:obj:`True` to fit plot to the figure, :obj:`False` otherwise.
+		Defaults to :obj:`True`.
+	tight_layout_rect : tuple
+		TODO
 	suptitle : `str`, optional
 		The figure title. Defaults to an empty string.
 	"""
@@ -245,6 +245,8 @@ def set_axes_properties(ax, **kwargs):
 		Text to use for the axes right title. Defaults to an empty string.
 	x_label : `str`, optional
 		Text to use for the label of the x-axis. Defaults to an empty string.
+	x_labelcolor : `str`, optional
+		TODO
 	x_lim : `tuple`, optional
 		Data limits for the x-axis. Defaults to :obj:`None`, i.e., the data limits
 		will be left unchanged.
@@ -256,12 +258,16 @@ def set_axes_properties(ax, **kwargs):
 		List of x-axis ticks location.
 	x_ticklabels : `list of str`, optional
 		List of x-axis ticks labels.
+	x_tickcolor : `str`, optional
+		TODO
 	xaxis_minor_ticks_visible : `bool`, optional
 		TODO
 	xaxis_visible : `bool`, optional
 		:obj:`False` to make the x-axis invisible. Defaults to :obj:`True`.
 	y_label : `str`, optional
 		Text to use for the label of the y-axis. Defaults to an empty string.
+	y_labelcolor : `str`, optional
+		TODO
 	y_lim : `tuple`, optional
 		Data limits for the y-axis. Defaults to :obj:`None`, i.e., the data limits
 		will be left unchanged.
@@ -273,12 +279,16 @@ def set_axes_properties(ax, **kwargs):
 		List of y-axis ticks location.
 	y_ticklabels : `list of str`, optional
 		List of y-axis ticks labels.
+	y_tickcolor : `str`, optional
+		TODO
 	yaxis_minor_ticks_visible : `bool`, optional
 		TODO
 	yaxis_visible : `bool`, optional
 		:obj:`False` to make the y-axis invisible. Defaults to :obj:`True`.
 	z_label : `str`, optional
 		Text to use for the label of the z-axis. Defaults to an empty string.
+	z_labelcolor : `str`, optional
+		TODO
 	z_lim : `tuple`, optional
 		Data limits for the z-axis. Defaults to :obj:`None`, i.e., the data limits
 		will be left unchanged.
@@ -290,6 +300,8 @@ def set_axes_properties(ax, **kwargs):
 		List of z-axis ticks location.
 	z_ticklabels : `list of str`, optional
 		List of z-axis ticks labels.
+	z_tickcolor : `str`, optional
+		TODO
 	zaxis_minor_ticks_visible : `bool`, optional
 		TODO
 	zaxis_visible : `bool`, optional
@@ -319,40 +331,53 @@ def set_axes_properties(ax, **kwargs):
 		TODO
 	"""
 	fontsize                  = kwargs.get('fontsize', 12)
+	# title
 	title_center              = kwargs.get('title_center', '')
 	title_left                = kwargs.get('title_left', '')
 	title_right               = kwargs.get('title_right', '')
+	# x-axis
 	x_label                   = kwargs.get('x_label', '')
+	x_labelcolor              = kwargs.get('x_labelcolor', '')
 	x_lim                     = kwargs.get('x_lim', None)
 	invert_xaxis              = kwargs.get('invert_xaxis', False)
 	x_scale                   = kwargs.get('x_scale', None)
 	x_ticks                   = kwargs.get('x_ticks', None)
 	x_ticklabels              = kwargs.get('x_ticklabels', None)
+	x_tickcolor               = kwargs.get('x_tickcolor', '')
 	xaxis_minor_ticks_visible = kwargs.get('xaxis_minor_ticks_visible', False)
 	xaxis_visible             = kwargs.get('xaxis_visible', True)
+	# y-axis
 	y_label                   = kwargs.get('y_label', '')
+	y_labelcolor              = kwargs.get('y_labelcolor', '')
 	y_lim                     = kwargs.get('y_lim', None)
 	invert_yaxis              = kwargs.get('invert_yaxis', False)
 	y_scale                   = kwargs.get('y_scale', None)
 	y_ticks                   = kwargs.get('y_ticks', None)
 	y_ticklabels              = kwargs.get('y_ticklabels', None)
+	y_tickcolor               = kwargs.get('y_tickcolor', '')
 	yaxis_minor_ticks_visible = kwargs.get('yaxis_minor_ticks_visible', False)
 	yaxis_visible             = kwargs.get('yaxis_visible', True)
+	# z-axis
 	z_label                   = kwargs.get('z_label', '')
+	z_labelcolor              = kwargs.get('z_labelcolor', '')
 	z_lim                     = kwargs.get('z_lim', None)
 	invert_zaxis              = kwargs.get('invert_zaxis', False)
 	z_scale                   = kwargs.get('z_scale', None)
 	z_ticks                   = kwargs.get('z_ticks', None)
 	z_ticklabels              = kwargs.get('z_ticklabels', None)
+	z_tickcolor               = kwargs.get('z_tickcolor', '')
 	zaxis_minor_ticks_visible = kwargs.get('zaxis_minor_ticks_visible', False)
 	zaxis_visible             = kwargs.get('zaxis_visible', True)
+	# legend
 	legend_on                 = kwargs.get('legend_on', False)
 	legend_loc                = kwargs.get('legend_loc', 'best')
 	legend_bbox_to_anchor     = kwargs.get('legend_bbox_to_anchor', None)
 	legend_framealpha         = kwargs.get('legend_framealpha', 0.5)
 	legend_ncol				  = kwargs.get('legend_ncol', 1)
+	# textbox
 	text                      = kwargs.get('text', None)
 	text_loc                  = kwargs.get('text_loc', '')
+	# grid
 	grid_on                   = kwargs.get('grid_on', False)
 	grid_properties           = kwargs.get('grid_properties', None)
 
@@ -376,7 +401,22 @@ def set_axes_properties(ax, **kwargs):
 		if z_label != '':
 			import warnings
 			warnings.warn('The plot is not three-dimensional, therefore the '
-					  	   'argument ''z_label'' is disregarded.', RuntimeWarning)
+						   'argument ''z_label'' is disregarded.', RuntimeWarning)
+		else:
+			pass
+
+	if ax.get_xlabel() != '' and x_labelcolor != '':
+		ax.xaxis.label.set_color(x_labelcolor)
+	if ax.get_ylabel() != '' and y_labelcolor != '':
+		ax.yaxis.label.set_color(y_labelcolor)
+	try:
+		if ax.get_zlabel() != '' and z_labelcolor != '':
+			ax.zaxis.label.set_color(z_labelcolor)
+	except AttributeError:
+		if z_labelcolor != '':
+			import warnings
+			warnings.warn('The plot is not three-dimensional, therefore the '
+						   'argument ''z_labelcolor'' is disregarded.', RuntimeWarning)
 		else:
 			pass
 
@@ -439,6 +479,18 @@ def set_axes_properties(ax, **kwargs):
 		import warnings
 		warnings.warn('The plot is not three-dimensional, therefore the '
 					  'argument ''z_ticklabels'' is disregarded.', RuntimeWarning)
+
+	if x_tickcolor != '':
+		ax.tick_params(axis='x', colors=x_tickcolor)
+	if y_tickcolor != '':
+		ax.tick_params(axis='y', colors=y_tickcolor)
+	try:
+		if z_tickcolor != '':
+			ax.tick_params(axis='z', colors=z_tickcolor)
+	except AttributeError:
+		import warnings
+		warnings.warn('The plot is not three-dimensional, therefore the '
+					  'argument ''z_tickcolor'' is disregarded.', RuntimeWarning)
 
 	if not xaxis_minor_ticks_visible:
 		ax.get_xaxis().set_tick_params(which='minor', size=0)
@@ -565,7 +617,7 @@ def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_p
 		try:
 			axes = fig.get_axes()
 			cb = plt.colorbar(mappable, orientation=cbar_orientation,
-                              ax=[axes[i] for i in cbar_ax])
+							  ax=[axes[i] for i in cbar_ax])
 		except TypeError:
 			# cbar_ax is not iterable
 			cb = plt.colorbar(mappable, orientation=cbar_orientation)
@@ -755,9 +807,9 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	field : array_like
 		2-D :class:`numpy.ndarray` representing the field to plot.
 	fig : figure
-        A :class:`matplotlib.pyplot.figure`.
+		A :class:`matplotlib.pyplot.figure`.
 	ax : axes
-        An instance of :class:`matplotlib.axes.Axes`.
+		An instance of :class:`matplotlib.axes.Axes`.
 
 	Keyword arguments
 	-----------------
@@ -871,7 +923,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	# Set the color bar
 	if cbar_on:
 		set_colorbar(fig, surf, color_levels,
-			  	     cbar_ticks_step=cbar_ticks_step,
+					 cbar_ticks_step=cbar_ticks_step,
 					 cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
 					 cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
 					 cbar_orientation=cbar_orientation, cbar_ax=cbar_ax)
@@ -907,9 +959,9 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		The arrows will be colored based on the associated scalar value.
 		If :obj:`None`, the arrows will be colored based on their magnitude.
 	fig : figure
-        A :class:`matplotlib.pyplot.figure`.
+		A :class:`matplotlib.pyplot.figure`.
 	ax : axes
-        An instance of :class:`matplotlib.axes.Axes`.
+		An instance of :class:`matplotlib.axes.Axes`.
 
 	Keyword arguments
 	-----------------
@@ -1110,10 +1162,10 @@ def make_circle(ax, **kwargs):
 	Parameters
 	----------
 	ax : axes
-        An instance of :class:`matplotlib.axes.Axes`.
+		An instance of :class:`matplotlib.axes.Axes`.
 
-    Keyword arguments
-    -----------------
+	Keyword arguments
+	-----------------
 	xy : (float, float)
 		TODO
 	radius : float
@@ -1143,10 +1195,10 @@ def make_rectangle(ax, **kwargs):
 	Parameters
 	----------
 	ax : axes
-        An instance of :class:`matplotlib.axes.Axes`.
+		An instance of :class:`matplotlib.axes.Axes`.
 
-    Keyword arguments
-    -----------------
+	Keyword arguments
+	-----------------
 	xy : (float, float)
 		TODO
 	width : float

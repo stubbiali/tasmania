@@ -76,7 +76,10 @@ class DataRetriever:
 
 		if field_name in state:  # model variable
 
-			return to_units(state[field_name][x, y, z], field_units).values
+			if field_name == 'precipitation' or field_name == 'accumulated_precipitation':
+				return to_units(state[field_name][x, y], field_units).values
+			else:
+				return to_units(state[field_name][x, y, z], field_units).values
 
 		elif field_name == 'horizontal_velocity':  # horizontal velocity magnitude
 

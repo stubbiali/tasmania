@@ -24,7 +24,7 @@ import copy
 
 from sympl import InvalidPropertyDictError
 
-from tasmania.python.utils.utils import check_property_compatibility
+from tasmania.python.utils.framework_utils import check_property_compatibility
 
 
 class Model:
@@ -171,7 +171,7 @@ def check_components_coherency(dycore, physics_before_dynamics,
 			if key in tendencies_allowed:
 				try:
 					check_property_compatibility(tendencies_allowed[key],
-											 	 tendencies_available_before[key], name=key)
+												 tendencies_available_before[key], name=key)
 				except InvalidPropertyDictError as err:
 					raise InvalidPropertyDictError(
 						'While assessing compatibility between the tendencies output '
@@ -187,7 +187,7 @@ def check_components_coherency(dycore, physics_before_dynamics,
 				if key in tendencies_available_before:
 					try:
 						check_property_compatibility(tendencies_available_before[key],
-												 	 tendencies_available_after[key], name=key)
+													 tendencies_available_after[key], name=key)
 					except InvalidPropertyDictError as err:
 						print('While assessing inter-parameterizations compatibility.')
 						raise err
@@ -198,7 +198,7 @@ def check_components_coherency(dycore, physics_before_dynamics,
 			if key in inputs_available:
 				try:
 					check_property_compatibility(inputs_required[key],
-											 	 inputs_available[key], name=key)
+												 inputs_available[key], name=key)
 				except InvalidPropertyDictError as err:
 					raise InvalidPropertyDictError(
 						'While assessing compatibility between the model variables output '
@@ -218,7 +218,7 @@ def check_components_coherency(dycore, physics_before_dynamics,
 			if key in inputs_available:
 				try:
 					check_property_compatibility(inputs_required[key],
-											 	 inputs_available[key], name=key)
+												 inputs_available[key], name=key)
 				except InvalidPropertyDictError as err:
 					raise InvalidPropertyDictError(
 						'While assessing compatibility between the model variables output '

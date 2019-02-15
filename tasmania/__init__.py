@@ -23,9 +23,10 @@
 from tasmania.python.core.dycore import DynamicalCore
 from tasmania.python.core.model import Model
 from tasmania.python.core.offline_diagnostics import OfflineDiagnosticComponent, RMSD, RRMSD
-from tasmania.python.core.physics_composite import \
-	TasmaniaDiagnosticComponentComposite, ConcurrentCoupling, \
-	ParallelSplitting, SequentialUpdateSplitting
+from tasmania.python.core.composite import DiagnosticComponentComposite
+from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.core.parallel_splitting import ParallelSplitting
+from tasmania.python.core.sequential_splitting import SequentialUpdateSplitting
 from tasmania.python.dynamics.diagnostics import \
 	HorizontalVelocity, \
 	IsentropicDiagnostics as RawIsentropicDiagnostics, \
@@ -65,6 +66,8 @@ from tasmania.python.plot.quiver import Quiver
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 from tasmania.python.utils.data_utils import \
 	make_data_array_2d, make_data_array_3d, make_raw_state, make_state
+from tasmania.python.utils.dict_utils import \
+	add as dict_add, subtract as dict_subtract, multiply as dict_scale, copy as dict_update
 from tasmania.python.utils.meteo_utils import get_isothermal_isentropic_analytical_solution
 from tasmania.python.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
 from tasmania.python.utils.storage_utils import load_netcdf_dataset, NetCDFMonitor
@@ -77,9 +80,9 @@ __version__ = '0.2.0'
 __all__ = (
 	DynamicalCore,
 	Model,
-	TasmaniaDiagnosticComponentComposite,
 	OfflineDiagnosticComponent, RMSD, RRMSD,
-	ConcurrentCoupling, ParallelSplitting, SequentialUpdateSplitting,
+	DiagnosticComponentComposite, ConcurrentCoupling, 
+	ParallelSplitting, SequentialUpdateSplitting,
 	HorizontalBoundary, HorizontalSmoothing, VerticalDamping,
 	HorizontalIsentropicFlux, VerticalIsentropicFlux,
 	HorizontalHomogeneousIsentropicFlux,
@@ -101,8 +104,9 @@ __all__ = (
 	get_figure_and_axes, set_axes_properties, set_figure_properties,
 	make_data_array_2d, make_data_array_3d,
 	make_raw_state, make_state,
+	dict_add, dict_subtract, dict_scale, dict_update,
 	get_isothermal_isentropic_analytical_solution,
 	ConstantNotFoundError, TimeInconsistencyError,
 	load_netcdf_dataset, NetCDFMonitor,
-        get_time_string,
+	get_time_string,
 )

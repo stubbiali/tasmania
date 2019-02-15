@@ -1923,7 +1923,7 @@ class RK3(HomogeneousIsentropicPrognostic):
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = \
 				self._hflux(
 					i, j, k, dt, in_s_int, in_u_int, in_v_int, in_su_int, in_sv_int,
-					s_tnd=in_s_tnd, su_tnd=in_su_tnd, v_tnd=in_sv_tnd
+					s_tnd=in_s_tnd, su_tnd=in_su_tnd, sv_tnd=in_sv_tnd
 				)
 		else:
 			flux_s_x,  flux_s_y, flux_su_x,  flux_su_y, flux_sv_x,	flux_sv_y, \

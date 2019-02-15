@@ -41,214 +41,6 @@ from tasmania.python.grids.grid_xz import GridXZ
 from tasmania.python.grids.grid_xyz import GridXYZ
 
 
-def add(state_1, state_2, units=None, unshared_variables_in_output=True):
-	"""
-	Sum two model states.
-
-	Parameters
-	----------
-	state_1 : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the first model state, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-	state_2 : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the second model state, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-	units : `dict`, optional
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are strings indicating
-        the units in which those variables should be expressed.
-        If not specified, a variable is included in the output state
-        in the same units used in the first state, or the second state
-        if the variable is not present in the first state.
-	unshared_variables_in_output : `bool`, optional
-    	:obj:`True` if the output state should also contain those variables
-    	included in only one of the two input states, :obj:`False` otherwise.
-    	Defaults to :obj:`True`.
-
-	Return
-	------
-	dict :
-        Dictionary whose keys are strings indicating the variables
-        included in either the first or second model state, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-        If a variable is present in both states, the corresponding values
-        are summed up.
-
-    Raises
-    ------
-    TimeInconsistencyError :
-    	If the two input states are defined at two different time instants.
-	"""
-	#try:
-	#	if state_1['time'] != state_2['time']:
-	#		raise TimeInconsistencyError('Input states should be defined at '
-    #              		                 'the same time instant.')
-	#except KeyError:
-	#	pass
-
-	units = {} if units is None else units
-
-	try:
-		out_state = {'time': state_1['time']}
-	except KeyError:
-		out_state = {}
-
-	for key in set().union(state_1.keys(), state_2.keys()):
-		if key != 'time':
-			if (state_1.get(key, None) is not None) and (state_2.get(key, None) is not None):
-				if units.get(key, None) is not None:
-					out_state[key] = state_1[key].to_units(units[key]) + \
-									 state_2[key].to_units(units[key])
-				else:
-					out_state[key] = state_1[key] + \
-									 state_2[key].to_units(state_1[key].attrs['units'])
-
-			if unshared_variables_in_output:
-				if (state_1.get(key, None) is not None) and (state_2.get(key, None) is None):
-					if units.get(key, None) is not None:
-						out_state[key] = state_1[key].to_units(units[key])
-					else:
-						out_state[key] = state_1[key]
-
-				if (state_1.get(key, None) is None) and (state_2.get(key, None) is not None):
-					if units.get(key, None) is not None:
-						out_state[key] = state_2[key].to_units(units[key])
-					else:
-						out_state[key] = state_2[key]
-
-	return out_state
-
-
-def subtract(state_1, state_2, units=None, unshared_variables_in_output=True):
-	"""
-	Subtract two model states.
-
-	Parameters
-	----------
-	state_1 : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the first model state, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-	state_2 : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the second model state, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-	units : `dict`, optional
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are strings indicating
-        the units in which those variables should be expressed.
-        If not specified, a variable is included in the output state
-        in the same units used in the first state, or the second state
-        if the variable is not present in the first state.
-	unshared_variables_in_output : `bool`, optional
-    	:obj:`True` if the output state should also contain those variables
-    	included in only one of the two input states (unchanged if present
-    	in the first state, with opposite sign if present in the second state),
-    	:obj:`False` otherwise. Defaults to :obj:`True`.
-
-	Return
-	------
-	dict :
-        Dictionary whose keys are strings indicating the variables
-        included in either the first or second model state, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-        If a variable is present in both states, the corresponding values
-        are subtracted.
-
-    Raises
-    ------
-    TimeInconsistencyError :
-    	If the two passed states are defined at two different time instants.
-	"""
-	#try:
-	#	if state_1['time'] != state_2['time']:
-	#		raise TimeInconsistencyError('Input states should be defined at '
-	#              		                 'the same time instant.')
-	#except KeyError:
-	#	pass
-
-	units = {} if units is None else units
-
-	try:
-		out_state = {'time': state_1['time']}
-	except KeyError:
-		out_state = {}
-
-	for key in set().union(state_1.keys(), state_2.keys()):
-		if key != 'time':
-			if (state_1.get(key, None) is not None) and (state_2.get(key, None) is not None):
-				if units.get(key, None) is not None:
-					out_state[key] = state_1[key].to_units(units[key]) - \
-									 state_2[key].to_units(units[key])
-				else:
-					out_state[key] = state_1[key] - \
-									 state_2[key].to_units(state_1[key].attrs['units'])
-
-			if unshared_variables_in_output:
-				if (state_1.get(key, None) is not None) and (state_2.get(key, None) is None):
-					if units.get(key, None) is not None:
-						out_state[key] = state_1[key].to_units(units[key])
-					else:
-						out_state[key] = state_1[key]
-
-				if (state_1.get(key, None) is None) and (state_2.get(key, None) is not None):
-					if units.get(key, None) is not None:
-						out_state[key] = - state_2[key].to_units(units[key])
-					else:
-						out_state[key] = - state_2[key]
-
-	return out_state
-
-
-def multiply(factor, state, units=None):
-	"""
-	Scale a state by a scalar factor.
-
-	Parameters
-	----------
-	factor : float
-		The factor.
-	state : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the model state to scale, and values are
-        :class:`sympl.DataArray`\s containing the data for those variables.
-	units : `dict`, optional
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are strings indicating
-        the units in which those variables should be expressed.
-        If not specified, variables are included in the output state
-        in the same units used in the input state.
-
-	Return
-	------
-	dict :
-        Dictionary whose keys are strings indicating the variables
-        included in the input model state, and values are
-        :class:`sympl.DataArray`\s containing the scaled data for
-        those variables.
-	"""
-	units = {} if units is None else units
-
-	try:
-		out_state = {'time': state['time']}
-	except KeyError:
-		out_state = {}
-
-	for key in state.keys():
-		if key != 'time':
-			if units.get(key, None) is not None:
-				val = state[key].to_units(units[key])
-				out_state[key] = factor * val
-				out_state[key].attrs.update(val.attrs)
-			else:
-				out_state[key] = factor * state[key]
-				out_state[key].attrs.update(state[key].attrs)
-
-	return out_state
-
-
 def get_numpy_arrays(state, indices, *args):
 	"""
 	Given a dictionary of :class:`xarray.DataArray`\s and a set of keys,
@@ -390,33 +182,33 @@ def make_data_array_2d(raw_array, grid, units, name=None):
 	raw_array : array_like
 		2-D :class:`numpy.ndarray` storing the variable data.
 	grid : grid
-        The underlying grid, as an instance of \
-        :class:`~tasmania.grids.grid_xy.GridXY`, \
-        :class:`~tasmania.grids.grid_xz.GridXZ`, \
-        :class:`~tasmania.grids.grid_xyz.GridXYZ`, \
-        or one of their derived classes.
+		The underlying grid, as an instance of \
+		:class:`~tasmania.grids.grid_xy.GridXY`, \
+		:class:`~tasmania.grids.grid_xz.GridXZ`, \
+		:class:`~tasmania.grids.grid_xyz.GridXYZ`, \
+		or one of their derived classes.
 	units : str
-    	String indicating the variable units.
+		String indicating the variable units.
 	name : `str`, optional
-    	String indicating the variable name. Defaults to :obj:`None`.
+		String indicating the variable name. Defaults to :obj:`None`.
 
-    Return
-    ------
-    dataarray_like :
-    	The :class:`sympl.DataArray` whose value array is :obj:`raw_array`,
-    	whose coordinates and dimensions are retrieved from :obj:`grid`,
-    	and whose units are :obj:`units`.
+	Return
+	------
+	dataarray_like :
+		The :class:`sympl.DataArray` whose value array is :obj:`raw_array`,
+		whose coordinates and dimensions are retrieved from :obj:`grid`,
+		and whose units are :obj:`units`.
 
-    Raises
-    ------
-    ValueError:
-    	If :obj:`raw_array` is not 2-D.
-    TypeError :
-    	If :obj:`grid` is not an instance of
-    	:class:`~tasmania.grids.grid_xy.GridXY`,
-    	:class:`~tasmania.grids.grid_xz.GridXZ`,
-        :class:`~tasmania.grids.grid_xyz.GridXYZ`, \
-    	nor one of their derived classes.
+	Raises
+	------
+	ValueError:
+		If :obj:`raw_array` is not 2-D.
+	TypeError :
+		If :obj:`grid` is not an instance of
+		:class:`~tasmania.grids.grid_xy.GridXY`,
+		:class:`~tasmania.grids.grid_xz.GridXZ`,
+		:class:`~tasmania.grids.grid_xyz.GridXYZ`, \
+		nor one of their derived classes.
 	"""
 	if len(raw_array.shape) != 2:
 		raise ValueError('raw_array should be 2-D.')
@@ -441,24 +233,24 @@ def make_data_array_3d(raw_array, grid, units, name=None):
 	raw_array : array_like
 		3-D :class:`numpy.ndarray` storing the variable data.
 	grid : grid
-        The underlying grid, as an instance of
-        :class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
+		The underlying grid, as an instance of
+		:class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
 	units : str
-    	String indicating the variable units.
+		String indicating the variable units.
 	name : `str`, optional
-    	String indicating the variable name. Defaults to :obj:`None`.
+		String indicating the variable name. Defaults to :obj:`None`.
 
-    Return
-    ------
-    dataarray_like :
-    	The :class:`sympl.DataArray` whose value array is :obj:`raw_array`,
-    	whose coordinates and dimensions are retrieved from :obj:`grid`,
-    	and whose units are :obj:`units`.
+	Return
+	------
+	dataarray_like :
+		The :class:`sympl.DataArray` whose value array is :obj:`raw_array`,
+		whose coordinates and dimensions are retrieved from :obj:`grid`,
+		and whose units are :obj:`units`.
 
-    Raises
-    ------
-    ValueError:
-    	If :obj:`raw_array` is not 2-D.
+	Raises
+	------
+	ValueError:
+		If :obj:`raw_array` is not 2-D.
 	"""
 	if len(raw_array.shape) != 3:
 		raise ValueError('raw_array should be 3-D.')
@@ -470,22 +262,22 @@ def make_state(raw_state, grid, units):
 	Parameters
 	----------
 	raw_state : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`numpy.ndarray`\s
-        containing the data for those variables.
+		Dictionary whose keys are strings indicating the variables
+		included in the model state, and values are :class:`numpy.ndarray`\s
+		containing the data for those variables.
 	grid : grid
 		The underlying computational grid.
 	units : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are strings indicating
-        the units in which those variables should be expressed.
+		Dictionary whose keys are strings indicating the variables
+		included in the model state, and values are strings indicating
+		the units in which those variables should be expressed.
 
 	Return
 	------
 	dict :
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`sympl.DataArray`\s
-        containing the data for those variables.
+		Dictionary whose keys are strings indicating the variables
+		included in the model state, and values are :class:`sympl.DataArray`\s
+		containing the data for those variables.
 	"""
 	try:
 		state = {'time': raw_state['time']}
@@ -507,20 +299,20 @@ def make_raw_state(state, units=None):
 	Parameters
 	----------
 	state : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`sympl.DataArray`\s
-        containing the data for those variables.
+		Dictionary whose keys are strings indicating the variables
+		included in the model state, and values are :class:`sympl.DataArray`\s
+		containing the data for those variables.
 	units : `dict`, optional
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are strings indicating
-        the units in which those variables should be expressed.
+		Dictionary whose keys are strings indicating the variables
+		included in the model state, and values are strings indicating
+		the units in which those variables should be expressed.
 
 	Return
 	------
 	dict :
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`numpy.ndarray`\s
-        containing the data for those variables.
+		Dictionary whose keys are strings indicating the variables
+		included in the model state, and values are :class:`numpy.ndarray`\s
+		containing the data for those variables.
 	"""
 	units = {} if units is None else units
 

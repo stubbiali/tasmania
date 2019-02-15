@@ -21,11 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from copy import deepcopy
+from datetime import timedelta
 import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
-from tasmania.python.core.physics_composite import ConcurrentCoupling
+from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
 
 
 def test_compatibility(
@@ -38,13 +39,15 @@ def test_compatibility(
 	tendency1 = make_fake_tendency_1(grid)
 	tendency2 = make_fake_tendency_2(grid)
 
+	dt = timedelta(minutes=1)
+
 	#
 	# failing
 	#
 	state_dc = deepcopy(state)
 	cc1 = ConcurrentCoupling(tendency1, tendency2, execution_policy='as_parallel')
 	try:
-		_ = cc1(state=state_dc)
+		cc1(state_dc, dt)
 		assert False
 	except InvalidStateError:
 		assert True
@@ -55,7 +58,7 @@ def test_compatibility(
 	state_dc = deepcopy(state)
 	cc2 = ConcurrentCoupling(tendency2, tendency1, execution_policy='serial')
 	try:
-		_ = cc2(state=state_dc)
+		cc2(state_dc, dt)
 		assert False
 	except InvalidStateError:
 		assert True
@@ -66,7 +69,7 @@ def test_compatibility(
 	state_dc = deepcopy(state)
 	cc3 = ConcurrentCoupling(tendency1, tendency2, execution_policy='serial')
 	try:
-		_ = cc3(state=state_dc)
+		cc3(state_dc, dt)
 		assert True
 	except InvalidStateError:
 		assert False
@@ -82,12 +85,14 @@ def test_numerics(
 	tendency1 = make_fake_tendency_1(grid)
 	tendency2 = make_fake_tendency_2(grid)
 
-	cc = ConcurrentCoupling(tendency1, tendency2, execution_policy='serial')
-	tendencies = cc(state=state)
+	dt = timedelta(seconds=100)
 
-	assert 'fake_variable' in state
+	cc = ConcurrentCoupling(tendency1, tendency2, execution_policy='serial')
+	tendencies, diagnostics = cc(state, dt)
+
+	assert 'fake_variable' in diagnostics
 	s = state['air_isentropic_density'].values
-	f = state['fake_variable'].values
+	f = diagnostics['fake_variable'].values
 	assert np.allclose(f, 2*s)
 
 	assert 'air_isentropic_density' in tendencies
@@ -106,5 +111,12 @@ def test_numerics(
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2
-	#test_numerics(isentropic_dry_data(), make_fake_tendency_1(), make_fake_tendency_2())
+
+	#from conftest import FakeTendency1, FakeTendency2
+	#from tasmania.python.utils.storage_utils import load_netcdf_dataset
+	#
+	#isentropic_dry_data = load_netcdf_dataset('baseline_datasets/isentropic_dry.nc')
+	#make_fake_tendency_1 = lambda grid: FakeTendency1(grid)
+	#make_fake_tendency_2 = lambda grid: FakeTendency2(grid)
+	#
+	#test_numerics(isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2)

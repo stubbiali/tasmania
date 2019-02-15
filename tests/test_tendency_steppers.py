@@ -264,3 +264,7 @@ def test_rk3(isentropic_dry_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
+
+	#from tasmania.python.utils.storage_utils import load_netcdf_dataset
+	#isentropic_dry_data = load_netcdf_dataset('baseline_datasets/isentropic_dry.nc')
+	#test_forward_euler(isentropic_dry_data)

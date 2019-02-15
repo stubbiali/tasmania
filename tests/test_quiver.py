@@ -22,12 +22,18 @@
 #
 import os
 import pytest
+import sys
 
 from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.quiver import Quiver
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')
+baseline_dir = 'baseline_images/py{}{}/test_quiver'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	xcomp_name  = 'x_velocity'
@@ -35,8 +41,7 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	ycomp_name  = 'y_velocity'
 	ycomp_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_quiver does exist
-	baseline_dir = 'baseline_images/test_quiver'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -106,7 +111,7 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_quiver')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	xcomp_name  = 'x_velocity'
@@ -114,8 +119,7 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
 	ycomp_name  = 'y_velocity'
 	ycomp_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_quiver does exist
-	baseline_dir = 'baseline_images/test_quiver'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
