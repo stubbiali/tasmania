@@ -174,11 +174,11 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 	the horizontal velocity components with the help of the isentropic
 	momenta and the isentropic density.
 	"""
-	def __init__(self, grid, horizontal_boundary_type, reference_state,
-				 backend=gt.mode.NUMPY, dtype=datatype, **kwargs):
+	def __init__(
+		self, grid, horizontal_boundary_type, reference_state,
+		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+	):
 		"""
-		The constructor.
-
 		Parameters
 		----------
 		grid : grid

@@ -482,9 +482,11 @@ class VerticalIsentropicAdvection(TendencyComponent):
 	in isentropic coordinates for any prognostic variable included in
 	the isentropic system.
 	"""
-	def __init__(self, grid, moist=False, flux_scheme='upwind',
-				 tendency_of_air_potential_temperature_on_interface_levels=False,
-				 backend=gt.mode.NUMPY, **kwargs):
+	def __init__(
+		self, grid, moist=False, flux_scheme='upwind',
+		tendency_of_air_potential_temperature_on_interface_levels=False,
+		backend=gt.mode.NUMPY, **kwargs
+	):
 		"""
 		The constructor.
 
@@ -505,10 +507,10 @@ class VerticalIsentropicAdvection(TendencyComponent):
 			:class:`sympl.TendencyComponent`.
 		"""
 		# Keep track of input arguments
-		self._grid     = grid
-		self._moist = moist
-		self._stgz     = tendency_of_air_potential_temperature_on_interface_levels
-		self._backend  = backend
+		self._grid    = grid
+		self._moist   = moist
+		self._stgz    = tendency_of_air_potential_temperature_on_interface_levels
+		self._backend = backend
 
 		# Call parent's constructor
 		super().__init__(**kwargs)
@@ -533,8 +535,9 @@ class VerticalIsentropicAdvection(TendencyComponent):
 		}
 
 		if self._stgz:
-			dims_stgz = (grid.x.dims[0], grid.y.dims[0],
-						 grid.z_on_interface_levels.dims[0])
+			dims_stgz = (
+				grid.x.dims[0], grid.y.dims[0], grid.z_on_interface_levels.dims[0]
+			)
 			return_dict['tendency_of_air_potential_temperature_on_interface_levels'] = \
 				{'dims': dims_stgz, 'units': 'K s^-1'}
 		else:
@@ -771,8 +774,8 @@ class VerticalIsentropicAdvection(TendencyComponent):
 		else:
 			self._out_s[:, :, -nb:] = \
 				0.5 * (- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ]
-				 	   + 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1]
-				 	   - 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2]) / dz
+					   + 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1]
+					   - 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2]) / dz
 			self._out_su[:, :, -nb:] = \
 				0.5 * (- 3.0 * w[:, :, -nb:    ] * su[:, :, -nb:    ]
 					   + 4.0 * w[:, :, -nb-1:-1] * su[:, :, -nb-1:-1]
@@ -818,15 +821,18 @@ class PrescribedSurfaceHeating(TendencyComponent):
 			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 	}
 
-	def __init__(self, grid, tendency_of_air_potential_temperature_in_diagnostics=False,
-				 air_pressure_on_interface_levels=True,
-				 amplitude_at_day_sw=None, amplitude_at_day_fw=None, 
-				 amplitude_at_night_sw=None, amplitude_at_night_fw=None,
-				 frequency_sw=None, frequency_fw=None,
-				 attenuation_coefficient_at_day=None,
-				 attenuation_coefficient_at_night=None,
-				 characteristic_length=None, starting_time=None,
-				 backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
+	def __init__(
+		self, grid, 
+		tendency_of_air_potential_temperature_in_diagnostics=False,
+		tendency_of_air_potential_temperature_on_interface_levels=False,
+		air_pressure_on_interface_levels=True,
+		amplitude_at_day_sw=None, amplitude_at_day_fw=None, 
+		amplitude_at_night_sw=None, amplitude_at_night_fw=None,
+		frequency_sw=None, frequency_fw=None,
+		attenuation_coefficient_at_day=None,
+		attenuation_coefficient_at_night=None,
+		characteristic_length=None, starting_time=None,
+		backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
 		"""
 		The constructor.
 
@@ -835,6 +841,8 @@ class PrescribedSurfaceHeating(TendencyComponent):
 		grid : grid
 			TODO
 		tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
+			TODO
+		tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
 			TODO
 		air_pressure_on_interface_levels : `bool`, optional
 			TODO
@@ -869,6 +877,8 @@ class PrescribedSurfaceHeating(TendencyComponent):
 		self._grid    = grid
 		self._tid	  = tendency_of_air_potential_temperature_in_diagnostics
 		self._apil	  = air_pressure_on_interface_levels
+		self._aptil	  = tendency_of_air_potential_temperature_on_interface_levels \
+			and air_pressure_on_interface_levels
 		self._backend = backend
 
 		super().__init__(**kwargs)
@@ -922,7 +932,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
 		return_dict = {}
 
 		if not self._tid:
-			if self._apil:
+			if self._aptil:
 				dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
 				return_dict['air_potential_temperature_on_interface_levels'] = \
 					{'dims': dims, 'units': 'K s^-1'}
@@ -939,7 +949,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
 		return_dict = {}
 
 		if self._tid:
-			if self._apil:
+			if self._aptil:
 				dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
 				return_dict['tendency_of_air_potential_temperature_on_interface_levels'] = \
 					{'dims': dims, 'units': 'K s^-1'}
@@ -953,49 +963,52 @@ class PrescribedSurfaceHeating(TendencyComponent):
 	def array_call(self, state):
 		g = self._grid
 		mi, mj = g.nx, g.ny
-		mk = g.nz + 1 if self._apil else g.nz
+		mk = g.nz + 1 if self._aptil else g.nz
 
-		t    = state['time']
-		dt   = (t - self._t0).total_seconds() / 3600.0 if self._t0 is not None \
-			else t.hour
+		t  = state['time']
+		dt = (t - self._t0).total_seconds() / 3600.0 if self._t0 is not None else t.hour
 
 		if dt <= 0.0:
 			out = np.zeros((mi, mj, mk), dtype=state['height_on_interface_levels'].dtype)
 		else:
 			x1d, y1d = g.x.to_units('m').values, g.y.to_units('m').values
-			theta1d  = g.z_on_interface_levels.to_units('K').values if self._apil \
+			theta1d  = g.z_on_interface_levels.to_units('K').values if self._aptil \
 				else g.z.to_units('K').values
 
 			x 	  = np.tile(x1d[:, np.newaxis, np.newaxis], (1, mj, mk))
 			y 	  = np.tile(y1d[np.newaxis, :, np.newaxis], (mi, 1, mk))
 			theta = np.tile(theta1d[np.newaxis, np.newaxis, :], (mi, mj, 1))
 
-			p  = state['air_pressure_on_interface_levels'] if self._apil \
-				else state['air_pressure']
+			pv = state['air_pressure_on_interface_levels'] if self._apil else state['air_pressure']
+			p  = pv if pv.shape[2] == mk else 0.5 * (pv[:, :, 1:] + pv[:, :, :-1])
 			zv = state['height_on_interface_levels']
 			z  = zv if self._apil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
 			h  = np.repeat(zv[:, :, -1:], mk, axis=2)
 
-			f0_sw = self._f0d_sw if (8.0 <= t.hour < 20) else self._f0n_sw
-			f0_fw = self._f0d_fw if (8.0 <= t.hour < 20) else self._f0n_fw
 			w_sw  = self._w_sw
 			w_fw  = self._w_fw
-			a  	  = self._ad if (8.0 <= t.hour < 20) else self._an
 			cl    = self._cl
+
+			t_in_seconds = t.hour*60*60 + t.minute*60 + t.second
+			t_sw  = (2*np.pi / w_sw) * 60 * 60
+			day   = int(t_in_seconds / t_sw) % 2 == 0
+			f0_sw = self._f0d_sw if day else self._f0n_sw
+			f0_fw = self._f0d_fw if day else self._f0n_fw	
+			a  	  = self._ad if day else self._an
 
 			out = theta * self._rd * a / (p * self._cp) * np.exp(- a * (z - h)) * \
 				  (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt)) * (x**2 + y**2 < cl**2)
 
 		tendencies = {}
 		if not self._tid:
-			if self._apil:
+			if self._aptil:
 				tendencies['air_potential_temperature_on_interface_levels'] = out
 			else:
 				tendencies['air_potential_temperature'] = out
 
 		diagnostics = {}
 		if self._tid:
-			if self._apil:
+			if self._aptil:
 				diagnostics['tendency_of_air_potential_temperature_on_interface_levels'] = out
 			else:
 				diagnostics['tendency_of_air_potential_temperature'] = out

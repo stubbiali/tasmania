@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch
 
 MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
 
@@ -11,18 +11,24 @@ RUN apt-get install -y ca-certificates		\
 					   cmake				\
 					   curl					\
 					   firefox-esr			\
+					   libblas-dev			\
+					   libhdf5-dev			\
+					   liblapack-dev		\
 					   libfreetype6-dev     \
-					   libpng12-dev         \
+					   libnetcdf-dev		\
+					   libpng-dev			\
 					   locales				\
 					   g++					\
 					   git					\
+					   gnupg				\
 					   graphviz				\
+					   make					\
 					   pkg-config           \
 					   qt-sdk				\
 					   sudo					\
 					   vim					\
-					   wget					\
 					   x11-apps				\
+					   wget					\
 					--no-install-recommends
 
 # install FFmpeg
@@ -33,54 +39,66 @@ RUN	apt-get install -y ffmpeg
 # install chrome
 RUN echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb stable main' >> /etc/apt/sources.list
 RUN	wget https://dl.google.com/linux/linux_signing_key.pub
+RUN apt-get install -y gnupg
 RUN	apt-key add linux_signing_key.pub
 RUN	apt-get update
 RUN	apt-get install -y google-chrome-stable 
 
 # packages required to install python with SSL/TLS support
-RUN apt-get install -y make \
-					   build-essential \
-					   libssl-dev \
+RUN apt-get install -y build-essential \
 					   zlib1g-dev \
 					   libbz2-dev \
 					   libsqlite3-dev \
-					   libffi-dev
+					   libffi-dev \
+					--no-install-recommends
+RUN wget -q "https://www.openssl.org/source/openssl-1.0.2q.tar.gz" && \
+	tar xvfz openssl-1.0.2q.tar.gz && \
+	cd openssl-1.0.2q && \
+	./config --shared && \
+	make && make install && \
+	cd .. && \
+	rm -rf openssl-1.0.2q
+ENV LD_LIBRARY_PATH /usr/local/ssl/lib
 
 # install python3.4
 RUN wget -q 'https://www.python.org/ftp/python/3.4.9/Python-3.4.9.tar.xz'
 RUN tar xf Python-3.4.9.tar.xz
 RUN cd Python-3.4.9 && \
-	./configure && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
 	make && make install && \
-	cd .. \
+	cd .. && \
 	rm -rf Python-3.4.9
+RUN	python3.4 -m pip install --upgrade pip
 
 # install python3.5
 RUN wget -q 'https://www.python.org/ftp/python/3.5.6/Python-3.5.6.tar.xz'
 RUN tar xf Python-3.5.6.tar.xz
 RUN cd Python-3.5.6 && \
-	./configure && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
 	make && make install && \
-	cd .. \
+	cd .. && \
 	rm -rf Python-3.5.6
+RUN /usr/local/bin/pip3.5 install --upgrade pip
 
 # install python3.6
 RUN wget -q 'https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tar.xz'
 RUN tar xf Python-3.6.7.tar.xz
 RUN cd Python-3.6.7 && \
-	./configure && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
 	make && make install && \
-	cd .. \
+	cd .. && \
 	rm -rf Python-3.6.7
+RUN /usr/local/bin/pip3.6 install --upgrade pip
 
 # install python3.7
-RUN wget -q 'https://www.python.org/ftp/python/3.7.1/Python-3.7.1.tar.xz'
-RUN tar xf Python-3.7.1.tar.xz
-RUN cd Python-3.7.1 && \
-	./configure && \
+RUN wget -q 'https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz'
+RUN tar xf Python-3.7.2.tar.xz
+RUN cd Python-3.7.2 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
 	make && make install && \
-	cd .. \
-	rm -rf Python-3.7.1
+	cd .. && \
+	rm -rf Python-3.7.2
+RUN /usr/local/bin/pip3.7 install --upgrade pip
 
 # install git lfs
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash

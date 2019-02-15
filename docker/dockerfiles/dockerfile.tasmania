@@ -41,10 +41,11 @@ RUN chown -hR tasmania-user $HOME
 USER tasmania-user
 
 # create a virtual environment around python3.4
+# note: this is not going to work because sip (required by pyqt5) is not supported by python3.4
 #RUN virtualenv --python=python3.4 py34
 #RUN . py34/bin/activate && \
-#	pip install -e $HOME/tasmania && \
-#	pip install -e $HOME/tasmania/docker/gridtools4py && \
+#	pip install -e $HOME/tasmania/docker/gridtools4py --no-cache-dir && \
+#	pip install -e $HOME/tasmania --no-cache-dir && \
 #	cat py34/lib/python3.4/site-packages/matplotlib/mpl-data/matplotlibrc | \
 #	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
 #	cp /tmp/.matplotlibrc py34/lib/python3.4/site-packages/matplotlib/mpl-data/matplotlibrc && \
@@ -74,15 +75,27 @@ RUN . py36/bin/activate && \
 	deactivate
 
 # create a virtual environment around python3.7
-#RUN virtualenv --python=python3.7 py37
-#RUN . py37/bin/activate && \
-#	pip install -e $HOME/tasmania && \
-#	pip install -e $HOME/tasmania/docker/gridtools4py && \
-#	cat py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc | \
-#	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
-#	cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
-#	rm /tmp/.matplotlibrc && \
-#	deactivate
+RUN virtualenv --python=python3.7 py37
+RUN . py37/bin/activate && \
+	pip install -e $HOME/tasmania/docker/gridtools4py --no-cache-dir && \
+	pip install -e $HOME/tasmania --no-cache-dir && \
+	cat py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	rm /tmp/.matplotlibrc && \
+	deactivate
+
+# set firefox as default browser for jupyter
+RUN . py35/bin/activate && \
+	jupyter notebook --generate-config && \
+	cat $HOME/.jupyter/jupyter_notebook_config.py | \
+	sed -e "s@\#c.NotebookApp.browser = ''@c.NotebookApp.browser = '/usr/bin/firefox'@g" > /tmp/jupyter_notebook_config.py && \
+	cp /tmp/jupyter_notebook_config.py $HOME/.jupyter/jupyter_notebook_config.py && \
+	rm /tmp/jupyter_notebook_config.py && \
+	deactivate
+
+# create a mount point
+RUN mkdir $HOME/mount-point
 
 # set XDG_RUNTIME_DIR
 RUN mkdir $HOME/.runtime

@@ -22,19 +22,24 @@
 #
 import os
 import pytest
+import sys
 
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
+baseline_dir = 'baseline_images/py{}{}/test_contourf'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_contourf_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	field_name  = 'horizontal_velocity'
 	field_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_contourf does exist
-	baseline_dir = 'baseline_images/test_contourf'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -98,14 +103,13 @@ def test_contourf_xy_velocity(isentropic_dry_data, drawer_topography2d):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_contourf_xy_pressure(isentropic_dry_data, drawer_topography2d):
 	# Field to plot
 	field_name  = 'air_pressure_on_interface_levels'
 	field_units = 'hPa'
 
-	# Make sure the folder tests/baseline_images/test_contourf does exist
-	baseline_dir = 'baseline_images/test_contourf'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -167,14 +171,13 @@ def test_contourf_xy_pressure(isentropic_dry_data, drawer_topography2d):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_contourf_xz_velocity(isentropic_dry_data, drawer_topography1d):
 	# Field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_contourf does exist
-	baseline_dir = 'baseline_images/test_contourf'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -239,14 +242,13 @@ def test_contourf_xz_velocity(isentropic_dry_data, drawer_topography1d):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_contourf')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_contourf_yz_velocity(isentropic_dry_data, drawer_topography1d):
 	# Field to plot
 	field_name  = 'y_velocity_at_v_locations'
 	field_units = 'km hr^-1'
 
-	# Make sure the folder tests/baseline_images/test_contourf does exist
-	baseline_dir = 'baseline_images/test_contourf'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

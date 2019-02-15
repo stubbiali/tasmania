@@ -194,7 +194,7 @@ def get_default_isentropic_state(
 
 def get_isothermal_isentropic_state(
 	grid, time, x_velocity, y_velocity, temperature,
-	dtype=datatype, physical_constants=None
+	moist=False, precipitation=False, dtype=datatype, physical_constants=None
 ):
 	# Shortcuts
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -281,5 +281,48 @@ def get_isothermal_isentropic_state(
 				v, grid, 'm s^-1', name='y_velocity_at_v_locations'
 			),
 	}
+
+	if moist:
+		# Diagnose the air density and temperature
+		rho  = s * dz / (h[:, :, :-1] - h[:, :, 1:])
+		state['air_density'] = make_data_array_3d(rho, grid, 'kg m^-3', name='air_density')
+		temp = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:]) * theta / cp
+		state['air_temperature'] = make_data_array_3d(temp, grid, 'K', name='air_temperature')
+
+		# Initialize the relative humidity
+		rhmax, L, kc = 0.98, 10, 11
+		k  = (nz-1) - np.arange(kc-L+1, kc+L)
+		rh = np.zeros((nx, ny, nz), dtype=dtype)
+		rh[:, :, k] = rhmax * (np.cos(abs(k - kc) * np.pi / (2. * L)))**2
+		rh_ = make_data_array_3d(rh, grid, '1')
+
+		# Interpolate the pressure at the main levels
+		p_unstg = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
+		p_unstg_ = make_data_array_3d(p_unstg, grid, 'Pa')
+
+		# Diagnose the mass fraction fo water vapor
+		from tasmania.python.utils.meteo_utils import \
+			convert_relative_humidity_to_water_vapor
+		qv = convert_relative_humidity_to_water_vapor(
+			'goff_gratch', p_unstg_, state['air_temperature'], rh_
+		)
+		state[mf_wv]  = make_data_array_3d(qv, grid, 'g g^-1', name=mf_wv)
+
+		# Initialize the mass fraction of cloud liquid water and precipitation water
+		qc = np.zeros((nx, ny, nz), dtype=dtype)
+		state[mf_clw] = make_data_array_3d(qc, grid, 'g g^-1', name=mf_clw)
+		qr = np.zeros((nx, ny, nz), dtype=dtype)
+		state[mf_pw]  = make_data_array_3d(qr, grid, 'g g^-1', name=mf_pw)
+
+		# Precipitation and accumulated precipitation
+		if precipitation:
+			state['precipitation'] = make_data_array_2d(
+				np.zeros((nx, ny), dtype=dtype), grid, 'mm hr^-1',
+				name='precipitation'
+			)
+			state['accumulated_precipitation'] = make_data_array_2d(
+				np.zeros((nx, ny), dtype=dtype), grid, 'mm',
+				name='accumulated_precipitation'
+			)
 
 	return state

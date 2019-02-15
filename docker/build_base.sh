@@ -41,7 +41,7 @@ read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to
 echo ""
 
 if [[ $key = "" ]]; then
-	docker build --rm -f dockerfiles/$DOCKERFILE -t $BASE_IMAGE_NAME .
+	docker build --rm -f dockerfiles/$DOCKERFILE -t $IMAGE_NAME .
 fi
 
 echo ""

@@ -77,58 +77,82 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 		"""
 		Parameters
 		----------
-		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
+		grid : obj 
+			The underlying grid, as an instance of :class:`tasmania.GridXYZ`
+			or one of its derived classes.
 		time_units : `str`, optional
-			The time units used within the class. Defaults to 's', i.e., seconds.
+			The time units used within this object. Defaults to 's', i.e., seconds.
 		intermediate_tendencies : `obj`, optional
-			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
-			wrapping the intermediate physical parameterizations.
-			Here, *intermediate* refers to the fact that these physical packages
-			are called *before* each stage of the dynamical core to calculate
-			the physical tendencies.
+			An instance of either
+
+				* :class:`sympl.TendencyComponent`,
+				* :class:`sympl.TendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
+
+			calculating the intermediate physical tendencies.
+			Here, *intermediate* refers to the fact that these physical 
+			packages are called *before* each stage of the dynamical core 
+			to calculate the physical tendencies.
 		intermediate_diagnostics : `obj`, optional
-			:class:`sympl.DiagnosticComponent` or
-			:class:`sympl.DiagnosticComponentComposite`
-			representing diagnostic parameterizations which should be called
-			at the end of each stage, once the sub-timestepping routine is over.
+			An instance of either
+
+				* :class:`sympl.DiagnosticComponent`,
+				* :class:`sympl.DiagnosticComponentComposite`, or
+				* :class:`tasmania.DiagnosticComponentComposite`
+
+			retrieving diagnostics at the end of each stage, once the 
+			sub-timestepping routine is over.
 		substeps : `int`, optional
 			Number of sub-steps to perform. Defaults to 0, meaning that no
 			sub-stepping technique is implemented.
 		fast_tendencies : `obj`, optional
-			:class:`~tasmania.core.physics_composite.ConcurrentCoupling`
-			wrapping the fast physical parameterizations.
+			An instance of either
+
+				* :class:`sympl.TendencyComponent`,
+				* :class:`sympl.TendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
+
+			calculating the fast physical tendencies.
 			Here, *fast* refers to the fact that these physical packages are
 			called *before* each sub-step of any stage of the dynamical core
 			to calculate the physical tendencies.
 			This parameter is ignored if `substeps` argument is not positive.
 		fast_diagnostics : `obj`, optional
-			:class:`sympl.DiagnosticComponent` or
-			:class:`sympl.DiagnosticComponentComposite`
-			representing diagnostic parameterizations which should be called
-			at the end of each sub-step of any stage of the dynamical core.
+			An instance of either
+
+				* :class:`sympl.DiagnosticComponent`,
+				* :class:`sympl.DiagnosticComponentComposite`, or
+				* :class:`tasmania.DiagnosticComponentComposite`
+
+			retrieving diagnostics at the end of each sub-step of any stage 
+			of the dynamical core.
 			This parameter is ignored if `substeps` argument is not positive.
 		moist : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+			Defaults to :obj:`False`.
 		time_integration_scheme : str
-			String specifying the time stepping method to implement. See
-			:class:`~tasmania.dynamics.homogeneous_isentropic_prognostic.HomogeneousIsentropicPrognostic`
-			for all available options.
+			String specifying the time stepping method to implement. 
+			See :class:`tasmania.HomogeneousIsentropicPrognostic` 
+			for all available options. Defaults to 'forward_euler'.
 		horizontal_flux_scheme : str
-			String specifying the numerical horizontal flux to use. See
-			:class:`~tasmania.dynamics.isentropic_fluxes.HorizontalHomogeneousIsentropicFlux`
-			for all available options.
+			String specifying the numerical horizontal flux to use. 
+			See :class:`tasmania.HorizontalHomogeneousIsentropicFlux` 
+			for all available options. Defaults to 'upwind'.
 		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions. See
-			:class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
-			for all available options.
+			String specifying the horizontal boundary conditions. 
+			See :class:`tasmania.HorizontalBoundary` for all available options.
+			Defaults to 'periodic'.
 		damp : `bool`, optional
 			:obj:`True` to enable vertical damping, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
 		damp_type : `str`, optional
-			String specifying the type of vertical damping to apply. Defaults to 'rayleigh'.
-			See :class:`~tasmania.dynamics.vertical_damping.VerticalDamping`
-			for all available options.
+			String specifying the type of vertical damping to apply. 
+			See :class:`tasmania.VerticalDamping` for all available options.
+			Defaults to 'rayleigh'.
 		damp_depth : `int`, optional
 			Number of vertical layers in the damping region. Defaults to 15.
 		damp_max : `float`, optional
@@ -142,17 +166,16 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 			Defaults to :obj:`True`.
 		smooth_type: `str`, optional
 			String specifying the smoothing technique to implement.
-			Defaults to 'first-order'. See
-			:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
-			for all available options.
+			See :class:`tasmania.HorizontalSmoothing` for all available options.
+			Defaults to 'first_order'.
 		smooth_damp_depth : `int`, optional
 			Number of vertical layers in the smoothing damping region. Defaults to 10.
 		smooth_coeff : `float`, optional
 			Smoothing coefficient. Defaults to 0.03.
 		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient. Defaults to 0.24.
-			See :class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
-			for further details.
+			Maximum value for the smoothing coefficient. 
+			See :class:`tasmania.HorizontalSmoothing` for further details.
+			Defaults to 0.24.
 		smooth_at_every_stage : `bool`, optional
 			:obj:`True` to apply numerical smoothing at each stage performed by the
 			dynamical core, :obj:`False` to apply numerical smoothing only at the end
@@ -162,9 +185,8 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 			:obj:`False` otherwise. Defaults to :obj:`True`.
 		smooth_moist_type: `str`, optional
 			String specifying the smoothing technique to apply to the water constituents.
-			Defaults to 'first-order'. See
-			:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
-			for all available options.
+			See :class:`tasmania.HorizontalSmoothing` for all available options.
+			Defaults to 'first-order'. 
 		smooth_moist_damp_depth : `int`, optional
 			Number of vertical layers in the smoothing damping region for the
 			water constituents. Defaults to 10.
@@ -172,9 +194,8 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 			Smoothing coefficient for the water constituents. Defaults to 0.03.
 		smooth_moist_coeff_max : `float`, optional
 			Maximum value for the smoothing coefficient for the water constituents.
-			Defaults to 0.24. See
-			:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
-			for further details.
+			See :class:`tasmania.HorizontalSmoothing` for further details. 
+			Defaults to 0.24. 
 		smooth_moist_at_every_stage : `bool`, optional
 			:obj:`True` to apply numerical smoothing to the water constituents
 			at each stage performed by the dynamical core, :obj:`False` to apply
@@ -324,7 +345,7 @@ class HomogeneousIsentropicDynamicalCore(DynamicalCore):
 				return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1'}
 
 			if (
-				ftends is not None and 'precipitation' in ftends.output_properties
+				ftends is not None and 'precipitation' in ftends.diagnostic_properties
 			):
 				dims2d = (self._grid.x.dims[0], self._grid.y.dims[0])
 				return_dict.update({

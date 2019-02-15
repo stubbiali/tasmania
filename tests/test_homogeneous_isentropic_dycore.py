@@ -27,8 +27,8 @@ import pytest
 from sympl import DiagnosticComponent
 
 import gridtools as gt
-from tasmania.python.core.physics_composite import \
-	ConcurrentCoupling, TasmaniaDiagnosticComponentComposite
+from tasmania.python.core.composite import DiagnosticComponentComposite
+from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.dynamics.homogeneous_isentropic_dycore \
 	import HomogeneousIsentropicDynamicalCore
 from tasmania.python.physics.coriolis import ConservativeIsentropicCoriolis
@@ -447,7 +447,7 @@ def test4(isentropic_moist_data):
 	pg = ConservativeIsentropicPressureGradient(
 		grid, 2, 'periodic', backend=gt.mode.NUMPY, dtype=dtype
 	)
-	inter_tends = ConcurrentCoupling(pg)
+	inter_tends = pg
 
 	dv = IsentropicDiagnostics(
 		grid, True, state['air_pressure_on_interface_levels'][0, 0, 0],
@@ -457,7 +457,7 @@ def test4(isentropic_moist_data):
 	dt = timedelta(seconds=10)
 
 	#
-	# Substepping OFF
+	# Sub-stepping OFF
 	#
 	dycore = HomogeneousIsentropicDynamicalCore(
 		grid, time_units='s', moist=True,
@@ -479,7 +479,7 @@ def test4(isentropic_moist_data):
 	state_ref = dycore(state, slow_tends, dt)
 
 	#
-	# Substepping ON, no fast diagnostics
+	# Sub-stepping ON, no fast diagnostics
 	#
 	dycore = HomogeneousIsentropicDynamicalCore(
 		grid, time_units='s', moist=True,
@@ -516,7 +516,7 @@ def test4(isentropic_moist_data):
 	assert len(state1) == 15
 
 	#
-	# Substepping ON, with fast diagnostics
+	# Sub-stepping ON, with fast diagnostics
 	#
 	fd = IdentityDiagnostic(grid, True)
 
@@ -555,11 +555,6 @@ def test4(isentropic_moist_data):
 	assert len(state2) == 15
 
 
-#def isentropic_moist_sedimentation_data():
-#	from tasmania.python.utils.storage_utils import load_netcdf_dataset
-#	return load_netcdf_dataset('baseline_datasets/isentropic_moist_sedimentation.nc')
-
-
 def test5(isentropic_moist_sedimentation_data):
 	"""
 	- Moist
@@ -596,7 +591,7 @@ def test5(isentropic_moist_sedimentation_data):
 	sa = SaturationAdjustmentKessler(
 		grid, air_pressure_on_interface_levels=True, backend=gt.mode.NUMPY
 	)
-	inter_diags = TasmaniaDiagnosticComponentComposite(
+	inter_diags = DiagnosticComponentComposite(
 		dv, sa, execution_policy='serial'
 	)
 
@@ -724,7 +719,7 @@ def test6(isentropic_moist_sedimentation_data):
 	sa = SaturationAdjustmentKessler(
 		grid, air_pressure_on_interface_levels=True, backend=gt.mode.NUMPY
 	)
-	inter_diags = TasmaniaDiagnosticComponentComposite(
+	inter_diags = DiagnosticComponentComposite(
 		dv, sa, execution_policy='serial'
 	)
 
@@ -737,9 +732,7 @@ def test6(isentropic_moist_sedimentation_data):
 		rfv, sd, execution_policy='serial'
 	)
 
-	fast_diags = TasmaniaDiagnosticComponentComposite(
-		dv, execution_policy='serial'
-	)
+	fast_diags = dv
 
 	dt = timedelta(seconds=100)
 
@@ -822,4 +815,7 @@ def test6(isentropic_moist_sedimentation_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test5_forward_euler(isentropic_moist_sedimentation_data())
+	
+	#from tasmania.python.utils.storage_utils import load_netcdf_dataset
+	#data = load_netcdf_dataset('baseline_datasets/isentropic_moist_sedimentation.nc')
+	#test5(data)

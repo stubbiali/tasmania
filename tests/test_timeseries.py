@@ -24,19 +24,24 @@ import numpy as np
 import os
 import pytest
 from sympl import DiagnosticComponent
+import sys
 
 from tasmania.python.plot.trackers import TimeSeries
 from tasmania.python.plot.monitors import Plot
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_timeseries')
+baseline_dir = 'baseline_images/py{}{}/test_timeseries'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_datapoint(isentropic_dry_data):
 	# Field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
 
 	# Make sure the folder tests/baseline_images/test_timeseries does exist
-	baseline_dir = 'baseline_images/test_timeseries'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -91,7 +96,7 @@ def test_datapoint(isentropic_dry_data):
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_timeseries')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_diagnostic(isentropic_dry_data):
 	class MaxVelocity(DiagnosticComponent):
 		def __init__(self, grid):
@@ -118,7 +123,6 @@ def test_diagnostic(isentropic_dry_data):
 	field_units = 'km hr^-1'
 
 	# Make sure the folder tests/baseline_images/test_timeseries does exist
-	baseline_dir = 'baseline_images/test_timeseries'
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

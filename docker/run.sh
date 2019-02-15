@@ -22,19 +22,35 @@
 #
 
 TASMANIA_ROOT=$(cd ..; pwd)
-IMAGE_NAME=tasmania:develop
+GT4PY_BRANCH=merge_ubbiali
+IMAGE_NAME=tasmania:master
 CONTAINER_NAME=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
 
+echo "About to pull the branch '$GT4PY_BRANCH' of the gridtools4py repository."
+read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
+echo ""
+
+if [[ $key = "" ]]; then
+	if [ ! -d "gridtools4py" ]; then
+		git clone https://github.com/eth-cscs/gridtools4py.git
+	fi
+
+	cd gridtools4py
+	git checkout $GT4PY_BRANCH
+	cd ..
+fi
+
+echo ""
 echo "About to run and connect to a containter named '$CONTAINER_NAME', spawn from the image '$IMAGE_NAME'." 
 read -n 1 -s -r -p "Press CTRL-C to exit, or any other key to continue."
 echo ""
 
 docker run --rm							\
-		   --privileged					\
 		   -dit							\
 		   -e DISPLAY 					\
 		   -e XAUTHORITY=$XAUTHORITY 	\
 		   -P							\
+		   --device /dev/dri			\
 		   --name $CONTAINER_NAME		\
 		   --mount type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix \
 		   --mount type=bind,src=$TASMANIA_ROOT/buffer,dst=/home/tasmania-user/tasmania/buffer \

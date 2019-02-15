@@ -23,17 +23,22 @@
 from datetime import timedelta
 import os
 import pytest
+import sys
 
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot, PlotComposite
 from tasmania.python.plot.profile import LineProfile
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
+baseline_dir = 'baseline_images/py{}{}/test_plot_composite'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile(isentropic_moist_sedimentation_data,
 				 isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plot_composite_composer does exist
-	baseline_dir = 'baseline_images/test_plot_composite'
+	# Make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -139,11 +144,10 @@ def test_profile(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_share_yaxis(isentropic_moist_sedimentation_data,
 							 isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plot_composite_composer does exist
-	baseline_dir = 'baseline_images/test_plot_composite'
+	# Make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -249,11 +253,10 @@ def test_profile_share_yaxis(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
 							 isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_plot_composite_composer does exist
-	baseline_dir = 'baseline_images/test_plot_composite'
+	# Make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -359,12 +362,11 @@ def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 					 isentropic_moist_sedimentation_evaporation_data,
 					 drawer_topography1d):
-	# Make sure the folder tests/baseline_images/test_plot_composite does exist
-	baseline_dir = 'baseline_images/test_plot_composite'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
@@ -492,12 +494,11 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 	return monitor.figure
 
 
-@pytest.mark.mpl_image_compare(baseline_dir='baseline_images/test_plot_composite')
+@pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 					 isentropic_moist_sedimentation_evaporation_data,
 					 drawer_topography1d):
-	# Make sure the folder tests/baseline_images/test_plot_composite does exist
-	baseline_dir = 'baseline_images/test_plot_composite'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 

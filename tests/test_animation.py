@@ -22,6 +22,7 @@
 #
 import os
 import pytest
+import sys
 
 from tasmania.python.plot.animation import Animation
 from tasmania.python.plot.contourf import Contourf
@@ -29,14 +30,20 @@ from tasmania.python.plot.monitors import Plot, PlotComposite
 from tasmania.python.plot.profile import LineProfile
 
 
+baseline_dir = 'baseline_images/py{}{}/test_animation'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+result_dir = 'result_images/py{}{}/test_animation'.format(
+    sys.version_info.major, sys.version_info.minor
+)
+
+
 def test_profile(isentropic_moist_sedimentation_data):
-	# Make sure the folder tests/baseline_images/test_animation does exist
-	baseline_dir = 'baseline_images/test_animation'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the folder tests/result_images/test_animation does exist
-	result_dir = 'result_images/test_animation'
+	# Make sure the result directory does exist
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 
@@ -97,13 +104,11 @@ def test_profile(isentropic_moist_sedimentation_data):
 
 def test_plot_composite(isentropic_moist_sedimentation_data,
 						isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the folder tests/baseline_images/test_animation does exist
-	baseline_dir = 'baseline_images/test_animation'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the folder tests/result_images/test_animation does exist
-	result_dir = 'result_images/test_animation'
+	# Make sure the result directory does exist
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 
@@ -209,13 +214,11 @@ def test_plot_composite(isentropic_moist_sedimentation_data,
 
 
 def test_contourf(isentropic_dry_data, drawer_topography2d):
-	# Make sure the folder tests/baseline_images/test_animation does exist
-	baseline_dir = 'baseline_images/test_animation'
+	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the folder tests/result_images/test_animation does exist
-	result_dir = 'result_images/test_animation'
+	# Make sure the result directory does exist
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 

@@ -27,7 +27,7 @@ import pytest
 from sympl._core.exceptions import InvalidStateError
 
 import gridtools as gt
-from tasmania.python.core.physics_composite import SequentialUpdateSplitting
+from tasmania.python.core.sequential_splitting import SequentialUpdateSplitting
 from tasmania.python.dynamics.homogeneous_isentropic_dycore import \
 	HomogeneousIsentropicDynamicalCore
 
@@ -158,7 +158,7 @@ def test_numerics_rk2(
 		damp_max=0.0002, damp_at_every_stage=False,
 		smooth=True, smooth_type='second_order', smooth_damp_depth=0,
 		smooth_coeff=.03, smooth_at_every_stage=False,
-	 	backend=gt.mode.NUMPY, dtype=state['air_isentropic_density'].dtype,
+		backend=gt.mode.NUMPY, dtype=state['air_isentropic_density'].dtype,
 	)
 
 	tendency1 = make_fake_tendency_1(grid)
