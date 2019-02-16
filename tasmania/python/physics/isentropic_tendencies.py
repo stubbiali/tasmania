@@ -982,7 +982,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
 			pv = state['air_pressure_on_interface_levels'] if self._apil else state['air_pressure']
 			p  = pv if pv.shape[2] == mk else 0.5 * (pv[:, :, 1:] + pv[:, :, :-1])
 			zv = state['height_on_interface_levels']
-			z  = zv if self._apil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
+			z  = zv if self._aptil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
 			h  = np.repeat(zv[:, :, -1:], mk, axis=2)
 
 			w_sw  = self._w_sw

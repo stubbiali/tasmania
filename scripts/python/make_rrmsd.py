@@ -24,19 +24,19 @@ from datetime import datetime
 from loader import LoaderFactory
 import tasmania as taz
 
-#
+#==================================================
 # User inputs
-#
-filename1 = '../data/compressed/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-	'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_f_sus.nc'
-filename2 = '../data/compressed/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-	'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_f_cc.nc'
+#==================================================
+filename1 = '../../data/isentropic_dry_rk3cosmo_fifth_order_upwind_rk2_' \
+	'nx81_ny81_nz60_dt24_nt1800_gaussian_L50000_H1000_u15_f_sus.nc'
+filename2 = '../../data/isentropic_dry_rk3cosmo_fifth_order_upwind_' \
+	'nx81_ny81_nz60_dt24_nt1800_gaussian_L50000_H1000_u15_f_cc.nc'
 
-field_name  = 'y_velocity_at_v_locations'
-field_units = 'm s^-1'
+field_name  = 'x_momentum_isentropic'
+field_units = 'kg m^-1 K^-1 s^-1'
 
-x1, x2 = slice(3, -3, None), slice(3, -3, None)
-y1, y2 = slice(3, -3, None), slice(3, -3, None)
+x1, x2 = slice(30, 51, None), slice(30, 51, None)
+y1, y2 = slice(30, 51, None), slice(30, 51, None)
 z1, z2 = None, None
 
 time_mode     = 'elapsed'
@@ -58,9 +58,9 @@ drawer_properties = {
 }
 
 
-#
+#==================================================
 # Code
-#
+#==================================================
 def get_drawer():
 	loader1 = LoaderFactory.factory(filename1)
 	grid1 = loader1.get_grid()

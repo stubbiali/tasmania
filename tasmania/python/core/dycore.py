@@ -37,7 +37,7 @@ from tasmania.python.core.composite import \
 	DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite
 from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.utils.data_utils import make_state, make_raw_state
-from tasmania.python.utils.dict_utils import add
+from tasmania.python.utils.dict_utils import add, copy as dict_update
 from tasmania.python.utils.framework_utils import \
 	check_properties_compatibility, check_missing_properties
 

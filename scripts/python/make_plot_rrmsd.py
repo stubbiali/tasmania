@@ -27,18 +27,17 @@ import tasmania as taz
 # User inputs
 #
 modules = [
-	'make_rrmsd_b',
-	'make_rrmsd',
-	'make_rrmsd_3b',
-	'make_rrmsd_3',
+	'make_rmsd_3',
+	'make_rmsd',
+	'make_rmsd_1',
 ]
 
-tlevel = 48
+tlevel = 60
 
 figure_properties = {
 	'fontsize': 16,
-	'figsize': (6, 7),
-	'tight_layout': False,
+	'figsize': (6, 6.5),
+	'tight_layout': True,
 	'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
 }
 
@@ -47,20 +46,24 @@ axes_properties = {
 	'title_center': '',
 	'title_left': '',
 	'title_right': '',
-	'x_label': 'Time (UTC)',
-	'x_lim': (-0.5, 20.5), #(-190, 210),
+	'x_label': 'Time [hr]',
+	'x_labelcolor': 'black',
+	'x_lim': (-0.1, 2.1), #(-190, 210),
 	'invert_xaxis': False,
 	'x_scale': None,
-	'x_ticks': range(0, 21, 5),
-	'x_ticklabels': ('00:00', '05:00', '10:00', '15:00', '20:00'),
+	'x_ticks': (0, 0.5, 1, 1.5, 2),
+	'x_ticklabels': None,
+	'x_tickcolor': 'black',
 	'xaxis_minor_ticks_visible': False,
 	'xaxis_visible': True,
-	'y_label': 'RRMSD of $y$-velocity [m s$^{-1}$]',
-	'y_lim': None, #(0, 0.12),
+	'y_label': 'RMSD of $x$-momentum [kg m$^{-1}$ K$^{-1}$ s$^{-1}$]',
+	'y_labelcolor': 'black',
+	'y_lim': None,  #(-0.5, 12.5),
 	'invert_yaxis': False,
 	'y_scale': None,
 	'y_ticks': None, #(0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12),
 	'y_ticklabels': None,
+	'y_tickcolor': 'black',
 	'yaxis_minor_ticks_visible': False,
 	'yaxis_visible': True,
 	'z_label': '',
@@ -71,12 +74,12 @@ axes_properties = {
 	'z_ticklabels': None,
 	'zaxis_minor_ticks_visible': True,
 	'zaxis_visible': True,
-	'legend_on': False,
-	'legend_loc': 'lower right', #'center left',
+	'legend_on': True,
+	'legend_loc': 'upper right', #'center left',
 	'legend_bbox_to_anchor': None, #(1.04, 0.5),
 	'legend_framealpha': 1.0,
 	'legend_ncol': 1,
-	'text': '$w_{\\mathtt{FW}} = 0$ h$^{-1}$',
+	'text': None,
 	'text_loc': 'upper left',
 	'grid_on': True,
 	'grid_properties': {'linestyle': ':'},
