@@ -24,20 +24,20 @@ from datetime import datetime
 from loader import LoaderFactory
 import tasmania as taz
 
-#
+#==================================================
 # User inputs
-#
-filename1 = '../data/compressed/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-	'nx51_ny51_nz50_dt20_nt3600_gaussian_L25000_H1000_u15_f_sus_2.nc'
-filename2 = '../data/compressed/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-	'nx51_ny51_nz50_dt20_nt3600_gaussian_L25000_H1000_u15_f_cc.nc'
+#==================================================
+filename1 = '../../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_forward_euler_' \
+	'nx81_ny81_nz60_dt24_nt1800_ns0_flat_terrain_L50000_H0_u0_wf3_f_sus.nc'
+filename2 = '../../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
+	'nx81_ny81_nz60_dt24_nt1800_ns0_flat_terrain_L50000_H0_u0_wf3_f_cc.nc'
 
-field_name  = 'y_velocity_at_v_locations'
-field_units = 'm s^-1'
+field_name  = 'x_momentum_isentropic'
+field_units = 'kg m^-1 K^-1 s^-1'
 
-x1, x2 = slice(3, -3, None), slice(3, -3, None)
-y1, y2 = slice(3, -3, None), slice(3, -3, None)
-z1, z2 = None, None
+x1, x2 = slice(20, 61, None), slice(20, 61, None)
+y1, y2 = slice(20, 61, None), slice(20, 61, None)
+z1, z2 = slice(0, 60, None), slice(0, 60, None)
 
 time_mode     = 'elapsed'
 init_time     = datetime(year=1992, month=2, day=20, hour=0)
@@ -52,15 +52,15 @@ drawer_properties = {
 	'marker': 'o',
 	'markersize': 7,
 	'markeredgewidth': 1,
-	'markerfacecolor': 'blue',
+	'markerfacecolor': 'white',
 	'markeredgecolor': 'blue',
-	'legend_label': 'SUS'
+	'legend_label': 'SUS-FWE'
 }
 
 
-#
+#==================================================
 # Code
-#
+#==================================================
 def get_drawer():
 	loader1 = LoaderFactory.factory(filename1)
 	grid1 = loader1.get_grid()
@@ -82,7 +82,7 @@ def get_state(tlevel, drawer, axes_properties=None, print_time=None):
 	grid1 = loader1.get_grid()
 	grid2 = loader2.get_grid()
 
-	rrmsd = taz.RMSD(
+	rmsd = taz.RMSD(
 		(grid1, grid2), {field_name: field_units},
 		x=(x1, x2), y=(y1, y2), z=(z1, z2)
 	)
@@ -93,12 +93,12 @@ def get_state(tlevel, drawer, axes_properties=None, print_time=None):
 
 	for k in range(0, tlevel-1):
 		state1, state2 = loader1.get_state(k), loader2.get_state(k)
-		diagnostics = rrmsd(state1, state2)
+		diagnostics = rmsd(state1, state2)
 		state1.update(diagnostics)
 		drawer(state1)
 
 	state1, state2 = loader1.get_state(tlevel), loader2.get_state(tlevel)
-	diagnostics = rrmsd(state1, state2)
+	diagnostics = rmsd(state1, state2)
 	state1.update(diagnostics)
 
 	return state1

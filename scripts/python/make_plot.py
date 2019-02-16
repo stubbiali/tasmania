@@ -27,14 +27,14 @@ import tasmania as taz
 # User inputs
 #
 modules = [
-	'make_contourf',
+	#'make_contourf',
 	#'make_rectangle',
 	#'make_circle',
-	'make_topography2d',
+	#'make_topography2d',
 	#'make_quiver',
 
-	#'make_profile',
-	#'make_profile_1',
+	'make_profile',
+	'make_profile_1',
 	#'make_profile_2',
 
 	#'make_contourf_analytical',
@@ -43,11 +43,11 @@ modules = [
 	#'make_topography1d',
 ]
 
-tlevel = 18
+tlevel = 1
 
 figure_properties = {
 	'fontsize': 16,
-	'figsize': (6, 7),
+	'figsize': (6, 6.5),
 	'tight_layout': True,
 	'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
 }
@@ -57,16 +57,16 @@ axes_properties = {
 	'title_center': '',
 	'title_left': '$x$-velocity [m s$^{-1}$]',
 	'title_right': '08:00:00',
-	'x_label': '$x$ [km]', #'Time (UTC)',
-	'x_lim': (-200, 200), #(-190, 210),
+	'x_label': '$x$-momentum [km]', #'Time (UTC)',
+	'x_lim': None,  #(-200, 200), #(-190, 210),
 	'invert_xaxis': False,
 	'x_scale': None,
-	'x_ticks': range(-200, 201, 100), #(-190, -90, 10, 110, 210),
+	'x_ticks': None,  #range(-200, 201, 100), #(-190, -90, 10, 110, 210),
 	'x_ticklabels': None,
 	'xaxis_minor_ticks_visible': False,
 	'xaxis_visible': True,
 	'y_label': '$z$ [km]',
-	'y_lim': (-200, 200), #(-200, 200), # (0.01, 0.15),
+	'y_lim': None,  #(-200, 200), #(-200, 200), # (0.01, 0.15),
 	'invert_yaxis': False,
 	'y_scale': None,
 	'y_ticks': None, #(-200, -100, 0, 100, 200),

@@ -27,18 +27,18 @@ import tasmania as taz
 #
 # User inputs
 #
-filename = '../data/smolarkiewicz_rk3cosmo_fifth_order_upwind_third_order_upwind_' \
-		   'nx51_ny51_nz50_dt10_nt7200_gaussian_L25000_H500_u1_wf4_f_sus_1.nc'
+filename = '../../data/isentropic_dry_rk3cosmo_fifth_order_upwind_rk2_' \
+	'nx81_ny81_nz60_dt24_nt300_gaussian_L50000_H1000_u15_f_sus.nc'
 
-field_name  = 'y_velocity_at_v_locations'
-field_units = 'm s^-1'
+field_name  = 'x_momentum_isentropic'
+field_units = 'kg m^-1 K^-1 s^-1'
 
-x = 25
-y = None
-z = -1
+x = 40
+y = 40
+z = None
 
-axis_name  = 'x'
-axis_units = 'km'
+axis_name  = 'z'
+axis_units = 'K'
 axis_x = None
 axis_y = None
 axis_z = None
@@ -53,7 +53,7 @@ drawer_properties = {
 	'markeredgewidth': None,
 	'markerfacecolor': None,
 	'markeredgecolor': None,
-	'legend_label': 'SUS-FWE',
+	'legend_label': 'SUS',
 }
 
 
