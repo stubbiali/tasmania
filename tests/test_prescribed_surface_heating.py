@@ -43,9 +43,11 @@ def test(isentropic_dry_data):
 
 	#
 	# tendency_of_air_potential_temperature_in_diagnostics=False
+	# tendency_of_air_potential_temperature_on_interface_levels=True
 	#
 	psh = PrescribedSurfaceHeating(
 		grid, tendency_of_air_potential_temperature_in_diagnostics=False,
+		tendency_of_air_potential_temperature_on_interface_levels=True,
 		air_pressure_on_interface_levels=True
 	)
 
@@ -60,9 +62,11 @@ def test(isentropic_dry_data):
 
 	#
 	# tendency_of_air_potential_temperature_in_diagnostics=True
+	# tendency_of_air_potential_temperature_on_interface_levels=True
 	#
 	psh = PrescribedSurfaceHeating(
 		grid, tendency_of_air_potential_temperature_in_diagnostics=True,
+		tendency_of_air_potential_temperature_on_interface_levels=True,
 		air_pressure_on_interface_levels=False
 	)
 
@@ -77,6 +81,7 @@ def test(isentropic_dry_data):
 
 	#
 	# air_pressure_on_interface_levels=True
+	# tendency_of_air_potential_temperature_on_interface_levels=False
 	#
 	state['time'] = datetime(year=1992, month=2, day=20, hour=15)
 	starting_time = state['time'] - timedelta(hours=2)
@@ -104,11 +109,12 @@ def test(isentropic_dry_data):
 
 	assert tendencies == {}
 
-	assert 'tendency_of_air_potential_temperature_on_interface_levels' in diagnostics
+	assert 'tendency_of_air_potential_temperature' in diagnostics
 	assert len(diagnostics) == 1
 
 	#
 	# air_pressure_on_interface_levels=False
+	# tendency_of_air_potential_temperature_on_interface_levels=False
 	#
 	state['time'] = datetime(year=1992, month=2, day=20, hour=3)
 	starting_time = state['time'] - timedelta(hours=2)
