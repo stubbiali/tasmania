@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#!/bin/bash
 #
 # Tasmania
 #
@@ -20,33 +20,42 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import tasmania as taz
-
 
 #==================================================
-# User inputs
+# User-customed code
 #==================================================
-module = 'make_contourf_xz'
-
-tlevels = range(0, 10, 2)
-
-print_time = 'elapsed'  # 'elapsed', 'absolute'
-fps = 10
-
-save_dest = '../results/movies/smolarkiewicz/rk2_third_order_upwind_centered_' \
-	'nx51_ny51_nz50_dt20_nt8640_flat_terrain.mp4'
-
+REMOTE=daint
+REMOTE_ROOT=/project/s299/subbiali/tasmania
 
 #==================================================
-# Code
+# Case-independent code
 #==================================================
-if __name__ == '__main__':
-	exec('from {} import get_plot as get_artist, get_states'.format(module))
-	artist = locals()['get_artist']()
+cd ../..
+LOCAL_ROOT=$(pwd)
+cd scripts/bash
 
-	engine = taz.Animation(artist, print_time=print_time, fps=fps)
+FILES_TO_COPY=()
+ALL_FILES=($(ssh $REMOTE ls $REMOTE_ROOT))
 
-	for t in tlevels:
-		engine.store(locals()['get_states'](t, artist))
+echo "About to transfer data from the remote server $REMOTE to the local system."
+echo "Only the files newer than the version at the destination will be transfered."
+read -n 1 -s -r -p "Press ENTER to continue, or CTRL-C to exit."
+echo ""
 
-	engine.run(save_dest=save_dest)
+k=0
+for i in $(seq 0 $((${#ALL_FILES[@]} - 1))); do
+	echo ""
+	read -n 1 -s -r -p "Do you wish to transfer $REMOTE:$REMOTE_ROOT/${ALL_FILES[i]}? [y/n]" key
+	if [[ $key = "y" ]]; then
+		FILES_TO_COPY[$k]=${ALL_FILES[i]}
+		((k++))
+	fi
+done
+
+echo ""
+echo ""
+
+for i in $(seq 0 $((${#FILES_TO_COPY[@]} - 1))); do
+	#scp -r daint:$DAINT_ROOT/${FILES_TO_COPY[i]} $LOCAL_ROOT
+	rsync -avuzhr -e ssh --progress $REMOTE:$REMOTE_ROOT/${FILES_TO_COPY[i]} $LOCAL_ROOT
+done

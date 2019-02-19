@@ -4,8 +4,19 @@
 #SBATCH --nodes=1
 #SBATCH --partition=xfer
 #SBATCH --constraint=mc
+#SBATCH --output=output/slurm-%j.out
+#SBATCH --error=error/slurm-%j.err
 
+#==================================================
+# User-customed code
+#==================================================
+SOURCE=/scratch/snx3000/subbiali/tasmania/
+DESTINATION=/project/s299/subbiali/
+
+#==================================================
+# Case-independent code
+#==================================================
 module load daint-mc
 
-srun cp -ruv /scratch/snx3000/tasmania/ /project/s299/subbiali/ 
+srun cp -ruv $SOURCE $DESTINATION 
 

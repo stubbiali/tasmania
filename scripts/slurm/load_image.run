@@ -4,9 +4,21 @@
 #SBATCH --nodes=1
 #SBATCH --partition=normal
 #SBATCH --constraint=mc
+#SBATCH --output=output/slurm-%j.out
+#SBATCH --error=error/slurm-%j.err
 
+#==================================================
+# User-customed code
+#==================================================
+IMAGE_PATH=tasmania/docker/tasmania_master.tar  # the path to the image to load
+IMAGE_NAME=tasmania
+IMAGE_TAG=master
+
+#==================================================
+# Case-independent code
+#==================================================
 module load daint-mc
 module load shifter-ng
 
-srun shifter load docker/tasmania.master.tar
+srun shifter load $IMAGE_PATH $IMAGE_NAME:$IMAGE_TAG
 

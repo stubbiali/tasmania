@@ -23,9 +23,9 @@
 import tasmania as taz
 
 
-#
+#==================================================
 # User inputs
-#
+#==================================================
 nrows = 1
 ncols = 3
 
@@ -46,9 +46,9 @@ figure_properties = {
 save_dest = None
 
 
-#
+#==================================================
 # Code
-#
+#==================================================
 def get_plot():
 	subplots = []
 
@@ -57,8 +57,9 @@ def get_plot():
 		exec(import_str)
 		subplots.append(locals()['get_subplot']())
 
-	plot = taz.PlotComposite(nrows, ncols, subplots, interactive=False,
-							 figure_properties=figure_properties)
+	plot = taz.PlotComposite(
+		nrows, ncols, subplots, interactive=False, figure_properties=figure_properties
+	)
 
 	return plot
 
@@ -81,4 +82,3 @@ if __name__ == '__main__':
 	plot = get_plot()
 	states = get_states(tlevels, plot)
 	plot.store(states, save_dest=save_dest, show=True)
-
