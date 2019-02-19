@@ -26,27 +26,24 @@ import tasmania as taz
 #==================================================
 # User inputs
 #==================================================
-module = 'make_contourf_xz'
-
-tlevels = range(0, 10, 2)
-
-print_time = 'elapsed'  # 'elapsed', 'absolute'
-fps = 10
-
-save_dest = '../results/movies/smolarkiewicz/rk2_third_order_upwind_centered_' \
-	'nx51_ny51_nz50_dt20_nt8640_flat_terrain.mp4'
+drawer_properties = {
+	'xy': (50.0, -200.0),
+	'width': 150,
+	'height': 30,
+	'edgecolor': 'black',
+	'facecolor': 'white',
+}
 
 
 #==================================================
 # Code
 #==================================================
-if __name__ == '__main__':
-	exec('from {} import get_plot as get_artist, get_states'.format(module))
-	artist = locals()['get_artist']()
+def get_drawer(df_module=None):
+	drawer = taz.Rectangle(drawer_properties)
+	return drawer
 
-	engine = taz.Animation(artist, print_time=print_time, fps=fps)
 
-	for t in tlevels:
-		engine.store(locals()['get_states'](t, artist))
-
-	engine.run(save_dest=save_dest)
+def get_state(
+	df_module=None, drawer=None, tlevel=None, axes_properties=None, print_time=None
+):
+	return {}

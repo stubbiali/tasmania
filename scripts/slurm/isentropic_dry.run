@@ -1,0 +1,26 @@
+#!/bin/bash -l
+#SBATCH --account=s299m
+#SBATCH --time=05:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=normal
+#SBATCH --constraint=mc
+#SBATCH --output=output/slurm-%j.out
+#SBATCH --error=error/slurm-%j.err
+
+module load daint-mc
+module load shifter-ng
+
+srun --unbuffered shifter run \
+	--writable-volatile=/home/tasmania-user/py35 \
+	--writable-volatile=/home/tasmania-user/py36 \
+	--writable-volatile=/home/tasmania-user/py37 \
+	--writable-volatile=/home/tasmania-user/tasmania \
+	load/library/tasmania:master \
+	bash -c "cp -r tasmania/tasmania/python ~/tasmania/tasmania; \
+		 cp -r tasmania/tasmania/__init__.py ~/tasmania/tasmania; \
+		 cd ~; \
+		 . py36/bin/activate; \
+		 cd $SCRATCH/tasmania/drivers/isentropic_dry; \
+		 python driver_namelist_isentropic_dry_ssus.py; \
+		 deactivate; \
+		 exit"

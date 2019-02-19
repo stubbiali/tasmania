@@ -20,33 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import tasmania as taz
+from loader import LoaderFactory
 
 
 #==================================================
 # User inputs
 #==================================================
-module = 'make_contourf_xz'
-
-tlevels = range(0, 10, 2)
-
-print_time = 'elapsed'  # 'elapsed', 'absolute'
-fps = 10
-
-save_dest = '../results/movies/smolarkiewicz/rk2_third_order_upwind_centered_' \
-	'nx51_ny51_nz50_dt20_nt8640_flat_terrain.mp4'
+filename = '../../data/isentropic_dry_rk3cosmo_fifth_order_upwind_' \
+	'nx81_ny81_nz60_dt24_nt300_gaussian_L50000_H1000_u15_f_cc.nc'
 
 
 #==================================================
 # Code
 #==================================================
-if __name__ == '__main__':
-	exec('from {} import get_plot as get_artist, get_states'.format(module))
-	artist = locals()['get_artist']()
+def get_grid():
+	loader = LoaderFactory.factory(filename)
+	return loader.get_grid()
 
-	engine = taz.Animation(artist, print_time=print_time, fps=fps)
 
-	for t in tlevels:
-		engine.store(locals()['get_states'](t, artist))
+def get_state(tlevel):
+	loader = LoaderFactory.factory(filename)
+	return loader.get_state(tlevel)
 
-	engine.run(save_dest=save_dest)
+
+def get_initial_time():
+	loader = LoaderFactory.factory(filename)
+	return loader.get_state(0)['time']
