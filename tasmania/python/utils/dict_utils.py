@@ -209,5 +209,7 @@ def copy(state_1, state_2):
 	"""
 	shared_keys = tuple(key for key in state_1 if key in state_2)
 	for key in shared_keys:
-		if key != 'time':
+		if key == 'time':
+			state_1['time'] = state_2['time']
+		else:
 			state_1[key][...] = state_2[key].to_units(state_1[key].attrs['units'])[...]

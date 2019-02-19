@@ -25,88 +25,112 @@ import gridtools as gt
 import numpy as np
 from sympl import DataArray
 
-# Backend settings
+# backend settings
 backend = gt.mode.NUMPY
 dtype   = np.float64
 
-# Computational domain
-domain_x = DataArray([-250, 250], dims='x', attrs={'units': 'km'}).to_units('m')
-nx       = 51
-domain_y = DataArray([-250, 250], dims='y', attrs={'units': 'km'}).to_units('m')
-ny       = 51
-domain_z = DataArray([400, 300], dims='potential_temperature', attrs={'units': 'K'})
-nz       = 50
+# computational domain
+domain_x = DataArray([-400, 400], dims='x', attrs={'units': 'km'}).to_units('m')
+nx       = 81
+domain_y = DataArray([-400, 400], dims='y', attrs={'units': 'km'}).to_units('m')
+ny       = 81
+domain_z = DataArray([340, 280], dims='potential_temperature', attrs={'units': 'K'})
+nz       = 60
 
-# Topography
-_width = DataArray(25.0, attrs={'units': 'km'})
-topo_type   = 'gaussian'
-topo_time   = timedelta(seconds=1800)
+# topography
+_width = DataArray(50.0, attrs={'units': 'km'})
+topo_type   = 'flat_terrain'
+topo_time   = timedelta(seconds=0)
 topo_kwargs = {
 	#'topo_str': '1 * 10000. * 10000. / (x*x + 10000.*10000.)',
-    #'topo_str': '3000. * pow(1. + (x*x + y*y) / 25000.*25000., -1.5)',
-    'topo_max_height': DataArray(0.5, attrs={'units': 'km'}),
-    'topo_width_x': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
-    'topo_width_y': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
+	#'topo_str': '3000. * pow(1. + (x*x + y*y) / 25000.*25000., -1.5)',
+	'topo_max_height': DataArray(0.0, attrs={'units': 'km'}),
+	'topo_width_x': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
+	'topo_width_y': DataArray(1*_width.to_units('km').values.item(), attrs={'units': 'km'}),
 	'topo_smooth': False,
 }
 
-# Initial conditions
+# moist
+moist            = False
+precipitation    = False
+rain_evaporation = False
+
+# initial conditions
 init_time       = datetime(year=1992, month=2, day=20, hour=0)
-init_x_velocity = DataArray(1.0, attrs={'units': 'm s^-1'})
+init_x_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 init_y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 isothermal      = False
 if isothermal:
-    init_temperature = DataArray(250.0, attrs={'units': 'K'})
+	init_temperature = DataArray(250.0, attrs={'units': 'K'})
 else:
-    init_brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
+	init_brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
 
-# Numerical scheme
-time_integration_scheme  = 'rk3cosmo'
-horizontal_flux_scheme   = 'fifth_order_upwind'
-vertical_flux_scheme     = 'third_order_upwind'
-horizontal_boundary_type = 'relaxed'
+# numerical scheme
+time_integration_scheme         = 'rk3cosmo'
+horizontal_flux_scheme          = 'fifth_order_upwind'
+vertical_flux_scheme            = 'third_order_upwind'
+horizontal_boundary_type        = 'relaxed'
+substeps                        = 0
 
-# Damping, i.e., wave absorber
-damp_on             = True
+# damping
+damp                = True
 damp_type           = 'rayleigh'
 damp_depth          = 15
 damp_max            = 0.0002
 damp_at_every_stage = False
 
-# Smoothing, i.e., digital filtering
-smooth_on             = True
+# horizontal smoothing
+smooth                = True
 smooth_type           = 'second_order'
 smooth_damp_depth     = 0
-smooth_coeff          = 0.15
-smooth_coeff_max      = 0.15
+smooth_coeff          = 0.2
+smooth_coeff_max      = 0.2
 smooth_at_every_stage = False
 
-# Prescribed surface heating
-tendency_of_air_potential_temperature_in_diagnostics = True
-amplitude_at_day_sw            		= DataArray(800.0, attrs={'units': 'W m^-2'})
-amplitude_at_day_fw            		= DataArray(800.0, attrs={'units': 'W m^-2'})
-amplitude_at_night_sw               = DataArray(-75.0, attrs={'units': 'W m^-2'})
-amplitude_at_night_fw               = DataArray(-75.0, attrs={'units': 'W m^-2'})
-frequency_sw						= DataArray(np.pi/12.0, attrs={'units': 'h^-1'})
-frequency_fw						= DataArray(4.0*np.pi, attrs={'units': 'h^-1'})
-attenuation_coefficient_at_day		= DataArray(1.0/600.0, attrs={'units': 'm^-1'})
-attenuation_coefficient_at_night    = DataArray(1.0/75.0, attrs={'units': 'm^-1'})
-characteristic_length               = DataArray(3.0 * _width.values.item(),
-									 		    attrs={'units': _width.attrs['units']})
-starting_time                       = init_time + timedelta(hours=8)
+# horizontal smoothing for water species
+smooth_moist                = False
+smooth_moist_type           = 'second_order'
+smooth_moist_damp_depth     = 0
+smooth_moist_coeff          = 0.2
+smooth_moist_coeff_max      = 0.2
+smooth_moist_at_every_stage = False
 
-# Coriolis
-coriolis_parameter = None
+# coriolis
+coriolis           = True
+coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
-timestep = timedelta(seconds=10)
-niter    = int(20*60*60 / timestep.total_seconds())
+# prescribed surface heating
+tendencies_in_diagnostics        = True
+amplitude_at_day_sw              = DataArray(800.0, attrs={'units': 'W m^-2'})
+amplitude_at_day_fw              = DataArray(0.0, attrs={'units': 'W m^-2'})
+amplitude_at_night_sw            = DataArray(600.0, attrs={'units': 'W m^-2'})
+amplitude_at_night_fw            = DataArray(0.0, attrs={'units': 'W m^-2'})
+attenuation_coefficient_at_day   = DataArray(1.0/600.0, attrs={'units': 'm^-1'})
+attenuation_coefficient_at_night = DataArray(1.0/600.0, attrs={'units': 'm^-1'})
+frequency_sw                     = DataArray(3*np.pi, attrs={'units': 'h^-1'})
+frequency_fw                     = DataArray(4*np.pi, attrs={'units': 'h^-1'})
+characteristic_length            = _width
+starting_time                    = init_time #+ timedelta(seconds=6*60*60)
 
-filename        = '../data/smolarkiewicz_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_wf4_f_cc.nc'.format(
-					time_integration_scheme, horizontal_flux_scheme, vertical_flux_scheme,
-					nx, ny, nz, int(timestep.total_seconds()), niter, topo_type,
-					int(_width.to_units('m').values.item()),
-					int(topo_kwargs['topo_max_height'].to_units('m').values.item()),
-					int(init_x_velocity.to_units('m s^-1').values.item()))
-save_frequency  = 180
-print_frequency = 180
-plot_frequency  = -1
+# simulation length
+timestep = timedelta(seconds=24)
+niter    = int(12*60*60 / timestep.total_seconds())
+
+# output
+filename = \
+	'../../data/smolarkiewicz_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_ns{}_' \
+	'{}_L{}_H{}_u{}_wf3_f_cc.nc'.format(
+		time_integration_scheme, horizontal_flux_scheme, vertical_flux_scheme,
+		nx, ny, nz, int(timestep.total_seconds()), niter, substeps,
+		topo_type, int(_width.to_units('m').values.item()),
+		int(topo_kwargs['topo_max_height'].to_units('m').values.item()),
+		int(init_x_velocity.to_units('m s^-1').values.item())
+	)
+store_names = (
+	'air_isentropic_density',
+	'height_on_interface_levels',
+	'x_momentum_isentropic',
+	'y_momentum_isentropic',
+)
+save_frequency  = 25
+print_frequency = 25

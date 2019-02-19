@@ -26,12 +26,34 @@ import tasmania as taz
 
 #==================================================
 # User inputs
+<<<<<<< HEAD
 #==================================================
 modules = OrderedDict()
 modules['drawer_factories.timeseries'] = 'data_factories.rmsd'
 modules['drawer_factories.timeseries_1'] = 'data_factories.rmsd_1'
 
 tlevel = 72
+=======
+#
+modules = [
+	#'make_contourf',
+	#'make_rectangle',
+	#'make_circle',
+	#'make_topography2d',
+	#'make_quiver',
+
+	'make_profile',
+	'make_profile_1',
+	#'make_profile_2',
+
+	#'make_contourf_analytical',
+
+	#'make_contourf',
+	#'make_topography1d',
+]
+
+tlevel = 1
+>>>>>>> 7b4d10fc95a458b6ba4210d36b856a2d1aac6f3c
 
 figure_properties = {
 	'fontsize': 16,
@@ -46,9 +68,13 @@ axes_properties = {
 	'title_center': '',
 	'title_left': '$x$-velocity [m s$^{-1}$]',
 	'title_right': '08:00:00',
+<<<<<<< HEAD
 	# x-axis
 	'x_label': '$x$-momentum [km]', #'Time (UTC)',
 	'x_labelcolor': '',
+=======
+	'x_label': '$x$-momentum [km]', #'Time (UTC)',
+>>>>>>> 7b4d10fc95a458b6ba4210d36b856a2d1aac6f3c
 	'x_lim': None,  #(-200, 200), #(-190, 210),
 	'invert_xaxis': False,
 	'x_scale': None,
@@ -59,7 +85,10 @@ axes_properties = {
 	'xaxis_visible': True,
 	# y-axis
 	'y_label': '$z$ [km]',
+<<<<<<< HEAD
 	'y_labelcolor': '',
+=======
+>>>>>>> 7b4d10fc95a458b6ba4210d36b856a2d1aac6f3c
 	'y_lim': None,  #(-200, 200), #(-200, 200), # (0.01, 0.15),
 	'invert_yaxis': False,
 	'y_scale': None,
