@@ -22,6 +22,7 @@
 #
 """
 This module contains:
+	HorizontalSmoothing
 	_FirstOrder(HorizontalSmoothing)
 	_FirstOrder{XZ, YZ}(HorizontalSmoothing)
 	_SecondOrder(HorizontalSmoothing)
@@ -29,14 +30,170 @@ This module contains:
 	_ThirdOrder(HorizontalSmoothing)
 	_ThirdOrder{XZ, YZ}(HorizontalSmoothing)
 """
+import abc
+import math
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.dynamics.horizontal_smoothing import HorizontalSmoothing
 try:
 	from tasmania.namelist import datatype
 except ImportError:
 	from numpy import float32 as datatype
+
+
+class HorizontalSmoothing:
+	"""
+	Abstract base class whose derived classes apply horizontal
+	numerical smoothing to a generic (prognostic) field by means
+	of a GT4Py stencil.
+	"""
+	# Make the class abstract
+	__metaclass__ = abc.ABCMeta
+
+	def __init__(
+		self, dims, grid, smooth_damp_depth, smooth_coeff,
+		smooth_coeff_max, backend, dtype
+	):
+		"""
+		Constructor.
+
+		Parameters
+		----------
+		dims : tuple
+			Shape of the (three-dimensional) arrays on which
+			to apply numerical smoothing.
+		grid : grid
+			The underlying grid, as an instance of
+			:class:`~tasmania.grids.grid_xyz.GridXYZ`
+			or one of its derived classes.
+		smooth_damp_depth : int
+			Depth of, i.e., number of vertical regions in the damping region.
+		smooth_coeff : float
+			Value for the smoothing coefficient far from the top boundary.
+		smooth_coeff_max : float
+			Maximum value for the smoothing coefficient.
+		backend : obj
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
+			implementing numerical smoothing.
+		dtype : obj
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+		"""
+		# Store input arguments
+		self._dims              = dims
+		self._grid              = grid
+		self._smooth_damp_depth = smooth_damp_depth
+		self._smooth_coeff      = smooth_coeff
+		self._smooth_coeff_max  = smooth_coeff_max
+		self._backend			= backend
+
+		# Initialize the smoothing matrix
+		self._gamma = self._smooth_coeff * np.ones(self._dims, dtype=dtype)
+
+		# The diffusivity is monotonically increased towards the top of the model,
+		# so to mimic the effect of a short length wave absorber
+		n = self._smooth_damp_depth
+		if n > 0:
+			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
+			pert = np.tile(pert[np.newaxis, np.newaxis, :], (dims[0], dims[1], 1))
+			self._gamma[:, :, :n] += (self._smooth_coeff_max - self._smooth_coeff) * pert
+
+		# Initialize the pointer to the underlying stencil
+		# It will be properly re-directed the first time the call
+		# operator in invoked
+		self._stencil = None
+
+	@abc.abstractmethod
+	def __call__(self, phi, phi_out):
+		"""
+		Apply horizontal smoothing to a prognostic field.
+		As this method is marked as abstract, its implementation is
+		delegated to the derived classes.
+
+		Parameters
+		----------
+		phi : array_like
+			3-D :class:`numpy.ndarray` representing the field to filter.
+		phi_out : array_like
+			3-D :class:`numpy.ndarray` into which the filtered field
+			is written.
+		"""
+
+	@staticmethod
+	def factory(
+		smooth_type, dims, grid, smooth_damp_depth, smooth_coeff,
+		smooth_coeff_max, backend=gt.mode.NUMPY, dtype=datatype
+	):
+		"""
+		Static method returning an instance of the derived class
+		implementing the smoothing technique specified by :data:`smooth_type`.
+
+		Parameters
+		----------
+		smooth_type : string
+			String specifying the smoothing technique to implement. Either:
+
+			* 'first_order', for first-order numerical smoothing;
+			* 'second_order', for second-order numerical smoothing;
+			* 'third_order', for third-order numerical smoothing.
+
+		dims : tuple
+			Shape of the (three-dimensional) arrays on which
+			to apply numerical smoothing.
+		grid : obj
+			The underlying grid, as an instance of
+			:class:`~tasmania.grids.grid_xyz.GridXYZ`
+			or one of its derived classes.
+		smooth_damp_depth : int
+			Depth of, i.e., number of vertical regions in the damping region.
+		smooth_coeff : float
+			Value for the smoothing coefficient far from the top boundary.
+		smooth_coeff_max : float
+			Maximum value for the smoothing coefficient.
+		backend : `obj`, optional
+			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
+			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
+		dtype : `obj`, optional
+			Instance of :class:`numpy.dtype` specifying the data type for
+			any :class:`numpy.ndarray` used within this class.
+			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
+			if :obj:`~tasmania.namelist.datatype` is not defined.
+
+		Return
+		------
+		obj :
+			Instance of the suitable derived class.
+		"""
+		arg_list = [
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		]
+
+		if smooth_type == 'first_order':
+			if dims[1] == 1:
+				return _FirstOrderXZ(*arg_list)
+			elif dims[0] == 1:
+				return _FirstOrderYZ(*arg_list)
+			else:
+				return _FirstOrder(*arg_list)
+		elif smooth_type == 'second_order':
+			if dims[1] == 1:
+				return _SecondOrderXZ(*arg_list)
+			elif dims[0] == 1:
+				return _SecondOrderYZ(*arg_list)
+			else:
+				return _SecondOrder(*arg_list)
+		elif smooth_type == 'third_order':
+			if dims[1] == 1:
+				return _ThirdOrderXZ(*arg_list)
+			elif dims[0] == 1:
+				return _ThirdOrderYZ(*arg_list)
+			else:
+				return _ThirdOrder(*arg_list)
+		else:
+			raise ValueError(
+				"Supported smoothing operators are ''first_order'', "
+				"''second_order'', and ''third_order''."
+			)
 
 
 class _FirstOrder(HorizontalSmoothing):
@@ -52,8 +209,10 @@ class _FirstOrder(HorizontalSmoothing):
 	match those specified at instantiation time. Hence, one should use (at least)
 	one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -84,8 +243,9 @@ class _FirstOrder(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -132,7 +292,8 @@ class _FirstOrder(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -156,12 +317,14 @@ class _FirstOrder(HorizontalSmoothing):
 		j = gt.Index(axis=1)
 
 		# Output field
+		tmp_phi = gt.Equation()
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i, j] = (1. - gamma[i, j]) * in_phi[i, j] + \
-						0.25 * gamma[i, j] * (in_phi[i-1, j] + in_phi[i+1, j] +
-											  in_phi[i, j-1] + in_phi[i, j+1])
+		tmp_phi[i, j] = (1 - 0.5*gamma[i, j]) * in_phi[i, j] + \
+			0.25 * gamma[i, j] * (in_phi[i-1, j] + in_phi[i+1, j])
+		out_phi[i, j] = (1 - 0.5*gamma[i, j]) * tmp_phi[i, j] + \
+			0.25 * gamma[i, j] * (tmp_phi[i, j-1] + tmp_phi[i, j+1])
 
 		return out_phi
 
@@ -179,8 +342,10 @@ class _FirstOrderXZ(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -211,8 +376,9 @@ class _FirstOrderXZ(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -257,7 +423,8 @@ class _FirstOrderXZ(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -284,7 +451,7 @@ class _FirstOrderXZ(HorizontalSmoothing):
 
 		# Computations
 		out_phi[i] = (1. - 0.5 * gamma[i]) * in_phi[i] + \
-					 0.25 * gamma[i] * (in_phi[i-1] + in_phi[i+1])
+			0.25 * gamma[i] * (in_phi[i-1] + in_phi[i+1])
 
 		return out_phi
 
@@ -302,8 +469,10 @@ class _FirstOrderYZ(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -334,8 +503,9 @@ class _FirstOrderYZ(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -380,7 +550,8 @@ class _FirstOrderYZ(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -407,7 +578,7 @@ class _FirstOrderYZ(HorizontalSmoothing):
 
 		# Computations
 		out_phi[j] = (1. - 0.5 * gamma[j]) * in_phi[j] + \
-					 0.25 * gamma[j] * (in_phi[j-1] + in_phi[j+1])
+			0.25 * gamma[j] * (in_phi[j-1] + in_phi[j+1])
 
 		return out_phi
 
@@ -425,8 +596,10 @@ class _SecondOrder(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -457,8 +630,9 @@ class _SecondOrder(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -509,7 +683,8 @@ class _SecondOrder(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -533,14 +708,20 @@ class _SecondOrder(HorizontalSmoothing):
 		j = gt.Index(axis=1)
 
 		# Output field
+		tmp_phi = gt.Equation()
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i, j] = (1. - 0.75 * gamma[i, j]) * in_phi[i, j] + \
-						0.0625 * gamma[i, j] * (- (in_phi[i-2, j] + in_phi[i+2, j])
-												+ 4. * (in_phi[i-1, j] + in_phi[i+1, j])
-												+ 4. * (in_phi[i, j-1] + in_phi[i, j+1])
-												- (in_phi[i, j-2] + in_phi[i, j+2]))
+		tmp_phi[i, j] = (1. - 0.375 * gamma[i, j]) * in_phi[i, j] + \
+			0.0625 * gamma[i, j] * (
+				- in_phi[i-2, j] + 4. * in_phi[i-1, j]
+				- in_phi[i+2, j] + 4. * in_phi[i+1, j]
+			)
+		out_phi[i, j] = (1. - 0.375 * gamma[i, j]) * tmp_phi[i, j] + \
+			0.0625 * gamma[i, j] * (
+				- tmp_phi[i, j-2] + 4. * tmp_phi[i, j-1]
+				- tmp_phi[i, j+2] + 4. * tmp_phi[i, j+1]
+			)
 
 		return out_phi
 
@@ -558,8 +739,10 @@ class _SecondOrderXZ(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -590,8 +773,9 @@ class _SecondOrderXZ(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -638,7 +822,8 @@ class _SecondOrderXZ(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -665,8 +850,10 @@ class _SecondOrderXZ(HorizontalSmoothing):
 
 		# Computations
 		out_phi[i] = (1. - 0.375 * gamma[i]) * in_phi[i] + \
-					 0.0625 * gamma[i] * (4. * (in_phi[i-1] + in_phi[i+1])
-										  - in_phi[i-2] - in_phi[i+2])
+			0.0625 * gamma[i] * (
+				- in_phi[i-2] + 4. * in_phi[i-1]
+				- in_phi[i+2] + 4. * in_phi[i+1]
+			)
 
 		return out_phi
 
@@ -684,8 +871,10 @@ class _SecondOrderYZ(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -716,8 +905,9 @@ class _SecondOrderYZ(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype\
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -764,7 +954,8 @@ class _SecondOrderYZ(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -791,8 +982,10 @@ class _SecondOrderYZ(HorizontalSmoothing):
 
 		# Computations
 		out_phi[j] = (1. - 0.375 * gamma[j]) * in_phi[j] + \
-					 0.0625 * gamma[j] * (- (in_phi[j-2] + in_phi[j+2])
-										  + 4. * (in_phi[j-1] + in_phi[j+1]))
+			0.0625 * gamma[j] * (
+				 - in_phi[j-2] + 4. * in_phi[j-1]
+				 - in_phi[j+2] + 4. * in_phi[j+1]
+			)
 
 		return out_phi
 
@@ -810,8 +1003,10 @@ class _ThirdOrder(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -842,8 +1037,9 @@ class _ThirdOrder(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -898,7 +1094,8 @@ class _ThirdOrder(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -922,17 +1119,20 @@ class _ThirdOrder(HorizontalSmoothing):
 		j = gt.Index(axis=1)
 
 		# Output field
+		tmp_phi = gt.Equation()
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i, j] = (1. - 0.625 * gamma[i, j]) * in_phi[i, j] + \
-						0.015625 * gamma[i, j] * \
-						(+ in_phi[i-3, j] + in_phi[i+3]
-						 - 6. * (in_phi[i-2, j] + in_phi[i+2, j])
-						 + 15. * (in_phi[i-1, j] + in_phi[i+1, j])
-						 + 15. * (in_phi[i, j-1] + in_phi[i, j+1])
-						 - 6. * (in_phi[i, j-2] + in_phi[i, j+2])
-						 + in_phi[i, j-3] + in_phi[i, j+3])
+		tmp_phi[i, j] = (1. - 0.3125) * gamma[i, j] * in_phi[i, j] + \
+			0.015625 * gamma[i, j] * (
+				in_phi[i-3, j] - 6*in_phi[i-2, j] + 15*in_phi[i-1, j] +
+				in_phi[i+3, j] - 6*in_phi[i+2, j] + 15*in_phi[i+1, j]
+			)
+		out_phi[i, j] = (1. - 0.3125) * gamma[i, j] * tmp_phi[i, j] + \
+			0.015625 * gamma[i, j] * (
+				tmp_phi[i, j-3] - 6*tmp_phi[i, j-2] + 15*tmp_phi[i, j-1] +
+				tmp_phi[i, j+3] - 6*tmp_phi[i, j+2] + 15*tmp_phi[i, j+1]
+			)
 
 		return out_phi
 
@@ -950,8 +1150,10 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -982,8 +1184,9 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -1032,7 +1235,8 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -1058,10 +1262,11 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i] = (1. - 0.3125 * gamma[i]) * in_phi[i] + \
-					 0.015625 * gamma[i] * (+ in_phi[i-3] + in_phi[i+3]
-											- 6. * (in_phi[i-2] + in_phi[i+2])
-											+ 15. * (in_phi[i-1] + in_phi[i+1]))
+		out_phi[i] = (1. - 0.3125) * gamma[i] * in_phi[i] + \
+			0.015625 * gamma[i] * (
+				in_phi[i-3] - 6*in_phi[i-2] + 15*in_phi[i-1] +
+				in_phi[i+3] - 6*in_phi[i+2] + 15*in_phi[i+1]
+			)
 
 		return out_phi
 
@@ -1079,8 +1284,10 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-				 smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype):
+	def __init__(
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
+		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+	):
 		"""
 		Constructor.
 
@@ -1111,8 +1318,9 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
 			if :obj:`~tasmania.namelist.datatype` is not defined.
 		"""
-		super().__init__(dims, grid, smooth_damp_depth, smooth_coeff,
-						 smooth_coeff_max, backend, dtype)
+		super().__init__(
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+		)
 
 	def __call__(self, phi, phi_out):
 		"""
@@ -1161,7 +1369,8 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
 			outputs			 = {'out_phi': self._out_phi},
 			domain			 = _domain,
-			mode			 = self._backend)
+			mode			 = self._backend
+		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
@@ -1187,9 +1396,10 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[j] = (1. - 0.3125 * gamma[j]) * in_phi[j] + \
-					 0.015625 * gamma[j] * (+ in_phi[j-3] + in_phi[j+3]
-											- 6. * (in_phi[j-2] + in_phi[j+2])
-											+ 15. * (in_phi[j-1] + in_phi[j+1]))
+		out_phi[j] = (1. - 0.3125) * gamma[j] * in_phi[j] + \
+			0.015625 * gamma[j] * (
+				in_phi[j-3] - 6*in_phi[j-2] + 15*in_phi[j-1] +
+				in_phi[j+3] - 6*in_phi[j+2] + 15*in_phi[j+1]
+			)
 
 		return out_phi

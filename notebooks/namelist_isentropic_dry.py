@@ -40,7 +40,7 @@ nz       = 60
 
 # topography
 topo_type   = 'gaussian'
-topo_time   = timedelta(seconds=0)
+topo_time   = timedelta(seconds=1800)
 topo_kwargs = {
     'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
     'topo_width_x': DataArray(50.0, attrs={'units': 'km'}),
@@ -63,8 +63,12 @@ time_integration_scheme         = 'rk3cosmo'
 horizontal_flux_scheme          = 'fifth_order_upwind'
 vertical_flux_scheme            = 'third_order_upwind'
 horizontal_boundary_type        = 'relaxed'
-substeps                        = 0
+substeps                        = 1
 physics_time_integration_scheme = 'rk2'
+
+# simulation length
+timestep = timedelta(seconds=24)
+niter    = int(12*60*60 / timestep.total_seconds())
 
 # vertical damping
 damp                = True
@@ -75,22 +79,18 @@ damp_at_every_stage = False
 
 # horizontal smoothing
 smooth                = True
-smooth_type           = 'second_order'
+smooth_type           = 'third_order'
 smooth_damp_depth     = 0
-smooth_coeff          = 0.2
-smooth_coeff_max      = 0.2
+smooth_coeff          = 1.0  #1.0/(2*np.pi**4) * (10e3)**4/timestep.total_seconds()
+smooth_coeff_max      = 1.0  #1.0/(2*np.pi**4) * (10e3)**4/timestep.total_seconds()
 smooth_at_every_stage = False
 
 # coriolis
 coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
-# simulation length
-timestep = timedelta(seconds=24)
-niter    = int(12*60*60 / timestep.total_seconds())
-
 # output
 filename        = None
 save_frequency  = -1
 print_frequency = -1
-plot_frequency  = 25
+plot_frequency  = 5

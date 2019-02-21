@@ -80,6 +80,14 @@ if nl.coriolis:
 	)
 	args.append({'component': cf, 'time_integrator': ptis, 'substeps': 1})
 	
+if nl.smooth:
+	# Component performing the horizontal smoothing
+	hs = taz.IsentropicHorizontalSmoothing(
+		nl.smooth_type, grid, nl.smooth_damp_depth, nl.smooth_coeff, 
+		nl.smooth_coeff_max, backend=nl.backend, dtype=nl.dtype
+	)
+	args.append({'component': hs})       
+
 # Component retrieving the velocity components
 ivc = taz.IsentropicVelocityComponents(
 	grid, nl.horizontal_boundary_type, state, backend=nl.backend, dtype=nl.dtype
@@ -102,10 +110,7 @@ dycore = taz.HomogeneousIsentropicDynamicalCore(
 	damp=nl.damp, damp_type=nl.damp_type, damp_depth=nl.damp_depth,
 	damp_max=nl.damp_max, damp_at_every_stage=nl.damp_at_every_stage,
 	# horizontal smoothing
-	smooth=nl.smooth, smooth_type=nl.smooth_type,
-	smooth_damp_depth=nl.smooth_damp_depth,
-	smooth_coeff=nl.smooth_coeff, smooth_coeff_max=nl.smooth_coeff_max,
-	smooth_at_every_stage=nl.smooth_at_every_stage,
+	smooth=False,
 	# backend settings
 	backend=nl.backend, dtype=nl.dtype
 )
@@ -121,6 +126,77 @@ if nl.filename is not None and nl.save_frequency > 0:
 		nl.filename, grid, store_names=nl.store_names
 	)
 	netcdf_monitor.store(state)
+
+#============================================================
+# A visualization-purpose monitor
+#============================================================
+xlim = nl.domain_x.to_units('km').values
+ylim = nl.domain_y.to_units('km').values
+zlim = nl.domain_z.to_units('K').values
+
+# The drawers and the artist generating the left subplot
+drawer1_properties = {
+	'fontsize': 16, 'cmap_name': 'BuRd', 'cbar_on': True,
+	'cbar_levels': 18, 'cbar_ticks_step': 4, 'cbar_center': 15,
+	'cbar_orientation': 'horizontal',
+	'cbar_x_label': 'Horizontal velocity [m s$^{-1}$]',
+	'draw_vertical_levels': False,
+}
+drawer1 = taz.Contourf(
+	grid, 'horizontal_velocity', 'm s^-1', z=-1,
+	xaxis_units='km', yaxis_units='km', properties=drawer1_properties,
+)
+drawer2_properties = {
+	'fontsize': 16, 'x_step': 2, 'y_step': 2, 'colors': 'black',
+	'draw_vertical_levels': False, 'alpha': 0.5,
+}
+drawer2 = taz.Quiver(
+	grid, z=-1, xaxis_units='km', yaxis_units='km',
+	xcomp_name='x_velocity', xcomp_units='m s^-1',
+	ycomp_name='y_velocity', ycomp_units='m s^-1',
+	properties=drawer2_properties
+)
+axes1_properties = {
+	'fontsize': 16, 'title_left': '$\\theta = {}$ K'.format(zlim[1]),
+	'x_label': '$x$ [km]', 'x_lim': xlim,
+	'y_label': '$y$ [km]', 'y_lim': ylim,
+}
+topo_drawer = taz.Contour(
+	grid, 'topography', 'm', z=-1,
+	xaxis_units='km', yaxis_units='km', properties={'colors': 'darkgray'}
+)
+plot1 = taz.Plot((drawer1, drawer2, topo_drawer), axes_properties=axes1_properties)
+
+# The drawer and the artist generating the right subplot
+drawer3_properties = {
+	'fontsize': 16, 'cmap_name': 'BuRd', 'cbar_on': True,
+	'cbar_levels': 18, 'cbar_ticks_step': 4, 'cbar_center': 15,
+	'cbar_orientation': 'horizontal',
+	'cbar_x_label': '$x$-velocity [m s$^{-1}$]',
+	'draw_vertical_levels': True,
+}
+drawer3 = taz.Contourf(
+	grid, 'x_velocity', 'm s^-1', y=int(nl.ny/2),
+	xaxis_units='km', zaxis_name='z', zaxis_units='K',
+	properties=drawer3_properties,
+)
+axes3_properties = {
+	'fontsize': 16, 'title_left': '$y = {}$ km'.format(0.5*(ylim[0] + ylim[1])),
+	'x_label': '$x$ [km]', 'x_lim': xlim,
+	'y_label': '$\\theta$ [K]', 'y_lim': (zlim[1], zlim[0]),
+}
+topo_drawer = taz.LineProfile(
+	grid, 'topography', 'km', y=int(nl.ny/2), z=-1, axis_units='km',
+	properties={'linecolor': 'black', 'linewidth': 1.3}
+)
+plot2 = taz.Plot((drawer3, topo_drawer), axes_properties=axes3_properties)
+
+# The monitor encompassing and coordinating the two artists
+figure_properties = {'fontsize': 16, 'figsize': (12, 7), 'tight_layout': True}
+plot_monitor = taz.PlotComposite(
+	nrows=1, ncols=2, artists=(plot1, plot2),
+	interactive=True, figure_properties=figure_properties
+)
 
 #============================================================
 # Time-marching
@@ -177,12 +253,19 @@ for i in range(nt):
 	to_save = (nl.filename is not None) and \
 		(((nl.save_frequency > 0) and
 		  ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
+	to_plot = (nl.plot_frequency > 0) and ((i + 1) % nl.plot_frequency == 0)
 
 	if to_save:
 		# Save the solution
 		netcdf_monitor.store(state)
 
-elapsed_time = time.time() - wall_time_start
+	if to_plot:
+		# Plot the solution
+		plot1.axes_properties['title_right'] = str((i + 1) * dt)
+		plot2.axes_properties['title_right'] = str((i + 1) * dt)
+		fig = plot_monitor.store(
+			((state, state, state), (state, state)), show=True
+		)
 
 print('Simulation successfully completed. HOORAY!')
 
