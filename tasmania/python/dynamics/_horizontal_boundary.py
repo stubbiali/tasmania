@@ -561,7 +561,19 @@ class _Relaxed(HorizontalBoundary):
 		dtype = grid.x.values.dtype
 
 		#self._rel  = np.array([1., .99, .95, .8, .5, .2, .05, .01], dtype=dtype)
-		self._rel = np.array([1., .54, .24, .09, .036, .013, .005, .002], dtype=dtype)
+		self._rel = np.array(
+			[
+                1.,
+                1. - np.tanh(0.5),
+                1. - np.tanh(1.0),
+                1. - np.tanh(1.5),
+                1. - np.tanh(2.0),
+                1. - np.tanh(2.5),
+                1. - np.tanh(3.0),
+                1. - np.tanh(3.5),
+			],
+			dtype=dtype
+		)
 
 		self._rel[:nb] = 1.
 		self._rrel = self._rel[::-1]

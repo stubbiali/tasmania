@@ -70,7 +70,7 @@ time_integration_scheme         = 'rk3cosmo'
 horizontal_flux_scheme          = 'fifth_order_upwind'
 vertical_flux_scheme            = 'third_order_upwind'
 horizontal_boundary_type        = 'relaxed'
-substeps                        = 0
+substeps                        = 1
 physics_time_integration_scheme = 'rk2'
 
 # vertical damping
@@ -84,8 +84,8 @@ damp_at_every_stage = False
 smooth                = True
 smooth_type           = 'second_order'
 smooth_damp_depth     = 0
-smooth_coeff          = 0.2
-smooth_coeff_max      = 0.2
+smooth_coeff          = 1.0
+smooth_coeff_max      = 1.0
 smooth_at_every_stage = False
 
 # horizontal smoothing for water species
@@ -121,4 +121,4 @@ niter    = int(12*60*60 / timestep.total_seconds())
 filename        = None #'../data/isentropic_convergence_{}_{}.nc'.format(horizontal_flux_scheme, nx)
 save_frequency  = -1
 print_frequency = -1
-plot_frequency  = 25
+plot_frequency  = 5

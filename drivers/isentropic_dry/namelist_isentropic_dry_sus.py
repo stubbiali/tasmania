@@ -75,15 +75,15 @@ physics_time_integration_scheme = 'rk2'
 damp                = True
 damp_type           = 'rayleigh'
 damp_depth          = 15
-damp_max            = 0.0002
+damp_max            = 0.002
 damp_at_every_stage = False
 
 # horizontal smoothing
 smooth                = True
 smooth_type           = 'second_order'
 smooth_damp_depth     = 0
-smooth_coeff          = 0.03
-smooth_coeff_max      = 0.03
+smooth_coeff          = 1.0
+smooth_coeff_max      = 1.0
 smooth_at_every_stage = False
 
 # coriolis
@@ -91,8 +91,8 @@ coriolis           = True
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
-timestep = timedelta(seconds=24)
-niter    = int(2*60*60 / timestep.total_seconds())
+timestep = timedelta(seconds=32)
+niter    = int(12*60*60 / timestep.total_seconds())
 
 # output
 filename = \
@@ -110,6 +110,7 @@ store_names=(
 	'x_momentum_isentropic',
 	'y_momentum_isentropic'
 )
-save_frequency  = 5
-print_frequency = 5
+save_frequency  = -1
+print_frequency = -1
+plot_frequency  = 5
 
