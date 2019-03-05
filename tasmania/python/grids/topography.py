@@ -32,7 +32,7 @@ from sympl import DataArray
 from tasmania.python.utils.utils import smaller_than as lt
 
 try:
-	from namelist import datatype
+	from tasmania.conf import datatype
 except ImportError:
 	datatype = np.float32
 
@@ -176,7 +176,9 @@ class Topography1d:
 			self.topo_kwargs['topo_center_x'] = \
 				DataArray(topo_center_x, attrs={'units': x.attrs['units']})
 
-			self._topo_final = topo_max_height * np.exp(- ((xv-cx) / topo_width_x)**2)
+			self._topo_final = topo_max_height * np.exp(
+				- ((xv - topo_center_x) / topo_width_x)**2
+			)
 		elif self.topo_type == 'user_defined':
 			topo_str = kwargs.get('topo_str', 'x')
 
@@ -389,8 +391,10 @@ class Topography2d:
 
 			xv_, yv_ = np.meshgrid(xv, yv, indexing='ij')
 			self._topo_final = topo_max_height * \
-							   np.exp(- ((xv_ - topo_center_x) / topo_width_x)**2
-									  - ((yv_ - topo_center_y) / topo_width_y)**2)
+				np.exp(
+					- ((xv_ - topo_center_x) / topo_width_x)**2
+					- ((yv_ - topo_center_y) / topo_width_y)**2
+				)
 		elif self.topo_type == 'schaer':
 			topo_max_height_ = kwargs.get(
 				'topo_max_height', DataArray(500.0, attrs={'units': 'm'})
@@ -437,7 +441,7 @@ class Topography2d:
 			
 			# Import the parser
 			try:
-				from tasmania.cpp.parser import Parser2d
+				from tasmania.cpp.parser.parser_2d import Parser2d
 			except ImportError:
 				print('Hint: did you compile the parser?')
 				raise

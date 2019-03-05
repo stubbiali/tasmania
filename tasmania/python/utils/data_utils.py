@@ -411,10 +411,18 @@ def _make_data_array_xyz(raw_array, grid, units, name):
 						 '{} or {} was expected.'.format(nj, ny, ny+1))
 
 	if nk == 1:
-		z = DataArray(np.array((grid.z_on_interface_levels.values[-1], )),
-					  #coords=[grid.z_on_interface_levels.values[-1]],
-					  dims=[grid.z.dims[0] + '_at_surface_level'],
-					  attrs={'units': grid.z.attrs['units']})
+		if nz > 1:
+			z = DataArray(np.array((grid.z_on_interface_levels.values[-1], )),
+				#coords=[grid.z_on_interface_levels.values[-1]],
+				dims=[grid.z.dims[0] + '_at_surface_level'],
+				attrs={'units': grid.z.attrs['units']}
+			)
+		else:
+			z = DataArray(np.array((grid.z_on_interface_levels.values[-1], )),
+				#coords=[grid.z_on_interface_levels.values[-1]],
+				dims=[grid.z.dims[0]],
+				attrs={'units': grid.z.attrs['units']}
+			)
 	elif nk == nz:
 		z = grid.z
 	elif nk == nz+1:

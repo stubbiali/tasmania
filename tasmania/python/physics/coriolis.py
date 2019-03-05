@@ -28,7 +28,7 @@ import numpy as np
 from sympl import TendencyComponent
 
 try:
-	from tasmania.namelist import datatype
+	from tasmania.conf import datatype
 except ImportError:
 	datatype = np.float32
 

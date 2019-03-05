@@ -36,7 +36,7 @@ import math
 import numpy as np
 
 try:
-	from tasmania.namelist import tol as d_tol
+	from tasmania.conf import tol as d_tol
 except ImportError:
 	d_tol = 1e-8
 

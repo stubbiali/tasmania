@@ -29,7 +29,7 @@ from sympl._core.combine_properties import \
 from sympl._core.units import clean_units
 
 try:
-	from tasmania.namelist import tol as d_tol
+	from tasmania.conf import tol as d_tol
 except ImportError:
 	d_tol = 1e-8
 
