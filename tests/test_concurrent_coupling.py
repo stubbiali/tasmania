@@ -26,7 +26,7 @@ import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
-from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 
 
 def test_compatibility(

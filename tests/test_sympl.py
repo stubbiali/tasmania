@@ -23,6 +23,12 @@
 import numpy as np
 import pytest
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import conf
+
 
 def test_import():
 	try:
@@ -38,12 +44,11 @@ def test_import():
 
 def test_to_units():
 	import sympl
-	from tasmania.namelist import datatype
 
 	domain_x, nx, dims_x, units_x = [-50, 50], 101, 'x', 'km'
 
-	xv = np.array([0.5 * (domain_x[0]+domain_x[1])], dtype=datatype) if nx == 1 \
-		 else np.linspace(domain_x[0], domain_x[1], nx, dtype=datatype)
+	xv = np.array([0.5 * (domain_x[0]+domain_x[1])], dtype=conf.datatype[0]) if nx == 1 \
+		else np.linspace(domain_x[0], domain_x[1], nx, dtype=conf.datatype[0])
 	x = sympl.DataArray(xv, coords=[xv], dims=dims_x, name='x', attrs={'units': units_x})
 
 	x_to_units = x.to_units('m')

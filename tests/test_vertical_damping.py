@@ -24,7 +24,7 @@ from datetime import timedelta
 import numpy as np
 import pytest
 
-from tasmania.python.dynamics.vertical_damping import VerticalDamping as VD
+from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 
 
 def test_rayleigh(grid):

@@ -23,7 +23,7 @@
 import numpy as np
 import pytest
 
-from tasmania.python.dynamics.diagnostics import \
+from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics, WaterConstituent, HorizontalVelocity
 
 

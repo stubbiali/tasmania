@@ -25,7 +25,7 @@ from datetime import datetime, timedelta
 import pytest
 from sympl import DataArray
 
-from tasmania.python.physics.isentropic_tendencies import PrescribedSurfaceHeating
+from tasmania.python.isentropic.physics.tendencies import PrescribedSurfaceHeating
 from tasmania.python.utils.data_utils import make_data_array_3d
 from tasmania.python.utils.utils import equal_to
 

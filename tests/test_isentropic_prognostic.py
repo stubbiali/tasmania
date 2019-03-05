@@ -25,10 +25,10 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
-from tasmania.python.dynamics.horizontal_boundary import HorizontalBoundary
-from tasmania.python.dynamics.isentropic_prognostic import IsentropicPrognostic
-from tasmania.python.dynamics._isentropic_prognostic import \
+from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
+from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+from tasmania.python.isentropic.dynamics._prognostic import \
 	Centered, ForwardEuler, RK2, RK3COSMO, RK3
 from tasmania.python.physics.microphysics import RaindropFallVelocity
 from tasmania.python.utils.data_utils import make_raw_state

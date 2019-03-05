@@ -24,6 +24,11 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import conf
 from tasmania.python.utils.utils import equal_to as eq
 
 
@@ -48,9 +53,8 @@ def test_grid_xy():
 	assert eq(g.y.values[j], domain_y.values[0] + j*g.dy)
 	assert eq(g.y_at_v_locations.values[j], domain_y.values[0] + (j-0.5)*g.dy)
 
-	import tasmania.namelist as nl
-	assert g.x[:].dtype == nl.datatype
-	assert g.y[:].dtype == nl.datatype
+	assert g.x[:].dtype == conf.datatype[0]
+	assert g.y[:].dtype == conf.datatype[0]
 
 
 def test_grid_xz():

@@ -26,9 +26,9 @@ import pytest
 from sympl import units_are_same
 
 import gridtools as gt
-from tasmania.python.core.tendency_steppers import \
+from tasmania.python.framework.tendency_steppers import \
 	ForwardEuler, RungeKutta2, RungeKutta3COSMO, RungeKutta3
-from tasmania.python.physics.isentropic_tendencies import \
+from tasmania.python.isentropic.physics.tendencies import \
 	ConservativeIsentropicPressureGradient
 from tasmania.python.utils.data_utils import make_state
 

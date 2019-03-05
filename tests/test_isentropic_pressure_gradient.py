@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.physics.isentropic_tendencies import \
+from tasmania.python.isentropic.physics.tendencies import \
 	NonconservativeIsentropicPressureGradient, \
 	ConservativeIsentropicPressureGradient
 
