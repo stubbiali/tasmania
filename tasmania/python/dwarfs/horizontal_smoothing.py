@@ -36,7 +36,7 @@ import numpy as np
 
 import gridtools as gt
 try:
-	from tasmania.namelist import datatype
+	from tasmania.conf import datatype
 except ImportError:
 	from numpy import float32 as datatype
 
@@ -169,23 +169,29 @@ class HorizontalSmoothing:
 		]
 
 		if smooth_type == 'first_order':
-			if dims[1] == 1:
+			assert not(dims[0] < 3 and dims[1] < 3)
+
+			if dims[1] < 3:
 				return _FirstOrderXZ(*arg_list)
-			elif dims[0] == 1:
+			elif dims[0] < 3:
 				return _FirstOrderYZ(*arg_list)
 			else:
 				return _FirstOrder(*arg_list)
 		elif smooth_type == 'second_order':
-			if dims[1] == 1:
+			assert not(dims[0] < 5 and dims[1] < 5)
+
+			if dims[1] < 5:
 				return _SecondOrderXZ(*arg_list)
-			elif dims[0] == 1:
+			elif dims[0] < 5:
 				return _SecondOrderYZ(*arg_list)
 			else:
 				return _SecondOrder(*arg_list)
 		elif smooth_type == 'third_order':
-			if dims[1] == 1:
+			assert not(dims[0] < 7 and dims[1] < 7)
+
+			if dims[1] < 7:
 				return _ThirdOrderXZ(*arg_list)
-			elif dims[0] == 1:
+			elif dims[0] < 7:
 				return _ThirdOrderYZ(*arg_list)
 			else:
 				return _ThirdOrder(*arg_list)
@@ -198,10 +204,9 @@ class HorizontalSmoothing:
 
 class _FirstOrder(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a first-order horizontal digital filter to three-dimensional fields
-	with at least three elements in each direction.
+	with at least three elements along each dimension.
 
 	Note
 	----
@@ -210,47 +215,15 @@ class _FirstOrder(HorizontalSmoothing):
 	one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.24.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply first-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -272,9 +245,6 @@ class _FirstOrder(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -288,53 +258,37 @@ class _FirstOrder(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing first-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
 		# Output field
-		tmp_phi = gt.Equation()
 		out_phi = gt.Equation()
 
 		# Computations
-		tmp_phi[i, j] = (1 - 0.5*gamma[i, j]) * in_phi[i, j] + \
-			0.25 * gamma[i, j] * (in_phi[i-1, j] + in_phi[i+1, j])
-		out_phi[i, j] = (1 - 0.5*gamma[i, j]) * tmp_phi[i, j] + \
-			0.25 * gamma[i, j] * (tmp_phi[i, j-1] + tmp_phi[i, j+1])
+		out_phi[i, j] = (1 - gamma[i, j]) * in_phi[i, j] + \
+			0.25 * gamma[i, j] * (
+				in_phi[i-1, j] + in_phi[i+1, j] +
+				in_phi[i, j-1] + in_phi[i, j+1]
+			)
 
 		return out_phi
 
 
 class _FirstOrderXZ(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a first-order horizontal digital filter to three-dimensional fields
-	with only one element in the :math:`y`-direction.
+	with only one element along the second dimension.
 
 	Note
 	----
@@ -343,47 +297,15 @@ class _FirstOrderXZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply first-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -403,9 +325,6 @@ class _FirstOrderXZ(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -415,34 +334,19 @@ class _FirstOrderXZ(HorizontalSmoothing):
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((1, 0, 0), (ni-2, 0, nk-1))
+		_domain = gt.domain.Rectangle((1, 0, 0), (ni-2, nj-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing first-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Index
 		i = gt.Index(axis=0)
 
@@ -458,10 +362,9 @@ class _FirstOrderXZ(HorizontalSmoothing):
 
 class _FirstOrderYZ(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a first-order horizontal digital filter to three-dimensional fields
-	with only one element in the :math:`x`-direction.
+	with only one element along the first direction.
 
 	Note
 	----
@@ -470,47 +373,15 @@ class _FirstOrderYZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply first-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -530,9 +401,6 @@ class _FirstOrderYZ(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -542,34 +410,19 @@ class _FirstOrderYZ(HorizontalSmoothing):
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 1, 0), (0, nj-2, nk-1))
+		_domain = gt.domain.Rectangle((0, 1, 0), (ni-1, nj-2, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing first-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Index
 		j = gt.Index(axis=1)
 
@@ -585,10 +438,9 @@ class _FirstOrderYZ(HorizontalSmoothing):
 
 class _SecondOrder(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a second-order horizontal digital filter to three-dimensional fields
-	with at least three elements in each direction.
+	with at least three elements along each dimension.
 
 	Note
 	----
@@ -597,47 +449,15 @@ class _SecondOrder(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply second-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -663,9 +483,6 @@ class _SecondOrder(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -679,48 +496,29 @@ class _SecondOrder(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing second-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
 		# Output field
-		tmp_phi = gt.Equation()
 		out_phi = gt.Equation()
 
 		# Computations
-		tmp_phi[i, j] = (1. - 0.375 * gamma[i, j]) * in_phi[i, j] + \
+		out_phi[i, j] = (1. - 0.75 * gamma[i, j]) * in_phi[i, j] + \
 			0.0625 * gamma[i, j] * (
 				- in_phi[i-2, j] + 4. * in_phi[i-1, j]
 				- in_phi[i+2, j] + 4. * in_phi[i+1, j]
-			)
-		out_phi[i, j] = (1. - 0.375 * gamma[i, j]) * tmp_phi[i, j] + \
-			0.0625 * gamma[i, j] * (
-				- tmp_phi[i, j-2] + 4. * tmp_phi[i, j-1]
-				- tmp_phi[i, j+2] + 4. * tmp_phi[i, j+1]
+				- in_phi[i, j-2] + 4. * in_phi[i, j-1]
+				- in_phi[i, j+2] + 4. * in_phi[i, j+1]
 			)
 
 		return out_phi
@@ -728,10 +526,9 @@ class _SecondOrder(HorizontalSmoothing):
 
 class _SecondOrderXZ(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a second-order horizontal digital filter to three-dimensional fields
-	with only one element in the :math:`y`-direction.
+	with only one element along the second dimension.
 
 	Note
 	----
@@ -740,47 +537,15 @@ class _SecondOrderXZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply second-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -802,9 +567,6 @@ class _SecondOrderXZ(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -814,34 +576,19 @@ class _SecondOrderXZ(HorizontalSmoothing):
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((2, 0, 0), (ni-3, 0, nk-1))
+		_domain = gt.domain.Rectangle((2, 0, 0), (ni-3, nj-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing second-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Index
 		i = gt.Index(axis=0)
 
@@ -860,10 +607,9 @@ class _SecondOrderXZ(HorizontalSmoothing):
 
 class _SecondOrderYZ(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a second-order horizontal digital filter to three-dimensional fields
-	with only one element in the :math:`x`-direction.
+	with only one element along the first dimension.
 
 	Note
 	----
@@ -872,47 +618,15 @@ class _SecondOrderYZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype\
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply second-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -934,9 +648,6 @@ class _SecondOrderYZ(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -946,34 +657,19 @@ class _SecondOrderYZ(HorizontalSmoothing):
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 2, 0), (0, nj-3, nk-1))
+		_domain = gt.domain.Rectangle((0, 2, 0), (ni-1, nj-3, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing second-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Index
 		j = gt.Index(axis=1)
 
@@ -992,10 +688,9 @@ class _SecondOrderYZ(HorizontalSmoothing):
 
 class _ThirdOrder(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a third-order horizontal digital filter to three-dimensional fields
-	with at least three elements in each direction.
+	with at least three elements along each dimension.
 
 	Note
 	----
@@ -1004,47 +699,15 @@ class _ThirdOrder(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.24, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply second-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -1074,9 +737,6 @@ class _ThirdOrder(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -1090,48 +750,29 @@ class _ThirdOrder(HorizontalSmoothing):
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing third-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
 		# Output field
-		tmp_phi = gt.Equation()
 		out_phi = gt.Equation()
 
 		# Computations
-		tmp_phi[i, j] = (1. - 0.3125) * gamma[i, j] * in_phi[i, j] + \
+		out_phi[i, j] = (1. - 0.625 * gamma[i, j]) * in_phi[i, j] + \
 			0.015625 * gamma[i, j] * (
 				in_phi[i-3, j] - 6*in_phi[i-2, j] + 15*in_phi[i-1, j] +
-				in_phi[i+3, j] - 6*in_phi[i+2, j] + 15*in_phi[i+1, j]
-			)
-		out_phi[i, j] = (1. - 0.3125) * gamma[i, j] * tmp_phi[i, j] + \
-			0.015625 * gamma[i, j] * (
-				tmp_phi[i, j-3] - 6*tmp_phi[i, j-2] + 15*tmp_phi[i, j-1] +
-				tmp_phi[i, j+3] - 6*tmp_phi[i, j+2] + 15*tmp_phi[i, j+1]
+				in_phi[i+3, j] - 6*in_phi[i+2, j] + 15*in_phi[i+1, j] +
+				in_phi[i, j-3] - 6*in_phi[i, j-2] + 15*in_phi[i, j-1] +
+				in_phi[i, j+3] - 6*in_phi[i, j+2] + 15*in_phi[i, j+1]
 			)
 
 		return out_phi
@@ -1139,10 +780,9 @@ class _ThirdOrder(HorizontalSmoothing):
 
 class _ThirdOrderXZ(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a third-order horizontal digital filter to three-dimensional fields
-	with only one element in the :math:`y`-direction.
+	with only one element along the second dimension.
 
 	Note
 	----
@@ -1151,47 +791,15 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply second-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -1215,9 +823,6 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -1227,34 +832,19 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((3, 0, 0), (ni-4, 0, nk-1))
+		_domain = gt.domain.Rectangle((3, 0, 0), (ni-4, nj-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing third-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Index
 		i = gt.Index(axis=0)
 
@@ -1262,7 +852,7 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i] = (1. - 0.3125) * gamma[i] * in_phi[i] + \
+		out_phi[i] = (1. - 0.3125 * gamma[i]) * in_phi[i] + \
 			0.015625 * gamma[i] * (
 				in_phi[i-3] - 6*in_phi[i-2] + 15*in_phi[i-1] +
 				in_phi[i+3] - 6*in_phi[i+2] + 15*in_phi[i+1]
@@ -1273,10 +863,9 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 
 class _ThirdOrderYZ(HorizontalSmoothing):
 	"""
-	This class inherits
-	:class:`~tasmania.dynamics.horizontal_smoothing.HorizontalSmoothing`
+	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a third-order horizontal digital filter to three-dimensional fields
-	with only one element in the :math:`x`-direction.
+	with only one element along the first dimension.
 
 	Note
 	----
@@ -1285,47 +874,15 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=.03,
-		smooth_coeff_max=.49, backend=gt.mode.NUMPY, dtype=datatype
+		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
+		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
 	):
-		"""
-		Constructor.
-
-		Parameters
-		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : `int`, optional
-			Depth of, i.e., number of vertical regions in the damping region.
-			Defaults to 10.
-		smooth_coeff : `float`, optional
-			Value for the smoothing coefficient far from the top boundary.
-			Defaults to 0.03
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient.
-			Defaults to 0.49.
-		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		"""
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
+			backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
-		"""
-		Apply second-order horizontal smoothing to a prognostic field.
-		"""
 		# Initialize the underlying GT4Py stencil
 		if self._stencil is None:
 			self._stencil_initialize(phi.dtype)
@@ -1349,9 +906,6 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying horizontal smoothing.
-		"""
 		# Shortcuts
 		ni, nj, nk = self._dims
 
@@ -1361,34 +915,19 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 3, 0), (0, nj-4, nk-1))
+		_domain = gt.domain.Rectangle((0, 3, 0), (ni-1, nj-4, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
-			definitions_func = self._stencil_defs,
-			inputs			 = {'in_phi': self._in_phi, 'gamma': self._gamma},
-			outputs			 = {'out_phi': self._out_phi},
-			domain			 = _domain,
-			mode			 = self._backend
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'out_phi': self._out_phi},
+			domain=_domain,
+			mode=self._backend
 		)
 
 	@staticmethod
 	def _stencil_defs(in_phi, gamma):
-		"""
-		The GT4Py stencil implementing third-order filtering.
-
-		Parameters
-		----------
-		in_phi : obj
-			:class:`gridtools.Equation` representing the input field to filter.
-		gamma : obj
-			:class:`gridtools.Equation` representing the smoothing coefficient.
-
-		Return
-		------
-		obj :
-			:class:`gridtools.Equation` representing the filtered output field.
-		"""
 		# Index
 		j = gt.Index(axis=1)
 
@@ -1396,7 +935,7 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[j] = (1. - 0.3125) * gamma[j] * in_phi[j] + \
+		out_phi[j] = (1. - 0.3125 * gamma[j]) * in_phi[j] + \
 			0.015625 * gamma[j] * (
 				in_phi[j-3] - 6*in_phi[j-2] + 15*in_phi[j-1] +
 				in_phi[j+3] - 6*in_phi[j+2] + 15*in_phi[j+1]

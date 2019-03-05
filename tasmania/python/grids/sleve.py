@@ -36,7 +36,7 @@ from tasmania.python.utils.utils import \
 	equal_to as eq, smaller_than as lt, greater_or_equal_than as gt
 
 try:
-	from tasmania.namelist import datatype
+	from tasmania.conf import datatype
 except ImportError:
 	datatype = np.float32
 

@@ -22,11 +22,13 @@
 #
 """
 This module contains:
-	HorizontalDiffusion
-	_SecondOrder(HorizontalDiffusion)
-	_SecondOrder{XZ, YZ}(HorizontalDiffusion)
-	_FourthOrder(HorizontalDiffusion)
-	_FourthOrder{XZ, YZ}(HorizontalDiffusion)
+	HorizontalHyperDiffusion
+	_FirstOrder(HorizontalHyperDiffusion)
+	_FirstOrder{XZ, YZ}(HorizontalHyperDiffusion)
+	_SecondOrder(HorizontalHyperDiffusion)
+	_SecondOrder{XZ, YZ}(HorizontalHyperDiffusion)
+	_ThirdOrder(HorizontalHyperDiffusion)
+	_ThirdOrder{XZ, YZ}(HorizontalHyperDiffusion)
 """
 import abc
 import math
@@ -40,10 +42,22 @@ except ImportError:
 	from numpy import float32 as datatype
 
 
-class HorizontalDiffusion:
+def stage_laplacian(i, j, dx, dy, in_phi, tnd_phi):
+	tnd_phi[i, j] = \
+		(in_phi[i-1, j] - 2*in_phi[i, j] + in_phi[i+1, j]) / (dx*dx) + \
+		(in_phi[i, j-1] - 2*in_phi[i, j] + in_phi[i, j+1]) / (dy*dy)
+	return tnd_phi
+
+
+def stage_laplacian_1d(i, dx, in_phi, tnd_phi):
+	tnd_phi[i] = (in_phi[i-1] - 2*in_phi[i] + in_phi[i+1]) / (dx*dx)
+	return tnd_phi
+
+
+class HorizontalHyperDiffusion:
 	"""
 	Abstract base class whose derived classes calculates the
-	tendency due to horizontal diffusion.
+	tendency due to horizontal hyper-diffusion.
 	"""
 	# Make the class abstract
 	__metaclass__ = abc.ABCMeta
@@ -145,7 +159,7 @@ class HorizontalDiffusion:
 	):
 		"""
 		Static method returning an instance of the derived class
-		calculating the tendency due to horizontal diffusion of type
+		calculating the tendency due to horizontal hyper-diffusion of type
 		:data:`diffusion_type`.
 
 		Parameters
@@ -153,8 +167,9 @@ class HorizontalDiffusion:
 		diffusion_type : string
 			String specifying the diffusion technique to implement. Either:
 
-			* 'second_order', for second-order numerical diffusion;
-			* 'fourth_order', for fourth-order numerical diffusion.
+			* 'first_order', for first-order numerical hyper-diffusion;
+			* 'second_order', for second-order numerical hyper-diffusion;
+			* 'third_order', for third-order numerical hyper-diffusion.
 
 		dims : tuple
 			Shape of the (three-dimensional) arrays on which
@@ -192,35 +207,44 @@ class HorizontalDiffusion:
 			xaxis_units, yaxis_units, backend, dtype
 		]
 
-		if diffusion_type == 'second_order':
+		if diffusion_type == 'first_order':
 			assert not(dims[0] < 3 and dims[1] < 3)
 
 			if dims[1] < 3:
-				return _SecondOrderXZ(*arg_list)
+				return _FirstOrderXZ(*arg_list)
 			elif dims[0] < 3:
-				return _SecondOrderYZ(*arg_list)
+				return _FirstOrderYZ(*arg_list)
 			else:
-				return _SecondOrder(*arg_list)
-		elif diffusion_type == 'fourth_order':
+				return _FirstOrder(*arg_list)
+		elif diffusion_type == 'second_order':
 			assert not(dims[0] < 5 and dims[1] < 5)
 
 			if dims[1] < 5:
-				return _FourthOrderXZ(*arg_list)
+				return _SecondOrderXZ(*arg_list)
 			elif dims[0] < 5:
-				return _FourthOrderYZ(*arg_list)
+				return _SecondOrderYZ(*arg_list)
 			else:
-				return _FourthOrder(*arg_list)
+				return _SecondOrder(*arg_list)
+		elif diffusion_type == 'third_order':
+			assert not(dims[0] < 7 and dims[1] < 7)
+
+			if dims[1] < 7:
+				return _ThirdOrderXZ(*arg_list)
+			elif dims[0] < 7:
+				return _ThirdOrderYZ(*arg_list)
+			else:
+				return _ThirdOrder(*arg_list)
 		else:
 			raise ValueError(
-				"Supported diffusion operators are ''second_order'' "
-				"and ''fourth_order''."
+				"Supported diffusion operators are ''first_order'', "
+				"''second_order'', and ''third_order''."
 			)
 
 
-class _SecondOrder(HorizontalDiffusion):
+class _FirstOrder(HorizontalHyperDiffusion):
 	"""
-	This class inherits	:class:`~tasmania.HorizontalDiffusion`
-	to calculate the tendency due to second-order horizontal diffusion for any
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to first-order horizontal hyper-diffusion for any
 	three-dimensional field	with at least three elements in each direction.
 
 	Note
@@ -270,21 +294,20 @@ class _SecondOrder(HorizontalDiffusion):
 		j = gt.Index(axis=1)
 
 		# Temporary and output fields
+		lap = gt.Equation()
 		tnd_phi = gt.Equation()
 
 		# Computations
-		tnd_phi[i, j] = gamma[i, j] * (
-			(in_phi[i-1, j] - 2.0*in_phi[i, j] + in_phi[i+1, j]) / (dx*dx) +
-			(in_phi[i, j-1] - 2.0*in_phi[i, j] + in_phi[i, j+1]) / (dy*dy)
-		)
+		stage_laplacian(i, j, dx, dy, in_phi, lap)
+		tnd_phi[i, j] = gamma[i, j] * lap[i, j]
 
 		return tnd_phi
 
 
-class _SecondOrderXZ(HorizontalDiffusion):
+class _FirstOrderXZ(HorizontalHyperDiffusion):
 	"""
-	This class inherits	:class:`~tasmania.HorizontalDiffusion`
-	to calculate the tendency due to second-order horizontal diffusion for any
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to first-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the second dimension.
 
 	Note
@@ -332,18 +355,20 @@ class _SecondOrderXZ(HorizontalDiffusion):
 		i = gt.Index(axis=0)
 
 		# Temporary and output fields
+		lap = gt.Equation()
 		tnd_phi = gt.Equation()
 
 		# Computations
-		tnd_phi[i] = gamma[i] * (in_phi[i-1] - 2.0*in_phi[i] + in_phi[i+1]) / (dx*dx)
+		stage_laplacian_1d(i, dx, in_phi, lap)
+		tnd_phi[i] = gamma[i] * lap[i]
 
 		return tnd_phi
 
 
-class _SecondOrderYZ(HorizontalDiffusion):
+class _FirstOrderYZ(HorizontalHyperDiffusion):
 	"""
-	This class inherits	:class:`~tasmania.HorizontalDiffusion`
-	to calculate the tendency due to second-order horizontal diffusion for any
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to first-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the first dimension.
 
 	Note
@@ -391,18 +416,20 @@ class _SecondOrderYZ(HorizontalDiffusion):
 		j = gt.Index(axis=1)
 
 		# Temporary and output fields
+		lap = gt.Equation()
 		tnd_phi = gt.Equation()
 
 		# Computations
-		tnd_phi[j] = gamma[j] * (in_phi[j-1] - 2.0*in_phi[j] + in_phi[j+1]) / (dy*dy)
+		stage_laplacian_1d(j, dy, in_phi, lap)
+		tnd_phi[j] = gamma[j] * lap[j]
 
 		return tnd_phi
 
 
-class _FourthOrder(HorizontalDiffusion):
+class _SecondOrder(HorizontalHyperDiffusion):
 	"""
-	This class inherits	:class:`~tasmania.HorizontalDiffusion`
-	to calculate the tendency due to fourth-order horizontal diffusion for any
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to second-order horizontal hyper-diffusion for any
 	three-dimensional field	with at least three elements in each direction.
 
 	Note
@@ -452,30 +479,22 @@ class _FourthOrder(HorizontalDiffusion):
 		j = gt.Index(axis=1)
 
 		# Temporary and output fields
+		lap0 = gt.Equation()
+		lap1 = gt.Equation()
 		tnd_phi = gt.Equation()
 
 		# Computations
-		tnd_phi[i, j] = gamma[i, j] * (
-			(
-				- in_phi[i-2, j] + 16.0*in_phi[i-1, j]
-				- 30.0*in_phi[i, j]
-				+ 16.0*in_phi[i+1, j] - in_phi[i+2, j]
-			) / (12.0 * dx * dx)
-			+
-			(
-				- in_phi[i, j-2] + 16.0*in_phi[i, j-1]
-				- 30.0*in_phi[i, j]
-				+ 16.0*in_phi[i, j+1] - in_phi[i, j+2]
-			) / (12.0 * dy * dy)
-		)
+		stage_laplacian(i, j, dx, dy, in_phi, lap0)
+		stage_laplacian(i, j, dx, dy, lap0, lap1)
+		tnd_phi[i, j] = gamma[i, j] * lap1[i, j]
 
 		return tnd_phi
 
 
-class _FourthOrderXZ(HorizontalDiffusion):
+class _SecondOrderXZ(HorizontalHyperDiffusion):
 	"""
-	This class inherits	:class:`~tasmania.HorizontalDiffusion`
-	to calculate the tendency due to fourth-order horizontal diffusion for any
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to second-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the second dimension.
 
 	Note
@@ -523,22 +542,22 @@ class _FourthOrderXZ(HorizontalDiffusion):
 		i = gt.Index(axis=0)
 
 		# Temporary and output fields
+		lap0 = gt.Equation()
+		lap1 = gt.Equation()
 		tnd_phi = gt.Equation()
 
 		# Computations
-		tnd_phi[i] = gamma[i] * (
-			- in_phi[i-2] + 16.0*in_phi[i-1]
-			- 30.0*in_phi[i]
-			+ 16.0*in_phi[i+1] - in_phi[i+2]
-		) / (12.0 * dx * dx)
+		stage_laplacian_1d(i, dx, in_phi, lap0)
+		stage_laplacian_1d(i, dx, lap0, lap1)
+		tnd_phi[i] = gamma[i] * lap1[i]
 
 		return tnd_phi
 
 
-class _FourthOrderYZ(HorizontalDiffusion):
+class _SecondOrderYZ(HorizontalHyperDiffusion):
 	"""
-	This class inherits	:class:`~tasmania.HorizontalDiffusion`
-	to calculate the tendency due to fourth-order horizontal diffusion for any
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to second-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the first dimension.
 
 	Note
@@ -586,13 +605,210 @@ class _FourthOrderYZ(HorizontalDiffusion):
 		j = gt.Index(axis=1)
 
 		# Temporary and output fields
+		lap0 = gt.Equation()
+		lap1 = gt.Equation()
 		tnd_phi = gt.Equation()
 
 		# Computations
-		tnd_phi[j] = gamma[j] * (
-			- in_phi[j-2] + 16.0*in_phi[j-1]
-			- 30.0*in_phi[j]
-			+ 16.0*in_phi[j+1] - in_phi[j+2]
-		) / (12.0 * dy * dy)
+		stage_laplacian_1d(j, dy, in_phi, lap0)
+		stage_laplacian_1d(j, dy, lap0, lap1)
+		tnd_phi[j] = gamma[j] * lap1[j]
+
+		return tnd_phi
+
+
+class _ThirdOrder(HorizontalHyperDiffusion):
+	"""
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to third-order horizontal hyper-diffusion for any
+	three-dimensional field	with at least three elements in each direction.
+
+	Note
+	----
+	An instance of this class should only be applied to fields whose
+	dimensions match those specified at instantiation time.
+	Hence, one should use (at least) one instance per field shape.
+	"""
+	def __init__(
+		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
+		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
+		backend=gt.mode.NUMPY, dtype=datatype
+	):
+		super().__init__(
+			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
+			xaxis_units, yaxis_units, backend, dtype
+		)
+
+	def _stencil_initialize(self, dtype):
+		# Shortcuts
+		ni, nj, nk = self._dims
+
+		# Allocate the Numpy arrays which will serve as stencil's
+		# inputs and outputs
+		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
+		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
+
+		# Set the computational domain
+		_domain = gt.domain.Rectangle((3, 3, 0), (ni-4, nj-4, nk-1))
+
+		# Instantiate the stencil
+		self._stencil = gt.NGStencil(
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'tnd_phi': self._tnd_phi},
+			domain=_domain,
+			mode=self._backend
+		)
+
+	def _stencil_defs(self, in_phi, gamma):
+		# Shortcuts
+		dx = self._grid.dx.to_units(self._xunits).values.item()
+		dy = self._grid.dy.to_units(self._yunits).values.item()
+
+		# Indices
+		i = gt.Index(axis=0)
+		j = gt.Index(axis=1)
+
+		# Temporary and output field
+		lap0 = gt.Equation()
+		lap1 = gt.Equation()
+		lap2 = gt.Equation()
+		tnd_phi = gt.Equation()
+
+		# Computations
+		stage_laplacian(i, j, dx, dy, in_phi, lap0)
+		stage_laplacian(i, j, dx, dy, lap0, lap1)
+		stage_laplacian(i, j, dx, dy, lap1, lap2)
+		tnd_phi[i, j] = gamma[i, j] * lap2[i, j]
+
+		return tnd_phi
+
+
+class _ThirdOrderXZ(HorizontalHyperDiffusion):
+	"""
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to third-order horizontal hyper-diffusion for any
+	three-dimensional field	with only one element along the second dimension.
+
+	Note
+	----
+	An instance of this class should only be applied to fields whose
+	dimensions match those specified at instantiation time.
+	Hence, one should use (at least) one instance per field shape.
+	"""
+	def __init__(
+		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
+		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
+		backend=gt.mode.NUMPY, dtype=datatype
+	):
+		super().__init__(
+			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
+			xaxis_units, yaxis_units, backend, dtype
+		)
+
+	def _stencil_initialize(self, dtype):
+		# Shortcuts
+		ni, nj, nk = self._dims
+
+		# Allocate the Numpy arrays which will serve as stencil's
+		# inputs and outputs
+		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
+		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
+
+		# Set the computational domain
+		_domain = gt.domain.Rectangle((3, 0, 0), (ni-4, nj-1, nk-1))
+
+		# Instantiate the stencil
+		self._stencil = gt.NGStencil(
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'tnd_phi': self._tnd_phi},
+			domain=_domain,
+			mode=self._backend
+		)
+
+	def _stencil_defs(self, in_phi, gamma):
+		# Shortcuts
+		dx = self._grid.dx.to_units(self._xunits).values.item()
+
+		# Indices
+		i = gt.Index(axis=0)
+
+		# Temporary and output field
+		lap0 = gt.Equation()
+		lap1 = gt.Equation()
+		lap2 = gt.Equation()
+		tnd_phi = gt.Equation()
+
+		# Computations
+		stage_laplacian_1d(i, dx, in_phi, lap0)
+		stage_laplacian_1d(i, dx, lap0, lap1)
+		stage_laplacian_1d(i, dx, lap1, lap2)
+		tnd_phi[i] = gamma[i] * lap2[i]
+
+		return tnd_phi
+
+
+class _ThirdOrderYZ(HorizontalHyperDiffusion):
+	"""
+	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+	to calculate the tendency due to third-order horizontal hyper-diffusion for any
+	three-dimensional field	with only one element along the first dimension.
+
+	Note
+	----
+	An instance of this class should only be applied to fields whose
+	dimensions match those specified at instantiation time.
+	Hence, one should use (at least) one instance per field shape.
+	"""
+	def __init__(
+		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
+		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
+		backend=gt.mode.NUMPY, dtype=datatype
+	):
+		super().__init__(
+			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
+			xaxis_units, yaxis_units, backend, dtype
+		)
+
+	def _stencil_initialize(self, dtype):
+		# Shortcuts
+		ni, nj, nk = self._dims
+
+		# Allocate the Numpy arrays which will serve as stencil's
+		# inputs and outputs
+		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
+		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
+
+		# Set the computational domain
+		_domain = gt.domain.Rectangle((0, 3, 0), (ni-1, nj-4, nk-1))
+
+		# Instantiate the stencil
+		self._stencil = gt.NGStencil(
+			definitions_func=self._stencil_defs,
+			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			outputs={'tnd_phi': self._tnd_phi},
+			domain=_domain,
+			mode=self._backend
+		)
+
+	def _stencil_defs(self, in_phi, gamma):
+		# Shortcuts
+		dy = self._grid.dy.to_units(self._yunits).values.item()
+
+		# Indices
+		j = gt.Index(axis=1)
+
+		# Temporary and output field
+		lap0 = gt.Equation()
+		lap1 = gt.Equation()
+		lap2 = gt.Equation()
+		tnd_phi = gt.Equation()
+
+		# Computations
+		stage_laplacian_1d(j, dy, in_phi, lap0)
+		stage_laplacian_1d(j, dy, lap0, lap1)
+		stage_laplacian_1d(j, dy, lap1, lap2)
+		tnd_phi[j] = gamma[j] * lap2[j]
 
 		return tnd_phi

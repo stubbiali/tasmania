@@ -35,7 +35,7 @@ from tasmania.python.utils.utils import \
 	smaller_than as lt, smaller_or_equal_than as le
 
 try:
-	from tasmania.namelist import datatype
+	from tasmania.conf import datatype
 except ImportError:
 	datatype = np.float32
 
@@ -133,7 +133,7 @@ class GridXYZ:
 			If :obj:`z_interface` is outside the domain.
 		"""
 		# xy-grid
-		self.xy_grid = GridXY(domain_x, nx, domain_y, ny)
+		self.xy_grid = GridXY(domain_x, nx, domain_y, ny, dtype=dtype)
 
 		# Extract z-axis properties
 		values_z  = domain_z.values
