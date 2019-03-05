@@ -48,7 +48,7 @@ def test_upwind_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.dynamics.isentropic_fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
 
 	fluxer = HorizontalIsentropicFlux.factory('upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
@@ -105,7 +105,7 @@ def test_centered_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.dynamics.isentropic_fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
 
 	fluxer = HorizontalIsentropicFlux.factory('centered', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
@@ -162,7 +162,7 @@ def test_maccormack_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.dynamics.isentropic_fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
 
 	fluxer = HorizontalIsentropicFlux.factory('maccormack', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
@@ -219,7 +219,7 @@ def test_third_order_upwind_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.dynamics.isentropic_fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
 
 	fluxer = HorizontalIsentropicFlux.factory('third_order_upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
@@ -276,7 +276,7 @@ def test_fifth_order_upwind_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.dynamics.isentropic_fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
 
 	fluxer = HorizontalIsentropicFlux.factory('fifth_order_upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,

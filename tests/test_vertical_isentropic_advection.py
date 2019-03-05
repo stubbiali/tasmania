@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.physics.isentropic_tendencies import VerticalIsentropicAdvection
+from tasmania.python.isentropic.physics.tendencies import VerticalIsentropicAdvection
 from tasmania.python.utils.data_utils import make_data_array_3d
 
 

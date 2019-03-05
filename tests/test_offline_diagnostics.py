@@ -22,7 +22,7 @@
 #
 import pytest
 
-from tasmania.python.core.offline_diagnostics import \
+from tasmania.python.framework.offline_diagnostics import \
 	FakeComponent, OfflineDiagnosticComponent, RMSD, RRMSD
 
 

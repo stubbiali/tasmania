@@ -27,8 +27,8 @@ import pytest
 from sympl._core.exceptions import InvalidStateError
 
 import gridtools as gt
-from tasmania.python.core.parallel_splitting import ParallelSplitting
-from tasmania.python.dynamics.homogeneous_isentropic_dycore import \
+from tasmania.python.framework.parallel_splitting import ParallelSplitting
+from tasmania.python.isentropic.dynamics.homogeneous_dycore import \
 	HomogeneousIsentropicDynamicalCore
 
 

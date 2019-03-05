@@ -26,7 +26,7 @@ import pytest
 
 import gridtools as gt
 from tasmania.python.core.physics_composite import TasmaniaDiagnosticComponentComposite
-from tasmania.python.physics.isentropic_diagnostics import IsentropicDiagnostics
+from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 from tasmania.python.physics.microphysics import SaturationAdjustmentKessler
 
 

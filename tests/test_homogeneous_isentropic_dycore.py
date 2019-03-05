@@ -27,13 +27,13 @@ import pytest
 from sympl import DiagnosticComponent
 
 import gridtools as gt
-from tasmania.python.core.composite import DiagnosticComponentComposite
-from tasmania.python.core.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.dynamics.homogeneous_isentropic_dycore \
+from tasmania.python.framework.composite import DiagnosticComponentComposite
+from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.isentropic.dynamics.homogeneous_dycore \
 	import HomogeneousIsentropicDynamicalCore
 from tasmania.python.physics.coriolis import ConservativeIsentropicCoriolis
-from tasmania.python.physics.isentropic_diagnostics import IsentropicDiagnostics
-from tasmania.python.physics.isentropic_tendencies import \
+from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
+from tasmania.python.isentropic.physics.tendencies import \
 	ConservativeIsentropicPressureGradient
 from tasmania.python.physics.microphysics import \
 	Kessler, SaturationAdjustmentKessler, RaindropFallVelocity, Sedimentation

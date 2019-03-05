@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.physics.isentropic_diagnostics import \
+from tasmania.python.isentropic.physics.diagnostics import \
 	IsentropicDiagnostics, IsentropicVelocityComponents
 
 
