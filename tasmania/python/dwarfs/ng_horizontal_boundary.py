@@ -94,6 +94,79 @@ class NGHorizontalBoundary:
 		pass
 
 	@abc.abstractmethod
+	def get_computational_domain(self, field, field_name=None):
+		"""
+		Parameters
+		----------
+		field : array_like
+			:class:`numpy.ndarray` representing a field defined over
+			the *physical* grid.
+		field_name : `str`, optional
+			Field name.
+
+		Return
+		------
+		array_like :
+			:class:`numpy.ndarray` representing the same field defined
+			over the *computational* grid.
+		"""
+
+	@abc.abstractmethod
+	def get_computational_state(self, state):
+		"""
+		Parameters
+		----------
+		state : dict
+			Dictionary whose keys are strings denoting model variables,
+			and whose values are :class:`sympl.DataArray`\s representing
+			fields of those variables defined over the *physical* grid.
+
+		Return
+		------
+		dict :
+			The same input model state, but defined over the *computational* grid.
+		"""
+
+	@abc.abstractmethod
+	def get_physical_domain(self, field):
+		"""
+		Parameters
+		----------
+		field : array_like
+			:class:`numpy.ndarray` representing a field defined over
+			the *computational* grid.
+
+		Return
+		------
+		array_like :
+			:class:`numpy.ndarray` representing the same field defined
+			over the *physical* grid.
+		"""
+
+	@abc.abstractmethod
+	def get_physical_state(self, state):
+		"""
+		Parameters
+		----------
+		state : dict
+			Dictionary whose keys are strings denoting model variables,
+			and whose values are :class:`sympl.DataArray`\s representing
+			fields of those variables defined over the *computational* grid.
+
+		Return
+		------
+		dict :
+			The same input model state, but defined over the *physical* grid.
+		"""
+
+	@abc.abstractmethod
+	def enforce_field(self, field, field_name=None):
+		"""
+		Enforce the horizontal boundary conditions on the passed field,
+		which is modified in-place.
+		"""
+
+	@abc.abstractmethod
 	def enforce(self, state):
 		"""
 		Enforce the horizontal boundary conditions on the passed state,
@@ -128,3 +201,48 @@ class Relaxed(NGHorizontalBoundary):
 	"""
 	Relaxed boundary conditions.
 	"""
+	def __init__(self, nx, ny, nz, nb=None, input_names=None):
+		"""
+		Parameters
+		----------
+		nx : int
+			Number of points featured by the *physical* grid
+			along the first horizontal dimension.
+		ny : int
+			Number of points featured by the *physical* grid
+			along the second horizontal dimension.
+		nz : int
+			Number of points featured by the *physical* grid
+			along the vertical dimension.
+		nb : `int`, optional
+			Number of boundary layers.
+
+		"""
+		super().__init__(nx, ny, nz, nb)
+		self.input_names = input_names
+
+	@property
+	def mi(self):
+		return self.nx
+
+	@property
+	def mj(self):
+		return self.ny
+
+	def get_computational_axis(self, paxis):
+		return paxis
+
+	def get_computational_domain(self, field, field_name=None):
+		return field
+
+	def get_computational_state(self, state):
+		return state
+
+	def get_physical_domain(self, field):
+		return field
+
+	def get_physical_state(self, state):
+		return state
+
+	def enforce_raw(self, state):
+		pass

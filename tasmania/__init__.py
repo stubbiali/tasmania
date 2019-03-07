@@ -51,6 +51,8 @@ from tasmania.python.isentropic.physics.diagnostics import \
 	IsentropicDiagnostics, IsentropicVelocityComponents
 from tasmania.python.isentropic.physics.isentropic_horizontal_diffusion import \
 	IsentropicHorizontalDiffusion
+from tasmania.python.isentropic.physics.isentropic_horizontal_smoothing import \
+	IsentropicHorizontalSmoothing
 from tasmania.python.isentropic.physics.tendencies import \
 	NonconservativeIsentropicPressureGradient, ConservativeIsentropicPressureGradient, \
 	VerticalIsentropicAdvection, PrescribedSurfaceHeating
@@ -119,6 +121,7 @@ __all__ = (
 	IsentropicDiagnostics,
 	IsentropicDynamicalCore,
 	IsentropicHorizontalDiffusion,
+	IsentropicHorizontalSmoothing,
 	IsentropicVelocityComponents,
 	Kessler,
 	LineProfile,
