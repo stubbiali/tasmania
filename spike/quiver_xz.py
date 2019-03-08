@@ -24,7 +24,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tasmania.namelist import datatype
+from tasmania.conf import datatype
 import python.utils.utils as utils
 
 def make_plot_quiver_xz(grid, state, field_to_plot, y_level, fig = None, **kwargs):

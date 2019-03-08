@@ -67,6 +67,7 @@ docker run --rm							\
 		   --mount type=bind,src=$TASMANIA_ROOT/setup.cfg,dst=/home/tasmania-user/tasmania/setup.cfg \
 		   --mount type=bind,src=$TASMANIA_ROOT/setup.py,dst=/home/tasmania-user/tasmania/setup.py \
 		   --mount type=bind,src=$TASMANIA_ROOT/tasmania/__init__.py,dst=/home/tasmania-user/tasmania/tasmania/__init__.py \
+		   --mount type=bind,src=$TASMANIA_ROOT/tasmania/conf.py,dst=/home/tasmania-user/tasmania/tasmania/conf.py \
 		   --mount type=bind,src=$TASMANIA_ROOT/tasmania/python,dst=/home/tasmania-user/tasmania/tasmania/python \
 		   --mount type=bind,src=$TASMANIA_ROOT/tests,dst=/home/tasmania-user/tasmania/tests \
 		   $IMAGE_NAME					\

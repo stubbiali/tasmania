@@ -25,7 +25,7 @@ import numpy as np
 import gridtools as gt
 from tasmania.dycore.horizontal_boundary_relaxed import RelaxedSymmetricXZ, RelaxedSymmetricYZ
 from tasmania.dycore.prognostic_isentropic_nonconservative import PrognosticIsentropicNonconservative
-from tasmania.namelist import datatype, rho_water
+from tasmania.conf import datatype, rho_water
 from tasmania.storages.grid_data import GridData
 from tasmania.storages.state_isentropic import StateIsentropic
 import python.utils.utils as utils

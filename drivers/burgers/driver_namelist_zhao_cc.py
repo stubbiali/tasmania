@@ -93,6 +93,8 @@ for i in range(nt):
 	# Step the solution
 	state.update(dycore(state, {}, dt))
 
+	state['time'] = nl.init_time + (i+1)*dt
+
 	compute_time += time.time() - compute_time_start
 
 	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):

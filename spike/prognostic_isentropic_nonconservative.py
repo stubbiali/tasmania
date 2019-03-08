@@ -26,7 +26,7 @@ import numpy as np
 import gridtools as gt
 from tasmania.dycore.flux_isentropic_nonconservative import FluxIsentropicNonconservative
 from tasmania.dycore.flux_sedimentation import FluxSedimentation
-from tasmania.namelist import datatype
+from tasmania.conf import datatype
 from tasmania.storages.state_isentropic import StateIsentropic
 import python.utils.utils as utils
 

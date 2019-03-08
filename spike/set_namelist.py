@@ -26,7 +26,7 @@ import shutil
 def set_namelist(user_namelist = None):
 	"""
 	Place the user-defined namelist module in the Python search path.
-	This is achieved by physically copying the content of the user-provided module into TASMANIA_ROOT/namelist.py.
+	This is achieved by physically copying the content of the user-provided module into TASMANIA_ROOT/conf.py.
 
 	Parameters
 	----------
@@ -41,11 +41,11 @@ def set_namelist(user_namelist = None):
 
 	if user_namelist is None: # Default case
 		src_file = os.path.join(tasmania_root, '_namelist.py')
-		dst_file = os.path.join(tasmania_root, 'namelist.py')
+		dst_file = os.path.join(tasmania_root, 'conf.py')
 		shutil.copy(src_file, dst_file)
 	else:
 		src_dir = os.curdir
 		src_file = os.path.join(src_dir, user_namelist)
-		dst_file = os.path.join(tasmania_root, 'namelist.py')
+		dst_file = os.path.join(tasmania_root, 'conf.py')
 		shutil.copy(src_file, dst_file)
 										

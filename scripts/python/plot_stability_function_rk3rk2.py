@@ -140,6 +140,8 @@ if __name__ == '__main__':
 
 	S = np.abs(E)
 
+	print('max(S) = {:5.5f}, min(S) = {:5.5f}'.format(np.max(S), np.min(S)))
+
 	fig, ax = pu.get_figure_and_axes(**figure_properties)
 	pu.make_contourf(xv, yv, S, fig, ax, **contourf_properties)
 	pu.set_axes_properties(ax, **axes_properties)

@@ -55,8 +55,7 @@ dycore = taz.BurgersDynamicalCore(
 	grid, time_units='s', intermediate_tendencies=None,
 	time_integration_scheme=nl.time_integration_scheme,
 	flux_scheme=nl.flux_scheme,
-	#boundary=hb,
-	boundary=taz.HorizontalBoundary.factory('relaxed', grid, 3),
+	boundary=hb,
 	backend=nl.backend, dtype=nl.dtype
 )
 
@@ -68,10 +67,11 @@ diff = taz.BurgersHorizontalDiffusion(
 	grid, nl.diffusion_type, nl.diffusion_coeff, nl.backend, nl.dtype
 )
 
-# Wrap the component in a SequentialUpdateSplitting object
+# Wrap the component in a TendencyStepper object
 physics = taz.SequentialUpdateSplitting({
 	'component': diff, 'time_integrator': nl.physics_time_integration_scheme, 'substeps': 1
 })
+physics._component_list[0]._bnd = taz.HorizontalBoundary.factory('relaxed', grid, 3)
 
 #============================================================
 # A NetCDF monitor
@@ -105,19 +105,12 @@ for i in range(nt):
 	# Calculate the dynamics
 	state.update(dycore(state, {}, dt))
 
+	state['time'] = nl.init_time + (i+0.5)*dt
+
 	# Calculate the physics
 	physics(state, 0.5*dt)
 
 	state['time'] = nl.init_time + (i+1)*dt
-
-	hb.enforce(
-		state['x_velocity'].values, state['x_velocity'].values,
-		field_name='x_velocity', time=state['time']
-	)
-	hb.enforce(
-		state['y_velocity'].values, state['y_velocity'].values,
-		field_name='y_velocity', time=state['time']
-	)
 
 	compute_time += time.time() - compute_time_start
 
