@@ -40,7 +40,7 @@ nz       = 60
 
 # topography
 topo_type   = 'gaussian'
-topo_time   = timedelta(seconds=1800)
+topo_time   = timedelta(seconds=0)
 topo_kwargs = {
     'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
     'topo_width_x': DataArray(50.0, attrs={'units': 'km'}),
@@ -67,7 +67,7 @@ substeps                        = 1
 physics_time_integration_scheme = 'rk2'
 
 # simulation length
-timestep = timedelta(seconds=24)
+timestep = timedelta(seconds=36)
 niter    = int(12*60*60 / timestep.total_seconds())
 
 # vertical damping
@@ -86,7 +86,7 @@ smooth_coeff_max      = 1.0  #1.0/(2*np.pi**4) * (10e3)**4/timestep.total_second
 smooth_at_every_stage = False
 
 # coriolis
-coriolis           = False
+coriolis           = True
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # output

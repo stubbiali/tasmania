@@ -62,7 +62,8 @@ hb = taz.ZhaoHorizontalBoundary(grid, nl.nb, nl.init_time, zsof)
 dycore = taz.BurgersDynamicalCore(
 	grid, time_units='s', intermediate_tendencies=None,
 	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme, boundary=hb,
+	flux_scheme=nl.flux_scheme, 
+	boundary=hb,
 	backend=nl.backend, dtype=nl.dtype
 )
 
@@ -94,6 +95,8 @@ for i in range(nt):
 
 	# Step the solution
 	state.update(dycore(state, tendencies, dt))
+
+	state['time'] = nl.init_time + (i+1)*dt
 
 	compute_time += time.time() - compute_time_start
 

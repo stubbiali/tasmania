@@ -26,7 +26,7 @@ from sympl import DataArray
 import tasmania as taz
 import time
 
-import namelist_zhao_ps as nl
+import namelist_zhao_cc as nl
 
 # ============================================================
 # The underlying grid
@@ -43,6 +43,14 @@ zsf = taz.ZhaoStateFactory(nl.diffusion_coeff)
 state = zsf(grid, nl.init_time)
 
 # ============================================================
+# The intermediate tendencies
+# ============================================================
+# Component calculating the laplacian of the velocity
+diff = taz.BurgersHorizontalDiffusion(
+	grid, nl.diffusion_type, nl.diffusion_coeff, nl.backend, nl.dtype
+)
+
+# ============================================================
 # The horizontal boundary
 # ============================================================
 zsof = taz.ZhaoSolutionFactory(nl.diffusion_coeff)
@@ -52,25 +60,12 @@ hb = taz.ZhaoHorizontalBoundary(grid, nl.nb, nl.init_time, zsof)
 # The dynamical core
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
-	grid, time_units='s', intermediate_tendencies=None,
+	grid, time_units='s', intermediate_tendencies=diff,
 	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme, boundary=hb,
+	flux_scheme=nl.flux_scheme, 
+	boundary=taz.HorizontalBoundary.factory('relaxed', grid, 3),
 	backend=nl.backend, dtype=nl.dtype
 )
-
-# ============================================================
-# The physics
-# ============================================================
-# Component calculating the laplacian of the velocity
-diff = taz.BurgersHorizontalDiffusion(
-	grid, nl.diffusion_type, nl.diffusion_coeff, nl.backend, nl.dtype
-)
-
-# Wrap the component in a ParallelSplitting object
-physics = taz.ParallelSplitting({
-	'component': diff, 'time_integrator': nl.physics_time_integration_scheme, 'substeps': 1
-})
-physics._component_list[0]._bnd = hb
 
 #============================================================
 # A NetCDF monitor
@@ -96,19 +91,23 @@ compute_time = 0.0
 for i in range(nt):
 	compute_time_start = time.time()
 
-	# Calculate the dynamics
-	state_prv = dycore(state, {}, dt)
-
-	# Calculate the physics
-	physics(state, state_prv, dt)
-
-	state.update(state_prv)
+	# Step the solution
+	state.update(dycore(state, {}, dt))
 
 	state['time'] = nl.init_time + (i+1)*dt
 
+	hb.enforce(
+		state['x_velocity'].values, state['x_velocity'].values,
+		field_name='x_velocity', time=state['time']
+	)
+	hb.enforce(
+		state['y_velocity'].values, state['y_velocity'].values,
+		field_name='y_velocity', time=state['time']
+	)
+
 	compute_time += time.time() - compute_time_start
 
-	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i == nt-1:
+	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
 		dx = grid.dx.to_units('m').values.item()
 		dy = grid.dy.to_units('m').values.item()
 

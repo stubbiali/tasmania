@@ -54,7 +54,8 @@ hb = taz.ZhaoHorizontalBoundary(grid, nl.nb, nl.init_time, zsof)
 dycore = taz.BurgersDynamicalCore(
 	grid, time_units='s', intermediate_tendencies=None,
 	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme, boundary=hb,
+	flux_scheme=nl.flux_scheme, 
+	boundary=hb,
 	backend=nl.backend, dtype=nl.dtype
 )
 
@@ -70,6 +71,7 @@ diff = taz.BurgersHorizontalDiffusion(
 physics = taz.SequentialUpdateSplitting({
 	'component': diff, 'time_integrator': nl.physics_time_integration_scheme, 'substeps': 1
 })
+physics._component_list[0]._bnd = taz.HorizontalBoundary.factory('relaxed', grid, 3)
 
 #============================================================
 # A NetCDF monitor
@@ -103,16 +105,7 @@ for i in range(nt):
 	# Calculate the physics
 	physics(state, dt)
 
-	assert state['time'] == nl.init_time + (i+1)*dt
-
-	#hb.enforce(
-	#	state['x_velocity'].values, state['x_velocity'].values,
-	#	field_name='x_velocity', time=state['time']
-	#)
-	#hb.enforce(
-	#	state['y_velocity'].values, state['y_velocity'].values,
-	#	field_name='y_velocity', time=state['time']
-	#)
+	#assert state['time'] == nl.init_time + (i+1)*dt
 
 	compute_time += time.time() - compute_time_start
 

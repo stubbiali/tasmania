@@ -25,7 +25,7 @@
 # User-customed code
 #==================================================
 REMOTE=daint
-REMOTE_ROOT=/project/s299/subbiali/tasmania
+REMOTE_ROOT=/project/s299/subbiali/tasmania-restyling
 
 #==================================================
 # Case-independent code
