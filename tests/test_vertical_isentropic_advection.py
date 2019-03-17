@@ -25,7 +25,7 @@ import pytest
 
 import gridtools as gt
 from tasmania.python.isentropic.physics.tendencies import VerticalIsentropicAdvection
-from tasmania.python.utils.data_utils import make_data_array_3d
+from tasmania.python.utils.data_utils import make_dataarray_3d
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -71,7 +71,7 @@ def test_upwind(isentropic_moist_data):
 
 	w  = np.random.rand(grid.nx, grid.ny, grid.nz)
 	wm = 0.5 * (w[:, :, 1:] + w[:, :, :-1])
-	state['tendency_of_air_potential_temperature'] = make_data_array_3d(w, grid, 'K s^-1')
+	state['tendency_of_air_potential_temperature'] = make_dataarray_3d(w, grid, 'K s^-1')
 
 	s  = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values[...]
 	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values[...]
@@ -154,7 +154,7 @@ def test_upwind(isentropic_moist_data):
 
 	w  = np.random.rand(grid.nx, grid.ny, grid.nz+1)
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
-		make_data_array_3d(w, grid, 'K s^-1')
+		make_dataarray_3d(w, grid, 'K s^-1')
 
 	tendencies, diagnostics = fluxer(state)
 
@@ -243,7 +243,7 @@ def test_centered(isentropic_moist_data):
 
 	w  = np.random.rand(grid.nx, grid.ny, grid.nz)
 	wm = 0.5 * (w[:, :, 1:] + w[:, :, :-1])
-	state['tendency_of_air_potential_temperature'] = make_data_array_3d(w, grid, 'K s^-1')
+	state['tendency_of_air_potential_temperature'] = make_dataarray_3d(w, grid, 'K s^-1')
 
 	s   = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values[...]
 	su  = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values[...]
@@ -326,7 +326,7 @@ def test_centered(isentropic_moist_data):
 
 	w  = np.random.rand(grid.nx, grid.ny, grid.nz+1)
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
-		make_data_array_3d(w, grid, 'K s^-1')
+		make_dataarray_3d(w, grid, 'K s^-1')
 
 	tendencies, diagnostics = fluxer(state)
 
@@ -409,7 +409,7 @@ def test_third_order_upwind(isentropic_moist_data):
 
 	w  = np.random.rand(grid.nx, grid.ny, grid.nz+1)
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
-		make_data_array_3d(w, grid, 'K s^-1')
+		make_dataarray_3d(w, grid, 'K s^-1')
 
 	s   = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values[...]
 	su  = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values[...]
@@ -520,7 +520,7 @@ def test_fifth_order_upwind(isentropic_moist_data):
 
 	w  = np.random.rand(grid.nx, grid.ny, grid.nz+1)
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
-		make_data_array_3d(w, grid, 'K s^-1')
+		make_dataarray_3d(w, grid, 'K s^-1')
 
 	s   = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values[...]
 	su  = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values[...]

@@ -33,7 +33,7 @@ from sympl._core.base_components import InputChecker, DiagnosticChecker
 from sympl._core.get_np_arrays import get_numpy_arrays_with_properties
 from sympl._core.restore_dataarray import restore_data_arrays_with_properties
 
-from tasmania.python.grids.grid_xyz import GridXYZ as GridType
+from tasmania.python.grids.grid import Grid as GridType
 from tasmania.python.utils.utils import assert_sequence
 
 

@@ -29,7 +29,7 @@ import numpy as np
 from sympl import DataArray
 
 from tasmania.python.utils.data_utils import \
-	get_physical_constants, make_data_array_2d, make_data_array_3d
+	get_physical_constants, make_dataarray_2d, make_dataarray_3d
 
 try:
 	from tasmania.conf import datatype
@@ -109,39 +109,39 @@ def get_default_isentropic_state(
 	state = {
 		'time': time,
 		'air_isentropic_density':
-			make_data_array_3d(
+			make_dataarray_3d(
 				s, grid, 'kg m^-2 K^-1', name='air_isentropic_density'
 			),
 		'air_pressure_on_interface_levels':
-			make_data_array_3d(
+			make_dataarray_3d(
 				p, grid, 'Pa', name='air_pressure_on_interface_levels'
 			),
 		'exner_function_on_interface_levels':
-			make_data_array_3d(
+			make_dataarray_3d(
 				exn, grid, 'J K^-1 kg^-1', name='exner_function_on_interface_levels'
 			),
 		'height_on_interface_levels':
-			make_data_array_3d(
+			make_dataarray_3d(
 				h, grid, 'm', name='height_on_interface_levels'
 			),
 		'montgomery_potential':
-			make_data_array_3d(
+			make_dataarray_3d(
 				mtg, grid, 'J kg^-1', name='montgomery_potential'
 			),
 		'x_momentum_isentropic':
-			make_data_array_3d(
+			make_dataarray_3d(
 				su, grid, 'kg m^-1 K^-1 s^-1', name='x_momentum_isentropic'
 			),
 		'x_velocity_at_u_locations':
-			make_data_array_3d(
+			make_dataarray_3d(
 				u, grid, 'm s^-1', name='x_velocity_at_u_locations'
 			),
 		'y_momentum_isentropic':
-			make_data_array_3d(
+			make_dataarray_3d(
 				sv, grid, 'kg m^-1 K^-1 s^-1', name='y_momentum_isentropic'
 			),
 		'y_velocity_at_v_locations':
-			make_data_array_3d(
+			make_dataarray_3d(
 				v, grid, 'm s^-1', name='y_velocity_at_v_locations'
 			),
 	}
@@ -149,20 +149,20 @@ def get_default_isentropic_state(
 	if moist:
 		# Diagnose the air density and temperature
 		rho  = s * dz / (h[:, :, :-1] - h[:, :, 1:])
-		state['air_density'] = make_data_array_3d(rho, grid, 'kg m^-3', name='air_density')
+		state['air_density'] = make_dataarray_3d(rho, grid, 'kg m^-3', name='air_density')
 		temp = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:]) * theta / cp
-		state['air_temperature'] = make_data_array_3d(temp, grid, 'K', name='air_temperature')
+		state['air_temperature'] = make_dataarray_3d(temp, grid, 'K', name='air_temperature')
 
 		# Initialize the relative humidity
 		rhmax, L, kc = 0.98, 10, 11
 		k  = (nz-1) - np.arange(kc-L+1, kc+L)
 		rh = np.zeros((nx, ny, nz), dtype=dtype)
 		rh[:, :, k] = rhmax * (np.cos(abs(k - kc) * np.pi / (2. * L)))**2
-		rh_ = make_data_array_3d(rh, grid, '1')
+		rh_ = make_dataarray_3d(rh, grid, '1')
 
 		# Interpolate the pressure at the main levels
 		p_unstg = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
-		p_unstg_ = make_data_array_3d(p_unstg, grid, 'Pa')
+		p_unstg_ = make_dataarray_3d(p_unstg, grid, 'Pa')
 
 		# Diagnose the mass fraction fo water vapor
 		from tasmania.python.utils.meteo_utils import \
@@ -170,21 +170,21 @@ def get_default_isentropic_state(
 		qv = convert_relative_humidity_to_water_vapor(
 			'goff_gratch', p_unstg_, state['air_temperature'], rh_
 		)
-		state[mf_wv]  = make_data_array_3d(qv, grid, 'g g^-1', name=mf_wv)
+		state[mf_wv]  = make_dataarray_3d(qv, grid, 'g g^-1', name=mf_wv)
 
 		# Initialize the mass fraction of cloud liquid water and precipitation water
 		qc = np.zeros((nx, ny, nz), dtype=dtype)
-		state[mf_clw] = make_data_array_3d(qc, grid, 'g g^-1', name=mf_clw)
+		state[mf_clw] = make_dataarray_3d(qc, grid, 'g g^-1', name=mf_clw)
 		qr = np.zeros((nx, ny, nz), dtype=dtype)
-		state[mf_pw]  = make_data_array_3d(qr, grid, 'g g^-1', name=mf_pw)
+		state[mf_pw]  = make_dataarray_3d(qr, grid, 'g g^-1', name=mf_pw)
 
 		# Precipitation and accumulated precipitation
 		if precipitation:
-			state['precipitation'] = make_data_array_2d(
+			state['precipitation'] = make_dataarray_2d(
 				np.zeros((nx, ny), dtype=dtype), grid, 'mm hr^-1',
 				name='precipitation'
 			)
-			state['accumulated_precipitation'] = make_data_array_2d(
+			state['accumulated_precipitation'] = make_dataarray_2d(
 				np.zeros((nx, ny), dtype=dtype), grid, 'mm',
 				name='accumulated_precipitation'
 			)
@@ -245,39 +245,39 @@ def get_isothermal_isentropic_state(
 	state = {
 		'time': time,
 		'air_isentropic_density':
-			make_data_array_3d(
+			make_dataarray_3d(
 				s, grid, 'kg m^-2 K^-1', name='air_isentropic_density'
 			),
 		'air_pressure_on_interface_levels':
-			make_data_array_3d(
+			make_dataarray_3d(
 				p, grid, 'Pa', name='air_pressure_on_interface_levels'
 			),
 		'exner_function_on_interface_levels':
-			make_data_array_3d(
+			make_dataarray_3d(
 				exn, grid, 'J K^-1 kg^-1', name='exner_function_on_interface_levels'
 			),
 		'height_on_interface_levels':
-			make_data_array_3d(
+			make_dataarray_3d(
 				h, grid, 'm', name='height_on_interface_levels'
 			),
 		'montgomery_potential':
-			make_data_array_3d(
+			make_dataarray_3d(
 				mtg, grid, 'J kg^-1', name='montgomery_potential'
 			),
 		'x_momentum_isentropic':
-			make_data_array_3d(
+			make_dataarray_3d(
 				su, grid, 'kg m^-1 K^-1 s^-1', name='x_momentum_isentropic'
 			),
 		'x_velocity_at_u_locations':
-			make_data_array_3d(
+			make_dataarray_3d(
 				u, grid, 'm s^-1', name='x_velocity_at_u_locations'
 			),
 		'y_momentum_isentropic':
-			make_data_array_3d(
+			make_dataarray_3d(
 				sv, grid, 'kg m^-1 K^-1 s^-1', name='y_momentum_isentropic'
 			),
 		'y_velocity_at_v_locations':
-			make_data_array_3d(
+			make_dataarray_3d(
 				v, grid, 'm s^-1', name='y_velocity_at_v_locations'
 			),
 	}
@@ -285,20 +285,20 @@ def get_isothermal_isentropic_state(
 	if moist:
 		# Diagnose the air density and temperature
 		rho  = s * dz / (h[:, :, :-1] - h[:, :, 1:])
-		state['air_density'] = make_data_array_3d(rho, grid, 'kg m^-3', name='air_density')
+		state['air_density'] = make_dataarray_3d(rho, grid, 'kg m^-3', name='air_density')
 		temp = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:]) * theta / cp
-		state['air_temperature'] = make_data_array_3d(temp, grid, 'K', name='air_temperature')
+		state['air_temperature'] = make_dataarray_3d(temp, grid, 'K', name='air_temperature')
 
 		# Initialize the relative humidity
 		rhmax, L, kc = 0.98, 10, 11
 		k  = (nz-1) - np.arange(kc-L+1, kc+L)
 		rh = np.zeros((nx, ny, nz), dtype=dtype)
 		rh[:, :, k] = rhmax * (np.cos(abs(k - kc) * np.pi / (2. * L)))**2
-		rh_ = make_data_array_3d(rh, grid, '1')
+		rh_ = make_dataarray_3d(rh, grid, '1')
 
 		# Interpolate the pressure at the main levels
 		p_unstg = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
-		p_unstg_ = make_data_array_3d(p_unstg, grid, 'Pa')
+		p_unstg_ = make_dataarray_3d(p_unstg, grid, 'Pa')
 
 		# Diagnose the mass fraction fo water vapor
 		from tasmania.python.utils.meteo_utils import \
@@ -306,21 +306,21 @@ def get_isothermal_isentropic_state(
 		qv = convert_relative_humidity_to_water_vapor(
 			'goff_gratch', p_unstg_, state['air_temperature'], rh_
 		)
-		state[mf_wv]  = make_data_array_3d(qv, grid, 'g g^-1', name=mf_wv)
+		state[mf_wv]  = make_dataarray_3d(qv, grid, 'g g^-1', name=mf_wv)
 
 		# Initialize the mass fraction of cloud liquid water and precipitation water
 		qc = np.zeros((nx, ny, nz), dtype=dtype)
-		state[mf_clw] = make_data_array_3d(qc, grid, 'g g^-1', name=mf_clw)
+		state[mf_clw] = make_dataarray_3d(qc, grid, 'g g^-1', name=mf_clw)
 		qr = np.zeros((nx, ny, nz), dtype=dtype)
-		state[mf_pw]  = make_data_array_3d(qr, grid, 'g g^-1', name=mf_pw)
+		state[mf_pw]  = make_dataarray_3d(qr, grid, 'g g^-1', name=mf_pw)
 
 		# Precipitation and accumulated precipitation
 		if precipitation:
-			state['precipitation'] = make_data_array_2d(
+			state['precipitation'] = make_dataarray_2d(
 				np.zeros((nx, ny), dtype=dtype), grid, 'mm hr^-1',
 				name='precipitation'
 			)
-			state['accumulated_precipitation'] = make_data_array_2d(
+			state['accumulated_precipitation'] = make_dataarray_2d(
 				np.zeros((nx, ny), dtype=dtype), grid, 'mm',
 				name='accumulated_precipitation'
 			)

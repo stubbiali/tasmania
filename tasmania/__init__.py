@@ -22,16 +22,16 @@
 #
 # burgers
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
-from tasmania.python.burgers.dynamics.horizontal_boundary import ZhaoHorizontalBoundary
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 # dwarfs
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 # framework
+from tasmania.python.framework.base_components import \
+	DiagnosticComponent, ImplicitTendencyComponent, Stepper, TendencyComponent
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.dycore import DynamicalCore
@@ -40,9 +40,13 @@ from tasmania.python.framework.offline_diagnostics import \
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.framework.sequential_splitting import SequentialUpdateSplitting
 # grids
-from tasmania.python.grids.grid_xy import GridXY
-from tasmania.python.grids.grid_xyz import GridXYZ
-from tasmania.python.grids.grid_xz import GridXZ
+from tasmania.python.grids.domain import Domain
+from tasmania.python.grids.grid import Grid, PhysicalGrid, ComputationalGrid
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_grid import \
+	HorizontalGrid, PhysicalHorizontalGrid, ComputationalHorizontalGrid
+from tasmania.python.grids.topography import \
+	Topography, PhysicalTopography, ComputationalTopography
 # isentropic
 from tasmania.python.isentropic.dynamics.homogeneous_dycore import \
 	HomogeneousIsentropicDynamicalCore
@@ -75,7 +79,7 @@ from tasmania.python.plot.quiver import Quiver
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 # utilities
 from tasmania.python.utils.data_utils import \
-	make_data_array_2d, make_data_array_3d, make_raw_state, make_state
+	make_dataarray_2d, make_dataarray_3d, make_raw_state, make_state
 from tasmania.python.utils.dict_utils import \
 	add as dict_add, subtract as dict_subtract, multiply as dict_scale, copy as dict_update
 from tasmania.python.utils.meteo_utils import get_isothermal_isentropic_analytical_solution
@@ -92,13 +96,18 @@ __all__ = (
 	BurgersDynamicalCore,
 	BurgersHorizontalDiffusion,
 	Circle,
+	ComputationalGrid,
+	ComputationalHorizontalGrid,
+	ComputationalTopography,
 	ConcurrentCoupling,
 	ConservativeIsentropicCoriolis,
 	ConservativeIsentropicPressureGradient,
 	ConstantNotFoundError,
 	Contour,
 	Contourf,
+	DiagnosticComponent,
 	DiagnosticComponentComposite,
+	Domain,
 	dict_add,
 	dict_scale,
 	dict_subtract,
@@ -109,15 +118,14 @@ __all__ = (
 	get_isothermal_isentropic_analytical_solution,
 	get_isothermal_isentropic_state,
 	get_time_string,
-	GridXY,
-	GridXYZ,
-	GridXZ,
+	Grid,
 	HomogeneousIsentropicDynamicalCore,
-	HorizontalBoundary,
 	HorizontalDiffusion,
+	HorizontalGrid,
 	HorizontalHyperDiffusion,
 	HorizontalSmoothing,
 	HovmollerDiagram,
+	ImplicitTendencyComponent,
 	IsentropicDiagnostics,
 	IsentropicDynamicalCore,
 	IsentropicHorizontalDiffusion,
@@ -126,14 +134,18 @@ __all__ = (
 	Kessler,
 	LineProfile,
 	load_netcdf_dataset,
-	make_data_array_2d,
-	make_data_array_3d,
+	make_dataarray_2d,
+	make_dataarray_3d,
 	make_raw_state,
 	make_state,
 	NetCDFMonitor,
+	HorizontalBoundary,
 	NonconservativeIsentropicPressureGradient,
 	OfflineDiagnosticComponent,
 	ParallelSplitting,
+	PhysicalGrid,
+	PhysicalHorizontalGrid,
+	PhysicalTopography,
 	Plot,
 	PlotComposite,
 	PrescribedSurfaceHeating,
@@ -147,11 +159,13 @@ __all__ = (
 	SequentialUpdateSplitting,
 	set_axes_properties,
 	set_figure_properties,
+	Stepper,
+	TendencyComponent,
 	TimeInconsistencyError,
 	TimeSeries,
+	Topography,
 	VerticalDamping,
 	VerticalIsentropicAdvection,
-	ZhaoHorizontalBoundary,
 	ZhaoSolutionFactory,
 	ZhaoStateFactory,
 )

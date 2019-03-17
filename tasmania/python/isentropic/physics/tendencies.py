@@ -31,7 +31,7 @@ import numpy as np
 from sympl import DataArray, TendencyComponent
 
 import gridtools as gt
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.isentropic.dynamics.fluxes import VerticalHomogeneousIsentropicFlux
 from tasmania.python.utils.data_utils import get_physical_constants
 

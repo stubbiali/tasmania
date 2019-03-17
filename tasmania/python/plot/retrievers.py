@@ -23,7 +23,7 @@
 import numpy as np
 from sympl._core.units import clean_units
 
-from tasmania.python.grids.grid_xyz import GridXYZ as GridType
+from tasmania.python.grids.grid import Grid as GridType
 from tasmania.python.plot.utils import to_units
 
 

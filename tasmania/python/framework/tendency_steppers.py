@@ -39,7 +39,7 @@ from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputC
 from sympl._core.units import clean_units
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.utils.dict_utils import add, multiply
 from tasmania.python.utils.utils import assert_sequence
 

@@ -26,7 +26,7 @@ Script for testing the classes StateIsentropicNonconservative and StateIsentropi
 from datetime import datetime
 import numpy as np
 
-from python.grids.grid_xyz import GridXYZ
+from python.grids.grid import GridXYZ
 from storages.grid_data import GridData
 from storages.state_isentropic_nonconservative import StateIsentropicNonconservative
 from storages.state_isentropic_conservative import StateIsentropicConservative

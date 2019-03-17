@@ -20,11 +20,15 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	BurgersHorizontalDiffusion
+"""
 import numpy as np
-from sympl import TendencyComponent
 
 import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
+from tasmania.python.framework.base_components import TendencyComponent
 
 try:
 	from tasmania.conf import datatype
@@ -33,23 +37,51 @@ except ImportError:
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):
+	"""
+	A :class:`tasmania.TendencyComponent` calculating the tendencies
+	due to diffusion for the 2-D Burgers equations.
+	"""
 	def __init__(
-		self, grid, diffusion_type, diffusion_coeff,
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, domain, grid_type, diffusion_type, diffusion_coeff,
+		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
 	):
-		assert grid.nz == 1
+		"""
+		Parameters
+		----------
+		domain : tasmania.Domain
+			The domain.
+		grid_type : str
+			The type of grid over which instantiating the class. Either:
 
-		self._grid = grid
+				* 'physical';
+				* 'computational'.
 
-		super().__init__()
+		diffusion_type : str
+			String specifying the desired type of horizontal diffusion.
+			See :class:`tasmania.HorizontalDiffusion` for all available options.
+		diffusion_coeff : sympl.DataArray
+			1-item :class:`sympl.DataArray` representing the diffusion
+			coefficient. The units should be compatible with 'm^2 s^-1'.
+		backend : `obj`, optional
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated within
+			this class.
+		kwargs :
+			Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
+		"""
+		super().__init__(domain, grid_type, **kwargs)
 
-		nx, ny = grid.nx, grid.ny
+		nx, ny = self.grid.grid_xy.nx, self.grid.grid_xy.ny
+		dx = self.grid.grid_xy.dx.to_units('m').values.item()
+		dy = self.grid.grid_xy.dy.to_units('m').values.item()
 
 		self._diffuser = HorizontalDiffusion.factory(
-			diffusion_type, (nx, ny, 1), grid, diffusion_damp_depth=0,
+			diffusion_type, (nx, ny, 1), dx, dy,
 			diffusion_coeff=diffusion_coeff.to_units('m^2 s^-1').values.item(),
 			diffusion_coeff_max=diffusion_coeff.to_units('m^2 s^-1').values.item(),
-			xaxis_units='m', yaxis_units='m', backend=backend, dtype=dtype
+			diffusion_damp_depth=0,  #nb = self.horizotal_boundary.nb
+			backend=backend, dtype=dtype
 		)
 
 		self._out_u = np.zeros((nx, ny, 1), dtype=dtype)
@@ -57,8 +89,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
 	@property
 	def input_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
-
+		g = self.grid
+		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
 		return {
 			'x_velocity': {'dims': dims, 'units': 'm s^-1'},
 			'y_velocity': {'dims': dims, 'units': 'm s^-1'},
@@ -66,8 +98,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
 	@property
 	def tendency_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
-
+		g = self.grid
+		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
 		return {
 			'x_velocity': {'dims': dims, 'units': 'm s^-2'},
 			'y_velocity': {'dims': dims, 'units': 'm s^-2'},

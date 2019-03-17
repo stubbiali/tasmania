@@ -20,6 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	BurgersDynamicalCore(DynamicalCore)
+"""
 import gridtools as gt
 from tasmania.conf import datatype
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
@@ -27,29 +31,65 @@ from tasmania.python.framework.dycore import DynamicalCore
 
 
 class BurgersDynamicalCore(DynamicalCore):
+	"""
+	The dynamical core for the inviscid 2-D Burgers equations.
+	"""
 	def __init__(
-		self, grid, time_units, intermediate_tendencies=None,
+		self, domain, intermediate_tendencies=None,
 		time_integration_scheme='forward_euler', flux_scheme='upwind',
-		boundary=None, backend=gt.mode.NUMPY, dtype=datatype
+		backend=gt.mode.NUMPY, dtype=datatype
 	):
-		assert grid.nz == 1
+		"""
+		Parameters
+		----------
+		domain : tasmania.Domain
+			The underlying domain.
+		intermediate_tendencies : `obj`, optional
+			An instance of either
 
+				* :class:`sympl.TendencyComponent`,
+				* :class:`sympl.TendencyComponentComposite`,
+				* :class:`sympl.ImplicitTendencyComponent`,
+				* :class:`sympl.ImplicitTendencyComponentComposite`, or
+				* :class:`tasmania.ConcurrentCoupling`
+
+			calculating the intermediate physical tendencies.
+			Here, *intermediate* refers to the fact that these physical
+			packages are called *before* each stage of the dynamical core
+			to calculate the physical tendencies.
+		time_integration_scheme : `str`, optional
+			String specifying the time integration scheme to be used.
+			Defaults to 'forward_euler'. See :class:`tasmania.BurgersStepper`
+			for all available options.
+		flux_scheme : `str`, optional
+			String specifying the advective flux scheme to be used.
+			Defaults to 'upwind'. See :class:`tasmania.BurgersAdvection`
+			for all available options.
+		backend : `str`, optional
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated within
+			this class.
+		"""
 		super().__init__(
-			grid, time_units, intermediate_tendencies,
+			domain, grid_type='computational', time_units='s',
+			intermediate_tendencies=intermediate_tendencies,
 			intermediate_diagnostics=None, substeps=0,
 			fast_tendencies=None, fast_diagnostics=None
 		)
 
-		self._boundary = boundary
+		assert self.grid.nz == 1, \
+			'The number grid points along the vertical dimension must be 1.'
 
 		self._stepper = BurgersStepper.factory(
-			time_integration_scheme, grid, flux_scheme, boundary,
-			backend, dtype
+			time_integration_scheme, self.grid.grid_xy, self.horizontal_boundary.nb,
+			flux_scheme, backend, dtype
 		)
 
 	@property
 	def _input_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
+		g = self.grid
+		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
 		return {
 			'x_velocity': {'dims': dims, 'units': 'm s^-1'},
 			'y_velocity': {'dims': dims, 'units': 'm s^-1'},
@@ -61,7 +101,8 @@ class BurgersDynamicalCore(DynamicalCore):
 
 	@property
 	def _tendency_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
+		g = self.grid
+		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
 		return {
 			'x_velocity': {'dims': dims, 'units': 'm s^-2'},
 			'y_velocity': {'dims': dims, 'units': 'm s^-2'},
@@ -73,7 +114,8 @@ class BurgersDynamicalCore(DynamicalCore):
 
 	@property
 	def _output_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
+		g = self.grid
+		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
 		return {
 			'x_velocity': {'dims': dims, 'units': 'm s^-1'},
 			'y_velocity': {'dims': dims, 'units': 'm s^-1'},
@@ -91,45 +133,14 @@ class BurgersDynamicalCore(DynamicalCore):
 		return 1
 
 	def array_call(self, stage, raw_state, raw_tendencies, timestep):
-		raw_state_cd = {
-			'time': raw_state['time'],
-			'x_velocity':
-				self._boundary.from_physical_to_computational_domain(raw_state['x_velocity']),
-			'y_velocity':
-				self._boundary.from_physical_to_computational_domain(raw_state['y_velocity']),
-		}
+		out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
-		raw_tendencies_cd = {'time': raw_tendencies.get('time', raw_state['time'])}
-		if 'x_velocity' in raw_tendencies:
-			raw_tendencies_cd['x_velocity'] = \
-				self._boundary.from_physical_to_computational_domain(
-					raw_tendencies['x_velocity']
-				)
-		if 'y_velocity' in raw_tendencies:
-			raw_tendencies_cd['y_velocity'] = \
-				self._boundary.from_physical_to_computational_domain(
-					raw_tendencies['y_velocity']
-				)
-
-		out_state_cd = self._stepper(stage, raw_state_cd, raw_tendencies_cd, timestep)
-
-		out_state = {
-			'time': out_state_cd['time'],
-			'x_velocity': self._boundary.from_computational_to_physical_domain(
-				out_state_cd['x_velocity'], (self._grid.nx, self._grid.ny, self._grid.nz)
-			),
-			'y_velocity': self._boundary.from_computational_to_physical_domain(
-				out_state_cd['y_velocity'], (self._grid.nx, self._grid.ny, self._grid.nz)
-			),
-		}
-
-		self._boundary.enforce(
-			out_state['x_velocity'], raw_state['x_velocity'],
-			field_name='x_velocity', time=out_state['time']
-		)
-		self._boundary.enforce(
-			out_state['y_velocity'], raw_state['y_velocity'],
-			field_name='y_velocity', time=out_state['time']
+		self.horizontal_boundary.enforce_raw(
+			out_state,
+			field_properties={
+				'x_velocity': {'units': 'm s^-1'},
+				'y_velocity': {'units': 'm s^-1'},
+			}
 		)
 
 		return out_state
@@ -138,4 +149,4 @@ class BurgersDynamicalCore(DynamicalCore):
 		self, stage, substep, raw_state, raw_stage_state, raw_tmp_state,
 		raw_tendencies, timestep
 	):
-		pass
+		raise NotImplementedError()

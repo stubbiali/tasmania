@@ -31,7 +31,7 @@ from sympl import DataArray, DiagnosticComponent
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as Helper, HorizontalVelocity
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 try:
 	from tasmania.conf import datatype

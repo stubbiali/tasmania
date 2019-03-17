@@ -23,7 +23,7 @@
 """
 Test GridXYZ.
 """
-from python.grids.grid_xyz import GridXYZ
+from python.grids.grid import GridXYZ
 
 domain_x, nx = [-5., 5,], 101
 domain_y, ny = [-5., 5.], 101

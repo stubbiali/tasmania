@@ -31,7 +31,7 @@ import numpy as np
 from sympl import DataArray
 
 from tasmania.python.utils.data_utils import \
-	get_physical_constants, make_data_array_3d
+	get_physical_constants, make_dataarray_3d
 
 try:
 	from tasmania.conf import datatype
@@ -164,9 +164,9 @@ def get_isothermal_isentropic_analytical_solution(
 
 	# Compute the horizontal and vertical velocity
 	u_ = u_bar * (1. - drho_bar_dtheta * d / (dz_dtheta * rho_bar) - dd_dz)
-	u  = make_data_array_3d(u_[:, np.newaxis, :], grid, 'm s^-1')
+	u  = make_dataarray_3d(u_[:, np.newaxis, :], grid, 'm s^-1')
 	w_ = u_bar * dd_dx
-	w  = make_data_array_3d(w_[:, np.newaxis, :], grid, 'm s^-1')
+	w  = make_dataarray_3d(w_[:, np.newaxis, :], grid, 'm s^-1')
 
 	return u, w
 

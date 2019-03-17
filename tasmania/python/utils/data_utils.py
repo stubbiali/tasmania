@@ -22,70 +22,15 @@
 #
 """
 This module contains:
-	add
-	subtract
-	scale
 	get_constant
-	get_numpy_arrays
 	get_physical_constants
 	make_raw_state
 	make_state
-	make_data_array_2d
-	make_data_array_3d
+	make_dataarray_2d
+	make_dataarray_3d
 """
 import numpy as np
 from sympl import DataArray
-
-from tasmania.python.grids.grid_xy import GridXY
-from tasmania.python.grids.grid_xz import GridXZ
-from tasmania.python.grids.grid_xyz import GridXYZ
-
-
-def get_numpy_arrays(state, indices, *args):
-	"""
-	Given a dictionary of :class:`xarray.DataArray`\s and a set of keys,
-	extract the corresponding :class:`numpy.ndarray`\s.
-
-	Parameters
-	----------
-	state : dict
-		A dictionary of :class:`xarray.DataArray`\s.
-	indices : tuple
-		Tuple of indices or slices identifying the portion of each
-		:class:`xarray.DataArray` to be extracted.
-	*args : `str` or `tuple of str`
-		Each optional positional argument may be either a strings,
-		specifying the variable to extract, or a tuple of aliases for the variable.
-
-	Return
-	------
-	array_like or list:
-		The desired :class:`numpy.ndarray`, or a list collecting the desired
-		:class:`numpy.ndarray`\s.
-
-	Raises
-	------
-	KeyError :
-		If a variable which should be extracted is not included in the input dictionary.
-	"""
-	raw_state = []
-
-	for key in args:
-		if type(key) is str: 				# key represents the name of the variable
-			if key not in state.keys():
-				raise KeyError('Variable {} not included in the input dictionary.'
-							   .format(key))
-			raw_state.append(state[key].values[indices])
-		elif type(key) in [tuple, list]: 	# key represents a set of aliases
-			for i, alias in enumerate(key):
-				if state.get(alias) is not None:
-					raw_state.append(state[alias].values[indices])
-					break
-				elif i == len(key)-1:
-					raise KeyError('None of the aliases {} is included in the '
-								   'input dictionary.'.format(key))
-
-	return raw_state if len(raw_state) > 1 else raw_state[0]
 
 
 def get_constant(name, units, default_value=None):
@@ -173,72 +118,77 @@ def get_physical_constants(default_physical_constants, physical_constants=None):
 	return raw_physical_constants
 
 
-def make_data_array_2d(raw_array, grid, units, name=None):
+def make_dataarray_2d(raw_array, grid, units, name=None):
 	"""
 	Create a :class:`sympl.DataArray` out of a 2-D :class:`numpy.ndarray`.
 
 	Parameters
 	----------
-	raw_array : array_like
-		2-D :class:`numpy.ndarray` storing the variable data.
-	grid : grid
-		The underlying grid, as an instance of \
-		:class:`~tasmania.grids.grid_xy.GridXY`, \
-		:class:`~tasmania.grids.grid_xz.GridXZ`, \
-		:class:`~tasmania.grids.grid_xyz.GridXYZ`, \
-		or one of their derived classes.
+	raw_array : numpy.ndarray
+		2-D :class:`numpy.ndarray` storing the field values.
+	grid : tasmania.HorizontalGrid
+		The underlying horizontal grid.
 	units : str
-		String indicating the variable units.
+		The variable units.
 	name : `str`, optional
-		String indicating the variable name. Defaults to :obj:`None`.
+		The variable name. Defaults to :obj:`None`.
 
 	Return
 	------
-	dataarray_like :
+	sympl.DataArray :
 		The :class:`sympl.DataArray` whose value array is :obj:`raw_array`,
 		whose coordinates and dimensions are retrieved from :obj:`grid`,
 		and whose units are :obj:`units`.
-
-	Raises
-	------
-	ValueError:
-		If :obj:`raw_array` is not 2-D.
-	TypeError :
-		If :obj:`grid` is not an instance of
-		:class:`~tasmania.grids.grid_xy.GridXY`,
-		:class:`~tasmania.grids.grid_xz.GridXZ`,
-		:class:`~tasmania.grids.grid_xyz.GridXYZ`, \
-		nor one of their derived classes.
 	"""
-	if len(raw_array.shape) != 2:
-		raise ValueError('raw_array should be 2-D.')
-
-	if isinstance(grid, GridXY) or isinstance(grid, GridXYZ):
-		return _make_data_array_xy(raw_array, grid, units, name)
-	elif isinstance(grid, GridXZ):
-		return _make_data_array_xz(raw_array, grid, units, name)
-	else:
-		raise TypeError(
-			'grid should be an instance of GridXY, GridXZ, GridXYZ'
-			'or one of their derived classes.'
+	nx, ny = grid.nx, grid.ny
+	try:
+		ni, nj = raw_array.shape
+	except ValueError:
+		raise ValueError(
+			'Expected a 2-D array, got a {}-D one.'.format(len(raw_array.shape))
 		)
 
+	if ni == nx:
+		x = grid.x
+	elif ni == nx+1:
+		x = grid.x_at_u_locations
+	else:
+		raise ValueError(
+			'The array extent in the x-direction is {} but either '
+			'{} or {} was expected.'.format(ni, nx, nx+1)
+		)
 
-def make_data_array_3d(raw_array, grid, units, name=None):
+	if nj == ny:
+		y = grid.y
+	elif nj == ny+1:
+		y = grid.y_at_v_locations
+	else:
+		raise ValueError(
+			'The array extent in the y-direction is {} but either '
+			'{} or {} was expected.'.format(nj, ny, ny+1)
+		)
+
+	return DataArray(
+		raw_array,
+		coords=(x.coords[x.dims[0]].values, y.coords[y.dims[0]].values),
+		dims=(x.dims[0], y.dims[0]), name=name, attrs={'units': units}
+	)
+
+
+def make_dataarray_3d(raw_array, grid, units, name=None):
 	"""
 	Create a :class:`sympl.DataArray` out of a 3-D :class:`numpy.ndarray`.
 
 	Parameters
 	----------
-	raw_array : array_like
-		3-D :class:`numpy.ndarray` storing the variable data.
-	grid : grid
-		The underlying grid, as an instance of
-		:class:`~tasmania.grids.grid_xyz.GridXYZ` or one of its derived classes.
+	raw_array : numpy.ndarray
+		3-D :class:`numpy.ndarray` storing the field values.
+	grid : tasmania.Grid
+		The underlying grid.
 	units : str
-		String indicating the variable units.
+		The variable units.
 	name : `str`, optional
-		String indicating the variable name. Defaults to :obj:`None`.
+		The variable name. Defaults to :obj:`None`.
 
 	Return
 	------
@@ -246,15 +196,68 @@ def make_data_array_3d(raw_array, grid, units, name=None):
 		The :class:`sympl.DataArray` whose value array is :obj:`raw_array`,
 		whose coordinates and dimensions are retrieved from :obj:`grid`,
 		and whose units are :obj:`units`.
-
-	Raises
-	------
-	ValueError:
-		If :obj:`raw_array` is not 2-D.
 	"""
-	if len(raw_array.shape) != 3:
-		raise ValueError('raw_array should be 3-D.')
-	return _make_data_array_xyz(raw_array, grid, units, name)
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	try:
+		ni, nj, nk = raw_array.shape
+	except ValueError:
+		raise ValueError(
+			'Expected a 3-D array, got a {}-D one.'.format(len(raw_array.shape))
+		)
+
+	if ni == nx:
+		x = grid.grid_xy.x
+	elif ni == nx+1:
+		x = grid.grid_xy.x_at_u_locations
+	else:
+		raise ValueError(
+			'The array extent in the x-direction is {} but either '
+			'{} or {} was expected.'.format(ni, nx, nx+1)
+		)
+
+	if nj == ny:
+		y = grid.grid_xy.y
+	elif nj == ny+1:
+		y = grid.grid_xy.y_at_v_locations
+	else:
+		raise ValueError(
+			'The array extent in the y-direction is {} but either '
+			'{} or {} was expected.'.format(nj, ny, ny+1)
+		)
+
+	if nk == 1:
+		if nz > 1:
+			z = DataArray(
+				np.array([grid.z_on_interface_levels.values[-1]]),
+				dims=grid.z.dims[0] + '_at_surface_level',
+				attrs={'units': grid.z.attrs['units']}
+			)
+		else:
+			z = DataArray(
+				np.array([grid.z_on_interface_levels.values[-1]]),
+			  	dims=grid.z.dims[0],
+				attrs={'units': grid.z.attrs['units']}
+			)
+	elif nk == nz:
+		z = grid.z
+	elif nk == nz+1:
+		z = grid.z_on_interface_levels
+	else:
+		raise ValueError(
+			'The array extent in the z-direction is {} but either '
+			'1, {} or {} was expected.'.format(nk, nz, nz+1)
+		)
+
+	return DataArray(
+		raw_array,
+		coords=[
+			x.coords[x.dims[0]].values,
+			y.coords[y.dims[0]].values,
+			z.coords[z.dims[0]].values,
+		],
+		dims=[x.dims[0], y.dims[0], z.dims[0]],
+		name=name, attrs={'units': units}
+	)
 
 
 def make_state(raw_state, grid, units):
@@ -265,8 +268,8 @@ def make_state(raw_state, grid, units):
 		Dictionary whose keys are strings indicating the variables
 		included in the model state, and values are :class:`numpy.ndarray`\s
 		containing the data for those variables.
-	grid : grid
-		The underlying computational grid.
+	grid : tasmania.Grid
+		The underlying grid.
 	units : dict
 		Dictionary whose keys are strings indicating the variables
 		included in the model state, and values are strings indicating
@@ -287,9 +290,13 @@ def make_state(raw_state, grid, units):
 	for key in raw_state.keys():
 		if key != 'time':
 			try:
-				state[key] = make_data_array_3d(raw_state[key], grid, units[key], name=key)
+				state[key] = make_dataarray_3d(
+					raw_state[key], grid, units[key], name=key
+				)
 			except ValueError:
-				state[key] = make_data_array_2d(raw_state[key], grid, units[key], name=key)
+				state[key] = make_dataarray_2d(
+					raw_state[key], grid.grid_xy, units[key], name=key
+				)
 
 	return state
 
@@ -319,122 +326,15 @@ def make_raw_state(state, units=None):
 	try:
 		raw_state = {'time': state['time']}
 	except KeyError:
-		#print('Input state dictionary must contain the keyword ''time''.')
 		raw_state = {}
 
 	for key in state.keys():
 		if key != 'time':
 			try:
-				data_array = state[key].to_units(units.get(key, state[key].attrs['units']))
+				dataarray = state[key].to_units(units.get(key, state[key].attrs['units']))
 			except KeyError:
-				print('Units not specified for {}.'.format(key))
+				raise KeyError('Units not specified for {}.'.format(key))
 
-			raw_state[key] = data_array.values
+			raw_state[key] = dataarray.values
 
 	return raw_state
-
-
-def _make_data_array_xy(raw_array, grid, units, name):
-	nx, ny = grid.nx, grid.ny
-	ni, nj = raw_array.shape
-
-	if ni == nx:
-		x = grid.x
-	elif ni == nx+1:
-		x = grid.x_at_u_locations
-	else:
-		raise ValueError('The array extent in the x-direction is {} but either '
-						 '{} or {} was expected.'.format(ni, nx, nx+1))
-
-	if nj == ny:
-		y = grid.y
-	elif nj == ny+1:
-		y = grid.y_at_v_locations
-	else:
-		raise ValueError('The array extent in the y-direction is {} but either '
-						 '{} or {} was expected.'.format(nj, ny, ny+1))
-
-	return DataArray(raw_array,
-					 coords=[x.coords[x.dims[0]].values,
-							 y.coords[y.dims[0]].values],
-					 dims=[x.dims[0], y.dims[0]],
-					 name=name,
-					 attrs={'units': units})
-
-
-def _make_data_array_xz(raw_array, grid, units, name):
-	nx, nz = grid.nx, grid.nz
-	ni, nk = raw_array.shape
-
-	if ni == nx:
-		x = grid.x
-	elif ni == nx+1:
-		x = grid.x_at_u_locations
-	else:
-		raise ValueError('The array extent in the x-direction is {} but either '
-						 '{} or {} was expected.'.format(ni, nx, nx+1))
-
-	if nk == nz:
-		z = grid.z
-	elif nk == nz+1:
-		z = grid.z_on_interface_levels
-	else:
-		raise ValueError('The array extent in the z-direction is {} but either '
-						 '{} or {} was expected.'.format(nk, nz, nz+1))
-
-	return DataArray(raw_array,
-					 coords=[x.coords[x.dims[0]].values,
-							 z.coords[z.dims[0]].values],
-					 dims=[x.dims[0], z.dims[0]],
-					 name=name,
-					 attrs={'units': units})
-
-
-def _make_data_array_xyz(raw_array, grid, units, name):
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	ni, nj, nk = raw_array.shape
-
-	if ni == nx:
-		x = grid.x
-	elif ni == nx+1:
-		x = grid.x_at_u_locations
-	else:
-		raise ValueError('The array extent in the x-direction is {} but either '
-						 '{} or {} was expected.'.format(ni, nx, nx+1))
-
-	if nj == ny:
-		y = grid.y
-	elif nj == ny+1:
-		y = grid.y_at_v_locations
-	else:
-		raise ValueError('The array extent in the y-direction is {} but either '
-						 '{} or {} was expected.'.format(nj, ny, ny+1))
-
-	if nk == 1:
-		if nz > 1:
-			z = DataArray(np.array((grid.z_on_interface_levels.values[-1], )),
-				#coords=[grid.z_on_interface_levels.values[-1]],
-				dims=[grid.z.dims[0] + '_at_surface_level'],
-				attrs={'units': grid.z.attrs['units']}
-			)
-		else:
-			z = DataArray(np.array((grid.z_on_interface_levels.values[-1], )),
-				#coords=[grid.z_on_interface_levels.values[-1]],
-				dims=[grid.z.dims[0]],
-				attrs={'units': grid.z.attrs['units']}
-			)
-	elif nk == nz:
-		z = grid.z
-	elif nk == nz+1:
-		z = grid.z_on_interface_levels
-	else:
-		raise ValueError('The array extent in the z-direction is {} but either '
-						 '{} or {} was expected.'.format(nk, nz, nz+1))
-
-	return DataArray(raw_array,
-					 coords=[x.coords[x.dims[0]].values,
-							 y.coords[y.dims[0]].values,
-							 z.coords[z.dims[0]].values],
-					 dims=[x.dims[0], y.dims[0], z.dims[0]],
-					 name=name,
-					 attrs={'units': units})

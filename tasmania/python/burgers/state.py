@@ -23,7 +23,7 @@
 from datetime import timedelta
 import numpy as np
 
-from tasmania.python.utils.data_utils import make_data_array_3d
+from tasmania.python.utils.data_utils import make_dataarray_3d
 
 
 class ZhaoSolutionFactory:
@@ -72,6 +72,6 @@ class ZhaoStateFactory:
 
 		return {
 			'time': time,
-			'x_velocity': make_data_array_3d(u, grid, 'm s^-1', 'x_velocity'),
-			'y_velocity': make_data_array_3d(v, grid, 'm s^-1', 'y_velocity'),
+			'x_velocity': make_dataarray_3d(u, grid, 'm s^-1', 'x_velocity'),
+			'y_velocity': make_dataarray_3d(v, grid, 'm s^-1', 'y_velocity'),
 		}

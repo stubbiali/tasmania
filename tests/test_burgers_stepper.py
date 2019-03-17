@@ -23,7 +23,7 @@
 from copy import deepcopy
 from datetime import datetime, timedelta
 from hypothesis import \
-	given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+	given, HealthCheck, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
@@ -38,7 +38,8 @@ from test_burgers_advection import \
 import tasmania.conf as taz_conf
 from tasmania.python.burgers.dynamics.stepper import \
 	BurgersStepper, _ForwardEuler, _RK2, _RK3WS
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.grid import ComputationalGrid
 
 
 @settings(
@@ -50,73 +51,78 @@ def test_forward_euler(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
+	pgrid = data.draw(
+		utils.st_physical_grid(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
+
+	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
+	hb_type = data.draw(utils.st_horizontal_boundary_type(), label='hb_type')
+	nb = 1  # TODO: nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny))
+	hb_kwargs = data.draw(
+		utils.st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
+	)
+	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
+
+	grid = ComputationalGrid(pgrid, hb)
+
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
+
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
 			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
+
 	timestep = data.draw(
-		hyp_st.timedeltas(
+		utils.st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
-	hb_type = data.draw(utils.st_one_of(conf.horizontal_boundary), label='hb_type')
+
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = data.draw(utils.st_one_of(conf.datatype), label='dtype')
+	dtype = grid.grid_xy.x.dtype
 
 	# ========================================
 	# test
 	# ========================================
-	hb = HorizontalBoundary.factory(hb_type, grid, 1)  # TODO: 1 ==> taz_conf.nb
 	bs = BurgersStepper.factory(
-		'forward_euler', grid, 'first_order', hb, backend, dtype
+		'forward_euler', grid.grid_xy, nb, 'first_order', backend, dtype
 	)
 
 	assert isinstance(bs, _ForwardEuler)
 
-	state_cd = {
+	raw_state = {
 		'time': state['time'],
-		'x_velocity': hb.from_physical_to_computational_domain(
-				state['x_velocity'].to_units('m s^-1').values
-			),
-		'y_velocity': hb.from_physical_to_computational_domain(
-				state['y_velocity'].to_units('m s^-1').values
-			),
+		'x_velocity': state['x_velocity'].to_units('m s^-1').values,
+		'y_velocity': state['y_velocity'].to_units('m s^-1').values,
 	}
 	if if_tendency:
-		tendency_cd = {
+		raw_tendency = {
 			'time': state['time'],
-			'x_velocity': hb.from_physical_to_computational_domain(
-				tendency['x_velocity'].to_units('m s^-2').values
-			),
-			'y_velocity': hb.from_physical_to_computational_domain(
-				tendency['y_velocity'].to_units('m s^-2').values
-			),
+			'x_velocity': tendency['x_velocity'].to_units('m s^-2').values,
+			'y_velocity': tendency['y_velocity'].to_units('m s^-2').values,
 		}
 	else:
-		tendency_cd = {}
+		raw_tendency = {}
 
-	out_state = bs(0, state_cd, tendency_cd, timestep)
+	out_state = bs(0, raw_state, raw_tendency, timestep)
 
 	nb = hb.nb
-	dx, dy = grid.dx.to_units('m').values.item(), grid.dy.to_units('m').values.item()
-	u, v = state_cd['x_velocity'], state_cd['y_velocity']
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
+	u, v = raw_state['x_velocity'], raw_state['y_velocity']
 	if if_tendency:
-		tnd_u, tnd_v = tendency_cd['x_velocity'], tendency_cd['y_velocity']
+		tnd_u, tnd_v = raw_tendency['x_velocity'], raw_tendency['y_velocity']
 
 	adv_u_x, adv_u_y = first_order_advection(dx, dy, u, v, u)
 	adv_v_x, adv_v_y = first_order_advection(dx, dy, u, v, v)
@@ -143,76 +149,81 @@ def test_rk2(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
+	pgrid = data.draw(
+		utils.st_physical_grid(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
+
+	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
+	hb_type = data.draw(utils.st_horizontal_boundary_type(), label='hb_type')
+	nb = 2  # TODO: nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny))
+	hb_kwargs = data.draw(
+		utils.st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
+	)
+	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
+
+	grid = ComputationalGrid(pgrid, hb)
+
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
+
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
 			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
+
 	timestep = data.draw(
-		hyp_st.timedeltas(
+		utils.st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
-	hb_type = data.draw(utils.st_one_of(conf.horizontal_boundary), label='hb_type')
+
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = data.draw(utils.st_one_of(conf.datatype), label='dtype')
+	dtype = grid.grid_xy.x.dtype
 
 	# ========================================
 	# test
 	# ========================================
-	hb = HorizontalBoundary.factory(hb_type, grid, 2)  # TODO: 2 ==> taz_conf.nb
 	bs = BurgersStepper.factory(
-		'rk2', grid, 'third_order', hb, backend, dtype
+		'rk2', grid.grid_xy, nb, 'third_order', backend, dtype
 	)
 
 	assert isinstance(bs, _RK2)
 
-	state_0_cd = {
+	raw_state_0 = {
 		'time': state['time'],
-		'x_velocity': hb.from_physical_to_computational_domain(
-			state['x_velocity'].to_units('m s^-1').values
-		),
-		'y_velocity': hb.from_physical_to_computational_domain(
-			state['y_velocity'].to_units('m s^-1').values
-		),
+		'x_velocity': state['x_velocity'].to_units('m s^-1').values,
+		'y_velocity': state['y_velocity'].to_units('m s^-1').values,
 	}
 	if if_tendency:
-		tendency_cd = {
+		raw_tendency = {
 			'time': state['time'],
-			'x_velocity': hb.from_physical_to_computational_domain(
-				tendency['x_velocity'].to_units('m s^-2').values
-			),
-			'y_velocity': hb.from_physical_to_computational_domain(
-				tendency['y_velocity'].to_units('m s^-2').values
-			),
+			'x_velocity': tendency['x_velocity'].to_units('m s^-2').values,
+			'y_velocity': tendency['y_velocity'].to_units('m s^-2').values,
 		}
 	else:
-		tendency_cd = {}
+		raw_tendency = {}
 
 	# ========================================
 	# stage 0
 	# ========================================
-	state_1_cd = bs(0, state_0_cd, tendency_cd, timestep)
+	raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
 
 	nb = hb.nb
-	dx, dy = grid.dx.to_units('m').values.item(), grid.dy.to_units('m').values.item()
-	u0, v0 = state_0_cd['x_velocity'], state_0_cd['y_velocity']
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
+	u0, v0 = raw_state_0['x_velocity'], raw_state_0['y_velocity']
 	if if_tendency:
-		tnd_u, tnd_v = tendency_cd['x_velocity'], tendency_cd['y_velocity']
+		tnd_u, tnd_v = raw_tendency['x_velocity'], raw_tendency['y_velocity']
 
 	adv_u_x, adv_u_y = third_order_advection(dx, dy, u0, v0, u0)
 	adv_v_x, adv_v_y = third_order_advection(dx, dy, u0, v0, v0)
@@ -226,17 +237,17 @@ def test_rk2(data):
 		u1 += 0.5 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v1 += 0.5 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert state_1_cd['time'] == state['time'] + 0.5*timestep
-	assert np.allclose(u1, state_1_cd['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v1, state_1_cd['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	#assert raw_state_1['time'] == state['time'] + 0.5*timestep
+	assert np.allclose(u1, raw_state_1['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	assert np.allclose(v1, raw_state_1['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
 
 	# ========================================
 	# stage 1
 	# ========================================
-	state_1_cd = deepcopy(state_1_cd)
-	state_2_cd = bs(1, state_1_cd, tendency_cd, timestep)
+	raw_state_1 = deepcopy(raw_state_1)
+	raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
 
-	u1, v1 = state_1_cd['x_velocity'], state_1_cd['y_velocity']
+	u1, v1 = raw_state_1['x_velocity'], raw_state_1['y_velocity']
 
 	adv_u_x, adv_u_y = third_order_advection(dx, dy, u1, v1, u1)
 	adv_v_x, adv_v_y = third_order_advection(dx, dy, u1, v1, v1)
@@ -250,9 +261,9 @@ def test_rk2(data):
 		u2 += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v2 += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert state_2_cd['time'] == state['time'] + timestep
-	assert np.allclose(u2, state_2_cd['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v2, state_2_cd['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	#assert raw_state_2['time'] == state['time'] + timestep
+	assert np.allclose(u2, raw_state_2['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	assert np.allclose(v2, raw_state_2['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
 
 
 @settings(
@@ -264,77 +275,82 @@ def test_rk3ws(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
+	pgrid = data.draw(
+		utils.st_physical_grid(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
+
+	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
+	hb_type = data.draw(utils.st_horizontal_boundary_type(), label='hb_type')
+	nb = 3  # TODO: nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny))
+	hb_kwargs = data.draw(
+		utils.st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
+	)
+	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
+
+	grid = ComputationalGrid(pgrid, hb)
+
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
+
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
 			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
+
 	timestep = data.draw(
-		hyp_st.timedeltas(
+		utils.st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
-	hb_type = data.draw(utils.st_one_of(conf.horizontal_boundary), label='hb_type')
+
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = data.draw(utils.st_one_of(conf.datatype), label='dtype')
+	dtype = grid.grid_xy.x.dtype
 
 	# ========================================
 	# test
 	# ========================================
-	hb = HorizontalBoundary.factory(hb_type, grid, 3)  # TODO: 3 ==> taz_conf.nb
 	bs = BurgersStepper.factory(
-		'rk3ws', grid, 'fifth_order', hb, backend, dtype
+		'rk3ws', grid.grid_xy, nb, 'fifth_order', backend, dtype
 	)
 
 	assert isinstance(bs, _RK2)
 	assert isinstance(bs, _RK3WS)
 
-	state_0_cd = {
+	raw_state_0 = {
 		'time': state['time'],
-		'x_velocity': hb.from_physical_to_computational_domain(
-			state['x_velocity'].to_units('m s^-1').values
-		),
-		'y_velocity': hb.from_physical_to_computational_domain(
-			state['y_velocity'].to_units('m s^-1').values
-		),
+		'x_velocity': state['x_velocity'].to_units('m s^-1').values,
+		'y_velocity': state['y_velocity'].to_units('m s^-1').values,
 	}
 	if if_tendency:
-		tendency_cd = {
+		raw_tendency = {
 			'time': state['time'],
-			'x_velocity': hb.from_physical_to_computational_domain(
-				tendency['x_velocity'].to_units('m s^-2').values
-			),
-			'y_velocity': hb.from_physical_to_computational_domain(
-				tendency['y_velocity'].to_units('m s^-2').values
-			),
+			'x_velocity': tendency['x_velocity'].to_units('m s^-2').values,
+			'y_velocity': tendency['y_velocity'].to_units('m s^-2').values,
 		}
 	else:
-		tendency_cd = {}
+		raw_tendency = {}
 
 	# ========================================
 	# stage 0
 	# ========================================
-	state_1_cd = bs(0, state_0_cd, tendency_cd, timestep)
+	raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
 
 	nb = hb.nb
-	dx, dy = grid.dx.to_units('m').values.item(), grid.dy.to_units('m').values.item()
-	u0, v0 = state_0_cd['x_velocity'], state_0_cd['y_velocity']
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
+	u0, v0 = raw_state_0['x_velocity'], raw_state_0['y_velocity']
 	if if_tendency:
-		tnd_u, tnd_v = tendency_cd['x_velocity'], tendency_cd['y_velocity']
+		tnd_u, tnd_v = raw_tendency['x_velocity'], raw_tendency['y_velocity']
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u0, v0, u0)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u0, v0, v0)
@@ -348,17 +364,17 @@ def test_rk3ws(data):
 		u1 += 1.0/3.0 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v1 += 1.0/3.0 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert state_1_cd['time'] == state['time'] + 1.0/3.0*timestep
-	assert np.allclose(u1, state_1_cd['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v1, state_1_cd['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	#assert raw_state_1['time'] == state['time'] + 1.0/3.0*timestep
+	assert np.allclose(u1, raw_state_1['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	assert np.allclose(v1, raw_state_1['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
 
 	# ========================================
 	# stage 1
 	# ========================================
-	state_1_cd = deepcopy(state_1_cd)
-	state_2_cd = bs(1, state_1_cd, tendency_cd, timestep)
+	raw_state_1 = deepcopy(raw_state_1)
+	raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
 
-	u1, v1 = state_1_cd['x_velocity'], state_1_cd['y_velocity']
+	u1, v1 = raw_state_1['x_velocity'], raw_state_1['y_velocity']
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u1, v1, u1)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u1, v1, v1)
@@ -372,17 +388,17 @@ def test_rk3ws(data):
 		u2 += 0.5 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v2 += 0.5 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert state_2_cd['time'] == state['time'] + timestep
-	assert np.allclose(u2, state_2_cd['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v2, state_2_cd['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	#assert raw_state_2['time'] == state['time'] + timestep
+	assert np.allclose(u2, raw_state_2['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	assert np.allclose(v2, raw_state_2['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
 
 	# ========================================
 	# stage 1
 	# ========================================
-	state_2_cd = deepcopy(state_2_cd)
-	state_3_cd = bs(2, state_2_cd, tendency_cd, timestep)
+	raw_state_2 = deepcopy(raw_state_2)
+	raw_state_3 = bs(2, raw_state_2, raw_tendency, timestep)
 
-	u2, v2 = state_2_cd['x_velocity'], state_2_cd['y_velocity']
+	u2, v2 = raw_state_2['x_velocity'], raw_state_2['y_velocity']
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u2, v2, u2)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u2, v2, v2)
@@ -396,9 +412,9 @@ def test_rk3ws(data):
 		u3 += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v3 += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert state_2_cd['time'] == state['time'] + timestep
-	assert np.allclose(u3, state_3_cd['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v3, state_3_cd['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	#assert raw_state_2['time'] == state['time'] + timestep
+	assert np.allclose(u3, raw_state_3['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	assert np.allclose(v3, raw_state_3['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
 
 
 if __name__ == '__main__':
