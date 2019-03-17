@@ -28,7 +28,7 @@ def _create_grid():
 	domain_y, ny = [0,500e3], 91
 	domain_z, nz = [400,300], 50
 
-	from python.grids.grid_xyz import GridXYZ as Grid
+	from python.grids.grid import GridXYZ as Grid
 	grid = Grid(domain_x, nx, domain_y, ny, domain_z, nz, 
 				units_x = 'm', dims_x = 'x',
 				units_y = 'm', dims_y = 'y',

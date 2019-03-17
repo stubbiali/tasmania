@@ -35,6 +35,7 @@ DOC_SRC := $(DOC_DIR)/source/conf.py $(DOC_DIR)/source/api.rst
 PARSER_DIR := $(SRC_DIR)/cpp/parser
 UML_DIR := $(DOC_DIR)/uml
 TEST_DIR := $(ROOT_DIR)/tests
+HYPOTHESIS_DIR := $(TEST_DIR)/.hypothesis
 DOCKER_DIR := $(ROOT_DIR)/docker
 
 .PHONY: docker-build docker-run docs uml prepare-tests tests clean distclean
@@ -118,6 +119,7 @@ prepare-tests-py37:
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null
 	@$(RM) -r $(TMP_FOLDERS) > /dev/null
+	@$(RM) -r $(HYPOTHESIS_DIR) > /dev/null
 	@find . -type f -name "*.sw[klmnop]" -delete
 
 distclean: clean

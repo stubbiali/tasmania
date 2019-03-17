@@ -26,7 +26,7 @@ import pytest
 from sympl import DataArray
 
 from tasmania.python.isentropic.physics.tendencies import PrescribedSurfaceHeating
-from tasmania.python.utils.data_utils import make_data_array_3d
+from tasmania.python.utils.data_utils import make_dataarray_3d
 from tasmania.python.utils.utils import equal_to
 
 
@@ -119,7 +119,7 @@ def test(isentropic_dry_data):
 	state['time'] = datetime(year=1992, month=2, day=20, hour=3)
 	starting_time = state['time'] - timedelta(hours=2)
 	p = state['air_pressure_on_interface_levels'].values
-	state['air_pressure'] = make_data_array_3d(0.5 * (p[:, :, :-1] + p[:, :, 1:]), grid, 'Pa')
+	state['air_pressure'] = make_dataarray_3d(0.5 * (p[:, :, :-1] + p[:, :, 1:]), grid, 'Pa')
 	state.pop('air_pressure_on_interface_levels')
 
 	psh = PrescribedSurfaceHeating(

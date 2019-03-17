@@ -20,12 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	BurgersAdvection
+	_FirstOrder(BurgersAdvection)
+	_SecondOrder(BurgersAdvection)
+	_ThirdOrder(BurgersAdvection)
+	_FourthOrder(BurgersAdvection)
+	_FifthOrder(BurgersAdvection)
+	_SixthOrder(BurgersAdvection)
+"""
 import abc
 
 import gridtools as gt
 
 
 class BurgersAdvection:
+	"""
+	A discretizer for the 2-D Burgers advection flux.
+	"""
 	__metaclass__ = abc.ABCMeta
 
 	extent = None

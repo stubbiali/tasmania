@@ -30,7 +30,7 @@ import gridtools as gt
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	HorizontalVelocity, WaterConstituent
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.isentropic.dynamics.homogeneous_prognostic import \
 	HomogeneousIsentropicPrognostic

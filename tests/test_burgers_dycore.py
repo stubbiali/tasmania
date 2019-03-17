@@ -22,7 +22,7 @@
 #
 from datetime import datetime, timedelta
 from hypothesis import \
-	given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+	given, HealthCheck, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
@@ -37,7 +37,7 @@ from test_burgers_advection import \
 import tasmania.conf as taz_conf
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 from tasmania.python.burgers.state import ZhaoSolutionFactory
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
 @settings(
@@ -49,31 +49,39 @@ def test_forward_euler(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
+	domain = data.draw(
+		utils.st_domain(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
-		),
-		label='grid'
+		)
 	)
+
+	grid = domain.computational_grid
+
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
+
+	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
+	tendency = {} if not if_tendency else \
+		data.draw(
+			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
+		)
+
 	timestep = data.draw(
-		hyp_st.timedeltas(
+		utils.st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
-	hb_type = data.draw(
-		utils.st_one_of(('periodic', 'relaxed', 'zhao')), label='hb_type'
-	)
-	eps = data.draw(utils.st_floats(min_value=-1e3, max_value=1e3))
+
+	eps = data.draw(utils.st_floats(min_value=-1e3, max_value=1e3), label='eps')
+
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = data.draw(utils.st_one_of(conf.datatype), label='dtype')
+	dtype = grid.grid_xy.x.dtype
 
 	# ========================================
 	# test

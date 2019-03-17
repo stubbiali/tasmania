@@ -34,7 +34,7 @@ import numpy as np
 import sympl
 import xarray as xr
 
-from tasmania.python.grids.grid_xyz import GridXYZ
+from tasmania.python.grids.grid import Grid
 from tasmania.python.utils.utils import convert_datetime64_to_datetime
 
 
@@ -262,7 +262,7 @@ def _load_grid(dataset):
 		else:
 			topo_kwargs[key] = sympl.DataArray(val, attrs={'units': val.attrs['units']})
 
-	return GridXYZ(
+	return Grid(
 		domain_x, nx, domain_y, ny, domain_z, nz, z_interface,
 		topo_type, topo_time, topo_kwargs, dtype=domain_z.values.dtype
 	)

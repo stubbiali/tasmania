@@ -20,255 +20,168 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import timedelta
-from hypothesis import given, strategies as hyp_st, reproduce_failure
+from copy import deepcopy
+from hypothesis import \
+	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
+from pandas import Timedelta
 import pytest
-from sympl import DataArray
 
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
 import utils
 
-from tasmania import Topography1d, Topography2d
+from tasmania.python.grids.horizontal_grid import ComputationalHorizontalGrid
+from tasmania.python.grids.topography import \
+	Topography, PhysicalTopography, ComputationalTopography
 
 
 @given(hyp_st.data())
-def test_topography1d_flat(data):
-	domain_x = data.draw(utils.st_interval(axis_name='x'))
-	nx = data.draw(utils.st_length(axis_name='x'))
-	topo_kwargs = data.draw(
-		utils.st_topography1d_kwargs(
-			domain_x, topo_type='flat_terrain', topo_time=timedelta(seconds=0)
-		)
-	)
-	dtype = data.draw(utils.st_one_of(conf.datatype))
+def test_topography(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
 
-	xv = \
-		np.array([0.5 * (domain_x.values[0]+domain_x.values[1])], dtype=dtype) \
-		if nx == 1 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
-	x = DataArray(
-		xv, coords=[xv], dims=domain_x.dims[0],
-		name='x', attrs={'units': domain_x.attrs['units']}
+	steady_profile = data.draw(
+		utils.st_horizontal_field(pgrid, 0, 3000, 'm', 'sprof'), label='sprof'
 	)
 
-	topo = Topography1d(x, **topo_kwargs)
+	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
 
-	assert np.count_nonzero(topo.topo.values) == 0
-	assert topo.topo_time.total_seconds() == 0.
-	assert topo.topo_fact == 1.
+	# ========================================
+	# test bed
+	# ========================================
+	topo_type = kwargs.pop('type')
+	topo = Topography(topo_type, steady_profile, **kwargs)
+
+	assert topo.type == topo_type
+	utils.compare_dataarrays(steady_profile, topo.steady_profile)
+
+	topo_time = kwargs.get('time', Timedelta(seconds=0.0))
+
+	if topo_time.total_seconds() == 0.0:
+		kwargs['time'] = topo_time
+		assert kwargs == topo.kwargs
+		utils.compare_dataarrays(steady_profile, topo.profile)
+	else:
+		profile = deepcopy(steady_profile)
+		profile.values[...] = 0.0
+		utils.compare_dataarrays(profile, topo.profile)
 
 
 @given(hyp_st.data())
-def test_topography1d_gaussian(data):
-	domain_x = data.draw(utils.st_interval(axis_name='x'))
-	nx = data.draw(utils.st_length(axis_name='x'))
-	topo_kwargs = data.draw(
-		utils.st_topography1d_kwargs(
-			domain_x, topo_type='gaussian', topo_time=timedelta(seconds=0)
-		)
+def test_update_topography(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
+
+	steady_profile = data.draw(
+		utils.st_horizontal_field(pgrid, 0, 3000, 'm', 'sprof'), label='sprof'
 	)
-	dtype = data.draw(utils.st_one_of(conf.datatype))
 
-	xv = \
-		np.array([0.5 * (domain_x.values[0]+domain_x.values[1])], dtype=dtype) \
-		if nx == 1 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
-	x = DataArray(
-		xv, coords=[xv], dims=domain_x.dims[0],
-		name='x', attrs={'units': domain_x.attrs['units']}
-	)
-	topo = Topography1d(x, **topo_kwargs)
+	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
 
-	xu = domain_x.attrs['units']
-	xc = topo_kwargs['topo_center_x'].to_units(xu).values.item()
-	wx = topo_kwargs['topo_width_x'].to_units(xu).values.item()
-	hmax = topo_kwargs['topo_max_height'].to_units('m').values.item()
+	fact1 = data.draw(utils.st_floats(min_value=1e-6, max_value=1.0), label='fact1')
+	fact2 = data.draw(utils.st_floats(min_value=fact1, max_value=1.0), label='fact2')
 
-	topo_ref = hmax * np.exp(-((xv-xc) / wx)**2)
-	if topo_kwargs['topo_smooth']:
-		topo_ref[1:-1] += 0.25 * (
-			topo_ref[:-2] - 2*topo_ref[1:-1] + topo_ref[2:]
-		)
+	# ========================================
+	# test bed
+	# ========================================
+	topo_type = kwargs.pop('type')
+	topo = Topography(topo_type, steady_profile, **kwargs)
 
-	assert np.allclose(topo.topo, topo_ref)
-	assert topo.topo_time.total_seconds() == 0.
-	assert topo.topo_fact == 1.
+	topo_time = kwargs.get('time', Timedelta(seconds=0.0))
+
+	if topo_time.total_seconds() == 0.0:
+		utils.compare_dataarrays(steady_profile, topo.profile)
+	else:
+		profile = deepcopy(steady_profile)
+		profile.values[...] = 0.0
+		utils.compare_dataarrays(profile, topo.profile)
+
+		time1 = fact1 * topo_time
+		topo.update(time1)
+		profile.values[...] = time1 / topo_time * steady_profile.values[...]
+		utils.compare_dataarrays(profile, topo.profile)
+		utils.compare_dataarrays(steady_profile, topo.steady_profile)
+
+		time2 = fact2 * topo_time
+		topo.update(time2)
+		profile.values[...] = time2 / topo_time * steady_profile.values[...]
+		utils.compare_dataarrays(profile, topo.profile)
+		utils.compare_dataarrays(steady_profile, topo.steady_profile)
 
 
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
 @given(hyp_st.data())
-def test_topography1d_update(data):
-	domain_x = data.draw(utils.st_interval(axis_name='x'))
-	nx = data.draw(utils.st_length(axis_name='x'))
-	topo_kwargs = data.draw(
-		utils.st_topography1d_kwargs(
-			domain_x, topo_type='gaussian', topo_time=timedelta(seconds=60)
-		)
-	)
-	dtype = data.draw(utils.st_one_of(conf.datatype))
+def test_physical_topography(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
+	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
 
-	xv = \
-		np.array([0.5 * (domain_x.values[0]+domain_x.values[1])], dtype=dtype) \
-		if nx == 1 else np.linspace(domain_x[0], domain_x[1], nx, dtype=dtype)
-	x = DataArray(
-		xv, coords=[xv], dims=domain_x.dims[0],
-		name='x', attrs={'units': domain_x.attrs['units']}
-	)
+	# ========================================
+	# test bed
+	# ========================================
+	topo_type = kwargs.pop('type')
+	topo = PhysicalTopography(pgrid, topo_type, **kwargs)
 
-	topo = Topography1d(x, **topo_kwargs)
+	assert topo.type == topo_type
 
-	assert np.count_nonzero(topo.topo.values) == 0
-	assert topo.topo_time.total_seconds() == 60.
-	assert topo.topo_fact == 0.
+	topo_time = kwargs.get('time', Timedelta(seconds=0.0))
 
-	xu = domain_x.attrs['units']
-	xc = topo_kwargs['topo_center_x'].to_units(xu).values.item()
-	wx = topo_kwargs['topo_width_x'].to_units(xu).values.item()
-	hmax = topo_kwargs['topo_max_height'].to_units('m').values.item()
-
-	topo_ref = hmax * np.exp(-((xv-xc) / wx)**2)
-	if topo_kwargs['topo_smooth']:
-		topo_ref[1:-1] += 0.25 * (
-			topo_ref[:-2] - 2*topo_ref[1:-1] + topo_ref[2:]
-		)
-
-	topo.update(timedelta(seconds=30))
-	assert np.allclose(topo.topo, 0.5*topo_ref)
-	assert topo.topo_fact == 0.5
-
-	topo.update(timedelta(seconds=60))
-	assert np.allclose(topo.topo, topo_ref)
-	assert topo.topo_fact == 1.
-
-	topo.update(timedelta(seconds=90))
-	assert np.allclose(topo.topo, topo_ref)
-	assert topo.topo_fact == 1.
+	if topo_time.total_seconds() == 0.0:
+		utils.compare_dataarrays(topo.steady_profile, topo.profile)
+	else:
+		profile = deepcopy(topo.steady_profile)
+		profile.values[...] = 0.0
+		utils.compare_dataarrays(profile, topo.profile)
 
 
-@given(utils.st_grid_xy())
-def test_topography2d_flat(grid):
-	topo = Topography2d(grid, topo_type='flat_terrain')
-
-	assert np.count_nonzero(topo.topo.values) == 0
-	assert topo.topo_time.total_seconds() == 0.
-	assert topo.topo_fact == 1.
-
-
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
 @given(hyp_st.data())
-def test_topography2d_gaussian(data):
-	grid = data.draw(utils.st_grid_xy())
-	topo_kwargs = data.draw(
-		utils.st_topography2d_kwargs(
-			grid.x, grid.y, topo_type='gaussian', topo_time=timedelta(seconds=0)
-		)
+def test_computational_topography(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
+	hb = data.draw(utils.st_horizontal_boundary(pgrid.nx, pgrid.ny), label='hb')
+	cgrid = ComputationalHorizontalGrid(pgrid, hb)
+	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
+
+	# ========================================
+	# test bed
+	# ========================================
+	topo_type = kwargs.pop('type')
+	ptopo = PhysicalTopography(pgrid, topo_type, **kwargs)
+	ctopo = ComputationalTopography(cgrid, ptopo, hb)
+
+	assert ctopo.type == topo_type
+
+	assert np.allclose(
+		ctopo.profile.values,
+		hb.get_computational_field(ptopo.profile.values)
+	)
+	assert np.allclose(
+		ctopo.steady_profile.values,
+		hb.get_computational_field(ptopo.steady_profile.values)
 	)
 
-	topo = Topography2d(grid, **topo_kwargs)
-
-	nx, ny = grid.nx, grid.ny
-	x1d, y1d = grid.x.values, grid.y.values
-	x = np.repeat(x1d[:, np.newaxis], ny, axis=1)
-	y = np.repeat(y1d[np.newaxis, :], nx, axis=0)
-
-	xc = topo_kwargs['topo_center_x'].to_units(grid.x.attrs['units']).values.item()
-	yc = topo_kwargs['topo_center_y'].to_units(grid.y.attrs['units']).values.item()
-	wx = topo_kwargs['topo_width_x'].to_units(grid.x.attrs['units']).values.item()
-	wy = topo_kwargs['topo_width_y'].to_units(grid.y.attrs['units']).values.item()
-	hmax = topo_kwargs['topo_max_height'].to_units('m').values.item()
-
-	topo_ref = hmax * np.exp(- ((x-xc) / wx)**2 - ((y-yc) / wy)**2)
-	if topo_kwargs['topo_smooth']:
-		topo_ref[1:-1, 1:-1] += 0.125 * (
-			topo_ref[:-2, 1:-1] - 2*topo_ref[1:-1, 1:-1] + topo_ref[2:, 1:-1] +
-			topo_ref[1:-1, :-2] - 2*topo_ref[1:-1, 1:-1] + topo_ref[1:-1, 2:]
-		)
-
-	assert topo.topo_time.total_seconds() == 0.
-	assert topo.topo_fact == 1.
-	assert np.allclose(topo.topo, topo_ref)
-
-
-@given(hyp_st.data())
-def test_topography2d_schaer(data):
-	grid = data.draw(utils.st_grid_xy())
-	topo_kwargs = data.draw(
-		utils.st_topography2d_kwargs(
-			grid.x, grid.y, topo_type='schaer', topo_time=timedelta(seconds=0)
-		)
-	)
-
-	topo = Topography2d(grid, **topo_kwargs)
-
-	nx, ny = grid.nx, grid.ny
-	x1d, y1d = grid.x.values, grid.y.values
-	x = np.repeat(x1d[:, np.newaxis], ny, axis=1)
-	y = np.repeat(y1d[np.newaxis, :], nx, axis=0)
-
-	xc = topo_kwargs['topo_center_x'].to_units(grid.x.attrs['units']).values.item()
-	yc = topo_kwargs['topo_center_y'].to_units(grid.y.attrs['units']).values.item()
-	wx = topo_kwargs['topo_width_x'].to_units(grid.x.attrs['units']).values.item()
-	wy = topo_kwargs['topo_width_y'].to_units(grid.y.attrs['units']).values.item()
-	hmax = topo_kwargs['topo_max_height'].to_units('m').values.item()
-
-	topo_ref = hmax / ((1 + ((x-xc) / wx)**2 + ((y-yc) / wy)**2) ** 1.5)
-	if topo_kwargs['topo_smooth']:
-		topo_ref[1:-1, 1:-1] += 0.125 * (
-			topo_ref[:-2, 1:-1] - 2*topo_ref[1:-1, 1:-1] + topo_ref[2:, 1:-1] +
-			topo_ref[1:-1, :-2] - 2*topo_ref[1:-1, 1:-1] + topo_ref[1:-1, 2:]
-		)
-
-	assert topo.topo_time.total_seconds() == 0.
-	assert topo.topo_fact == 1.
-	assert np.allclose(topo.topo, topo_ref)
-
-
-@given(hyp_st.data())
-def test_topography2d_update(data):
-	grid = data.draw(utils.st_grid_xy())
-	topo_kwargs = data.draw(
-		utils.st_topography2d_kwargs(
-			grid.x, grid.y, topo_type='gaussian', topo_time=timedelta(seconds=60)
-		)
-	)
-
-	topo = Topography2d(grid, **topo_kwargs)
-
-	nx, ny = grid.nx, grid.ny
-	x1d, y1d = grid.x.values, grid.y.values
-	x = np.repeat(x1d[:, np.newaxis], ny, axis=1)
-	y = np.repeat(y1d[np.newaxis, :], nx, axis=0)
-
-	xc = topo_kwargs['topo_center_x'].to_units(grid.x.attrs['units']).values.item()
-	yc = topo_kwargs['topo_center_y'].to_units(grid.y.attrs['units']).values.item()
-	wx = topo_kwargs['topo_width_x'].to_units(grid.x.attrs['units']).values.item()
-	wy = topo_kwargs['topo_width_y'].to_units(grid.y.attrs['units']).values.item()
-	hmax = topo_kwargs['topo_max_height'].to_units('m').values.item()
-
-	topo_ref = hmax * np.exp(- ((x-xc) / wx)**2 - ((y-yc) / wy)**2)
-	if topo_kwargs['topo_smooth']:
-		topo_ref[1:-1, 1:-1] += 0.125 * (
-			topo_ref[:-2, 1:-1] - 2*topo_ref[1:-1, 1:-1] + topo_ref[2:, 1:-1] +
-			topo_ref[1:-1, :-2] - 2*topo_ref[1:-1, 1:-1] + topo_ref[1:-1, 2:]
-		)
-
-	assert np.count_nonzero(topo.topo.values) == 0
-	assert topo.topo_time.total_seconds() == 60.
-	assert topo.topo_fact == 0.
-
-	topo.update(timedelta(seconds=30))
-	assert np.allclose(topo.topo, 0.5*topo_ref)
-	assert topo.topo_fact == 0.5
-
-	topo.update(timedelta(seconds=60))
-	assert np.allclose(topo.topo, topo_ref)
-	assert topo.topo_fact == 1.
-
-	topo.update(timedelta(seconds=90))
-	assert np.allclose(topo.topo, topo_ref)
-	assert topo.topo_fact == 1.
+	from tasmania.python.grids._horizontal_boundary import Relaxed
+	if isinstance(hb, Relaxed):
+		assert id(ptopo.profile.values) == id(ctopo.profile.values)
+		assert id(ptopo.steady_profile.values) == id(ctopo.steady_profile.values)
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_topography2d_gaussian()

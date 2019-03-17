@@ -103,7 +103,7 @@ def test_first_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_grid_xyz(
+		utils.st_physical_grid(
 			xaxis_length=(2*_FirstOrder.extent+1, 40),
 			yaxis_length=(2*_FirstOrder.extent+1, 40),
 			zaxis_length=(1, 1)
@@ -111,10 +111,10 @@ def test_first_order(data):
 		label='grid'
 	)
 	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
@@ -175,7 +175,7 @@ def test_second_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_grid_xyz(
+		utils.st_physical_grid(
 			xaxis_length=(2*_SecondOrder.extent+1, 40),
 			yaxis_length=(2*_SecondOrder.extent+1, 40),
 			zaxis_length=(1, 1)
@@ -183,10 +183,10 @@ def test_second_order(data):
 		label='grid'
 	)
 	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
@@ -263,7 +263,7 @@ def test_third_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_grid_xyz(
+		utils.st_physical_grid(
 			xaxis_length=(2*_ThirdOrder.extent+1, 40),
 			yaxis_length=(2*_ThirdOrder.extent+1, 40),
 			zaxis_length=(1, 1)
@@ -271,10 +271,10 @@ def test_third_order(data):
 		label='grid'
 	)
 	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
@@ -341,7 +341,7 @@ def test_fourth_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_grid_xyz(
+		utils.st_physical_grid(
 			xaxis_length=(2*_FourthOrder.extent+1, 40),
 			yaxis_length=(2*_FourthOrder.extent+1, 40),
 			zaxis_length=(1, 1)
@@ -349,10 +349,10 @@ def test_fourth_order(data):
 		label='grid'
 	)
 	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
@@ -433,7 +433,7 @@ def test_fifth_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_grid_xyz(
+		utils.st_physical_grid(
 			xaxis_length=(2*_FifthOrder.extent+1, 40),
 			yaxis_length=(2*_FifthOrder.extent+1, 40),
 			zaxis_length=(1, 1)
@@ -441,10 +441,10 @@ def test_fifth_order(data):
 		label='grid'
 	)
 	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
+	dx = grid.grid_xy.dx.to_units('m').values.item()
+	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 

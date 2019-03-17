@@ -20,20 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import timedelta
 from hypothesis import assume, strategies as hyp_st
 from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
-import os
+from pandas import Timedelta
 from sympl import DataArray
 from sympl._core.units import clean_units
+
+import os
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conf
 
 import tasmania as taz
 from tasmania.python.utils.data_utils import get_physical_constants
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
 
 
 default_physical_constants = {
@@ -46,6 +46,32 @@ default_physical_constants = {
 	'specific_heat_of_dry_air_at_constant_pressure':
 		DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
 }
+
+
+def compare_dataarrays(da1, da2):
+	"""
+	Assert whether two :class:`sympl.DataArray`\s are equal.
+	"""
+	assert len(da1.dims) == len(da2.dims)
+
+	assert all([dim1 == dim2 for dim1, dim2 in zip(da1.dims, da2.dims)])
+
+	try:
+		assert all([
+			da1.coords[key].attrs['units'] == da2.coords[key].attrs['units']
+			for key in da1.coords
+		])
+	except KeyError:
+		pass
+
+	assert all([
+		np.allclose(da1.coords[key].values, da2.coords[key].values)
+		for key in da1.coords
+	])
+
+	assert da1.attrs['units'] == da2.attrs['units']
+
+	assert np.allclose(da1.values, da2.values)
 
 
 def get_float_width(dtype):
@@ -71,6 +97,70 @@ def get_interval(el0, el1, dims, units, increasing):
 	)
 
 
+def get_nanoseconds(secs):
+	return int((secs - int(secs * 1e9) * 1e-9) * 1e12)
+
+
+def get_xaxis(domain_x, nx, dtype):
+	x_v = np.linspace(domain_x.values[0], domain_x.values[1], nx, dtype=dtype) \
+		if nx > 1 else np.array([0.5*(domain_x.values[0] + domain_x.values[1])], dtype=dtype)
+	x = DataArray(
+		x_v, coords=[x_v], dims=domain_x.dims, attrs={'units': domain_x.attrs['units']}
+	)
+
+	dx_v = 1.0 if nx == 1 else (domain_x.values[-1] - domain_x.values[0]) / (nx - 1)
+	dx_v = 1.0 if dx_v == 0.0 else dx_v
+	dx = DataArray(dx_v, attrs={'units': domain_x.attrs['units']})
+
+	xu_v = np.linspace(x_v[0] - 0.5*dx_v, x_v[-1] + 0.5*dx_v, nx+1, dtype=dtype)
+	xu = DataArray(
+		xu_v, coords=[xu_v], dims=(domain_x.dims[0] + '_at_u_locations'),
+		attrs={'units': domain_x.attrs['units']}
+	)
+
+	return x, xu, dx
+
+
+def get_yaxis(domain_y, ny, dtype):
+	y_v = np.linspace(domain_y.values[0], domain_y.values[1], ny, dtype=dtype) \
+		if ny > 1 else np.array([0.5*(domain_y.values[0] + domain_y.values[1])], dtype=dtype)
+	y = DataArray(
+		y_v, coords=[y_v], dims=domain_y.dims, attrs={'units': domain_y.attrs['units']}
+	)
+
+	dy_v = 1.0 if ny == 1 else (domain_y.values[-1] - domain_y.values[0]) / (ny - 1)
+	dy_v = 1.0 if dy_v == 0.0 else dy_v
+	dy = DataArray(dy_v, attrs={'units': domain_y.attrs['units']})
+
+	yv_v = np.linspace(y_v[0] - 0.5*dy_v, y_v[-1] + 0.5*dy_v, ny+1, dtype=dtype)
+	yv = DataArray(
+		yv_v, coords=[yv_v], dims=(domain_y.dims[0] + '_at_v_locations'),
+		attrs={'units': domain_y.attrs['units']}
+	)
+
+	return y, yv, dy
+
+
+def get_zaxis(domain_z, nz, dtype):
+	zhl_v = np.linspace(domain_z.values[0], domain_z.values[1], nz+1, dtype=dtype)
+	zhl = DataArray(
+		zhl_v, coords=[zhl_v], dims=(domain_z.dims[0] + '_on_interface_levels'),
+		attrs={'units': domain_z.attrs['units']}
+	)
+
+	dz_v = (domain_z.values[1] - domain_z.values[0]) / nz \
+		if domain_z.values[1] > domain_z.values[0] else \
+		(domain_z.values[0] - domain_z.values[1]) / nz
+	dz = DataArray(dz_v, attrs={'units': domain_z.attrs['units']})
+
+	z_v = 0.5 * (zhl_v[1:] + zhl_v[:-1])
+	z = DataArray(
+		z_v, coords=[z_v], dims=domain_z.dims, attrs={'units': domain_z.attrs['units']}
+	)
+
+	return z, zhl, dz
+
+
 def st_floats(**kwargs):
 	"""
 	Strategy drawing a non-nan and non-infinite floats.
@@ -87,6 +177,32 @@ def st_one_of(seq):
 	Strategy drawing one of the elements of the input sequence.
 	"""
 	return hyp_st.one_of(hyp_st.just(el) for el in seq)
+
+
+@hyp_st.composite
+def st_timedeltas(draw, min_value, max_value):
+	"""
+	Strategy drawing a :class:`pandas.Timedelta`.
+	"""
+	min_secs = min_value.total_seconds()
+	max_secs = max_value.total_seconds()
+
+	secs = draw(st_floats(min_value=min_secs, max_value=max_secs))
+	nanosecs = get_nanoseconds(secs)
+
+	return Timedelta(seconds=secs, nanoseconds=nanosecs)
+
+
+@hyp_st.composite
+def st_interface(draw, domain_z):
+	"""
+	Strategy drawing a valid interface altitude where terrain-following
+	grid surfaces flat back to horizontal surfaces.
+	"""
+	min_value = np.min(domain_z.values)
+	max_value = np.max(domain_z.values)
+	zi_v = draw(st_floats(min_value=min_value, max_value=max_value))
+	return DataArray(zi_v, attrs={'units': domain_z.attrs['units']})
 
 
 @hyp_st.composite
@@ -131,145 +247,79 @@ def st_length(axis_name='x', min_value=None, max_value=None):
 
 
 @hyp_st.composite
-def st_topography1d_kwargs(
-	draw, x, *, topo_type=None, topo_time=None, topo_max_height=None,
-	topo_center=None, topo_half_width=None, topo_str=None, topo_smooth=None
+def st_physical_horizontal_grid(
+	draw, *, xaxis_name='x', xaxis_length=None, yaxis_name='y', yaxis_length=None
 ):
 	"""
-	Strategy drawing a set of keyword arguments accepted by the constructor
-	of :class:`tasmania.Topography1d`.
+	Strategy drawing a :class:`tasmania.PhysicalHorizontalGrid` object.
 	"""
-	if topo_type is not None and isinstance(topo_type, str):
-		_topo_type = topo_type
-	else:
-		_topo_type = draw(st_one_of(conf.topography1d['type']))
+	domain_x = draw(st_interval(axis_name=xaxis_name))
+	nx = draw(
+		st_length(axis_name=xaxis_name) if xaxis_length is None else
+		st_length(axis_name=xaxis_name, min_value=xaxis_length[0], max_value=xaxis_length[1])
+	)
 
-	if topo_time is not None and isinstance(topo_time, timedelta):
-		_topo_time = topo_time
-	else:
-		_topo_time = draw(
-			hyp_st.timedeltas(
-				min_value=timedelta(seconds=0),
-				max_value=conf.topography1d['time_max'],
-			)
-		)
+	domain_y = draw(st_interval(axis_name=yaxis_name))
+	ny = draw(
+		st_length(axis_name=yaxis_name) if yaxis_length is None else
+		st_length(axis_name=yaxis_name, min_value=yaxis_length[0], max_value=yaxis_length[1])
+	)
 
-	if (
-		topo_max_height is not None and
-		isinstance(topo_max_height, DataArray) and
-		topo_max_height.shape == ()
-	):
-		_topo_max_height = topo_max_height
-	else:
-		units = draw(st_one_of(conf.topography1d['units_to_max_height'].keys()))
-		val = draw(
-			st_floats(
-				min_value=conf.topography1d['units_to_max_height'][units][0],
-				max_value=conf.topography1d['units_to_max_height'][units][1],
-			)
-		)
-		_topo_max_height = DataArray(val, attrs={'units': units})
+	assume(not(nx == 1 and ny == 1))
 
-	if (
-		topo_center is not None and
-		isinstance(topo_center, DataArray) and
-		topo_center.shape == ()
-	):
-		_topo_center = topo_center
-	else:
-		val = draw(
-			st_floats(
-				min_value=np.min(x.values),
-				max_value=np.max(x.values),
-			)
-		)
-		_topo_center = DataArray(val, attrs={'units': x.attrs['units']})
+	dtype = draw(st_one_of(conf.datatype))
 
-	if (
-		topo_half_width is not None and
-		isinstance(topo_half_width, DataArray) and
-		topo_half_width.shape == ()
-	):
-		_topo_half_width = topo_half_width
-	else:
-		units = draw(st_one_of(conf.topography1d['units_to_half_width'].keys()))
-		val = draw(
-			st_floats(
-				min_value=conf.topography1d['units_to_half_width'][units][0],
-				max_value=conf.topography1d['units_to_half_width'][units][1],
-			)
-		)
-		_topo_half_width = DataArray(val, attrs={'units': units})
-
-	if topo_str is not None and isinstance(topo_str, str):
-		_topo_str = topo_str
-	else:
-		_topo_str = draw(st_one_of(conf.topography1d['str']))
-
-	if topo_smooth is not None and isinstance(topo_smooth, bool):
-		_topo_smooth = topo_smooth
-	else:
-		_topo_smooth = draw(hyp_st.booleans())
-
-	return {
-		'topo_type': _topo_type,
-		'topo_time': _topo_time,
-		'topo_max_height': _topo_max_height,
-		'topo_center_x': _topo_center,
-		'topo_width_x': _topo_half_width,
-		'topo_str': _topo_str,
-		'topo_smooth': _topo_smooth,
-	}
+	return taz.PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)
 
 
 @hyp_st.composite
-def st_topography2d_kwargs(
-	draw, x, y, *, topo_type=None, topo_time=None,
-	topo_max_height=None, topo_center_x=None, topo_center_y=None,
+def st_topography_kwargs(
+	draw, x, y, *, topography_type=None, time=None,
+	max_height=None, center_x=None, center_y=None,
 	topo_half_width_x=None, topo_half_width_y=None,
-	topo_str=None, topo_smooth=None
+	expression=None, smooth=None
 ):
 	"""
 	Strategy drawing a set of keyword arguments accepted by the constructor
-	of :class:`tasmania.Topography1d`.
+	of :class:`tasmania.Topography`.
 	"""
-	if topo_type is not None and isinstance(topo_type, str):
-		_topo_type = topo_type
+	if topography_type is not None and isinstance(topography_type, str):
+		_type = topography_type
 	else:
-		_topo_type = draw(st_one_of(conf.topography2d['type']))
+		_type = draw(st_one_of(conf.topography['type']))
 
-	if topo_time is not None and isinstance(topo_time, timedelta):
-		_topo_time = topo_time
+	if time is not None and isinstance(time, Timedelta):
+		_time = time
 	else:
-		_topo_time = draw(
-			hyp_st.timedeltas(
-				min_value=timedelta(seconds=0),
-				max_value=conf.topography2d['time_max'],
+		_time = draw(
+			st_timedeltas(
+				min_value=conf.topography['time'][0],
+				max_value=conf.topography['time'][1],
 			)
 		)
 
 	if (
-		topo_max_height is not None and
-		isinstance(topo_max_height, DataArray) and
-		topo_max_height.shape == ()
+		max_height is not None and
+		isinstance(max_height, DataArray) and
+		max_height.shape == ()
 	):
-		_topo_max_height = topo_max_height
+		_max_height = max_height
 	else:
-		units = draw(st_one_of(conf.topography1d['units_to_max_height'].keys()))
+		units = draw(st_one_of(conf.topography['units_to_max_height'].keys()))
 		val = draw(
 			st_floats(
-				min_value=conf.topography2d['units_to_max_height'][units][0],
-				max_value=conf.topography2d['units_to_max_height'][units][1],
+				min_value=conf.topography['units_to_max_height'][units][0],
+				max_value=conf.topography['units_to_max_height'][units][1],
 			)
 		)
-		_topo_max_height = DataArray(val, attrs={'units': units})
+		_max_height = DataArray(val, attrs={'units': units})
 
 	if (
-		topo_center_x is not None and
-		isinstance(topo_center_x, DataArray) and
-		topo_center_x.shape == ()
+		center_x is not None and
+		isinstance(center_x, DataArray) and
+		center_x.shape == ()
 	):
-		_topo_center_x = topo_center_x
+		_center_x = center_x
 	else:
 		val = draw(
 			st_floats(
@@ -277,14 +327,14 @@ def st_topography2d_kwargs(
 				max_value=np.max(x.values),
 			)
 		)
-		_topo_center_x = DataArray(val, attrs={'units': x.attrs['units']})
+		_center_x = DataArray(val, attrs={'units': x.attrs['units']})
 
 	if (
-		topo_center_y is not None and
-		isinstance(topo_center_y, DataArray) and
-		topo_center_y.shape == ()
+		center_y is not None and
+		isinstance(center_y, DataArray) and
+		center_y.shape == ()
 	):
-		_topo_center_y = topo_center_y
+		_center_y = center_y
 	else:
 		val = draw(
 			st_floats(
@@ -292,7 +342,7 @@ def st_topography2d_kwargs(
 				max_value=np.max(y.values),
 			)
 		)
-		_topo_center_y = DataArray(val, attrs={'units': y.attrs['units']})
+		_center_y = DataArray(val, attrs={'units': y.attrs['units']})
 
 	if (
 		topo_half_width_x is not None and
@@ -301,11 +351,11 @@ def st_topography2d_kwargs(
 	):
 		_topo_half_width_x = topo_half_width_x
 	else:
-		units = draw(st_one_of(conf.topography2d['units_to_half_width_x'].keys()))
+		units = draw(st_one_of(conf.topography['units_to_half_width_x'].keys()))
 		val = draw(
 			st_floats(
-				min_value=conf.topography2d['units_to_half_width_x'][units][0],
-				max_value=conf.topography2d['units_to_half_width_x'][units][1],
+				min_value=conf.topography['units_to_half_width_x'][units][0],
+				max_value=conf.topography['units_to_half_width_x'][units][1],
 			)
 		)
 		_topo_half_width_x = DataArray(val, attrs={'units': units})
@@ -317,45 +367,50 @@ def st_topography2d_kwargs(
 	):
 		_topo_half_width_y = topo_half_width_y
 	else:
-		units = draw(st_one_of(conf.topography2d['units_to_half_width_y'].keys()))
+		units = draw(st_one_of(conf.topography['units_to_half_width_y'].keys()))
 		val = draw(
 			st_floats(
-				min_value=conf.topography2d['units_to_half_width_y'][units][0],
-				max_value=conf.topography2d['units_to_half_width_y'][units][1],
+				min_value=conf.topography['units_to_half_width_y'][units][0],
+				max_value=conf.topography['units_to_half_width_y'][units][1],
 			)
 		)
 		_topo_half_width_y = DataArray(val, attrs={'units': units})
 
-	if topo_str is not None and isinstance(topo_str, str):
-		_topo_str = topo_str
+	if expression is not None and isinstance(expression, str):
+		_expression = expression
 	else:
-		_topo_str = draw(st_one_of(conf.topography2d['str']))
+		_expression = draw(st_one_of(conf.topography['str']))
 
-	if topo_smooth is not None and isinstance(topo_smooth, bool):
-		_topo_smooth = topo_smooth
+	if smooth is not None and isinstance(smooth, bool):
+		_smooth = smooth
 	else:
-		_topo_smooth = draw(hyp_st.booleans())
+		_smooth = draw(hyp_st.booleans())
 
-	return {
-		'topo_type': _topo_type,
-		'topo_time': _topo_time,
-		'topo_max_height': _topo_max_height,
-		'topo_center_x': _topo_center_x,
-		'topo_center_y': _topo_center_y,
-		'topo_width_x': _topo_half_width_x,
-		'topo_width_y': _topo_half_width_y,
-		'topo_str': _topo_str,
-		'topo_smooth': _topo_smooth,
+	kwargs = {
+		'type': _type,
+		'max_height': _max_height,
+		'center_x': _center_x,
+		'center_y': _center_y,
+		'width_x': _topo_half_width_x,
+		'width_y': _topo_half_width_y,
+		'expression': _expression,
+		'smooth': _smooth,
 	}
+
+	if_time = draw(hyp_st.booleans())
+	if if_time:
+		kwargs['time'] = _time
+
+	return kwargs
 
 
 @hyp_st.composite
-def st_grid_xyz(
+def st_physical_grid(
 	draw, *, xaxis_name='x', xaxis_length=None,
 	yaxis_name='y', yaxis_length=None,  zaxis_name='z', zaxis_length=None
 ):
 	"""
-	Strategy drawing a :class:`tasmania.GridXYZ` object.
+	Strategy drawing a :class:`tasmania.PhysicalGrid` object.
 	"""
 	domain_x = draw(st_interval(axis_name=xaxis_name))
 	nx = draw(
@@ -369,31 +424,89 @@ def st_grid_xyz(
 		st_length(axis_name=yaxis_name, min_value=yaxis_length[0], max_value=yaxis_length[1])
 	)
 
+	assume(not(nx == 1 and ny == 1))
+
 	domain_z = draw(st_interval(axis_name=zaxis_name))
 	nz = draw(
 		st_length(axis_name=zaxis_name) if zaxis_length is None else
 		st_length(axis_name=zaxis_name, min_value=zaxis_length[0], max_value=zaxis_length[1])
 	)
 
-	topo_kwargs = draw(st_topography2d_kwargs(domain_x, domain_y))
-	topo_type = topo_kwargs.pop('topo_type')
-	topo_time = topo_kwargs.pop('topo_time')
+	topo_kwargs = draw(st_topography_kwargs(domain_x, domain_y))
+	topography_type = topo_kwargs.pop('type')
 
 	dtype = draw(st_one_of(conf.datatype))
 
-	return taz.GridXYZ(
+	return taz.PhysicalGrid(
 		domain_x, nx, domain_y, ny, domain_z, nz,
-		topo_type=topo_type, topo_time=topo_time, topo_kwargs=topo_kwargs,
+		topography_type=topography_type, topography_kwargs=topo_kwargs,
 		dtype=dtype
 	)
 
 
+def st_horizontal_boundary_type():
+	"""
+	Strategy drawing a valid horizontal boundary type.
+	"""
+	return st_one_of(conf.horizontal_boundary_types)
+
+
+def st_horizontal_boundary_layers(nx, ny):
+	"""
+	Strategy drawing a valid number of boundary layers.
+	"""
+	if ny == 1:
+		return hyp_st.integers(min_value=1, max_value=min(3, int(nx/2)))
+	elif nx == 1:
+		return hyp_st.integers(min_value=1, max_value=min(3, int(ny/2)))
+	else:
+		return hyp_st.integers(min_value=1, max_value=min(3, min(int(nx/2), int(ny/2))))
+
+
 @hyp_st.composite
-def st_grid_xy(
-	draw, *, xaxis_name='x', xaxis_length=None, yaxis_name='y', yaxis_length=None
+def st_horizontal_boundary_kwargs(draw, hb_type, nx, ny, nb):
+	"""
+	Strategy drawing a valid set of keyword arguments for the constructor
+	of the specified class handling the lateral boundaries.
+	"""
+	hb_kwargs = {}
+
+	if hb_type == 'relaxed':
+		if ny == 1:
+			nr = draw(
+				hyp_st.integers(min_value=nb, max_value=min(8, int(nx/2)))
+			)
+		elif nx == 1:
+			nr = draw(
+				hyp_st.integers(min_value=nb, max_value=min(8, int(ny/2)))
+			)
+		else:
+			nr = draw(
+				hyp_st.integers(min_value=nb, max_value=min(8, min(int(nx/2), int(ny/2))))
+			)
+		hb_kwargs['nr'] = nr
+
+	return hb_kwargs
+
+
+@hyp_st.composite
+def st_horizontal_boundary(draw, nx, ny):
+	"""
+	Strategy drawing an object handling the lateral boundary conditions.
+	"""
+	hb_type = draw(st_horizontal_boundary_type())
+	nb = draw(st_horizontal_boundary_layers(nx, ny))
+	hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
+	return taz.HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
+
+
+@hyp_st.composite
+def st_domain(
+	draw, xaxis_name='x', xaxis_length=None,
+	yaxis_name='y', yaxis_length=None, zaxis_name='z', zaxis_length=None
 ):
 	"""
-	Strategy drawing a :class:`tasmania.GridXY` object.
+	Strategy drawing a :class:`tasmania.Domain` object.
 	"""
 	domain_x = draw(st_interval(axis_name=xaxis_name))
 	nx = draw(
@@ -407,23 +520,7 @@ def st_grid_xy(
 		st_length(axis_name=yaxis_name, min_value=yaxis_length[0], max_value=yaxis_length[1])
 	)
 
-	dtype = draw(st_one_of(conf.datatype))
-
-	return taz.GridXY(domain_x, nx, domain_y, ny, dtype=dtype)
-
-
-@hyp_st.composite
-def st_grid_xz(
-	draw, *, xaxis_name='x', xaxis_length=None, zaxis_name='z', zaxis_length=None
-):
-	"""
-	Strategy drawing a :class:`tasmania.GridXZ` object.
-	"""
-	domain_x = draw(st_interval(axis_name=xaxis_name))
-	nx = draw(
-		st_length(axis_name=xaxis_name) if xaxis_length is None else
-		st_length(axis_name=xaxis_name, min_value=xaxis_length[0], max_value=xaxis_length[1])
-	)
+	assume(not(nx == 1 and ny == 1))
 
 	domain_z = draw(st_interval(axis_name=zaxis_name))
 	nz = draw(
@@ -431,73 +528,66 @@ def st_grid_xz(
 		st_length(axis_name=zaxis_name, min_value=zaxis_length[0], max_value=zaxis_length[1])
 	)
 
-	topo_kwargs = draw(st_topography1d_kwargs(domain_x))
-	topo_type = topo_kwargs.pop('topo_type')
-	topo_time = topo_kwargs.pop('topo_time')
+	hb_type = draw(st_horizontal_boundary_type())
+	nb = draw(st_horizontal_boundary_layers(nx, ny))
+	hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
+
+	topo_kwargs = draw(st_topography_kwargs(domain_x, domain_y))
+	topography_type = topo_kwargs.pop('type')
 
 	dtype = draw(st_one_of(conf.datatype))
 
-	return taz.GridXZ(
-		domain_x, nx, domain_z, nz,
-		topo_type=topo_type, topo_time=topo_time, topo_kwargs=topo_kwargs,
+	return taz.Domain(
+		domain_x, nx, domain_y, ny, domain_z, nz,
+		horizontal_boundary_type=hb_type, nb=nb,
+		horizontal_boundary_kwargs=hb_kwargs,
+		topography_type=topography_type, topography_kwargs=topo_kwargs,
 		dtype=dtype
 	)
 
 
-@hyp_st.composite
-def st_grid_yz(
-	draw, *, yaxis_name='y', yaxis_length=None, zaxis_name='z', zaxis_length=None
-):
+def st_raw_field(dtype, shape, min_value, max_value):
 	"""
-	Strategy drawing a :class:`tasmania.GridYZ` object.
+	Strategy drawing a random :class:`numpy.ndarray`.
 	"""
-	domain_y = draw(st_interval(axis_name=yaxis_name))
-	ny = draw(
-		st_length(axis_name=yaxis_name) if yaxis_length is None else
-		st_length(axis_name=yaxis_name, min_value=yaxis_length[0], max_value=yaxis_length[1])
-	)
-
-	domain_z = draw(st_interval(axis_name=zaxis_name))
-	nz = draw(
-		st_length(axis_name=zaxis_name) if zaxis_length is None else
-		st_length(axis_name=zaxis_name, min_value=zaxis_length[0], max_value=zaxis_length[1])
-	)
-
-	topo_kwargs = draw(st_topography1d_kwargs(domain_y))
-	topo_type = topo_kwargs.pop('topo_type')
-	topo_time = topo_kwargs.pop('topo_time')
-
-	dtype = draw(st_one_of(conf.datatype))
-
-	return taz.GridXZ(
-		domain_y, ny, domain_z, nz,
-		topo_type=topo_type, topo_time=topo_time, topo_kwargs=topo_kwargs,
-		dtype=dtype
+	return st_arrays(
+		dtype, shape,
+		elements=st_floats(min_value=min_value, max_value=max_value),
+		fill=hyp_st.nothing(),
 	)
 
 
 @hyp_st.composite
-def st_field(draw, grid, properties_name, field_name, shape=None):
+def st_horizontal_field(draw, grid, min_value, max_value, units, name, shape=None):
+	"""
+	Strategy drawing a random field for the 2-D variable `field_name`.
+	"""
+	shape = shape if shape is not None else (grid.nx, grid.ny)
+
+	raw_field = draw(st_raw_field(grid.x.dtype, shape, min_value, max_value))
+
+	return taz.make_dataarray_2d(raw_field, grid, units, name=name)
+
+
+@hyp_st.composite
+def st_field(draw, grid, properties_name, name, shape=None):
 	"""
 	Strategy drawing a random field for the variable `field_name`.
 	"""
 	properties_dict = eval('conf.{}'.format(properties_name))
-	units = draw(st_one_of(properties_dict[field_name].keys()))
+	units = draw(st_one_of(properties_dict[name].keys()))
 
-	shape = shape if shape is not None else (grid.nx, grid.ny, grid.nz)
+	shape = shape if shape is not None else (grid.grid_xy.nx, grid.grid_xy.ny, grid.nz)
 
 	raw_field = draw(
-		st_arrays(
-			grid.x.dtype, shape,
-			elements=st_floats(
-				min_value=properties_dict[field_name][units][0],
-				max_value=properties_dict[field_name][units][1],
-			),
-			fill=hyp_st.nothing(),
+		st_raw_field(
+			grid.grid_xy.x.dtype, shape,
+			properties_dict[name][units][0],
+			properties_dict[name][units][1]
 		)
 	)
 
-	return taz.make_data_array_3d(raw_field, grid, units, name=field_name)
+	return taz.make_dataarray_3d(raw_field, grid, units, name=name)
 
 
 @hyp_st.composite
@@ -505,9 +595,9 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 	"""
 	Strategy drawing a valid isentropic model state over `grid`.
 	"""
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
 	dz = grid.dz.to_units('K').values.item()
-	dtype = grid.x.dtype
+	dtype = grid.grid_xy.x.dtype
 
 	return_dict = {}
 
@@ -532,29 +622,29 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 	s_units = s.attrs['units']
 	u_units = u.attrs['units']
 	su_units = clean_units(s_units + u_units)
-	su_raw = s.to_units('kg m^-2 k^-1').values * \
+	su_raw = s.to_units('kg m^-2 K^-1').values * \
 		0.5 * (
 			u.to_units('m s^-1').values[:-1, :, :] + u.to_units('m s^-1').values[1:, :, :]
 		)
-	return_dict['x_momentum_isentropic'] = taz.make_data_array_3d(
-		su_raw, grid, 'kg m^-1 k^-1 s^-1', name='x_momentum_isentropic'
+	return_dict['x_momentum_isentropic'] = taz.make_dataarray_3d(
+		su_raw, grid, 'kg m^-1 K^-1 s^-1', name='x_momentum_isentropic'
 	).to_units(su_units)
 
 	# y-velocity
 	return_dict['y_velocity_at_v_locations'] = draw(
-		st_field(grid, 'isentropic', 'y_velocity_at_v_locations', (nx, ny+1, nz))
+		st_field(grid, 'isentropic_state', 'y_velocity_at_v_locations', (nx, ny+1, nz))
 	)
 
 	# y-momentum
 	v = return_dict['y_velocity_at_v_locations']
 	v_units = v.attrs['units']
 	sv_units = clean_units(s_units + v_units)
-	sv_raw = s.to_units('kg m^-2 k^-1').values * \
+	sv_raw = s.to_units('kg m^-2 K^-1').values * \
 		0.5 * (
 			v.to_units('m s^-1').values[:, :-1, :] + v.to_units('m s^-1').values[:, 1:, :]
 		)
-	return_dict['y_momentum_isentropic'] = taz.make_data_array_3d(
-		sv_raw, grid, 'kg m^-1 k^-1 s^-1', name='y_momentum_isentropic'
+	return_dict['y_momentum_isentropic'] = taz.make_dataarray_3d(
+		sv_raw, grid, 'kg m^-1 K^-1 s^-1', name='y_momentum_isentropic'
 	).to_units(sv_units)
 
 	# physical constants
@@ -569,37 +659,37 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 	p[:, :, 0] = 20
 	for k in range(0, nz):
 		p[:, :, k+1] = p[:, :, k] + g * dz * s.to_units('kg m^-2 K^-1').values[:, :, k]
-	return_dict['air_pressure_on_interface_levels'] = taz.make_data_array_3d(
+	return_dict['air_pressure_on_interface_levels'] = taz.make_dataarray_3d(
 		p, grid, 'Pa', name='air_pressure_on_interface_levels'
 	)
 
 	# exner function
 	exn = cp * (p / pref) ** (Rd / cp)
-	return_dict['exner_function_on_interface_levels'] = taz.make_data_array_3d(
+	return_dict['exner_function_on_interface_levels'] = taz.make_dataarray_3d(
 		exn, grid, 'J kg^-1 K^-1', name='exner_function_on_interface_levels'
 	)
 
 	# montgomery potential
 	mtg = np.zeros((nx, ny, nz), dtype=dtype)
 	mtg_s = grid.z_on_interface_levels.to_units('K').values[-1] * exn[:, :, -1] \
-		+ g * grid.topography_height
+		+ g * grid.topography.profile.to_units('m').values
 	mtg[:, :, -1] = mtg_s + 0.5 * dz * exn[:, :, -1]
 	for k in range(nz-1, 0, -1):
 		mtg[:, :, k-1] = mtg[:, :, k] + dz * exn[:, :, k]
-	return_dict['montgomery_potential'] = taz.make_data_array_3d(
+	return_dict['montgomery_potential'] = taz.make_dataarray_3d(
 		mtg, grid, 'K kg^-1', name='montgomery_potential'
 	)
 
 	# height
-	theta1d = grid.z_on_interface_levels.to_units('K').values()
+	theta1d = grid.z_on_interface_levels.to_units('K').values
 	theta = np.tile(theta1d[np.newaxis, np.newaxis, :], (nx, ny, 1))
 	h = np.zeros((nx, ny, nz+1), dtype=dtype)
-	h[:, :, -1] = grid.topography_height
+	h[:, :, -1] = grid.topography.profile.to_units('m').values
 	for k in range(nz, 0, -1):
 		h[:, :, k-1] = h[:, :, k] - \
 			Rd * (theta[:, :, k-1] * exn[:, :, k-1] + theta[:, :, k] * exn[:, :, k]) * \
 			(p[:, :, k-1] - p[:, :, k]) / (cp * g * (p[:, :, k-1] + p[:, :, k]))
-	return_dict['height_on_interface_levels'] = taz.make_data_array_3d(
+	return_dict['height_on_interface_levels'] = taz.make_dataarray_3d(
 		h, grid, 'm', name='height_on_interface_levels'
 	)
 
@@ -607,14 +697,14 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 		# air density
 		rho = s.to_units('kg m^-2 K^-1').values * \
 			(theta[:, :, :-1] - theta[:, :, 1:]) / (h[:, :, :-1] - h[:, :, 1:])
-		return_dict['air_density'] = taz.make_data_array_3d(
+		return_dict['air_density'] = taz.make_dataarray_3d(
 			rho, grid, 'kg m^-3', name='air_density'
 		)
 
 		# air temperature
 		temp = 0.5 * (theta[:, :, 1:] * exn[:, :, 1:] +
 			theta[:, :, -1:] * exn[:, :, -1:]) / cp
-		return_dict['air_temperature'] = taz.make_data_array_3d(
+		return_dict['air_temperature'] = taz.make_dataarray_3d(
 			temp, grid, 'K', name='air_temperature'
 		)
 
@@ -670,7 +760,7 @@ def st_burgers_state(draw, grid, *, time=None):
 	"""
 	Strategy drawing a valid Burgers model state over `grid`.
 	"""
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
 	assert nz == 1
 
 	return_dict = {}
@@ -699,7 +789,7 @@ def st_burgers_tendency(draw, grid, *, time=None):
 	Strategy drawing a set of tendencies for the variables whose evolution is
 	governed by the Burgers equations.
 	"""
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
 	assert nz == 1
 
 	return_dict = {}

@@ -24,14 +24,10 @@ from datetime import datetime
 import math
 import numpy as np
 
-from sympl._core.combine_properties import \
-	combine_dims, units_are_compatible, InvalidPropertyDictError
-from sympl._core.units import clean_units
-
 try:
 	from tasmania.conf import tol as d_tol
 except ImportError:
-	d_tol = 1e-8
+	d_tol = 1e-10
 
 
 def equal_to(a, b, tol=d_tol):

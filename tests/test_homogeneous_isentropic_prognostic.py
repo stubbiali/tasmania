@@ -26,7 +26,7 @@ import pytest
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.diagnostics import HorizontalVelocity
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from spike.horizontal_boundary import HorizontalBoundary
 from tasmania.python.isentropic.dynamics.homogeneous_prognostic \
 	import HomogeneousIsentropicPrognostic as IsentropicPrognostic
 from tasmania.python.isentropic.dynamics._homogeneous_prognostic \

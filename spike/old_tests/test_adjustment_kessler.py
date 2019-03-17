@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 import gridtools as gt
-from python.grids.grid_xyz import GridXYZ
+from python.grids.grid import GridXYZ
 from tasmania.parameterizations.adjustment_microphysics import AdjustmentMicrophysics
 from tasmania.storages.state_isentropic import StateIsentropic
 

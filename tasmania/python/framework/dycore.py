@@ -77,16 +77,21 @@ class DynamicalCore:
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, grid, time_units='s',
+		self, domain, grid_type, time_units='s',
 		intermediate_tendencies=None, intermediate_diagnostics=None,
 		substeps=0, fast_tendencies=None, fast_diagnostics=None
 	):
 		"""
 		Parameters
 		----------
-		grid : obj 
-			The underlying grid, as an instance of :class:`tasmania.GridXYZ`
-			or one of its derived classes.
+		domain : tasmania.Domain
+			The underlying domain.
+		grid_type : str
+			The type of grid over which instantiating the class. Either:
+
+				* 'physical';
+				* 'computational'.
+
 		time_units : `str`, optional
 			The time units used within this object. Defaults to 's', i.e., seconds.
 		intermediate_tendencies : `obj`, optional
@@ -139,7 +144,10 @@ class DynamicalCore:
 			of the dynamical core.
 			This parameter is ignored if `substeps` argument is not positive.
 		"""
-		self._grid, self._tunits = grid, time_units
+		self._grid = domain.physical_grid if grid_type == 'physical' \
+			else domain.computational_grid
+		self._hb = domain.horizontal_boundary
+		self._tunits = time_units
 
 		self._inter_tends = intermediate_tendencies
 		if self._inter_tends is not None:
@@ -190,6 +198,26 @@ class DynamicalCore:
 		self._tendency_checker = TendencyChecker(self)
 		self._output_checker   = OutputChecker(self)
 
+	@property
+	def grid(self):
+		"""
+		Returns
+		-------
+		tasmania.Grid :
+			The underlying grid.
+		"""
+		return self._grid
+
+	@property
+	def horizontal_boundary(self):
+		"""
+		Returns
+		-------
+		tasmania.HorizontalBoundary :
+			The object handling the lateral boundary conditions.
+		"""
+		return self._hb
+
 	def ensure_internal_consistency(self):
 		"""
 		Perform some controls aiming to verify internal consistency.
@@ -237,27 +265,27 @@ class DynamicalCore:
 				`_substep_output_properties`, with compatible dimensions
 				and units.
 		"""
-		#============================================================
+		# ============================================================
 		# Check #1
-		#============================================================
+		# ============================================================
 		check_properties_compatibility(
 			self._input_properties, self._output_properties,
 			properties1_name='_input_properties',
 			properties2_name='_output_properties',
 		)
 
-		#============================================================
+		# ============================================================
 		# Check #2
-		#============================================================
+		# ============================================================
 		check_properties_compatibility(
 			self._substep_input_properties, self._substep_output_properties,
 			properties1_name='_substep_input_properties',
 			properties2_name='_substep_output_properties',
 		)
 
-		#============================================================
+		# ============================================================
 		# Check #3
-		#============================================================
+		# ============================================================
 		if self._inter_tends is not None:
 			check_properties_compatibility(
 				self._inter_tends.input_properties, self._input_properties,
@@ -265,9 +293,9 @@ class DynamicalCore:
 				properties2_name='_input_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #4
-		#============================================================
+		# ============================================================
 		if self._inter_tends is not None:
 			check_properties_compatibility(
 				self._inter_tends.diagnostic_properties, self._input_properties,
@@ -275,9 +303,9 @@ class DynamicalCore:
 				properties2_name='_input_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #5
-		#============================================================
+		# ============================================================
 		if self._inter_tends is not None: 
 			check_properties_compatibility(
 				self._inter_tends.tendency_properties, self._tendency_properties,
@@ -291,9 +319,9 @@ class DynamicalCore:
 				properties2_name='_tendency_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #6
-		#============================================================
+		# ============================================================
 		if self._inter_tends is not None:
 			if self._fast_tends is not None:
 				check_properties_compatibility(
@@ -310,9 +338,9 @@ class DynamicalCore:
 					properties2_name='_substep_input_properties',
 				)
 
-		#============================================================
+		# ============================================================
 		# Check #7
-		#============================================================
+		# ============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.diagnostics_properties, self._substep_input_properties,
@@ -320,9 +348,9 @@ class DynamicalCore:
 				properties2_name='_substep_input_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #8
-		#============================================================
+		# ============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.tendency_properties, self._output_properties,
@@ -331,9 +359,9 @@ class DynamicalCore:
 				properties2_name='_output_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #9
-		#============================================================
+		# ============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.tendency_properties, self._substep_tendency_properties,
@@ -348,9 +376,9 @@ class DynamicalCore:
 				properties2_name='_substep_tendency_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #10
-		#============================================================
+		# ============================================================
 		if self._fast_tends is not None:
 			check_properties_compatibility(
 				self._fast_tends.tendency_properties, self._substep_input_properties,
@@ -378,9 +406,9 @@ class DynamicalCore:
 				properties2_name='_substep_output_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #11
-		#============================================================
+		# ============================================================
 		if self._fast_diags is not None:
 			check_properties_compatibility(
 				self._fast_diags.input_properties, self._substep_output_properties,
@@ -394,9 +422,9 @@ class DynamicalCore:
 				properties2_name='_substep_output_properties',
 			)
 
-		#============================================================
+		# ============================================================
 		# Check #12
-		#============================================================
+		# ============================================================
 		if self._inter_diags is not None:
 			fused_output_properties = {}
 			fused_output_properties.update(self._output_properties)
@@ -426,26 +454,26 @@ class DynamicalCore:
 				present in `output_properties` should be also contained
 				in `input_properties`.
 		"""
-		#============================================================
+		# ============================================================
 		# Safety-guard preamble
-		#============================================================
+		# ============================================================
 		assert hasattr(self, 'input_properties'), \
 			'Hint: did you call _initialize_input_properties?'
 		assert hasattr(self, 'output_properties'), \
 			'Hint: did you call _initialize_output_properties?'
 
-		#============================================================
+		# ============================================================
 		# Check #1
-		#============================================================
+		# ============================================================
 		check_properties_compatibility(
 			self.input_properties, self.output_properties,
 			properties1_name='input_properties',
 			properties2_name='output_properties',
 		)
 
-		#============================================================
+		# ============================================================
 		# Check #2
-		#============================================================
+		# ============================================================
 		if self.stages > 1:
 			check_missing_properties(
 				self.output_properties, self.input_properties,
@@ -463,8 +491,8 @@ class DynamicalCore:
 			are fundamental properties (dims, units) of those variables.
 			This dictionary results from fusing the requirements
 			specified by the user via
-			:meth:`~tasmania.dynamics.dycore.DynamicalCore._input_properties` and
-			:meth:`~tasmania.dynamics.dycore.DynamicalCore._substep_input_properties`,
+			:meth:`tasmania.DynamicalCore._input_properties` and
+			:meth:`tasmania.DynamicalCore._substep_input_properties`,
 			with the :obj:`input_properties` and :obj:`output_properties`
 			dictionaries of the internal attributes representing the
 			intermediate and fast tendency components (if set).
@@ -553,7 +581,7 @@ class DynamicalCore:
 			values are fundamental properties (dims, units) of those
 			tendencies. This dictionary results from fusing the requirements
 			specified by the user via
-			:meth:`~tasmania.DynamicalCore._tendency_properties`
+			:meth:`tasmania.DynamicalCore._tendency_properties`
 			with the :obj:`tendency_properties` dictionary of the internal
 			attribute representing the intermediate tendency component (if set).
 		"""
@@ -612,8 +640,8 @@ class DynamicalCore:
 			included in the output state, and whose values are fundamental
 			properties (dims, units) of those variables. This dictionary
 			results from fusing the requirements specified by the user via
-			:meth:`~tasmania.dynamics.dycore.DynamicalCore._output_properties` and
-			:meth:`~tasmania.dynamics.dycore.DynamicalCore._substep_output_properties`
+			:meth:`tasmania.DynamicalCore._output_properties` and
+			:meth:`tasmania.DynamicalCore._substep_output_properties`
 			with the `diagnostic_properties` dictionary of the internal
 			attributes representing the intermediate and fast diagnostic
 			components (if set).
@@ -706,8 +734,7 @@ class DynamicalCore:
 			and whose values are :class:`sympl.DataArray`\s storing values
 			for those tendencies.
 		timestep : timedelta
-			:class:`datetime.timedelta` representing the timestep size, i.e.,
-			the amount of time to step forward.
+			The timestep size, i.e., the amount of time to step forward.
 
 		Return
 		------
@@ -720,9 +747,9 @@ class DynamicalCore:
 		----
 		Currently, variable aliasing is not supported.
 		"""
-		#============================================================
+		# ============================================================
 		# Preamble
-		#============================================================
+		# ============================================================
 		# Ensure the input state and tendency dictionaries contain all the
 		# required variables in proper units and dimensions
 		self._input_checker.check_inputs(state)
@@ -736,9 +763,9 @@ class DynamicalCore:
 		tends = {}
 
 		for stage in range(self.stages):
-			#============================================================
-			# Calculating intermediate tendencies
-			#============================================================
+			# ============================================================
+			# Calculating the intermediate tendencies
+			# ============================================================
 			if self._inter_tends is None and stage == 0:
 				# Collect the slow tendencies
 				tends.update(tendencies)
@@ -760,9 +787,9 @@ class DynamicalCore:
 				# Update the state with the just computed diagnostics
 				out_state.update(diags)
 
-			#============================================================
-			# Stage pre-processing
-			#============================================================
+			# ============================================================
+			# Stage: pre-processing
+			# ============================================================
 			# Extract numpy arrays from state
 			out_state_units = {
 				name: self._input_properties[name]['units']
@@ -777,18 +804,18 @@ class DynamicalCore:
 			}
 			raw_tends = make_raw_state(tends, units=tends_units)
 
-			#============================================================
-			# Staging
-			#============================================================
+			# ============================================================
+			# Stage: computing
+			# ============================================================
 			# Carry out the stage
 			raw_stage_state = self.array_call(
 				stage, raw_out_state, raw_tends, timestep
 			)
 
 			if self._substeps == 0 or len(self._substep_output_properties) == 0:
-				#============================================================
-				# Stage post-processing, sub-stepping disabled
-				#============================================================
+				# ============================================================
+				# Stage: post-processing, sub-stepping disabled
+				# ============================================================
 				# Create dataarrays out of the numpy arrays contained in the stepped state
 				stage_state_units = {
 					name: self._output_properties[name]['units']
@@ -802,9 +829,9 @@ class DynamicalCore:
 				out_state = {}
 				out_state.update(stage_state)
 			else:
-				#============================================================
-				# Stage post-processing, sub-stepping enabled
-				#============================================================
+				# ============================================================
+				# Stage: post-processing, sub-stepping enabled
+				# ============================================================
 				# Create dataarrays out of the numpy arrays contained in the stepped state
 				# which represent variables which will not be affected by the sub-stepping
 				raw_nosubstep_stage_state = {
@@ -824,9 +851,9 @@ class DynamicalCore:
 				substep_frac = 1.0 if self.stages == 1 else self.substep_fractions[stage]
 				substeps = int(substep_frac * self._substeps)
 				for substep in range(substeps):
-					#============================================================
-					# Calculating fast tendencies
-					#============================================================
+					# ============================================================
+					# Calculating the fast tendencies
+					# ============================================================
 					if self._fast_tends is None:
 						tends = {}
 					else:
@@ -838,9 +865,9 @@ class DynamicalCore:
 
 						out_state.update(diags)
 
-					#============================================================
-					# Sub-step pre-processing
-					#============================================================
+					# ============================================================
+					# Sub-step: pre-processing
+					# ============================================================
 					# Extract numpy arrays from the latest state
 					out_state_units = {
 						name: self._substep_input_properties[name]['units']
@@ -855,18 +882,18 @@ class DynamicalCore:
 					}
 					raw_tends = make_raw_state(tends, units=tends_units)
 
-					#============================================================
-					# Sub-stepping
-					#============================================================
+					# ============================================================
+					# Sub-step: computing
+					# ============================================================
 					# Carry out the sub-step
 					raw_substep_state = self.substep_array_call(
 						stage, substep, state, raw_stage_state, raw_out_state,
 						raw_tends, timestep
 					)
 
-					#============================================================
-					# Sub-step post-processing
-					#============================================================
+					# ============================================================
+					# Sub-step: post-processing
+					# ============================================================
 					# Create dataarrays out of the numpy arrays contained in sub-stepped state
 					substep_state_units = {
 						name: self._substep_output_properties[name]['units']
@@ -876,9 +903,9 @@ class DynamicalCore:
 						raw_substep_state, self._grid, units=substep_state_units
 					)
 
-					#============================================================
-					# Retrieving fast diagnostics
-					#============================================================
+					# ============================================================
+					# Retrieving the fast diagnostics
+					# ============================================================
 					if self._fast_diags is not None:
 						fast_diags = self._fast_diags(substep_state)
 						substep_state.update(fast_diags)
@@ -890,14 +917,14 @@ class DynamicalCore:
 						out_state = {}
 						out_state.update(substep_state)
 
-				#============================================================
-				# Including non-sub-stepped variables
-				#============================================================
+				# ============================================================
+				# Including the non-sub-stepped variables
+				# ============================================================
 				out_state.update(nosubstep_stage_state)
 
-			#============================================================
-			# Retrieving intermediate diagnostics
-			#============================================================
+			# ============================================================
+			# Retrieving the intermediate diagnostics
+			# ============================================================
 			if self._inter_diags is not None:
 				inter_diags = self._inter_diags(out_state)
 				out_state.update(inter_diags)
@@ -908,9 +935,9 @@ class DynamicalCore:
 			else:
 				out_state['time'] = out_state['time']
 
-			#============================================================
+			# ============================================================
 			# Final checks
-			#============================================================
+			# ============================================================
 			self._output_checker.check_outputs({
 				name: out_state[name] for name in out_state if name != 'time'
 			})
@@ -983,7 +1010,7 @@ class DynamicalCore:
 
 		Parameters
 		----------
-		time : obj
-			:class:`datetime.timedelta` representing the elapsed simulation time.
+		time : timedelta
+			The elapsed simulation time.
 		"""
 		self._grid.update_topography(time)

@@ -20,6 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	ForwardEulerStepper
+	BurgersStepper
+	_ForwardEuler(BurgersStepper)
+	_RK2(BurgersStepper)
+	_RK3WS(BurgersStepper)
+"""
 import abc
 import numpy as np
 
@@ -67,38 +75,114 @@ class ForwardEulerStep:
 
 
 class BurgersStepper:
+	"""
+	Abstract base class whose children integrate the 2-D inviscid Burgers
+	equations implementing different time integrators.
+	"""
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, grid, flux_scheme, boundary, backend, dtype):
-		self._grid = grid
+	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
+		"""
+		Parameters
+		----------
+		grid_xy : tasmania.HorizontalGrid
+			The underlying horizontal grid.
+		nb : int
+			Number of boundary layers.
+		flux_scheme : str
+			String specifying the advective flux scheme to be used.
+			See :class:`tasmania.BurgersAdvection` for all available options.
+		backend : obj
+			TODO
+		dtype : numpy.dtype
+			The data type for any :class:`numpy.ndarray` instantiated within
+			this class.
+		"""
+		self._grid_xy = grid_xy
 		self._backend = backend
 		self._dtype = dtype
 
 		self._advection = BurgersAdvection.factory(flux_scheme)
 
-		assert boundary.nb >= self.extent
-		self._boundary = boundary
+		assert nb >= self._advection.extent
+		self._nb = nb
 
-		self._forward_euler_step = ForwardEulerStep(grid, self._advection)
+		self._fwe_step = ForwardEulerStep(grid_xy, self._advection)
 
 	@property
 	@abc.abstractmethod
 	def stages(self):
+		"""
+		Returns
+		-------
+		int :
+			Number of stages the time integrator consists of.
+		"""
 		pass
-
-	@property
-	def extent(self):
-		return self._advection.extent
 
 	@abc.abstractmethod
 	def __call__(self, stage, state, tendency, timestep):
+		"""
+		Performing a stage of the time integrator.
+
+		Parameters
+		----------
+		stage : int
+			The stage to be performed.
+		state : dict
+			Dictionary whose keys are strings denoting model variables,
+			and whose values are :class:`numpy.ndarray`\s storing values
+			for those variables.
+		tendency : dict
+			Dictionary whose keys are strings denoting model variables,
+			and whose values are :class:`numpy.ndarray`\s storing tendencies
+			for those variables.
+		timestep : timedelta
+			The time step size.
+
+		Return
+		------
+		dict :
+			Dictionary whose keys are strings denoting model variables,
+			and whose values are :class:`numpy.ndarray`\s storing new values
+			for those variables.
+		"""
 		pass
 
 	@staticmethod
 	def factory(
-		time_integration_scheme, grid, flux_scheme, boundary_type, backend, dtype
+		time_integration_scheme, grid_xy, nb, flux_scheme, backend, dtype
 	):
-		args = (grid, flux_scheme, boundary_type, backend, dtype)
+		"""
+		Parameters
+		----------
+		time_integration_scheme : str
+			String specifying the time integrator to be used. Either:
+
+				* 'forward_euler' for the forward Euler method;
+				* 'rk2' for the explicit, two-stages, second-order \
+					Runge-Kutta (RK) method;
+				* 'rk3ws' for the explicit, three-stages, second-order \
+					RK method by Wicker & Skamarock.
+		grid_xy : tasmania.HorizontalGrid
+			The underlying horizontal grid.
+		nb : int
+			Number of boundary layers.
+		flux_scheme : str
+			String specifying the advective flux scheme to be used.
+			See :class:`tasmania.BurgersAdvection` for all available options.
+		backend : obj
+			TODO
+		dtype : numpy.dtype
+			The data type for any :class:`numpy.ndarray` instantiated within
+			this class.
+
+		Return
+		------
+		tasmania.BurgersStepper :
+			An instance of the appropriate derived class.
+		"""
+		args = (grid_xy, nb, flux_scheme, backend, dtype)
 		if time_integration_scheme == 'forward_euler':
 			return _ForwardEuler(*args)
 		elif time_integration_scheme == 'rk2':
@@ -110,8 +194,11 @@ class BurgersStepper:
 
 
 class _ForwardEuler(BurgersStepper):
-	def __init__(self, grid, flux_scheme, boundary, backend, dtype):
-		super().__init__(grid, flux_scheme, boundary, backend, dtype)
+	"""
+	The forward Euler time integrator for the inviscid Burgers equations.
+	"""
+	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
+		super().__init__(grid_xy, nb, flux_scheme, backend, dtype)
 		self._stencil = None
 
 	@property
@@ -139,8 +226,8 @@ class _ForwardEuler(BurgersStepper):
 		}
 
 	def _stencil_initialize(self, tendency):
-		mi, mj = self._boundary.mi, self._boundary.mj
-		nb = self._boundary.nb
+		mi, mj = self._grid_xy.nx, self._grid_xy.ny
+		nb = self._nb
 
 		self._dt = gt.Global()
 
@@ -164,7 +251,7 @@ class _ForwardEuler(BurgersStepper):
 		outputs = {'out_u': self._out_u, 'out_v': self._out_v}
 
 		self._stencil = gt.NGStencil(
-			definitions_func=self._forward_euler_step.__call__,
+			definitions_func=self._fwe_step.__call__,
 			inputs=inputs, global_inputs={'dt': self._dt}, outputs=outputs,
 			domain=gt.domain.Rectangle((nb, nb, 0), (mi-nb-1, mj-nb-1, 0)),
 			mode=self._backend,
@@ -172,8 +259,11 @@ class _ForwardEuler(BurgersStepper):
 
 
 class _RK2(BurgersStepper):
-	def __init__(self, grid, flux_scheme, boundary, backend, dtype):
-		super().__init__(grid, flux_scheme, boundary, backend, dtype)
+	"""
+	The two-stages RK time integrator for the inviscid Burgers equations.
+	"""
+	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
+		super().__init__(grid_xy, nb, flux_scheme, backend, dtype)
 		self._stencil = None
 
 	@property
@@ -208,8 +298,8 @@ class _RK2(BurgersStepper):
 		}
 
 	def _stencil_initialize(self, tendency):
-		mi, mj = self._boundary.mi, self._boundary.mj
-		nb = self._boundary.nb
+		mi, mj = self._grid_xy.nx, self._grid_xy.ny
+		nb = self._nb
 
 		self._dt = gt.Global()
 
@@ -235,7 +325,7 @@ class _RK2(BurgersStepper):
 		outputs = {'out_u': self._out_u, 'out_v': self._out_v}
 
 		self._stencil = gt.NGStencil(
-			definitions_func=self._forward_euler_step.__call__,
+			definitions_func=self._fwe_step.__call__,
 			inputs=inputs, global_inputs={'dt': self._dt}, outputs=outputs,
 			domain=gt.domain.Rectangle((nb, nb, 0), (mi-nb-1, mj-nb-1, 0)),
 			mode=self._backend,
@@ -243,8 +333,11 @@ class _RK2(BurgersStepper):
 
 
 class _RK3WS(_RK2):
-	def __init__(self, grid, flux_scheme, boundary, backend, dtype):
-		super().__init__(grid, flux_scheme, boundary, backend, dtype)
+	"""
+	The three-stages RK time integrator for the inviscid Burgers equations.
+	"""
+	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
+		super().__init__(grid_xy, nb, flux_scheme, backend, dtype)
 
 	@property
 	def stages(self):
@@ -262,7 +355,7 @@ class _RK3WS(_RK2):
 		elif stage == 1:
 			dtr = 1.0/6.0 * timestep
 			self._dt.value = 0.5 * timestep.total_seconds()
-		elif stage == 2:
+		else:
 			dtr = 1.0/2.0 * timestep
 			self._dt.value = timestep.total_seconds()
 

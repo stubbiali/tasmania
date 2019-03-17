@@ -38,7 +38,7 @@ axis_x = {
 		'km': (-100, 100),
 		'm': (0, 2e5),
 	},
-	'length': (10, 40),
+	'length': (1, 40),
 	'increasing': True,
 }
 
@@ -49,7 +49,7 @@ axis_y = {
 		'km': (-100, 100),
 		'm': (0, 2e5),
 	},
-	'length': (10, 40),
+	'length': (1, 40),
 	'increasing': True,
 }
 
@@ -60,27 +60,14 @@ axis_z = {
 		'K': (270, 400),
 		'degC': (-20, 40),
 	},
-	'length': (2, 40),
+	'length': (1, 40),
 	'increasing': False,
 }
 
-# topography
-topography1d = {
-	'type': ('flat_terrain', 'gaussian', 'user_defined'),
-	'time_max': timedelta(minutes=60),
-	'units_to_max_height': {
-		'km': (0, 2),
-	},
-	'units_to_half_width': {
-		'm': (1, 50e3),
-	},
-	'str': ('x', ),
-}
-
 # topography2d
-topography2d = {
+topography = {
 	'type': ('flat_terrain', 'gaussian', 'schaer', 'user_defined'),
-	'time_max': timedelta(minutes=60),
+	'time': (timedelta(seconds=1), timedelta(minutes=60)),
 	'units_to_max_height': {
 		'km': (0, 2),
 	},
@@ -95,7 +82,7 @@ topography2d = {
 }
 
 # horizontal boundary
-horizontal_boundary = ('periodic', 'relaxed')
+horizontal_boundary_types = ('relaxed', 'periodic')
 
 # isentropic model
 isentropic_state = {
@@ -104,11 +91,11 @@ isentropic_state = {
 	},
 	'x_velocity_at_u_locations': {
 		'm s^-1': (-50, 50),
-		'km kr^-1': (-150, 150),
+		'km hr^-1': (-150, 150),
 	},
 	'y_velocity_at_v_locations': {
 		'm s^-1': (-50, 50),
-		'km kr^-1': (-150, 150),
+		'km hr^-1': (-150, 150),
 	},
 	'mass_fraction_of_water_vapor_in_air': {
 		'g g^-1': (0, 5),

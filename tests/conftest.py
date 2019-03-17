@@ -24,8 +24,7 @@ from datetime import timedelta
 import pytest
 from sympl import DataArray, TendencyComponent
 
-from tasmania.python.grids.grid_xyz import GridXYZ as Grid
-from tasmania.python.grids.grid_xz import GridXZ
+from tasmania.python.grids.grid import PhysicalGrid
 from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.utils.storage_utils import load_netcdf_dataset
@@ -33,53 +32,68 @@ from tasmania.python.utils.storage_utils import load_netcdf_dataset
 
 @pytest.fixture(scope='module')
 def grid():
-	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 101
-	domain_y, ny = DataArray([-50., 50.], dims='y', attrs={'units': 'km'}), 51
-	domain_z, nz = DataArray([400., 300.], dims='air_potential_temperature',
-							 attrs={'units': 'K'}), 50
+	domain_x = DataArray([0., 500.], dims='x', attrs={'units': 'km'})
+	nx       = 101
+	domain_y = DataArray([-50., 50.], dims='y', attrs={'units': 'km'})
+	ny       = 51
+	domain_z = DataArray(
+		[400., 300.], dims='air_potential_temperature', attrs={'units': 'K'}
+	)
+	nz       = 50
 
-	return Grid(domain_x, nx, domain_y, ny, domain_z, nz,
-				topo_type='gaussian', topo_time=timedelta(seconds=0),
-				topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
+	return PhysicalGrid(
+		domain_x, nx, domain_y, ny, domain_z, nz,
+		topography_type='gaussian',
+		topography_kwargs={
+			'time': timedelta(seconds=0),
+			'max_height': DataArray(1000.0, attrs={'units': 'm'}),
+			'width_x': DataArray(25.0, attrs={'units': 'km'})
+		}
+	)
 
 
 @pytest.fixture(scope='module')
 def grid_xz():
-	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 101
-	domain_y, ny = DataArray([-50., 50.], dims='y', attrs={'units': 'km'}), 1
-	domain_z, nz = DataArray([400., 300.], dims='air_potential_temperature',
-							 attrs={'units': 'K'}), 50
+	domain_x = DataArray([0., 500.], dims='x', attrs={'units': 'km'})
+	nx       = 101
+	domain_y = DataArray([-50., 50.], dims='y', attrs={'units': 'km'})
+	ny       = 1
+	domain_z = DataArray(
+		[400., 300.], dims='air_potential_temperature', attrs={'units': 'K'}
+	)
+	nz       = 50
 
-	return Grid(domain_x, nx, domain_y, ny, domain_z, nz,
-				topo_type='gaussian', topo_time=timedelta(seconds=0),
-				topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
-
-
-@pytest.fixture(scope='module')
-def grid_xz_2d():
-	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 101
-	domain_z, nz = DataArray([400., 300.], dims='air_potential_temperature',
-							 attrs={'units': 'K'}), 50
-
-	return GridXZ(domain_x, nx, domain_z, nz,
-				  topo_type='gaussian', topo_time=timedelta(seconds=0),
-				  topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							   'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
+	return PhysicalGrid(
+		domain_x, nx, domain_y, ny, domain_z, nz,
+		topography_type='gaussian',
+		topography_kwargs={
+			'time': timedelta(seconds=0),
+			'max_height': DataArray(1000.0, attrs={'units': 'm'}),
+			'width_x': DataArray(25.0, attrs={'units': 'km'})
+		}
+	)
 
 
 @pytest.fixture(scope='module')
 def grid_yz():
-	domain_x, nx = DataArray([0., 500.], dims='x', attrs={'units': 'km'}), 1
-	domain_y, ny = DataArray([-50., 50.], dims='y', attrs={'units': 'km'}), 51
-	domain_z, nz = DataArray([400., 300.], dims='air_potential_temperature',
-							 attrs={'units': 'K'}), 50
+	domain_x = DataArray([0., 500.], dims='x', attrs={'units': 'km'})
+	nx       = 1
+	domain_y = DataArray([-50., 50.], dims='y', attrs={'units': 'km'})
+	ny       = 51
+	domain_z = DataArray(
+		[400., 300.], dims='air_potential_temperature', attrs={'units': 'K'}
+	)
+	nz       = 50
 
-	return Grid(domain_x, nx, domain_y, ny, domain_z, nz,
-				topo_type='gaussian', topo_time=timedelta(seconds=0),
-				topo_kwargs={'topo_max_height': DataArray(1000.0, attrs={'units': 'm'}),
-							 'topo_width_x': DataArray(25.0, attrs={'units': 'km'})})
+	return PhysicalGrid(
+		domain_x, nx, domain_y, ny, domain_z, nz,
+		topography_type='gaussian',
+		topography_kwargs={
+			'time': timedelta(seconds=0),
+			'max_height': DataArray(1000.0, attrs={'units': 'm'}),
+			'width_x': DataArray(25.0, attrs={'units': 'km'})
+		}
+	)
 
 
 @pytest.fixture(scope='module')
@@ -118,10 +132,10 @@ def physical_constants():
 
 @pytest.fixture(scope='module')
 def drawer_topography1d():
-	def _drawer_topography1d(grid, topo_units='m', x=None, y=None,
+	def _drawer_topography1d(grid, topography_units='m', x=None, y=None,
 							 axis_name=None, axis_units=None):
 		properties = {'linecolor': 'black', 'linewidth': 1.3}
-		return LineProfile(grid, 'topography', topo_units, x=x, y=y, z=-1,
+		return LineProfile(grid, 'topography', topography_units, x=x, y=y, z=-1,
 						   axis_name=axis_name, axis_units=axis_units, properties=properties)
 
 	return _drawer_topography1d
@@ -129,10 +143,10 @@ def drawer_topography1d():
 
 @pytest.fixture(scope='module')
 def drawer_topography2d():
-	def _drawer_topography2d(grid, topo_units='m', xaxis_name=None, xaxis_units=None,
+	def _drawer_topography2d(grid, topography_units='m', xaxis_name=None, xaxis_units=None,
 							 yaxis_name=None, yaxis_units=None):
 		properties = {'colors': 'darkgray', 'draw_vertical_levels': False}
-		return Contour(grid, 'topography', topo_units, z=-1,
+		return Contour(grid, 'topography', topography_units, z=-1,
 					   xaxis_name=xaxis_name, xaxis_units=xaxis_units,
 					   yaxis_name=yaxis_name, yaxis_units=yaxis_units,
 					   properties=properties)

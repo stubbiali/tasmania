@@ -26,7 +26,7 @@ import pytest
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
-from tasmania.python.dwarfs.horizontal_boundary import HorizontalBoundary
+from spike.horizontal_boundary import HorizontalBoundary
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
 from tasmania.python.isentropic.dynamics._prognostic import \
 	Centered, ForwardEuler, RK2, RK3COSMO, RK3
