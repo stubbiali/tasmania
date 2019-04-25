@@ -91,6 +91,7 @@ class ConcurrentCoupling:
 
 				* :class:`sympl.DiagnosticComponent`,
 				* :class:`sympl.DiagnosticComponentComposite`,
+				* :class:`tasmania.DiagnosticComponentComposite`,
 				* :class:`sympl.TendencyComponent`,
 				* :class:`sympl.TendencyComponentComposite`,
 				* :class:`sympl.ImplicitTendencyComponent`,

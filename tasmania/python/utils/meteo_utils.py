@@ -24,8 +24,8 @@
 This module contains:
 	get_isothermal_isentropic_analytical_solution
 	convert_relative_humidity_to_water_vapor
-	_apply_teten_formula
-	_apply_goff_gratch_formula
+	tetens_formula
+	goff_gratch_formula
 """
 import numpy as np
 from sympl import DataArray
@@ -208,13 +208,15 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
 	rh_ = rh.to_units('1').values
 
 	# Get the saturation water vapor pressure
-	if method == 'teten':
-		p_sat = apply_teten_formula(T_)
+	if method == 'tetens':
+		p_sat = tetens_formula(T_)
 	elif method == 'goff_gratch':
-		p_sat = apply_goff_gratch_formula(T_)
+		p_sat = goff_gratch_formula(T_)
 	else:
-		raise ValueError("""Unknown formula to compute the saturation water vapor pressure.\n"""
-						 """Available options are: ''teten'', ''goff_gratch''.""")
+		raise ValueError(
+			"Unknown formula to compute the saturation water vapor pressure. "
+			"Available options are: ''teten'', ''goff_gratch''."
+		)
 
 	# Compute the water vapor pressure
 	pw = rh_ * p_sat
@@ -226,72 +228,65 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
 	return qv
 
 
-def apply_teten_formula(T):
+def tetens_formula(t):
 	"""
 	Compute the saturation vapor pressure over water at a given temperature,
-	relying upon the Teten's formula.
+	according to the Tetens formula.
 
 	Parameters
 	----------
-	T : array_like
-		:class:`numpy.ndarray` representing the temperature ([:math:`K`]).
+	t : numpy.ndarray
+		The temperature in [K].
 
 	Return
 	------
-	array_like :
-		:class:`numpy.ndarray` representing the saturation water
-		vapor pressure ([:math:`Pa`]).
+	numpy.ndarray :
+		The saturation water vapor pressure in [Pa].
 	"""
-	# Constants occurring in the Teten's formula
 	pw = 610.78
 	aw = 17.27
-	Tr = 273.16
+	tr = 273.16
 	bw = 35.86
 
-	# Apply the Teten's formula to compute the saturation water vapor pressure
-	e = pw * np.exp(aw * (T - Tr) / (T - bw))
+	e = pw * np.exp(aw * (t - tr) / (t - bw))
 
 	return e
 
 
-def apply_goff_gratch_formula(T):
+def goff_gratch_formula(t):
 	"""
 	Compute the saturation vapor pressure over water at a given temperature,
-	relying upon the Goff-Gratch formula.
+	according to the Goff-Gratch formula.
 
 	Parameters
 	----------
-	T : array_like
-		:class:`numpy.ndarray` representing the temperature ([:math:`K`]).
+	t : numpy.ndarray
+		The temperature in [K].
 
 	Return
 	------
-	array_like :
-		:class:`numpy.ndarray` representing the saturation
-		water vapor pressure ([:math:`Pa`]).
+	numpy.ndarray :
+		The saturation water vapor pressure in [Pa].
 
 	References
 	----------
 	Goff, J. A., and S. Gratch. (1946). `Low-pressure properties of water from -160 to 212 F`. \
 		*Transactions of the American Society of Heating and Ventilating Engineers*, 95-122.
 	"""
-	# Constants occurring in the Goff-Gratch formula
-	C1 = 7.90298
-	C2 = 5.02808
-	C3 = 1.3816e-7
-	C4 = 11.344
-	C5 = 8.1328e-3
-	C6 = 3.49149
-
-	# The steam-point (i.e., boiling point at 1 atm) temperature,
-	# and the saturation water vapor pressure at the steam-point
-	T_st = 373.15
+	c1 = 7.90298
+	c2 = 5.02808
+	c3 = 1.3816e-7
+	c4 = 11.344
+	c5 = 8.1328e-3
+	c6 = 3.49149
+	t_st = 373.15
 	e_st = 1013.25e2
-	
-	# Apply the Goff-Gratch formula to compute the saturation water vapor pressure
-	e = e_st * 10 ** (- C1 * (T_st / T - 1.) 
-					  + C2 * np.log10(T_st / T)
-					  - C3 * (10. ** (C4 * (1. - T / T_st)) - 1.)
-					  + C5 * (10 ** (- C6 * (T_st / T - 1.)) - 1.))
+
+	e = e_st * 10 ** (
+		- c1 * (t_st / t - 1.)
+		+ c2 * np.log10(t_st / t)
+		- c3 * (10. ** (c4 * (1. - t / t_st)) - 1.)
+		+ c5 * (10 ** (- c6 * (t_st / t - 1.)) - 1.)
+	)
 
 	return e

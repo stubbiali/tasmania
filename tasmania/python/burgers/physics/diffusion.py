@@ -54,7 +54,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 			The type of grid over which instantiating the class. Either:
 
 				* 'physical';
-				* 'computational'.
+				* 'numerical'.
 
 		diffusion_type : str
 			String specifying the desired type of horizontal diffusion.
@@ -80,7 +80,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 			diffusion_type, (nx, ny, 1), dx, dy,
 			diffusion_coeff=diffusion_coeff.to_units('m^2 s^-1').values.item(),
 			diffusion_coeff_max=diffusion_coeff.to_units('m^2 s^-1').values.item(),
-			diffusion_damp_depth=0,  #nb = self.horizotal_boundary.nb
+			diffusion_damp_depth=0,  #nb = self.horizontal_boundary.nb
 			backend=backend, dtype=dtype
 		)
 

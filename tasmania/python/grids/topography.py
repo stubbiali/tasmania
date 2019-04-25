@@ -24,7 +24,7 @@
 This module contains:
 	Topography
 	PhysicalTopography
-	ComputationalTopography
+	NumericalTopography
 """
 from copy import deepcopy
 import numpy as np
@@ -399,17 +399,17 @@ class PhysicalTopography(Topography):
 		super().__init__(topography_type, topo_steady, **topo_kwargs)
 
 
-class ComputationalTopography(Topography):
+class NumericalTopography(Topography):
 	"""
 	Class which represents a possibly time-dependent topography defined
-	over a *computational* grid.
+	over a *numerical* grid.
 	"""
 	def __init__(self, grid, phys_topography, boundary):
 		"""
 		Parameters
 		----------
-		grid : tasmania.ComputationalHorizontalGrid
-			The underlying computational grid.
+		grid : tasmania.NumericalHorizontalGrid
+			The underlying numerical grid.
 		phys_topography : tasmania.Topography
 			The topography defined over the associated *physical* grid.
 		boundary : tasmania.HorizontalBoundary
@@ -424,10 +424,10 @@ class ComputationalTopography(Topography):
 		units = phys_topography.profile.attrs['units']
 
 		ctopo = make_dataarray_2d(
-			boundary.get_computational_field(ptopo), grid, units
+			boundary.get_numerical_field(ptopo), grid, units
 		)
 		ctopo_steady = make_dataarray_2d(
-			boundary.get_computational_field(ptopo_steady), grid, units
+			boundary.get_numerical_field(ptopo_steady), grid, units
 		)
 
 		super().__init__(topo_type, ctopo_steady, ctopo, **topo_kwargs)

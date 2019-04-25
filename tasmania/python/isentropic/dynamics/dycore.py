@@ -27,13 +27,13 @@ This module contains:
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.diagnostics import \
-	HorizontalVelocity, IsentropicDiagnostics, WaterConstituent
+from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
+from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
+from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
+from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 
 try:
 	from tasmania.conf import datatype

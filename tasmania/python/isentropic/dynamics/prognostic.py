@@ -29,9 +29,9 @@ import numpy as np
 from sympl import DataArray
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.diagnostics import WaterConstituent
+from tasmania.python.dwarfs.diagnostics import WaterConstituent
 from tasmania.python.isentropic.dynamics.fluxes import \
-	HorizontalIsentropicFlux, VerticalIsentropicFlux
+	IsentropicHorizontalFlux, IsentropicVerticalFlux
 from tasmania.python.physics.microphysics import \
 	SedimentationFlux, RaindropFallVelocity
 from tasmania.python.utils.data_utils import get_physical_constants
@@ -155,10 +155,10 @@ class IsentropicPrognostic:
 														  physical_constants)
 
 		# Instantiate the classes computing the numerical horizontal and vertical fluxes
-		self._hflux = HorizontalIsentropicFlux.factory(self._hflux_scheme, grid, moist_on)
+		self._hflux = IsentropicHorizontalFlux.factory(self._hflux_scheme, grid, moist_on)
 		self._hboundary.nb = self._hflux.nb
 		if not adiabatic_flow:
-			self._vflux = VerticalIsentropicFlux.factory(self._vflux_scheme, grid, moist_on)
+			self._vflux = IsentropicVerticalFlux.factory(self._vflux_scheme, grid, moist_on)
 
 		# Instantiate the classes computing the vertical derivative of the sedimentation flux
 		# and diagnosing the mass fraction of precipitation water

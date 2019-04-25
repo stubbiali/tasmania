@@ -42,74 +42,71 @@ class Contour(Drawer):
 	Drawer which generates a contour plot of a state quantity
 	at a cross-section parallel to one coordinate plane.
 	"""
-	def __init__(self, grid, field_name, field_units,
-				 x=None, y=None, z=None,
-				 xaxis_name=None, xaxis_units=None, xaxis_y=None, xaxis_z=None,
-				 yaxis_name=None, yaxis_units=None, yaxis_x=None, yaxis_z=None,
-				 zaxis_name=None, zaxis_units=None, zaxis_x=None, zaxis_y=None,
-				 properties=None):
+	def __init__(
+		self, grid, field_name, field_units, x=None, y=None, z=None,
+		xaxis_name=None, xaxis_units=None, xaxis_y=None, xaxis_z=None,
+		yaxis_name=None, yaxis_units=None, yaxis_x=None, yaxis_z=None,
+		zaxis_name=None, zaxis_units=None, zaxis_x=None, zaxis_y=None,
+		properties=None
+	):
 		"""
 		Parameters
 		----------
-		grid : grid
-			Instance of :class:`~tasmania.grids.grid_xyz.GridXYZ`,
-			or one of its derived classes representing the underlying grid.
+		grid : tasmania.Grid
+			The underlying grid.
 		field_name : str
 			The state quantity to visualize.
 		field_units : str
 			The units for the quantity to visualize.
 		x : `int`, optional
 			Index along the first dimension of the field array identifying
-			the cross-section to visualize. To be specified only if both :obj:`y`
-			and :obj:`z` are not given.
+			the cross-section to visualize. To be specified only if both
+			`y` and `z` are not given.
 		y : `int`, optional
 			Index along the second dimension of the field array identifying
-			the cross-section to visualize. To be specified only if both :obj:`x`
-			and :obj:`z` are not given.
+			the cross-section to visualize. To be specified only if both
+			`x` and `z` are not given.
 		z : `int`, optional
 			Index along the third dimension of the field array identifying
-			the cross-section to visualize. To be specified only if both :obj:`x`
-			and :obj:`y` are not given.
+			the cross-section to visualize. To be specified only if both
+			`x` and `y` are not given.
 		xaxis_name : `str`, optional
-			If either :obj:`y` or :obj:`z` is given, the name of the computational
-			axis to place on the plot x-axis. Options are:
+			If either `y` or `z` is given, the name of the grid	axis to
+			place on the plot x-axis. Options are:
 
 				* 'x' (default).
 
 		xaxis_units : `str`, optional
-			If either :obj:`y` or :obj:`z` is given, units for the :obj:`xaxis_name`
-			computational axis. If not specified, the native units of the
-			computational axis are used.
+			If either `y` or `z` is given, units for the `xaxis_name` axis.
+			If not specified, the native units of the grid axis are used.
 		xaxis_y : `int`, optional
-			Index along the second dimension of the :obj:`xaxis_name` computational
-			axis array identifying the cross-section to visualize. Defaults to :obj:`y`.
-			Only effective if :obj:`xaxis_name` is not 'x' and :obj:`y` is given.
+			Index along the second dimension of the `xaxis_name` grid axis
+			array identifying the cross-section to visualize. Defaults to `y`.
+			Only effective if `xaxis_name` is not 'x' and `y` is given.
 		xaxis_z : `int`, optional
-			Index along the third dimension of the :obj:`xaxis_name` computational
-			axis array identifying the cross-section to visualize. Defaults to :obj:`z`.
-			Only effective if :obj:`xaxis_name` is not 'x' and :obj:`z` is given.
+			Index along the third dimension of the `xaxis_name` grid axis
+			array identifying the cross-section to visualize. Defaults to `z`.
+			Only effective if `xaxis_name` is not 'x' and `z` is given.
 		yaxis_name : `str`, optional
-			The name of the computational axis to place either on the plot x-axis
-			if :obj:`x` is given, or on the plot y-axis if :obj:`z` is given.
-			Options are:
+			The name of the grid axis to place either on the plot x-axis
+			if `x` is given, or on the plot y-axis if `z` is given. Options are:
 
 				* 'y' (default).
 
 		yaxis_units : `str`, optional
-			If either :obj:`x` or :obj:`z` is given, units for the :obj:`yaxis_name`
-			computational axis. If not specified, the native units of the
-			computational axis are used.
+			If either `x` or `z` is given, units for the `yaxis_name` grid axis.
+			If not specified, the native units of the grid axis are used.
 		yaxis_x : `int`, optional
-			Index along the first dimension of the :obj:`yaxis_name` computational
-			axis array identifying the cross-section to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`yaxis_name` is not 'y' and :obj:`x` is given.
+			Index along the first dimension of the `yaxis_name` grid axis
+			array identifying the cross-section to visualize. Defaults to `x`.
+			Only effective if `yaxis_name` is not 'y' and `x` is given.
 		yaxis_z : `int`, optional
-			Index along the third dimension of the :obj:`yaxis_name` computational
-			axis array identifying the cross-section to visualize. Defaults to :obj:`z`.
-			Only effective if :obj:`yaxis_name` is not 'y' and :obj:`z` is given.
+			Index along the third dimension of the `yaxis_name` grid axis
+			array identifying the cross-section to visualize. Defaults to `z`.
+			Only effective if `yaxis_name` is not 'y' and `z` is given.
 		zaxis_name : `str`, optional
-			If either :obj:`x` or :obj:`y` is given, the name of the computational
-			axis to place either on the plot y-axis. Options are:
+			If either `x` or `y` is given, the name of the grid axis to
+			place on the plot y-axis. Options are:
 
 				* 'z' (default);
 				* 'height';
@@ -118,22 +115,20 @@ class Contour(Drawer):
 				* 'air_pressure_on_interface_levels'.
 
 		zaxis_units : `str`, optional
-			If either :obj:`x` or :obj:`y` is given, units for the :obj:`zaxis_name`
-			computational axis. If not specified, the native units of the
-			computational axis are used.
+			If either `x` or `y` is given, units for the `zaxis_name` grid axis.
+			If not specified, the native units of the grid axis are used.
 		zaxis_x : `int`, optional
-			Index along the first dimension of the :obj:`zaxis_name` computational
-			axis array identifying the cross-section to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`zaxis_name` is not 'z' and :obj:`x` is given.
+			Index along the first dimension of the `zaxis_name` grid axis
+			array identifying the cross-section to visualize. Defaults to `x`.
+			Only effective if `zaxis_name` is not 'z' and `x` is given.
 		zaxis_y : `int`, optional
-			Index along the second dimension of the :obj:`zaxis_name` computational
-			axis array identifying the cross-section to visualize. Defaults to :obj:`y`.
-			Only effective if :obj:`zaxis_name` is not 'z' and :obj:`y` is given.
+			Index along the second dimension of the `zaxis_name` grid axis
+			array identifying the cross-section to visualize. Defaults to `y`.
+			Only effective if `zaxis_name` is not 'z' and `y` is given.
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
-			:func:`tasmania.plot.utils.make_lineplot`.
-			The latter utility is leveraged to draw the topography.
+			settings, and whose values specify values for those settings.
+			See :func:`~tasmania.python.plot.plot_utils.make_contour`.
 		"""
 		super().__init__(properties)
 
@@ -143,19 +138,22 @@ class Contour(Drawer):
 		flag_y = 0 if y is None else 1
 		flag_z = 0 if z is None else 1
 		if flag_x + flag_y + flag_z != 1:
-			raise ValueError('A plane is uniquely identified by one index, but here '
-							 'x is{}given, y is{}given and z is{}given.'.format(
-				' ' if flag_x else ' not ', ' ' if flag_y else ' not ',
-				' ' if flag_z else ' not ',
-			)
+			raise ValueError(
+				"A plane is uniquely identified by one index, but here "
+				"x is{}given, y is{}given and z is{}given.".format(
+					" " if flag_x else " not ",
+					" " if flag_y else " not ",
+					" " if flag_z else " not ",
+				)
 			)
 
 		slice_x = slice(x, x+1 if x != -1 else None, None) if flag_x else None
 		slice_y = slice(y, y+1 if y != -1 else None, None) if flag_y else None
 		slice_z = slice(z, z+1 if z != -1 else None, None) if flag_z else None
 
-		retriever = DataRetriever(grid, field_name, field_units,
-								  slice_x, slice_y, slice_z)
+		retriever = DataRetriever(
+			grid, field_name, field_units, slice_x, slice_y, slice_z
+		)
 
 		if flag_z:
 			self._slave = lambda state, ax: make_contour_xy(
@@ -170,8 +168,9 @@ class Contour(Drawer):
 					slice(zax, zax+1 if zax != -1 else None, None)
 				zaslice_y = None if zay is None else \
 					slice(zay, zay+1 if zay != -1 else None, None)
-				zaxis_retriever = DataRetriever(grid, zaxis_name, zaxis_units,
-												zaslice_x, zaslice_y)
+				zaxis_retriever = DataRetriever(
+					grid, zaxis_name, zaxis_units, zaslice_x, zaslice_y
+				)
 
 				if flag_x:
 					self._slave = lambda state, ax: make_contour_yh(
@@ -202,8 +201,9 @@ class Contour(Drawer):
 		self._slave(state, ax)
 
 
-def make_contour_xy(grid, xaxis_units, yaxis_units, field_retriever,
-					state, ax, **kwargs):
+def make_contour_xy(
+	grid, xaxis_units, yaxis_units, field_retriever,state, ax, **kwargs
+):
 	field = np.squeeze(field_retriever(state))
 
 	xv = to_units(grid.x, xaxis_units).values if field.shape[0] == grid.nx \
@@ -216,8 +216,9 @@ def make_contour_xy(grid, xaxis_units, yaxis_units, field_retriever,
 	make_contour(x, y, field, ax, **kwargs)
 
 
-def make_contour_xz(grid, xaxis_units, zaxis_units, field_retriever,
-				    state, ax, **kwargs):
+def make_contour_xz(
+	grid, xaxis_units, zaxis_units, field_retriever, state, ax, **kwargs
+):
 	field = np.squeeze(field_retriever(state))
 
 	xv = to_units(grid.x, xaxis_units).values if field.shape[0] == grid.nx \
@@ -230,8 +231,9 @@ def make_contour_xz(grid, xaxis_units, zaxis_units, field_retriever,
 	make_contour(x, z, field, ax, **kwargs)
 
 
-def make_contour_xh(grid, xaxis_units, zaxis_retriever, field_retriever,
-					state, ax, **kwargs):
+def make_contour_xh(
+	grid, xaxis_units, zaxis_retriever, field_retriever, state, ax, **kwargs
+):
 	field = np.squeeze(field_retriever(state))
 
 	zv    = np.squeeze(zaxis_retriever(state))
@@ -247,8 +249,9 @@ def make_contour_xh(grid, xaxis_units, zaxis_retriever, field_retriever,
 	make_contour(x, z, field, ax, **kwargs)
 
 
-def make_contour_yz(grid, yaxis_units, zaxis_units, field_retriever,
-					state, ax, **kwargs):
+def make_contour_yz(
+	grid, yaxis_units, zaxis_units, field_retriever, state, ax, **kwargs
+):
 	field = np.squeeze(field_retriever(state))
 
 	yv = to_units(grid.y, yaxis_units).values if field.shape[0] == grid.ny \
@@ -261,8 +264,9 @@ def make_contour_yz(grid, yaxis_units, zaxis_units, field_retriever,
 	make_contour(y, z, field, ax, **kwargs)
 
 
-def make_contour_yh(grid, yaxis_units, zaxis_retriever, field_retriever,
-					state, ax, **kwargs):
+def make_contour_yh(
+	grid, yaxis_units, zaxis_retriever, field_retriever, state, ax, **kwargs
+):
 	field = np.squeeze(field_retriever(state))
 
 	zv    = np.squeeze(zaxis_retriever(state))
@@ -271,7 +275,7 @@ def make_contour_yh(grid, yaxis_units, zaxis_retriever, field_retriever,
 	field = 0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
 	z     = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
 
-	yv  = to_units(grid.y, yaxis_units).values if field.shape[0] == grid.ny \
+	yv = to_units(grid.y, yaxis_units).values if field.shape[0] == grid.ny \
 		else to_units(grid.y_at_v_locations, yaxis_units).values
 	y  = np.repeat(yv[:, np.newaxis], z.shape[1], axis=1)
 

@@ -22,20 +22,73 @@
 #
 """
 This module contains:
+	get_physical_state
+	get_numerical_state
 	NetCDFMonitor
 	load_netcdf_dataset
-	_load_grid
-	_load_states
+	load_grid
+	load_states
 """
 from copy import deepcopy
 from datetime import timedelta
 import netCDF4 as nc4
 import numpy as np
+from pandas import Timedelta
 import sympl
 import xarray as xr
 
-from tasmania.python.grids.grid import Grid
+from tasmania.python.burgers.state import ZhaoSolutionFactory
+from tasmania.python.grids.domain import Domain
+from tasmania.python.utils.data_utils import make_dataarray_3d
 from tasmania.python.utils.utils import convert_datetime64_to_datetime
+
+
+def get_physical_state(domain, cstate, store_names=None):
+	"""
+	Given a state defined over the numerical grid, transpose that state
+	over the corresponding physical grid.
+	"""
+	pgrid = domain.physical_grid
+	hb = domain.horizontal_boundary
+
+	store_names = store_names if store_names is not None else \
+		tuple(name for name in cstate if name != 'time')
+	store_names = tuple(name for name in store_names if name in cstate)
+
+	pstate = {'time': cstate['time']} if 'time' in cstate else {}
+
+	for name in store_names:
+		if name != 'time':
+			units = cstate[name].attrs['units']
+			raw_cfield = cstate[name].values
+			raw_pfield = hb.get_physical_field(raw_cfield, name)
+			pstate[name] = make_dataarray_3d(raw_pfield, pgrid, units, name)
+
+	return pstate
+
+
+def get_numerical_state(domain, pstate, store_names=None):
+	"""
+	Given a state defined over the physical grid, transpose that state
+	over the corresponding numerical grid.
+	"""
+	cgrid = domain.numerical_grid
+	hb = domain.horizontal_boundary
+
+	store_names = store_names if store_names is not None else \
+		tuple(name for name in pstate if name != 'time')
+	store_names = tuple(name for name in store_names if name in pstate)
+
+	cstate = {'time': pstate['time']} if 'time' in pstate else {}
+
+	for name in store_names:
+		if name != 'time':
+			units = pstate[name].attrs['units']
+			raw_pfield = pstate[name].values
+			raw_cfield = hb.get_numerical_field(raw_pfield, name)
+			cstate[name] = make_dataarray_3d(raw_cfield, cgrid, units, name)
+
+	return cstate
 
 
 class NetCDFMonitor(sympl.NetCDFMonitor):
@@ -45,7 +98,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 	together with some grid properties.
 	"""
 	def __init__(
-		self, filename, grid, time_units='seconds',
+		self, filename, domain, grid_type, time_units='seconds',
 		store_names=None, write_on_store=False, aliases=None
 	):
 		"""
@@ -54,10 +107,16 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 		Parameters
 		----------
 		filename : str
-			The file to which the NetCDF file will be written.
-		grid : grid
-			Instance of :class:`~tasmania.dynamics.grids.grid_xyz.GridXYZ`
-			representing the underlying computational grid.
+			The path where the NetCDF file will be written.
+		domain : tasmania.Domain
+			The underlying domain.
+		grid_type : str
+			String specifying the type of grid over which the states should be saved.
+			Either:
+
+				* 'physical';
+				* 'numerical'.
+
 		time_units : str, optional
 			The units in which time will be
 			stored in the NetCDF file. Time is stored as an integer
@@ -77,14 +136,43 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 		super().__init__(
 			filename, time_units, store_names, write_on_store, aliases
 		)
-		self._grid = grid
+		self._domain = domain
+		self._gtype  = grid_type
 
 	def store(self, state):
 		"""
-		Make a deep copy of the input state before calling the parent's method.
+		If the state is defined over the numerical (respectively physical)
+		grid but should be saved over the physical (resp. numerical) grid:
+		transpose the state over the appropriate grid, make a deep copy of this
+		new state, and call the parent's method.
+		If the state is already defined over the expected grid: make a deep copy
+		of the input state before calling the parent's method.
 		"""
-		state_dc = deepcopy(state)
-		super().store(state_dc)
+		grid = self._domain.physical_grid if self._gtype == 'physical' \
+			else self._domain.numerical_grid
+		dims_x = (grid.x.dims[0], grid.x_at_u_locations.dims[0])
+		dims_y = (grid.y.dims[0], grid.y_at_v_locations.dims[0])
+
+		if self._gtype == 'physical':
+			names = tuple(key for key in state if key != 'time')
+			if not(
+				state[names[0]].dims[0] in dims_x and
+				state[names[0]].dims[1] in dims_y
+			):
+				to_save = get_physical_state(self._domain, state, self._store_names)
+			else:
+				to_save = state
+		else:
+			names = tuple(key for key in state if key != 'time')
+			if not(
+				state[names[0]].dims[0] in dims_x and
+				state[names[0]].dims[1] in dims_y
+			):
+				to_save = get_numerical_state(self._domain, state, self._store_names)
+			else:
+				to_save = state
+
+		super().store(deepcopy(to_save))
 
 	def write(self):
 		"""
@@ -94,19 +182,25 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 		super().write()
 
 		with nc4.Dataset(self._filename, 'a') as dataset:
-			g = self._grid
+			g = self._domain.physical_grid
 
 			dataset.createDimension('bool_dim', 1)
 			dataset.createDimension('scalar_dim', 1)
 			dataset.createDimension('str_dim', 1)
+			dataset.createDimension('timedelta_dim', 1)
+			dataset.createDimension('functor_dim', 1)
 
-			# List of model state variable names
+			# list model state variable names
 			names = [var for var in dataset.variables if var != 'time']
 			dataset.createDimension('strvec1_dim', len(names))
 			state_variable_names = dataset.createVariable(
 				'state_variable_names', str, ('strvec1_dim',)
 			)
 			state_variable_names[:] = np.array(names, dtype='object')
+
+			# type of the underlying grid over which the states are defined
+			grid_type = dataset.createVariable('grid_type', str, ('str_dim',))
+			grid_type[:] = np.array([self._gtype], dtype='object')
 
 			# x-axis
 			dim1_name = dataset.createVariable('dim1_name', str, ('str_dim',))
@@ -159,49 +253,84 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 			except ValueError:
 				pass
 
-			# Interface level
+			# vertical interface level
 			z_interface = dataset.createVariable(
 				'z_interface', g.z_interface.values.dtype, ('scalar_dim',)
 			)
 			z_interface[:] = g.z_interface.values.item()
 			z_interface.setncattr('units', g.z_interface.attrs['units'])
 
-			# Topography type
-			topo         = self._grid.topography
-			topo_type    = dataset.createVariable('topo_type', str, ('str_dim',))
-			topo_type[:] = np.array([topo.topo_type], dtype='object')
+			# type of horizontal boundary conditions
+			hb = self._domain.horizontal_boundary
+			hb_type = dataset.createVariable('horizontal_boundary_type', str, ('str_dim',))
+			hb_type[:] = np.array(hb.type, dtype='object')
 
-			# Characteristic time scale of the topography
-			topo_time    = dataset.createVariable('topo_time', float, ('scalar_dim',))
-			topo_time[:] = np.array([topo.topo_time.total_seconds()], dtype=float)
-			topo_time.setncattr('units', 's')
+			# the number of boundary layers
+			nb = dataset.createVariable('nb', int, ('scalar_dim',))
+			nb[:] = np.array([hb.nb], dtype=int)
 
-			# Topography properties
+			# the keyword arguments used to instantiate the object handling the
+			# lateral boundary conditions
 			keys = []
-			for key, value in topo.topo_kwargs.items():
+			for key in hb.kwargs.keys():
+				hb_key = 'hb_' + key
+				value = hb.kwargs[key]
+
+				if isinstance(value, (int, float)):
+					var    = dataset.createVariable(hb_key, type(value), ('scalar_dim',))
+					var[:] = np.array([value], dtype=type(value))
+				elif isinstance(value, ZhaoSolutionFactory):
+					# TODO: this actually does not work, because only primitive types
+					# TODO: can be stored in a netCDF dataset
+					var    = dataset.createVariable(hb_key, ZhaoSolutionFactory, ('functor_dim',))
+					var[:] = np.array([value], dtype='object')
+
+				keys.append(hb_key)
+
+			# list of keyword parameter names used to instantiate the object handling
+			# the lateral boundary conditions
+			dataset.createDimension('strvec2_dim', len(keys))
+			hb_kwargs    = dataset.createVariable('horizontal_boundary_kwargs', str, ('strvec2_dim',))
+			hb_kwargs[:] = np.array(keys, dtype='object')
+
+			# topography type
+			topo         = g.topography
+			topo_type    = dataset.createVariable('topography_type', str, ('str_dim',))
+			topo_type[:] = np.array([topo.type], dtype='object')
+
+			# keyword arguments used to instantiate the topography
+			keys = []
+			for key in topo.kwargs.keys():
+				topo_key = 'topo_' + key
+				value = topo.kwargs[key]
+
 				if isinstance(value, sympl.DataArray):
-					var    = dataset.createVariable(key, value.values.dtype, ('scalar_dim',))
+					var    = dataset.createVariable(topo_key, value.values.dtype, ('scalar_dim',))
 					var[:] = value.values.item()
 					var.setncattr('units', value.attrs['units'])
 				elif isinstance(value, str):
-					var    = dataset.createVariable(key, str, ('str_dim',))
+					var    = dataset.createVariable(topo_key, str, ('str_dim',))
 					var[:] = np.array([value], dtype='object')
 				elif isinstance(value, bool):
-					var    = dataset.createVariable(key, int, ('bool_dim',))
+					var    = dataset.createVariable(topo_key, int, ('bool_dim',))
 					var[:] = np.array([1 if value else 0], dtype=bool)
+				elif isinstance(value, timedelta) or isinstance(value, Timedelta):
+					var    = dataset.createVariable(topo_key, float, ('timedelta_dim',))
+					var[:] = np.array([value.total_seconds()], dtype=float)
+					var.setncattr('units', 's')
 
-				keys.append(key)
+				keys.append(topo_key)
 
-			# List of keyword arguments to pass to the topography
-			dataset.createDimension('strvec2_dim', len(keys))
-			topo_kwargs    = dataset.createVariable('topo_kwargs', str, ('strvec2_dim',))
+			# list of keyword parameter names used to instantiate the topography
+			dataset.createDimension('strvec3_dim', len(keys))
+			topo_kwargs    = dataset.createVariable('topography_kwargs', str, ('strvec3_dim',))
 			topo_kwargs[:] = np.array(keys, dtype='object')
 
 
 def load_netcdf_dataset(filename):
 	"""
 	Load the sequence of states stored in a NetCDF dataset,
-	and build the underlying grid.
+	and build the underlying domain.
 
 	Parameters
 	----------
@@ -210,17 +339,20 @@ def load_netcdf_dataset(filename):
 
 	Returns
 	-------
-	grid : grid
-		Instance of :class:`~tasmania.dynamics.grids.grid_xyz.GridXYZ`
-		representing the underlying computational grid.
-	states : list of dict
-		List of state dictionaries stored in the NetCDF file.
+	domain : tasmania.Domain
+		The underlying domain.
+	grid_type : str
+		The type of the underlying grid over which the states are defined.
+		Either 'physical' or 'numerical'.
+	states : list[dict]
+		The list of state dictionaries stored in the NetCDF file.
 	"""
 	with xr.open_dataset(filename) as dataset:
-		return _load_grid(dataset), _load_states(dataset)
+		return load_domain(dataset), load_grid_type(dataset), load_states(dataset)
 
 
-def _load_grid(dataset):
+def load_domain(dataset):
+	# x-axis
 	dims_x = dataset.data_vars['dim1_name'].values.item()
 	x = dataset.coords[dims_x]
 	domain_x = sympl.DataArray(
@@ -229,6 +361,7 @@ def _load_grid(dataset):
 	)
 	nx = x.shape[0]
 
+	# y-axis
 	dims_y = dataset.data_vars['dim2_name'].values.item()
 	y = dataset.coords[dims_y]
 	domain_y = sympl.DataArray(
@@ -237,6 +370,7 @@ def _load_grid(dataset):
 	)
 	ny = y.shape[0]
 
+	# z-axis
 	dims_z = dataset.data_vars['dim3_name'].values.item()
 	z_hl = dataset.coords[dims_z + '_on_interface_levels']
 	domain_z = sympl.DataArray(
@@ -245,38 +379,70 @@ def _load_grid(dataset):
 	)
 	nz = z_hl.shape[0]-1
 
+	# vertical interface level
 	z_interface = sympl.DataArray(dataset.data_vars['z_interface'])
 
-	topo_type = dataset.data_vars['topo_type'].values.item()
+	# horizontal boundary type
+	hb_type = dataset.data_vars['horizontal_boundary_type'].values.item()
 
-	topo_time = timedelta(seconds=dataset.data_vars['topo_time'].values.item())
+	# number of lateral boundary layers
+	nb = dataset.data_vars['nb'].values.item()
 
-	keys = dataset.data_vars['topo_kwargs'].values[:]
+	# horizontal boundary keyword arguments
+	keys = dataset.data_vars['horizontal_boundary_kwargs'].values[:]
+	hb_kwargs = {}
+	for hb_key in keys:
+		val = dataset.data_vars[hb_key]
+		key = hb_key[3:]
+
+		if isinstance(val.values.item(), int):
+			hb_kwargs[key] = val.values.item()
+
+	# topography type
+	topo_type = dataset.data_vars['topography_type'].values.item()
+
+	# topography keyword arguments
+	keys = dataset.data_vars['topography_kwargs'].values[:]
 	topo_kwargs = {}
-	for key in keys:
-		val = dataset.data_vars[key]
+	for topo_key in keys:
+		val = dataset.data_vars[topo_key]
+		key = topo_key[5:]
+
 		if isinstance(val.values.item(), (str, bool)):
 			topo_kwargs[key] = val.values.item()
 		elif isinstance(val.values.item(), int):
 			topo_kwargs[key] = bool(val.values.item())
+		elif val.dims[0] == 'timedelta_dim':
+			topo_kwargs[key] = Timedelta(seconds=val.values.item())
 		else:
 			topo_kwargs[key] = sympl.DataArray(val, attrs={'units': val.attrs['units']})
 
-	return Grid(
+	return Domain(
 		domain_x, nx, domain_y, ny, domain_z, nz, z_interface,
-		topo_type, topo_time, topo_kwargs, dtype=domain_z.values.dtype
+		horizontal_boundary_type=hb_type, nb=nb, horizontal_boundary_kwargs=hb_kwargs,
+		topography_type=topo_type, topography_kwargs=topo_kwargs,
+		dtype=domain_z.values.dtype
 	)
 
 
-def _load_states(dataset):
+def load_grid_type(dataset):
+	return dataset.data_vars['grid_type'].values.item()
+
+
+def load_states(dataset):
 	names = dataset.data_vars['state_variable_names'].values
 	nt = dataset.data_vars[names[0]].shape[0]
 
 	states = []
 	for n in range(nt):
-		state = {'time': convert_datetime64_to_datetime(dataset['time'][n])}
+		try:
+			state = {'time': convert_datetime64_to_datetime(dataset['time'][n])}
+		except TypeError:
+			state = {'time': convert_datetime64_to_datetime(dataset['time'][n].values.item())}
+
 		for name in names:
 			state[name] = sympl.DataArray(dataset.data_vars[name][n, :, :, :])
+
 		states.append(state)
 
 	return states

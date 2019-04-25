@@ -32,40 +32,41 @@ from tasmania.python.plot.monitors import PlotComposite
 class Animation:
 	"""
 	This class creates an animation by leveraging a wrapped
-	:class:`~tasmania.plot.monitors.Plot` or
-	:class:`~tasmania.plot.monitors.PlotComposite`
+	:class:`~tasmania.Plot` or :class:`~tasmania.PlotComposite`
 	to generate the frames.
 	"""
-	def __init__(self, artist, print_time=None, fps=15):
+	def __init__(self, artist, print_time=None, init_time=None, fps=15):
 		"""
-		The constructor.
-
 		Parameters
 		----------
-		artist : artist
-			Instance of :class:`~tasmania.plot.monitors.Plot` or
-			:class:`~tasmania.plot.monitors.PlotComposite`.
-		print_time : str
+		artist : `tasmania.Plot, tasmania.PlotComposite`
+			The *artist* actually generating the frames.
+		print_time : `str`, optional
 			String specifying if time should be printed above the plot,
-			flush with the right edge. Options are:
+			flush with the right edge. Available options are:
 
-				* 'elapsed', to print the time elapsed from the first snapshot stored;
-				* 'absolute', to print the absolute time of the snapshot.
+				* 'elapsed', to print the time elapsed since `init_time`;
+				* 'absolute', to print the absolute time of the snapshot;
 				* anything else, not to print anything.
 
-			Default is :obj:`None`.
-		fps : int
-			Frames per second. Default is 15.
+			Defaults to :obj:`None`.
+		init_time : `datetime`, optional
+			The initial time of the simulation. Only effective if `print_time`
+			is 'elapsed'. If not specified, the elapsed time is calculated
+			with respect to the first passed state.
+		fps : `int`, optional
+			Frames per second. Defaults to 15.
 		"""
-		# Store input arguments as private attributes
+		# store input arguments as private attributes
 		self._artist = artist
-		self._print_time = print_time
+		self._ptime = print_time
+		self._itime = init_time
 		self._fps = fps
 
-		# Ensure the artist is in non-interactive mode
+		# ensure the artist is in non-interactive mode
 		self._artist.interactive = False
 
-		# Initialize the list of states
+		# initialize the list of states
 		self._states = []
 
 	def store(self, states):
@@ -99,44 +100,47 @@ class Animation:
 		nt = len(self._states)
 		if nt == 0:
 			import warnings
-			warnings.warn('This object does not contain any model state, '
-						  'so no movie will be created.')
+			warnings.warn(
+				"This object does not contain any model state, "
+				"so no movie will be created."
+			)
 			return
 
-		# Instantiate writer class
+		# instantiate writer class
 		ffmpeg_writer = manimation.writers['ffmpeg']
 		metadata = {'title': ''}
 		writer = ffmpeg_writer(fps=self._fps, metadata=metadata)
 
-		# Retrieve the figure object from the artist
+		# retrieve the figure object from the artist
 		fig = self._artist.figure
 
-		# Save initial time
-		try:
-			init_time = self._states[0]['time']
-		except TypeError:
-			init_time = self._states[0][0]['time']
+		# save initial time
+		if self._itime is None:
+			try:
+				self._itime = self._states[0]['time']
+			except TypeError:
+				self._itime = self._states[0][0]['time']
 
 		with writer.saving(fig, save_dest, nt):
 			for n in range(nt):
-				# Clean the canvas
+				# clean the canvas
 				fig.clear()
 
-				# Get current time
+				# get current time
 				try:
 					time = self._states[n]['time']
 				except TypeError:
 					time = self._states[n][0]['time']
 
-				# Get the string with the time
-				if self._print_time == 'elapsed':
-					time_str = str(time - init_time)
-				elif self._print_time == 'absolute':
+				# get the string with the time
+				if self._ptime == 'elapsed':
+					time_str = str(time - self._itime)
+				elif self._ptime == 'absolute':
 					time_str = str(time)
 				else:
 					time_str = None
 
-				# Update artist(s)'s properties
+				# update artist(s)'s properties
 				if time_str is not None:
 					if isinstance(self._artist, PlotComposite):
 						for subplot_artist in self._artist.artists:
@@ -144,7 +148,7 @@ class Animation:
 					else:
 						self._artist.axes_properties['title_right'] = time_str
 
-				# Create the frame
+				# create the frame
 				_ = self._artist.store(self._states[n], fig=fig, show=False)
 
 				# Let the writer grab the frame

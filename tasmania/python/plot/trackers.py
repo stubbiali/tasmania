@@ -38,15 +38,16 @@ class TimeSeries(Drawer):
 	"""
 	Drawer which visualizes a time series.
 	"""
-	def __init__(self, grid, field_name, field_units, x=0, y=0, z=0,
-				 time_mode='elapsed', init_time=None, time_units='s',
-				 time_on_xaxis=True, **kwargs):
+	def __init__(
+		self, grid, field_name, field_units, x=0, y=0, z=0,
+		time_mode='elapsed', init_time=None, time_units='s', time_on_xaxis=True,
+		**kwargs
+	):
 		"""
 		Parameters
 		----------
-		grid : grid
-			Instance of :class:`~tasmania.grids.grid_xyz.GridXYZ`,
-			or one of its derived classes representing the underlying grid.
+		grid : tasmania.Grid
+			The underlying grid.
 		field_name : str
 			The state quantity to visualize.
 		field_units : str
@@ -65,7 +66,7 @@ class TimeSeries(Drawer):
 			'absolute' - to plot data against the absolute time. Defaults to 'elapsed'.
 		init_time : `datetime`, optional
 			Initial time of the simulation.
-			Only effective if :obj:`time_mode` set on 'elapsed'.
+			Only effective if ``time_mode`` set on 'elapsed'.
 			If not specified, the time at which the first given state
 			is defined is assumed to be the initial time of the simulation.
 		time_units : `str`, optional
@@ -76,7 +77,7 @@ class TimeSeries(Drawer):
 			Defaults to :obj:`True`.
 		**kwargs :
 			Keyword arguments specifying plot-specific settings.
-			See :func:`tasmania.plot.utils.make_lineplot`.
+			See :func:`tasmania.python.plot.utils.make_lineplot`.
 		"""
 		super().__init__(**kwargs)
 
@@ -84,8 +85,9 @@ class TimeSeries(Drawer):
 		slice_y = slice(y, y+1 if y != -1 else None)
 		slice_z = slice(z, z+1 if z != -1 else None)
 
-		self._retriever = DataRetriever(grid, field_name, field_units,
-								  		slice_x, slice_y, slice_z)
+		self._retriever = DataRetriever(
+			grid, field_name, field_units, slice_x, slice_y, slice_z
+		)
 
 		self._tmode  = time_mode
 		self._itime  = init_time
@@ -109,8 +111,9 @@ class TimeSeries(Drawer):
 		"""
 		if self._tmode == 'elapsed':
 			self._itime = state['time'] if self._itime is None else self._itime
-			ctime = DataArray((state['time'] - self._itime).total_seconds(),
-							  attrs={'units': 's'})
+			ctime = DataArray(
+				(state['time'] - self._itime).total_seconds(), attrs={'units': 's'}
+			)
 			self._time.append(ctime.to_units(self._tunits).values.item())
 		else:
 			self._time.append(state['time'])
@@ -128,79 +131,97 @@ class HovmollerDiagram(Drawer):
 	"""
 	Drawer which generates a Hovmoller diagram.
 	"""
-	def __init__(self, grid, field_name, field_units,
-				 x=None, y=None, z=None,
-				 axis_name=None, axis_units=None,
-				 axis_x=None, axis_y=None, axis_z=None,
-				 time_mode='elapsed', init_time=None, time_units='s',
-				 **kwargs):
+	def __init__(
+		self, grid, field_name, field_units, x=None, y=None, z=None,
+		axis_name=None, axis_units=None, axis_x=None, axis_y=None, axis_z=None,
+		time_mode='elapsed', init_time=None, time_units='s', **kwargs
+	):
 		"""
 		Parameters
 		----------
-		grid : grid
-			Instance of :class:`~tasmania.grids.grid_xyz.GridXYZ`,
-			or one of its derived classes representing the underlying grid.
+		grid : tasmania.Grid
+			The underlying grid.
 		field_name : str
 			The state quantity to visualize.
 		field_units : str
 			The units for the quantity to visualize.
 		x : `int`, optional
 			Index along the first dimension of the field array identifying the line
-			to visualize. Not to be specified if both :obj:`y` and :obj:`z` are given.
+			to visualize. Not to be specified if both ``y`` and ``z`` are given.
 		y : `int`, optional
 			Index along the second dimension of the field array identifying the line
-			to visualize. Not to be specified if both :obj:`y` and :obj:`z` are given.
+			to visualize. Not to be specified if both ``x`` and ``z`` are given.
 		z : `int`, optional
 			Index along the third dimension of the field array identifying the line
-			to visualize. Not to be specified if both :obj:`y` and :obj:`z` are given.
+			to visualize. Not to be specified if both ``x`` and ``y`` are given.
 		axis_name : `str`, optional
 			The name of the spatial axis. Options are:
 
-				* 'x' (default and only effective if :obj:`x` is not given);
-				* 'y' (default and only effective if :obj:`y` is not given);
-				* 'z' (default and only effective if :obj:`z` is not given);
-				* 'height' (only effective if :obj:`z` is not given);
-				* 'height_on_interface_levels' (only effective if :obj:`z` is not given);
-				* 'air_pressure' (only effective if :obj:`z` is not given).
-				* 'air_pressure_on_interface_levels' (only effective if :obj:`z` is not given).
+				* 'x' (default and only effective if ``x`` is not given);
+				* 'y' (default and only effective if ``y`` is not given);
+				* 'z' (default and only effective if ``z`` is not given);
+				* 'height' (only effective if ``z`` is not given);
+				* 'height_on_interface_levels' (only effective if ``z`` is not given);
+				* 'air_pressure' (only effective if ``z`` is not given).
+				* 'air_pressure_on_interface_levels' (only effective if ``z`` is not given).
 
 		axis_units : `str`, optional
 			Units for the spatial axis. If not specified, the native units of
 			the axis are used
 		axis_x : `int`, optional
-			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
-			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
+			Index along the first dimension of the coordinates array identifying
+			the line to visualize. Defaults to ``x``.
+			Only effective if ``axis_name`` is either
+
+				* 'height',
+				* 'height_on_interface_levels',
+				* 'air_pressure', or
+				* 'air_pressure_on_interface_levels'.
+
+			Not to be specified if both ``axis_y`` and ``axis_z`` are given.
 		axis_y : `int`, optional
-			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
-			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
+			Index along the second dimension of the coordinates array identifying
+			the line to visualize. Defaults to ``y``.
+			Only effective if ``axis_name`` is either
+
+				* 'height',
+				* 'height_on_interface_levels',
+				* 'air_pressure', or
+				* 'air_pressure_on_interface_levels'.
+
+			Not to be specified if both ``axis_x`` and ``axis_z`` are given.
 		axis_z : `int`, optional
-			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
-			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
+			Index along the third dimension of the coordinates array identifying
+			the line to visualize. Defaults to ``z``.
+			Only effective if ``axis_name`` is either
+
+				* 'height',
+				* 'height_on_interface_levels',
+				* 'air_pressure', or
+				* 'air_pressure_on_interface_levels'.
+
+			Not to be specified if both ``axis_x`` and ``axis_y`` are given.
 		time_mode : `str`, optional
 			Either 'elapsed' - to plot data against the elapsed time, or
 			'absolute' - to plot data against the absolute time. Defaults to 'elapsed'.
 		init_time : `datetime`, optional
 			Initial time of the simulation.
-			Only effective if :obj:`time_mode` set on 'elapsed'.
+			Only effective if ``time_mode`` set on 'elapsed'.
 			If not specified, the time at which the first given state
 			is defined is assumed to be the initial time of the simulation.
 		time_units : `str`, optional
 			Units for time. Defaults to 's' (seconds).
-			Only effective if :obj:`time_mode` set on 'elapsed'.
+			Only effective if ``time_mode`` set on 'elapsed'.
 		**kwargs :
 			Keyword arguments specifying plot-specific settings.
-			See :func:`tasmania.plot.utils.make_contourf`.
+			See :func:`tasmania.python.plot.utils.make_contourf`.
 		"""
 		super().__init__(**kwargs)
 
-		self._retriever = LineProfile(grid, field_name, field_units, x, y, z,
-									  axis_name, axis_units, axis_x, axis_y, axis_z)
+		self._retriever = LineProfile(
+			grid, field_name, field_units, x, y, z,
+			axis_name, axis_units, axis_x, axis_y, axis_z
+		)
 
 		self._tmode  = time_mode
 		self._itime  = init_time
@@ -226,8 +247,9 @@ class HovmollerDiagram(Drawer):
 		"""
 		if self._tmode == 'elapsed':
 			self._itime = state['time'] if self._itime is None else self._itime
-			ctime = DataArray((state['time'] - self._itime).total_seconds(),
-							  attrs={'units': 's'})
+			ctime = DataArray(
+				(state['time'] - self._itime).total_seconds(), attrs={'units': 's'}
+			)
 			self._time.append(ctime.to_units(self._tunits).values.item())
 		else:
 			self._time.append(state['time'])
@@ -236,9 +258,9 @@ class HovmollerDiagram(Drawer):
 			field, spatial_axis = self._retriever(state)
 
 			self._axis = spatial_axis[np.newaxis, :] if self._axis is None else \
-						 np.concatenate((self._axis, spatial_axis[np.newaxis, :]), axis=0)
+				np.concatenate((self._axis, spatial_axis[np.newaxis, :]), axis=0)
 			self._data = field[np.newaxis, :] if self._data is None else \
-						 np.concatenate((self._data, field[np.newaxis, :]), axis=0)
+				np.concatenate((self._data, field[np.newaxis, :]), axis=0)
 
 			x   = np.repeat(np.array(self._time)[:, np.newaxis], self._axis.shape[1], axis=1)
 			y   = self._axis
@@ -247,9 +269,9 @@ class HovmollerDiagram(Drawer):
 			spatial_axis, field = self._retriever(state)
 
 			self._axis = spatial_axis[:, np.newaxis] if self._axis is None else \
-						 np.concatenate((self._axis, spatial_axis[:, np.newaxis]), axis=1)
+				np.concatenate((self._axis, spatial_axis[:, np.newaxis]), axis=1)
 			self._data = field[:, np.newaxis] if self._data is None else \
-						 np.concatenate((self._data, field[:, np.newaxis]), axis=1)
+				np.concatenate((self._data, field[:, np.newaxis]), axis=1)
 
 			x   = self._axis
 			y   = np.repeat(np.array(self._time)[np.newaxis, :], self._axis.shape[0], axis=0)

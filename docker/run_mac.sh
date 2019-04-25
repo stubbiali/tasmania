@@ -25,7 +25,7 @@ TASMANIA_ROOT=$(cd ..; pwd)
 GT4PY_BRANCH=merge_ubbiali
 IMAGE_NAME=tasmania:master
 CONTAINER_NAME=$(openssl rand -hex 6)
-IP=$(ifconfig en1 | grep 'inet ' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | head -1)
+IP=$(ifconfig en0 | grep 'inet ' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | head -1)
 
 echo "About to pull the branch '$GT4PY_BRANCH' of the gridtools4py repository."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
@@ -41,21 +41,23 @@ if [[ $key = "" ]]; then
 	cd ..
 fi
 
+echo ""
 echo "About to run and connect to a containter named '$CONTAINER_NAME', spawn from the image '$IMAGE_NAME'." 
 read -n 1 -s -r -p "Press CTRL-C to exit, or any other key to continue."
 echo ""
 
 ln -fs $DISPLAY /tmp/x11_display
 open -a XQuartz
+xhost + localhost
 socat TCP-LISTEN:6000,reuseaddr,fork UNIX-CLIENT:/tmp/x11_display &
 
-docker run --rm							\
-		   --privileged					\
-		   -dit							\
-		   -e DISPLAY=$IP:0										\
-		   -e XAUTHORITY=$XAUTHORITY 	\
-		   -P							\
-		   --name $CONTAINER_NAME		\
+docker run --rm									\
+		   --privileged							\
+		   -dit									\
+		   -e DISPLAY=host.docker.internal:0 	\
+		   -e XAUTHORITY=$XAUTHORITY 			\
+		   -P									\
+		   --name $CONTAINER_NAME				\
 		   --mount type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix \
 		   --mount type=bind,src=$TASMANIA_ROOT/buffer,dst=/home/tasmania-user/tasmania/buffer \
 		   --mount type=bind,src=$TASMANIA_ROOT/data,dst=/home/tasmania-user/tasmania/data \

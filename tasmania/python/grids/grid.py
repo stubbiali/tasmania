@@ -22,18 +22,18 @@
 #
 """
 This module contains:
-	Grid
-	PhysicalGrid
-	ComputationalGrid
+    Grid
+    PhysicalGrid
+    NumericalGrid
 """
 import math
 import numpy as np
 import sympl
 
 from tasmania.python.grids.topography import \
-	PhysicalTopography, ComputationalTopography
+	PhysicalTopography, NumericalTopography
 from tasmania.python.grids.horizontal_grid import \
-	PhysicalHorizontalGrid, ComputationalHorizontalGrid
+	PhysicalHorizontalGrid, NumericalHorizontalGrid
 from tasmania.python.utils.utils import \
 	smaller_than as lt, smaller_or_equal_than as le
 
@@ -111,6 +111,94 @@ class Grid:
 			The underlying physical horizontal grid.
 		"""
 		return self._grid_xy
+
+	@property
+	def x(self):
+		"""
+		Returns
+		-------
+		sympl.DataArray :
+			1-D :class:`sympl.DataArray` collecting the mass grid points
+			along the first horizontal dimension.
+		"""
+		return self._grid_xy.x
+
+	@property
+	def x_at_u_locations(self):
+		"""
+		Returns
+		-------
+		sympl.DataArray :
+			1-D :class:`sympl.DataArray` collecting the staggered grid points
+			along the first horizontal dimension.
+		"""
+		return self._grid_xy.x_at_u_locations
+
+	@property
+	def nx(self):
+		"""
+		Returns
+		-------
+		int :
+			Number of mass grid points featured by the grid along
+			the first horizontal dimension.
+		"""
+		return self._grid_xy.nx
+
+	@property
+	def dx(self):
+		"""
+		Returns
+		-------
+		sympl.DataArray :
+			1-item :class:`sympl.DataArray` representing the grid spacing
+			along the first horizontal dimension.
+		"""
+		return self._grid_xy.dx
+
+	@property
+	def y(self):
+		"""
+		Returns
+		-------
+		sympl.DataArray :
+			1-D :class:`sympl.DataArray` collecting the mass grid points
+			along the second horizontal dimension.
+		"""
+		return self._grid_xy.y
+
+	@property
+	def y_at_v_locations(self):
+		"""
+		Returns
+		-------
+		sympl.DataArray :
+			1-D :class:`sympl.DataArray` collecting the staggered grid points
+			along the second horizontal dimension.
+		"""
+		return self._grid_xy.y_at_v_locations
+
+	@property
+	def ny(self):
+		"""
+		Returns
+		-------
+		int :
+			Number of mass grid points featured by the grid along
+			the second horizontal dimension.
+		"""
+		return self._grid_xy.ny
+
+	@property
+	def dy(self):
+		"""
+		Returns
+		-------
+		sympl.DataArray :
+			1-item :class:`sympl.DataArray` representing the grid spacing
+			along the second horizontal dimension.
+		"""
+		return self._grid_xy.dy
 
 	@property
 	def z(self):
@@ -298,10 +386,10 @@ class PhysicalGrid(Grid):
 		super().__init__(grid_xy, z, zhl, zi, topo)
 
 
-class ComputationalGrid(Grid):
+class NumericalGrid(Grid):
 	"""
 	This class represents a rectangular, regular and prismatic
-	three-dimensional *computational* grid.
+	three-dimensional *numerical* grid.
 	"""
 	def __init__(self, phys_grid, boundary):
 		"""
@@ -314,7 +402,7 @@ class ComputationalGrid(Grid):
 		"""
 		# the horizontal grid
 		phys_grid_xy = phys_grid.grid_xy
-		grid_xy = ComputationalHorizontalGrid(phys_grid_xy, boundary)
+		grid_xy = NumericalHorizontalGrid(phys_grid_xy, boundary)
 
 		# the vertical discretization
 		z = phys_grid.z
@@ -323,7 +411,7 @@ class ComputationalGrid(Grid):
 
 		# the underlying topography
 		phys_topo = phys_grid.topography
-		topo = ComputationalTopography(grid_xy, phys_topo, boundary)
+		topo = NumericalTopography(grid_xy, phys_topo, boundary)
 
 		# call parent's constructor
 		super().__init__(grid_xy, z, zhl, zi, topo)

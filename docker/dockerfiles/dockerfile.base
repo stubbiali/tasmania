@@ -11,14 +11,17 @@ RUN apt-get install -y ca-certificates		\
 					   cmake				\
 					   curl					\
 					   firefox-esr			\
+					   libblas3				\
 					   libblas-dev			\
 					   libhdf5-dev			\
+					   liblapack3			\
 					   liblapack-dev		\
 					   libfreetype6-dev     \
 					   libnetcdf-dev		\
 					   libpng-dev			\
 					   locales				\
 					   g++					\
+					   gfortran				\
 					   git					\
 					   gnupg				\
 					   graphviz				\

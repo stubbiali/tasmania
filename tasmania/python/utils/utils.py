@@ -20,6 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+"""
+This module contains:
+	equal_to
+	smaller_than
+	smaller_or_equal_than
+	greater_than
+	greater_or_equal_than
+	assert_sequence
+	convert_datetime64_to_datetime
+	get_time_string
+"""
 from datetime import datetime
 import math
 import numpy as np
@@ -145,6 +156,38 @@ def greater_or_equal_than(a, b, tol=d_tol):
 	return a >= (b - tol)
 
 
+def assert_sequence(seq, reflen=None, reftype=None):
+	"""
+	Assert if a sequence has appropriate length and contains objects
+	of appropriate type.
+
+	Parameters
+	----------
+	seq : sequence
+		The sequence.
+	reflen : int
+		The reference length.
+	reftype : obj
+		The reference type, or a list of reference types.
+	"""
+	if reflen is not None:
+		assert len(seq) == reflen, \
+			'The input sequence has length {}, but {} was expected.' \
+				.format(len(seq), reflen)
+
+	if reftype is not None:
+		if type(reftype) is not tuple:
+			reftype = (reftype, )
+		for item in seq:
+			error_msg = 'An item of the input sequence is of type ' \
+						+ str(type(item)) + ', but one of [ '
+			for reftype_ in reftype:
+				error_msg += str(reftype_) + ' '
+			error_msg += '] was expected.'
+
+			assert isinstance(item, reftype), error_msg
+
+
 def convert_datetime64_to_datetime(time):
 	"""
 	Convert :class:`numpy.datetime64` to :class:`datetime.datetime`.
@@ -164,7 +207,7 @@ def convert_datetime64_to_datetime(time):
 	https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
 	https://github.com/bokeh/bokeh/pull/6192/commits/48aea137edbabe731fb9a9c160ff4ab2b463e036.
 	"""
-	# Safeguard check
+	# safeguard check
 	if type(time) == datetime:
 		return time
 
@@ -172,26 +215,15 @@ def convert_datetime64_to_datetime(time):
 	return datetime.utcfromtimestamp(ts)
 
 
-def assert_sequence(seq, reflen=None, reftype=None):
-	if reflen is not None:
-		assert len(seq) == reflen, \
-			'The input sequence has length {}, but {} was expected.' \
-			.format(len(seq), reflen)
-
-	if reftype is not None:
-		if type(reftype) is not tuple:
-			reftype = (reftype, )
-		for item in seq:
-			error_msg = 'An item of the input sequence is of type ' \
-						+ str(type(item)) + ', but one of [ '
-			for reftype_ in reftype:
-				error_msg += str(reftype_) + ' '
-			error_msg += '] was expected.'
-
-			assert isinstance(item, reftype), error_msg
-
-
 def get_time_string(seconds):
+	"""
+	Convert seconds into a string of the form hours:minutes:seconds.
+
+	Parameters
+	----------
+	seconds : float
+		Total seconds.
+	"""
 	s = ''
 
 	hours = int(seconds / (60*60))

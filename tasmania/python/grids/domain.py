@@ -27,7 +27,7 @@ This module contains:
 import numpy as np
 
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary as HB
-from tasmania.python.grids.grid import PhysicalGrid, ComputationalGrid
+from tasmania.python.grids.grid import PhysicalGrid, NumericalGrid
 
 try:
 	from tasmania.conf import datatype
@@ -41,7 +41,7 @@ class Domain:
 	A discrete domain which is usable by computing components consists of:
 
 		* the *physical* grid;
-		* the *computational* grid;
+		* the *numerical* grid;
 		* the object handling the lateral boundary conditions.
 	"""
 	def __init__(
@@ -116,8 +116,8 @@ class Domain:
 			else horizontal_boundary_kwargs
 		self._hb = HB.factory(horizontal_boundary_type, nx, ny, nb, **kwargs)
 
-		# the computational grid
-		self._cgrid = ComputationalGrid(self._pgrid, self._hb)
+		# the numerical grid
+		self._cgrid = NumericalGrid(self._pgrid, self._hb)
 
 	@property
 	def physical_grid(self):
@@ -130,23 +130,65 @@ class Domain:
 		return self._pgrid
 
 	@property
-	def computational_grid(self):
+	def numerical_grid(self):
 		"""
 		Return
 		------
-		tasmania.ComputationalGrid :
-			The computational grid.
+		tasmania.NumericalGrid :
+			The numerical grid.
 		"""
 		return self._cgrid
 
 	@property
 	def horizontal_boundary(self):
 		"""
+		Get the object handling the horizontal boundary conditions,
+		enriched with three new methods:
+
+			* `dmn_enforce_field`,
+			* `dmn_enforce_raw`,
+			* `dmn_enforce`,
+			* `dmn_set_outermost_layers_x`, and
+			* `dmn_set_outermost_layers_y`.
+
 		Return
 		------
 		tasmania.HorizontalBoundary :
-			The object handling the horizontal boundary conditions.
+			The *enriched* object handling the horizontal boundary conditions.
 		"""
+		hb = self._hb
+
+		hb.dmn_enforce_field = \
+			lambda field, field_name=None, field_units=None, time=None : \
+			hb.enforce_field(
+				field, field_name=field_name, field_units=field_units,
+				time=time, grid=self.numerical_grid
+			)
+		hb.dmn_enforce_raw = \
+			lambda state, field_properties=None : \
+			hb.enforce_raw(
+				state, field_properties=field_properties,
+				grid=self.numerical_grid
+			)
+		hb.dmn_enforce = \
+			lambda state, field_names=None : \
+			hb.enforce(
+				state, field_names=field_names,
+				grid=self.numerical_grid
+			)
+		hb.dmn_set_outermost_layers_x = \
+			lambda field, field_name=None, field_units=None, time=None : \
+			hb.set_outermost_layers_x(
+				field, field_name=field_name, field_units=field_units,
+				time=time, grid=self.numerical_grid
+			)
+		hb.dmn_set_outermost_layers_y = \
+			lambda field, field_name=None, field_units=None, time=None : \
+			hb.set_outermost_layers_y(
+				field, field_name=field_name, field_units=field_units,
+				time=time, grid=self.numerical_grid
+			)
+
 		return self._hb
 
 	def update_topography(self, time):

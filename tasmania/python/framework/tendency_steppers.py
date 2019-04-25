@@ -26,41 +26,34 @@ This module contain:
 	tendencystepper_factory
 	ForwardEuler
 	RungeKutta2
-	RungeKutta3COSMO
+	RungeKutta3WS
 	RungeKutta3
 """
 import abc
 import copy
 from sympl import \
-	DataArray, TendencyComponent, TendencyComponentComposite, \
+	TendencyComponent, TendencyComponentComposite, \
 	ImplicitTendencyComponent, ImplicitTendencyComponentComposite
-from sympl._components.timesteppers import convert_tendencies_units_for_state
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.utils.dict_utils import add, multiply
+from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.utils import assert_sequence
 
 
 def get_increment(state, timestep, prognostic):
-	# Calculate tendencies and retrieve diagnostics
+	# calculate tendencies and retrieve diagnostics
 	tendencies, diagnostics = prognostic(state, timestep)
 
-	# Convert tendencies in units compatible with the state
-	convert_tendencies_units_for_state(tendencies, state)
+	# multiply the tendencies by the time step
+	for name in tendencies:
+		if name != 'time':
+			tendencies[name].values[...] *= timestep.total_seconds()
+			tendencies[name].attrs['units'] += ' s'
 
-	# Calculate the increment
-	increment = multiply(timestep.total_seconds(), tendencies)
-
-	# Set the correct units for the increment of each variable
-	for key, val in increment.items():
-		if isinstance(val, DataArray) and 'units' in val.attrs.keys():
-			val.attrs['units'] += ' s'
-			val.attrs['units'] = clean_units(val.attrs['units'])
-
-	return increment, diagnostics
+	return tendencies, diagnostics
 
 
 def tendencystepper_factory(scheme):
@@ -68,14 +61,14 @@ def tendencystepper_factory(scheme):
 		return ForwardEuler
 	elif scheme == 'rk2':
 		return RungeKutta2
-	elif scheme == 'rk3cosmo':
-		return RungeKutta3COSMO
+	elif scheme == 'rk3ws':
+		return RungeKutta3WS
 	elif scheme == 'rk3':
 		return RungeKutta3
 	else:
 		raise ValueError(
 			'Unsupported time integration scheme ''{}''. '
-			'Available integrators: forward_euler, rk2, rk3cosmo, rk3.'.format(scheme)
+			'Available integrators: forward_euler, rk2, rk3ws, rk3.'.format(scheme)
 		)
 
 
@@ -111,18 +104,18 @@ class TendencyStepper:
 
 		Keyword arguments
 		-----------------
-		execution_policy : `str`, optional
+		execution_policy : str
 			String specifying the runtime mode in which parameterizations
 			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-		grid : grid
-			:class:`tasmania.GridXYZ` object representing
-			the underlying grid.
-		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions.
-			See :class:`tasmania.HorizontalBoundary`
-			for all available options.
-		time_units : `str`, optional
-			The time units used within this object. Defaults to 's', i.e., seconds.
+		enforce_horizontal_boundary : bool
+			:obj:`True` if the class should enforce the lateral boundary
+			conditions after each stage of the time integrator,
+			:obj:`False` otherwise. Defaults to :obj:`False`.
+			This argument is considered only if at least one of the wrapped
+			objects is an instance of
+
+				* :class:`tasmania.TendencyComponent`, or
+				* :class:`tasmania.ImplicitTendencyComponent`.
 		"""
 		assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -140,19 +133,32 @@ class TendencyStepper:
 		self._diagnostic_checker = DiagnosticChecker(self)
 		self._output_checker = OutputChecker(self)
 
-		horizontal_boundary_type = kwargs.get('horizontal_boundary_type', None)
-		if horizontal_boundary_type is not None:
-			# Determine the number of boundary layers by inspecting
-			# the attribute nb of each prognostic component
-			nb = 1
-			for component in self.prognostic_list:
-				nb = max(nb, getattr(component, 'nb', 1))
+		enforce_hb = kwargs.get('enforce_horizontal_boundary', False)
+		if enforce_hb:
+			found = False
+			for prognostic in args:
+				if not found:
 
-			# Instantiate the object which will take care of boundary conditions
-			grid = kwargs.get('grid')
-			self._bnd = HorizontalBoundary.factory(horizontal_boundary_type, grid, nb)
+					try:  # composite component
+						components = prognostic.component_list
+					except AttributeError:  # base component
+						components = (prognostic, )
+
+					for component in components:
+						try:  # tasmania's component
+							self._hb = component.horizontal_boundary
+							self._grid = component.grid
+							self._enforce_hb = True
+							found = True
+
+							break
+						except AttributeError:  # sympl's component
+							pass
+
+			if not found:
+				self._enforce_hb = False
 		else:
-			self._bnd = None
+			self._enforce_hb = False
 
 	@property
 	def prognostic(self):
@@ -171,7 +177,28 @@ class TendencyStepper:
 			whose values are dictionaries specifying fundamental properties
 			(dims, units) of those variables.
 		"""
-		return self._prognostic.input_properties
+		return_dict = {}
+		return_dict.update(self._prognostic.input_properties)
+
+		tendency_properties = self._prognostic.tendency_properties
+		for name in tendency_properties:
+			mod_tendency_property = copy.deepcopy(tendency_properties[name])
+			mod_tendency_property['units'] = \
+				clean_units(mod_tendency_property['units'] + self._tunits)
+
+			if name in return_dict:
+				check_property_compatibility(
+					property_name=name,
+					property1=return_dict[name],
+					origin1_name='self._prognostic.input_properties',
+					property2=mod_tendency_property,
+					origin2_name='self._prognostic.tendency_properties'
+				)
+			else:
+				return_dict[name] = {}
+				return_dict[name].update(mod_tendency_property)
+
+		return return_dict
 
 	@property
 	def diagnostic_properties(self):
@@ -286,54 +313,53 @@ class ForwardEuler(TendencyStepper):
 
 		Keyword arguments
 		-----------------
-		execution_policy : `str`, optional
+		execution_policy : str
 			String specifying the runtime mode in which parameterizations
 			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-		grid : grid
-			:class:`tasmania.GridXYZ` object representing
-			the underlying grid.
-		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions.
-			See :class:`tasmania.HorizontalBoundary`
-			for all available options.
-		time_units : `str`, optional
+		enforce_horizontal_boundary : bool
+			:obj:`True` if the class should enforce the lateral boundary
+			conditions after each stage of the time integrator,
+			:obj:`False` otherwise. Defaults to :obj:`False`.
+			This argument is considered only if at least one of the wrapped
+			objects is an instance of
+
+				* :class:`tasmania.TendencyComponent`, or
+				* :class:`tasmania.ImplicitTendencyComponent`.
+
+		time_units : str
 			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
 		super().__init__(*args, **kwargs)
 
 	def _call(self, state, timestep):
-		# Shortcuts
-		dt = timestep.total_seconds()
+		# shortcuts
 		out_units = {
 			name: properties['units']
 			for name, properties in self.output_properties.items()
 		}
 
-		# Calculate the increment and the diagnostics
+		# calculate the increment and the diagnostics
 		increment, diagnostics = get_increment(state, timestep, self.prognostic)
 
-		# Step the solution
+		# step the solution
 		out_state = add(
 			state, increment,
 			units=out_units, unshared_variables_in_output=False
 		)
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(
-					out_state[name].values,
-					state[name].to_units(out_units[name]).values
-				)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				out_state, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
 		return diagnostics, out_state
 
 
 class RungeKutta2(TendencyStepper):
 	"""
-	This class inherits :class:`sympl.TendencyStepper` to
-	implement the two-stages, second-order Runge-Kutta scheme
-	as described in the reference.
+	This class inherits :class:`tasmania.TendencyStepper` to
+	implement the two-stages, second-order Runge-Kutta scheme.
 
 	References
 	----------
@@ -357,29 +383,32 @@ class RungeKutta2(TendencyStepper):
 
 		Keyword arguments
 		-----------------
-		execution_policy : `str`, optional
+		execution_policy : str
 			String specifying the runtime mode in which parameterizations
 			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-		grid : grid
-			:class:`tasmania.GridXYZ` object representing
-			the underlying grid.
-		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions.
-			See :class:`tasmania.HorizontalBoundary`
-			for all available options.
-		time_units : `str`, optional
+		enforce_horizontal_boundary : bool
+			:obj:`True` if the class should enforce the lateral boundary
+			conditions after each stage of the time integrator,
+			:obj:`False` otherwise. Defaults to :obj:`False`.
+			This argument is considered only if at least one of the wrapped
+			objects is an instance of
+
+				* :class:`tasmania.TendencyComponent`, or
+				* :class:`tasmania.ImplicitTendencyComponent`.
+
+		time_units : str
 			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
 		super().__init__(*args, **kwargs)
 
 	def _call(self, state, timestep):
-		# Shortcuts
+		# shortcuts
 		out_units = {
 			name: properties['units']
 			for name, properties in self.output_properties.items()
 		}
 
-		# First stage
+		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 = add(
 			state, multiply(0.5, k0),
@@ -387,17 +416,13 @@ class RungeKutta2(TendencyStepper):
 		)
 		state_1['time'] = state['time'] + 0.5*timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(
-					state_1[name].values,
-					state[name].to_units(out_units[name]).values,
-					field_name=name,
-					time=state_1['time']
-				)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				state_1, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
-		# Second stage
+		# second stage
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		out_state = add(
 			state, k1,
@@ -405,22 +430,18 @@ class RungeKutta2(TendencyStepper):
 		)
 		out_state['time'] = state['time'] + timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(
-					out_state[name].values,
-					state_1[name].values,
-					field_name=name,
-					time=out_state['time']
-				)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				out_state, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
 		return diagnostics, out_state
 
 
-class RungeKutta3COSMO(TendencyStepper):
+class RungeKutta3WS(TendencyStepper):
 	"""
-	This class inherits :class:`sympl.TendencyStepper` to
+	This class inherits :class:`tasmania.TendencyStepper` to
 	implement the three-stages Runge-Kutta scheme as used in the
 	`COSMO model <http://www.cosmo-model.org>`_. This integrator is
 	nominally second-order, and third-order for linear problems.
@@ -448,27 +469,30 @@ class RungeKutta3COSMO(TendencyStepper):
 
 		Keyword arguments
 		-----------------
-		execution_policy : `str`, optional
+		execution_policy : str
 			String specifying the runtime mode in which parameterizations
 			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-		grid : grid
-			:class:`tasmania.GridXYZ` object representing
-			the underlying grid.
-		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions.
-			See :class:`tasmania.HorizontalBoundary`
-			for all available options.
-		time_units : `str`, optional
+		enforce_horizontal_boundary : bool
+			:obj:`True` if the class should enforce the lateral boundary
+			conditions after each stage of the time integrator,
+			:obj:`False` otherwise. Defaults to :obj:`False`.
+			This argument is considered only if at least one of the wrapped
+			objects is an instance of
+
+				* :class:`tasmania.TendencyComponent`, or
+				* :class:`tasmania.ImplicitTendencyComponent`.
+
+		time_units : str
 			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
 		super().__init__(*args, **kwargs)
 
 	def _call(self, state, timestep):
-		# Shortcuts
+		# shortcuts
 		out_units = {name: properties['units']
 					 for name, properties in self.output_properties.items()}
 
-		# First stage
+		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 = add(
 			state, multiply(1.0/3.0, k0),
@@ -476,15 +500,13 @@ class RungeKutta3COSMO(TendencyStepper):
 		)
 		state_1['time'] = state['time'] + 1.0/3.0 * timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(
-					state_1[name].values,
-					state[name].to_units(out_units[name]).values
-				)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				state_1, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
-		# Second stage
+		# second stage
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		state_2 = add(
 			state, multiply(0.5, k1),
@@ -492,12 +514,13 @@ class RungeKutta3COSMO(TendencyStepper):
 		)
 		state_2['time'] = state['time'] + 0.5 * timestep
 
-		if self._bnd is not None:
+		if self._enforce_hb:
 			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(state_2[name].values, state_1[name].values)
+			self._hb.enforce(
+				state_2, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
-		# Second stage
+		# second stage
 		k2, _ = get_increment(state_2, timestep, self.prognostic)
 		out_state = add(
 			state, k2,
@@ -505,19 +528,19 @@ class RungeKutta3COSMO(TendencyStepper):
 		)
 		out_state['time'] = state['time'] + timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(out_state[name].values, state_2[name].values)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				out_state, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
 		return diagnostics, out_state
 
 
 class RungeKutta3(TendencyStepper):
 	"""
-	This class inherits :class:`sympl.TendencyStepper` to
-	implement the three-stages, third-order Runge-Kutta scheme
-	as described in the reference.
+	This class inherits :class:`tasmania.TendencyStepper` to
+	implement the three-stages, third-order Runge-Kutta scheme.
 
 	References
 	----------
@@ -541,35 +564,38 @@ class RungeKutta3(TendencyStepper):
 
 		Keyword arguments
 		-----------------
-		execution_policy : `str`, optional
+		execution_policy : str
 			String specifying the runtime mode in which parameterizations
 			should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-		grid : grid
-			:class:`tasmania.GridXYZ` object representing
-			the underlying grid.
-		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions.
-			See :class:`tasmania.HorizontalBoundary`
-			for all available options.
-		time_units : `str`, optional
+		enforce_horizontal_boundary : bool
+			:obj:`True` if the class should enforce the lateral boundary
+			conditions after each stage of the time integrator,
+			:obj:`False` otherwise. Defaults to :obj:`False`.
+			This argument is considered only if at least one of the wrapped
+			objects is an instance of
+
+				* :class:`tasmania.TendencyComponent`, or
+				* :class:`tasmania.ImplicitTendencyComponent`.
+
+		time_units : str
 			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
 		super().__init__(*args, **kwargs)
 
-		# Free parameters for RK3
+		# free parameters for RK3
 		self._alpha1 = 1./2.
 		self._alpha2 = 3./4.
 
-		# Set the other parameters yielding a third-order method
+		# set the other parameters yielding a third-order method
 		self._gamma1 = (3.*self._alpha2 - 2.) / \
-					   (6. * self._alpha1 * (self._alpha2 - self._alpha1))
+			(6. * self._alpha1 * (self._alpha2 - self._alpha1))
 		self._gamma2 = (3.*self._alpha1 - 2.) / \
-					   (6. * self._alpha2 * (self._alpha1 - self._alpha2))
+			(6. * self._alpha2 * (self._alpha1 - self._alpha2))
 		self._gamma0 = 1. - self._gamma1 - self._gamma2
 		self._beta21 = self._alpha2 - 1. / (6. * self._alpha1 * self._gamma2)
 
 	def _call(self, state, timestep):
-		# Shortcuts
+		# shortcuts
 		out_units  = {
 			name: properties['units']
 			for name, properties in self.output_properties.items()
@@ -578,7 +604,7 @@ class RungeKutta3(TendencyStepper):
 		b21        = self._beta21
 		g0, g1, g2 = self._gamma0, self._gamma1, self._gamma2
 
-		# First stage
+		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 		= add(
 			state, multiply(a1, k0),
@@ -586,15 +612,13 @@ class RungeKutta3(TendencyStepper):
 		)
 		state_1['time'] = state['time'] + a1 * timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(
-					state_1[name].values,
-					state[name].to_units(out_units[name]).values
-				)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				state_1, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
-		# Second stage
+		# second stage
 		k1, _ 	= get_increment(state_1, timestep, self.prognostic)
 		state_2 = add(
 			state, add(multiply(b21, k0), multiply((a2 - b21), k1)),
@@ -602,12 +626,13 @@ class RungeKutta3(TendencyStepper):
 		)
 		state_2['time'] = state['time'] + a2 * timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(state_2[name].values, state_1[name].values)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				state_2, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
-		# Second stage
+		# second stage
 		k2, _     = get_increment(state_2, timestep, self.prognostic)
 		k1k2      = add(multiply(g1, k1), multiply(g2, k2))
 		k0k1k2 	  = add(multiply(g0, k0), k1k2)
@@ -617,9 +642,10 @@ class RungeKutta3(TendencyStepper):
 		)
 		out_state['time'] = state['time'] + timestep
 
-		if self._bnd is not None:
-			# Enforce the boundary conditions on each prognostic variable
-			for name in self.output_properties.keys():
-				self._bnd.enforce(out_state[name].values, state_2[name].values)
+		if self._enforce_hb:
+			# enforce the boundary conditions on each prognostic variable
+			self._hb.enforce(
+				out_state, field_names=self.output_properties.keys(), grid=self._grid
+			)
 
 		return diagnostics, out_state

@@ -23,10 +23,10 @@
 """
 This module contains:
 	HorizontalDiffusion
-	_SecondOrder(HorizontalDiffusion)
-	_SecondOrder{XZ, YZ}(HorizontalDiffusion)
-	_FourthOrder(HorizontalDiffusion)
-	_FourthOrder{XZ, YZ}(HorizontalDiffusion)
+	SecondOrder(HorizontalDiffusion)
+	SecondOrder1D{X, Y}(HorizontalDiffusion)
+	FourthOrder(HorizontalDiffusion)
+	FourthOrder1D{X, Y}(HorizontalDiffusion)
 """
 import abc
 import math
@@ -72,8 +72,8 @@ class HorizontalDiffusion:
 		backend : obj
 			TODO
 		dtype : numpy.dtype
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 		"""
 		# store input arguments
 		self._shape           = shape
@@ -145,8 +145,8 @@ class HorizontalDiffusion:
 		diffusion_type : string
 			String specifying the diffusion technique to implement. Either:
 
-			* 'second_order', for second-order numerical diffusion;
-			* 'fourth_order', for fourth-order numerical diffusion.
+			* 'second_order', for second-order computational diffusion;
+			* 'fourth_order', for fourth-order computational diffusion.
 
 		shape : tuple
 			Shape of the 3-D arrays for which tendencies should be computed.
@@ -183,20 +183,20 @@ class HorizontalDiffusion:
 			assert not(shape[0] < 3 and shape[1] < 3)
 
 			if shape[1] < 3:
-				return _SecondOrderXZ(*arg_list)
+				return SecondOrder1DX(*arg_list)
 			elif shape[0] < 3:
-				return _SecondOrderYZ(*arg_list)
+				return SecondOrder1DY(*arg_list)
 			else:
-				return _SecondOrder(*arg_list)
+				return SecondOrder(*arg_list)
 		elif diffusion_type == 'fourth_order':
 			assert not(shape[0] < 5 and shape[1] < 5)
 
 			if shape[1] < 5:
-				return _FourthOrderXZ(*arg_list)
+				return FourthOrder1DX(*arg_list)
 			elif shape[0] < 5:
-				return _FourthOrderYZ(*arg_list)
+				return FourthOrder1DY(*arg_list)
 			else:
-				return _FourthOrder(*arg_list)
+				return FourthOrder(*arg_list)
 		else:
 			raise ValueError(
 				"Supported diffusion operators are ''second_order'' "
@@ -204,7 +204,7 @@ class HorizontalDiffusion:
 			)
 
 
-class _SecondOrder(HorizontalDiffusion):
+class SecondOrder(HorizontalDiffusion):
 	"""
 	This class inherits	:class:`tasmania.HorizontalDiffusion`
 	to calculate the tendency due to second-order horizontal diffusion for any
@@ -274,7 +274,7 @@ class _SecondOrder(HorizontalDiffusion):
 		return tnd_phi
 
 
-class _SecondOrderXZ(HorizontalDiffusion):
+class SecondOrder1DX(HorizontalDiffusion):
 	"""
 	This class inherits	:class:`tasmania.HorizontalDiffusion`
 	to calculate the tendency due to second-order horizontal diffusion for any
@@ -340,7 +340,7 @@ class _SecondOrderXZ(HorizontalDiffusion):
 		return tnd_phi
 
 
-class _SecondOrderYZ(HorizontalDiffusion):
+class SecondOrder1DY(HorizontalDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to second-order horizontal diffusion for any
@@ -406,7 +406,7 @@ class _SecondOrderYZ(HorizontalDiffusion):
 		return tnd_phi
 
 
-class _FourthOrder(HorizontalDiffusion):
+class FourthOrder(HorizontalDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to fourth-order horizontal diffusion for any
@@ -486,7 +486,7 @@ class _FourthOrder(HorizontalDiffusion):
 		return tnd_phi
 
 
-class _FourthOrderXZ(HorizontalDiffusion):
+class FourthOrder1DX(HorizontalDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to fourth-order horizontal diffusion for any
@@ -556,7 +556,7 @@ class _FourthOrderXZ(HorizontalDiffusion):
 		return tnd_phi
 
 
-class _FourthOrderYZ(HorizontalDiffusion):
+class FourthOrder1DY(HorizontalDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to fourth-order horizontal diffusion for any

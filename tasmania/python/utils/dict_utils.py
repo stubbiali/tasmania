@@ -27,6 +27,8 @@ This module contains:
 	multiply
 	copy
 """
+
+
 def add(state_1, state_2, units=None, unshared_variables_in_output=True):
 	"""
 	Sum two dictionaries of :class:`sympl.DataArray`\s.
@@ -207,9 +209,9 @@ def copy(state_1, state_2):
 	state_2 : dict
 		The source dictionary.
 	"""
-	shared_keys = tuple(key for key in state_1 if key in state_2)
+	if 'time' in state_2:
+		state_1['time'] = state_2['time']
+
+	shared_keys = tuple(key for key in state_1 if key in state_2 and key != 'time')
 	for key in shared_keys:
-		if key == 'time':
-			state_1['time'] = state_2['time']
-		else:
-			state_1[key][...] = state_2[key].to_units(state_1[key].attrs['units'])[...]
+		state_1[key].values[...] = state_2[key].to_units(state_1[key].attrs['units']).values[...]

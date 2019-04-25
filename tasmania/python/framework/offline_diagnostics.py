@@ -190,16 +190,29 @@ class RMSD(OfflineDiagnosticComponent):
 		"""
 		Parameters
 		----------
-		grid : grid
-			TODO
+		grid : tasmania.Grid, seq[tasmania.Grid]
+			The underlying grid(s). The two input states may be defined
+			over different grids.
 		fields : dict
-			TODO
-		x : `slice`, optional
-			TODO
-		y : `slice`, optional
-			TODO
-		z : `slice`, optional
-			TODO
+			Dictionary whose keys are strings denoting the model variables
+			for which the RMSD should be computed, and whose values are
+			dictionaries specifying fundamental properties (dims, units)
+			for those variables
+		x : `slice`, `seq[slice]`, optional
+            The projection along the first coordinate axis of the slice
+            of grid points to be considered for the calculation of the RMSD.
+            If not specified, all grid points along the first dimension
+            are considered. Different slices for different states are allowed.
+		y : `slice`, `seq[slice]`, optional
+            The projection along the second coordinate axis of the slice
+            of grid points to be considered for the calculation of the RMSD.
+            If not specified, all grid points along the second dimension
+            are considered. Different slices for different states are allowed.
+		z : `slice`, `seq[slice]`, optional
+            The projection along the third coordinate axis of the slice
+            of grid points to be considered for the calculation of the RMSD.
+            If not specified, all grid points along the third dimension
+            are considered. Different slices for different states are allowed.
 		"""
 		self._grids = grid if isinstance(grid, SequenceType) else (grid, grid)
 		assert_sequence(self._grids, reflen=2, reftype=GridType)
@@ -229,20 +242,24 @@ class RMSD(OfflineDiagnosticComponent):
 		for name, units in self._fields.items():
 			dimx = g1.x_at_u_locations.dims[0] if 'u_locations' in name else g1.x.dims[0]
 			dimy = g1.y_at_v_locations.dims[0] if 'v_locations' in name else g1.y.dims[0]
-			dimz = g1.z_on_interface_levels.dims[0] if 'interface_levels' in name else g1.z.dims[0]
+			dimz = g1.z_on_interface_levels.dims[0] if 'interface_levels' in name \
+				else g1.z.dims[0]
 			return_list[0][name] = {'dims': (dimx, dimy, dimz), 'units': units}
 
 			dimx = g2.x_at_u_locations.dims[0] if 'u_locations' in name else g2.x.dims[0]
 			dimy = g2.y_at_v_locations.dims[0] if 'v_locations' in name else g2.y.dims[0]
-			dimz = g2.z_on_interface_levels.dims[0] if 'interface_levels' in name else g2.z.dims[0]
+			dimz = g2.z_on_interface_levels.dims[0] if 'interface_levels' in name \
+				else g2.z.dims[0]
 			return_list[1][name] = {'dims': (dimx, dimy, dimz), 'units': units}
 
 		return return_list
 
 	@property
 	def diagnostic_properties(self):
-		return {'rmsd_of_' + name: {'dims': ('scalar', ) * 3, 'units': units}
-				for name, units in self._fields.items()}
+		return {
+			'rmsd_of_' + name: {'dims': ('scalar', ) * 3, 'units': units}
+			for name, units in self._fields.items()
+		}
 
 	def array_call(self, state1, state2):
 		x1, y1, z1 = self._xs[0], self._ys[0], self._zs[0]
@@ -268,16 +285,29 @@ class RRMSD(OfflineDiagnosticComponent):
 		"""
 		Parameters
 		----------
-		grid : grid
-			TODO
+		grid : tasmania.Grid, seq[tasmania.Grid]
+			The underlying grid(s). The two input states may be defined
+			over different grids.
 		fields : dict
-			TODO
-		x : `slice`, optional
-			TODO
-		y : `slice`, optional
-			TODO
-		z : `slice`, optional
-			TODO
+			Dictionary whose keys are strings denoting the model variables
+			for which the RRMSD should be computed, and whose values are
+			dictionaries specifying fundamental properties (dims, units)
+			for those variables
+		x : `slice`, `seq[slice]`, optional
+            The projection along the first coordinate axis of the slice
+            of grid points to be considered for the calculation of the RRMSD.
+            If not specified, all grid points along the first dimension
+            are considered. Different slices for different states are allowed.
+		y : `slice`, `seq[slice]`, optional
+            The projection along the second coordinate axis of the slice
+            of grid points to be considered for the calculation of the RRMSD.
+            If not specified, all grid points along the second dimension
+            are considered. Different slices for different states are allowed.
+		z : `slice`, `seq[slice]`, optional
+            The projection along the third coordinate axis of the slice
+            of grid points to be considered for the calculation of the RRMSD.
+            If not specified, all grid points along the third dimension
+            are considered. Different slices for different states are allowed.
 		"""
 		self._grids = grid if isinstance(grid, SequenceType) else (grid, grid)
 		assert_sequence(self._grids, reflen=2, reftype=GridType)
@@ -307,20 +337,24 @@ class RRMSD(OfflineDiagnosticComponent):
 		for name, units in self._fields.items():
 			dimx = g1.x_at_u_locations.dims[0] if 'u_locations' in name else g1.x.dims[0]
 			dimy = g1.y_at_v_locations.dims[0] if 'v_locations' in name else g1.y.dims[0]
-			dimz = g1.z_on_interface_levels.dims[0] if 'interface_levels' in name else g1.z.dims[0]
+			dimz = g1.z_on_interface_levels.dims[0] if 'interface_levels' in name \
+				else g1.z.dims[0]
 			return_list[0][name] = {'dims': (dimx, dimy, dimz), 'units': units}
 
 			dimx = g2.x_at_u_locations.dims[0] if 'u_locations' in name else g2.x.dims[0]
 			dimy = g2.y_at_v_locations.dims[0] if 'v_locations' in name else g2.y.dims[0]
-			dimz = g2.z_on_interface_levels.dims[0] if 'interface_levels' in name else g2.z.dims[0]
+			dimz = g2.z_on_interface_levels.dims[0] if 'interface_levels' in name \
+				else g2.z.dims[0]
 			return_list[1][name] = {'dims': (dimx, dimy, dimz), 'units': units}
 
 		return return_list
 
 	@property
 	def diagnostic_properties(self):
-		return {'rrmsd_of_' + name: {'dims': ('scalar', ) * 3, 'units': '1'}
-				for name in self._fields.keys()}
+		return {
+			'rrmsd_of_' + name: {'dims': ('scalar', ) * 3, 'units': '1'}
+			for name in self._fields.keys()
+		}
 
 	def array_call(self, state1, state2):
 		x1, y1, z1 = self._xs[0], self._ys[0], self._zs[0]

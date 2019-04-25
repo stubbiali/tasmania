@@ -39,8 +39,8 @@ class Rectangle(Drawer):
 		----------
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
-			See :func:`~tasmania.plot.plot_utils.make_rectangle`.
+			settings, and whose values specify values for those settings.
+			See :func:`~tasmania.python.plot.plot_utils.make_rectangle`.
 		"""
 		super().__init__(properties)
 
@@ -59,7 +59,7 @@ class Circle(Drawer):
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			properties, and whose values specify values for those properties.
-			See :func:`~tasmania.plot.plot_utils.make_circle`.
+			See :func:`~tasmania.python.plot.plot_utils.make_circle`.
 		"""
 		super().__init__(properties)
 

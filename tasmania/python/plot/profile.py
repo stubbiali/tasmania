@@ -41,66 +41,62 @@ class LineProfile(Drawer):
 	Drawer which plots the profile of a given quantity along a line
 	perpendicular to a coordinate plane.
 	If the line is horizontal (respectively, vertical), the spatial
-	coordinate is on the x-axis (resp., y-axis) and the quantity is
-	on the y-axis (resp., x-axis).
+	coordinate is on the plot x-axis (resp., y-axis) and the quantity
+	is on the plot y-axis (resp., x-axis).
 	"""
-	def __init__(self, grid, field_name, field_units,
-				 x=None, y=None, z=None,
-				 axis_name=None, axis_units=None,
-				 axis_x=None, axis_y=None, axis_z=None,
-				 properties=None):
+	def __init__(
+		self, grid, field_name, field_units,
+		x=None, y=None, z=None, axis_name=None, axis_units=None,
+		axis_x=None, axis_y=None, axis_z=None, properties=None
+	):
 		"""
 		Parameters
 		----------
-		grid : grid
-			Instance of :class:`~tasmania.grids.grid_xyz.GridXYZ`,
-			or one of its derived classes representing the underlying grid.
+		grid : tasmania.Grid
+			The underlying grid.
 		field_name : str
 			The state quantity to visualize.
 		field_units : str
 			The units for the quantity to visualize.
 		x : `int`, optional
-			Index along the first dimension of the field array identifying the line
-			to visualize. Not to be specified if both :obj:`y` and :obj:`z` are given.
+			Index along the first dimension of the field array identifying the
+			line to visualize. Not to be specified if both `y` and `z` are given.
 		y : `int`, optional
-			Index along the second dimension of the field array identifying the line
-			to visualize. Not to be specified if both :obj:`y` and :obj:`z` are given.
+			Index along the first dimension of the field array identifying the
+			line to visualize. Not to be specified if both `x` and `z` are given.
 		z : `int`, optional
-			Index along the third dimension of the field array identifying the line
-			to visualize. Not to be specified if both :obj:`y` and :obj:`z` are given.
+			Index along the first dimension of the field array identifying the
+			line to visualize. Not to be specified if both `x` and `y` are given.
 		axis_name : `str`, optional
 			The name of the spatial axis. Options are:
 
-				* 'x' (default and only effective if :obj:`x` is not given);
-				* 'y' (default and only effective if :obj:`y` is not given);
-				* 'z' (default and only effective if :obj:`z` is not given);
-				* 'height' (only effective if :obj:`z` is not given);
-				* 'height_on_interface_levels' (only effective if :obj:`z` is not given);
-				* 'air_pressure' (only effective if :obj:`z` is not given).
-				* 'air_pressure_on_interface_levels' (only effective if :obj:`z` is not given).
+				* 'x' (default and only effective if `x` is not given);
+				* 'y' (default and only effective if `y` is not given);
+				* 'z' (default and only effective if `z` is not given);
+				* 'height' (only effective if `z` is not given);
+				* 'height_on_interface_levels' (only effective if `z` is not given);
+				* 'air_pressure' (only effective if `z` is not given).
+				* 'air_pressure_on_interface_levels' (only effective if `z` is not given).
 
 		axis_units : `str`, optional
 			Units for the spatial axis. If not specified, the native units of
-			the axis are used
+			the axis are used.
 		axis_x : `int`, optional
 			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
-			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
+			to visualize. Defaults to `x`. Only effective if `axis_name` is 'height' or
+			'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
 		axis_y : `int`, optional
 			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
-			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
+			to visualize. Defaults to `y`. Only effective if :`axis_name` is 'height' or
+			'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
 		axis_z : `int`, optional
 			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to :obj:`x`.
-			Only effective if :obj:`axis_name` is 'height' or 'air_pressure'.
-			Not to be specified if both :obj:`axis_y` and :obj:`axis_z` are given.
+			to visualize. Defaults to `z`. Only effective if :`axis_name` is 'height' or
+			'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
 		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
-			See :func:`tasmania.plot.utils.make_lineplot`.
+			Dictionary whose keys are strings denoting plot-specific settings
+			and whose values specify values for those settings.
+			See :func:`tasmania.python.plot.plot_utils.make_lineplot`.
 		"""
 		super().__init__(properties)
 
@@ -108,10 +104,12 @@ class LineProfile(Drawer):
 		flag_y = 0 if y is None else 1
 		flag_z = 0 if z is None else 1
 		if flag_x + flag_y + flag_z != 2:
-			raise ValueError('A line is uniquely identified by two indices, but here '
-				'x is{}given, y is{}given and z is{}given.'.format(
-					' ' if flag_x else ' not ', ' ' if flag_y else ' not ',
-					' ' if flag_z else ' not ',
+			raise ValueError(
+				"A line is uniquely identified by two indices, but here "
+				"x is{}given, y is{}given and z is{}given.".format(
+					" " if flag_x else " not ",
+					" " if flag_y else " not ",
+					" " if flag_z else " not ",
 				)
 			)
 
@@ -119,15 +117,18 @@ class LineProfile(Drawer):
 		slice_y = slice(y, y+1 if y != -1 else None, None) if flag_y else None
 		slice_z = slice(z, z+1 if z != -1 else None, None) if flag_z else None
 
-		retriever = DataRetriever(grid, field_name, field_units,
-								  slice_x, slice_y, slice_z)
+		retriever = DataRetriever(
+			grid, field_name, field_units, slice_x, slice_y, slice_z
+		)
 
 		if not flag_x:
-			self._slave = lambda state, ax: make_xplot(grid, axis_units, retriever,
-													   state, ax, **self.properties)
+			self._slave = lambda state, ax: make_xplot(
+				grid, axis_units, retriever, state, ax, **self.properties
+			)
 		elif not flag_y:
-			self._slave = lambda state, ax: make_yplot(grid, axis_units, retriever,
-													   state, ax, **self.properties)
+			self._slave = lambda state, ax: make_yplot(
+				grid, axis_units, retriever, state, ax, **self.properties
+			)
 		else:
 			aname = 'z' if axis_name is None else axis_name
 			if aname != 'z':
@@ -135,26 +136,36 @@ class LineProfile(Drawer):
 				ay = axis_y if axis_y is not None else y
 				aslice_x = slice(ax, ax+1 if ax != -1 else None, None)
 				aslice_y = slice(ay, ay+1 if ay != -1 else None, None)
-				axis_retriever = DataRetriever(grid, aname, axis_units,
-											   aslice_x, aslice_y)
-				self._slave = lambda state, ax: make_hplot(axis_retriever, retriever,
-														   state, ax, **self.properties)
+				axis_retriever = DataRetriever(
+					grid, aname, axis_units, aslice_x, aslice_y
+				)
+				self._slave = lambda state, ax: make_hplot(
+					axis_retriever, retriever, state, ax, **self.properties
+				)
 			else:
-				self._slave = lambda state, ax: make_zplot(grid, axis_units, retriever,
-														   state, ax, **self.properties)
+				self._slave = lambda state, ax: make_zplot(
+					grid, axis_units, retriever, state, ax, **self.properties
+				)
 
 	def __call__(self, state, fig=None, ax=None):
 		"""
 		Call operator generating the plot.
 
+		Parameters
+		----------
+		state : dict
+			The model state from which retrieving the data used to draw the plot.
+		fig : matplotlib.figure.Figure
+			The figure encapsulating the plot.
+		ax : matplotlib.axes.Axes
+			The axes encapsulating the plot
+
 		Returns
 		-------
-		x : array_like
-			1-D :class:`numpy.ndarray` gathering the x-coordinates
-			of the plotted points.
-		y : array_like
-			1-D :class:`numpy.ndarray` gathering the y-coordinates
-			of the plotted points.
+		x : numpy.ndarray
+			1-D array gathering the x-coordinates of the plotted points.
+		y : numpy.ndarray
+			1-D array gathering the y-coordinates of the plotted points.
 		"""
 		return self._slave(state, ax)
 

@@ -105,15 +105,25 @@ class SequentialUpdateSplitting:
 						- :class:`tasmania.ConcurrentCoupling`,
 
 					'time_integrator' is a string specifying the scheme to integrate
-					the process forward in time. Either:
+					the process forward in time. Available options:
 
 						- 'forward_euler', for the forward Euler scheme;
 						- 'rk2', for the two-stage second-order Runge-Kutta (RK) scheme;
-						- 'rk3cosmo', for the three-stage RK scheme as used in the
+						- 'rk3ws', for the three-stage RK scheme as used in the
 							`COSMO model <http://www.cosmo-model.org>`_; this method is
 							nominally second-order, and third-order for linear problems;
 						- 'rk3', for the three-stages, third-order RK scheme.
 
+				* if 'component' is either an instance of or wraps objects of class
+
+						- :class:`tasmania.TendencyComponent`,
+						- :class:`tasmania.ImplicitTendencyComponent`, or
+						- :class:`tasmania.ConcurrentCoupling`,
+
+					'enforce_horizontal_boundary' is either :obj:`True` if the
+					boundary conditions should be enforced after each stage of
+					the time integrator, or :obj:`False` not to apply the boundary
+					constraints at all. Defaults to :obj:`False`;
 				* if 'component' is a
 
 						- :class:`sympl.TendencyComponent`,
@@ -144,8 +154,12 @@ class SequentialUpdateSplitting:
 				self._substeps.append(1)
 			else:
 				integrator = process.get('time_integrator', 'forward_euler')
+				enforce_hb = process.get('enforce_horizontal_boundary', False)
+
 				TendencyStepper = tendencystepper_factory(integrator)
-				self._component_list.append(TendencyStepper(bare_component))
+				self._component_list.append(
+					TendencyStepper(bare_component, enforce_horizontal_boundary=enforce_hb)
+				)
 
 				substeps = process.get('substeps', 1)
 				self._substeps.append(substeps)

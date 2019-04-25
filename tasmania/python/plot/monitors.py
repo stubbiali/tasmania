@@ -42,12 +42,12 @@ SequenceType = (tuple, list)
 class Plot(Monitor):
 	"""
 	A :class:`sympl.Monitor` for visualization purposes, generating a
-	plot by nicely overlapping distinct plots created by one or multiple
-	:class:`~tasmania.plot.drawer.Drawer`\s.
+	plot by nicely overlapping distinct plots drawn by one or multiple
+	:class:`tasmania.Drawer`\s.
 
 	Warning
 	-------
-	No consistency controls are performed on the list of artists.
+	No consistency/coherency controls are performed on the list of artists.
 	For instance, the composer does not check that all the artists use
 	the same units for the axes. Ultimately, it is up to the user to ensure
 	that everything is coherent.
@@ -55,48 +55,40 @@ class Plot(Monitor):
 	Attributes
 	----------
     interactive : bool
-        :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+        :obj:`True` if interactive plotting is enabled,
+        :obj:`False` otherwise.
     figure_properties : dict
-		Keyword arguments specifying properties for the
-		:class:`~matplotlib.pyplot.figure` containing the plot,
-		and which are forwarded and thereby set by
-		:func:`~tasmania.plot.plot_utils.get_figure_and_axes_properties`
-		and :func:`~tasmania.plot.plot_utils.set_figure_properties`.
+		Keyword arguments specifying settings for the
+		:class:`~matplotlib.figure.Figure` containing the plot.
     axes_properties : dict
-		Keyword arguments specifying properties for the
-		:class:`~matplotlib.axes.Axes` enclosing the plot,
-		and which are forwarded and thereby set by
-		:func:`~tasmania.plot.plot_utils.get_figure_and_axes_properties`
-		and :func:`~tasmania.plot.plot_utils.set_axes_properties`.
+		Keyword arguments specifying settings for the
+		:class:`~matplotlib.axes.Axes` enclosing the plot.
 	"""
-	def __init__(self, drawers, interactive=True,
-				 figure_properties=None, axes_properties=None):
+	def __init__(
+		self, *drawers, interactive=True,
+		figure_properties=None, axes_properties=None
+	):
 		"""
 		Parameters
 		----------
-		drawers : obj
-			A :class:`~tasmania.plot.drawer.Drawer` or a sequence of
-			:class:`~tasmania.plot.drawer.Drawer`\s, actually drawing the plot(s).
+		drawers : tasmania.Drawer
+			The drawer(s) actually drawing the plot(s).
 		interactive : `bool`, optional
 			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
     	figure_properties : `dict`, optional
-			Keyword arguments specifying properties for the
-			:class:`~matplotlib.pyplot.figure` containing the plot,
-			and which are forwarded and thereby set by
-			:func:`~tasmania.plot.plot_utils.get_figure_and_axes_properties`.
-			and :func:`~tasmania.plot.plot_utils.set_figure_properties`.
-			Defaults to :obj:`None`.
+			Keyword arguments specifying settings for the figure containing
+			the plot. To be broadcast to
+			:func:`~tasmania.get_figure_and_axes_properties`
+			and :func:`~tasmania.set_figure_properties`.
     	axes_properties : `dict`, optional
-			Keyword arguments specifying properties for the
-			:class:`~matplotlib.axes.Axes` enclosing the plot,
-			and which are forwarded and thereby set by
-			:func:`~tasmania.plot.plot_utils.set_axes_properties`.
-			Defaults to :obj:`None`.
+			Keyword arguments specifying settings for the axes enclosing
+			the plot. To be broadcast to
+			:func:`~tasmania.get_figure_and_axes_properties`
+			and :func:`~tasmania.set_axes_properties`.
 		"""
-		artists = (drawers, ) if not isinstance(drawers, SequenceType) else drawers
-		assert_sequence(artists, reftype=Drawer)
-		self._artists = artists
+		assert_sequence(drawers, reftype=Drawer)
+		self._artists = drawers
 
 		self.interactive = interactive
 
@@ -120,28 +112,28 @@ class Plot(Monitor):
 		"""
 		Returns
 		-------
-		figure :
-			The :class:`matplotlib.pyplot.figure` used and *owned* by this object.
+		matplotlib.figure.Figure :
+			The figure used and *owned* by this object.
 		"""
 		self._set_figure()
 		return self._figure
 
-	def store(self, states, fig=None, ax=None, save_dest=None, show=False):
+	def store(self, *states, fig=None, ax=None, save_dest=None, show=False):
 		"""
 		Use the input state(s) to update the plot.
 
 		Parameters
 		----------
 		states : dict, sequence[dict]
-			A model state dictionary, or a sequence of model state dictionaries,
-			feeding the artists. This means that the i-th input state will be
-			forwarded to the i-th artist.
-		fig : `figure`, optional
-			The :class:`matplotlib.pyplot.figure` which should contain the plot.
-			If not given, the internal :class:`matplotlib.pyplot.figure` is used.
-		ax : `axes`, optional
-			The :class:`matplotlib.axes.Axes` which should enclosing the plot.
-			If not given, the internal :class:`matplotlib.axes.Axes` are used.
+			A model state dictionary, or a sequence of model state
+			dictionaries, feeding the artists. This means that the
+			i-th item in the sequence will be forwarded to the i-th artist.
+		fig : `matplotlib.figure.Figure`, optional
+			The figure which should contain the plot.
+			If not given, the internal figure is used.
+		ax : `matplotlib.axes.Axes`, optional
+			The axes which should enclose the plot.
+			If not given, the internal axes are used.
 		save_dest : `str`, optional
 			Path under which the figure should be saved.
 			The path should include the extension of the figure.
@@ -149,49 +141,50 @@ class Plot(Monitor):
 		show : `bool`, optional
 			When the non-interactive mode is switched on,
 			:obj:`True` to show the figure, :obj:`False` otherwise.
-			Default is :obj:`False`.
+			Defaults to :obj:`False`.
 
 		Return
 		------
-		out_fig : figure
-			The :class:`matplotlib.pyplot.figure` containing the plot.
-		out_ax : axes
-			The :class:`matplotlib.axes.Axes` object enclosing the plot.
+		out_fig : matplotlib.figure.Figure
+			The figure containing the plot.
+		out_ax : matplotlib.axes.Axes
+			The axes enclosing the plot.
 		"""
-		states_list = (states, ) if not isinstance(states, SequenceType) else states
-		assert_sequence(states_list, reflen=len(self._artists), reftype=dict)
+		assert_sequence(states, reflen=len(self._artists), reftype=dict)
 
-		# Set the private _figure attribute
+		# set the private _figure attribute
 		self._set_figure(fig)
 
-		# Retrieve figure and axes
+		# retrieve figure and axes
 		out_fig, out_ax = get_figure_and_axes(
 			fig, ax, default_fig=self._figure,
 			**self.figure_properties,
-			**{key: value for key, value in self.axes_properties.items()
-			   if key not in self.figure_properties},
+			**{
+				key: value for key, value in self.axes_properties.items()
+			   	if key not in self.figure_properties
+			},
 		)
 
-		# If needed, clean the canvas
+		# if needed, clean the canvas
 		if ax is None:
 			out_ax.cla()
 
-		# Let the drawers draw
-		for drawer, state in zip(self._artists, states_list):
+		# let the drawers draw
+		for drawer, state in zip(self._artists, states):
 			drawer(state, out_fig, out_ax)
 
-		# Set plot-independent properties
+		# set plot-independent properties
 		if self.axes_properties != {}:
 			set_axes_properties(out_ax, **self.axes_properties)
 		if self.figure_properties != {}:
 			set_figure_properties(out_fig, **self.figure_properties)
 
-		# Save
+		# save
 		if not (save_dest is None or save_dest == ''):
 			_, ext = os.path.splitext(save_dest)
 			plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		# Show
+		# show
 		if fig is None:
 			if self.interactive:
 				out_fig.canvas.draw()
@@ -202,6 +195,10 @@ class Plot(Monitor):
 		return out_fig, out_ax
 
 	def _set_figure(self, fig=None):
+		"""
+		Set the private attribute representing the figure
+		*owned* by this object.
+		"""
 		if fig is not None:
 			self._figure = None
 			return
@@ -217,63 +214,60 @@ class Plot(Monitor):
 		else:
 			plt.ioff()
 			rcParams['font.size'] = fontsize
-			self._figure = plt.figure(figsize=figsize) if self._figure is None \
-						   else self._figure
+			self._figure = \
+				plt.figure(figsize=figsize) if self._figure is None \
+				else self._figure
 
 
 class PlotComposite:
 	"""
 	This class creates a visualization consisting of different subplots,
-	with each subplot generated by a :class:`~tasmania.plot.monitors.Plot`.
+	with each subplot generated by a :class:`~tasmania.Plot`.
 
 	Attributes
 	----------
     figure_properties : dict
-		Keyword arguments specifying properties for the
-		:class:`~matplotlib.pyplot.figure` containing the plot,
-		and which are forwarded and thereby set by
-		:func:`~tasmania.plot.plot_utils.get_figure_and_axes_properties`
-		and :func:`~tasmania.plot.plot_utils.set_figure_properties`.
+		Keyword arguments specifying settings for the figure containing
+		the plot. To be broadcast to
+		:func:`~tasmania.get_figure_and_axes_properties`
+		and :func:`~tasmania.set_figure_properties`.
 	"""
-	def __init__(self, nrows, ncols, artists, interactive=True,
-				 figure_properties=None):
+	def __init__(
+		self, *artists, nrows=1, ncols=1, interactive=True, figure_properties=None
+	):
 		"""
-		The constructor.
-
 		Parameters
 		----------
-		nrows : int
-			Number of rows of the subplot grid.
-		ncols : int
-			Number of columns of the subplot grid.
 		artists : sequence
-			Sequence of :class:`~tasmania.plot.monitors.Plot`\s generating
-			the single subplots. With respect to the subplot grid,
-			row-major ordering is assumed.
+			The artists, each generating a single subplot.
+			With respect to the subplot grid, row-major ordering is assumed.
+		nrows : `int`, optional
+			Number of rows of the subplot grid. Defaults to 1.
+		ncols : `int`, optional
+			Number of columns of the subplot grid. Defaults to 1.
 		interactive : `bool`, optional
 			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
     	figure_properties : `dict`, optional
-			Keyword arguments specifying properties for the
-			:class:`~matplotlib.pyplot.figure` containing the plot,
-			and which are forwarded and thereby set by
-			:func:`~tasmania.plot.plot_utils.get_figure_and_axes_properties`
-			and :func:`~tasmania.plot.plot_utils.set_figure_properties`.
-			Defaults to :obj:`None`.
+			Keyword arguments specifying settings for the figure containing
+			the plot. To be broadcast to
+			:func:`~tasmania.get_figure_and_axes_properties`
+			and :func:`~tasmania.set_figure_properties`.
 		"""
-		# Check input artists list
+		# check input artists list
 		assert_sequence(artists, reftype=Plot)
 
-		# Store input arguments as private attributes
-		self._nrows	  = nrows
-		self._ncols	  = ncols
-		self._artists = artists
+		# store input arguments as private attributes
+		self._artists 	  = artists
+		self._nrows	  	  = nrows
+		self._ncols	  	  = ncols
 		self._interactive = interactive
 
-		# Store input arguments as public attributes
-		self.figure_properties = {} if figure_properties is None else figure_properties
+		# store input arguments as public attributes
+		self.figure_properties = \
+			{} if figure_properties is None else figure_properties
 
-		# Initialize the figure attribute
+		# initialize the figure attribute
 		self._figure = None
 
 	@property
@@ -291,8 +285,8 @@ class PlotComposite:
 		"""
 		Returns
 		-------
-		figure :
-			The :class:`matplotlib.pyplot.figure` used and *owned* by this object.
+		matplotlib.figure.Figure :
+			The figure used and *owned* by this object.
 		"""
 		self._set_figure()
 		return self._figure
@@ -311,71 +305,88 @@ class PlotComposite:
 	def interactive(self, value):
 		"""
 		Switch interactive mode on/off.
+
+		Parameters
+		----------
+		value : bool
+			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 		"""
 		self._interactive = value
 		for artist in self.artists:
 			artist.interactive = value
 
-	def store(self, states, fig=None, save_dest=None, show=False):
+	def store(self, *states, fig=None, save_dest=None, show=False):
 		"""
-		Use the input list of states to update the plot.
+		Use the input states to update the plot.
 
 		Parameters
 		----------
-		states : list
-			List of dictionary model states. :obj:`states[i]` is forwarded
-			to the :obj:`i`-th artist.
-		fig : `figure`, optional
-			A :class:`matplotlib.pyplot.figure`.
+		states : sequence
+			Sequence whose items can be:
+
+			 	* dictionary states, or
+			 	* a sequence of dictionary states.
+
+			The i-th item will be forwarded to the i-th artist.
+		fig : `matplotlib.figure.Figure`, optional
+			The figure encapsulating all the subplots.
 		save_dest : `str`, optional
 			Path to the location where the figure should be saved.
 			The path should include the extension of the figure.
 			If :obj:`None` or empty, the plot will not be saved.
 		show : `bool`, optional
-			When the non-interactive mode is switched on, :obj:`True` to show the figure,
-			:obj:`False` otherwise. Default is :obj:`False`.
+			When the non-interactive mode is switched on,
+			:obj:`True` to show the figure, :obj:`False` otherwise.
+			Defaults :obj:`False`.
 
 		Return
 		------
-		out_fig : figure
-			The :class:`matplotlib.pyplot.figure` containing the plot.
+		matplotlib.figure.Figure
+			The figure encapsulating all the subplots.
 		"""
-		# Assert the list of states
-		assert_sequence(states, reflen=len(self.artists), reftype=SequenceType + (dict, ))
+		# assert the list of states
+		assert_sequence(
+			states, reflen=len(self.artists), reftype=SequenceType + (dict, )
+		)
 
-		# Set the figure attribute, if needed
+		# set the figure attribute, if needed
 		self._set_figure(fig)
 
-		# Set output figure
+		# set output figure
 		out_fig = fig if fig is not None else self._figure
 
-		# Clear the canvas, if needed
+		# clear the canvas, if needed
 		if fig is None:
 			out_fig.clear()
 
-		# Generate all subplots
+		# generate all the subplots
 		index = 1
 		for state, artist in zip(states, self.artists):
 			out_fig, ax = get_figure_and_axes(
 				out_fig, nrows=self._nrows, ncols=self._ncols,
 				index=index, **self.figure_properties,
-				**{key: val for key, val in artist.axes_properties.items()
-				   if key not in self.figure_properties},
+				**{
+					key: val for key, val in artist.axes_properties.items()
+					if key not in self.figure_properties
+				},
 			)
 
-			out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
+			if isinstance(state, dict):
+				out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
+			else:
+				out_fig, _ = artist.store(*state, fig=out_fig, ax=ax, show=False)
 
 			index += 1
 
-		# Set figure properties
+		# set figure properties
 		set_figure_properties(out_fig, **self.figure_properties)
 
-		# Save
+		# save
 		if not (save_dest is None or save_dest == ''):
 			_, ext = os.path.splitext(save_dest)
 			plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		# Show
+		# show
 		if fig is None:
 			if self.interactive:
 				out_fig.canvas.draw()
@@ -386,6 +397,10 @@ class PlotComposite:
 		return out_fig
 
 	def _set_figure(self, fig=None):
+		"""
+		Set the private attribute representing the figure
+		*owned* by this object.
+		"""
 		if fig is not None:
 			self._figure = None
 			return

@@ -30,27 +30,27 @@ import abc
 class Drawer:
 	"""
 	This abstract base class represents a generic drawer.
-	A *drawer* is a callable object which uses the data grabbed
+	A *drawer* is a functor which uses the data grabbed
 	from an input state dictionary (or a time-series of state
 	dictionaries) to generate a specific plot. The figure and
-	the axes encapsulating the plot should be provided as well.
+	the axes encapsulating the plot should be provided, as well.
 
 	Attributes
 	----------
 	properties : dict
 		Dictionary whose keys are strings denoting plot-specific
-		properties, and whose values specify values for those properties.
+		settings, and whose values specify values for those settings.
 	"""
-	# Make the class abstract
+	# make the class abstract
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, properties):
+	def __init__(self, properties=None):
 		"""
 		Parameters
 		----------
-		properties : dict
+		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
+			settings, and whose values specify values for those settings.
 		"""
 		self.properties = {} if properties is None else properties
 
@@ -67,9 +67,9 @@ class Drawer:
 			A state is a dictionary whose keys are strings denoting
 			model variables, and values are :class:`sympl.DataArray`\s
 			storing values for those variables.
-		fig : figure
-			A :class:`matplotlib.pyplot.figure`.
-		ax : axes
-			An instance of :class:`matplotlib.axes.Axes` into which
-			the plot will be encapsulated.
+		fig : matplotlib.figure.Figure
+			The figure encapsulating the plot.
+		ax : matplotlib.axes.Axes
+			The axes encapsulating the plot
 		"""
+		pass
