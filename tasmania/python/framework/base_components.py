@@ -31,7 +31,7 @@ import abc
 import sympl
 
 
-allowed_grid_types = ('physical', 'computational')
+allowed_grid_types = ('physical', 'numerical')
 
 
 class DiagnosticComponent(sympl.DiagnosticComponent):
@@ -41,7 +41,7 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
 	"""
 	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, domain, grid_type='computational'):
+	def __init__(self, domain, grid_type='numerical'):
 		"""
 		Parameters
 		----------
@@ -51,14 +51,14 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
 			The type of grid over which instantiating the class. Either:
 
 				* 'physical';
-				* 'computational' (default).
+				* 'numerical' (default).
 		"""
 		assert grid_type in allowed_grid_types, \
 			'grid_type is {}, but either ({}) was expected.'.format(
 				grid_type, ','.join(allowed_grid_types)
 			)
 		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.computational_grid
+			else domain.numerical_grid
 		self._hb = domain.horizontal_boundary
 		super().__init__()
 
@@ -91,7 +91,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, domain, grid_type='computational',
+		self, domain, grid_type='numerical',
 		tendencies_in_diagnostics=False, name=None
 	):
 		"""
@@ -103,7 +103,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 			The type of grid over which instantiating the class. Either:
 
 				* 'physical';
-				* 'computational' (default).
+				* 'numerical' (default).
 
 		tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
@@ -118,7 +118,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 				grid_type, ','.join(allowed_grid_types)
 			)
 		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.computational_grid
+			else domain.numerical_grid
 		self._hb = domain.horizontal_boundary
 		super().__init__(tendencies_in_diagnostics, name)
 
@@ -151,7 +151,7 @@ class Stepper(sympl.Stepper):
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, domain, grid_type='computational',
+		self, domain, grid_type='numerical',
 		tendencies_in_diagnostics=False, name=None
 	):
 		"""
@@ -163,7 +163,7 @@ class Stepper(sympl.Stepper):
 			The type of grid over which instantiating the class. Either:
 
 				* 'physical';
-				* 'computational' (default).
+				* 'numerical' (default).
 
 		tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
@@ -178,7 +178,7 @@ class Stepper(sympl.Stepper):
 				grid_type, ','.join(allowed_grid_types)
 			)
 		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.computational_grid
+			else domain.numerical_grid
 		self._hb = domain.horizontal_boundary
 		super().__init__(tendencies_in_diagnostics, name)
 
@@ -211,7 +211,7 @@ class TendencyComponent(sympl.TendencyComponent):
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, domain, grid_type='computational',
+		self, domain, grid_type='numerical',
 		tendencies_in_diagnostics=False, name=None
 	):
 		"""
@@ -223,7 +223,7 @@ class TendencyComponent(sympl.TendencyComponent):
 			The type of grid over which instantiating the class. Either:
 
 				* 'physical';
-				* 'computational' (default).
+				* 'numerical' (default).
 
 		tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
@@ -238,7 +238,7 @@ class TendencyComponent(sympl.TendencyComponent):
 				grid_type, ','.join(allowed_grid_types)
 			)
 		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.computational_grid
+			else domain.numerical_grid
 		self._hb = domain.horizontal_boundary
 		super().__init__(tendencies_in_diagnostics, name)
 

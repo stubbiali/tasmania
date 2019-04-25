@@ -57,59 +57,58 @@ text_locations = {
 }
 
 
-def get_figure_and_axes(fig=None, ax=None, default_fig=None,
-						nrows=1, ncols=1, index=1, **kwargs):
+def get_figure_and_axes(
+	fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
+):
 	"""
-	Get a :class:`matplotlib.pyplot.figure` object and a :class:`matplotlib.axes.Axes` 
+	Get a :class:`matplotlib.figure.Figure` object and a :class:`matplotlib.axes.Axes`
 	object, with the latter embedded in the former. The returned values are determined 
-	as follows.
+	as follows:
 
-	* If both :obj:`fig` and :obj:`ax` arguments are passed in:
+		* If both `fig` and `ax` arguments are passed in:
 
-		- if :obj:`ax` is embedded in :obj:`fig`, return :obj:`fig` and :obj:`ax`;
-		- otherwise, return the figure which encloses :obj:`ax`, and :obj:`ax` itself.
+			- if `ax` is embedded in `fig`, return `fig` and `ax`;
+			- otherwise, return the figure which encloses `ax`, and `ax` itself;
 
-	* If :obj:`fig` is provided but :obj:`ax` is not:
+		* If `fig` is provided but `ax` is not:
 
-		- if :obj:`fig` contains some subplots, return :obj:`fig` and the axes of the
-			first subplot it contains;
-		- otherwise, add a subplot to :obj:`fig` in position (1,1,1) and return :obj:`fig`
-			and the subplot axes.
+			- if `fig` contains some subplots, return `fig` and the axes of the
+				subplot in position (`nrows`, `ncols`, `index`) it contains;
+			- otherwise, add a subplot to `fig` in position (`nrows`, `ncols`, `index`)
+				and return `fig` and the subplot axes;
 
-	* If :obj:`ax` is provided but :obj:`fig` is not, return the figure which encloses 
-		:obj:`ax`, and :obj:`ax` itself.
+		* If `ax` is provided but `fig` is not, return the figure which encloses `ax`,
+			and `ax` itself;
 
-	* If neither :obj:`fig` nor :obj:`ax` are passed in:
+		* If neither `fig` nor `ax` are passed in:
 
-		- if :obj:`default_fig` is not given, instantiate a new pair of figure and axes;
-		- if :obj:`default_fig` is provided and it  contains some subplots, return 
-			:obj:`default_fig` and the axes of the first subplot it contains;
-		- if :obj:`default_fig` is provided but is does not contain any subplot, add a 
-			subplot to :obj:`default_fig` in position (1,1,1) and return :obj:`default_fig`
-			and the subplot axes.
+			- if `default_fig` is not given, instantiate a new pair of figure and axes;
+			- if `default_fig` is provided and it contains some subplots, return
+				`default_fig` and the axes of the subplot in position
+				(`nrows`, `ncols`, `index`) it contains;
+			- if `default_fig` is provided but is does not contain any subplot, add a
+				subplot to `default_fig` in position (1,1,1) and return `default_fig`
+				and the subplot axes.
 
 	Parameters
 	----------
-	fig : `figure`, optional
-		A :class:`matplotlib.pyplot.figure` object.
-	ax : `axes`, optional
-		An instance of :class:`matplotlib.axes.Axes`.
-	default_fig : `figure`, optional
-		A :class:`matplotlib.pyplot.figure` object.
+	fig : `matplotlib.figure.Figure`, optional
+		The figure.
+	ax : `matplotlib.axes.Axes`, optional
+        The axes.
+	default_fig : `matplotlib.figure.Figure`, optional
+        The default figure.
 	nrows : `int`, optional
 		Number of rows of the subplot grid. Defaults to 1.
-		Only effective if :obj:`ax` is not given.
 	ncols : `int`, optional
 		Number of columns of the subplot grid. Defaults to 1.
-		Only effective if :obj:`ax` is not given.
 	index : `int`, optional
 		Axes' index in the subplot grid. Defaults to 1.
-		Only effective if :obj:`ax` is not given.
 
 	Keyword arguments
 	-----------------
 	figsize : `tuple`, optional
-		The size which the output figure should have. Defaults to (7, 7_
+		The size which the output figure should have. Defaults to (7, 7).
 		This argument is effective only if the figure is created within the function.
 	fontsize : `int`, optional
 		Font size for the output figure and axes. Defaults to 12.
@@ -120,10 +119,10 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 
 	Returns
 	-------
-	out_fig : figure
-		A :class:`matplotlib.pyplot.figure` object.
-	out_ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	out_fig : matplotlib.figure.Figure
+        The figure.
+	out_ax : matplotlib.axes.Axes
+        The axes.
 	"""
 	figsize    = kwargs.get('figsize', (7, 7))
 	fontsize   = kwargs.get('fontsize', 12)
@@ -135,28 +134,37 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 		try:
 			if ax not in fig.get_axes():
 				import warnings
-				warnings.warn("""Input axes do not belong to the input figure,
-								 so consider the figure which the axes belong to.""",
-							  RuntimeWarning)
+				warnings.warn(
+					"Input axes do not belong to the input figure, "
+					"so the figure which the axes belong to is considered.",
+					RuntimeWarning
+				)
+
 				out_fig, out_ax = ax.get_figure(), ax
 			else:
 				out_fig, out_ax = fig, ax
 		except AttributeError:
 			import warnings
-			warnings.warn("""Input argument ''fig'' does not seem to be a figure, 
-							 so consider the figure the axes belong to.""", RuntimeWarning)
+			warnings.warn(
+				"Input argument ''fig'' does not seem to be a matplotlib.figure.Figure, "
+				"so the figure the axes belong to are considered.",
+				RuntimeWarning
+			)
+
 			out_fig, out_ax = ax.get_figure(), ax
 
 	if (fig is not None) and (ax is None):
 		try:
 			out_fig = fig
-			#out_ax = fig.get_axes()[index-1] if len(fig.get_axes()) > index \
-			#		 else fig.add_subplot(gs[i, j], projection=projection)
 			out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 		except AttributeError:
 			import warnings
-			warnings.warn("""Input argument ''fig'' does not seem to be a figure, 
-							 hence a proper figure object is created.""", RuntimeWarning)
+			warnings.warn(
+				"Input argument ''fig'' does not seem to be a matplotlib.figure.Figure, "
+				"hence a proper matplotlib.figure.Figure object is created.",
+				RuntimeWarning
+			)
+
 			out_fig = plt.figure(figsize=figsize)
 			out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 
@@ -170,14 +178,16 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 		else:
 			try:
 				out_fig = default_fig
-				#out_ax = out_fig.get_axes()[index] if len(out_fig.get_axes()) > index \
-				#		 else out_fig.add_subplot(gs[i, j], projection=projection)
 				out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 			except AttributeError:
 				import warnings
-				warnings.warn("""The argument ''default_fig'' does not actually seem 
-								 to be a figure, hence a proper figure object is created.""",
-							  RuntimeWarning)
+				warnings.warn(
+					"Input argument ''default_fig'' does not seem to be a "
+					"matplotlib.figure.Figure, hence a proper matplotlib.figure.Figure " 
+					"object is created.",
+					RuntimeWarning
+				)
+
 				out_fig = plt.figure(figsize=figsize)
 				out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 
@@ -186,38 +196,37 @@ def get_figure_and_axes(fig=None, ax=None, default_fig=None,
 
 def set_figure_properties(fig, **kwargs):
 	"""
-	An utility to ease the configuration of a :class:`~matplotlib.pyplot.figure`.
+	Ease the configuration of a :class:`matplotlib.figure.Figure`.
 
 	Parameters
 	----------
-	fig : figure
-		A :class:`~matplotlib.pyplot.figure`.
+	fig : matplotlib.figure.Figure
+		The figure.
 
 	Keyword arguments
 	-----------------
-	fontsize : `int`, optional
+	fontsize : int
 		Font size to use for the plot titles, and axes ticks and labels.
 		Defaults to 12.
-	tight_layout : `bool`, optional
-		:obj:`True` to fit plot to the figure, :obj:`False` otherwise.
-		Defaults to :obj:`True`.
+	tight_layout : bool
+		:obj:`True` to fit the whole subplots into the figure area,
+		:obj:`False` otherwise. Defaults to :obj:`True`.
 	tight_layout_rect : tuple
-		TODO
-	suptitle : `str`, optional
+		A rectangle (left, bottom, right, top) in the normalized figure
+		coordinate that the whole subplots area (including labels) will
+		fit into. Defaults to (0, 0, 1, 1).
+	suptitle : str
 		The figure title. Defaults to an empty string.
 	"""
 	fontsize     	  = kwargs.get('fontsize', 12)
 	tight_layout 	  = kwargs.get('tight_layout', True)
-	tight_layout_rect = kwargs.get('tight_layout_rect', None)
+	tight_layout_rect = kwargs.get('tight_layout_rect', (0, 0, 1, 1))
 	suptitle     	  = kwargs.get('suptitle', '')
 
 	rcParams['font.size'] = fontsize
 
 	if tight_layout:
-		if tight_layout_rect is None:
-			fig.tight_layout()
-		else:
-			fig.tight_layout(rect=tight_layout_rect)
+		fig.tight_layout(rect=tight_layout_rect)
 
 	if suptitle != '':
 		fig.suptitle(suptitle, fontsize=fontsize+1)
@@ -225,110 +234,119 @@ def set_figure_properties(fig, **kwargs):
 
 def set_axes_properties(ax, **kwargs):
 	"""
-	An utility to ease the configuration of an :class:`~matplotlib.axes.Axes` object.
+	Ease the configuration of a :class:`matplotlib.axes.Axes` object.
 
 	Parameters
 	----------
-	ax : axes
-		Instance of :class:`matplotlib.axes.Axes` enclosing the plot.
+	ax : matplotlib.axes.Axes
+		The axes.
 
 	Keyword arguments
 	-----------------
-	fontsize : `int`, optional
+	fontsize : int
 		Font size to use for the plot titles, and axes ticks and labels.
 		Defaults to 12.
-	title_center : `str`, optional
-		Text to use for the axes center title. Defaults to an empty string.
-	title_left : `str`, optional
-		Text to use for the axes left title. Defaults to an empty string.
-	title_right : `str`, optional
-		Text to use for the axes right title. Defaults to an empty string.
-	x_label : `str`, optional
-		Text to use for the label of the x-axis. Defaults to an empty string.
-	x_labelcolor : `str`, optional
-		TODO
-	x_lim : `tuple`, optional
+	title_center : str
+		The center title. Defaults to an empty string.
+	title_left : str
+		The left title. Defaults to an empty string.
+	title_right : str
+		The right title. Defaults to an empty string.
+	x_label : str
+		The x-axis label. Defaults to an empty string.
+	x_labelcolor : str
+		Color of the x-axis label. Defaults to 'black'.
+	x_lim : tuple
 		Data limits for the x-axis. Defaults to :obj:`None`, i.e., the data limits
 		will be left unchanged.
-	invert_xaxis : `bool`, optional
-		TODO
-	x_scale : `str`, optional
-		TODO
-	x_ticks : `list of float`, optional
-		List of x-axis ticks location.
-	x_ticklabels : `list of str`, optional
-		List of x-axis ticks labels.
-	x_tickcolor : `str`, optional
-		TODO
-	xaxis_minor_ticks_visible : `bool`, optional
-		TODO
-	xaxis_visible : `bool`, optional
+	invert_xaxis : bool
+		:obj:`True` to make to invert the x-axis, :obj:`False` otherwise.
+		Defaults to :obj:`False`.
+	x_scale : str
+		The x-axis scale. Defaults to 'linear'.
+	x_ticks : sequence[float]
+		Sequence of x-axis ticks location. Defaults to :obj:`None`.
+	x_ticklabels : sequence[str]
+		Sequence of x-axis ticks labels. Defaults to :obj:`None`.
+	x_ticklabelcolor : str
+		Color for the x-axis ticks labels. Defaults to 'black'.
+	xaxis_minor_ticks_visible : bool
+		:obj:`True` to show all ticks, either labelled or unlabelled,
+		:obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+	xaxis_visible : bool
 		:obj:`False` to make the x-axis invisible. Defaults to :obj:`True`.
-	y_label : `str`, optional
-		Text to use for the label of the y-axis. Defaults to an empty string.
-	y_labelcolor : `str`, optional
-		TODO
-	y_lim : `tuple`, optional
+	y_label : str
+		The y-axis label. Defaults to an empty string.
+	y_labelcolor : str
+		Color of the y-axis label. Defaults to 'black'.
+	y_lim : tuple
 		Data limits for the y-axis. Defaults to :obj:`None`, i.e., the data limits
 		will be left unchanged.
-	invert_yaxis : `bool`, optional
-		TODO
-	y_scale : `str`, optional
-		TODO
-	y_ticks : `list of float`, optional
-		List of y-axis ticks location.
-	y_ticklabels : `list of str`, optional
-		List of y-axis ticks labels.
-	y_tickcolor : `str`, optional
-		TODO
-	yaxis_minor_ticks_visible : `bool`, optional
-		TODO
-	yaxis_visible : `bool`, optional
+	invert_yaxis : bool
+		:obj:`True` to make to invert the y-axis, :obj:`False` otherwise.
+		Defaults to :obj:`False`.
+	y_scale : str
+		The y-axis scale. Defaults to 'linear'.
+	y_ticks : sequence[float]
+		Sequence of y-axis ticks location. Defaults to :obj:`None`.
+	y_ticklabels : sequence[str]
+		Sequence of y-axis ticks labels. Defaults to :obj:`None`.
+	y_ticklabelcolor : str
+		Color for the y-axis ticks labels. Defaults to 'black'.
+	yaxis_minor_ticks_visible : bool
+		:obj:`True` to show all ticks, either labelled or unlabelled,
+		:obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+	yaxis_visible : bool
 		:obj:`False` to make the y-axis invisible. Defaults to :obj:`True`.
-	z_label : `str`, optional
-		Text to use for the label of the z-axis. Defaults to an empty string.
-	z_labelcolor : `str`, optional
-		TODO
-	z_lim : `tuple`, optional
+	z_label : str
+		The z-axis label. Defaults to an empty string.
+	z_labelcolor : str
+		Color of the z-axis label. Defaults to 'black'.
+	z_lim : tuple
 		Data limits for the z-axis. Defaults to :obj:`None`, i.e., the data limits
 		will be left unchanged.
-	invert_zaxis : `bool`, optional
-		TODO
-	z_scale : `str`, optional
-		TODO
-	z_ticks : `list of float`, optional
-		List of z-axis ticks location.
-	z_ticklabels : `list of str`, optional
-		List of z-axis ticks labels.
-	z_tickcolor : `str`, optional
-		TODO
-	zaxis_minor_ticks_visible : `bool`, optional
-		TODO
-	zaxis_visible : `bool`, optional
+	invert_zaxis : bool
+		:obj:`True` to make to invert the z-axis, :obj:`False` otherwise.
+		Defaults to :obj:`False`.
+	z_scale : str
+		The z-axis scale. Defaults to 'linear'.
+	z_ticks : sequence[float]
+		Sequence of z-axis ticks location. Defaults to :obj:`None`.
+	z_ticklabels : sequence[str]
+		Sequence of z-axis ticks labels. Defaults to :obj:`None`.
+	z_ticklabelcolor : str
+		Color for the z-axis ticks labels. Defaults to 'black'.
+	zaxis_minor_ticks_visible : bool
+		:obj:`True` to show all ticks, either labelled or unlabelled,
+		:obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+	zaxis_visible : bool
 		:obj:`False` to make the z-axis invisible. Defaults to :obj:`True`.
-	legend_on : `bool`, optional
+	legend_on : bool
 		:obj:`True` to show the legend, :obj:`False` otherwise. Defaults to :obj:`False`.
-	legend_loc : `str`, optional
-		String specifying the location where the legend box should be placed.
+	legend_loc : str
+		String specifying the location where the legend should be placed.
 		Defaults to 'best'; please see :func:`matplotlib.pyplot.legend` for all
 		the available options.
 	legend_bbox_to_anchor : tuple
-		TODO
-	legend_framealpha : `float`, optional
-		TODO
+		4-items tuple defining the box used to place the legend. This is used in
+		conjuction with `legend_loc` to allow arbitrary placement of the legend.
+	legend_framealpha : float
+		Legend transparency. It should be between 0 and 1; defaults to 0.5.
 	legend_ncol : int
-		TODO
+		Number of columns into which the legend labels should be arranged.
+		Defaults to 1.
 	text : str
 		Text to be added to the figure as anchored text. Defaults to :obj:`None`,
-		and no text box is shown.
+		meaning that no text box is shown.
 	text_loc : str
 		String specifying the location where the text box should be placed.
 		Defaults to 'upper right'; please see :class:`matplotlib.offsetbox.AnchoredText`
 		for all the available options.
-	grid_on : `bool`, optional
-		:obj:`True` to show the legend, :obj:`False` otherwise. Defaults to :obj:`False`.
-	grid_properties : `dict`, optional
-		TODO
+	grid_on : bool
+		:obj:`True` to show the plot grid, :obj:`False` otherwise.
+		Defaults to :obj:`False`.
+	grid_properties : dict
+		Keyword arguments specifying various settings of the plot grid.
 	"""
 	fontsize                  = kwargs.get('fontsize', 12)
 	# title
@@ -337,35 +355,35 @@ def set_axes_properties(ax, **kwargs):
 	title_right               = kwargs.get('title_right', '')
 	# x-axis
 	x_label                   = kwargs.get('x_label', '')
-	x_labelcolor              = kwargs.get('x_labelcolor', '')
+	x_labelcolor              = kwargs.get('x_labelcolor', 'black')
 	x_lim                     = kwargs.get('x_lim', None)
 	invert_xaxis              = kwargs.get('invert_xaxis', False)
-	x_scale                   = kwargs.get('x_scale', None)
+	x_scale                   = kwargs.get('x_scale', 'linear')
 	x_ticks                   = kwargs.get('x_ticks', None)
 	x_ticklabels              = kwargs.get('x_ticklabels', None)
-	x_tickcolor               = kwargs.get('x_tickcolor', '')
+	x_ticklabelcolor          = kwargs.get('x_ticklabelcolor', 'black')
 	xaxis_minor_ticks_visible = kwargs.get('xaxis_minor_ticks_visible', False)
 	xaxis_visible             = kwargs.get('xaxis_visible', True)
 	# y-axis
 	y_label                   = kwargs.get('y_label', '')
-	y_labelcolor              = kwargs.get('y_labelcolor', '')
+	y_labelcolor              = kwargs.get('y_labelcolor', 'black')
 	y_lim                     = kwargs.get('y_lim', None)
 	invert_yaxis              = kwargs.get('invert_yaxis', False)
-	y_scale                   = kwargs.get('y_scale', None)
+	y_scale                   = kwargs.get('y_scale', 'linear')
 	y_ticks                   = kwargs.get('y_ticks', None)
 	y_ticklabels              = kwargs.get('y_ticklabels', None)
-	y_tickcolor               = kwargs.get('y_tickcolor', '')
+	y_ticklabelcolor          = kwargs.get('y_ticklabelcolor', 'black')
 	yaxis_minor_ticks_visible = kwargs.get('yaxis_minor_ticks_visible', False)
 	yaxis_visible             = kwargs.get('yaxis_visible', True)
 	# z-axis
 	z_label                   = kwargs.get('z_label', '')
-	z_labelcolor              = kwargs.get('z_labelcolor', '')
+	z_labelcolor              = kwargs.get('z_labelcolor', 'black')
 	z_lim                     = kwargs.get('z_lim', None)
 	invert_zaxis              = kwargs.get('invert_zaxis', False)
-	z_scale                   = kwargs.get('z_scale', None)
+	z_scale                   = kwargs.get('z_scale', 'linear')
 	z_ticks                   = kwargs.get('z_ticks', None)
 	z_ticklabels              = kwargs.get('z_ticklabels', None)
-	z_tickcolor               = kwargs.get('z_tickcolor', '')
+	z_ticklabelcolor          = kwargs.get('z_ticklabelcolor', 'black')
 	zaxis_minor_ticks_visible = kwargs.get('zaxis_minor_ticks_visible', False)
 	zaxis_visible             = kwargs.get('zaxis_visible', True)
 	# legend
@@ -383,6 +401,7 @@ def set_axes_properties(ax, **kwargs):
 
 	rcParams['font.size'] = fontsize
 
+	# plot titles
 	if ax.get_title(loc='center') == '':
 		ax.set_title(title_center, loc='center', fontsize=rcParams['font.size']-1)
 	if ax.get_title(loc='left') == '':
@@ -390,6 +409,7 @@ def set_axes_properties(ax, **kwargs):
 	if ax.get_title(loc='right') == '':
 		ax.set_title(title_right, loc='right', fontsize=rcParams['font.size']-1)
 
+	# axes labels
 	if ax.get_xlabel() == '':
 		ax.set(xlabel=x_label)
 	if ax.get_ylabel() == '':
@@ -400,11 +420,14 @@ def set_axes_properties(ax, **kwargs):
 	except AttributeError:
 		if z_label != '':
 			import warnings
-			warnings.warn('The plot is not three-dimensional, therefore the '
-						   'argument ''z_label'' is disregarded.', RuntimeWarning)
+			warnings.warn(
+				"The plot is not three-dimensional, therefore the "
+				"argument ''z_label'' is disregarded.", RuntimeWarning
+			)
 		else:
 			pass
 
+	# axes labels
 	if ax.get_xlabel() != '' and x_labelcolor != '':
 		ax.xaxis.label.set_color(x_labelcolor)
 	if ax.get_ylabel() != '' and y_labelcolor != '':
@@ -415,11 +438,14 @@ def set_axes_properties(ax, **kwargs):
 	except AttributeError:
 		if z_labelcolor != '':
 			import warnings
-			warnings.warn('The plot is not three-dimensional, therefore the '
-						   'argument ''z_labelcolor'' is disregarded.', RuntimeWarning)
+			warnings.warn(
+				"The plot is not three-dimensional, therefore the "
+				"argument ''z_labelcolor'' is disregarded.", RuntimeWarning
+			)
 		else:
 			pass
 
+	# axes limits
 	if x_lim is not None:
 		ax.set_xlim(x_lim)
 	if y_lim is not None:
@@ -429,9 +455,12 @@ def set_axes_properties(ax, **kwargs):
 			ax.set_zlim(z_lim)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''z_lim'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''z_lim'' is disregarded.", RuntimeWarning
+		)
 
+	# invert the axes
 	if invert_xaxis:
 		ax.invert_xaxis()
 	if invert_yaxis:
@@ -441,9 +470,12 @@ def set_axes_properties(ax, **kwargs):
 			ax.invert_zaxis()
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''invert_zaxis'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''invert_zaxis'' is disregarded.", RuntimeWarning
+		)
 
+	# axes scale
 	if x_scale is not None:
 		ax.set_xscale(x_scale)
 	if y_scale is not None:
@@ -453,9 +485,12 @@ def set_axes_properties(ax, **kwargs):
 			ax.set_zscale(z_scale)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''z_scale'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''z_scale'' is disregarded.", RuntimeWarning
+		)
 
+	# axes ticks
 	if x_ticks is not None:
 		ax.get_xaxis().set_ticks(x_ticks)
 	if y_ticks is not None:
@@ -465,9 +500,12 @@ def set_axes_properties(ax, **kwargs):
 			ax.get_zaxis().set_ticks(z_ticks)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''z_ticks'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''z_ticks'' is disregarded.", RuntimeWarning
+		)
 
+	# axes tick labels
 	if x_ticklabels is not None:
 		ax.get_xaxis().set_ticklabels(x_ticklabels)
 	if y_ticklabels is not None:
@@ -477,21 +515,27 @@ def set_axes_properties(ax, **kwargs):
 			ax.get_zaxis().set_ticklabels(z_ticklabels)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''z_ticklabels'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''z_ticklabels'' is disregarded.", RuntimeWarning
+		)
 
-	if x_tickcolor != '':
-		ax.tick_params(axis='x', colors=x_tickcolor)
-	if y_tickcolor != '':
-		ax.tick_params(axis='y', colors=y_tickcolor)
+	# axes tick labels color
+	if x_ticklabelcolor != '':
+		ax.tick_params(axis='x', colors=x_ticklabelcolor)
+	if y_ticklabelcolor != '':
+		ax.tick_params(axis='y', colors=y_ticklabelcolor)
 	try:
-		if z_tickcolor != '':
-			ax.tick_params(axis='z', colors=z_tickcolor)
+		if z_ticklabelcolor != '':
+			ax.tick_params(axis='z', colors=z_ticklabelcolor)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''z_tickcolor'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''z_ticklabelcolor'' is disregarded.", RuntimeWarning
+		)
 
+	# unlabelled axes ticks
 	if not xaxis_minor_ticks_visible:
 		ax.get_xaxis().set_tick_params(which='minor', size=0)
 		ax.get_xaxis().set_tick_params(which='minor', width=0)
@@ -504,10 +548,13 @@ def set_axes_properties(ax, **kwargs):
 			ax.get_zaxis().set_tick_params(which='minor', width=0)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''zaxis_minor_ticks_visible'' is disregarded.',
-					  RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''zaxis_minor_ticks_visible'' is disregarded.",
+			RuntimeWarning
+		)
 
+	# axes visibility
 	if not xaxis_visible:
 		ax.get_xaxis().set_visible(False)
 	if not yaxis_visible:
@@ -517,22 +564,29 @@ def set_axes_properties(ax, **kwargs):
 			ax.get_zaxis().set_visible(False)
 	except AttributeError:
 		import warnings
-		warnings.warn('The plot is not three-dimensional, therefore the '
-					  'argument ''zaxis_visible'' is disregarded.', RuntimeWarning)
+		warnings.warn(
+			"The plot is not three-dimensional, therefore the "
+			"argument ''zaxis_visible'' is disregarded.", RuntimeWarning
+		)
 
+	# legend
 	if legend_on:
 		if legend_bbox_to_anchor is None:
 			ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
 		else:
-			ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol,
-					  bbox_to_anchor=legend_bbox_to_anchor)
+			ax.legend(
+				loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol,
+				bbox_to_anchor=legend_bbox_to_anchor
+			)
 
+	# text box
 	if text is not None:
 		ax.add_artist(AnchoredText(text, loc=text_locations[text_loc]))
 
+	# plot grid
 	if grid_on:
-		g_props = grid_properties if grid_properties is not None else {}
-		ax.grid(True, **g_props)
+		gps = grid_properties if grid_properties is not None else {}
+		ax.grid(True, **gps)
 
 
 def reverse_colormap(cmap, name=None):
@@ -541,16 +595,16 @@ def reverse_colormap(cmap, name=None):
 
 	Parameters
 	----------
-	cmap : obj
-		The :class:`matplotlib.colors.LinearSegmentedColormap` to invert.
+	cmap : matplotlib.colors.LinearSegmentedColormap
+		The colormap to invert.
 	name : `str`, optional
-		The name of the reversed colormap. By default, this is obtained by appending '_r'
-		to the name of the input colormap.
+		The name of the reversed colormap. By default, this is obtained by
+		appending '_r' to the name of the input colormap.
 
 	Return
 	------
-	obj :
-		The reversed :class:`matplotlib.colors.LinearSegmentedColormap`.
+	matplotlib.colors.LinearSegmentedColormap :
+		The reversed colormap.
 
 	References
 	----------
@@ -560,33 +614,35 @@ def reverse_colormap(cmap, name=None):
 	reverse = []
 
 	for key in cmap._segmentdata:
-		# Extract the channel
+		# extract the channel
 		keys.append(key)
 		channel = cmap._segmentdata[key]
 
-		# Reverse the channel
+		# reverse the channel
 		data = []
 		for t in channel:
 			data.append((1-t[0], t[2], t[1]))
 		reverse.append(sorted(data))
 
-	# Set the name for the reversed map
+	# set the name of the reversed map
 	if name is None:
 		name = cmap.name + '_r'
 
 	return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
 
 
-def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_pos='center',
-				 cbar_title='', cbar_x_label='', cbar_y_label='',
-				 cbar_orientation='vertical', cbar_ax=None):
+def set_colorbar(
+	fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_pos='center',
+	cbar_title='', cbar_x_label='', cbar_y_label='', cbar_orientation='vertical',
+	cbar_ax=None
+):
 	"""
-	An utility to ease the configuration of the colorbar in Matplotlib plots.
+	Ease the configuration of the colorbar in Matplotlib plots.
 
 	Parameters
 	----------
-	fig : figure
-		The :class:`matplotlib.pyplot.figure` containing the plot.
+	fig : matplotlib.figure.Figure
+		The figure containing the plot.
 	mappable : mappable
 		The mappable, i.e., the image, which the colorbar applies
 	color_levels : array_like
@@ -595,16 +651,16 @@ def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_p
 		Distance between two consecutive labelled ticks of the colorbar. Defaults to 1,
 		i.e., all ticks are displayed with the corresponding label.
 	cbar_ticks_pos : str
-		'center' to place the color bar ticks in the middle of the color intervals,
+		'center' to place the colorbar ticks in the middle of the color intervals,
 		anything else to place the ticks at the interfaces between color intervals.
 	cbar_x_label : str
 		Label for the horizontal axis of the colorbar. Defaults to an empty string.
 	cbar_y_label : str
 		Label for the vertical axis of the colorbar. Defaults to an empty string.
 	cbar_title : str
-		Title for the colorbar. Defaults to an empty string.
+		Colorbar title. Defaults to an empty string.
 	cbar_orientation : str
-		Orientation of the colorbar. Either 'vertical' (default) or 'horizontal'.
+		Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
 	cbar_ax : tuple
 		Indices of the figure axes from which space for the colorbar axes
 		is stolen. If multiple indices are given, the corresponding axes are
@@ -616,8 +672,9 @@ def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_p
 	else:
 		try:
 			axes = fig.get_axes()
-			cb = plt.colorbar(mappable, orientation=cbar_orientation,
-							  ax=[axes[i] for i in cbar_ax])
+			cb = plt.colorbar(
+				mappable, orientation=cbar_orientation, ax=[axes[i] for i in cbar_ax]
+			)
 		except TypeError:
 			# cbar_ax is not iterable
 			cb = plt.colorbar(mappable, orientation=cbar_orientation)
@@ -637,47 +694,45 @@ def set_colorbar(fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_p
 
 def make_lineplot(x, y, ax, **kwargs):
 	"""
-	Utility plotting a line.
+	Plot a line.
 
 	Parameters
 	----------
-	x : array_like
-		1-D :class:`numpy.ndarray` gathering the x-coordinates
-		of the points to plot.
-	y : array_like
-		1-D :class:`numpy.ndarray` gathering the y-coordinates
-		of the points to plot.
-	ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	x : numpy.ndarray
+		1-D array gathering the x-coordinates of the points to plot.
+	y : numpy.ndarray
+		1-D array gathering the y-coordinates of the points to plot.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plot.
 
 	Keyword arguments
 	-----------------
 	fontsize : int
 		The fontsize to be used. Defaults to 16.
 	x_factor : float
-		Scaling factor for the :math:`x`-axis. Defaults to 1.
+		Scaling factor for the x-coordinates. Defaults to 1.
 	y_factor : float
-		Scaling factor for the field. Defaults to 1.
+		Scaling factor for the y-coordinates. Defaults to 1.
 	linestyle : str
-		String specifying the line style. The default line style is '-'.
+		String specifying the line style. Defaults to '-'.
 	linewidth : float
 		The line width. Defaults to 1.5.
 	linecolor : str
 		String specifying the line color. Defaults to 'blue'.
 	marker : str
-		TODO
+		The shape of the markers. If not given, no markers will be displayed.
 	markersize : float
-		TODO
+		Marker size. Defaults to 5.
 	markeredgewidth : str
-		TODO
+		Marker edge width. Defaults to 1.5.
 	markerfacecolor : str
-		TODO
+		Marker face color. Defaults to 'blue'.
 	markeredgecolor : str
-		TODO
+		Marker edge color. Defaults to 'blue'.
 	legend_label : str
 		The legend label for the line. Defaults to an empty string.
 	"""
-	# Get keyword arguments
+	# get keyword arguments
 	fontsize     	= kwargs.get('fontsize', 16)
 	x_factor     	= kwargs.get('x_factor', 1.)
 	y_factor     	= kwargs.get('y_factor', 1.)
@@ -685,31 +740,35 @@ def make_lineplot(x, y, ax, **kwargs):
 	linewidth    	= kwargs.get('linewidth', 1.5)
 	linecolor	 	= kwargs.get('linecolor', 'blue')
 	marker  		= kwargs.get('marker', None)
-	markersize  	= kwargs.get('markersize', None)
-	markeredgewidth = kwargs.get('markeredgewidth', None)
-	markerfacecolor = kwargs.get('markerfacecolor', None)
-	markeredgecolor = kwargs.get('markeredgecolor', None)
+	markersize  	= kwargs.get('markersize', 5)
+	markeredgewidth = kwargs.get('markeredgewidth', 1.5)
+	markerfacecolor = kwargs.get('markerfacecolor', 'blue')
+	markeredgecolor = kwargs.get('markeredgecolor', 'blue')
 	legend_label 	= kwargs.get('legend_label', '')
 
-	# Global settings
+	# global settings
 	rcParams['font.size'] = fontsize
 
-	# Rescale the axes and the field for visualization purposes
+	# rescale the axes for visualization purposes
 	x *= x_factor
 	y *= y_factor
 
-	# Plot the field
+	# plot
 	if legend_label == '' or legend_label is None:
-		ax.plot(x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
-				marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
-				markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor)
+		ax.plot(
+			x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
+			marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
+			markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor
+		)
 	else:
-		ax.plot(x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
-				marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
-				markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor,
-				label=legend_label)
+		ax.plot(
+			x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
+			marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
+			markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor,
+			label=legend_label
+		)
 
-	# Bring axes back to original units
+	# bring axes back to original units
 	x /= x_factor
 	y /= y_factor
 
@@ -720,72 +779,71 @@ def make_contour(x, y, field, ax, **kwargs):
 
 	Parameters
 	----------
-	x : array_like
-		2-D :class:`numpy.ndarray` gathering the x-coordinates
-		of the grid points.
-	y : array_like
-		2-D :class:`numpy.ndarray` gathering the y-coordinates
-		of the grid points.
-	field : array_like
-		2-D :class:`numpy.ndarray` representing the field to plot.
-	ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	x : numpy.ndarray
+		2-D array gathering the x-coordinates of the grid points.
+	y : numpy.ndarray
+		2-D array gathering the y-coordinates of the grid points.
+	field : numpy.ndarray
+		2-D array representing the field to plot.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plot.
 
 	Keyword arguments
 	-----------------
 	fontsize : int
 		The fontsize to be used in the plot. Defaults to 16.
 	x_factor : float
-		Scaling factor for the x-axis. Defaults to 1.
+		Scaling factor for the x-coordinates. Defaults to 1.
 	y_factor : float
-		Scaling factor for the y-axis. Defaults to 1.
+		Scaling factor for the y-coordinates. Defaults to 1.
 	field_bias : float
-		Bias for the field, so that the contour lines for :obj:`field - field_bias`
+		Bias for the field, so that the contour lines for `field - field_bias`
 		are drawn. Defaults to 0.
 	field_factor : float
 		Scaling factor for the field, so that the contour lines for
-		:obj:`field_factor * field` are drawn. If a bias is specified, then the contour
-		lines for :obj:`field_factor * (field - field_bias)` are drawn. Defaults to 1.
+		`field_factor * field` are drawn. If a bias is specified, then the contour
+		lines for `field_factor * (field - field_bias)` are drawn. Defaults to 1.
 	alpha : float
-		TODO
+		Transparency of the contour lines. It should be between 0 and 1;
+		defaults to 1.
 	colors : str, sequence[str]
-		TODO
+		Contour lines colors. Defaults to 'black'.
 	draw_vertical_levels : bool
-		:obj:`True` to draw the underlying grid, :obj:`False` otherwise.
+		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
 	"""
-	# Shortcuts
+	# shortcuts
 	ni, nk = field.shape
 
-	# Get keyword arguments
-	fontsize         = kwargs.get('fontsize', 16)
-	x_factor         = kwargs.get('x_factor', 1.)
-	y_factor         = kwargs.get('y_factor', 1.)
-	field_bias	 	 = kwargs.get('field_bias', 0.)
-	field_factor	 = kwargs.get('field_factor', 1.)
-	alpha			 = kwargs.get('alpha', 1.0)
-	colors			 = kwargs.get('colors', 'black')
-	draw_grid 	 	 = kwargs.get('draw_vertical_levels', False)
+	# get keyword arguments
+	fontsize     = kwargs.get('fontsize', 16)
+	x_factor     = kwargs.get('x_factor', 1.)
+	y_factor     = kwargs.get('y_factor', 1.)
+	field_bias	 = kwargs.get('field_bias', 0.)
+	field_factor = kwargs.get('field_factor', 1.)
+	alpha		 = kwargs.get('alpha', 1.0)
+	colors		 = kwargs.get('colors', 'black')
+	draw_vlevels = kwargs.get('draw_vertical_levels', False)
 
-	# Global settings
+	# global settings
 	rcParams['font.size'] = fontsize
 
-	# Rescale the axes and the field for visualization purposes
+	# rescale the axes and the field for visualization purposes
 	x     *= x_factor
 	y     *= y_factor
 	field -= field_bias
 	field *= field_factor
 
-	# Plot the computational grid
-	if draw_grid:
+	# plot the vertical levels
+	if draw_vlevels:
 		for k in range(nk):
 			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
 
-	# Plot the field
+	# plot the field
 	if field.min() != field.max():
 		plt.contour(x, y, field, colors=colors, alpha=alpha)
 
-	# Bring axes and field back to original units
+	# bring axes and field back to original units
 	x     /= x_factor
 	y 	  /= y_factor
 	field /= field_factor
@@ -798,72 +856,71 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 
 	Parameters
 	----------
-	x : array_like
-		2-D :class:`numpy.ndarray` gathering the x-coordinates
-		of the grid points.
-	y : array_like
-		2-D :class:`numpy.ndarray` gathering the y-coordinates
-		of the grid points.
-	field : array_like
-		2-D :class:`numpy.ndarray` representing the field to plot.
-	fig : figure
-		A :class:`matplotlib.pyplot.figure`.
-	ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	x : numpy.ndarray
+		2-D array gathering the x-coordinates of the grid points.
+	y : numpy.ndarray
+		2-D array gathering the y-coordinates of the grid points.
+	field : numpy.ndarray
+		2-D array representing the field to plot.
+	fig : matplotlib.figure.Figure
+		The figure embodying the figure.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plot.
 
 	Keyword arguments
 	-----------------
 	fontsize : int
 		The fontsize to be used. Defaults to 16.
 	x_factor : float
-		Scaling factor for the x-axis. Defaults to 1.
+		Scaling factor for the x-coordinates. Defaults to 1.
 	y_factor : float
-		Scaling factor for the y-axis. Defaults to 1.
+		Scaling factor for the y-coordinates. Defaults to 1.
 	field_bias : float
-		Bias for the field, so that the contourf plot for :obj:`field - field_bias`
+		Bias for the field, so that the contourf plot for `field - field_bias`
 		is generated. Defaults to 0.
 	field_factor : float
 		Scaling factor for the field, so that the contourf plot for
-		:obj:`field_factor * field` is generated. If a bias is specified, then the
-		contourf plot for :obj:`field_factor * (field - field_bias)` is generated.
+		`field_factor * field` is generated. If a bias is specified, then the
+		contourf plot for `field_factor * (field - field_bias)` is generated.
 		Defaults to 1.
 	cmap_name : str
 		Name of the Matplotlib's color map to be used. All the color maps provided
 		by Matplotlib, as well as the corresponding inverted versions, are available.
 	cbar_on : bool
-		:obj:`True` to show the color bar, :obj:`False` otherwise. Defaults to :obj:`True`.
+		:obj:`True` to show the colorbar, :obj:`False` otherwise.
+		Defaults to :obj:`True`.
 	cbar_levels : int
-		Number of levels for the color bar. Defaults to 14.
+		Number of levels for the colorbar. Defaults to 14.
 	cbar_ticks_step : int
-		Distance between two consecutive labelled ticks of the color bar. Defaults to 1,
-		i.e., all ticks are displayed with the corresponding label.
+		Distance between two consecutive labelled ticks of the colorbar.
+		Defaults to 1, i.e., all ticks are displayed with the corresponding label.
 	cbar_ticks_pos : str
-		'center' to place the color bar ticks in the middle of the color intervals,
+		'center' to place the colorbar ticks in the middle of the color intervals,
 		anything else to place the ticks at the interfaces between color intervals.
 	cbar_center : float
-		Center of the range covered by the color bar. By default, the color bar covers
+		Center of the range covered by the colorbar. By default, the colorbar covers
 		the spectrum ranging from the minimum to the maximum assumed by the field.
 	cbar_half_width : float
-		Half-width of the range covered by the color bar. By default, the color bar
+		Half-width of the range covered by the colorbar. By default, the colorbar
 		covers the spectrum ranging from the minimum to the maximum assumed by the field.
 	cbar_x_label : str
-		Label for the horizontal axis of the color bar. Defaults to an empty string.
+		Label for the horizontal axis of the colorbar. Defaults to an empty string.
 	cbar_y_label : str
-		Label for the vertical axis of the color bar. Defaults to an empty string.
+		Label for the vertical axis of the colorbar. Defaults to an empty string.
 	cbar_title : str
-		Title for the color bar. Defaults to an empty string.
+		Colorbar title. Defaults to an empty string.
 	cbar_orientation : str
-		Orientation of the color bar. Either 'vertical' (default) or 'horizontal'.
+		Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
 	cbar_ax : tuple
-		Indices of the figure axes from which space for the color bar axes
+		Indices of the figure axes from which space for the colorbar axes
 		is stolen. If multiple indices are given, the corresponding axes are
-		all evenly resized to make room for the color bar. If no indices are given,
+		all evenly resized to make room for the colorbar. If no indices are given,
 		only the current axes are resized.
 	draw_vertical_levels : bool
-		:obj:`True` to draw the underlying grid, :obj:`False` otherwise.
+		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
 	"""
-	# Get keyword arguments
+	# get keyword arguments
 	fontsize         = kwargs.get('fontsize', 12)
 	x_factor         = kwargs.get('x_factor', 1.)
 	y_factor         = kwargs.get('y_factor', 1.)
@@ -881,18 +938,18 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	cbar_title		 = kwargs.get('cbar_title', '')
 	cbar_orientation = kwargs.get('cbar_orientation', 'vertical')
 	cbar_ax			 = kwargs.get('cbar_ax', None)
-	draw_grid 	 	 = kwargs.get('draw_vertical_levels', False)
+	draw_vlevels 	 	 = kwargs.get('draw_vertical_levels', False)
 
-	# Global settings
+	# global settings
 	rcParams['font.size'] = fontsize
 
-	# Rescale the axes and the field for visualization purposes
+	# rescale the axes and the field for visualization purposes
 	x     *= x_factor
 	y     *= y_factor
 	field -= field_bias
 	field *= field_factor
 
-	# Create color bar for colormap
+	# create colorbar for colormap
 	field_min, field_max = np.amin(field), np.amax(field)
 	if cbar_center is None or not (lt(field_min, cbar_center) and lt(cbar_center, field_max)):
 		cbar_lb, cbar_ub = field_min, field_max
@@ -904,7 +961,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	if eq(color_levels[0], color_levels[-1]):
 		color_levels = np.linspace(cbar_lb-1e-8, cbar_ub+1e-8, cbar_levels, endpoint=True)
 
-	# Create colormap
+	# create colormap
 	if cmap_name == 'BuRd':
 		cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
 	elif cmap_name == 'BuYlRd':
@@ -912,23 +969,24 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	else:
 		cm = plt.get_cmap(cmap_name)
 
-	# Plot the computational grid
-	if draw_grid:
+	# plot the vertical levels
+	if draw_vlevels:
 		for k in range(x.shape[1]):
 			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
 
-	# Plot the field
+	# plot the field
 	surf = ax.contourf(x, y, field, color_levels, cmap=cm)
 
-	# Set the color bar
+	# set the colorbar
 	if cbar_on:
-		set_colorbar(fig, surf, color_levels,
-					 cbar_ticks_step=cbar_ticks_step,
-					 cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
-					 cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-					 cbar_orientation=cbar_orientation, cbar_ax=cbar_ax)
+		set_colorbar(
+			fig, surf, color_levels,
+			cbar_ticks_step=cbar_ticks_step, cbar_ticks_pos=cbar_ticks_pos,
+			cbar_title=cbar_title, cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
+			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax
+		)
 
-	# Bring axes and field back to original units
+	# bring axes and field back to original units
 	x     /= x_factor
 	y 	  /= y_factor
 	field /= field_factor
@@ -942,109 +1000,109 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 
 	Parameters
 	----------
-	x : array_like
-		2-D :class:`numpy.ndarray` gathering the x-coordinates
-		of the grid points.
-	y : array_like
-		2-D :class:`numpy.ndarray` gathering the y-coordinates
-		of the grid points.
-	vx : array_like
-		2-D :class:`numpy.ndarray` representing the x-component
-		of the field to plot.
-	vy : array_like
-		2-D :class:`numpy.ndarray` representing the y-component
-		of the field to plot.
-	scalar : array_like
-		:class:`numpy.ndarray` representing a scalar field associated with the vector field.
+	x : numpy.ndarray
+		2-D array gathering the x-coordinates of the grid points.
+	y : numpy.ndarray
+		2-D array gathering the y-coordinates of the grid points.
+	vx : numpy.ndarray
+		2-D array representing the x-component of the vector field to plot.
+	vy : numpy.ndarray
+		2-D array representing the y-component of the vector field to plot.
+	scalar : numpy.ndarray
+		2-D array representing a scalar field associated with the vector field.
 		The arrows will be colored based on the associated scalar value.
 		If :obj:`None`, the arrows will be colored based on their magnitude.
-	fig : figure
-		A :class:`matplotlib.pyplot.figure`.
-	ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	fig : matplotlib.figure.Figure
+		The figure encapsulating the plot.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plo.
 
 	Keyword arguments
 	-----------------
 	fontsize : int
 		The fontsize to be used. Defaults to 12.
 	x_factor : float
-		Scaling factor for the :math:`x`-axis. Defaults to 1.
+		Scaling factor for the x-coordinates. Defaults to 1.
 	x_step : int
-		Maximum distance between the :math:`x`-index of a drawn point, and the
-		:math:`x`-index of any of its neighbours. Defaults to 2, i.e., only half
-		of the points will be drawn.
+		Distance between the x-index of a given drawn point, and the
+		x-index of its closest drawn neighbour. Defaults to 2, i.e.,
+		only half of the points will be drawn.
 	y_factor : float
-		Scaling factor for the :math:`y`-axis. Defaults to 1.
+		Scaling factor for the y-coordinates. Defaults to 1.
 	y_step : int
-		Maximum distance between the :math:`y`-index of a drawn point, and the
-		:math:`y`-index of any of its neighbours. Defaults to 2, i.e., only half
-		of the points will be drawn.
+		Distance between the y-index of a given drawn point, and the
+		y-index of its closest drawn neighbour. Defaults to 2, i.e.,
+		only half of the points will be drawn.
 	scalar_bias : float
-		Bias for the scalar field, so that the arrows will be colored based on
-		:obj:`scalar - scalar_bias`. Defaults to 0.
+		Bias for the scalar field, so that the arrows will be colored
+		based on `scalar - scalar_bias`. Defaults to 0.
 	scalar_factor : float
-		Scaling factor for the scalar field, so that the arrows will be colored based on
-		:obj:`scalar_factor * scalar`. If a bias is specified, then the arrows will be
-		colored based on :obj:`scalar_factor * (scalar - scalar_bias)` are drawn.
-		Defaults to 1.
+		Scaling factor for the scalar field, so that the arrows will be
+		colored based on `scalar_factor * scalar`. If a bias is specified,
+		then the arrows will be colored based on
+		`scalar_factor * (scalar - scalar_bias)` are drawn. Defaults to 1.
 	arrow_scale : float
-		TODO
-	arrow_scale_units : float
-		TODO
+		Arrows scale factor.
+	arrow_scale_units : str
+		Arrows scale units.
 	arrow_headwidth : float
-		TODO
+		Arrows head width.
 	cmap_name : str
-		Name of the Matplotlib's color map to be used. All the color maps provided
-		by Matplotlib, as well as the corresponding inverted versions, are available.
-		If not specified, no color map will be used, and the arrows will draw black.
+		Name of the Matplotlib's color map to be used. All the color maps
+		provided by Matplotlib, as well as the corresponding inverted versions,
+		are available. If not specified, no color map will be used, and the
+		arrows will draw black.
 	cbar_on : bool
-		:obj:`True` to show the color bar, :obj:`False` otherwise. Defaults to :obj:`True`.
+		:obj:`True` to show the colorbar, :obj:`False` otherwise.
+		Defaults to :obj:`True`.
 	cbar_levels : int
-		Number of levels for the color bar. Defaults to 14.
+		Number of levels for the colorbar. Defaults to 14.
 	cbar_ticks_step : int
-		Distance between two consecutive labelled ticks of the color bar. Defaults to 1,
-		i.e., all ticks are displayed with the corresponding label.
+		Distance between two consecutive labelled ticks of the colorbar.
+		Defaults to 1, i.e., all ticks are displayed with the corresponding label.
 	cbar_ticks_pos : str
-		'center' to place the color bar ticks in the middle of the color intervals,
+		'center' to place the colorbar ticks in the middle of the color intervals,
 		anything else to place the ticks at the interfaces between color intervals.
 	cbar_center : float
-		Center of the range covered by the color bar. By default, the color bar covers
+		Center of the range covered by the colorbar. By default, the colorbar covers
 		the spectrum ranging from the minimum to the maximum assumed by the field.
 	cbar_half_width : float
-		Half-width of the range covered by the color bar. By default, the color bar
+		Half-width of the range covered by the colorbar. By default, the colorbar
 		covers the spectrum ranging from the minimum to the maximum assumed by the field.
 	cbar_x_label : str
-		Label for the horizontal axis of the color bar. Defaults to an empty string.
+		Label for the horizontal axis of the colorbar. Defaults to an empty string.
 	cbar_y_label : str
-		Label for the vertical axis of the color bar. Defaults to an empty string.
+		Label for the vertical axis of the colorbar. Defaults to an empty string.
 	cbar_title : str
-		Title for the color bar. Defaults to an empty string.
+		Colorbar title. Defaults to an empty string.
 	cbar_orientation : str
-		Orientation of the color bar. Either 'vertical' (default) or 'horizontal'.
+		Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
 	cbar_ax : tuple
-		Indices of the figure axes from which space for the color bar axes
+		Indices of the figure axes from which space for the colorbar axes
 		is stolen. If multiple indices are given, the corresponding axes are
-		all evenly resized to make room for the color bar. If no indices are given,
+		all evenly resized to make room for the colorbar. If no indices are given,
 		only the current axes are resized.
 	quiverkey_on : bool
-		TODO
+		:obj:`True` to show the quiver key box, :obj:`False` otherwise.
+		Defaults to :obj:`False`.
 	quiverkey_loc : tuple
-		TODO
+		2-item tuple specifying the location in normalized figure coordinates
+		of the quiver key box.
 	quiverkey_length : float
-		TODO
+		Quiver key length.
 	quiverkey_label : str
-		TODO
+		Quiver key label. Defaults to '1 m s$^{-1}$'.
 	quiverkey_label_loc : str
-		TODO
+		Quiver key label location. Either 'N', 'S', 'W' or 'E'.
 	quiverkey_color : str
-		TODO
+		Quiver key color. Defaults to 'black'.
 	quiverkey_fontproperties : dict
-		TODO
+		Dictionary specifying font settings for the quiver key label.
 	draw_vertical_levels : bool
-		:obj:`True` to draw the underlying grid, :obj:`False` otherwise.
+		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
 	"""
-	# Get keyword arguments
+	# get keyword arguments
 	fontsize          	= kwargs.get('fontsize', 12)
 	x_factor          	= kwargs.get('x_factor', 1.)
 	x_step            	= kwargs.get('x_step', 2)
@@ -1073,13 +1131,13 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 	quiverkey_label	  	= kwargs.get('quiverkey_label', '1 m s$^{-1}$')
 	quiverkey_label_loc	= kwargs.get('quiverkey_label_loc', 'E')
 	quiverkey_color		= kwargs.get('quiverkey_color', None)
-	quiverkey_fontproperties = kwargs.get('quiverkey_fontproperties', {})
-	draw_grid 	 	 	= kwargs.get('draw_vertical_levels', False)
+	quiverkey_fontprops = kwargs.get('quiverkey_fontproperties', {})
+	draw_vlevels 	 	= kwargs.get('draw_vertical_levels', False)
 
-	# Global settings
+	# global settings
 	rcParams['font.size'] = fontsize
 
-	# Rescale the axes and the field for visualization purposes
+	# rescale the axes and the field for visualization purposes
 	x *= x_factor
 	y *= y_factor
 	if scalar is not None:
@@ -1087,7 +1145,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		scalar *= scalar_factor
 
 	if cmap_name is not None:
-		# Create color bar for colormap
+		# create colorbar for colormap
 		if scalar is None:
 			scalar = np.sqrt(vx ** 2 + vy ** 2)
 		scalar_min, scalar_max = np.amin(scalar), np.amax(scalar)
@@ -1101,7 +1159,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		if eq(color_levels[0], color_levels[-1]):
 			color_levels = np.linspace(cbar_lb-1e-8, cbar_ub+1e-8, cbar_levels, endpoint=True)
 
-		# Create colormap
+		# create colormap
 		if cmap_name == 'BuRd':
 			cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
 		elif cmap_name == 'BuYlRd':
@@ -1111,43 +1169,50 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 	else:
 		cm = None
 
-	# Plot the computational grid
-	if draw_grid:
+	# plot the vertical levels
+	if draw_vlevels:
 		for k in range(x.shape[1]):
 			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
 
-	# Generate quiver-plot
+	# generate quiver-plot
 	if cm is None:
-		q = ax.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step],
-					  vx[::x_step, ::y_step], vy[::x_step, ::y_step],
-					  scale=arrow_scale, scale_units=arrow_scale_units,
-					  headwidth=arrow_headwidth)
+		q = ax.quiver(
+			x[::x_step, ::y_step], y[::x_step, ::y_step],
+			vx[::x_step, ::y_step], vy[::x_step, ::y_step],
+			scale=arrow_scale, scale_units=arrow_scale_units,
+			headwidth=arrow_headwidth
+		)
 	else:
-		q = ax.quiver(x[::x_step, ::y_step], y[::x_step, ::y_step],
-					  vx[::x_step, ::y_step], vy[::x_step, ::y_step],
-					  scalar[::x_step, ::y_step], cmap=cm,
-					  scale=arrow_scale, scale_units=arrow_scale_units,
-					  headwidth=arrow_headwidth)
+		q = ax.quiver(
+			x[::x_step, ::y_step], y[::x_step, ::y_step],
+			vx[::x_step, ::y_step], vy[::x_step, ::y_step],
+			scalar[::x_step, ::y_step], cmap=cm,
+			scale=arrow_scale, scale_units=arrow_scale_units,
+			headwidth=arrow_headwidth
+		)
 
-	# Set the color bar
+	# set the colorbar
 	if cm is not None and cbar_on:
-		set_colorbar(fig, q, color_levels,
-					 cbar_ticks_step=cbar_ticks_step,
-					 cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
-					 cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-					 cbar_orientation=cbar_orientation, cbar_ax=cbar_ax)
+		set_colorbar(
+			fig, q, color_levels,
+			cbar_ticks_step=cbar_ticks_step,
+			cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
+			cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
+			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax
+		)
 
-	# Set quiverkey
+	# set quiver key
 	if quiverkey_on:
 		qk = ax.quiverkey(
-			q, quiverkey_loc[0], quiverkey_loc[1], quiverkey_length,
-			quiverkey_label, coordinates='axes', labelpos=quiverkey_label_loc,
-			fontproperties=quiverkey_fontproperties,
+			q, quiverkey_loc[0], quiverkey_loc[1],
+			quiverkey_length, quiverkey_label,
+			coordinates='axes', labelpos=quiverkey_label_loc,
+			fontproperties=quiverkey_fontprops,
 		)
 		if quiverkey_color is not None:
 			qk.text.set_backgroundcolor(quiverkey_color)
 
-	# Bring axes and field back to original units
+	# bring axes and field back to original units
 	x /= x_factor
 	y /= y_factor
 	if scalar is not None:
@@ -1157,25 +1222,26 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 
 def make_circle(ax, **kwargs):
 	"""
-	TODO
+	Draw a circle.
 
 	Parameters
 	----------
-	ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plot.
 
 	Keyword arguments
 	-----------------
-	xy : (float, float)
-		TODO
+	xy : tuple
+		2-item tuple storing the coordinates of the circle center.
+		Defaults to (0.0, 0.0).
 	radius : float
-		TODO
+		The circle radius.
 	linewidth : float
-		TODO
+		Edge width. Defaults to 1.0.
 	edgecolor : str
-		TODO
+		Edge color. Defaults to 'black'.
 	facecolor : str
-		TODO
+		Face color. Defaults to 'white'.
 	"""
 	xy 		  = kwargs.get('xy', (0.0, 0.0))
 	radius 	  = kwargs.get('radius', 1.0)
@@ -1183,36 +1249,38 @@ def make_circle(ax, **kwargs):
 	edgecolor = kwargs.get('edgecolor', 'black')
 	facecolor = kwargs.get('facecolor', 'white')
 
-	circ = patches.Circle(xy, radius, linewidth=linewidth, edgecolor=edgecolor,
-						  facecolor=facecolor)
+	circ = patches.Circle(
+		xy, radius, linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor
+	)
 	ax.add_patch(circ)
 
 
 def make_rectangle(ax, **kwargs):
 	"""
-	TODO
+	Draw a rectangle.
 
 	Parameters
 	----------
-	ax : axes
-		An instance of :class:`matplotlib.axes.Axes`.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plot.
 
 	Keyword arguments
 	-----------------
-	xy : (float, float)
-		TODO
+	xy : tuple
+		2-item tuple storing the coordinates of the bottom left
+		corner of the rectangle.
 	width : float
-		TODO
+		Rectangle width. Defaults to 1.0.
 	height : float
-		TODO
+		Rectangle height. Defaults to 1.0.
 	angle : float
-		TODO
+		Rotation angle. Defaults to 0.0.
 	linewidth : float
-		TODO
+		Edge width. Defaults to 1.0.
 	edgecolor : str
-		TODO
+		Edge color. Defaults to 'black'.
 	facecolor : str
-		TODO
+		Face color. Defaults to 'white'.
 	"""
 	xy 		  = kwargs.get('xy', (0.0, 0.0))
 	width 	  = kwargs.get('width', 1.0)
@@ -1222,7 +1290,8 @@ def make_rectangle(ax, **kwargs):
 	edgecolor = kwargs.get('edgecolor', 'black')
 	facecolor = kwargs.get('facecolor', 'white')
 
-	rect = patches.Rectangle(xy, width, height, angle=angle,
-							 linewidth=linewidth, edgecolor=edgecolor,
-							 facecolor=facecolor)
+	rect = patches.Rectangle(
+		xy, width, height, angle=angle, linewidth=linewidth,
+		edgecolor=edgecolor, facecolor=facecolor
+	)
 	ax.add_patch(rect)

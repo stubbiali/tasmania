@@ -23,12 +23,12 @@
 """
 This module contains:
 	HorizontalHyperDiffusion
-	_FirstOrder(HorizontalHyperDiffusion)
-	_FirstOrder{XZ, YZ}(HorizontalHyperDiffusion)
-	_SecondOrder(HorizontalHyperDiffusion)
-	_SecondOrder{XZ, YZ}(HorizontalHyperDiffusion)
-	_ThirdOrder(HorizontalHyperDiffusion)
-	_ThirdOrder{XZ, YZ}(HorizontalHyperDiffusion)
+	FirstOrder(HorizontalHyperDiffusion)
+	FirstOrder{1DX, 1DY}(HorizontalHyperDiffusion)
+	SecondOrder(HorizontalHyperDiffusion)
+	SecondOrder{1DX, 1DY}(HorizontalHyperDiffusion)
+	ThirdOrder(HorizontalHyperDiffusion)
+	ThirdOrder{1DX, 1DY}(HorizontalHyperDiffusion)
 """
 import abc
 import math
@@ -63,59 +63,56 @@ class HorizontalHyperDiffusion:
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, dims, grid, diffusion_damp_depth, diffusion_coeff,
-		diffusion_coeff_max, xaxis_units, yaxis_units, backend, dtype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, dtype
 	):
 		"""
 		Parameters
 		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays for which
-			tendencies should be computed.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.python.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		diffusion_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
+		shape : tuple
+			Shape of the 3-D arrays for which tendencies should be computed.
+		dx : float
+			The grid spacing along the first horizontal dimension.
+		dy : float
+			The grid spacing along the second horizontal dimension.
 		diffusion_coeff : float
 			Value for the diffusion coefficient far from the top boundary.
 		diffusion_coeff_max : float
 			Maximum value for the diffusion coefficient.
-		xaxis_units : str
-			TODO
-		yaxis_units : str
-			TODO
+		diffusion_damp_depth : int
+			Depth of, i.e., number of vertical regions in the damping region.
+		nb : int
+			Number of boundary layers.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical diffusion.
-		dtype : obj
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
+			TODO
+		dtype : numpy.dtype
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 		"""
-		# Store input arguments
-		self._dims              = dims
-		self._grid              = grid
-		self._diff_damp_depth   = diffusion_damp_depth
-		self._diff_coeff        = diffusion_coeff
-		self._diff_coeff_max    = diffusion_coeff_max
-		self._xunits			= xaxis_units
-		self._yunits			= yaxis_units
-		self._backend			= backend
+		# store input arguments
+		self._shape           = shape
+		self._dx              = dx
+		self._dy              = dy
+		self._diff_coeff      = diffusion_coeff
+		self._diff_coeff_max  = diffusion_coeff_max
+		self._diff_damp_depth = diffusion_damp_depth
+		self._nb              = nb
+		self._backend		  = backend
 
-		# Initialize the diffusion matrix
-		self._gamma = self._diff_coeff * np.ones(self._dims, dtype=dtype)
+		# initialize the diffusion coefficient
+		self._gamma = self._diff_coeff
 
-		# The diffusivity is monotonically increased towards the top of the model,
+		# the diffusivity is monotonically increased towards the top of the model,
 		# so to mimic the effect of a short length wave absorber
 		n = self._diff_damp_depth
 		if n > 0:
 			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-			pert = np.tile(pert[np.newaxis, np.newaxis, :], (dims[0], dims[1], 1))
+			pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
+			self._gamma = self._diff_coeff * np.ones(shape, dtype=dtype)
 			self._gamma[:, :, :n] += (self._diff_coeff_max - self._diff_coeff) * pert
 
-		# Initialize the pointer to the underlying stencil
-		# It will be properly re-directed the first time the call
+		# initialize the pointer to the underlying stencil
+		# it will be properly re-directed the first time the call
 		# operator is invoked
 		self._stencil = None
 
@@ -153,9 +150,8 @@ class HorizontalHyperDiffusion:
 
 	@staticmethod
 	def factory(
-		diffusion_type, dims, grid, diffusion_damp_depth, diffusion_coeff,
-		diffusion_coeff_max, xaxis_units, yaxis_units,
-		backend=gt.mode.NUMPY, dtype=datatype
+		diffusion_type, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb=None, backend=gt.mode.NUMPY, dtype=datatype
 	):
 		"""
 		Static method returning an instance of the derived class
@@ -171,69 +167,64 @@ class HorizontalHyperDiffusion:
 			* 'second_order', for second-order numerical hyper-diffusion;
 			* 'third_order', for third-order numerical hyper-diffusion.
 
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical diffusion.
-		grid : obj
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		diffusion_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
+		shape : tuple
+			Shape of the 3-D arrays for which tendencies should be computed.
+		dx : float
+			The grid spacing along the first horizontal dimension.
+		dy : float
+			The grid spacing along the second horizontal dimension.
 		diffusion_coeff : float
 			Value for the diffusion coefficient far from the top boundary.
 		diffusion_coeff_max : float
 			Maximum value for the diffusion coefficient.
-		xaxis_units : str
-			TODO
-		yaxis_units : str
-			TODO
+		diffusion_damp_depth : int
+			Depth of, i.e., number of vertical regions in the damping region.
+		nb : `int`, optional
+			Number of boundary layers. If not specified, this is derived
+			from the extent of the underlying stencil.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical diffusion. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 
 		Return
 		------
 		obj :
-			Instance of the suitable derived class.
+			Instance of the appropriate derived class.
 		"""
 		arg_list = [
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		]
 
 		if diffusion_type == 'first_order':
-			assert not(dims[0] < 3 and dims[1] < 3)
+			assert not(shape[0] < 3 and shape[1] < 3)
 
-			if dims[1] < 3:
-				return _FirstOrderXZ(*arg_list)
-			elif dims[0] < 3:
-				return _FirstOrderYZ(*arg_list)
+			if shape[1] < 3:
+				return FirstOrder1DX(*arg_list)
+			elif shape[0] < 3:
+				return FirstOrder1DY(*arg_list)
 			else:
-				return _FirstOrder(*arg_list)
+				return FirstOrder(*arg_list)
 		elif diffusion_type == 'second_order':
-			assert not(dims[0] < 5 and dims[1] < 5)
+			assert not(shape[0] < 5 and shape[1] < 5)
 
-			if dims[1] < 5:
-				return _SecondOrderXZ(*arg_list)
-			elif dims[0] < 5:
-				return _SecondOrderYZ(*arg_list)
+			if shape[1] < 5:
+				return SecondOrder1DX(*arg_list)
+			elif shape[0] < 5:
+				return SecondOrder1DY(*arg_list)
 			else:
-				return _SecondOrder(*arg_list)
+				return SecondOrder(*arg_list)
 		elif diffusion_type == 'third_order':
-			assert not(dims[0] < 7 and dims[1] < 7)
+			assert not(shape[0] < 7 and shape[1] < 7)
 
-			if dims[1] < 7:
-				return _ThirdOrderXZ(*arg_list)
-			elif dims[0] < 7:
-				return _ThirdOrderYZ(*arg_list)
+			if shape[1] < 7:
+				return ThirdOrder1DX(*arg_list)
+			elif shape[0] < 7:
+				return ThirdOrder1DY(*arg_list)
 			else:
-				return _ThirdOrder(*arg_list)
+				return ThirdOrder(*arg_list)
 		else:
 			raise ValueError(
 				"Supported diffusion operators are ''first_order'', "
@@ -241,7 +232,7 @@ class HorizontalHyperDiffusion:
 			)
 
 
-class _FirstOrder(HorizontalHyperDiffusion):
+class FirstOrder(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to first-order horizontal hyper-diffusion for any
@@ -254,57 +245,62 @@ class _FirstOrder(HorizontalHyperDiffusion):
 	one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=1, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((1, 1, 0), (ni-2, nj-2, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dx = self._grid.dx.to_units(self._xunits).values.item()
-		dy = self._grid.dy.to_units(self._yunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dx, dy = self._dx, self._dy
 
-		# Indices
+		# indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
-		# Temporary and output fields
+		# temporary and output fields
 		lap = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian(i, j, dx, dy, in_phi, lap)
-		tnd_phi[i, j] = gamma[i, j] * lap[i, j]
+		tnd_phi[i, j] = (self._gamma if gamma is None else gamma[i, j]) * lap[i, j]
 
 		return tnd_phi
 
 
-class _FirstOrderXZ(HorizontalHyperDiffusion):
+class FirstOrder1DX(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to first-order horizontal hyper-diffusion for any
@@ -317,55 +313,61 @@ class _FirstOrderXZ(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=1, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((1, 0, 0), (ni-2, nj-1, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dx = self._grid.dx.to_units(self._xunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dx = self._dx
 
-		# Index
+		# index
 		i = gt.Index(axis=0)
 
-		# Temporary and output fields
+		# temporary and output fields
 		lap = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian_1d(i, dx, in_phi, lap)
-		tnd_phi[i] = gamma[i] * lap[i]
+		tnd_phi[i] = (self._gamma if gamma is None else gamma[i]) * lap[i]
 
 		return tnd_phi
 
 
-class _FirstOrderYZ(HorizontalHyperDiffusion):
+class FirstOrder1DY(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to first-order horizontal hyper-diffusion for any
@@ -378,55 +380,61 @@ class _FirstOrderYZ(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=1, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 1, 0), (ni-1, nj-2, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dy = self._grid.dy.to_units(self._yunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dy = self._dy
 
-		# Index
+		# index
 		j = gt.Index(axis=1)
 
-		# Temporary and output fields
+		# temporary and output fields
 		lap = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian_1d(j, dy, in_phi, lap)
-		tnd_phi[j] = gamma[j] * lap[j]
+		tnd_phi[j] = (self._gamma if gamma is None else gamma[j]) * lap[j]
 
 		return tnd_phi
 
 
-class _SecondOrder(HorizontalHyperDiffusion):
+class SecondOrder(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to second-order horizontal hyper-diffusion for any
@@ -439,59 +447,64 @@ class _SecondOrder(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=2, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((2, 2, 0), (ni-3, nj-3, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dx = self._grid.dx.to_units(self._xunits).values.item()
-		dy = self._grid.dy.to_units(self._yunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dx, dy = self._dx, self._dy
 
-		# Indices
+		# indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
-		# Temporary and output fields
+		# temporary and output fields
 		lap0 = gt.Equation()
 		lap1 = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian(i, j, dx, dy, in_phi, lap0)
 		stage_laplacian(i, j, dx, dy, lap0, lap1)
-		tnd_phi[i, j] = gamma[i, j] * lap1[i, j]
+		tnd_phi[i, j] = (self._gamma if gamma is None else gamma[i, j]) * lap1[i, j]
 
 		return tnd_phi
 
 
-class _SecondOrderXZ(HorizontalHyperDiffusion):
+class SecondOrder1DX(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to second-order horizontal hyper-diffusion for any
@@ -504,57 +517,63 @@ class _SecondOrderXZ(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=2, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((2, 0, 0), (ni-3, nj-1, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dx = self._grid.dx.to_units(self._xunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dx = self._dx
 
-		# Index
+		# index
 		i = gt.Index(axis=0)
 
-		# Temporary and output fields
+		# temporary and output fields
 		lap0 = gt.Equation()
 		lap1 = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian_1d(i, dx, in_phi, lap0)
 		stage_laplacian_1d(i, dx, lap0, lap1)
-		tnd_phi[i] = gamma[i] * lap1[i]
+		tnd_phi[i] = (self._gamma if gamma is None else gamma[i]) * lap1[i]
 
 		return tnd_phi
 
 
-class _SecondOrderYZ(HorizontalHyperDiffusion):
+class SecondOrder1DY(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to second-order horizontal hyper-diffusion for any
@@ -567,57 +586,63 @@ class _SecondOrderYZ(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=2, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 2, 0), (ni-1, nj-3, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dy = self._grid.dy.to_units(self._yunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dy = self._dy
 
-		# Index
+		# index
 		j = gt.Index(axis=1)
 
-		# Temporary and output fields
+		# temporary and output fields
 		lap0 = gt.Equation()
 		lap1 = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian_1d(j, dy, in_phi, lap0)
 		stage_laplacian_1d(j, dy, lap0, lap1)
-		tnd_phi[j] = gamma[j] * lap1[j]
+		tnd_phi[j] = (self._gamma if gamma is None else gamma[j]) * lap1[j]
 
 		return tnd_phi
 
 
-class _ThirdOrder(HorizontalHyperDiffusion):
+class ThirdOrder(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to third-order horizontal hyper-diffusion for any
@@ -630,61 +655,66 @@ class _ThirdOrder(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=3, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 3 if (nb is None or nb < 3) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((3, 3, 0), (ni-4, nj-4, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dx = self._grid.dx.to_units(self._xunits).values.item()
-		dy = self._grid.dy.to_units(self._yunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dx, dy = self._dx, self._dy
 
-		# Indices
+		# indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
-		# Temporary and output field
+		# temporary and output field
 		lap0 = gt.Equation()
 		lap1 = gt.Equation()
 		lap2 = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian(i, j, dx, dy, in_phi, lap0)
 		stage_laplacian(i, j, dx, dy, lap0, lap1)
 		stage_laplacian(i, j, dx, dy, lap1, lap2)
-		tnd_phi[i, j] = gamma[i, j] * lap2[i, j]
+		tnd_phi[i, j] = (self._gamma if gamma is None else gamma[i, j]) * lap2[i, j]
 
 		return tnd_phi
 
 
-class _ThirdOrderXZ(HorizontalHyperDiffusion):
+class ThirdOrder1DX(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to third-order horizontal hyper-diffusion for any
@@ -697,59 +727,65 @@ class _ThirdOrderXZ(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=3, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 3 if (nb is None or nb < 3) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((3, 0, 0), (ni-4, nj-1, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dx = self._grid.dx.to_units(self._xunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dx = self._dx
 
-		# Indices
+		# indices
 		i = gt.Index(axis=0)
 
-		# Temporary and output field
+		# temporary and output field
 		lap0 = gt.Equation()
 		lap1 = gt.Equation()
 		lap2 = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian_1d(i, dx, in_phi, lap0)
 		stage_laplacian_1d(i, dx, lap0, lap1)
 		stage_laplacian_1d(i, dx, lap1, lap2)
-		tnd_phi[i] = gamma[i] * lap2[i]
+		tnd_phi[i] = (self._gamma if gamma is None else gamma[i]) * lap2[i]
 
 		return tnd_phi
 
 
-class _ThirdOrderYZ(HorizontalHyperDiffusion):
+class ThirdOrder1DY(HorizontalHyperDiffusion):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to third-order horizontal hyper-diffusion for any
@@ -762,53 +798,59 @@ class _ThirdOrderYZ(HorizontalHyperDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, diffusion_damp_depth=10, diffusion_coeff=1.0,
-		diffusion_coeff_max=1.0, xaxis_units='m', yaxis_units='m',
-		backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
+		diffusion_damp_depth=10, nb=3, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 3 if (nb is None or nb < 3) else nb
 		super().__init__(
-			dims, grid, diffusion_damp_depth, diffusion_coeff, diffusion_coeff_max,
-			xaxis_units, yaxis_units, backend, dtype
+			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+			diffusion_damp_depth, nb, backend, dtype
 		)
 
 	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._dims
+		# shortcuts
+		ni, nj, nk = self._shape
+		nb = self._nb
 
-		# Allocate the Numpy arrays which will serve as stencil's
+		# allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 3, 0), (ni-1, nj-4, nk-1))
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._diff_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
 
-		# Instantiate the stencil
+		# set the computational domain
+		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
+
+		# instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'tnd_phi': self._tnd_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	def _stencil_defs(self, in_phi, gamma):
-		# Shortcuts
-		dy = self._grid.dy.to_units(self._yunits).values.item()
+	def _stencil_defs(self, in_phi, gamma=None):
+		# shortcuts
+		dy = self._dy
 
-		# Indices
+		# indices
 		j = gt.Index(axis=1)
 
-		# Temporary and output field
+		# temporary and output field
 		lap0 = gt.Equation()
 		lap1 = gt.Equation()
 		lap2 = gt.Equation()
 		tnd_phi = gt.Equation()
 
-		# Computations
+		# computations
 		stage_laplacian_1d(j, dy, in_phi, lap0)
 		stage_laplacian_1d(j, dy, lap0, lap1)
 		stage_laplacian_1d(j, dy, lap1, lap2)
-		tnd_phi[j] = gamma[j] * lap2[j]
+		tnd_phi[j] = (self._gamma if gamma is None else gamma[j]) * lap2[j]
 
 		return tnd_phi

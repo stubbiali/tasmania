@@ -24,7 +24,7 @@
 This module contains:
 	HorizontalGrid
 	PhysicalHorizontalGrid
-	ComputationalHorizontalGrid
+	NumericalHorizontalGrid
 """
 import numpy as np
 import sympl
@@ -261,10 +261,10 @@ class PhysicalHorizontalGrid(HorizontalGrid):
 		super().__init__(x, y)
 
 
-class ComputationalHorizontalGrid(HorizontalGrid):
+class NumericalHorizontalGrid(HorizontalGrid):
 	"""
 	This class represents a rectangular and regular grid embedded
-	in a two-dimensional *computational* domain.
+	in a two-dimensional *numerical* domain.
 	"""
 	def __init__(self, phys_grid, boundary):
 		"""
@@ -278,19 +278,19 @@ class ComputationalHorizontalGrid(HorizontalGrid):
 		"""
 		# x-coordinates of the mass points
 		dims = 'c_' + phys_grid.x.dims[0]
-		x = boundary.get_computational_xaxis(phys_grid.x, dims=dims)
+		x = boundary.get_numerical_xaxis(phys_grid.x, dims=dims)
 
 		# x-coordinates of the x-staggered points
 		dims = 'c_' + phys_grid.x_at_u_locations.dims[0]
-		xu = boundary.get_computational_xaxis(phys_grid.x_at_u_locations, dims=dims)
+		xu = boundary.get_numerical_xaxis(phys_grid.x_at_u_locations, dims=dims)
 
 		# y-coordinates of the mass points
 		dims = 'c_' + phys_grid.y.dims[0]
-		y = boundary.get_computational_yaxis(phys_grid.y, dims=dims)
+		y = boundary.get_numerical_yaxis(phys_grid.y, dims=dims)
 
 		# y-coordinates of the y-staggered points
 		dims = 'c_' + phys_grid.y_at_v_locations.dims[0]
-		yv = boundary.get_computational_yaxis(phys_grid.y_at_v_locations, dims=dims)
+		yv = boundary.get_numerical_yaxis(phys_grid.y_at_v_locations, dims=dims)
 
 		# call parent's constructor
 		super().__init__(x, y, xu, yv)

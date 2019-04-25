@@ -35,7 +35,8 @@ from sympl._core.units import clean_units
 
 
 def check_properties_compatibility(
-	properties1, properties2, to_append=None, properties1_name=None, properties2_name=None):
+	properties1, properties2, to_append=None, properties1_name=None, properties2_name=None
+):
 	_properties1 = {}
 	if to_append is None:
 		_properties1.update(properties1)
@@ -145,8 +146,8 @@ def get_input_properties(
 	# Initialize the return dictionary, i.e., the list of requirements
 	return_dict = {} if return_dict is None else return_dict
 
-	# Initialize the properties of the variables which the state will be
-	# including after passing it to the call operator
+	# Initialize the properties of the variables which the input state
+	# should include
 	output_properties = {}
 
 	for component in components_list:

@@ -72,10 +72,10 @@ class BurgersDynamicalCore(DynamicalCore):
 			this class.
 		"""
 		super().__init__(
-			domain, grid_type='computational', time_units='s',
+			domain, grid_type='numerical', time_units='s',
 			intermediate_tendencies=intermediate_tendencies,
 			intermediate_diagnostics=None, substeps=0,
-			fast_tendencies=None, fast_diagnostics=None
+			fast_tendencies=None, fast_diagnostics=None, dtype=dtype
 		)
 
 		assert self.grid.nz == 1, \
@@ -135,12 +135,12 @@ class BurgersDynamicalCore(DynamicalCore):
 	def array_call(self, stage, raw_state, raw_tendencies, timestep):
 		out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
-		self.horizontal_boundary.enforce_raw(
+		self.horizontal_boundary.dmn_enforce_raw(
 			out_state,
 			field_properties={
 				'x_velocity': {'units': 'm s^-1'},
 				'y_velocity': {'units': 'm s^-1'},
-			}
+			},
 		)
 
 		return out_state

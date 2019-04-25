@@ -22,14 +22,14 @@
 #
 """
 This module contains:
-	HomogeneousIsentropicPrognostic
+	IsentropicMinimalPrognostic
 """
 import abc
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.fluxes import \
-	HorizontalHomogeneousIsentropicFlux
+	IsentropicMinimalHorizontalFlux
 
 try:
 	from tasmania.conf import datatype
@@ -37,77 +37,89 @@ except ImportError:
 	datatype = np.float32
 
 
-# Convenient aliases
+# convenient aliases
 mfwv = 'mass_fraction_of_water_vapor_in_air'
 mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
-class HomogeneousIsentropicPrognostic:
+class IsentropicMinimalPrognostic:
 	"""
 	Abstract base class whose derived classes implement different
 	schemes to carry out the prognostic steps of the three-dimensional
-	homogeneous, moist, isentropic dynamical core. Here, *homogeneous* means
-	that the pressure gradient terms, i.e., the terms involving the gradient
-	of the Montgomery potential, are not included in the dynamics, but
-	rather parameterized. This holds also for any sedimentation motion.
-	The conservative form of the governing equations is used.
+	minimal, moist, isentropic dynamical core. Here, *minimal* means
+	that only horizontal advection is integrated with the dynamical core.
+	The vertical advection, the Coriolis acceleration, the pressure gradient
+	and the sedimentation motion are not included in the dynamics, but
+	rather parameterized. The conservative form of the governing equations is used.
 	"""
-	# Make the class abstract
+	# make the class abstract
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, mode, grid, moist, horizontal_boundary_conditions,
-		horizontal_flux_scheme, substeps, backend, dtype=datatype
+		self, horizontal_flux_scheme, mode, grid, hb, moist,
+		substeps, backend, dtype=datatype
 	):
 		"""
 		Parameters
 		----------
+		horizontal_flux_scheme : str
+			The numerical horizontal flux scheme to implement.
+			See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+			for the complete list of the available options.
 		mode : str
-			TODO
-		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
+			Either
+				* 'x', to integrate only the x-advection,
+				* 'y', to integrate only the y-advection, or
+				* 'xy', to integrate both the x- and the y-advection.
+		grid : tasmania.Grid
+			The underlying grid.
+		hb : tasmania.HorizontalBoundary
+			The object handling the lateral boundary conditions.
 		moist : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		horizontal_boundary_conditions : obj
-			Instance of a derived class of
-			:class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
-			in charge of handling the lateral boundary conditions.
-			This is modified in-place by setting the number of boundary layers.
-		horizontal_flux_scheme : str
-			String specifying the numerical horizontal flux scheme to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalHomogeneousIsentropicFlux`
-			for the complete list of the available options.
 		substeps : int
 			The number of substeps to perform.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
+            TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 		"""
-		# Keep track of the input parameters
+		# keep track of the input parameters
+		self._hflux_scheme	= horizontal_flux_scheme
 		self._mode			= mode if mode in ['x', 'y', 'xy'] else 'xy'
 		self._grid          = grid
+		self._hb            = hb
 		self._moist      	= moist
-		self._hboundary		= horizontal_boundary_conditions
-		self._hflux_scheme	= horizontal_flux_scheme
 		self._substeps		= substeps
 		self._backend		= backend
 		self._dtype			= dtype
 
-		# Instantiate the classes computing the numerical horizontal fluxes
-		self._hflux = HorizontalHomogeneousIsentropicFlux.factory(
+		# instantiate the class computing the numerical horizontal fluxes
+		self._hflux = IsentropicMinimalHorizontalFlux.factory(
 			self._hflux_scheme, grid, moist,
 		)
-		self._hboundary.nb = self._hflux.nb
+		assert hb.nb >= self._hflux.extent, \
+			"The number of lateral boundary layers is {}, but should be " \
+			"greater or equal than {}.".format(hb.nb, self._hflux.extent)
+		if mode != 'y':
+			assert grid.nx >= 2*hb.nb+1, \
+				"The number of grid points along the first horizontal " \
+				"dimension is {}, but should be greater or equal than {}.".format(
+					grid.nx, 2*hb.nb+1
+				)
+		if mode != 'x':
+			assert grid.ny >= 2*hb.nb+1, \
+				"The number of grid points along the second horizontal " \
+				"dimension is {}, but should be greater or equal than {}.".format(
+					grid.ny, 2*hb.nb+1
+				)
 
-		# Initialize properties dictionary
+		# initialize properties dictionary
 		self._substep_output_properties = None
 
-		# Initialize the pointer to the underlying GT4Py stencil in charge
+		# initialize the pointer to the underlying GT4Py stencil in charge
 		# of carrying out the sub-steps
 		if substeps > 0:
 			self._substep_stencil = None
@@ -132,26 +144,6 @@ class HomogeneousIsentropicPrognostic:
 			In a partial time splitting framework, for each stage, fraction of the
 			total number of substeps to carry out.
 		"""
-
-	@property
-	def nb(self):
-		"""
-		Return
-		------
-		int :
-			The number of lateral boundary layers.
-		"""
-		return self._hflux.nb
-
-	@property
-	def horizontal_boundary(self):
-		"""
-		Return
-		------
-		obj :
-			Object in charge of handling the lateral boundary conditions.
-		"""
-		return self._hboundary
 
 	@property
 	def substep_output_properties(self):
@@ -180,7 +172,7 @@ class HomogeneousIsentropicPrognostic:
 		self._substep_output_properties = value
 
 	@abc.abstractmethod
-	def stage_call(self, stage, dt, state, tendencies=None):
+	def stage_call(self, stage, timestep, state, tendencies=None):
 		"""
 		Perform a stage.
 
@@ -188,7 +180,7 @@ class HomogeneousIsentropicPrognostic:
 		----------
 		stage : int
 			The stage to perform.
-		dt : timedelta
+		timestep : timedelta
 			:class:`datetime.timedelta` representing the time step.
 		state : dict
 			Dictionary whose keys are strings indicating model variables,
@@ -197,7 +189,7 @@ class HomogeneousIsentropicPrognostic:
 		tendencies : dict
 			Dictionary whose keys are strings indicating model variables,
 			and values are :class:`numpy.ndarray`\s representing (slow and
-			intermediate) tendencies for those variables.
+			intermediate) physical tendencies for those variables.
 
 		Return
 		------
@@ -206,9 +198,10 @@ class HomogeneousIsentropicPrognostic:
 			prognostic model variables, and values are :class:`numpy.ndarray`\s
 			containing new values for those variables.
 		"""
+		pass
 
 	def substep_call(
-		self, stage, substep, dt, state, stage_state, tmp_state, tendencies=None
+		self, stage, substep, timestep, state, stage_state, tmp_state, tendencies=None
 	):
 		"""
 		Perform a sub-step.
@@ -219,7 +212,7 @@ class HomogeneousIsentropicPrognostic:
 			The stage to perform.
 		substep : int
 			The substep to perform.
-		dt : timedelta
+		timestep : timedelta
 			:class:`datetime.timedelta` representing the time step.
 		state : dict
 			The raw state at the current *main* time level.
@@ -239,31 +232,32 @@ class HomogeneousIsentropicPrognostic:
 			prognostic model variables, and values are :class:`numpy.ndarray`\s
 			containing new values for those variables.
 		"""
-		# Initialize the stencil object
+		# initialize the stencil object
 		if self._substep_stencil is None:
 			self._substep_stencil_initialize(tendencies)
 
-		# Set the stencil's inputs
+		# set the stencil's inputs
 		self._substep_stencil_set_inputs(
-			stage, substep, dt, state, stage_state, tmp_state, tendencies
+			stage, substep, timestep, state, stage_state, tmp_state, tendencies
 		)
 
-		# Evaluate the stencil
+		# run the stencil
 		self._substep_stencil.compute()
 
-		# Diagnose the accumulated precipitation
+		# diagnose the accumulated precipitation
 		if 'accumulated_precipitation' in self.substep_output_properties:
 			if stage == self.stages-1:
 				self._substep_stencil_outputs['accumulated_precipitation'][:, :] = \
 					tmp_state['accumulated_precipitation'][:, :] + \
-					tmp_state['precipitation'][:, :] * dt.total_seconds() / self._substeps / 3.6e3
+					tmp_state['precipitation'][:, :] * \
+					timestep.total_seconds() / self._substeps / 3.6e3
 			elif stage == 0 and substep == 0:
 				self._substep_stencil_outputs['accumulated_precipitation'][...] = \
 					tmp_state['accumulated_precipitation'][...]
 
-		# Compose the output state
-		out_time = state['time'] + dt / self._substeps if substep == 0 else \
-			tmp_state['time'] + dt / self._substeps
+		# compose the output state
+		out_time = state['time'] + timestep / self._substeps if substep == 0 else \
+			tmp_state['time'] + timestep / self._substeps
 		out_state = {'time': out_time}
 		for key in self._substep_output_properties:
 			out_state[key] = self._substep_stencil_outputs[key]
@@ -272,75 +266,75 @@ class HomogeneousIsentropicPrognostic:
 
 	@staticmethod
 	def factory(
-		scheme, mode, grid, moist, horizontal_boundary_conditions,
-		horizontal_flux_scheme, substeps=0, backend=gt.mode.NUMPY, dtype=datatype
+		time_integration_scheme, horizontal_flux_scheme, mode, grid, hb,
+		moist=False, substeps=0, backend=gt.mode.NUMPY, dtype=datatype
 	):
 		"""
 		Static method returning an instance of the derived class implementing
-		the time stepping scheme specified by :data:`time_scheme`.
+		the time stepping scheme specified by ``time_scheme``.
+
 		Parameters
 		----------
-		scheme : str
-			String specifying the time stepping method to implement. Either:
+		time_integration_scheme : str
+			The time stepping method to implement. Available options are:
 
 				* 'forward_euler', for the forward Euler scheme;
 				* 'centered', for a centered scheme;
 				* 'rk2', for the two-stages, second-order Runge-Kutta (RK) scheme;
-				* 'rk3cosmo', for the three-stages RK scheme as used in the
+				* 'rk3ws', for the three-stages RK scheme as used in the
 					`COSMO model <http://www.cosmo-model.org>`_; this method is
 					nominally second-order, and third-order for linear problems;
 				* 'rk3', for the three-stages, third-order RK scheme.
 
-		mode : str
-			TODO
-		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		horizontal_boundary_conditions : obj
-			Instance of a derived class of
-			:class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
-			in charge of handling the lateral boundary conditions.
 		horizontal_flux_scheme : str
-			String specifying the numerical horizontal flux scheme to use.
-			See :class:`~tasmania.dynamics.isentropic_fluxes.HorizontalHomogeneousHorizontalFlux`
+			The numerical horizontal flux scheme to implement.
+			See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
 			for the complete list of the available options.
-		substeps : `int`, optional
-			Number of sub-steps to perform.
-		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
+		mode : str
+			Either
+				* 'x', to integrate only the x-advection,
+				* 'y', to integrate only the y-advection, or
+				* 'xy', to integrate both the x- and the y-advection.
+		grid : tasmania.Grid
+			The underlying grid.
+		hb : tasmania.HorizontalBoundary
+			The object handling the lateral boundary conditions.
+		moist : `bool`, optional
+			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+			Defaults to :obj:`False`.
+		substeps : int
+			The number of substeps to perform.
+		backend : obj
+            TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 
 		Return
 		------
 		obj :
-			An instance of the derived class implementing the scheme specified
-			by :data:`scheme`.
+			An instance of the derived class implementing ``time_integration_scheme``.
 		"""
-		import tasmania.python.isentropic.dynamics._homogeneous_prognostic as module
-		arg_list = [
-			mode, grid, moist, horizontal_boundary_conditions,
-			horizontal_flux_scheme, substeps, backend, dtype
-		]
+		import tasmania.python.isentropic.dynamics._minimal_prognostic as module
+		args = (
+			horizontal_flux_scheme, mode,
+			grid, hb, moist, substeps, backend, dtype
+		)
 
-		if scheme == 'forward_euler':
-			return module.ForwardEuler(*arg_list)
-		elif scheme == 'centered':
-			return module.Centered(*arg_list)
-		elif scheme == 'rk2':
-			return module.RK2(*arg_list)
-		elif scheme == 'rk3cosmo':
-			return module.RK3COSMO(*arg_list)
-		elif scheme == 'rk3':
-			return module.RK3(*arg_list)
+		if time_integration_scheme == 'forward_euler':
+			return module.ForwardEuler(*args)
+		elif time_integration_scheme == 'centered':
+			return module.Centered(*args)
+		elif time_integration_scheme == 'rk2':
+			return module.RK2(*args)
+		elif time_integration_scheme == 'rk3ws':
+			return module.RK3WS(*args)
+		elif time_integration_scheme == 'rk3':
+			return module.RK3(*args)
 		else:
 			raise ValueError(
-				'Unknown time integration scheme {}. Available options: '
-				'forward_euler, centered, rk2, rk3cosmo, rk3.'.format(scheme)
+				"Unknown time integration scheme {}. Available options are: "
+				"forward_euler, centered, rk2, rk3ws, rk3.".format(time_integration_scheme)
 			)
 
 	def _stage_stencil_allocate_inputs(self, tendencies):
@@ -348,141 +342,101 @@ class HomogeneousIsentropicPrognostic:
 		Allocate the attributes which serve as inputs to the GT4Py stencils
 		which implement the stages.
 		"""
-		# Shortcuts
-		nz = self._grid.nz
-		mi, mj = self._hboundary.mi, self._hboundary.mj
+		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		dtype = self._dtype
 		tendency_names = () if tendencies is None else tendencies.keys()
 
-		# Instantiate a GT4Py Global representing the timestep
+		# instantiate a GT4Py Global representing the timestep
 		self._dt = gt.Global()
 
-		# Allocate the Numpy arrays which will store the current solution
+		# allocate the Numpy arrays which will store the current solution
 		# and serve as stencil's inputs
-		self._in_s	= np.zeros((  mi,	mj, nz), dtype=dtype)
-		self._in_u	= np.zeros((mi+1,	mj, nz), dtype=dtype)
-		self._in_v	= np.zeros((  mi, mj+1, nz), dtype=dtype)
-		self._in_su = np.zeros((  mi,	mj, nz), dtype=dtype)
-		self._in_sv = np.zeros((  mi,	mj, nz), dtype=dtype)
+		self._in_s	= np.zeros((  nx,	ny, nz), dtype=dtype)
+		self._in_u	= np.zeros((nx+1,	ny, nz), dtype=dtype)
+		self._in_v	= np.zeros((  nx, ny+1, nz), dtype=dtype)
+		self._in_su = np.zeros((  nx,	ny, nz), dtype=dtype)
+		self._in_sv = np.zeros((  nx,	ny, nz), dtype=dtype)
 		if self._moist:
-			self._in_sqv = np.zeros((mi, mj, nz), dtype=dtype)
-			self._in_sqc = np.zeros((mi, mj, nz), dtype=dtype)
-			self._in_sqr = np.zeros((mi, mj, nz), dtype=dtype)
+			self._in_sqv = np.zeros((nx, ny, nz), dtype=dtype)
+			self._in_sqc = np.zeros((nx, ny, nz), dtype=dtype)
+			self._in_sqr = np.zeros((nx, ny, nz), dtype=dtype)
 
-		# Allocate the input Numpy arrays which will store the tendencies
+		# allocate the input Numpy arrays which will store the tendencies
 		# and serve as stencil's inputs
 		if tendency_names is not None:
 			if 'air_isentropic_density' in tendency_names:
-				self._in_s_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+				self._in_s_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 			if 'x_momentum_isentropic' in tendency_names:
-				self._in_su_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+				self._in_su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 			if 'y_momentum_isentropic' in tendency_names:
-				self._in_sv_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+				self._in_sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 			if mfwv in tendency_names:
-				self._in_qv_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+				self._in_qv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 			if mfcw in tendency_names:
-				self._in_qc_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+				self._in_qc_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 			if mfpw in tendency_names:
-				self._in_qr_tnd = np.zeros((mi, mj, nz), dtype=dtype)
+				self._in_qr_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 
 	def _stage_stencil_allocate_outputs(self):
 		"""
 		Allocate the Numpy arrays which serve as outputs for the GT4Py stencils
 		which perform the stages.
 		"""
-		# Shortcuts
-		nz = self._grid.nz
-		mi, mj = self._hboundary.mi, self._hboundary.mj
+		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		dtype = self._dtype
 
-		# Allocate the Numpy arrays which will serve as stencil's outputs
-		self._out_s  = np.zeros((mi, mj, nz), dtype=dtype)
-		self._out_su = np.zeros((mi, mj, nz), dtype=dtype)
-		self._out_sv = np.zeros((mi, mj, nz), dtype=dtype)
+		# allocate the Numpy arrays which will serve as stencil's outputs
+		self._out_s  = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_su = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_sv = np.zeros((nx, ny, nz), dtype=dtype)
 		if self._moist:
-			self._out_sqv = np.zeros((mi, mj, nz), dtype=dtype)
-			self._out_sqc = np.zeros((mi, mj, nz), dtype=dtype)
-			self._out_sqr = np.zeros((mi, mj, nz), dtype=dtype)
+			self._out_sqv = np.zeros((nx, ny, nz), dtype=dtype)
+			self._out_sqc = np.zeros((nx, ny, nz), dtype=dtype)
+			self._out_sqr = np.zeros((nx, ny, nz), dtype=dtype)
 
-	def _stage_stencil_set_inputs(self, stage, dt, state, tendencies):
+	def _stage_stencil_set_inputs(self, stage, timestep, state, tendencies):
 		"""
 		Update the attributes which serve as inputs to the GT4Py stencils
 		which perform the stages.
 		"""
-		# Shortcuts
-		mi, mj = self._hboundary.mi, self._hboundary.mj
+		# shortcuts
 		if tendencies is not None:
 			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
+			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
+			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
 			qv_tnd_on = tendencies.get(mfwv, None) is not None
 			qc_tnd_on = tendencies.get(mfcw, None) is not None
 			qr_tnd_on = tendencies.get(mfpw, None) is not None
-			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
-			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
 		else:
 			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
-		# Update the local time step
-		self._dt.value = dt.total_seconds()
+		# update the local time step
+		self._dt.value = timestep.total_seconds()
 
-		# Extract the Numpy arrays representing the current solution
-		s	= state['air_isentropic_density']
-		u	= state['x_velocity_at_u_locations']
-		v	= state['y_velocity_at_v_locations']
-		su	= state['x_momentum_isentropic']
-		sv	= state['y_momentum_isentropic']
+		# update the Numpy arrays which serve as inputs to the GT4Py stencils
+		self._in_s[...]  = state['air_isentropic_density'][...]
+		self._in_u[...]  = state['x_velocity_at_u_locations'][...]
+		self._in_v[...]  = state['y_velocity_at_v_locations'][...]
+		self._in_su[...] = state['x_momentum_isentropic'][...]
+		self._in_sv[...] = state['y_momentum_isentropic'][...]
 		if self._moist:
-			sqv = state['isentropic_density_of_water_vapor']
-			sqc = state['isentropic_density_of_cloud_liquid_water']
-			sqr = state['isentropic_density_of_precipitation_water']
+			self._in_sqv[...] = state['isentropic_density_of_water_vapor'][...]
+			self._in_sqc[...] = state['isentropic_density_of_cloud_liquid_water'][...]
+			self._in_sqr[...] = state['isentropic_density_of_precipitation_water'][...]
 		if s_tnd_on:
-			s_tnd = tendencies['air_isentropic_density']
-		if qv_tnd_on:
-			qv_tnd = tendencies[mfwv]
-		if qc_tnd_on:
-			qc_tnd = tendencies[mfcw]
-		if qr_tnd_on:
-			qr_tnd = tendencies[mfpw]
+			self._in_s_tnd[...]  = tendencies['air_isentropic_density'][...]
 		if su_tnd_on:
-			su_tnd = tendencies['x_momentum_isentropic']
+			self._in_su_tnd[...] = tendencies['x_momentum_isentropic'][...]
 		if sv_tnd_on:
-			sv_tnd = tendencies['y_momentum_isentropic']
-
-		# Update the Numpy arrays which serve as inputs to the GT4Py stencils
-		self._in_s	[  :mi,   :mj, :] = \
-			self._hboundary.from_physical_to_computational_domain(s)
-		self._in_u	[:mi+1,   :mj, :] = \
-			self._hboundary.from_physical_to_computational_domain(u)
-		self._in_v	[  :mi, :mj+1, :] = \
-			self._hboundary.from_physical_to_computational_domain(v)
-		self._in_su [  :mi,   :mj, :] = \
-			self._hboundary.from_physical_to_computational_domain(su)
-		self._in_sv [  :mi,   :mj, :] = \
-			self._hboundary.from_physical_to_computational_domain(sv)
-		if self._moist:
-			self._in_sqv[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(sqv)
-			self._in_sqc[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(sqc)
-			self._in_sqr[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(sqr)
-		if s_tnd_on:
-			self._in_s_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(s_tnd)
-		if su_tnd_on:
-			self._in_su_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(su_tnd)
-		if sv_tnd_on:
-			self._in_sv_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(sv_tnd)
+			self._in_sv_tnd[...] = tendencies['y_momentum_isentropic'][...]
 		if qv_tnd_on:
-			self._in_qv_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(qv_tnd)
+			self._in_qv_tnd[...] = tendencies[mfwv][...]
 		if qc_tnd_on:
-			self._in_qc_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(qc_tnd)
+			self._in_qc_tnd[...] = tendencies[mfcw][...]
 		if qr_tnd_on:
-			self._in_qr_tnd[:mi, :mj, :] = \
-				self._hboundary.from_physical_to_computational_domain(qr_tnd)
+			self._in_qr_tnd[...] = tendencies[mfpw][...]
 
 	def _substep_stencil_initialize(self, tendencies):
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -537,20 +491,20 @@ class HomogeneousIsentropicPrognostic:
 				np.zeros((nx, ny), dtype=dtype)
 
 		self._substep_stencil = gt.NGStencil(
-			definitions_func = self.__class__._substep_stencil_defs,
-			inputs			 = inputs,
-			global_inputs	 = {'dts': self._dts, 'substeps': self._stage_substeps},
-			outputs			 = outputs,
-			domain			 = gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode			 = self._backend,
+			definitions_func=self.__class__._substep_stencil_defs,
+			inputs=inputs,
+			global_inputs={'dts': self._dts, 'substeps': self._stage_substeps},
+			outputs=outputs,
+			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
+			mode=self._backend,
 		)
 
 	def _substep_stencil_set_inputs(
-		self, stage, substep, dt, state, stage_state, tmp_state, tendencies
+		self, stage, substep, timestep, state, stage_state, tmp_state, tendencies
 	):
 		tendency_names = () if tendencies is None else tendencies.keys()
 
-		self._dts.value = dt.total_seconds() / self._substeps
+		self._dts.value = timestep.total_seconds() / self._substeps
 		self._stage_substeps.value = \
 			self._substeps if self.stages == 1 else \
 			self.substep_fractions[stage] * self._substeps
@@ -563,7 +517,8 @@ class HomogeneousIsentropicPrognostic:
 				self._substep_stencil_tmp_state_inputs[var][...] = \
 					state[var][...] if substep == 0 else tmp_state[var][...]
 				if var in tendency_names:
-					self._substep_stencil_tendencies_inputs[var][...] = tendencies[var][...]
+					self._substep_stencil_tendencies_inputs[var][...] = \
+						tendencies[var][...]
 
 	@staticmethod
 	def _substep_stencil_defs(

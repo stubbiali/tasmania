@@ -20,18 +20,64 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import timedelta
 import numpy as np
+import pint
 
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
 
 class ZhaoSolutionFactory:
-	def __init__(self, eps):
-		self.eps = eps.to_units('m^2 s^-1').values.item()
+	"""
+	A class generating valid velocity fields for the Zhao test case.
+	"""
+	def __init__(self, initial_time, eps):
+		"""
+		Parameters
+		----------
+		initial_time : datetime.datetime
+			The starting time of the simulation.
+        eps : sympl.DataArray
+        	1-item :class:`sympl.DataArray` representing the diffusivity.
+        	The units should be compatible with 'm s^-2'.
+		"""
+		self._itime = initial_time
+		self._eps = eps.to_units('m^2 s^-1').values.item()
 
-	def __call__(self, grid, time, slice_x=None, slice_y=None, field_name='x_velocity'):
-		eps = self.eps
+		self._ureg = pint.UnitRegistry()
+
+	def __call__(
+		self, time, grid, slice_x=None, slice_y=None,
+		field_name='x_velocity', field_units=None
+	):
+		"""
+		Parameters
+		----------
+		time : datetime.datetime
+			The time instant when the solution should be computed.
+		grid : tasmania.Grid
+			The underlying grid.
+		slice_x : `slice`, optional
+			The portion of the grid along the x-axis where the solution should be computed.
+			If not specified, the solution is calculated over all grid points in x-direction.
+		slice_y : `slice`, optional
+			The portion of the grid along the y-axis where the solution should be computed.
+			If not specified, the solution is calculated over all grid points in y-direction.
+		field_name : `str`, optional
+			The field to calculate. Either:
+
+				* 'x_velocity' (default);
+				* 'y_velocity'.
+
+		field_units : `str`, optional
+			The field units, which should be compatible with m s^-1.
+
+		Return
+		------
+		numpy.ndarray :
+			The computed model variable.
+		"""
+		eps = self._eps
+		ureg = self._ureg
 
 		slice_x = slice(0, grid.nx) if slice_x is None else slice_x
 		slice_y = slice(0, grid.ny) if slice_y is None else slice_y
@@ -44,31 +90,61 @@ class ZhaoSolutionFactory:
 		y = grid.y.to_units('m').values[slice_y]
 		y = np.tile(y[np.newaxis, :, np.newaxis], (mi, 1, grid.nz))
 
-		t = time.total_seconds()
+		t = (time - self._itime).total_seconds()
+
+		if field_units is None or field_units == 'm s^-1':
+			factor = 1.0
+		else:
+			factor = (1.0 * ureg.meter / ureg.second).to(field_units).magnitude
 
 		if field_name == 'x_velocity':
-			return - 2.0 * eps * 2.0 * np.pi * np.exp(- 5.0 * np.pi**2 * eps * t) * \
+			tmp = - 2.0 * eps * 2.0 * np.pi * np.exp(- 5.0 * np.pi**2 * eps * t) * \
 				np.cos(2.0 * np.pi * x) * np.sin(np.pi * y) / \
 				(2.0 + np.exp(- 5.0 * np.pi**2 * eps * t) *
-				np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
+				 np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
 		elif field_name == 'y_velocity':
-			return - 2.0 * eps * np.pi * np.exp(- 5.0 * np.pi**2 * eps * t) * \
+			tmp = - 2.0 * eps * np.pi * np.exp(- 5.0 * np.pi**2 * eps * t) * \
 				np.sin(2.0 * np.pi * x) * np.cos(np.pi * y) / \
 				(2.0 + np.exp(- 5.0 * np.pi**2 * eps * t) *
-				np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
+				 np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
 		else:
 			raise ValueError()
 
+		return factor * tmp
+
 
 class ZhaoStateFactory:
-	def __init__(self, eps):
-		self._solution_factory = ZhaoSolutionFactory(eps)
+	"""
+	A class generating valid states for the Zhao test case.
+	"""
+	def __init__(self, initial_time, eps):
+		"""
+		Parameters
+		----------
+		initial_time : datetime
+			The initial time of the simulation.
+        eps : sympl.DataArray
+        	1-item :class:`sympl.DataArray` representing the diffusivity.
+        	The units should be compatible with 'm s^-2'.
+		"""
+		self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
 
-	def __call__(self, grid, time):
-		t = timedelta(seconds=0)
+	def __call__(self, time, grid):
+		"""
+		Parameters
+		----------
+		grid : tasmania.Grid
+			The underlying grid.
+		time : datetime.datetime
+			The temporal instant.
 
-		u = self._solution_factory(grid, t, field_name='x_velocity')
-		v = self._solution_factory(grid, t, field_name='y_velocity')
+		Return
+		------
+		dict :
+			The computed model state dictionary.
+		"""
+		u = self._solution_factory(time, grid, field_name='x_velocity')
+		v = self._solution_factory(time, grid, field_name='y_velocity')
 
 		return {
 			'time': time,

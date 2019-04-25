@@ -22,20 +22,16 @@
 #
 """
 This module contains:
-	_CenteredHorizontal(HorizontalNonconservativeIsentropicFlux)
-	_CenteredVertical(VerticalNonconservativeIsentropicFlux)
+	Centered(IsentropicNonconservativeHorizontalFlux)
 """
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.fluxes import \
-	HorizontalNonconservativeIsentropicFlux, \
-	VerticalNonconservativeIsentropicFlux
+	IsentropicNonconservativeHorizontalFlux
 
 
-class _CenteredHorizontal(HorizontalNonconservativeIsentropicFlux):
+class Centered(IsentropicNonconservativeHorizontalFlux):
 	"""
-	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.HorizontalNonconservativeIsentropicFlux`
-	to implement a centered scheme to compute the horizontal
+	A centered scheme to compute the horizontal
 	numerical fluxes for the prognostic model variables.
 	The nonconservative form of the governing equations,
 	expressed using isentropic coordinates, is used.
@@ -126,30 +122,3 @@ class _CenteredHorizontal(HorizontalNonconservativeIsentropicFlux):
 		flux[i, j, k] = 0.5 * (phi[i, j-1, k] + phi[i, j, k])
 
 		return flux
-
-
-class _CenteredVertical(VerticalNonconservativeIsentropicFlux):
-	"""
-	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.VerticalNonconservativeIsentropicFlux`
-	to implement a centered scheme to compute the horizontal
-	numerical fluxes for the prognostic model variables.
-	The nonconservative form of the governing equations,
-	expressed using isentropic coordinates, is used.
-
-	Attributes
-	----------
-	nb : int
-		Number of boundary layers.
-	order : int
-		Order of accuracy.
-	"""
-	def __init__(self, grid, moist_on):
-		super().__init__(grid, moist_on)
-		self.nb = 1
-		self.order = 2
-
-	def __call__(self, i, j, k, dt, w, s, s_prv, u, u_prv, v, v_prv,
-				 qv=None, qv_prv=None, qc=None, qc_prv=None, qr=None, qr_prv=None):
-		raise NotImplementedError()
-

@@ -33,7 +33,7 @@ from tasmania.python.utils.utils import assert_sequence
 
 class DiagnosticComponentComposite:
 	"""
-	Callable class wrapping and chaining a set of :class:`sympl.DiagnosticComponent`.
+	Callable class wrapping and chaining a set of :class:`sympl.DiagnosticComponent`\s.
 
 	Attributes
 	----------

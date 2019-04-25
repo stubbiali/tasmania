@@ -86,10 +86,8 @@ class _FirstOrder(BurgersAdvection):
 			abs_u[i, j] / (2.0 * dx) * (u[i+1, j] - 2.0*u[i, j] + u[i-1, j])
 		adv_u_y[i, j] = v[i, j] / (2.0 * dy) * (u[i, j+1] - u[i, j-1]) - \
 			abs_v[i, j] / (2.0 * dy) * (u[i, j+1] - 2.0*u[i, j] + u[i, j-1])
-
 		adv_v_x[i, j] = u[i, j] / (2.0 * dx) * (v[i+1, j] - v[i-1, j]) - \
 			abs_u[i, j] / (2.0 * dx) * (v[i+1, j] - 2.0*v[i, j] + v[i-1, j])
-
 		adv_v_y[i, j] = v[i, j] / (2.0 * dy) * (v[i, j+1] - v[i, j-1]) - \
 			abs_v[i, j] / (2.0 * dy) * (v[i, j+1] - 2.0*v[i, j] + v[i, j-1])
 

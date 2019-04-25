@@ -27,18 +27,16 @@ This module contains:
 	smaller_or_equal_than
 	greater_than
 	greater_or_equal_than
-	convert_datetime64_to_datetime
 	assert_sequence
-	to_units
+	convert_datetime64_to_datetime
+	get_time_string
 """
 from datetime import datetime
 import math
 import numpy as np
 
-try:
-	from tasmania.conf import tol as d_tol
-except ImportError:
-	d_tol = 1e-8
+
+d_tol = 1e-10
 
 
 def equal_to(a, b, tol=d_tol):
@@ -48,16 +46,16 @@ def equal_to(a, b, tol=d_tol):
 
 	Parameters
 	----------
-	a : `float` or `array_like` 
+	a : `float` or `array_like`
 		Left-hand side.
-	b : `float` or `array_like` 
+	b : `float` or `array_like`
 		Right-hand side.
-	tol : `float`, optional 
+	tol : `float`, optional
 		Tolerance.
 
 	Return
 	------
-	bool : 
+	bool :
 		:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`,
 		:obj:`False` otherwise.
 	"""
@@ -71,16 +69,16 @@ def smaller_than(a, b, tol=d_tol):
 
 	Parameters
 	----------
-	a : `float` or `array_like` 
+	a : `float` or `array_like`
 		Left-hand side.
-	b : `float` or `array_like` 
+	b : `float` or `array_like`
 		Right-hand side.
-	tol : `float`, optional 
+	tol : `float`, optional
 		Tolerance.
 
 	Return
 	------
-	bool : 
+	bool :
 		:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`,
 		:obj:`False` otherwise.
 	"""
@@ -94,16 +92,16 @@ def smaller_or_equal_than(a, b, tol=d_tol):
 
 	Parameters
 	----------
-	a : `float` or `array_like` 
+	a : `float` or `array_like`
 		Left-hand side.
-	b : `float` or `array_like` 
+	b : `float` or `array_like`
 		Right-hand side.
-	tol : `float`, optional 
+	tol : `float`, optional
 		Tolerance.
 
 	Return
 	------
-	bool : 
+	bool :
 		:obj:`True` if :data:`a` is smaller than or equal to :data:`b`
 		up to :data:`tol`, :obj:`False` otherwise.
 	"""
@@ -117,16 +115,16 @@ def greater_than(a, b, tol=d_tol):
 
 	Parameters
 	----------
-	a : `float` or `array_like` 
+	a : `float` or `array_like`
 		Left-hand side.
-	b : `float` or `array_like` 
+	b : `float` or `array_like`
 		Right-hand side.
-	tol : `float`, optional 
+	tol : `float`, optional
 		Tolerance.
 
 	Return
 	------
-	bool :  
+	bool :
 		:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`,
 		:obj:`False` otherwise.
 	"""
@@ -140,20 +138,52 @@ def greater_or_equal_than(a, b, tol=d_tol):
 
 	Parameters
 	----------
-	a : `float` or `array_like` 
+	a : `float` or `array_like`
 		Left-hand side.
-	b : `float` or `array_like` 
+	b : `float` or `array_like`
 		Right-hand side.
-	tol : `float`, optional 
+	tol : `float`, optional
 		Tolerance.
 
 	Return
 	------
-	bool : 
+	bool :
 		:obj:`True` if :data:`a` is greater than or equal to :data:`b`
 		up to :data:`tol`, :obj:`False` otherwise.
 	"""
 	return a >= (b - tol)
+
+
+def assert_sequence(seq, reflen=None, reftype=None):
+	"""
+	Assert if a sequence has appropriate length and contains objects
+	of appropriate type.
+
+	Parameters
+	----------
+	seq : sequence
+		The sequence.
+	reflen : int
+		The reference length.
+	reftype : obj
+		The reference type, or a list of reference types.
+	"""
+	if reflen is not None:
+		assert len(seq) == reflen, \
+			'The input sequence has length {}, but {} was expected.' \
+				.format(len(seq), reflen)
+
+	if reftype is not None:
+		if type(reftype) is not tuple:
+			reftype = (reftype, )
+		for item in seq:
+			error_msg = 'An item of the input sequence is of type ' \
+						+ str(type(item)) + ', but one of [ '
+			for reftype_ in reftype:
+				error_msg += str(reftype_) + ' '
+			error_msg += '] was expected.'
+
+			assert isinstance(item, reftype), error_msg
 
 
 def convert_datetime64_to_datetime(time):
@@ -162,7 +192,7 @@ def convert_datetime64_to_datetime(time):
 
 	Parameters
 	----------
-	time : obj 
+	time : obj
 		The :class:`numpy.datetime64` object to convert.
 
 	Return
@@ -179,28 +209,49 @@ def convert_datetime64_to_datetime(time):
 	if type(time) == datetime:
 		return time
 
-	ts = (time - np.datetime64('0', 's')) / np.timedelta64(1, 's')
+	ts = (time - np.datetime64('1970-01-01')) / np.timedelta64(1, 's')
 	return datetime.utcfromtimestamp(ts)
 
 
-def assert_sequence(seq, reflen=None, reftype=None):
-	if reflen is not None:
-		assert len(seq) == reflen, \
-			'The input sequence has length {}, but {} was expected.' \
-			.format(len(seq), reflen)
+def get_time_string(seconds):
+	"""
+	Convert seconds into a string of the form hours:minutes:seconds.
 
-	if reftype is not None:
-		if type(reftype) is not tuple:
-			reftype = (reftype, )
-		for item in seq:
-			error_msg = 'An item of the input sequence is of type ' \
-						+ str(type(item)) + ', but one of [ '
-			for reftype_ in reftype:
-				error_msg += str(reftype_) + ' '
-			error_msg += '] was expected.'
+	Parameters
+	----------
+	seconds : float
+		Total seconds.
+	"""
+	s = ''
 
-			assert isinstance(item, reftype), error_msg
+	hours = int(seconds / (60*60))
+	s += '0{}:'.format(hours) if hours < 10 else '{}:'.format(hours)
+	remainder = seconds - hours*60*60
+
+	minutes = int(remainder / 60)
+	s += '0{}:'.format(minutes) if minutes < 10 else '{}:'.format(minutes)
+	remainder -= minutes*60
+
+	s += '0{}'.format(int(remainder)) if int(remainder) < 10 \
+		else '{}'.format(int(remainder))
+
+	return s
 
 
 def to_units(field, units=None):
+	"""
+	Convert units of a field.
+
+	Parameters
+	----------
+	field : sympl.DataArray
+		The field.
+	units : `str`, optional
+		The new units.
+
+	Return
+	------
+	sympl.DataArray :
+		The converted field.
+	"""
 	return field if units is None else field.to_units(units)

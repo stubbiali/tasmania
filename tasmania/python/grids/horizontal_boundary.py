@@ -25,6 +25,7 @@ This module contains:
 	HorizontalBoundary
 """
 import abc
+from copy import deepcopy
 
 
 class HorizontalBoundary:
@@ -50,6 +51,9 @@ class HorizontalBoundary:
 		self._nx = nx
 		self._ny = ny
 		self._nb = nb
+
+		self._type = ''
+		self._kwargs = {}
 		self._ref_state = None
 
 	@property
@@ -91,7 +95,7 @@ class HorizontalBoundary:
 		Return
 		------
 		int :
-			Number of mass points featured by the *computational* grid
+			Number of mass points featured by the *numerical* grid
 			along the first horizontal dimension.
 		"""
 		pass
@@ -103,10 +107,41 @@ class HorizontalBoundary:
 		Return
 		------
 		int :
-			Number of mass points featured by the *computational* grid
+			Number of mass points featured by the *numerical* grid
 			along the second horizontal dimension.
 		"""
 		pass
+
+	@property
+	def type(self):
+		"""
+		Return
+		------
+			The string passed to :meth:`tasmania.HorizontalBoundary.factory`
+			as `boundary_type` argument.
+		"""
+		return self._type
+
+	@type.setter
+	def type(self, type_str):
+		"""
+		Parameters
+		----------
+		type_str : str
+			The string passed to :meth:`tasmania.HorizontalBoundary.factory`
+			as `boundary_type` argument.
+		"""
+		self._type = type_str
+
+	@property
+	def kwargs(self):
+		"""
+        Return
+        ------
+        dict :
+        	The keyword arguments passed to the constructor of the derived class.
+		"""
+		return self._kwargs
 
 	@property
 	def reference_state(self):
@@ -115,7 +150,7 @@ class HorizontalBoundary:
 		------
 		dict :
 			The reference model state dictionary, defined over the
-			computational grid.
+			numerical grid.
 		"""
 		return self._ref_state if self._ref_state is not None else {}
 
@@ -132,14 +167,14 @@ class HorizontalBoundary:
 				assert 'units' in ref_state[name].attrs, \
 					"Field {} of reference state misses units attribute.".format(name)
 
-		self._ref_state = ref_state
+		self._ref_state = deepcopy(ref_state)
 
 	@abc.abstractmethod
-	def get_computational_xaxis(self, paxis, dims=None):
+	def get_numerical_xaxis(self, paxis, dims=None):
 		"""
 		Parameters
 		----------
-		paxis : dataarray_like
+		paxis : sympl.DataArray
 			1-D :class:`sympl.DataArray` representing the axis along the
 			first horizontal dimension of the physical domain.
 			Both unstaggered and staggered grid locations are supported.
@@ -149,18 +184,18 @@ class HorizontalBoundary:
 
 		Return
 		------
-		dataarray_like :
+		sympl.DataArray :
 			1-D :class:`sympl.DataArray` representing the associated
-			computational axis.
+			numerical axis.
 		"""
 		pass
 
 	@abc.abstractmethod
-	def get_computational_yaxis(self, paxis, dims=None):
+	def get_numerical_yaxis(self, paxis, dims=None):
 		"""
 		Parameters
 		----------
-		paxis : dataarray_like
+		paxis : sympl.DataArray
 			1-D :class:`sympl.DataArray` representing the axis along the
 			second horizontal dimension of the physical domain.
 			Both unstaggered and staggered grid locations are supported.
@@ -170,53 +205,36 @@ class HorizontalBoundary:
 
 		Return
 		------
-		dataarray_like :
+		sympl.DataArray :
 			1-D :class:`sympl.DataArray` representing the associated
-			computational axis.
+			numerical axis.
 		"""
 		pass
 
 	@abc.abstractmethod
-	def get_computational_field(self, field, field_name=None):
+	def get_numerical_field(self, field, field_name=None):
 		"""
 		Parameters
 		----------
 		field : numpy.ndarray
 			A field defined over the *physical* grid.
 		field_name : `str`, optional
-			Field name.
+			The field name.
 
 		Return
 		------
 		numpy.ndarray :
-			The same field defined over the *computational* grid.
+			The same field defined over the *numerical* grid.
 		"""
-
-	@abc.abstractmethod
-	def get_computational_state(self, state):
-		"""
-		Parameters
-		----------
-		state : dict
-			Dictionary whose keys are strings denoting model variables,
-			and whose values are :class:`sympl.DataArray`\s representing the
-			fields of those variables defined over the *physical* grid.
-
-		Return
-		------
-		dict :
-			The same input model state, but defined over the *computational* grid.
-		"""
-		pass
 
 	@abc.abstractmethod
 	def get_physical_xaxis(self, caxis, dims=None):
 		"""
 		Parameters
 		----------
-		caxis : dataarray_like
+		caxis : sympl.DataArray
 			1-D :class:`sympl.DataArray` representing the axis along the
-			first horizontal dimension of the computational domain.
+			first horizontal dimension of the numerical domain.
 			Both unstaggered and staggered grid locations are supported.
 		dims : `str`, optional
 			The dimension of the returned axis. If not specified, the
@@ -224,7 +242,7 @@ class HorizontalBoundary:
 
 		Return
 		------
-		dataarray_like :
+		sympl.DataArray :
 			1-D :class:`sympl.DataArray` representing the associated
 			physical axis.
 		"""
@@ -235,9 +253,9 @@ class HorizontalBoundary:
 		"""
 		Parameters
 		----------
-		caxis : dataarray_like
+		caxis : sympl.DataArray
 			1-D :class:`sympl.DataArray` representing the axis along the
-			second horizontal dimension of the computational domain.
+			second horizontal dimension of the numerical domain.
 			Both unstaggered and staggered grid locations are supported.
 		dims : `str`, optional
 			The dimension of the returned axis. If not specified, the
@@ -245,63 +263,49 @@ class HorizontalBoundary:
 
 		Return
 		------
-		dataarray_like :
+		sympl.DataArray :
 			1-D :class:`sympl.DataArray` representing the associated
 			physical axis.
 		"""
 		pass
 
 	@abc.abstractmethod
-	def get_physical_field(self, field):
+	def get_physical_field(self, field, field_name=None):
 		"""
 		Parameters
 		----------
-		field : array_like
-			:class:`numpy.ndarray` representing a field defined over
-			the *computational* grid.
+		field : numpy.ndarray
+			A raw field defined over the *numerical* grid.
+		field_name : `str`, optional
+			The field name.
 
 		Return
 		------
-		array_like :
-			:class:`numpy.ndarray` representing the same field defined
-			over the *physical* grid.
+		numpy.ndarray :
+			The same field defined over the *physical* grid.
 		"""
 
 	@abc.abstractmethod
-	def get_physical_state(self, state):
-		"""
-		Parameters
-		----------
-		state : dict
-			Dictionary whose keys are strings denoting model variables,
-			and whose values are :class:`sympl.DataArray`\s representing the
-			fields of those variables defined over the *computational* grid.
-
-		Return
-		------
-		dict :
-			The same input model state, but defined over the *physical* grid.
-		"""
-
-	@abc.abstractmethod
-	def enforce_field(self, field, field_name=None, field_units=None, time=None):
+	def enforce_field(self, field, field_name=None, field_units=None, time=None, grid=None):
 		"""
 		Enforce the horizontal boundary conditions on the passed field,
 		which is modified in-place.
 
 		Parameters
 		----------
-		field : array_like
-			:class:`numpy.ndarray` collecting the raw field values.
+		field : numpy.ndarray
+			The raw field.
 		field_name : `str`, optional
 			The field name.
 		field_units : `str`, optional
 			The field units.
 		time : `datetime`, optional
 			Temporal instant at which the field is defined.
+		grid : `tasmania.NumericalGrid`, optional
+			The underlying numerical grid.
 		"""
 
-	def enforce_raw(self, state, field_properties=None):
+	def enforce_raw(self, state, field_properties=None, grid=None):
 		"""
 		Enforce the horizontal boundary conditions on the passed state,
 		which is modified in-place.
@@ -318,23 +322,30 @@ class HorizontalBoundary:
 			values are dictionaries specifying fundamental properties (units)
 			of those fields. If not specified, boundary conditions are
 			enforced on all model variables included in the model state.
+		grid : `tasmania.NumericalGrid`, optional
+			The underlying numerical grid.
 		"""
 		rfps = {
-			name: self.reference_state[name].attrs['units']
+			name: {'units': self.reference_state[name].attrs['units']}
 			for name in self.reference_state if name != 'time'
 		}
 		fps = rfps if field_properties is None else \
-			{key : val for key, val in field_properties.items() if key in rfps}
+			{key: val for key, val in field_properties.items() if key in rfps}
 
 		fns = tuple(
 			name for name in state if name != 'time' and name in fps
 		)
 
+		time = state.get('time', None)
+
 		for field_name in fns:
 			field_units = fps[field_name].get('units', rfps[field_name]['units'])
-			self.enforce_field(state[field_name], field_name, field_units)
+			self.enforce_field(
+				state[field_name], field_name=field_name,
+				field_units=field_units, time=time, grid=grid
+			)
 
-	def enforce(self, state, field_names=None):
+	def enforce(self, state, field_names=None, grid=None):
 		"""
 		Enforce the horizontal boundary conditions on the passed state,
 		which is modified in-place.
@@ -350,6 +361,8 @@ class HorizontalBoundary:
 			boundary conditions should be enforced. If not specified,
 			boundary conditions are enforced on all model variables
 			included in the model state.
+		grid : `tasmania.NumericalGrid`, optional
+			The underlying numerical grid.
 		"""
 		fns = \
 			tuple(name for name in self.reference_state if name != 'time') \
@@ -358,12 +371,63 @@ class HorizontalBoundary:
 
 		fns = tuple(name for name in state if name in fns)
 
+		time = state.get('time', None)
+
 		for field_name in fns:
 			try:
 				field_units = state[field_name].attrs['units']
 			except KeyError:
 				raise KeyError("Field {} misses units attribute.".format(field_name))
-			self.enforce_field(state[field_name].values, field_name, field_units)
+			self.enforce_field(
+				state[field_name].values, field_name=field_name,
+				field_units=field_units, time=time, grid=grid
+			)
+
+	@abc.abstractmethod
+	def set_outermost_layers_x(
+		self, field, field_name=None, field_units=None, time=None, grid=None
+	):
+		"""
+		Set the outermost layers along the first horizontal dimension of a
+		x-staggered field, which is modified in-place.
+
+		Parameters
+		----------
+		field : numpy.ndarray
+			The raw field.
+		field_name : `str`, optional
+			The field name.
+		field_units : `str`, optional
+			The field units.
+		time : `datetime`, optional
+			Temporal instant at which the field is defined.
+		grid : `tasmania.NumericalGrid`, optional
+			The underlying numerical grid.
+		"""
+		pass
+
+	@abc.abstractmethod
+	def set_outermost_layers_y(
+		self, field, field_name=None, field_units=None, time=None, grid=None
+	):
+		"""
+		Set the outermost layers along the second horizontal dimension of a
+		x-staggered field, which is modified in-place.
+
+		Parameters
+		----------
+		field : numpy.ndarray
+			The raw field.
+		field_name : `str`, optional
+			The field name.
+		field_units : `str`, optional
+			The field units.
+		time : `datetime`, optional
+			Temporal instant at which the field is defined.
+		grid : `tasmania.NumericalGrid`, optional
+			The underlying numerical grid.
+		"""
+		pass
 
 	@staticmethod
 	def factory(boundary_type, nx, ny, nb, **kwargs):
@@ -372,6 +436,13 @@ class HorizontalBoundary:
 		----------
 		boundary_type : str
 			The boundary type, identifying the child class to instantiate.
+			Available options are:
+
+				* 'relaxed';
+				* 'periodic';
+				* 'dirichlet';
+				* 'identity'.
+
 		nx : int
 			Number of points featured by the *physical* grid
 			along the first horizontal dimension.
@@ -395,15 +466,41 @@ class HorizontalBoundary:
 
 		if boundary_type == 'relaxed':
 			if ny == 1:
-				return module.Relaxed1DX(*args, **kwargs)
-			if nx == 1:
-				return module.Relaxed1DY(*args, **kwargs)
-			return module.Relaxed(*args, **kwargs)
-
-		if boundary_type == 'periodic':
+				obj = module.Relaxed1DX(*args, **kwargs)
+			elif nx == 1:
+				obj = module.Relaxed1DY(*args, **kwargs)
+			else:
+				obj = module.Relaxed(*args, **kwargs)
+		elif boundary_type == 'periodic':
 			if ny == 1:
-				return module.Periodic1DX(*args, **kwargs)
-			if nx == 1:
-				return module.Periodic1DY(*args, **kwargs)
-			return module.Periodic(*args, **kwargs)
+				obj = module.Periodic1DX(*args, **kwargs)
+			elif nx == 1:
+				obj = module.Periodic1DY(*args, **kwargs)
+			else:
+				obj = module.Periodic(*args, **kwargs)
+		elif boundary_type == 'dirichlet':
+			if ny == 1:
+				obj = module.Dirichlet1DX(*args, **kwargs)
+			elif nx == 1:
+				obj = module.Dirichlet1DY(*args, **kwargs)
+			else:
+				obj = module.Dirichlet(*args, **kwargs)
+		elif boundary_type == 'identity':
+			if ny == 1:
+				obj = module.Identity1DX(*args, **kwargs)
+			elif nx == 1:
+				obj = module.Identity1DY(*args, **kwargs)
+			else:
+				obj = module.Identity(*args, **kwargs)
+		else:
+			raise ValueError(
+				'Unknown boundary type {}. Supported types are {}.'.format(
+					boundary_type, ','.join(('relaxed', 'periodic', 'dirichlet', 'identity'))
+				)
+			)
+
+		obj.type = boundary_type
+
+		return obj
+
 

@@ -24,10 +24,10 @@
 This module contains:
 	get_constant
 	get_physical_constants
-	make_raw_state
 	make_state
 	make_dataarray_2d
 	make_dataarray_3d
+	make_raw_state
 """
 import numpy as np
 from sympl import DataArray
@@ -234,7 +234,7 @@ def make_dataarray_3d(raw_array, grid, units, name=None):
 			)
 		else:
 			z = DataArray(
-				np.array([grid.z_on_interface_levels.values[-1]]),
+				np.array([grid.z.values[-1]]),
 			  	dims=grid.z.dims[0],
 				attrs={'units': grid.z.attrs['units']}
 			)

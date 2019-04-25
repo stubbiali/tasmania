@@ -25,6 +25,7 @@ from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 # dwarfs
+from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
@@ -41,29 +42,31 @@ from tasmania.python.framework.parallel_splitting import ParallelSplitting
 from tasmania.python.framework.sequential_splitting import SequentialUpdateSplitting
 # grids
 from tasmania.python.grids.domain import Domain
-from tasmania.python.grids.grid import Grid, PhysicalGrid, ComputationalGrid
+from tasmania.python.grids.grid import Grid, PhysicalGrid, NumericalGrid
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.grids.horizontal_grid import \
-	HorizontalGrid, PhysicalHorizontalGrid, ComputationalHorizontalGrid
+	HorizontalGrid, PhysicalHorizontalGrid, NumericalHorizontalGrid
 from tasmania.python.grids.topography import \
-	Topography, PhysicalTopography, ComputationalTopography
+	Topography, PhysicalTopography, NumericalTopography
 # isentropic
-from tasmania.python.isentropic.dynamics.homogeneous_dycore import \
-	HomogeneousIsentropicDynamicalCore
+from tasmania.python.isentropic.dynamics.minimal_dycore import \
+	IsentropicMinimalDynamicalCore
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
+from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import \
 	IsentropicDiagnostics, IsentropicVelocityComponents
-from tasmania.python.isentropic.physics.isentropic_horizontal_diffusion import \
+from tasmania.python.isentropic.physics.horizontal_diffusion import \
 	IsentropicHorizontalDiffusion
-from tasmania.python.isentropic.physics.isentropic_horizontal_smoothing import \
+from tasmania.python.isentropic.physics.horizontal_smoothing import \
 	IsentropicHorizontalSmoothing
-from tasmania.python.isentropic.physics.tendencies import \
-	NonconservativeIsentropicPressureGradient, ConservativeIsentropicPressureGradient, \
-	VerticalIsentropicAdvection, PrescribedSurfaceHeating
+from tasmania.python.isentropic.physics.pressure_gradient import \
+	IsentropicNonconservativePressureGradient, IsentropicConservativePressureGradient
+from tasmania.python.isentropic.physics.vertical_advection import \
+	IsentropicVerticalAdvection, PrescribedSurfaceHeating
 from tasmania.python.isentropic.state import \
-	get_default_isentropic_state, get_isothermal_isentropic_state
+	get_isentropic_state_from_brunt_vaisala_frequency, \
+	get_isentropic_state_from_temperature
 # physics
-from tasmania.python.physics.coriolis import ConservativeIsentropicCoriolis
 from tasmania.python.physics.microphysics import \
 	Kessler, RaindropFallVelocity, SaturationAdjustmentKessler, Sedimentation
 # plot
@@ -96,12 +99,10 @@ __all__ = (
 	BurgersDynamicalCore,
 	BurgersHorizontalDiffusion,
 	Circle,
-	ComputationalGrid,
-	ComputationalHorizontalGrid,
-	ComputationalTopography,
+	NumericalGrid,
+	NumericalHorizontalGrid,
+	NumericalTopography,
 	ConcurrentCoupling,
-	ConservativeIsentropicCoriolis,
-	ConservativeIsentropicPressureGradient,
 	ConstantNotFoundError,
 	Contour,
 	Contourf,
@@ -113,24 +114,29 @@ __all__ = (
 	dict_subtract,
 	dict_update,
 	DynamicalCore,
-	get_default_isentropic_state,
 	get_figure_and_axes,
+	get_isentropic_state_from_brunt_vaisala_frequency,
+	get_isentropic_state_from_temperature,
 	get_isothermal_isentropic_analytical_solution,
-	get_isothermal_isentropic_state,
 	get_time_string,
 	Grid,
-	HomogeneousIsentropicDynamicalCore,
+	HorizontalBoundary,
 	HorizontalDiffusion,
 	HorizontalGrid,
 	HorizontalHyperDiffusion,
 	HorizontalSmoothing,
+	HorizontalVelocity,
 	HovmollerDiagram,
 	ImplicitTendencyComponent,
+	IsentropicConservativeCoriolis,
+	IsentropicConservativePressureGradient,
 	IsentropicDiagnostics,
 	IsentropicDynamicalCore,
 	IsentropicHorizontalDiffusion,
 	IsentropicHorizontalSmoothing,
+	IsentropicNonconservativePressureGradient,
 	IsentropicVelocityComponents,
+	IsentropicVerticalAdvection,
 	Kessler,
 	LineProfile,
 	load_netcdf_dataset,
@@ -138,9 +144,8 @@ __all__ = (
 	make_dataarray_3d,
 	make_raw_state,
 	make_state,
+	IsentropicMinimalDynamicalCore,
 	NetCDFMonitor,
-	HorizontalBoundary,
-	NonconservativeIsentropicPressureGradient,
 	OfflineDiagnosticComponent,
 	ParallelSplitting,
 	PhysicalGrid,
@@ -165,7 +170,7 @@ __all__ = (
 	TimeSeries,
 	Topography,
 	VerticalDamping,
-	VerticalIsentropicAdvection,
+	WaterConstituent,
 	ZhaoSolutionFactory,
 	ZhaoStateFactory,
 )

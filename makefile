@@ -44,10 +44,13 @@ docker-build:
 	@cd $(DOCKER_DIR) && ./build_base.sh && echo "" && ./build_tasmania.sh
 
 docker-run:
-	@cd $(DOCKER_DIR) && ./run.sh
-
-docker-run-mac:
-	@cd $(DOCKER_DIR) && ./run_mac.sh
+	@if [[ "$(shell echo $$OSTYPE)" == "linux-gnu" ]]; then\
+		cd $(DOCKER_DIR) && ./run.sh;\
+	elif [[ "$(shell echo $$OSTYPE)" == "darwin"* ]]; then\
+		cd $(DOCKER_DIR) && ./run_mac.sh;\
+	else\
+		echo "Unsupported host OS.";\
+	fi
 
 docs: 
 	@echo -n "Building HTML documentation ... "
@@ -88,8 +91,9 @@ prepare-tests-py35:
 	 pytest --mpl-generate-path=baseline_images/py35/test_contour 			test_contour.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_contourf 			test_contourf.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_pacthes			test_patches.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_plot				test_plot.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_plots				test_plots.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_profile 			test_profile.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_quiver 			test_quiver.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_timeseries 		test_timeseries.py
@@ -99,8 +103,9 @@ prepare-tests-py36:
 	 pytest --mpl-generate-path=baseline_images/py36/test_contour 			test_contour.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_contourf 			test_contourf.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_pacthes			test_patches.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_plot				test_plot.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_plots				test_plots.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_profile 			test_profile.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_quiver 			test_quiver.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_timeseries 		test_timeseries.py
@@ -110,8 +115,9 @@ prepare-tests-py37:
 	 pytest --mpl-generate-path=baseline_images/py37/test_contour 			test_contour.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_contourf 			test_contourf.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_hovmoller 		test_hovmoller.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_pacthes			test_patches.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_plot				test_plot.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_plots				test_plots.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_profile 			test_profile.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_quiver 			test_quiver.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_timeseries 		test_timeseries.py

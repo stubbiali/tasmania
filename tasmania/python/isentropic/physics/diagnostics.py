@@ -26,12 +26,13 @@ This module contains:
 	IsentropicVelocityComponents
 """
 import numpy as np
-from sympl import DataArray, DiagnosticComponent
+from sympl import DataArray
 
 import gridtools as gt
+from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
+from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import \
-	IsentropicDiagnostics as Helper, HorizontalVelocity
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+	IsentropicDiagnostics as Core
 
 try:
 	from tasmania.conf import datatype
@@ -42,9 +43,18 @@ except ImportError:
 class IsentropicDiagnostics(DiagnosticComponent):
 	"""
 	With the help of the isentropic density, this class diagnosed
-	the pressure, the Exner function, the Montgomery potential and
-	the height of the interface levels. Optionally, the air density
-	and temperature are calculated as well.
+
+		* the pressure,
+		* the Exner function,
+		* the Montgomery potential and
+		* the height of the interface levels.
+
+	Optionally,
+
+		* the air density and
+		* the air temperature
+
+	are calculated as well.
 	"""
 	# Default values for the physical constants used in the class
 	_d_physical_constants = {
@@ -59,31 +69,31 @@ class IsentropicDiagnostics(DiagnosticComponent):
 	}
 
 	def __init__(
-		self, grid, moist, pt, backend=gt.mode.NUMPY,
-		dtype=datatype, physical_constants=None, **kwargs
+		self, domain, grid_type, moist, pt, backend=gt.mode.NUMPY,
+		dtype=datatype, physical_constants=None
 	):
 		"""
-		The constructor.
-
 		Parameters
 		----------
-		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			representing the underlying grid.
+		domain : tasmania.Domain
+			The underlying domain.
+		grid_type : str
+			The type of grid over which instantiating the class. Either:
+
+				* 'physical';
+				* 'numerical'.
+
 		moist : bool
 			:obj:`True` if water species are included in the model,
 			:obj:`False` otherwise.
-		pt : dataarray_like
+		pt : sympl.DataArray
 			One-item :class:`sympl.DataArray` representing the air pressure
 			at the top edge of the domain.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencils
-			implementing the dynamical core. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` allocated and
+			used within this class.
 		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
@@ -100,24 +110,30 @@ class IsentropicDiagnostics(DiagnosticComponent):
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
 			:obj:`tasmania.physics.isentropic.IsentropicDiagnostics._d_physical_constants`
 			for the default values.
-		**kwargs :
-			Additional keyword arguments to be directly forwarded to the parent
-			:class:`sympl.DiagnosticComponent`.
 		"""
 		# Keep track of some input parameters
-		self._grid, self._moist = grid, moist
+		self._moist = moist
 		self._pt = pt.to_units('Pa').values.item()
 
 		# Call parent's constructor
-		super().__init__(**kwargs)
+		super().__init__(domain, grid_type)
 
 		# Instantiate the class computing the diagnostic variables
-		self._helper = Helper(grid, backend, dtype, physical_constants)
+		self._core = Core(self.grid, backend, dtype, physical_constants)
+
+		# Allocate the output arrays
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		self._out_p   = np.zeros((nx, ny, nz+1), dtype=dtype)
+		self._out_exn = np.zeros((nx, ny, nz+1), dtype=dtype)
+		self._out_mtg = np.zeros((nx, ny, nz  ), dtype=dtype)
+		self._out_h   = np.zeros((nx, ny, nz+1), dtype=dtype)
+		if moist:
+			self._out_r = np.zeros((nx, ny, nz), dtype=dtype)
+			self._out_t = np.zeros((nx, ny, nz), dtype=dtype)
 
 	@property
 	def input_properties(self):
-		grid 	  = self._grid
-		dims 	  = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
+		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
 		return_dict = {
 			'air_isentropic_density':
@@ -128,9 +144,8 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
 	@property
 	def diagnostic_properties(self):
-		grid 	  = self._grid
-		dims 	  = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
-		dims_stgz = (dims[0], dims[1], grid.z_on_interface_levels.dims[0])
+		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+		dims_stgz = (dims[0], dims[1], self.grid.z_on_interface_levels.dims[0])
 
 		return_dict = {
 			'air_pressure_on_interface_levels':
@@ -154,101 +169,57 @@ class IsentropicDiagnostics(DiagnosticComponent):
 		s  = state['air_isentropic_density']
 
 		# Calculate all diagnostics, and initialize the output dictionary
-		p, exn, mtg, h = self._helper.get_diagnostic_variables(s, self._pt)
+		self._core.get_diagnostic_variables(
+			s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
+		)
 		diagnostics = {
-			'air_pressure_on_interface_levels': p,
-			'exner_function_on_interface_levels': exn,
-			'montgomery_potential': mtg,
-			'height_on_interface_levels': h,
+			'air_pressure_on_interface_levels': self._out_p,
+			'exner_function_on_interface_levels': self._out_exn,
+			'montgomery_potential': self._out_mtg,
+			'height_on_interface_levels': self._out_h,
 		}
 		if self._moist:
-			diagnostics['air_density'] = self._helper.get_air_density(s, h)
-			diagnostics['air_temperature'] = self._helper.get_air_temperature(exn)
+			self._core.get_air_density(s, self._out_h, self._out_r)
+			diagnostics['air_density'] = self._out_r
+			self._core.get_air_temperature(self._out_exn, self._out_t)
+			diagnostics['air_temperature'] = self._out_t
 
 		return diagnostics
 
 
 class IsentropicVelocityComponents(DiagnosticComponent):
 	"""
-	This class inherits :class:`sympl.DiagnosticComponent` to retrieve
-	the horizontal velocity components with the help of the isentropic
-	momenta and the isentropic density.
+	Retrieve the horizontal velocity components with the help of the
+	isentropic momenta and the isentropic density.
+	The class is instantiated over the *numerical* grid of the
+	underlying domain.
 	"""
-	def __init__(
-		self, grid, horizontal_boundary_type, reference_state,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
-	):
+	def __init__(self, domain, backend=gt.mode.NUMPY, dtype=datatype):
 		"""
 		Parameters
 		----------
-		grid : grid
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			representing the underlying grid.
-		horizontal_boundary_type : str
-			String specifying the horizontal boundary conditions.
-			See :class:`~tasmania.dynamics.horizontal_boundary.HorizontalBoundary`
-			for all available options.
-		reference_state : dict
-			Dictionary whose keys are strings denoting model variables,
-			and whose values are :class:`sympl.DataArray`\s representing
-			reference values for those variables. These values may be used
-			to enforce the horizontal boundary conditions on the velocity
-			components. The dictionary should contain the following variables:
-
-				* 'x_velocity_at_u_locations', in units compatible with [m s^-1];
-				* 'y_velocity_at_v_locations', in units compatible with [m s^-1].
-
+		domain : tasmania.Domain
+			The underlying domain.
 		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencils.
-			Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
-		**kwargs :
-			Additional keyword arguments to be directly forwarded to the parent
-			:class:`sympl.DiagnosticComponent`.
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` allocated and
+			used within this class.
 		"""
-		self._grid = grid
+		super().__init__(domain, 'numerical')
 
-		super().__init__(**kwargs)
+		self._core = HorizontalVelocity(
+			self.grid, staggering=True, backend=backend, dtype=dtype
+		)
 
-		self._helper = HorizontalVelocity(grid, backend, dtype)
-		self._hboundary = HorizontalBoundary.factory(horizontal_boundary_type, grid, 1)
-
-		try:
-			uref = reference_state['x_velocity_at_u_locations']
-			try:
-				self._uref = np.copy(uref.to_units('m s^-1').values)
-			except ValueError as e:
-				print('The field ''x_velocity_at_u_locations'' in the input '
-					  'dictionary ''reference_state'' should be expressed in units '
-					  'compatible with ''m s^-1''.')
-				raise e
-		except KeyError as e:
-			print('The input dictionary ''reference_state'' should contain the '
-				  'field ''x_velocity_at_u_locations''.')
-			raise e
-
-		try:
-			vref = reference_state['y_velocity_at_v_locations']
-			try:
-				self._vref = np.copy(vref.to_units('m s^-1').values)
-			except ValueError as e:
-				print('The field ''y_velocity_at_v_locations'' in the input '
-					  'dictionary ''reference_state'' should be expressed in units '
-					  'compatible with ''m s^-1''.')
-				raise e
-		except KeyError as e:
-			print('The input dictionary ''reference_state'' should contain the '
-				  'field ''y_velocity_at_v_locations''.')
-			raise e
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		self._out_u = np.zeros((nx+1, ny, nz), dtype=dtype)
+		self._out_v = np.zeros((nx, ny+1, nz), dtype=dtype)
 
 	@property
 	def input_properties(self):
-		grid = self._grid
-		dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
+		g = self.grid
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
 		return_dict = {
 			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
@@ -260,9 +231,9 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
 	@property
 	def diagnostic_properties(self):
-		grid = self._grid
-		dims_x = (grid.x_at_u_locations.dims[0], grid.y.dims[0], grid.z.dims[0])
-		dims_y = (grid.x.dims[0], grid.y_at_v_locations.dims[0], grid.z.dims[0])
+		g = self.grid
+		dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
+		dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
 
 		return_dict = {
 			'x_velocity_at_u_locations': {'dims': dims_x, 'units': 'm s^-1'},
@@ -278,13 +249,23 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 		sv = state['y_momentum_isentropic']
 
 		# Diagnose the velocity components
-		u, v = self._helper.get_velocity_components(s, su, sv)
+		self._core.get_velocity_components(s, su, sv, self._out_u, self._out_v)
 
 		# Enforce the boundary conditions
-		self._hboundary.set_outermost_layers_x(u, self._uref)
-		self._hboundary.set_outermost_layers_y(v, self._vref)
+		hb = self.horizontal_boundary
+		hb.dmn_set_outermost_layers_x(
+			self._out_u, field_name='x_velocity_at_u_locations',
+			field_units='m s^-1', time=state['time']
+		)
+		hb.dmn_set_outermost_layers_y(
+			self._out_v, field_name='y_velocity_at_v_locations',
+			field_units='m s^-1', time=state['time']
+		)
 
 		# Instantiate the output dictionary
-		diagnostics = {'x_velocity_at_u_locations': u, 'y_velocity_at_v_locations': v}
+		diagnostics = {
+			'x_velocity_at_u_locations': self._out_u,
+			'y_velocity_at_v_locations': self._out_v,
+		}
 
 		return diagnostics

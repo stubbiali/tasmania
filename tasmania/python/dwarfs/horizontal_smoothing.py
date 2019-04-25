@@ -23,12 +23,12 @@
 """
 This module contains:
 	HorizontalSmoothing
-	_FirstOrder(HorizontalSmoothing)
-	_FirstOrder{XZ, YZ}(HorizontalSmoothing)
-	_SecondOrder(HorizontalSmoothing)
-	_SecondOrder{XZ, YZ}(HorizontalSmoothing)
-	_ThirdOrder(HorizontalSmoothing)
-	_ThirdOrder{XZ, YZ}(HorizontalSmoothing)
+	FirstOrder(HorizontalSmoothing)
+	FirstOrder{1DX, 1DY}(HorizontalSmoothing)
+	SecondOrder(HorizontalSmoothing)
+	SecondOrder{1DX, 1DY}(HorizontalSmoothing)
+	ThirdOrder(HorizontalSmoothing)
+	ThirdOrder{1DX, 1DY}(HorizontalSmoothing)
 """
 import abc
 import math
@@ -44,62 +44,56 @@ except ImportError:
 class HorizontalSmoothing:
 	"""
 	Abstract base class whose derived classes apply horizontal
-	numerical smoothing to a generic (prognostic) field by means
-	of a GT4Py stencil.
+	numerical smoothing to a generic (prognostic) field.
 	"""
-	# Make the class abstract
+	# make the class abstract
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
-		self, dims, grid, smooth_damp_depth, smooth_coeff,
-		smooth_coeff_max, backend, dtype
+		self, shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+		nb, backend, dtype
 	):
 		"""
-		Constructor.
-
 		Parameters
 		----------
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : grid
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
+		shape : tuple
+			Shape of the 3-D arrays which should be filtered.
 		smooth_coeff : float
 			Value for the smoothing coefficient far from the top boundary.
 		smooth_coeff_max : float
 			Maximum value for the smoothing coefficient.
+		smooth_damp_depth : int
+			Depth of, i.e., number of vertical regions in the damping region.
+		nb : int
+			Number of boundary layers.
 		backend : obj
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing.
-		dtype : obj
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
+			TODO
+		dtype : numpy.dtype
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 		"""
 		# Store input arguments
-		self._dims              = dims
-		self._grid              = grid
+		self._shape             = shape
 		self._smooth_damp_depth = smooth_damp_depth
 		self._smooth_coeff      = smooth_coeff
 		self._smooth_coeff_max  = smooth_coeff_max
+		self._nb				= nb
 		self._backend			= backend
 
-		# Initialize the smoothing matrix
-		self._gamma = self._smooth_coeff * np.ones(self._dims, dtype=dtype)
+		# initialize the diffusion coefficient
+		self._gamma = self._smooth_coeff
 
-		# The diffusivity is monotonically increased towards the top of the model,
+		# the diffusivity is monotonically increased towards the top of the model,
 		# so to mimic the effect of a short length wave absorber
 		n = self._smooth_damp_depth
 		if n > 0:
 			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-			pert = np.tile(pert[np.newaxis, np.newaxis, :], (dims[0], dims[1], 1))
+			pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
+			self._gamma = self._smooth_coeff * np.ones(shape, dtype=dtype)
 			self._gamma[:, :, :n] += (self._smooth_coeff_max - self._smooth_coeff) * pert
 
-		# Initialize the pointer to the underlying stencil
-		# It will be properly re-directed the first time the call
+		# initialize the pointer to the underlying stencil
+		# it will be properly re-directed the first time the call
 		# operator in invoked
 		self._stencil = None
 
@@ -121,8 +115,8 @@ class HorizontalSmoothing:
 
 	@staticmethod
 	def factory(
-		smooth_type, dims, grid, smooth_damp_depth, smooth_coeff,
-		smooth_coeff_max, backend=gt.mode.NUMPY, dtype=datatype
+		smooth_type, shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+		nb=None, backend=gt.mode.NUMPY, dtype=datatype
 	):
 		"""
 		Static method returning an instance of the derived class
@@ -137,27 +131,21 @@ class HorizontalSmoothing:
 			* 'second_order', for second-order numerical smoothing;
 			* 'third_order', for third-order numerical smoothing.
 
-		dims : tuple
-			Shape of the (three-dimensional) arrays on which
-			to apply numerical smoothing.
-		grid : obj
-			The underlying grid, as an instance of
-			:class:`~tasmania.grids.grid_xyz.GridXYZ`
-			or one of its derived classes.
-		smooth_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
+		shape : tuple
+			Shape of the 3-D arrays which should be filtered.
 		smooth_coeff : float
 			Value for the smoothing coefficient far from the top boundary.
 		smooth_coeff_max : float
 			Maximum value for the smoothing coefficient.
-		backend : `obj`, optional
-			:class:`gridtools.mode` specifying the backend for the GT4Py stencil
-			implementing numerical smoothing. Defaults to :class:`gridtools.mode.NUMPY`.
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-			Defaults to :obj:`~tasmania.namelist.datatype`, or :obj:`numpy.float32`
-			if :obj:`~tasmania.namelist.datatype` is not defined.
+		smooth_damp_depth : int
+			Depth of, i.e., number of vertical regions in the damping region.
+		nb : int
+			Number of boundary layers.
+		backend : obj
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
 
 		Return
 		------
@@ -165,36 +153,37 @@ class HorizontalSmoothing:
 			Instance of the suitable derived class.
 		"""
 		arg_list = [
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max, backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		]
 
 		if smooth_type == 'first_order':
-			assert not(dims[0] < 3 and dims[1] < 3)
+			assert not(shape[0] < 3 and shape[1] < 3)
 
-			if dims[1] < 3:
-				return _FirstOrderXZ(*arg_list)
-			elif dims[0] < 3:
-				return _FirstOrderYZ(*arg_list)
+			if shape[1] < 3:
+				return FirstOrder1DX(*arg_list)
+			elif shape[0] < 3:
+				return FirstOrder1DY(*arg_list)
 			else:
-				return _FirstOrder(*arg_list)
+				return FirstOrder(*arg_list)
 		elif smooth_type == 'second_order':
-			assert not(dims[0] < 5 and dims[1] < 5)
+			assert not(shape[0] < 5 and shape[1] < 5)
 
-			if dims[1] < 5:
-				return _SecondOrderXZ(*arg_list)
-			elif dims[0] < 5:
-				return _SecondOrderYZ(*arg_list)
+			if shape[1] < 5:
+				return SecondOrder1DX(*arg_list)
+			elif shape[0] < 5:
+				return SecondOrder1DY(*arg_list)
 			else:
-				return _SecondOrder(*arg_list)
+				return SecondOrder(*arg_list)
 		elif smooth_type == 'third_order':
-			assert not(dims[0] < 7 and dims[1] < 7)
+			assert not(shape[0] < 7 and shape[1] < 7)
 
-			if dims[1] < 7:
-				return _ThirdOrderXZ(*arg_list)
-			elif dims[0] < 7:
-				return _ThirdOrderYZ(*arg_list)
+			if shape[1] < 7:
+				return ThirdOrder1DX(*arg_list)
+			elif shape[0] < 7:
+				return ThirdOrder1DY(*arg_list)
 			else:
-				return _ThirdOrder(*arg_list)
+				return ThirdOrder(*arg_list)
 		else:
 			raise ValueError(
 				"Supported smoothing operators are ''first_order'', "
@@ -202,7 +191,7 @@ class HorizontalSmoothing:
 			)
 
 
-class _FirstOrder(HorizontalSmoothing):
+class FirstOrder(HorizontalSmoothing):
 	"""
 	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a first-order horizontal digital filter to three-dimensional fields
@@ -215,12 +204,13 @@ class _FirstOrder(HorizontalSmoothing):
 	one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=1, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -236,37 +226,43 @@ class _FirstOrder(HorizontalSmoothing):
 
 		# Set the outermost lateral layer of the output field,
 		# not affected by the stencil
-		self._out_phi[ 0, :, :]    = self._in_phi[ 0, :, :]
-		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
-		self._out_phi[1:-1,  0, :] = self._in_phi[1:-1,  0, :]
-		self._out_phi[1:-1, -1, :] = self._in_phi[1:-1, -1, :]
+		nb = self._nb
+		self._out_phi[:nb, :]       = self._in_phi[:nb, :]
+		self._out_phi[-nb:, :]      = self._in_phi[-nb:, :]
+		self._out_phi[nb:-nb, :nb]  = self._in_phi[nb:-nb,  :nb]
+		self._out_phi[nb:-nb, -nb:] = self._in_phi[nb:-nb, -nb:]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((1, 1, 0), (ni-2, nj-2, nk-1))
+		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
@@ -275,8 +271,9 @@ class _FirstOrder(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i, j] = (1 - gamma[i, j]) * in_phi[i, j] + \
-			0.25 * gamma[i, j] * (
+		g = self._gamma if gamma is None else gamma[i, j]
+		out_phi[i, j] = (1 - g) * in_phi[i, j] + \
+			0.25 * g * (
 				in_phi[i-1, j] + in_phi[i+1, j] +
 				in_phi[i, j-1] + in_phi[i, j+1]
 			)
@@ -284,7 +281,7 @@ class _FirstOrder(HorizontalSmoothing):
 		return out_phi
 
 
-class _FirstOrderXZ(HorizontalSmoothing):
+class FirstOrder1DX(HorizontalSmoothing):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a first-order horizontal digital filter to three-dimensional fields
@@ -297,12 +294,13 @@ class _FirstOrderXZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=1, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -318,35 +316,41 @@ class _FirstOrderXZ(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[ 0, :, :] = self._in_phi[ 0, :, :]
-		self._out_phi[-1, :, :] = self._in_phi[-1, :, :]
+		nb = self._nb
+		self._out_phi[:nb, :]  = self._in_phi[:nb, :]
+		self._out_phi[-nb:, :] = self._in_phi[-nb:, :]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((1, 0, 0), (ni-2, nj-1, nk-1))
+		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Index
 		i = gt.Index(axis=0)
 
@@ -354,13 +358,14 @@ class _FirstOrderXZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i] = (1. - 0.5 * gamma[i]) * in_phi[i] + \
-			0.25 * gamma[i] * (in_phi[i-1] + in_phi[i+1])
+		g = self._gamma if gamma is None else gamma[i]
+		out_phi[i] = (1. - 0.5 * g) * in_phi[i] + \
+			0.25 * g * (in_phi[i-1] + in_phi[i+1])
 
 		return out_phi
 
 
-class _FirstOrderYZ(HorizontalSmoothing):
+class FirstOrder1DY(HorizontalSmoothing):
 	"""
 	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a first-order horizontal digital filter to three-dimensional fields
@@ -373,12 +378,13 @@ class _FirstOrderYZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=1, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -394,35 +400,41 @@ class _FirstOrderYZ(HorizontalSmoothing):
 
 		# Set the outermost lateral layer of the output field,
 		# not affected by the stencil
-		self._out_phi[:,  0, :] = self._in_phi[:,  0, :]
-		self._out_phi[:, -1, :] = self._in_phi[:, -1, :]
+		nb = self._nb
+		self._out_phi[:, :nb]  = self._in_phi[:, :nb]
+		self._out_phi[:, -nb:] = self._in_phi[:, -nb:]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 1, 0), (ni-1, nj-2, nk-1))
+		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Index
 		j = gt.Index(axis=1)
 
@@ -430,13 +442,14 @@ class _FirstOrderYZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[j] = (1. - 0.5 * gamma[j]) * in_phi[j] + \
-			0.25 * gamma[j] * (in_phi[j-1] + in_phi[j+1])
+		g = self._gamma if gamma is None else gamma[j]
+		out_phi[j] = (1. - 0.5 * g) * in_phi[j] + \
+			0.25 * g * (in_phi[j-1] + in_phi[j+1])
 
 		return out_phi
 
 
-class _SecondOrder(HorizontalSmoothing):
+class SecondOrder(HorizontalSmoothing):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a second-order horizontal digital filter to three-dimensional fields
@@ -449,12 +462,13 @@ class _SecondOrder(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=2, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -470,41 +484,43 @@ class _SecondOrder(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[ 0, :, :]    = self._in_phi[ 0, :, :]
-		self._out_phi[ 1, :, :]    = self._in_phi[ 1, :, :]
-		self._out_phi[-2, :, :]    = self._in_phi[-2, :, :]
-		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
-		self._out_phi[2:-2,  0, :] = self._in_phi[2:-2,  0, :]
-		self._out_phi[2:-2,  1, :] = self._in_phi[2:-2,  1, :]
-		self._out_phi[2:-2, -2, :] = self._in_phi[2:-2, -2, :]
-		self._out_phi[2:-2, -1, :] = self._in_phi[2:-2, -1, :]
+		nb = self._nb
+		self._out_phi[:nb, :]       = self._in_phi[:nb, :]
+		self._out_phi[-nb:, :]      = self._in_phi[-nb:, :]
+		self._out_phi[nb:-nb, :nb]  = self._in_phi[nb:-nb,  :nb]
+		self._out_phi[nb:-nb, -nb:] = self._in_phi[nb:-nb, -nb:]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((2, 2, 0), (ni-3, nj-3, nk-1))
+		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
@@ -513,8 +529,9 @@ class _SecondOrder(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i, j] = (1. - 0.75 * gamma[i, j]) * in_phi[i, j] + \
-			0.0625 * gamma[i, j] * (
+		g = self._gamma if gamma is None else gamma[i, j]
+		out_phi[i, j] = (1. - 0.75 * g) * in_phi[i, j] + \
+			0.0625 * g * (
 				- in_phi[i-2, j] + 4. * in_phi[i-1, j]
 				- in_phi[i+2, j] + 4. * in_phi[i+1, j]
 				- in_phi[i, j-2] + 4. * in_phi[i, j-1]
@@ -524,7 +541,7 @@ class _SecondOrder(HorizontalSmoothing):
 		return out_phi
 
 
-class _SecondOrderXZ(HorizontalSmoothing):
+class SecondOrder1DX(HorizontalSmoothing):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a second-order horizontal digital filter to three-dimensional fields
@@ -537,12 +554,13 @@ class _SecondOrderXZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=2, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -558,37 +576,41 @@ class _SecondOrderXZ(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[ 0, :, :]    = self._in_phi[ 0, :, :]
-		self._out_phi[ 1, :, :]    = self._in_phi[ 1, :, :]
-		self._out_phi[-2, :, :]    = self._in_phi[-2, :, :]
-		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
+		nb = self._nb
+		self._out_phi[:nb, :]  = self._in_phi[:nb, :]
+		self._out_phi[-nb:, :] = self._in_phi[-nb:, :]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((2, 0, 0), (ni-3, nj-1, nk-1))
+		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Index
 		i = gt.Index(axis=0)
 
@@ -596,8 +618,9 @@ class _SecondOrderXZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i] = (1. - 0.375 * gamma[i]) * in_phi[i] + \
-			0.0625 * gamma[i] * (
+		g = self._gamma if gamma is None else gamma[i]
+		out_phi[i] = (1. - 0.375 * g) * in_phi[i] + \
+			0.0625 * g * (
 				- in_phi[i-2] + 4. * in_phi[i-1]
 				- in_phi[i+2] + 4. * in_phi[i+1]
 			)
@@ -605,7 +628,7 @@ class _SecondOrderXZ(HorizontalSmoothing):
 		return out_phi
 
 
-class _SecondOrderYZ(HorizontalSmoothing):
+class SecondOrder1DY(HorizontalSmoothing):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a second-order horizontal digital filter to three-dimensional fields
@@ -618,12 +641,13 @@ class _SecondOrderYZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=2, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -639,37 +663,41 @@ class _SecondOrderYZ(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[:,  0, :] = self._in_phi[:,  0, :]
-		self._out_phi[:,  1, :] = self._in_phi[:,  1, :]
-		self._out_phi[:, -2, :] = self._in_phi[:, -2, :]
-		self._out_phi[:, -1, :] = self._in_phi[:, -1, :]
+		nb = self._nb
+		self._out_phi[:, :nb]  = self._in_phi[:, :nb]
+		self._out_phi[:, -nb:] = self._in_phi[:, -nb:]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 2, 0), (ni-1, nj-3, nk-1))
+		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Index
 		j = gt.Index(axis=1)
 
@@ -677,8 +705,9 @@ class _SecondOrderYZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[j] = (1. - 0.375 * gamma[j]) * in_phi[j] + \
-			0.0625 * gamma[j] * (
+		g = self._gamma if gamma is None else gamma[j]
+		out_phi[j] = (1. - 0.375 * g) * in_phi[j] + \
+			0.0625 * g * (
 				 - in_phi[j-2] + 4. * in_phi[j-1]
 				 - in_phi[j+2] + 4. * in_phi[j+1]
 			)
@@ -686,7 +715,7 @@ class _SecondOrderYZ(HorizontalSmoothing):
 		return out_phi
 
 
-class _ThirdOrder(HorizontalSmoothing):
+class ThirdOrder(HorizontalSmoothing):
 	"""
 	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a third-order horizontal digital filter to three-dimensional fields
@@ -699,12 +728,13 @@ class _ThirdOrder(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=3, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 3 if (nb is None or nb < 3) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -720,45 +750,43 @@ class _ThirdOrder(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[ 0, :, :]    = self._in_phi[ 0, :, :]
-		self._out_phi[ 1, :, :]    = self._in_phi[ 1, :, :]
-		self._out_phi[ 2, :, :]    = self._in_phi[ 2, :, :]
-		self._out_phi[-3, :, :]    = self._in_phi[-3, :, :]
-		self._out_phi[-2, :, :]    = self._in_phi[-2, :, :]
-		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
-		self._out_phi[3:-3,  0, :] = self._in_phi[3:-3,  0, :]
-		self._out_phi[3:-3,  1, :] = self._in_phi[3:-3,  1, :]
-		self._out_phi[3:-3,  2, :] = self._in_phi[3:-3,  2, :]
-		self._out_phi[3:-3, -3, :] = self._in_phi[3:-3, -3, :]
-		self._out_phi[3:-3, -2, :] = self._in_phi[3:-3, -2, :]
-		self._out_phi[3:-3, -1, :] = self._in_phi[3:-3, -1, :]
+		nb = self._nb
+		self._out_phi[:nb, :]       = self._in_phi[:nb, :]
+		self._out_phi[-nb:, :]      = self._in_phi[-nb:, :]
+		self._out_phi[nb:-nb, :nb]  = self._in_phi[nb:-nb,  :nb]
+		self._out_phi[nb:-nb, -nb:] = self._in_phi[nb:-nb, -nb:]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((3, 3, 0), (ni-4, nj-4, nk-1))
+		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
@@ -767,8 +795,9 @@ class _ThirdOrder(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i, j] = (1. - 0.625 * gamma[i, j]) * in_phi[i, j] + \
-			0.015625 * gamma[i, j] * (
+		g = self._gamma if gamma is None else gamma[i, j]
+		out_phi[i, j] = (1. - 0.625 * g) * in_phi[i, j] + \
+			0.015625 * g * (
 				in_phi[i-3, j] - 6*in_phi[i-2, j] + 15*in_phi[i-1, j] +
 				in_phi[i+3, j] - 6*in_phi[i+2, j] + 15*in_phi[i+1, j] +
 				in_phi[i, j-3] - 6*in_phi[i, j-2] + 15*in_phi[i, j-1] +
@@ -778,7 +807,7 @@ class _ThirdOrder(HorizontalSmoothing):
 		return out_phi
 
 
-class _ThirdOrderXZ(HorizontalSmoothing):
+class ThirdOrder1DX(HorizontalSmoothing):
 	"""
 	This class inherits :class:`~tasmania.HorizontalSmoothing`
 	to apply a third-order horizontal digital filter to three-dimensional fields
@@ -791,12 +820,13 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=3, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 3 if (nb is None or nb < 3) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -812,39 +842,41 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[ 0, :, :]    = self._in_phi[ 0, :, :]
-		self._out_phi[ 1, :, :]    = self._in_phi[ 1, :, :]
-		self._out_phi[ 2, :, :]    = self._in_phi[ 2, :, :]
-		self._out_phi[-3, :, :]    = self._in_phi[-3, :, :]
-		self._out_phi[-2, :, :]    = self._in_phi[-2, :, :]
-		self._out_phi[-1, :, :]    = self._in_phi[-1, :, :]
+		nb = self._nb
+		self._out_phi[:nb, :]  = self._in_phi[:nb, :]
+		self._out_phi[-nb:, :] = self._in_phi[-nb:, :]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((3, 0, 0), (ni-4, nj-1, nk-1))
+		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Index
 		i = gt.Index(axis=0)
 
@@ -852,8 +884,9 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[i] = (1. - 0.3125 * gamma[i]) * in_phi[i] + \
-			0.015625 * gamma[i] * (
+		g = self._gamma if gamma is None else gamma[i]
+		out_phi[i] = (1. - 0.3125 * g) * in_phi[i] + \
+			0.015625 * g * (
 				in_phi[i-3] - 6*in_phi[i-2] + 15*in_phi[i-1] +
 				in_phi[i+3] - 6*in_phi[i+2] + 15*in_phi[i+1]
 			)
@@ -861,7 +894,7 @@ class _ThirdOrderXZ(HorizontalSmoothing):
 		return out_phi
 
 
-class _ThirdOrderYZ(HorizontalSmoothing):
+class ThirdOrder1DY(HorizontalSmoothing):
 	"""
 	This class inherits	:class:`~tasmania.HorizontalSmoothing`
 	to apply a third-order horizontal digital filter to three-dimensional fields
@@ -874,12 +907,13 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, dims, grid, smooth_damp_depth=10, smooth_coeff=1.0,
-		smooth_coeff_max=1.0, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, smooth_coeff=1.0, smooth_coeff_max=1.0, smooth_damp_depth=10,
+		nb=3, backend=gt.mode.NUMPY, dtype=datatype
 	):
+		nb = 3 if (nb is None or nb < 3) else nb
 		super().__init__(
-			dims, grid, smooth_damp_depth, smooth_coeff, smooth_coeff_max,
-			backend, dtype
+			shape, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
+			nb, backend, dtype
 		)
 
 	def __call__(self, phi, phi_out):
@@ -895,39 +929,41 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 
 		# Set the outermost lateral layers of the output field,
 		# not affected by the stencil
-		self._out_phi[:,  0, :] = self._in_phi[:,  0, :]
-		self._out_phi[:,  1, :] = self._in_phi[:,  1, :]
-		self._out_phi[:,  2, :] = self._in_phi[:,  2, :]
-		self._out_phi[:, -3, :] = self._in_phi[:, -3, :]
-		self._out_phi[:, -2, :] = self._in_phi[:, -2, :]
-		self._out_phi[:, -1, :] = self._in_phi[:, -1, :]
+		nb = self._nb
+		self._out_phi[:, :nb]  = self._in_phi[:, :nb]
+		self._out_phi[:, -nb:] = self._in_phi[:, -nb:]
 
 		# Write the output field into the provided array
 		phi_out[...] = self._out_phi[...]
 
 	def _stencil_initialize(self, dtype):
 		# Shortcuts
-		ni, nj, nk = self._dims
+		ni, nj, nk = self._shape
+		nb = self._nb
 
 		# Allocate the Numpy arrays which will serve as stencil's
 		# inputs and outputs
 		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
 		self._out_phi = np.zeros((ni, nj, nk), dtype=dtype)
 
+		# set stencil's inputs
+		_inputs = {'in_phi': self._in_phi}
+		if self._smooth_damp_depth > 0:
+			_inputs['gamma'] = self._gamma
+
 		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, 3, 0), (ni-1, nj-4, nk-1))
+		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
 
 		# Instantiate the stencil
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_phi': self._in_phi, 'gamma': self._gamma},
+			inputs=_inputs,
 			outputs={'out_phi': self._out_phi},
 			domain=_domain,
 			mode=self._backend
 		)
 
-	@staticmethod
-	def _stencil_defs(in_phi, gamma):
+	def _stencil_defs(self, in_phi, gamma=None):
 		# Index
 		j = gt.Index(axis=1)
 
@@ -935,8 +971,9 @@ class _ThirdOrderYZ(HorizontalSmoothing):
 		out_phi = gt.Equation()
 
 		# Computations
-		out_phi[j] = (1. - 0.3125 * gamma[j]) * in_phi[j] + \
-			0.015625 * gamma[j] * (
+		g = self._gamma if gamma is None else gamma[j]
+		out_phi[j] = (1. - 0.3125 * g) * in_phi[j] + \
+			0.015625 * g * (
 				in_phi[j-3] - 6*in_phi[j-2] + 15*in_phi[j-1] +
 				in_phi[j+3] - 6*in_phi[j+2] + 15*in_phi[j+1]
 			)
