@@ -23,11 +23,11 @@
 import numpy as np
 import os
 import pytest
-from sympl import DiagnosticComponent
 import sys
 
-from tasmania.python.plot.trackers import TimeSeries
+from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.plot.monitors import Plot
+from tasmania.python.plot.trackers import TimeSeries
 
 
 baseline_dir = 'baseline_images/py{}{}/test_timeseries'.format(
@@ -37,26 +37,27 @@ baseline_dir = 'baseline_images/py{}{}/test_timeseries'.format(
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_datapoint(isentropic_dry_data):
-	# Field to plot
+	# field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
 
-	# Make sure the folder tests/baseline_images/test_timeseries does exist
+	# make sure the folder tests/baseline_images/test_timeseries does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_datapoint_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
-	# Indices identifying the grid point to visualize
-	x, y, z = 25, 25, -1
+	# indices identifying the grid point to visualize
+	x, y, z = int(grid.nx/2), int(grid.ny/2), -1
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'blue',
 		'linestyle': '-',
@@ -64,11 +65,13 @@ def test_datapoint(isentropic_dry_data):
 		'marker': 'o',
 	}
 
-	# Instantiate the drawer
-	drawer = TimeSeries(grid, field_name, field_units, x=x, y=y, z=z,
-						time_mode='elapsed', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = TimeSeries(
+		grid, field_name, field_units, x=x, y=y, z=z,
+		time_mode='elapsed', properties=drawer_properties
+	)
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 8),
@@ -76,17 +79,22 @@ def test_datapoint(isentropic_dry_data):
 	}
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': '$x$-velocity at $x = $0 km, $y = $0 km'.format(
-			grid.z.values[-1]),
+		'title_center': '$x$ = {} km, $y$ = {} km, $\\theta$ = {} K'.format(
+			grid.x.to_units('km').values[x], grid.y.to_units('km').values[y],
+			grid.z.to_units('K').values[z]
+		),
 		'x_label': 'Elapsed time [s]',
-		'y_label': '$\\theta$ [K]',
+		'y_label': '$x$-velocity [m s$^{-1}$]',
 		'grid_on': True,
 	}
 
-	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, interactive=False, figure_properties=figure_properties,
+		axes_properties=axes_properties
+	)
 
-	# Plot
+	# plot
 	for state in states[:-1]:
 		monitor.store(state)
 	monitor.store(states[-1], save_dest=save_dest)
@@ -96,45 +104,49 @@ def test_datapoint(isentropic_dry_data):
 	return monitor.figure
 
 
+class MaxVelocity(DiagnosticComponent):
+	def __init__(self, domain, grid_type):
+		super().__init__(domain, grid_type)
+
+	@property
+	def input_properties(self):
+		g = self.grid
+		dims = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
+		return {'x_velocity_at_u_locations': {'dims': dims, 'units': 'km hr^-1'}}
+
+	@property
+	def diagnostic_properties(self):
+		dims = ('scalar', 'scalar', 'scalar')
+		return {'max_x_velocity_at_u_locations': {'dims': dims, 'units': 'km hr^-1'}}
+
+	def array_call(self, state):
+		val = np.max(state['x_velocity_at_u_locations'])
+		return {
+			'max_x_velocity_at_u_locations':
+				np.array(val)[np.newaxis, np.newaxis, np.newaxis]
+		}
+
+
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_diagnostic(isentropic_dry_data):
-	class MaxVelocity(DiagnosticComponent):
-		def __init__(self, grid):
-			self.g = grid
-			super().__init__()
-
-		@property
-		def input_properties(self):
-			dims = (self.g.x_at_u_locations.dims[0], self.g.y.dims[0], self.g.z.dims[0])
-			return {'x_velocity_at_u_locations': {'dims': dims, 'units': 'm s^-1'}}
-
-		@property
-		def diagnostic_properties(self):
-			dims = ('scalar', 'scalar', 'scalar')
-			return {'max_x_velocity_at_u_locations': {'dims': dims, 'units': 'm s^-1'}}
-
-		def array_call(self, state):
-			val = np.max(state['x_velocity_at_u_locations'])
-			return {'max_x_velocity_at_u_locations':
-						np.array(val)[np.newaxis, np.newaxis, np.newaxis]}
-
-	# Field to plot
+	# field to plot
 	field_name  = 'max_x_velocity_at_u_locations'
 	field_units = 'km hr^-1'
 
-	# Make sure the folder tests/baseline_images/test_timeseries does exist
+	# make sure the folder tests/baseline_images/test_timeseries does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_diagnostic_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'green',
 		'linestyle': None,
@@ -143,11 +155,13 @@ def test_diagnostic(isentropic_dry_data):
 		'markersize': 2,
 	}
 
-	# Instantiate the drawer
-	drawer = TimeSeries(grid, field_name, field_units,
-						time_mode='elapsed', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = TimeSeries(
+		grid, field_name, field_units, time_mode='elapsed', time_units='hr',
+		properties=drawer_properties
+	)
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 8),
@@ -155,19 +169,22 @@ def test_diagnostic(isentropic_dry_data):
 	}
 	axes_properties = {
 		'fontsize': 16,
-		'x_label': 'Elapsed time [s]',
-		'y_label': 'Max. $x$-velocity [km h$^{-1}$]',
+		'x_label': 'Elapsed time [hr]',
+		'y_label': 'Maximum $x$-velocity [km h$^{-1}$]',
 		'grid_on': True,
 		'grid_properties': {'linestyle': ':'},
 	}
 
-	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, interactive=False, figure_properties=figure_properties,
+		axes_properties=axes_properties
+	)
 
-	# Instantiate the diagnostic
-	mv = MaxVelocity(grid)
+	# instantiate the diagnostic
+	mv = MaxVelocity(domain, grid_type)
 
-	# Plot
+	# plot
 	for state in states[:-1]:
 		state.update(mv(state))
 		monitor.store(state)
@@ -181,5 +198,3 @@ def test_diagnostic(isentropic_dry_data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_dry_data
-	#test_datapoint(isentropic_dry_data())

@@ -21,250 +21,930 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from datetime import timedelta
+from hypothesis import \
+	assume, given, HealthCheck, settings, strategies as hyp_st, reproduce_failure
 import numpy as np
 import pytest
 from sympl import units_are_same
 
-import gridtools as gt
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import utils
+
 from tasmania.python.framework.tendency_steppers import \
-	ForwardEuler, RungeKutta2, RungeKutta3COSMO, RungeKutta3
-from tasmania.python.isentropic.physics.tendencies import \
-	ConservativeIsentropicPressureGradient
+	ForwardEuler, RungeKutta2, RungeKutta3WS, RungeKutta3
 from tasmania.python.utils.data_utils import make_state
 
 
-def test_forward_euler(isentropic_dry_data):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_forward_euler(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
 
-	backend = gt.mode.NUMPY
-	dtype = np.float32
-
-	dt = timedelta(seconds=20)
-	su = state['x_momentum_isentropic'].values
-	sv = state['y_momentum_isentropic'].values
-
-	pg = ConservativeIsentropicPressureGradient(
-		grid, 2, 'relaxed', backend=backend, dtype=dtype
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
 	)
 
-	fe = ForwardEuler(pg, grid=grid)
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
+	)
 
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
+
+	fe = ForwardEuler(tc1, execution_policy='serial')
+
+	assert 'air_isentropic_density' in fe.output_properties
+	assert units_are_same(
+		fe.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
 	assert 'x_momentum_isentropic' in fe.output_properties
 	assert units_are_same(
 		fe.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
 	)
-	assert 'y_momentum_isentropic' in fe.output_properties
+	assert 'x_velocity_at_u_locations' in fe.output_properties
 	assert units_are_same(
-		fe.output_properties['y_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+		fe.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
+	)
+	assert len(fe.output_properties) == 3
+
+	out_diagnostics, out_state = fe(state, dt)
+
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s_new = s + dt.total_seconds() * s_tnd
+	assert np.allclose(s_new, out_state['air_isentropic_density'].values)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su_new = su + dt.total_seconds() * su_tnd
+	assert np.allclose(su_new, out_state['x_momentum_isentropic'].values)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u_new = u + dt.total_seconds() * u_tnd
+	assert np.allclose(u_new, out_state['x_velocity_at_u_locations'].values)
+
+	assert 'fake_variable' in out_diagnostics
+	assert np.allclose(
+		diagnostics['fake_variable'], out_diagnostics['fake_variable']
 	)
 
-	_, out_state = fe(state, dt)
 
-	tendencies, _ = pg(state)
-	su_new = su + dt.total_seconds() * tendencies['x_momentum_isentropic'].values
-	sv_new = sv + dt.total_seconds() * tendencies['y_momentum_isentropic'].values
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow, HealthCheck.data_too_large, HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_forward_euler_hb(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+	hb = domain.horizontal_boundary
 
-	assert np.allclose(su_new, out_state['x_momentum_isentropic'])
-	assert np.allclose(sv_new, out_state['y_momentum_isentropic'])
+	assume(hb.type != 'dirichlet')
 
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+	hb.reference_state = state
 
-def test_rk2(isentropic_dry_data):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-
-	backend = gt.mode.NUMPY
-	dtype = np.float32
-
-	dt = timedelta(seconds=20)
-	su = state['x_momentum_isentropic'].values
-	sv = state['y_momentum_isentropic'].values
-	units = {
-		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
-		'y_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
-	}
-
-	pg = ConservativeIsentropicPressureGradient(
-		grid, 2, 'relaxed', backend=backend, dtype=dtype
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
 	)
 
-	rk2 = RungeKutta2(pg, grid=grid)
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
 
+	fe = ForwardEuler(tc1, execution_policy='serial', enforce_horizontal_boundary=True)
+
+	assert 'air_isentropic_density' in fe.output_properties
+	assert units_are_same(
+		fe.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
+	assert 'x_momentum_isentropic' in fe.output_properties
+	assert units_are_same(
+		fe.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+	)
+	assert 'x_velocity_at_u_locations' in fe.output_properties
+	assert units_are_same(
+		fe.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
+	)
+	assert len(fe.output_properties) == 3
+
+	out_diagnostics, out_state = fe(state, dt)
+
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s_new = s + dt.total_seconds() * s_tnd
+	hb.enforce_field(
+		s_new, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(s_new, out_state['air_isentropic_density'].values)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su_new = su + dt.total_seconds() * su_tnd
+	hb.enforce_field(
+		su_new, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(su_new, out_state['x_momentum_isentropic'].values)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u_new = u + dt.total_seconds() * u_tnd
+	hb.enforce_field(
+		u_new, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(u_new, out_state['x_velocity_at_u_locations'].values)
+
+	assert 'fake_variable' in out_diagnostics
+	assert np.allclose(
+		diagnostics['fake_variable'], out_diagnostics['fake_variable']
+	)
+
+
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_rk2(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
+
+	rk2 = RungeKutta2(tc1, execution_policy='serial')
+
+	assert 'air_isentropic_density' in rk2.output_properties
+	assert units_are_same(
+		rk2.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
 	assert 'x_momentum_isentropic' in rk2.output_properties
 	assert units_are_same(
 		rk2.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
 	)
-	assert 'y_momentum_isentropic' in rk2.output_properties
+	assert 'x_velocity_at_u_locations' in rk2.output_properties
 	assert units_are_same(
-		rk2.output_properties['y_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+		rk2.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
 	)
+	assert len(rk2.output_properties) == 3
 
-	_, out_state = rk2(state, dt)
+	out_diagnostics, out_state = rk2(state, dt)
 
-	tendencies, _ = pg(state)
-	su1 = su + 0.5 * dt.total_seconds() * tendencies['x_momentum_isentropic'].values
-	sv1 = sv + 0.5 * dt.total_seconds() * tendencies['y_momentum_isentropic'].values
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s1 = s + 0.5 * dt.total_seconds() * s_tnd
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su1 = su + 0.5 * dt.total_seconds() * su_tnd
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u1 = u + 0.5 * dt.total_seconds() * u_tnd
+
 	raw_state_1 = {
-		'time': state['time'],
+		'time': state['time'] + 0.5*dt,
+		'air_isentropic_density': s1,
 		'x_momentum_isentropic': su1,
-		'y_momentum_isentropic': sv1,
+		'x_velocity_at_u_locations': u1
 	}
-	state_1 = make_state(raw_state_1, grid, units)
-	state_1['air_isentropic_density'] = state['air_isentropic_density']
-	state_1['montgomery_potential'] = state['montgomery_potential']
-
-	tendencies, _ = pg(state_1)
-	su2 = su + dt.total_seconds() * tendencies['x_momentum_isentropic'].values
-	sv2 = sv + dt.total_seconds() * tendencies['y_momentum_isentropic'].values
-
-	assert np.allclose(su2, out_state['x_momentum_isentropic'])
-	assert np.allclose(sv2, out_state['y_momentum_isentropic'])
-
-
-def test_rk3cosmo(isentropic_dry_data):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-
-	backend = gt.mode.NUMPY
-	dtype = np.float32
-
-	dt = timedelta(seconds=20)
-	su = state['x_momentum_isentropic'].values
-	sv = state['y_momentum_isentropic'].values
 	units = {
+		'air_isentropic_density': 'kg m^-2 K^-1',
 		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
-		'y_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
+		'x_velocity_at_u_locations': 'm s^-1',
 	}
+	state_1 = make_state(raw_state_1, cgrid, units)
 
-	pg = ConservativeIsentropicPressureGradient(
-		grid, 2, 'relaxed', backend=backend, dtype=dtype
+	tendencies, _ = tc1(state_1)
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s2 = s + dt.total_seconds() * s_tnd
+	assert np.allclose(s2, out_state['air_isentropic_density'].values)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su2 = su + dt.total_seconds() * su_tnd
+	assert np.allclose(su2, out_state['x_momentum_isentropic'].values)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u2 = u + dt.total_seconds() * u_tnd
+	assert np.allclose(u2, out_state['x_velocity_at_u_locations'].values)
+
+	assert 'fake_variable' in out_diagnostics
+	assert np.allclose(
+		diagnostics['fake_variable'], out_diagnostics['fake_variable']
 	)
 
-	rk3 = RungeKutta3COSMO(pg, grid=grid)
 
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_rk2_hb(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+	hb = domain.horizontal_boundary
+
+	assume(hb.type != 'dirichlet')
+
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+	hb.reference_state = state
+
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
+
+	rk2 = RungeKutta2(tc1, execution_policy='serial', enforce_horizontal_boundary=True)
+
+	assert 'air_isentropic_density' in rk2.output_properties
+	assert units_are_same(
+		rk2.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
+	assert 'x_momentum_isentropic' in rk2.output_properties
+	assert units_are_same(
+		rk2.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+	)
+	assert 'x_velocity_at_u_locations' in rk2.output_properties
+	assert units_are_same(
+		rk2.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
+	)
+	assert len(rk2.output_properties) == 3
+
+	out_diagnostics, out_state = rk2(state, dt)
+
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s1 = s + 0.5 * dt.total_seconds() * s_tnd
+	hb.enforce_field(
+		s1, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+0.5*dt, grid=cgrid
+	)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su1 = su + 0.5 * dt.total_seconds() * su_tnd
+	hb.enforce_field(
+		su1, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+0.5*dt, grid=cgrid
+	)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u1 = u + 0.5 * dt.total_seconds() * u_tnd
+	hb.enforce_field(
+		u1, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+0.5*dt, grid=cgrid
+	)
+
+	raw_state_1 = {
+		'time': state['time'] + 0.5*dt,
+		'air_isentropic_density': s1,
+		'x_momentum_isentropic': su1,
+		'x_velocity_at_u_locations': u1
+	}
+	units = {
+		'air_isentropic_density': 'kg m^-2 K^-1',
+		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
+		'x_velocity_at_u_locations': 'm s^-1',
+	}
+	state_1 = make_state(raw_state_1, cgrid, units)
+
+	tendencies, _ = tc1(state_1)
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s2 = s + dt.total_seconds() * s_tnd
+	hb.enforce_field(
+		s2, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+
+	assert np.allclose(s2, out_state['air_isentropic_density'].values)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su2 = su + dt.total_seconds() * su_tnd
+	hb.enforce_field(
+		su2, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(su2, out_state['x_momentum_isentropic'].values)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u2 = u + dt.total_seconds() * u_tnd
+	hb.enforce_field(
+		u2, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(u2, out_state['x_velocity_at_u_locations'].values)
+
+	assert 'fake_variable' in out_diagnostics
+	assert np.allclose(
+		diagnostics['fake_variable'], out_diagnostics['fake_variable']
+	)
+
+
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_rk3ws(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
+
+	rk3 = RungeKutta3WS(tc1, execution_policy='serial')
+
+	assert 'air_isentropic_density' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
 	assert 'x_momentum_isentropic' in rk3.output_properties
 	assert units_are_same(
 		rk3.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
 	)
-	assert 'y_momentum_isentropic' in rk3.output_properties
+	assert 'x_velocity_at_u_locations' in rk3.output_properties
 	assert units_are_same(
-		rk3.output_properties['y_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+		rk3.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
 	)
+	assert len(rk3.output_properties) == 3
 
-	_, out_state = rk3(state, dt)
+	out_diagnostics, out_state = rk3(state, dt)
 
-	tendencies, _ = pg(state)
-	su1 = su + 1./3. * dt.total_seconds() * tendencies['x_momentum_isentropic'].values
-	sv1 = sv + 1./3. * dt.total_seconds() * tendencies['y_momentum_isentropic'].values
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s1 = s + 1.0/3.0 * dt.total_seconds() * s_tnd
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su1 = su + 1.0/3.0 * dt.total_seconds() * su_tnd
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u1 = u + 1.0/3.0 * dt.total_seconds() * u_tnd
+
 	raw_state_1 = {
-		'time': state['time'],
+		'time': state['time'] + dt/3.0,
+		'air_isentropic_density': s1,
 		'x_momentum_isentropic': su1,
-		'y_momentum_isentropic': sv1,
+		'x_velocity_at_u_locations': u1
 	}
-	state_1 = make_state(raw_state_1, grid, units)
-	state_1['air_isentropic_density'] = state['air_isentropic_density']
-	state_1['montgomery_potential'] = state['montgomery_potential']
-
-	tendencies, _ = pg(state_1)
-	su2 = su + 1./2. * dt.total_seconds() * tendencies['x_momentum_isentropic'].values
-	sv2 = sv + 1./2. * dt.total_seconds() * tendencies['y_momentum_isentropic'].values
-	raw_state_2 = {
-		'time': state['time'],
-		'x_momentum_isentropic': su2,
-		'y_momentum_isentropic': sv2,
-	}
-	state_2 = make_state(raw_state_2, grid, units)
-	state_2['air_isentropic_density'] = state['air_isentropic_density']
-	state_2['montgomery_potential'] = state['montgomery_potential']
-
-	tendencies, _ = pg(state_2)
-	su3 = su + dt.total_seconds() * tendencies['x_momentum_isentropic'].values
-	sv3 = sv + dt.total_seconds() * tendencies['y_momentum_isentropic'].values
-
-	assert np.allclose(su3, out_state['x_momentum_isentropic'])
-	assert np.allclose(sv3, out_state['y_momentum_isentropic'])
-
-
-def test_rk3(isentropic_dry_data):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-
-	backend = gt.mode.NUMPY
-	dtype = np.float32
-
-	dt = timedelta(seconds=20)
-	su = state['x_momentum_isentropic'].values
-	sv = state['y_momentum_isentropic'].values
 	units = {
+		'air_isentropic_density': 'kg m^-2 K^-1',
 		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
-		'y_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
+		'x_velocity_at_u_locations': 'm s^-1',
 	}
+	state_1 = make_state(raw_state_1, cgrid, units)
 
-	pg = ConservativeIsentropicPressureGradient(
-		grid, 2, 'relaxed',	backend=backend, dtype=dtype
+	tendencies, _ = tc1(state_1)
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s2 = s + 0.5 * dt.total_seconds() * s_tnd
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su2 = su + 0.5 * dt.total_seconds() * su_tnd
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u2 = u + 0.5 * dt.total_seconds() * u_tnd
+
+	raw_state_2 = {
+		'time': state['time'] + 0.5*dt,
+		'air_isentropic_density': s2,
+		'x_momentum_isentropic': su2,
+		'x_velocity_at_u_locations': u2
+	}
+	state_2 = make_state(raw_state_2, cgrid, units)
+
+	tendencies, _ = tc1(state_2)
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s3 = s + dt.total_seconds() * s_tnd
+	assert np.allclose(s3, out_state['air_isentropic_density'].values)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su3 = su + dt.total_seconds() * su_tnd
+	assert np.allclose(su3, out_state['x_momentum_isentropic'].values)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u3 = u + dt.total_seconds() * u_tnd
+	assert np.allclose(u3, out_state['x_velocity_at_u_locations'].values)
+
+	assert 'fake_variable' in out_diagnostics
+	assert np.allclose(
+		diagnostics['fake_variable'], out_diagnostics['fake_variable']
 	)
 
-	rk3 = RungeKutta3(pg, grid=grid)
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_rk3ws_hb(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+	hb = domain.horizontal_boundary
+
+	assume(hb.type != 'dirichlet')
+
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+	hb.reference_state = state
+
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
+
+	rk3 = RungeKutta3WS(tc1, execution_policy='serial', enforce_horizontal_boundary=True)
+
+	assert 'air_isentropic_density' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
+	assert 'x_momentum_isentropic' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+	)
+	assert 'x_velocity_at_u_locations' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
+	)
+	assert len(rk3.output_properties) == 3
+
+	out_diagnostics, out_state = rk3(state, dt)
+
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s1 = s + 1.0/3.0 * dt.total_seconds() * s_tnd
+	hb.enforce_field(
+		s1, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+dt/3.0, grid=cgrid
+	)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su1 = su + 1.0/3.0 * dt.total_seconds() * su_tnd
+	hb.enforce_field(
+		su1, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+dt/3.0, grid=cgrid
+	)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u1 = u + 1.0/3.0 * dt.total_seconds() * u_tnd
+	hb.enforce_field(
+		u1, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+dt/3.0, grid=cgrid
+	)
+
+	raw_state_1 = {
+		'time': state['time'] + dt/3.0,
+		'air_isentropic_density': s1,
+		'x_momentum_isentropic': su1,
+		'x_velocity_at_u_locations': u1
+	}
+	units = {
+		'air_isentropic_density': 'kg m^-2 K^-1',
+		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
+		'x_velocity_at_u_locations': 'm s^-1',
+	}
+	state_1 = make_state(raw_state_1, cgrid, units)
+
+	tendencies, _ = tc1(state_1)
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s2 = s + 0.5 * dt.total_seconds() * s_tnd
+	hb.enforce_field(
+		s2, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+0.5*dt, grid=cgrid
+	)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su2 = su + 0.5 * dt.total_seconds() * su_tnd
+	hb.enforce_field(
+		su2, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+0.5*dt, grid=cgrid
+	)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u2 = u + 0.5 * dt.total_seconds() * u_tnd
+	hb.enforce_field(
+		u2, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+0.5*dt, grid=cgrid
+	)
+
+	raw_state_2 = {
+		'time': state['time'] + 0.5*dt,
+		'air_isentropic_density': s2,
+		'x_momentum_isentropic': su2,
+		'x_velocity_at_u_locations': u2
+	}
+	state_2 = make_state(raw_state_2, cgrid, units)
+
+	tendencies, _ = tc1(state_2)
+
+	s_tnd = tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s3 = s + dt.total_seconds() * s_tnd
+	hb.enforce_field(
+		s3, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(s3, out_state['air_isentropic_density'].values)
+
+	su_tnd = tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su3 = su + dt.total_seconds() * su_tnd
+	hb.enforce_field(
+		su3, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(su3, out_state['x_momentum_isentropic'].values)
+
+	u_tnd = tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u3 = u + dt.total_seconds() * u_tnd
+	hb.enforce_field(
+		u3, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(u3, out_state['x_velocity_at_u_locations'].values)
+
+	assert 'fake_variable' in out_diagnostics
+	assert np.allclose(
+		diagnostics['fake_variable'], out_diagnostics['fake_variable']
+	)
+
+
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_rk3(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
+
+	rk3 = RungeKutta3(tc1, execution_policy='serial')
 	a1, a2 = rk3._alpha1, rk3._alpha2
 	b21 = rk3._beta21
 	g0, g1, g2 = rk3._gamma0, rk3._gamma1, rk3._gamma2
 
+	assert 'air_isentropic_density' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
 	assert 'x_momentum_isentropic' in rk3.output_properties
 	assert units_are_same(
 		rk3.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
 	)
-	assert 'y_momentum_isentropic' in rk3.output_properties
+	assert 'x_velocity_at_u_locations' in rk3.output_properties
 	assert units_are_same(
-		rk3.output_properties['y_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+		rk3.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
+	)
+	assert len(rk3.output_properties) == 3
+
+	out_diagnostics, out_state = rk3(state, dt)
+
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	k0_s = dt.total_seconds() * \
+		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s1 = s + a1 * k0_s
+
+	k0_su = dt.total_seconds() * \
+		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su1 = su + a1 * k0_su
+
+	k0_u = dt.total_seconds() * \
+		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u1 = u + a1 * k0_u
+
+	raw_state_1 = {
+		'time': state['time'] + a1 * dt,
+		'air_isentropic_density': s1,
+		'x_momentum_isentropic': su1,
+		'x_velocity_at_u_locations': u1
+	}
+	units = {
+		'air_isentropic_density': 'kg m^-2 K^-1',
+		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
+		'x_velocity_at_u_locations': 'm s^-1',
+	}
+	state_1 = make_state(raw_state_1, cgrid, units)
+
+	tendencies, _ = tc1(state_1)
+
+	k1_s = dt.total_seconds() * \
+		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s2 = s + b21 * k0_s + (a2 - b21) * k1_s
+
+	k1_su = dt.total_seconds() * \
+		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su2 = su + b21 * k0_su + (a2 - b21) * k1_su
+
+	k1_u = dt.total_seconds() * \
+		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u2 = u + b21 * k0_u + (a2 - b21) * k1_u
+
+	raw_state_2 = {
+		'time': state['time'] + a2*dt,
+		'air_isentropic_density': s2,
+		'x_momentum_isentropic': su2,
+		'x_velocity_at_u_locations': u2
+	}
+	state_2 = make_state(raw_state_2, cgrid, units)
+
+	tendencies, _ = tc1(state_2)
+
+	k2_s = dt.total_seconds() * \
+		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s3 = s + g0 * k0_s + g1 * k1_s + g2 * k2_s
+	assert np.allclose(s3, out_state['air_isentropic_density'].values)
+
+	k2_su = dt.total_seconds() * \
+		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
+	su3 = su + g0 * k0_su + g1 * k1_su + g2 * k2_su
+	assert np.allclose(su3, out_state['x_momentum_isentropic'].values)
+
+	k2_u = dt.total_seconds() * \
+		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u3 = u + g0 * k0_u + g1 * k1_u + g2 * k2_u
+	assert np.allclose(u3, out_state['x_velocity_at_u_locations'].values)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_rk3_hb(data, make_fake_tendency_component_1):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	cgrid = domain.numerical_grid
+	hb = domain.horizontal_boundary
+
+	assume(hb.type != 'dirichlet')
+
+	state = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
+	)
+	hb.reference_state = state
+
+	dt = data.draw(utils.st_timedeltas(
+		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)), label="dt"
 	)
 
-	_, out_state = rk3(state, dt)
+	# ========================================
+	# test bed
+	# ========================================
+	tc1 = make_fake_tendency_component_1(domain, 'numerical')
 
-	tendencies, _ = pg(state)
-	k0_su = dt.total_seconds() * tendencies['x_momentum_isentropic'].values
+	rk3 = RungeKutta3(tc1, execution_policy='serial', enforce_horizontal_boundary=True)
+	a1, a2 = rk3._alpha1, rk3._alpha2
+	b21 = rk3._beta21
+	g0, g1, g2 = rk3._gamma0, rk3._gamma1, rk3._gamma2
+
+	assert 'air_isentropic_density' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['air_isentropic_density']['units'], 'kg m^-2 K^-1'
+	)
+	assert 'x_momentum_isentropic' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['x_momentum_isentropic']['units'], 'kg m^-1 K^-1 s^-1'
+	)
+	assert 'x_velocity_at_u_locations' in rk3.output_properties
+	assert units_are_same(
+		rk3.output_properties['x_velocity_at_u_locations']['units'], 'm s^-1'
+	)
+	assert len(rk3.output_properties) == 3
+
+	out_diagnostics, out_state = rk3(state, dt)
+
+	tendencies, diagnostics = tc1(state)
+
+	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
+
+	k0_s = dt.total_seconds() * \
+		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s1 = s + a1 * k0_s
+	hb.enforce_field(
+		s1, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+a1*dt, grid=cgrid
+	)
+
+	k0_su = dt.total_seconds() * \
+		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
 	su1 = su + a1 * k0_su
-	k0_sv = dt.total_seconds() * tendencies['y_momentum_isentropic'].values
-	sv1 = sv + a1 * k0_sv
+	hb.enforce_field(
+		su1, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+a1*dt, grid=cgrid
+	)
+
+	k0_u = dt.total_seconds() * \
+		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u1 = u + a1 * k0_u
+	hb.enforce_field(
+		u1, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+a1*dt, grid=cgrid
+	)
+
 	raw_state_1 = {
-		'time': state['time'],
+		'time': state['time'] + a1 * dt,
+		'air_isentropic_density': s1,
 		'x_momentum_isentropic': su1,
-		'y_momentum_isentropic': sv1,
+		'x_velocity_at_u_locations': u1
 	}
-	state_1 = make_state(raw_state_1, grid, units)
-	state_1['air_isentropic_density'] = state['air_isentropic_density']
-	state_1['montgomery_potential'] = state['montgomery_potential']
+	units = {
+		'air_isentropic_density': 'kg m^-2 K^-1',
+		'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
+		'x_velocity_at_u_locations': 'm s^-1',
+	}
+	state_1 = make_state(raw_state_1, cgrid, units)
 
-	tendencies, _ = pg(state_1)
-	k1_su = dt.total_seconds() * tendencies['x_momentum_isentropic'].values
+	tendencies, _ = tc1(state_1)
+
+	k1_s = dt.total_seconds() * \
+		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s2 = s + b21 * k0_s + (a2 - b21) * k1_s
+	hb.enforce_field(
+		s2, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+a2*dt, grid=cgrid
+	)
+
+	k1_su = dt.total_seconds() * \
+		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
 	su2 = su + b21 * k0_su + (a2 - b21) * k1_su
-	k1_sv = dt.total_seconds() * tendencies['y_momentum_isentropic'].values
-	sv2 = sv + b21 * k0_sv + (a2 - b21) * k1_sv
+	hb.enforce_field(
+		su2, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+a2*dt, grid=cgrid
+	)
+
+	k1_u = dt.total_seconds() * \
+		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u2 = u + b21 * k0_u + (a2 - b21) * k1_u
+	hb.enforce_field(
+		u2, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+a2*dt, grid=cgrid
+	)
+
 	raw_state_2 = {
-		'time': state['time'],
+		'time': state['time'] + a2*dt,
+		'air_isentropic_density': s2,
 		'x_momentum_isentropic': su2,
-		'y_momentum_isentropic': sv2,
+		'x_velocity_at_u_locations': u2
 	}
-	state_2 = make_state(raw_state_2, grid, units)
-	state_2['air_isentropic_density'] = state['air_isentropic_density']
-	state_2['montgomery_potential'] = state['montgomery_potential']
+	state_2 = make_state(raw_state_2, cgrid, units)
 
-	tendencies, _ = pg(state_2)
-	k2_su = dt.total_seconds() * tendencies['x_momentum_isentropic'].values
+	tendencies, _ = tc1(state_2)
+
+	k2_s = dt.total_seconds() * \
+		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values
+	s3 = s + g0 * k0_s + g1 * k1_s + g2 * k2_s
+	hb.enforce_field(
+		s3, field_name='air_isentropic_density', field_units='kg m^-2 K^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(s3, out_state['air_isentropic_density'].values)
+
+	k2_su = dt.total_seconds() * \
+		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values
 	su3 = su + g0 * k0_su + g1 * k1_su + g2 * k2_su
-	k2_sv = dt.total_seconds() * tendencies['y_momentum_isentropic'].values
-	sv3 = sv + g0 * k0_sv + g1 * k1_sv + g2 * k2_sv
+	hb.enforce_field(
+		su3, field_name='x_momentum_isentropic', field_units='kg m^-1 K^-1 s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(su3, out_state['x_momentum_isentropic'].values)
 
-	assert np.allclose(su3, out_state['x_momentum_isentropic'])
-	assert np.allclose(sv3, out_state['y_momentum_isentropic'])
+	k2_u = dt.total_seconds() * \
+		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values
+	u3 = u + g0 * k0_u + g1 * k1_u + g2 * k2_u
+	hb.enforce_field(
+		u3, field_name='x_velocity_at_u_locations', field_units='m s^-1',
+		time=state['time']+dt, grid=cgrid
+	)
+	assert np.allclose(u3, out_state['x_velocity_at_u_locations'].values)
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-
-	#from tasmania.python.utils.storage_utils import load_netcdf_dataset
-	#isentropic_dry_data = load_netcdf_dataset('baseline_datasets/isentropic_dry.nc')
-	#test_forward_euler(isentropic_dry_data)

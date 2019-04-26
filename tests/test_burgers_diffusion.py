@@ -21,33 +21,34 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import \
-	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+	assume, given, HealthCheck, reproduce_failure, seed, settings, strategies as hyp_st
 import pytest
 from sympl import DataArray
 
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conf
 import utils
 import test_horizontal_diffusion as thd
 
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 
-def second_order_validation(grid, smooth_coeff, phi, phi_tnd):
+def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
 	nx, ny = grid.nx, grid.ny
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
 
 	if nx < 3:
 		phi_tnd_assert = smooth_coeff * thd.second_order_diffusion_yz(dy, phi)
-		thd.second_order_assert_yz(phi_tnd, phi_tnd_assert)
+		thd.assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif ny < 3:
 		phi_tnd_assert = smooth_coeff * thd.second_order_diffusion_xz(dx, phi)
-		thd.second_order_assert_xz(phi_tnd, phi_tnd_assert)
+		thd.assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
 		phi_tnd_assert = smooth_coeff * thd.second_order_diffusion_xyz(dx, dy, phi)
-		thd.second_order_assert_xyz(phi_tnd, phi_tnd_assert)
+		thd.assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -59,24 +60,46 @@ def test_second_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(1, 15), yaxis_length=(1, 15), zaxis_length=(1, 1)
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(1, 15),
+			yaxis_length=(1, 15),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
+		label='domain'
 	)
-	assume(not(grid.nx < 3 and grid.ny < 3))
-	state = data.draw(utils.st_burgers_state(grid))
-	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1))
+
+	pgrid = domain.physical_grid
+	cgrid = domain.numerical_grid
+	assume(
+		(pgrid.nx == 1 and pgrid.ny >= 3) or
+		(pgrid.nx >= 3 and pgrid.ny == 1) or
+		(pgrid.nx >= 3 and pgrid.ny >= 3)
+	)
+
+	pstate = data.draw(utils.st_burgers_state(pgrid), label='pgrid')
+	cstate = data.draw(utils.st_burgers_state(cgrid), label='cgrid')
+
+	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1), label='smooth_coeff')
+
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
 	# ========================================
 	# test
 	# ========================================
-	bhd = BurgersHorizontalDiffusion(
-		grid, 'second_order', DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
-		dtype=grid.x.dtype
+	#
+	# physical grid
+	#
+	pbhd = BurgersHorizontalDiffusion(
+		domain, 'physical', 'second_order',
+		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
+		backend=backend, dtype=pgrid.x.dtype
 	)
 
-	tendencies, diagnostics = bhd(state)
+	tendencies, diagnostics = pbhd(pstate)
 
 	assert len(diagnostics) == 0
 
@@ -86,31 +109,60 @@ def test_second_order(data):
 
 	assert tendencies['x_velocity'].attrs['units'] == 'm s^-2'
 	second_order_validation(
-		grid, smooth_coeff, state['x_velocity'].to_units('m s^-1').values,
-		tendencies['x_velocity'].values
+		pgrid, smooth_coeff, pstate['x_velocity'].to_units('m s^-1').values,
+		tendencies['x_velocity'].values, nb
 	)
 
 	assert tendencies['y_velocity'].attrs['units'] == 'm s^-2'
 	second_order_validation(
-		grid, smooth_coeff, state['y_velocity'].to_units('m s^-1').values,
-		tendencies['y_velocity'].values
+		pgrid, smooth_coeff, pstate['y_velocity'].to_units('m s^-1').values,
+		tendencies['y_velocity'].values, nb
+	)
+
+	#
+	# numerical grid
+	#
+	cbhd = BurgersHorizontalDiffusion(
+		domain, 'numerical', 'second_order',
+		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
+		backend=backend, dtype=cgrid.x.dtype
+	)
+
+	tendencies, diagnostics = cbhd(cstate)
+
+	assert len(diagnostics) == 0
+
+	assert 'x_velocity' in tendencies
+	assert 'y_velocity' in tendencies
+	assert len(tendencies) == 2
+
+	assert tendencies['x_velocity'].attrs['units'] == 'm s^-2'
+	second_order_validation(
+		cgrid, smooth_coeff, cstate['x_velocity'].to_units('m s^-1').values,
+		tendencies['x_velocity'].values, nb
+	)
+
+	assert tendencies['y_velocity'].attrs['units'] == 'm s^-2'
+	second_order_validation(
+		cgrid, smooth_coeff, cstate['y_velocity'].to_units('m s^-1').values,
+		tendencies['y_velocity'].values, nb
 	)
 
 
-def fourth_order_validation(grid, smooth_coeff, phi, phi_tnd):
+def fourth_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
 	nx, ny = grid.nx, grid.ny
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
 
 	if nx < 5:
 		phi_tnd_assert = smooth_coeff * thd.fourth_order_diffusion_yz(dy, phi)
-		thd.fourth_order_assert_yz(phi_tnd, phi_tnd_assert)
+		thd.assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif ny < 5:
 		phi_tnd_assert = smooth_coeff * thd.fourth_order_diffusion_xz(dx, phi)
-		thd.fourth_order_assert_xz(phi_tnd, phi_tnd_assert)
+		thd.assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
 		phi_tnd_assert = smooth_coeff * thd.fourth_order_diffusion_xyz(dx, dy, phi)
-		thd.fourth_order_assert_xyz(phi_tnd, phi_tnd_assert)
+		thd.assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -122,24 +174,46 @@ def test_fourth_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(1, 15), yaxis_length=(1, 15), zaxis_length=(1, 1)
+	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(1, 15),
+			yaxis_length=(1, 15),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
+		label='domain'
 	)
-	assume(not(grid.nx < 5 and grid.ny < 5))
-	state = data.draw(utils.st_burgers_state(grid))
-	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1))
+
+	pgrid = domain.physical_grid
+	cgrid = domain.numerical_grid
+	assume(
+		(pgrid.nx == 1 and pgrid.ny >= 5) or
+		(pgrid.nx >= 5 and pgrid.ny == 1) or
+		(pgrid.nx >= 5 and pgrid.ny >= 5)
+	)
+
+	pstate = data.draw(utils.st_burgers_state(pgrid), label='pgrid')
+	cstate = data.draw(utils.st_burgers_state(cgrid), label='cgrid')
+
+	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1), label='smooth_coeff')
+
+	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
 
 	# ========================================
 	# test
 	# ========================================
-	bhd = BurgersHorizontalDiffusion(
-		grid, 'fourth_order', DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
-		dtype=grid.x.dtype
+	#
+	# physical grid
+	#
+	pbhd = BurgersHorizontalDiffusion(
+		domain, 'physical', 'fourth_order',
+		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
+		backend=backend, dtype=pgrid.x.dtype
 	)
 
-	tendencies, diagnostics = bhd(state)
+	tendencies, diagnostics = pbhd(pstate)
 
 	assert len(diagnostics) == 0
 
@@ -149,31 +223,44 @@ def test_fourth_order(data):
 
 	assert tendencies['x_velocity'].attrs['units'] == 'm s^-2'
 	fourth_order_validation(
-		grid, smooth_coeff, state['x_velocity'].to_units('m s^-1').values,
-		tendencies['x_velocity'].values
+		pgrid, smooth_coeff, pstate['x_velocity'].to_units('m s^-1').values,
+		tendencies['x_velocity'].values, nb
 	)
 
 	assert tendencies['y_velocity'].attrs['units'] == 'm s^-2'
 	fourth_order_validation(
-		grid, smooth_coeff, state['y_velocity'].to_units('m s^-1').values,
-		tendencies['y_velocity'].values
+		pgrid, smooth_coeff, pstate['y_velocity'].to_units('m s^-1').values,
+		tendencies['y_velocity'].values, nb
 	)
 
+	#
+	# numerical grid
+	#
+	cbhd = BurgersHorizontalDiffusion(
+		domain, 'numerical', 'fourth_order',
+		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
+		backend=backend, dtype=cgrid.x.dtype
+	)
 
-def third_order_validation(grid, smooth_coeff, phi, phi_tnd):
-	nx, ny = grid.nx, grid.ny
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
+	tendencies, diagnostics = cbhd(cstate)
 
-	if nx < 7:
-		phi_tnd_assert = smooth_coeff * thd.third_order_diffusion_yz(dy, phi)
-		thd.third_order_assert_yz(phi_tnd, phi_tnd_assert)
-	elif ny < 7:
-		phi_tnd_assert = smooth_coeff * thd.third_order_diffusion_xz(dx, phi)
-		thd.third_order_assert_xz(phi_tnd, phi_tnd_assert)
-	else:
-		phi_tnd_assert = smooth_coeff * thd.third_order_diffusion_xyz(dx, dy, phi)
-		thd.third_order_assert_xyz(phi_tnd, phi_tnd_assert)
+	assert len(diagnostics) == 0
+
+	assert 'x_velocity' in tendencies
+	assert 'y_velocity' in tendencies
+	assert len(tendencies) == 2
+
+	assert tendencies['x_velocity'].attrs['units'] == 'm s^-2'
+	fourth_order_validation(
+		cgrid, smooth_coeff, cstate['x_velocity'].to_units('m s^-1').values,
+		tendencies['x_velocity'].values, nb
+	)
+
+	assert tendencies['y_velocity'].attrs['units'] == 'm s^-2'
+	fourth_order_validation(
+		cgrid, smooth_coeff, cstate['y_velocity'].to_units('m s^-1').values,
+		tendencies['y_velocity'].values, nb
+	)
 
 
 if __name__ == '__main__':

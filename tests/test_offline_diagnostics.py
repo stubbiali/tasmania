@@ -20,14 +20,56 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from hypothesis import \
+	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+import numpy as np
 import pytest
+from sympl import DataArray
+
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import utils
 
 from tasmania.python.framework.offline_diagnostics import \
 	FakeComponent, OfflineDiagnosticComponent, RMSD, RRMSD
 
 
-def test_fake_component(isentropic_dry_data):
-	grid, _ = isentropic_dry_data
+units = {
+	'air_density': ('kg m^-3', 'g cm^-3'),
+	'air_isentropic_density': ('kg m^-2 K^-1', 'g km^-2 K^-1'),
+	'air_pressure_on_interface_levels': ('Pa', 'kPa', 'atm'),
+	'air_temperature': ('K', ),
+	'exner_function_on_interface_levels': ('J kg^-1 K^-1', ),
+	'height_on_interface_levels': ('m', 'km'),
+	'montgomery_potential': ('m^2 s^-2', ),
+	'x_momentum_isentropic': ('kg m^-1 K^-1 s^-1', ),
+	'x_velocity_at_u_locations': ('m s^-1', 'km hr^-1'),
+	'y_momentum_isentropic': ('kg m^-1 K^-1 s^-1', ),
+	'y_velocity_at_v_locations': ('m s^-1', 'km hr^-1'),
+}
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def _test_fake_component(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+
+	# ========================================
+	# test bed
+	# ========================================
 	dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 	dims_stgx = (grid.x_at_u_locations.dims[0], grid.y.dims[0], grid.z.dims[0])
 	dims_stgz = (grid.x.dims[0], grid.y.dims[0], grid.z_on_interface_levels.dims[0])
@@ -55,50 +97,131 @@ def test_fake_component(isentropic_dry_data):
 	assert fc.output_properties == properties
 
 
-def test_rmsd(isentropic_dry_data):
-	grid, states = isentropic_dry_data
-	state1, state2 = states[-1], states[0]
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def _test_rmsd(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	state_1 = data.draw(utils.st_isentropic_state_ff(grid, moist=True), label="state_1")
+	state_2 = data.draw(utils.st_isentropic_state_ff(grid, moist=True), label="state_2")
 
-	fields = {
-		'air_isentropic_density': 'kg m^-2 K^-1',
-		'air_pressure_on_interface_levels': 'hPa',
-		'x_velocity_at_u_locations': 'km hr^-1',
-	}
+	nfields = data.draw(hyp_st.integers(min_value=1, max_value=5), label="nfields")
+	fields = {}
+	for _ in range(nfields):
+		field_name = data.draw(utils.st_one_of(units.keys()))
+		field_units = data.draw(utils.st_one_of(units[field_name]))
+		fields[field_name] = field_units
 
-	rmsd = RMSD(grid, fields)
+	xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx-1), label="xmin")
+	xmax = data.draw(hyp_st.integers(min_value=xmin+1, max_value=grid.nx), label="xmax")
+	ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny-1), label="ymin")
+	ymax = data.draw(hyp_st.integers(min_value=ymin+1, max_value=grid.ny), label="ymax")
+	zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz-1), label="zmin")
+	zmax = data.draw(hyp_st.integers(min_value=zmin+1, max_value=grid.nz), label="zmax")
+
+	# ========================================
+	# test bed
+	# ========================================
+	x = slice(xmin, xmax)
+	y = slice(ymin, ymax)
+	z = slice(zmin, zmax)
+
+	rmsd = RMSD(grid, fields, x=x, y=y, z=z)
 	assert isinstance(rmsd, OfflineDiagnosticComponent)
 
-	diagnostics = rmsd(state1, state2)
+	diagnostics = rmsd(state_1, state_2)
 
-	assert 'rmsd_of_air_isentropic_density' in diagnostics
-	assert 'rmsd_of_air_pressure_on_interface_levels' in diagnostics
-	assert 'rmsd_of_x_velocity_at_u_locations' in diagnostics
-	assert len(diagnostics) == 3
+	for field_name, field_units in fields.items():
+		diag_name = 'rmsd_of_' + field_name
+		assert diag_name in diagnostics
+
+		val1 = state_1[field_name][x, y, z].to_units(field_units).values
+		val2 = state_2[field_name][x, y, z].to_units(field_units).values
+		val = np.sqrt(np.sum((val1 - val2)**2) / ((xmax-xmin)*(ymax-ymin)*(zmax-zmin)))
+		diag_val = DataArray(
+			np.array(val)[np.newaxis, np.newaxis, np.newaxis],
+			dims=('scalar', 'scalar', 'scalar'), attrs={'units': field_units}
+		)
+		utils.compare_dataarrays(
+			diagnostics[diag_name], diag_val, compare_coordinate_values=False
+		)
+
+	assert len(diagnostics) == len(fields)
 
 
-def test_rrmsd(isentropic_dry_data):
-	grid, states = isentropic_dry_data
-	state1, state2 = states[-1], states[0]
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_rrmsd(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	state_1 = data.draw(utils.st_isentropic_state_ff(grid, moist=True), label="state_1")
+	state_2 = data.draw(utils.st_isentropic_state_ff(grid, moist=True), label="state_2")
 
-	fields = {
-		'air_isentropic_density': 'kg m^-2 K^-1',
-		'air_pressure_on_interface_levels': 'hPa',
-		'x_velocity_at_u_locations': 'km hr^-1',
-	}
+	nfields = data.draw(hyp_st.integers(min_value=1, max_value=5), label="nfields")
+	fields = {}
+	for _ in range(nfields):
+		field_name = data.draw(utils.st_one_of(units.keys()))
+		field_units = data.draw(utils.st_one_of(units[field_name]))
+		fields[field_name] = field_units
 
-	rrmsd = RRMSD(grid, fields)
+	xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx-1), label="xmin")
+	xmax = data.draw(hyp_st.integers(min_value=xmin+1, max_value=grid.nx), label="xmax")
+	ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny-1), label="ymin")
+	ymax = data.draw(hyp_st.integers(min_value=ymin+1, max_value=grid.ny), label="ymax")
+	zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz-1), label="zmin")
+	zmax = data.draw(hyp_st.integers(min_value=zmin+1, max_value=grid.nz), label="zmax")
+
+	# ========================================
+	# test bed
+	# ========================================
+	x = slice(xmin, xmax)
+	y = slice(ymin, ymax)
+	z = slice(zmin, zmax)
+
+	rrmsd = RRMSD(grid, fields, x=x, y=y, z=z)
 	assert isinstance(rrmsd, OfflineDiagnosticComponent)
 
-	diagnostics = rrmsd(state1, state2)
+	diagnostics = rrmsd(state_1, state_2)
 
-	assert 'rrmsd_of_air_isentropic_density' in diagnostics
-	assert 'rrmsd_of_air_pressure_on_interface_levels' in diagnostics
-	assert 'rrmsd_of_x_velocity_at_u_locations' in diagnostics
-	assert len(diagnostics) == 3
+	for field_name, field_units in fields.items():
+		diag_name = 'rrmsd_of_' + field_name
+		assert diag_name in diagnostics
+
+		val1 = state_1[field_name][x, y, z].to_units(field_units).values
+		val2 = state_2[field_name][x, y, z].to_units(field_units).values
+		val = np.sqrt(np.sum((val1 - val2)**2) / np.sum(val2**2))
+		diag_val = DataArray(
+			np.array(val)[np.newaxis, np.newaxis, np.newaxis],
+			dims=('scalar', 'scalar', 'scalar'), attrs={'units': '1'}
+		)
+		utils.compare_dataarrays(
+			diagnostics[diag_name], diag_val, compare_coordinate_values=False
+		)
+
+	assert len(diagnostics) == len(fields)
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_dry_data
-	#test_fake_component(isentropic_dry_data())
-	#test_rmsd(isentropic_dry_data())

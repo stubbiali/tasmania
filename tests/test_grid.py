@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import conf
 import utils
 
-from tasmania.python.grids.grid import Grid, PhysicalGrid, ComputationalGrid
+from tasmania.python.grids.grid import Grid, PhysicalGrid, NumericalGrid
 from tasmania.python.grids.topography import PhysicalTopography
 
 
@@ -112,7 +112,7 @@ def test_physical_grid(data):
 
 
 @given(hyp_st.data())
-def test_computational_grid(data):
+def test_numerical_grid(data):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -145,20 +145,20 @@ def test_computational_grid(data):
 	pgrid = PhysicalGrid(
 		domain_x, nx, domain_y, ny, domain_z, nz, zi, topo_type, topo_kwargs, dtype
 	)
-	grid = ComputationalGrid(pgrid, hb)
+	grid = NumericalGrid(pgrid, hb)
 
 	utils.compare_dataarrays(
-		hb.get_computational_xaxis(x, dims='c_' + x.dims[0]), grid.grid_xy.x
+		hb.get_numerical_xaxis(x, dims='c_' + x.dims[0]), grid.grid_xy.x
 	)
 	utils.compare_dataarrays(
-		hb.get_computational_xaxis(xu, dims='c_' + xu.dims[0]), grid.grid_xy.x_at_u_locations
+		hb.get_numerical_xaxis(xu, dims='c_' + xu.dims[0]), grid.grid_xy.x_at_u_locations
 	)
 	utils.compare_dataarrays(dx, grid.grid_xy.dx)
 	utils.compare_dataarrays(
-		hb.get_computational_yaxis(y, dims='c_' + y.dims[0]), grid.grid_xy.y
+		hb.get_numerical_yaxis(y, dims='c_' + y.dims[0]), grid.grid_xy.y
 	)
 	utils.compare_dataarrays(
-		hb.get_computational_yaxis(yv, dims='c_' + yv.dims[0]), grid.grid_xy.y_at_v_locations
+		hb.get_numerical_yaxis(yv, dims='c_' + yv.dims[0]), grid.grid_xy.y_at_v_locations
 	)
 	utils.compare_dataarrays(dy, grid.grid_xy.dy)
 	utils.compare_dataarrays(z, grid.z)
