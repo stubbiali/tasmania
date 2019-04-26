@@ -20,8 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import \
 	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+import numpy as np
 import pytest
 
 import os
@@ -90,24 +92,86 @@ def test_domain(data):
 	utils.compare_dataarrays(zhl, grid.z_on_interface_levels)
 	utils.compare_dataarrays(dz, grid.dz)
 
-	grid = domain.computational_grid
+	grid = domain.numerical_grid
 	utils.compare_dataarrays(
-		hb.get_computational_xaxis(x, dims='c_' + x.dims[0]), grid.grid_xy.x
+		hb.get_numerical_xaxis(x, dims='c_' + x.dims[0]),
+		grid.grid_xy.x
 	)
 	utils.compare_dataarrays(
-		hb.get_computational_xaxis(xu, dims='c_' + xu.dims[0]), grid.grid_xy.x_at_u_locations
+		hb.get_numerical_xaxis(xu, dims='c_' + xu.dims[0]),
+		grid.grid_xy.x_at_u_locations
 	)
 	utils.compare_dataarrays(dx, grid.grid_xy.dx)
 	utils.compare_dataarrays(
-		hb.get_computational_yaxis(y, dims='c_' + y.dims[0]), grid.grid_xy.y
+		hb.get_numerical_yaxis(y, dims='c_' + y.dims[0]),
+		grid.grid_xy.y
 	)
 	utils.compare_dataarrays(
-		hb.get_computational_yaxis(yv, dims='c_' + yv.dims[0]), grid.grid_xy.y_at_v_locations
+		hb.get_numerical_yaxis(yv, dims='c_' + yv.dims[0]),
+		grid.grid_xy.y_at_v_locations
 	)
 	utils.compare_dataarrays(dy, grid.grid_xy.dy)
 	utils.compare_dataarrays(z, grid.z)
 	utils.compare_dataarrays(zhl, grid.z_on_interface_levels)
 	utils.compare_dataarrays(dz, grid.dz)
+
+	dmn_hb = domain.horizontal_boundary
+
+	assert hasattr(dmn_hb, 'dmn_enforce_field')
+	assert hasattr(dmn_hb, 'dmn_enforce_raw')
+	assert hasattr(dmn_hb, 'dmn_enforce')
+
+	if hb_type != 'dirichlet':
+		state = data.draw(
+			utils.st_isentropic_state(grid, moist=False, precipitation=False)
+		)
+		state_dmn = deepcopy(state)
+
+		hb.reference_state = state
+		dmn_hb.reference_state = state
+
+		# enforce_field
+		hb.enforce_field(
+			state['air_isentropic_density'].values,
+			field_name='air_isentropic_density',
+			field_units=state['air_isentropic_density'].attrs['units'],
+			time=state['time'], grid=grid
+		)
+		dmn_hb.enforce_field(
+			state_dmn['air_isentropic_density'].values,
+			field_name='air_isentropic_density',
+			field_units=state_dmn['air_isentropic_density'].attrs['units'],
+			time=state_dmn['time']
+		)
+		assert np.allclose(
+			state['air_isentropic_density'], state_dmn['air_isentropic_density']
+		)
+
+		# enforce_raw
+		raw_state = {'time': state['time']}
+		for name in state:
+			if name != 'time':
+				raw_state[name] = state[name].values
+		raw_state_dmn = {'time': state_dmn['time']}
+		for name in state_dmn:
+			if name != 'time':
+				raw_state_dmn[name] = state_dmn[name].values
+		field_properties = {
+			name: {'units': state[name].attrs['units']}
+			for name in state if name != 'time'
+		}
+		hb.enforce_raw(raw_state, field_properties=field_properties, grid=grid)
+		dmn_hb.enforce_raw(raw_state_dmn, field_properties=field_properties)
+		for name in raw_state:
+			if name != 'time':
+				assert np.allclose(raw_state[name], raw_state_dmn[name])
+
+		# enforce
+		hb.enforce(state, grid=grid)
+		dmn_hb.enforce(state_dmn)
+		for name in state:
+			if name != 'time':
+				assert np.allclose(state[name], state_dmn[name])
 
 
 if __name__ == '__main__':

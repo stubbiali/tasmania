@@ -75,23 +75,12 @@ uml:
 tests:
 	@cd $(TEST_DIR) && pytest --mpl --cov=$(SRC_DIR) .
 
-prepare-tests-py34:
-	@cd $(TEST_DIR) && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_contour 			test_contour.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_contourf 			test_contourf.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_plots				test_plots.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_profile 			test_profile.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_quiver 			test_quiver.py && \
-	 pytest --mpl-generate-path=baseline_images/py34/test_timeseries 		test_timeseries.py
-
 prepare-tests-py35:
 	@cd $(TEST_DIR) && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_contour 			test_contour.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_contourf 			test_contourf.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_pacthes			test_patches.py && \
+	 pytest --mpl-generate-path=baseline_images/py35/test_patches			test_patches.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_plot				test_plot.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_plot_composite	test_plot_composite.py && \
 	 pytest --mpl-generate-path=baseline_images/py35/test_profile 			test_profile.py && \
@@ -103,7 +92,7 @@ prepare-tests-py36:
 	 pytest --mpl-generate-path=baseline_images/py36/test_contour 			test_contour.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_contourf 			test_contourf.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_pacthes			test_patches.py && \
+	 pytest --mpl-generate-path=baseline_images/py36/test_patches			test_patches.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_plot				test_plot.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_plot_composite	test_plot_composite.py && \
 	 pytest --mpl-generate-path=baseline_images/py36/test_profile 			test_profile.py && \
@@ -115,7 +104,7 @@ prepare-tests-py37:
 	 pytest --mpl-generate-path=baseline_images/py37/test_contour 			test_contour.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_contourf 			test_contourf.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_pacthes			test_patches.py && \
+	 pytest --mpl-generate-path=baseline_images/py37/test_patches			test_patches.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_plot				test_plot.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_plot_composite	test_plot_composite.py && \
 	 pytest --mpl-generate-path=baseline_images/py37/test_profile 			test_profile.py && \

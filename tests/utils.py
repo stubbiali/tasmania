@@ -24,6 +24,7 @@ from hypothesis import assume, strategies as hyp_st
 from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 from pandas import Timedelta
+from pint import UnitRegistry
 from sympl import DataArray
 from sympl._core.units import clean_units
 
@@ -34,6 +35,12 @@ import conf
 
 import tasmania as taz
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.utils import equal_to
+
+
+mfwv = 'mass_fraction_of_water_vapor_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 default_physical_constants = {
@@ -48,7 +55,10 @@ default_physical_constants = {
 }
 
 
-def compare_dataarrays(da1, da2):
+unit_registry = UnitRegistry()
+
+
+def compare_dataarrays(da1, da2, compare_coordinate_values=True):
 	"""
 	Assert whether two :class:`sympl.DataArray`\s are equal.
 	"""
@@ -64,14 +74,15 @@ def compare_dataarrays(da1, da2):
 	except KeyError:
 		pass
 
-	assert all([
-		np.allclose(da1.coords[key].values, da2.coords[key].values)
-		for key in da1.coords
-	])
+	if compare_coordinate_values:
+		assert all([
+			np.allclose(da1.coords[key].values, da2.coords[key].values)
+			for key in da1.coords
+		])
 
-	assert da1.attrs['units'] == da2.attrs['units']
+	assert unit_registry(da1.attrs['units']) == unit_registry(da2.attrs['units'])
 
-	assert np.allclose(da1.values, da2.values)
+	assert np.allclose(da1.values, da2.values, equal_nan=True)
 
 
 def get_float_width(dtype):
@@ -226,7 +237,7 @@ def st_interval(draw, *, axis_name='x'):
 			max_value=axis_properties['units_to_range'][units][1],
 		)
 	)
-	assume(el0 != el1)
+	assume(not equal_to(el0, el1))
 
 	return get_interval(
 		el0, el1,
@@ -412,19 +423,19 @@ def st_physical_grid(
 	"""
 	Strategy drawing a :class:`tasmania.PhysicalGrid` object.
 	"""
-	domain_x = draw(st_interval(axis_name=xaxis_name))
 	nx = draw(
 		st_length(axis_name=xaxis_name) if xaxis_length is None else
 		st_length(axis_name=xaxis_name, min_value=xaxis_length[0], max_value=xaxis_length[1])
 	)
-
-	domain_y = draw(st_interval(axis_name=yaxis_name))
 	ny = draw(
 		st_length(axis_name=yaxis_name) if yaxis_length is None else
 		st_length(axis_name=yaxis_name, min_value=yaxis_length[0], max_value=yaxis_length[1])
 	)
 
 	assume(not(nx == 1 and ny == 1))
+
+	domain_x = draw(st_interval(axis_name=xaxis_name))
+	domain_y = draw(st_interval(axis_name=yaxis_name))
 
 	domain_z = draw(st_interval(axis_name=zaxis_name))
 	nz = draw(
@@ -485,25 +496,33 @@ def st_horizontal_boundary_kwargs(draw, hb_type, nx, ny, nb):
 				hyp_st.integers(min_value=nb, max_value=min(8, min(int(nx/2), int(ny/2))))
 			)
 		hb_kwargs['nr'] = nr
+	elif hb_type == 'dirichlet':
+		init_time = draw(hyp_st.datetimes())
+		raw_eps = draw(st_floats(min_value=-1e3, max_value=1e3))
+		eps = DataArray(raw_eps, attrs={'units': 'm^2 s^-1'})
+
+		from tasmania.python.burgers.state import ZhaoSolutionFactory
+
+		hb_kwargs['core'] = ZhaoSolutionFactory(init_time, eps)
 
 	return hb_kwargs
 
 
 @hyp_st.composite
-def st_horizontal_boundary(draw, nx, ny):
+def st_horizontal_boundary(draw, nx, ny, nb=None):
 	"""
 	Strategy drawing an object handling the lateral boundary conditions.
 	"""
 	hb_type = draw(st_horizontal_boundary_type())
-	nb = draw(st_horizontal_boundary_layers(nx, ny))
+	nb = nb if nb is not None else draw(st_horizontal_boundary_layers(nx, ny))
 	hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
 	return taz.HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
 
 @hyp_st.composite
 def st_domain(
-	draw, xaxis_name='x', xaxis_length=None,
-	yaxis_name='y', yaxis_length=None, zaxis_name='z', zaxis_length=None
+	draw, xaxis_name='x', xaxis_length=None, yaxis_name='y', yaxis_length=None,
+	zaxis_name='z', zaxis_length=None, nb=None
 ):
 	"""
 	Strategy drawing a :class:`tasmania.Domain` object.
@@ -529,7 +548,11 @@ def st_domain(
 	)
 
 	hb_type = draw(st_horizontal_boundary_type())
-	nb = draw(st_horizontal_boundary_layers(nx, ny))
+	nb = nb if nb is not None else draw(st_horizontal_boundary_layers(nx, ny))
+	if nx > 1:
+		assume(nb <= nx/2)
+	if ny > 1:
+		assume(nb <= ny/2)
 	hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
 
 	topo_kwargs = draw(st_topography_kwargs(domain_x, domain_y))
@@ -662,6 +685,7 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 	return_dict['air_pressure_on_interface_levels'] = taz.make_dataarray_3d(
 		p, grid, 'Pa', name='air_pressure_on_interface_levels'
 	)
+	p[np.where(p <= 0)] = 1.0
 
 	# exner function
 	exn = cp * (p / pref) ** (Rd / cp)
@@ -677,7 +701,7 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 	for k in range(nz-1, 0, -1):
 		mtg[:, :, k-1] = mtg[:, :, k] + dz * exn[:, :, k]
 	return_dict['montgomery_potential'] = taz.make_dataarray_3d(
-		mtg, grid, 'K kg^-1', name='montgomery_potential'
+		mtg, grid, 'm^2 s^-2', name='montgomery_potential'
 	)
 
 	# height
@@ -751,6 +775,300 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 						grid, 'isentropic_state', 'accumulated_precipitation', (nx, ny, 1)
 					)
 				)
+
+	return return_dict
+
+
+@hyp_st.composite
+def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=False):
+	"""
+	Strategy drawing a valid isentropic model state over `grid`.
+	"""
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	dz = grid.dz.to_units('K').values.item()
+	dtype = grid.grid_xy.x.dtype
+
+	return_dict = {}
+
+	# time
+	if time is None:
+		time = draw(hyp_st.datetimes())
+	return_dict['time'] = time
+
+	field = draw(
+		st_arrays(
+			grid.x.dtype, (nx+1, ny+1, nz+1),
+			elements=st_floats(min_value=-1000, max_value=1000),
+			fill=hyp_st.nothing(),
+		)
+	)
+
+	# air isentropic density
+	s = field[:-1, :-1, :-1]
+	s[s <= 0.0] = 1.0
+	units = draw(st_one_of(conf.isentropic_state['air_isentropic_density'].keys()))
+	return_dict['air_isentropic_density'] = taz.make_dataarray_3d(
+		s, grid, units, name='air_isentropic_density'
+	)
+
+	# x-velocity
+	u = field[:, :-1, :-1]
+	units = draw(st_one_of(conf.isentropic_state['x_velocity_at_u_locations'].keys()))
+	return_dict['x_velocity_at_u_locations'] = taz.make_dataarray_3d(
+		u, grid, units, name='x_velocity_at_u_locations'
+	)
+
+	# x-momentum
+	s = return_dict['air_isentropic_density']
+	u = return_dict['x_velocity_at_u_locations']
+	s_units = s.attrs['units']
+	u_units = u.attrs['units']
+	su_units = clean_units(s_units + u_units)
+	su_raw = s.to_units('kg m^-2 K^-1').values * \
+		0.5 * (
+			u.to_units('m s^-1').values[:-1, :, :] + u.to_units('m s^-1').values[1:, :, :]
+		)
+	return_dict['x_momentum_isentropic'] = taz.make_dataarray_3d(
+		su_raw, grid, 'kg m^-1 K^-1 s^-1', name='x_momentum_isentropic'
+	).to_units(su_units)
+
+	# y-velocity
+	v = field[:-1, :, :-1]
+	units = draw(st_one_of(conf.isentropic_state['y_velocity_at_v_locations'].keys()))
+	return_dict['y_velocity_at_v_locations'] = taz.make_dataarray_3d(
+		v, grid, units, name='y_velocity_at_v_locations'
+	)
+
+	# y-momentum
+	v = return_dict['y_velocity_at_v_locations']
+	v_units = v.attrs['units']
+	sv_units = clean_units(s_units + v_units)
+	sv_raw = s.to_units('kg m^-2 K^-1').values * \
+		0.5 * (
+			v.to_units('m s^-1').values[:, :-1, :] + v.to_units('m s^-1').values[:, 1:, :]
+		)
+	return_dict['y_momentum_isentropic'] = taz.make_dataarray_3d(
+		sv_raw, grid, 'kg m^-1 K^-1 s^-1', name='y_momentum_isentropic'
+	).to_units(sv_units)
+
+	# air pressure
+	p = field[:-1, :-1, :]
+	p[p <= 0.0] = 1.0
+	return_dict['air_pressure_on_interface_levels'] = taz.make_dataarray_3d(
+		p, grid, 'Pa', name='air_pressure_on_interface_levels'
+	)
+
+	# exner function
+	exn = field[1:, :-1, :]
+	exn[exn <= 0.0] = 1.0
+	return_dict['exner_function_on_interface_levels'] = taz.make_dataarray_3d(
+		exn, grid, 'J kg^-1 K^-1', name='exner_function_on_interface_levels'
+	)
+
+	# montgomery potential
+	mtg = field[1:, :-1, :-1]
+	mtg[mtg <= 0.0] = 1.0
+	return_dict['montgomery_potential'] = taz.make_dataarray_3d(
+		mtg, grid, 'm^2 s^-2', name='montgomery_potential'
+	)
+
+	# height
+	h = field[:-1, 1:, :]
+	h[h <= 0.0] = 1.0
+	return_dict['height_on_interface_levels'] = taz.make_dataarray_3d(
+		h, grid, 'm', name='height_on_interface_levels'
+	)
+
+	if moist:
+		# air density
+		rho = field[:-1, 1:, :-1]
+		rho[rho <= 0.0] = 1.0
+		return_dict['air_density'] = taz.make_dataarray_3d(
+			rho, grid, 'kg m^-3', name='air_density'
+		)
+
+		# air temperature
+		t = field[1:, 1:, :-1]
+		t[t <= 0.0] = 1.0
+		return_dict['air_temperature'] = taz.make_dataarray_3d(
+			t, grid, 'K', name='air_temperature'
+		)
+
+		# mass fraction of water vapor
+		q = field[:-1, :-1, 1:]
+		q[q <= 0.0] = 1.0
+		units = draw(st_one_of(conf.isentropic_state[mfwv].keys()))
+		return_dict[mfwv] = taz.make_dataarray_3d(q, grid, units, name=mfwv)
+
+		# mass fraction of cloud liquid water
+		q = field[1:, :-1, 1:]
+		q[q <= 0.0] = 1.0
+		units = draw(st_one_of(conf.isentropic_state[mfcw].keys()))
+		return_dict[mfcw] = taz.make_dataarray_3d(q, grid, units, name=mfcw)
+
+		# mass fraction of precipitation water
+		q = field[:-1, 1:, 1:]
+		q[q <= 0.0] = 1.0
+		units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
+		return_dict[mfpw] = taz.make_dataarray_3d(q, grid, units, name=mfpw)
+
+		if precipitation:
+			# precipitation
+			pp = field[:-1, :-1, :1]
+			pp[pp <= 0.0] = 1.0
+			units = draw(st_one_of(conf.isentropic_state['precipitation'].keys()))
+			return_dict['precipitation'] = taz.make_dataarray_3d(
+				pp, grid, units, name='precipitation'
+			)
+
+			# accumulated precipitation
+			app = field[:-1, :-1, 1:2]
+			app[app <= 0.0] = 1.0
+			units = draw(st_one_of(conf.isentropic_state['accumulated_precipitation'].keys()))
+			return_dict['accumulated_precipitation'] = taz.make_dataarray_3d(
+				app, grid, units, name='accumulated_precipitation'
+			)
+
+	return return_dict
+
+
+@hyp_st.composite
+def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=False):
+	"""
+	Strategy drawing a valid isentropic model state over `grid`.
+	"""
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	dz = grid.dz.to_units('K').values.item()
+	dtype = grid.grid_xy.x.dtype
+
+	return_dict = {}
+
+	# time
+	if time is None:
+		time = draw(hyp_st.datetimes())
+	return_dict['time'] = time
+
+	field = draw(
+		st_arrays(
+			grid.x.dtype, (nx+1, ny+1, nz+1),
+			elements=st_floats(min_value=-1000, max_value=1000),
+			fill=hyp_st.nothing(),
+		)
+	)
+
+	# air isentropic density
+	s = field[:-1, :-1, :-1]
+	units = draw(st_one_of(conf.isentropic_state['air_isentropic_density'].keys()))
+	return_dict['air_isentropic_density'] = taz.make_dataarray_3d(
+		s, grid, units, name='air_isentropic_density'
+	)
+
+	# x-velocity
+	u = field[:, :-1, :-1]
+	units = draw(st_one_of(conf.isentropic_state['x_velocity_at_u_locations'].keys()))
+	return_dict['x_velocity_at_u_locations'] = taz.make_dataarray_3d(
+		u, grid, units, name='x_velocity_at_u_locations'
+	)
+
+	# x-momentum
+	s = return_dict['air_isentropic_density']
+	u = return_dict['x_velocity_at_u_locations']
+	s_units = s.attrs['units']
+	u_units = u.attrs['units']
+	su_units = clean_units(s_units + u_units)
+	su_raw = s.to_units('kg m^-2 K^-1').values * \
+		0.5 * (
+			u.to_units('m s^-1').values[:-1, :, :] + u.to_units('m s^-1').values[1:, :, :]
+		)
+	return_dict['x_momentum_isentropic'] = taz.make_dataarray_3d(
+		su_raw, grid, 'kg m^-1 K^-1 s^-1', name='x_momentum_isentropic'
+	).to_units(su_units)
+
+	# y-velocity
+	v = field[:-1, :, :-1]
+	units = draw(st_one_of(conf.isentropic_state['y_velocity_at_v_locations'].keys()))
+	return_dict['y_velocity_at_v_locations'] = taz.make_dataarray_3d(
+		v, grid, units, name='y_velocity_at_v_locations'
+	)
+
+	# y-momentum
+	v = return_dict['y_velocity_at_v_locations']
+	v_units = v.attrs['units']
+	sv_units = clean_units(s_units + v_units)
+	sv_raw = s.to_units('kg m^-2 K^-1').values * \
+		0.5 * (
+			v.to_units('m s^-1').values[:, :-1, :] + v.to_units('m s^-1').values[:, 1:, :]
+		)
+	return_dict['y_momentum_isentropic'] = taz.make_dataarray_3d(
+		sv_raw, grid, 'kg m^-1 K^-1 s^-1', name='y_momentum_isentropic'
+	).to_units(sv_units)
+
+	# air pressure
+	p = field[:-1, :-1, :]
+	return_dict['air_pressure_on_interface_levels'] = taz.make_dataarray_3d(
+		p, grid, 'Pa', name='air_pressure_on_interface_levels'
+	)
+
+	# exner function
+	exn = field[1:, :-1, :]
+	return_dict['exner_function_on_interface_levels'] = taz.make_dataarray_3d(
+		exn, grid, 'J kg^-1 K^-1', name='exner_function_on_interface_levels'
+	)
+
+	# montgomery potential
+	mtg = field[1:, :-1, :-1]
+	return_dict['montgomery_potential'] = taz.make_dataarray_3d(
+		mtg, grid, 'm^2 s^-2', name='montgomery_potential'
+	)
+
+	# height
+	h = field[:-1, 1:, :]
+	return_dict['height_on_interface_levels'] = taz.make_dataarray_3d(
+		h, grid, 'm', name='height_on_interface_levels'
+	)
+
+	if moist:
+		# air density
+		rho = field[:-1, 1:, :-1]
+		return_dict['air_density'] = taz.make_dataarray_3d(
+			rho, grid, 'kg m^-3', name='air_density'
+		)
+
+		# air temperature
+		t = field[1:, 1:, :-1]
+		return_dict['air_temperature'] = taz.make_dataarray_3d(
+			t, grid, 'K', name='air_temperature'
+		)
+
+		# mass fraction of water vapor
+		q = field[:-1, :-1, 1:]
+		units = draw(st_one_of(conf.isentropic_state[mfwv].keys()))
+		return_dict[mfwv] = taz.make_dataarray_3d(q, grid, units, name=mfwv)
+
+		# mass fraction of cloud liquid water
+		q = field[1:, :-1, 1:]
+		units = draw(st_one_of(conf.isentropic_state[mfcw].keys()))
+		return_dict[mfcw] = taz.make_dataarray_3d(q, grid, units, name=mfcw)
+
+		# mass fraction of precipitation water
+		q = field[:-1, 1:, 1:]
+		units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
+		return_dict[mfpw] = taz.make_dataarray_3d(q, grid, units, name=mfpw)
+
+		if precipitation:
+			# precipitation
+			pp = field[:-1, :-1, :1]
+			units = draw(st_one_of(conf.isentropic_state['precipitation'].keys()))
+			return_dict['precipitation'] = taz.make_dataarray_3d(
+				pp, grid, units, name='precipitation'
+			)
+
+			# accumulated precipitation
+			app = field[:-1, :-1, 1:2]
+			units = draw(st_one_of(conf.isentropic_state['accumulated_precipitation'].keys()))
+			return_dict['accumulated_precipitation'] = taz.make_dataarray_3d(
+				app, grid, units, name='accumulated_precipitation'
+			)
 
 	return return_dict
 

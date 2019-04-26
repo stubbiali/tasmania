@@ -32,9 +32,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import utils
 
-from tasmania.python.grids.horizontal_grid import ComputationalHorizontalGrid
+from tasmania.python.grids.horizontal_grid import NumericalHorizontalGrid
 from tasmania.python.grids.topography import \
-	Topography, PhysicalTopography, ComputationalTopography
+	Topography, PhysicalTopography, NumericalTopography
 
 
 @given(hyp_st.data())
@@ -150,13 +150,13 @@ def test_physical_topography(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_computational_topography(data):
+def test_numerical_topography(data):
 	# ========================================
 	# random data generation
 	# ========================================
 	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
 	hb = data.draw(utils.st_horizontal_boundary(pgrid.nx, pgrid.ny), label='hb')
-	cgrid = ComputationalHorizontalGrid(pgrid, hb)
+	cgrid = NumericalHorizontalGrid(pgrid, hb)
 	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
 
 	# ========================================
@@ -164,17 +164,17 @@ def test_computational_topography(data):
 	# ========================================
 	topo_type = kwargs.pop('type')
 	ptopo = PhysicalTopography(pgrid, topo_type, **kwargs)
-	ctopo = ComputationalTopography(cgrid, ptopo, hb)
+	ctopo = NumericalTopography(cgrid, ptopo, hb)
 
 	assert ctopo.type == topo_type
 
 	assert np.allclose(
 		ctopo.profile.values,
-		hb.get_computational_field(ptopo.profile.values)
+		hb.get_numerical_field(ptopo.profile.values)
 	)
 	assert np.allclose(
 		ctopo.steady_profile.values,
-		hb.get_computational_field(ptopo.steady_profile.values)
+		hb.get_numerical_field(ptopo.steady_profile.values)
 	)
 
 	from tasmania.python.grids._horizontal_boundary import Relaxed

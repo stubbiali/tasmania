@@ -29,10 +29,23 @@ import pytest
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conf
 import utils
 
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import \
 	HorizontalHyperDiffusion as HHD
+
+
+def assert_xyz(phi_tnd, phi_tnd_assert, nb):
+	assert np.allclose(phi_tnd_assert[nb:-nb, nb:-nb, :], phi_tnd[nb:-nb, nb:-nb, :])
+
+
+def assert_xz(phi_tnd, phi_tnd_assert, nb):
+	assert np.allclose(phi_tnd_assert[nb:-nb, :, :], phi_tnd[nb:-nb, :, :])
+
+
+def assert_yz(phi_tnd, phi_tnd_assert, nb):
+	assert np.allclose(phi_tnd_assert[:, nb:-nb, :], phi_tnd[:, nb:-nb, :])
 
 
 def laplacian_x(dx, phi):
@@ -72,44 +85,36 @@ def first_order_diffusion_yz(dy, phi):
 	return lap
 
 
-def first_order_assert_xyz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[1:-1, 1:-1, :], phi_tnd[1:-1, 1:-1, :])
-
-
-def first_order_assert_xz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[1:-1, :, :], phi_tnd[1:-1, :, :])
-
-
-def first_order_assert_yz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[:, 1:-1, :], phi_tnd[:, 1:-1, :])
-
-
-def first_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth):
+def first_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend):
 	phi = phi_rnd[:ni, :nj, :nk]
 	phi_tnd = np.zeros_like(phi)
 
+	dx = grid.dx.values.item()
+	dy = grid.dy.values.item()
+
 	hhd = HHD.factory(
-		'first_order', (ni, nj, nk), grid, diffusion_depth, 0.5, 1.0,
-		xaxis_units='m', yaxis_units='m', dtype=phi.dtype
+		'first_order', (ni, nj, nk), dx, dy, 0.5, 1.0, diffusion_depth,
+		nb=nb, backend=backend, dtype=phi.dtype
 	)
 	hhd(phi, phi_tnd)
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
-
 	if ni < 3:
 		phi_tnd_assert = hhd._gamma * first_order_diffusion_yz(dy, phi)
-		first_order_assert_yz(phi_tnd, phi_tnd_assert)
+		assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif nj < 3:
 		phi_tnd_assert = hhd._gamma * first_order_diffusion_xz(dx, phi)
-		first_order_assert_xz(phi_tnd, phi_tnd_assert)
+		assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
 		phi_tnd_assert = hhd._gamma * first_order_diffusion_xyz(dx, dy, phi)
-		first_order_assert_xyz(phi_tnd, phi_tnd_assert)
+		assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
 	deadline=None
 )
 @given(hyp_st.data())
@@ -117,33 +122,69 @@ def test_first_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(1, 15), yaxis_length=(1, 15), zaxis_length=(1, 15)
-		), label='grid'
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(1, 30),
+			yaxis_length=(1, 30),
+			zaxis_length=(1, 30),
+			nb=nb
+		),
+		label='grid'
 	)
-	assume(not(grid.nx < 3 and grid.ny < 3))
-	phi_rnd = data.draw(
+
+	pgrid = domain.physical_grid
+	cgrid = domain.numerical_grid
+	assume(
+		(pgrid.nx == 1 and pgrid.ny >= 3) or
+		(pgrid.nx >= 3 and pgrid.ny == 1) or
+		(pgrid.nx >= 3 and pgrid.ny >= 3)
+	)
+
+	pphi_rnd = data.draw(
 		st_arrays(
-			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
+			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
 			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
-		)
+		),
+		label='pphi_rnd'
 	)
-	depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+	cphi_rnd = data.draw(
+		st_arrays(
+			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
+			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			fill=hyp_st.nothing(),
+		),
+		label='cphi_rnd'
+	)
+
+	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
+
+	backend = data.draw(utils.st_one_of(conf.backend))
 
 	# ========================================
 	# test
 	# ========================================
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	first_order_validation(phi_rnd, nx  , ny  , nz  , grid, depth)
-	first_order_validation(phi_rnd, nx+1, ny  , nz  , grid, depth)
-	first_order_validation(phi_rnd, nx  , ny+1, nz  , grid, depth)
-	first_order_validation(phi_rnd, nx  , ny  , nz+1, grid, depth)
-	first_order_validation(phi_rnd, nx+1, ny+1, nz  , grid, depth)
-	first_order_validation(phi_rnd, nx+1, ny  , nz+1, grid, depth)
-	first_order_validation(phi_rnd, nx  , ny+1, nz+1, grid, depth)
-	first_order_validation(phi_rnd, nx+1, ny+1, nz+1, grid, depth)
+	nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
+	first_order_validation(pphi_rnd, nx  , ny  , nz  , pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx+1, ny  , nz  , pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx  , ny+1, nz  , pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx  , ny  , nz+1, pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx+1, ny+1, nz  , pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx+1, ny  , nz+1, pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx  , ny+1, nz+1, pgrid, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx+1, ny+1, nz+1, pgrid, depth, nb, backend)
+
+	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
+	first_order_validation(cphi_rnd, nx  , ny  , nz  , cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx+1, ny  , nz  , cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx  , ny+1, nz  , cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx  , ny  , nz+1, cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx+1, ny+1, nz  , cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx+1, ny  , nz+1, cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx  , ny+1, nz+1, cgrid, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx+1, ny+1, nz+1, cgrid, depth, nb, backend)
 
 
 def second_order_diffusion_xyz(dx, dy, phi):
@@ -164,44 +205,36 @@ def second_order_diffusion_yz(dy, phi):
 	return lap1
 
 
-def second_order_assert_xyz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[2:-2, 2:-2, :], phi_tnd[2:-2, 2:-2, :])
-
-
-def second_order_assert_xz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[2:-2, :, :], phi_tnd[2:-2, :, :])
-
-
-def second_order_assert_yz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[:, 2:-2, :], phi_tnd[:, 2:-2, :])
-
-
-def second_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth):
+def second_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend):
 	phi = phi_rnd[:ni, :nj, :nk]
 	phi_tnd = np.zeros_like(phi)
 
+	dx = grid.dx.values.item()
+	dy = grid.dy.values.item()
+
 	hhd = HHD.factory(
-		'second_order', (ni, nj, nk), grid, diffusion_depth, 0.5, 1.0,
-		xaxis_units='m', yaxis_units='m', dtype=phi.dtype
+		'second_order', (ni, nj, nk), dx, dy, 0.5, 1.0, diffusion_depth,
+		nb=nb, backend=backend, dtype=phi.dtype
 	)
 	hhd(phi, phi_tnd)
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
-
 	if ni < 5:
 		phi_tnd_assert = hhd._gamma * second_order_diffusion_yz(dy, phi)
-		second_order_assert_yz(phi_tnd, phi_tnd_assert)
+		assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif nj < 5:
 		phi_tnd_assert = hhd._gamma * second_order_diffusion_xz(dx, phi)
-		second_order_assert_xz(phi_tnd, phi_tnd_assert)
+		assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
 		phi_tnd_assert = hhd._gamma * second_order_diffusion_xyz(dx, dy, phi)
-		second_order_assert_xyz(phi_tnd, phi_tnd_assert)
+		assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
 	deadline=None
 )
 @given(hyp_st.data())
@@ -209,33 +242,69 @@ def test_second_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(1, 15), yaxis_length=(1, 15), zaxis_length=(1, 15)
-		)
+	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(1, 30),
+			yaxis_length=(1, 30),
+			zaxis_length=(1, 30),
+			nb=nb
+		),
+		label='grid'
 	)
-	assume(not(grid.nx < 5 and grid.ny < 5))
-	phi_rnd = data.draw(
+
+	pgrid = domain.physical_grid
+	cgrid = domain.numerical_grid
+	assume(
+		(pgrid.nx == 1 and pgrid.ny >= 5) or
+		(pgrid.nx >= 5 and pgrid.ny == 1) or
+		(pgrid.nx >= 5 and pgrid.ny >= 5)
+	)
+
+	pphi_rnd = data.draw(
 		st_arrays(
-			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
+			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
 			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
-		)
+		),
+		label='pphi_rnd'
 	)
-	depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+	cphi_rnd = data.draw(
+		st_arrays(
+			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
+			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			fill=hyp_st.nothing(),
+		),
+		label='cphi_rnd'
+	)
+
+	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
+
+	backend = data.draw(utils.st_one_of(conf.backend))
 
 	# ========================================
 	# test
 	# ========================================
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	second_order_validation(phi_rnd, nx  , ny  , nz  , grid, depth)
-	second_order_validation(phi_rnd, nx+1, ny  , nz  , grid, depth)
-	second_order_validation(phi_rnd, nx  , ny+1, nz  , grid, depth)
-	second_order_validation(phi_rnd, nx  , ny  , nz+1, grid, depth)
-	second_order_validation(phi_rnd, nx+1, ny+1, nz  , grid, depth)
-	second_order_validation(phi_rnd, nx+1, ny  , nz+1, grid, depth)
-	second_order_validation(phi_rnd, nx  , ny+1, nz+1, grid, depth)
-	second_order_validation(phi_rnd, nx+1, ny+1, nz+1, grid, depth)
+	nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
+	second_order_validation(pphi_rnd, nx  , ny  , nz  , pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx+1, ny  , nz  , pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx  , ny+1, nz  , pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx  , ny  , nz+1, pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx+1, ny+1, nz  , pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx+1, ny  , nz+1, pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx  , ny+1, nz+1, pgrid, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx+1, ny+1, nz+1, pgrid, depth, nb, backend)
+
+	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
+	second_order_validation(cphi_rnd, nx  , ny  , nz  , cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx+1, ny  , nz  , cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx  , ny+1, nz  , cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx  , ny  , nz+1, cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx+1, ny+1, nz  , cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx+1, ny  , nz+1, cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx  , ny+1, nz+1, cgrid, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx+1, ny+1, nz+1, cgrid, depth, nb, backend)
 
 
 def third_order_diffusion_xyz(dx, dy, phi):
@@ -259,44 +328,36 @@ def third_order_diffusion_yz(dy, phi):
 	return lap2
 
 
-def third_order_assert_xyz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[3:-3, 3:-3, :], phi_tnd[3:-3, 3:-3, :])
-
-
-def third_order_assert_xz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[3:-3, :, :], phi_tnd[3:-3, :, :])
-
-
-def third_order_assert_yz(phi_tnd, phi_tnd_assert):
-	assert np.allclose(phi_tnd_assert[:, 3:-3, :], phi_tnd[:, 3:-3, :])
-
-
-def third_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth):
+def third_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend):
 	phi = phi_rnd[:ni, :nj, :nk]
 	phi_tnd = np.zeros_like(phi)
 
+	dx = grid.dx.values.item()
+	dy = grid.dy.values.item()
+
 	hhd = HHD.factory(
-		'third_order', (ni, nj, nk), grid, diffusion_depth, 0.5, 1.0,
-		xaxis_units='m', yaxis_units='m', dtype=phi.dtype
+		'third_order', (ni, nj, nk), dx, dy, 0.5, 1.0, diffusion_depth,
+		nb=nb, backend=backend, dtype=phi.dtype
 	)
 	hhd(phi, phi_tnd)
 
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
-
 	if ni < 7:
 		phi_tnd_assert = hhd._gamma * third_order_diffusion_yz(dy, phi)
-		third_order_assert_yz(phi_tnd, phi_tnd_assert)
+		assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif nj < 7:
 		phi_tnd_assert = hhd._gamma * third_order_diffusion_xz(dx, phi)
-		third_order_assert_xz(phi_tnd, phi_tnd_assert)
+		assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
 		phi_tnd_assert = hhd._gamma * third_order_diffusion_xyz(dx, dy, phi)
-		third_order_assert_xyz(phi_tnd, phi_tnd_assert)
+		assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
 	deadline=None
 )
 @given(hyp_st.data())
@@ -304,35 +365,70 @@ def test_third_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(1, 10)
-		)
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, taz_conf.nb)))
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(1, 30),
+			yaxis_length=(1, 30),
+			zaxis_length=(1, 30),
+			nb=nb
+		),
+		label='grid'
 	)
-	assume(not(grid.nx < 7 and grid.ny < 7))
-	phi_rnd = data.draw(
+
+	pgrid = domain.physical_grid
+	cgrid = domain.numerical_grid
+	assume(
+		(pgrid.nx == 1 and pgrid.ny >= 7) or
+		(pgrid.nx >= 7 and pgrid.ny == 1) or
+		(pgrid.nx >= 7 and pgrid.ny >= 7)
+	)
+
+	pphi_rnd = data.draw(
 		st_arrays(
-			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
+			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
 			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
-		)
+		),
+		label='pphi_rnd'
 	)
-	depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+	cphi_rnd = data.draw(
+		st_arrays(
+			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
+			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			fill=hyp_st.nothing(),
+		),
+		label='cphi_rnd'
+	)
+
+	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
+
+	backend = data.draw(utils.st_one_of(conf.backend))
 
 	# ========================================
 	# test
 	# ========================================
-	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	third_order_validation(phi_rnd, nx  , ny  , nz  , grid, depth)
-	third_order_validation(phi_rnd, nx+1, ny  , nz  , grid, depth)
-	third_order_validation(phi_rnd, nx  , ny+1, nz  , grid, depth)
-	third_order_validation(phi_rnd, nx  , ny  , nz+1, grid, depth)
-	third_order_validation(phi_rnd, nx+1, ny+1, nz  , grid, depth)
-	third_order_validation(phi_rnd, nx+1, ny  , nz+1, grid, depth)
-	third_order_validation(phi_rnd, nx  , ny+1, nz+1, grid, depth)
-	third_order_validation(phi_rnd, nx+1, ny+1, nz+1, grid, depth)
+	nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
+	third_order_validation(pphi_rnd, nx  , ny  , nz  , pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx+1, ny  , nz  , pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx  , ny+1, nz  , pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx  , ny  , nz+1, pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx+1, ny+1, nz  , pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx+1, ny  , nz+1, pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx  , ny+1, nz+1, pgrid, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx+1, ny+1, nz+1, pgrid, depth, nb, backend)
+
+	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
+	third_order_validation(cphi_rnd, nx  , ny  , nz  , cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx+1, ny  , nz  , cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx  , ny+1, nz  , cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx  , ny  , nz+1, cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx+1, ny+1, nz  , cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx+1, ny  , nz+1, cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx  , ny+1, nz+1, cgrid, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx+1, ny+1, nz+1, cgrid, depth, nb, backend)
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_third_order()

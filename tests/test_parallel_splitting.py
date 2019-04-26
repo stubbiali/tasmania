@@ -22,114 +22,213 @@
 #
 from copy import deepcopy
 from datetime import timedelta
+from hypothesis import \
+	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
-from sympl._core.exceptions import InvalidStateError
 
-import gridtools as gt
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conf
+import utils
+
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
-from tasmania.python.isentropic.dynamics.homogeneous_dycore import \
-	HomogeneousIsentropicDynamicalCore
+from tasmania.python.isentropic.dynamics.minimal_dycore import \
+	IsentropicMinimalDynamicalCore
 
 
-def test_compatibility(
-	isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_properties(
+	data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
 
-	timestep = timedelta(seconds=10)
-
-	tendency1 = make_fake_tendency_1(grid)
-	tendency2 = make_fake_tendency_2(grid)
+	# ========================================
+	# test bed
+	# ========================================
+	tendency1 = make_fake_tendency_component_1(domain, grid_type)
+	tendency2 = make_fake_tendency_component_2(domain, grid_type)
 
 	#
-	# failing
+	# test 1
 	#
-	state_dc = deepcopy(state)
-	ps1 = ParallelSplitting(
+	ps = ParallelSplitting(
 		{'component': tendency1, 'time_integrator': 'forward_euler', 'substeps': 1},
 		{'component': tendency2, 'time_integrator': 'forward_euler'},
 		execution_policy='as_parallel'
 	)
-	try:
-		ps1(state=state_dc, state_prv=state_dc, timestep=timestep)
-		assert False
-	except InvalidStateError:
-		assert True
+
+	assert 'air_isentropic_density' in ps.input_properties
+	assert 'fake_variable' in ps.input_properties
+	assert 'x_momentum_isentropic' in ps.input_properties
+	assert 'x_velocity_at_u_locations' in ps.input_properties
+	assert 'y_momentum_isentropic' in ps.input_properties
+	assert 'y_velocity_at_v_locations' in ps.input_properties
+	assert len(ps.input_properties) == 6
+
+	assert 'air_isentropic_density' in ps.provisional_input_properties
+	assert 'x_momentum_isentropic' in ps.provisional_input_properties
+	assert 'x_velocity_at_u_locations' in ps.provisional_input_properties
+	assert 'y_momentum_isentropic' in ps.provisional_input_properties
+	assert len(ps.provisional_input_properties) == 4
+
+	assert 'air_isentropic_density' in ps.output_properties
+	assert 'fake_variable' in ps.output_properties
+	assert 'x_momentum_isentropic' in ps.output_properties
+	assert 'x_velocity_at_u_locations' in ps.output_properties
+	assert 'y_momentum_isentropic' in ps.output_properties
+	assert 'y_velocity_at_v_locations' in ps.output_properties
+	assert len(ps.output_properties) == 6
+
+	assert 'air_isentropic_density' in ps.provisional_output_properties
+	assert 'x_momentum_isentropic' in ps.provisional_output_properties
+	assert 'x_velocity_at_u_locations' in ps.provisional_output_properties
+	assert 'y_momentum_isentropic' in ps.provisional_output_properties
+	assert len(ps.provisional_output_properties) == 4
 
 	#
-	# failing
+	# test 2
 	#
-	state_dc = deepcopy(state)
-	ps2 = ParallelSplitting(
-		{'component': tendency2, 'time_integrator': 'forward_euler', 'substeps': 1},
-		{'component': tendency1, 'time_integrator': 'forward_euler'},
-		execution_policy='serial'
-	)
-	try:
-		ps2(state=state_dc, state_prv=state_dc, timestep=timestep)
-		assert False
-	except InvalidStateError:
-		assert True
-
-	#
-	# successful
-	#
-	state_dc = deepcopy(state)
-	ps3 = ParallelSplitting(
+	ps = ParallelSplitting(
 		{'component': tendency1, 'time_integrator': 'forward_euler', 'substeps': 1},
 		{'component': tendency2, 'time_integrator': 'forward_euler'},
-		execution_policy='serial'
+		execution_policy='serial', retrieve_diagnostics_from_provisional_state=False,
 	)
-	try:
-		ps3(state=state_dc, state_prv=state_dc, timestep=timestep)
-		assert True
-	except InvalidStateError:
-		assert False
+
+	assert 'air_isentropic_density' in ps.input_properties
+	assert 'x_momentum_isentropic' in ps.input_properties
+	assert 'x_velocity_at_u_locations' in ps.input_properties
+	assert 'y_momentum_isentropic' in ps.input_properties
+	assert 'y_velocity_at_v_locations' in ps.input_properties
+	assert len(ps.input_properties) == 5
+
+	assert 'air_isentropic_density' in ps.provisional_input_properties
+	assert 'x_momentum_isentropic' in ps.provisional_input_properties
+	assert 'x_velocity_at_u_locations' in ps.provisional_input_properties
+	assert 'y_momentum_isentropic' in ps.provisional_input_properties
+	assert len(ps.provisional_input_properties) == 4
+
+	assert 'air_isentropic_density' in ps.output_properties
+	assert 'fake_variable' in ps.output_properties
+	assert 'x_momentum_isentropic' in ps.output_properties
+	assert 'x_velocity_at_u_locations' in ps.output_properties
+	assert 'y_momentum_isentropic' in ps.output_properties
+	assert 'y_velocity_at_v_locations' in ps.output_properties
+	assert len(ps.output_properties) == 6
+
+	assert 'air_isentropic_density' in ps.provisional_output_properties
+	assert 'x_momentum_isentropic' in ps.provisional_output_properties
+	assert 'x_velocity_at_u_locations' in ps.provisional_output_properties
+	assert 'y_momentum_isentropic' in ps.provisional_output_properties
+	assert len(ps.provisional_output_properties) == 4
 
 	#
-	# successful
+	# test 3
 	#
-	state_dc = deepcopy(state)
-	ps4 = ParallelSplitting(
-		{'component': tendency1, 'time_integrator': 'forward_euler', 'substeps': 2},
-		{'component': tendency2, 'time_integrator': 'forward_euler', 'substeps': 3},
-		execution_policy='serial'
+	ps = ParallelSplitting(
+		{'component': tendency1, 'time_integrator': 'forward_euler', 'substeps': 1},
+		{'component': tendency2, 'time_integrator': 'forward_euler'},
+		execution_policy='serial', retrieve_diagnostics_from_provisional_state=True,
 	)
-	try:
-		ps4(state=state_dc, state_prv=state_dc, timestep=timestep)
-		assert True
-	except InvalidStateError:
-		assert False
+
+	assert 'air_isentropic_density' in ps.input_properties
+	assert 'x_momentum_isentropic' in ps.input_properties
+	assert 'x_velocity_at_u_locations' in ps.input_properties
+	assert 'y_momentum_isentropic' in ps.input_properties
+	assert 'y_velocity_at_v_locations' in ps.input_properties
+	assert len(ps.input_properties) == 5
+
+	assert 'air_isentropic_density' in ps.provisional_input_properties
+	assert 'x_momentum_isentropic' in ps.provisional_input_properties
+	assert 'x_velocity_at_u_locations' in ps.provisional_input_properties
+	assert 'y_momentum_isentropic' in ps.provisional_input_properties
+	assert len(ps.provisional_input_properties) == 4
+
+	assert 'air_isentropic_density' in ps.output_properties
+	assert 'fake_variable' in ps.output_properties
+	assert 'x_momentum_isentropic' in ps.output_properties
+	assert 'x_velocity_at_u_locations' in ps.output_properties
+	assert 'y_momentum_isentropic' in ps.output_properties
+	assert 'y_velocity_at_v_locations' in ps.output_properties
+	assert len(ps.output_properties) == 6
+
+	assert 'air_isentropic_density' in ps.provisional_output_properties
+	assert 'x_momentum_isentropic' in ps.provisional_output_properties
+	assert 'x_velocity_at_u_locations' in ps.provisional_output_properties
+	assert 'y_momentum_isentropic' in ps.provisional_output_properties
+	assert len(ps.provisional_output_properties) == 4
 
 
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
 def test_numerics_forward_euler(
-	isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2
+	data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-
-	timestep = timedelta(seconds=10)
-
-	dycore = HomogeneousIsentropicDynamicalCore(
-		grid, moist=False, time_integration_scheme='rk3cosmo',
-		horizontal_flux_scheme='fifth_order_upwind', horizontal_boundary_type='periodic',
-		intermediate_tendencies=None, intermediate_diagnostics=None,
-		damp=True, damp_type='rayleigh', damp_depth=15,
-		damp_max=0.0002, damp_at_every_stage=False,
-		smooth=True, smooth_type='second_order', smooth_damp_depth=0,
-		smooth_coeff=.03, smooth_at_every_stage=False,
-		backend=gt.mode.NUMPY, dtype=state['air_isentropic_density'].dtype,
+	# ========================================
+	# random data generation
+	# ========================================
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb)))
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(2*nb+1, 40), yaxis_length=(2*nb+1, 40), nb=nb
+		),
+		label="domain"
 	)
 
-	tendency1 = make_fake_tendency_1(grid)
-	tendency2 = make_fake_tendency_2(grid)
+	hb = domain.horizontal_boundary
+	assume(hb.type != 'dirichlet')
+
+	grid = domain.numerical_grid
+	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=1e-6), max_value=timedelta(hours=1)
+		),
+		label="timestep"
+	)
+
+	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+
+	# ========================================
+	# test bed
+	# ========================================
+	dtype = grid.x.dtype
+
+	tendency1 = make_fake_tendency_component_1(domain, 'numerical')
+	tendency2 = make_fake_tendency_component_2(domain, 'numerical')
+
+	dycore = IsentropicMinimalDynamicalCore(
+		domain, time_integration_scheme='rk3ws',
+		horizontal_flux_scheme='fifth_order_upwind',
+		moist=False, damp=False, smooth=False,
+		backend=backend, dtype=dtype
+	)
+
+	hb.reference_state = state
 
 	state_dc = deepcopy(state)
-	state_prv = dycore(state_dc, {}, timestep)
+	state_prv = dycore(state, {}, timestep)
 	state_prv_dc = deepcopy(state_prv)
 
 	ps = ParallelSplitting(
@@ -137,61 +236,102 @@ def test_numerics_forward_euler(
 		{'component': tendency2, 'time_integrator': 'forward_euler'},
 		execution_policy='serial'
 	)
-	ps(state=state_dc, state_prv=state_prv_dc, timestep=timestep)
+	ps(state=state, state_prv=state_prv, timestep=timestep)
 
-	assert 'fake_variable' in state_dc
-	s = state['air_isentropic_density'].values
-	f = state_dc['fake_variable'].values
-	assert np.allclose(f, 2*s)
+	assert 'fake_variable' in state
+	s = state_dc['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	f = state['fake_variable'].values
+	assert np.allclose(f, 2*s, equal_nan=True)
 
-	assert 'air_isentropic_density' in state_prv_dc
-	s1 = state_prv['air_isentropic_density'].values
-	s2 = s + timestep.total_seconds() * s**2
-	s3 = s + timestep.total_seconds() * 1e-5*f
+	assert 'air_isentropic_density' in state_prv
+	s1 = state_prv_dc['air_isentropic_density'].values
+	s2 = s + timestep.total_seconds() * 0.001 * s
+	s3 = s + timestep.total_seconds() * 0.01 * f
 	s_out = s1 + (s2 - s) + (s3 - s)
-	assert np.allclose(state_prv_dc['air_isentropic_density'].values, s_out)
+	assert np.allclose(state_prv['air_isentropic_density'].values, s_out, equal_nan=True)
 
-	assert 'x_momentum_isentropic' in state_prv_dc
-	su = state['x_momentum_isentropic'].values
-	su1 = state_prv['x_momentum_isentropic'].values
-	su2 = su + timestep.total_seconds() * s**3
+	assert 'x_momentum_isentropic' in state_prv
+	su = state_dc['x_momentum_isentropic'].values
+	su1 = state_prv_dc['x_momentum_isentropic'].values
+	su2 = su + timestep.total_seconds() * 300 * su
 	su_out = su1 + (su2 - su)
-	assert np.allclose(state_prv_dc['x_momentum_isentropic'].values, su_out)
+	assert np.allclose(state_prv['x_momentum_isentropic'].values, su_out, equal_nan=True)
 
-	assert 'y_momentum_isentropic' in state_prv_dc
-	v = 3.6 * state['y_velocity_at_v_locations'].values
-	sv = state['y_momentum_isentropic'].values
-	sv1 = state_prv['y_momentum_isentropic'].values
-	sv3 = sv + timestep.total_seconds() * 0.5*(v[:, :-1, :] + v[:, 1:, :])
-	sv_out = sv1 + (sv3 - sv)
-	assert np.allclose(state_prv_dc['y_momentum_isentropic'].values, sv_out)
-
-
-def test_numerics_rk2(
-	isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2
-):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-
-	timestep = timedelta(seconds=10)
-
-	dycore = HomogeneousIsentropicDynamicalCore(
-		grid, moist=False, time_integration_scheme='rk3cosmo',
-		horizontal_flux_scheme='fifth_order_upwind', horizontal_boundary_type='periodic',
-		intermediate_tendencies=None, intermediate_diagnostics=None,
-		damp=True, damp_type='rayleigh', damp_depth=15,
-		damp_max=0.0002, damp_at_every_stage=False,
-		smooth=True, smooth_type='second_order', smooth_damp_depth=0,
-		smooth_coeff=.03, smooth_at_every_stage=False,
-		backend=gt.mode.NUMPY, dtype=state['air_isentropic_density'].dtype,
+	assert 'x_velocity_at_u_locations' in state_prv
+	u = state_dc['x_velocity_at_u_locations'].to_units('m s^-1').values
+	u1 = state_prv_dc['x_velocity_at_u_locations'].to_units('m s^-1').values
+	u2 = u + timestep.total_seconds() * 50 * u
+	u_out = u1 + (u2 - u)
+	assert np.allclose(
+		state_prv['x_velocity_at_u_locations'].values, u_out, equal_nan=True
 	)
 
-	tendency1 = make_fake_tendency_1(grid)
-	tendency2 = make_fake_tendency_2(grid)
+	assert 'y_momentum_isentropic' in state_prv
+	v = state_dc['y_velocity_at_v_locations'].to_units('m s^-1').values
+	sv = state_dc['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	sv1 = state_prv_dc['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	sv3 = sv + timestep.total_seconds() * 0.5 * s * (v[:, :-1, :] + v[:, 1:, :])
+	sv_out = sv1 + (sv3 - sv)
+	assert np.allclose(state_prv['y_momentum_isentropic'].values, sv_out, equal_nan=True)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_numerics_rk2(
+	data, make_fake_tendency_component_1, make_fake_tendency_component_2
+):
+	# ========================================
+	# random data generation
+	# ========================================
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb)))
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(2*nb+1, 40), yaxis_length=(2*nb+1, 40), nb=nb
+		),
+		label="domain"
+	)
+
+	hb = domain.horizontal_boundary
+	assume(hb.type != 'dirichlet')
+
+	grid = domain.numerical_grid
+	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=1e-6), max_value=timedelta(hours=1)
+		),
+		label="timestep"
+	)
+
+	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+
+	# ========================================
+	# test bed
+	# ========================================
+	dtype = grid.x.dtype
+
+	tendency1 = make_fake_tendency_component_1(domain, 'numerical')
+	tendency2 = make_fake_tendency_component_2(domain, 'numerical')
+
+	dycore = IsentropicMinimalDynamicalCore(
+		domain, time_integration_scheme='rk3ws',
+		horizontal_flux_scheme='fifth_order_upwind',
+		moist=False, damp=False, smooth=False,
+		backend=backend, dtype=dtype
+	)
+
+	hb.reference_state = state
 
 	state_dc = deepcopy(state)
-	state_prv = dycore(state_dc, {}, timestep)
+	state_prv = dycore(state, {}, timestep)
 	state_prv_dc = deepcopy(state_prv)
 
 	ps = ParallelSplitting(
@@ -199,106 +339,162 @@ def test_numerics_rk2(
 		{'component': tendency2, 'time_integrator': 'rk2'},
 		execution_policy='serial'
 	)
-	ps(state=state_dc, state_prv=state_prv_dc, timestep=timestep)
+	ps(state=state, state_prv=state_prv, timestep=timestep)
 
-	assert 'fake_variable' in state_dc
-	s = state['air_isentropic_density'].values
-	f = state_dc['fake_variable'].values
-	assert np.allclose(f, 2*s)
+	assert 'fake_variable' in state
+	s = state_dc['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	f = state['fake_variable'].values
+	assert np.allclose(f, 2*s, equal_nan=True)
 
-	assert 'air_isentropic_density' in state_prv_dc
-	s1 = state_prv['air_isentropic_density'].values
-	s2b = s + 0.5 * timestep.total_seconds() * s**2
-	s2 = s + timestep.total_seconds() * s2b**2
-	s3b = s + 0.5 * timestep.total_seconds() * 1e-5*f
-	s3 = s + timestep.total_seconds() * 1e-5*f
+	assert 'air_isentropic_density' in state_prv
+	s1 = state_prv_dc['air_isentropic_density'].values
+	s2b = s + 0.5 * timestep.total_seconds() * 0.001 * s
+	s2 = s + timestep.total_seconds() * 0.001 * s2b
+	s3b = s + 0.5 * timestep.total_seconds() * 0.01 * f
+	s3 = s + timestep.total_seconds() * 0.01 * f
 	s_out = s1 + (s2 - s) + (s3 - s)
-	assert np.allclose(state_prv_dc['air_isentropic_density'].values, s_out)
-
-	assert 'x_momentum_isentropic' in state_prv_dc
-	su = state['x_momentum_isentropic'].values
-	su1 = state_prv['x_momentum_isentropic'].values
-	su2b = su + 0.5 * timestep.total_seconds() * s**3
-	su2 = su + timestep.total_seconds() * s2b**3
-	su_out = su1 + (su2 - su)
-	assert np.allclose(state_prv_dc['x_momentum_isentropic'].values, su_out)
-
-	assert 'y_momentum_isentropic' in state_prv_dc
-	v = 3.6 * state['y_velocity_at_v_locations'].values
-	sv = state['y_momentum_isentropic'].values
-	sv1 = state_prv['y_momentum_isentropic'].values
-	sv3 = sv + timestep.total_seconds() * 0.5*(v[:, :-1, :] + v[:, 1:, :])
-	sv_out = sv1 + (sv3 - sv)
-	assert np.allclose(state_prv_dc['y_momentum_isentropic'].values, sv_out)
-
-
-def test_numerics_rk2_substepping(
-	isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2
-):
-	grid, states = isentropic_dry_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-
-	timestep = timedelta(seconds=10)
-
-	dycore = HomogeneousIsentropicDynamicalCore(
-		grid, moist=False, time_integration_scheme='rk3cosmo',
-		horizontal_flux_scheme='fifth_order_upwind', horizontal_boundary_type='periodic',
-		intermediate_tendencies=None, intermediate_diagnostics=None,
-		damp=True, damp_type='rayleigh', damp_depth=15,
-		damp_max=0.0002, damp_at_every_stage=False,
-		smooth=True, smooth_type='second_order', smooth_damp_depth=0,
-		smooth_coeff=.03, smooth_at_every_stage=False,
-		backend=gt.mode.NUMPY, dtype=state['air_isentropic_density'].dtype,
+	assert np.allclose(
+		state_prv['air_isentropic_density'].values, s_out, equal_nan=True
 	)
 
-	tendency1 = make_fake_tendency_1(grid)
-	tendency2 = make_fake_tendency_2(grid)
+	assert 'x_momentum_isentropic' in state_prv
+	su = state_dc['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	su1 = state_prv_dc['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	su2b = su + 0.5 * timestep.total_seconds() * 300 * su
+	su2 = su + timestep.total_seconds() * 300 * su2b
+	su_out = su1 + (su2 - su)
+	assert np.allclose(state_prv['x_momentum_isentropic'].values, su_out, equal_nan=True)
+
+	assert 'x_velocity_at_u_locations' in state_prv
+	u = state_dc['x_velocity_at_u_locations'].to_units('m s^-1').values
+	u1 = state_prv_dc['x_velocity_at_u_locations'].to_units('m s^-1').values
+	u2b = u + 0.5 * timestep.total_seconds() * 50 * u
+	u2 = u + timestep.total_seconds() * 50 * u2b
+	u_out = u1 + (u2 - u)
+	assert np.allclose(
+		state_prv['x_velocity_at_u_locations'].values, u_out, equal_nan=True
+	)
+
+	assert 'y_momentum_isentropic' in state_prv
+	v = state_dc['y_velocity_at_v_locations'].to_units('m s^-1').values
+	sv = state_dc['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	sv1 = state_prv_dc['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	sv3 = sv + timestep.total_seconds() * 0.5 * s3b * (v[:, :-1, :] + v[:, 1:, :])
+	sv_out = sv1 + (sv3 - sv)
+	assert np.allclose(state_prv['y_momentum_isentropic'].values, sv_out, equal_nan=True)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(data=hyp_st.data())
+def test_numerics_substepping(
+	data, make_fake_tendency_component_1, make_fake_tendency_component_2
+):
+	# ========================================
+	# random data generation
+	# ========================================
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb)))
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(2*nb+1, 40), yaxis_length=(2*nb+1, 40), nb=nb
+		),
+		label="domain"
+	)
+
+	hb = domain.horizontal_boundary
+	assume(hb.type != 'dirichlet')
+
+	grid = domain.numerical_grid
+	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=0), max_value=timedelta(hours=1)
+		),
+		label="timestep"
+	)
+
+	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+
+	# ========================================
+	# test bed
+	# ========================================
+	dtype = grid.x.dtype
+
+	tendency1 = make_fake_tendency_component_1(domain, 'numerical')
+	tendency2 = make_fake_tendency_component_2(domain, 'numerical')
+
+	dycore = IsentropicMinimalDynamicalCore(
+		domain, time_integration_scheme='rk3ws',
+		horizontal_flux_scheme='fifth_order_upwind',
+		moist=False, damp=False, smooth=False,
+		backend=backend, dtype=dtype
+	)
+
+	hb.reference_state = state
 
 	state_dc = deepcopy(state)
-	state_prv = dycore(state_dc, {}, timestep)
+	state_prv = dycore(state, {}, timestep)
 	state_prv_dc = deepcopy(state_prv)
 
 	ps = ParallelSplitting(
 		{'component': tendency1, 'time_integrator': 'forward_euler', 'substeps': 3},
-		{'component': tendency2, 'time_integrator': 'rk2'},
+		{'component': tendency2, 'time_integrator': 'rk2', 'substeps': 1},
 		execution_policy='serial'
 	)
-	ps(state=state_dc, state_prv=state_prv_dc, timestep=timestep)
+	ps(state=state, state_prv=state_prv, timestep=timestep)
 
-	assert 'fake_variable' in state_dc
-	s = state['air_isentropic_density'].values
-	f = state_dc['fake_variable'].values
-	assert np.allclose(f, 2*s)
+	assert 'fake_variable' in state
+	s = state_dc['air_isentropic_density'].to_units('kg m^-2 K^-1').values
+	f = state['fake_variable'].values
+	assert np.allclose(f, 2*s, equal_nan=True)
 
-	assert 'air_isentropic_density' in state_prv_dc
-	s1 = state_prv['air_isentropic_density'].values
-	s21 = s + timestep.total_seconds()/3 * s**2
-	s22 = s21 + timestep.total_seconds()/3 * s21**2
-	s2 = s22 + timestep.total_seconds()/3 * s22**2
-	s3 = s + timestep.total_seconds() * 1e-5*f
+	assert 'air_isentropic_density' in state_prv
+	s1 = state_prv_dc['air_isentropic_density'].values
+	s2b = s + (timestep / 3.0).total_seconds() * 0.001 * s
+	s2c = s2b + (timestep / 3.0).total_seconds() * 0.001 * s2b
+	s2 = s2c + (timestep / 3.0).total_seconds() * 0.001 * s2c
+	s3b = s + 0.5 * timestep.total_seconds() * 0.01 * f
+	s3 = s + timestep.total_seconds() * 0.01 * f
 	s_out = s1 + (s2 - s) + (s3 - s)
-	assert np.allclose(state_prv_dc['air_isentropic_density'].values, s_out)
+	assert np.allclose(
+		state_prv['air_isentropic_density'].values, s_out, equal_nan=True
+	)
 
-	assert 'x_momentum_isentropic' in state_prv_dc
-	su = state['x_momentum_isentropic'].values
-	su1 = state_prv['x_momentum_isentropic'].values
-	su21 = su + timestep.total_seconds()/3 * s**3
-	su22 = su21 + timestep.total_seconds()/3 * s21**3
-	su2 = su22 + timestep.total_seconds()/3 * s22**3
+	assert 'x_momentum_isentropic' in state_prv
+	su = state_dc['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	su1 = state_prv_dc['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	su2b = su + (timestep / 3.0).total_seconds() * 300 * su
+	su2c = su2b + (timestep / 3.0).total_seconds()  * 300 * su2b
+	su2 = su2c + (timestep / 3.0).total_seconds() * 300 * su2c
 	su_out = su1 + (su2 - su)
-	assert np.allclose(state_prv_dc['x_momentum_isentropic'].values, su_out)
+	assert np.allclose(state_prv['x_momentum_isentropic'].values, su_out, equal_nan=True)
 
-	assert 'y_momentum_isentropic' in state_prv_dc
-	v = 3.6 * state['y_velocity_at_v_locations'].values
-	sv = state['y_momentum_isentropic'].values
-	sv1 = state_prv['y_momentum_isentropic'].values
-	sv3 = sv + timestep.total_seconds() * 0.5*(v[:, :-1, :] + v[:, 1:, :])
+	assert 'x_velocity_at_u_locations' in state_prv
+	u = state_dc['x_velocity_at_u_locations'].to_units('m s^-1').values
+	u1 = state_prv_dc['x_velocity_at_u_locations'].to_units('m s^-1').values
+	u2b = u + (timestep / 3.0).total_seconds() * 50 * u
+	u2c = u2b + (timestep / 3.0).total_seconds() * 50 * u2b
+	u2 = u2c + (timestep / 3.0).total_seconds() * 50 * u2c
+	u_out = u1 + (u2 - u)
+	assert np.allclose(
+		state_prv['x_velocity_at_u_locations'].values, u_out, equal_nan=True
+	)
+
+	assert 'y_momentum_isentropic' in state_prv
+	v = state_dc['y_velocity_at_v_locations'].to_units('m s^-1').values
+	sv = state_dc['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	sv1 = state_prv_dc['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+	sv3 = sv + timestep.total_seconds() * 0.5 * s3b * (v[:, :-1, :] + v[:, 1:, :])
 	sv_out = sv1 + (sv3 - sv)
-	assert np.allclose(state_prv_dc['y_momentum_isentropic'].values, sv_out)
+	assert np.allclose(state_prv['y_momentum_isentropic'].values, sv_out, equal_nan=True)
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_dry_data, make_fake_tendency_1, make_fake_tendency_2
-	#test_numerics_rk2(isentropic_dry_data(), make_fake_tendency_1(), make_fake_tendency_2())

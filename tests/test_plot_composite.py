@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import timedelta
 import os
 import pytest
 import sys
@@ -36,108 +35,112 @@ baseline_dir = 'baseline_images/py{}{}/test_plot_composite'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile(isentropic_moist_sedimentation_data,
-				 isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the baseline directory_composer does exist
+def test_profile(isentropic_dry_data):
+	# make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_profile.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Field to plot
-	field_name  = 'accumulated_precipitation'
-	field_units = 'mm'
+	# fields to plot
+	field1_name  = 'x_velocity_at_u_locations'
+	field1_units = 'km hr^-1'
+	field2_name  = 'y_velocity_at_v_locations'
+	field2_units = 'km hr^-1'
+
+	# load data
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	#
 	# Plot#1
 	#
-	# Load data
-	grid, states = isentropic_moist_sedimentation_evaporation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state1 = states[-1]
+	# indices identifying the cross-line to visualize
+	y, z = int(grid.ny/2), -1
 
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field1_name, field1_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'Leapfrog',
+		'title_left': 'Left subplot',
 		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_label': 'Accumulated precipitation [mm]',
-		'y_lim': [0, 2.0],
+		#'x_lim': [0, 500],
+		'y_label': '$x$-velocity [km/hr]',
+		#'y_lim': [0, 2.0],
 		'grid_on': True,
 	}
 	
-	# Instantiate the left collaborator
-	plot1 = Plot(drawer, False, axes_properties=axes_properties)
+	# instantiate the left collaborator
+	plot1 = Plot(drawer, interactive=False, axes_properties=axes_properties)
 
 	#
 	# Plot#2
 	#
-	# Load data
-	grid, states = isentropic_moist_sedimentation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state2 = states[-1]
+	# indices identifying the cross-line to visualize
+	y, z = int(grid.ny/2), -1
 
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'red',
 		'linestyle': '--',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field2_name, field2_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'MacCormack',
+		'title_left': 'Right subplot',
 		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_label': 'Accumulated precipitation [mm]',
-		'y_lim': [0, 2.0],
+		#'x_lim': [0, 500],
+		'y_label': '$y$-velocity [km/hr]',
+		#'y_lim': [0, 2.0],
 		'grid_on': True,
 	}
 
-	# Instantiate the right collaborator
-	plot2 = Plot(drawer, False, axes_properties=axes_properties)
+	# instantiate the right collaborator
+	plot2 = Plot(drawer, interactive=False, axes_properties=axes_properties)
 
 	#
 	# PlotComposite
 	#
-	# Figure properties
+	# figure properties
 	figure_properties = {
 		'fontsize': 16,
-		'figsize': (8, 7),
+		'figsize': (16, 7),
 		'tight_layout': True,
 	}
 
-	# Instantiate the monitor
-	monitor = PlotComposite(1, 2, (plot1, plot2), False, figure_properties)
+	# instantiate the monitor
+	monitor = PlotComposite(
+		plot1, plot2, nrows=1, ncols=2, interactive=False,
+		figure_properties=figure_properties
+	)
 
 	# Plot
-	monitor.store((state1, state2), save_dest=save_dest)
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -145,108 +148,110 @@ def test_profile(isentropic_moist_sedimentation_data,
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile_share_yaxis(isentropic_moist_sedimentation_data,
-							 isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the baseline directory_composer does exist
+def test_profile_share_yaxis(isentropic_dry_data):
+	# make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_profile_share_yaxis_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Field to plot
-	field_name  = 'accumulated_precipitation'
-	field_units = 'mm'
+	# field to plot
+	field_name  = 'x_velocity_at_u_locations'
+	field_units = 'm s^-1'
+
+	# load data
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
 
 	#
 	# Plot#1
 	#
-	# Load data
-	grid, states = isentropic_moist_sedimentation_evaporation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state1 = states[-1]
+	# indices identifying the cross-line to visualize
+	y, z = int(0.25*grid.ny), -1
 
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field_name, field_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'Leapfrog',
+		'title_left': '$y$ = {} km'.format(grid.y.to_units('km').values[y]),
 		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_label': 'Accumulated precipitation [mm]',
-		'y_lim': [0, 2.0],
+		#'x_lim': [0, 500],
+		'y_label': 'Surface $x$-velocity [m s$^{-1}$]',
+		'y_lim': [-30, 30],
 		'grid_on': True,
 	}
 
-	# Instantiate the left collaborator
-	plot1 = Plot(drawer, False, axes_properties=axes_properties)
+	# instantiate the left collaborator
+	plot1 = Plot(drawer, interactive=False, axes_properties=axes_properties)
 
 	#
 	# Plot#2
 	#
-	# Load data
-	grid, states = isentropic_moist_sedimentation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state2 = states[-1]
+	# indices identifying the cross-line to visualize
+	y, z = int(0.75*grid.ny), -1
 
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'red',
 		'linestyle': '--',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field_name, field_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'MacCormack',
+		'title_left': '$y$ = {} km'.format(grid.y.to_units('km').values[y]),
 		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_lim': [0, 2.0],
+		#'x_lim': [0, 500],
+		'y_lim': [-30, 30],
 		'y_ticklabels': (),
 		'grid_on': True,
 	}
 
-	# Instantiate the right collaborator
-	plot2 = Plot(drawer, False, axes_properties=axes_properties)
+	# instantiate the right collaborator
+	plot2 = Plot(drawer, interactive=False, axes_properties=axes_properties)
 
 	#
 	# PlotComposite
 	#
-	# Figure properties
+	# figure properties
 	figure_properties = {
 		'fontsize': 16,
-		'figsize': (8, 7),
+		'figsize': (13, 7),
 		'tight_layout': True,
 	}
 
-	# Instantiate the monitor
-	monitor = PlotComposite(1, 2, (plot1, plot2), False, figure_properties)
+	# instantiate the monitor
+	monitor = PlotComposite(
+		plot1, plot2, nrows=1, ncols=2, interactive=False,
+		figure_properties=figure_properties
+	)
 
-	# Plot
-	monitor.store((state1, state2), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -254,108 +259,110 @@ def test_profile_share_yaxis(isentropic_moist_sedimentation_data,
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
-							 isentropic_moist_sedimentation_evaporation_data):
-	# Make sure the baseline directory_composer does exist
+def test_profile_share_xaxis(isentropic_dry_data):
+	# make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_profile_share_xaxis_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Field to plot
-	field_name  = 'accumulated_precipitation'
-	field_units = 'mm'
+	# fields to plot
+	field1_name  = 'x_velocity'
+	field1_units = 'm s^-1'
+	field2_name  = 'y_velocity_at_v_locations'
+	field2_units = 'm s^-1'
+
+	# load data
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
+
+	# indices identifying the cross-line to visualize
+	y, z = int(0.5*grid.ny), -1
 
 	#
 	# Plot#1
 	#
-	# Load data
-	grid, states = isentropic_moist_sedimentation_evaporation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state1 = states[-1]
-
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field1_name, field1_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'Leapfrog',
-		'x_lim': [0, 500],
+		'title_center': '$y$ = {} km, $\\theta$ = {} K'.format(
+			grid.y.to_units('km').values[y], grid.z.to_units('K').values[z]
+		),
+		#'x_lim': [0, 500],
 		'x_ticklabels': (),
-		'y_label': 'Accumulated precipitation [mm]',
-		'y_lim': [0, 3.0],
+		'y_label': '$x$-velocity [m/s]',
+		#'y_lim': [0, 3.0],
 		'grid_on': True,
 	}
 
-	# Instantiate the left collaborator
-	plot1 = Plot(drawer, False, axes_properties=axes_properties)
+	# instantiate the left collaborator
+	plot1 = Plot(drawer, interactive=False, axes_properties=axes_properties)
 
 	#
 	# Plot#2
 	#
-	# Load data
-	grid, states = isentropic_moist_sedimentation_data
-	grid.update_topography(states[-1]['time'] - states[0]['time'])
-	state2 = states[-1]
-
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'red',
 		'linestyle': '--',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field2_name, field2_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'MacCormack',
 		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_label': 'Accumulated precipitation [mm]',
-		'y_lim': [0, 2.0],
+		#'x_lim': [0, 500],
+		'y_label': '$y$-velocity [m/s]',
+		#'y_lim': [0, 2.0],
 		'grid_on': True,
 	}
 
-	# Instantiate the right collaborator
-	plot2 = Plot(drawer, False, axes_properties=axes_properties)
+	# instantiate the right collaborator
+	plot2 = Plot(drawer, interactive=False, axes_properties=axes_properties)
 
 	#
 	# PlotComposite
 	#
-	# Figure properties
+	# figure properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (6, 9),
 		'tight_layout': True,
 	}
 
-	# Instantiate the monitor
-	monitor = PlotComposite(2, 1, (plot1, plot2), False, figure_properties)
+	# instantiate the monitor
+	monitor = PlotComposite(
+		plot1, plot2, nrows=2, ncols=1, interactive=False,
+		figure_properties=figure_properties
+	)
 
-	# Plot
-	monitor.store((state1, state2), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -363,34 +370,35 @@ def test_profile_share_xaxis(isentropic_moist_sedimentation_data,
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
-					 isentropic_moist_sedimentation_evaporation_data,
-					 drawer_topography1d):
-	# Make sure the baseline directory does exist
+def test_plot2d_r1c2(isentropic_dry_data, drawer_topography_1d):
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_plot2d_r1c2_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Field to plot
-	field_name  = 'x_velocity_at_u_locations'
-	field_units = None
+	# field to plot
+	field1_name  = 'x_velocity'
+	field1_units = None
+	field2_name  = 'y_velocity'
+	field2_units = None
+
+	# load data
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
+
+	# index identifying the cross-section to visualize
+	x = int(grid.nx/2)
 
 	#
 	# Plot#1
 	#
-	# Load data
-	grid1, states = isentropic_moist_sedimentation_evaporation_data
-	grid1.update_topography(states[-1]['time'] - states[0]['time'])
-	state1 = states[-1]
-
-	# Index identifying the cross-section to visualize
-	y = 0
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'cmap_name': 'BuRd',
 		'cbar_on': False,
@@ -402,41 +410,38 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = Contourf(grid1, field_name, field_units, y=y, xaxis_units='km',
-					  zaxis_name='height', zaxis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Contourf(
+		grid, field1_name, field1_units, x=x, yaxis_units='km',
+		zaxis_name='height', zaxis_units='km', properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer1 = drawer_topography1d(grid1, topo_units='km', y=y, axis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer1 = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_units='km'
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 14,
-		'title_left': '$x$-velocity [m s$^{-1}$]',
-		'title_right': str(timedelta(hours=6)),
-		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
+		#'title_left': '$x$-velocity [m s$^{-1}$]',
+		'x_label': '$y$ [km]',
+		#'x_lim': [0, 500],
 		'y_label': '$z$ [km]',
 		'y_lim': [0, 14],
-		'text': 'LF',
+		'text': '$x$-velocity',
 		'text_loc': 'upper right',
 	}
 
-	# Instantiate the left collaborator
-	plot1 = Plot((drawer, topo_drawer1), False, axes_properties=axes_properties)
+	# instantiate the left collaborator
+	plot1 = Plot(
+		drawer, topo_drawer1, interactive=False, axes_properties=axes_properties
+	)
 
 	#
 	# Plot#2
 	#
-	# Load data
-	grid2, states = isentropic_moist_sedimentation_data
-	grid2.update_topography(states[-1]['time'] - states[0]['time'])
-	state2 = states[-1]
-
-	# Index identifying the cross-section to visualize
-	y = 0
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 14,
 		'cmap_name': 'BuRd',
@@ -450,44 +455,51 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = Contourf(grid2, field_name, field_units, y=y, xaxis_units='km',
-					  zaxis_name='height', zaxis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Contourf(
+		grid, field2_name, field2_units, x=x, yaxis_units='km',
+		zaxis_name='height', zaxis_units='km', properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer2 = drawer_topography1d(grid2, topo_units='km', y=y, axis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer2 = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_units='km'
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 14,
-		'title_left': '$x$-velocity [m s$^{-1}$]',
-		'title_right': str(timedelta(hours=6)),
-		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
+		'x_label': '$y$ [km]',
+		#'x_lim': [0, 500],
 		'y_lim': [0, 14],
 		'y_ticklabels': [],
-		'text': 'MC',
+		'text': '$y$-velocity',
 		'text_loc': 'upper right',
 	}
 
-	# Instantiate the right collaborator
-	plot2 = Plot((drawer, topo_drawer2), False, axes_properties=axes_properties)
+	# instantiate the right collaborator
+	plot2 = Plot(
+		drawer, topo_drawer2, interactive=False, axes_properties=axes_properties
+	)
 
 	#
 	# PlotComposite
 	#
-	# Figure properties
+	# figure properties
 	figure_properties = {
 		'fontsize': 14,
 		'figsize': (9, 6),
 		'tight_layout': False,
 	}
 
-	# Instantiate the monitor
-	monitor = PlotComposite(1, 2, (plot1, plot2), False, figure_properties)
+	# instantiate the monitor
+	monitor = PlotComposite(
+		plot1, plot2, nrows=1, ncols=2, interactive=False,
+		figure_properties=figure_properties
+	)
 
-	# Plot
-	monitor.store(((state1, state1), (state2, state2)), save_dest=save_dest)
+	# plot
+	monitor.store((state, state), (state, state), save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -495,30 +507,35 @@ def test_plot2d_r1c2(isentropic_moist_sedimentation_data,
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
-					 isentropic_moist_sedimentation_evaporation_data,
-					 drawer_topography1d):
-	# Make sure the baseline directory does exist
+def test_plot2d_r2c2(isentropic_dry_data, drawer_topography_1d):
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_plot2d_r2c2_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
+	# field to plot
+	field1_name  = 'x_velocity'
+	field1_units = None
+	field2_name  = 'y_velocity'
+	field2_units = None
+
+	# load data
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	grid.update_topography(states[-1]['time'] - states[0]['time'])
+	state = states[-1]
+
+	# index identifying the cross-section to visualize
+	x = int(grid.nx/2)
+
 	#
 	# Plot#1
 	#
-	# Load data
-	grid1, states = isentropic_moist_sedimentation_evaporation_data
-	grid1.update_topography(states[-1]['time'] - states[0]['time'])
-	state1 = states[-1]
-
-	# Index identifying the cross-section to visualize
-	y = 0
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'cmap_name': 'BuRd',
 		'cbar_on': False,
@@ -530,44 +547,38 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
+	# instantiate the drawer
 	drawer = Contourf(
-		grid1, 'x_velocity_at_u_locations', 'm s^-1', y=y,
-		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		properties=drawer_properties,
+		grid, field1_name, field1_units, x=x, yaxis_units='km',
+		zaxis_name='height', zaxis_units='km', properties=drawer_properties
 	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer1 = drawer_topography1d(grid1, topo_units='km', y=y, axis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer1 = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_units='km'
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 14,
-		'title_left': '$x$-velocity [m s$^{-1}$]',
-		'title_right': str(timedelta(hours=6)),
-		'x_lim': [0, 500],
+		#'title_left': '$x$-velocity [m s$^{-1}$]',
 		'x_ticklabels': [],
+		#'x_lim': [0, 500],
 		'y_label': '$z$ [km]',
 		'y_lim': [0, 14],
-		'text': 'LF',
+		'text': '$x$-velocity',
 		'text_loc': 'upper right',
 	}
 
-	# Instantiate the upper-left collaborator
-	plot1 = Plot((drawer, topo_drawer1), False, axes_properties=axes_properties)
+	# instantiate the left collaborator
+	plot1 = Plot(
+		drawer, topo_drawer1, interactive=False, axes_properties=axes_properties
+	)
 
 	#
 	# Plot#2
 	#
-	# Load data
-	grid2, states = isentropic_moist_sedimentation_data
-	grid2.update_topography(states[-1]['time'] - states[0]['time'])
-	state2 = states[-1]
-
-	# Index identifying the cross-section to visualize
-	y = 0
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 14,
 		'cmap_name': 'BuRd',
@@ -581,126 +592,136 @@ def test_plot2d_r2c2(isentropic_moist_sedimentation_data,
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
+	# instantiate the drawer
 	drawer = Contourf(
-		grid2, 'x_velocity_at_u_locations', 'm s^-1', y=y,
-		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		properties=drawer_properties,
+		grid, field2_name, field2_units, x=x, yaxis_units='km',
+		zaxis_name='height', zaxis_units='km', properties=drawer_properties
 	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer2 = drawer_topography1d(grid2, topo_units='km', y=y, axis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer2 = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_units='km'
+	)
 
-	# Axes properties
+	# axes properties
 	axes_properties = {
 		'fontsize': 14,
-		'title_left': '$x$-velocity [m s$^{-1}$]',
-		'title_right': str(timedelta(hours=6)),
-		'x_lim': [0, 500],
 		'x_ticklabels': [],
 		'y_lim': [0, 14],
 		'y_ticklabels': [],
-		'text': 'MC',
+		'text': '$y$-velocity',
 		'text_loc': 'upper right',
 	}
 
-	# Instantiate the upper-right collaborator
-	plot2 = Plot((topo_drawer2, drawer), False, axes_properties=axes_properties)
+	# instantiate the right collaborator
+	plot2 = Plot(
+		drawer, topo_drawer2, interactive=False, axes_properties=axes_properties
+	)
 
 	#
 	# Plot#3
 	#
-	# Index identifying the cross-section to visualize
-	y = 0
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
-		'cmap_name': 'Blues',
+		'cmap_name': 'BuRd',
 		'cbar_on': False,
-		'cbar_levels': 20,
+		'cbar_levels': 22,
 		'cbar_ticks_step': 2,
+		'cbar_center': 15,
+		'cbar_half_width': 10.5,
 		'linecolor': 'black',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
+	# instantiate the drawer
 	drawer = Contourf(
-		grid1, 'air_pressure_on_interface_levels', 'hPa', y=y,
-		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		properties=drawer_properties,
+		grid, field1_name, field1_units, x=x, yaxis_units='km',
+		zaxis_name='height', zaxis_units='km', properties=drawer_properties
 	)
 
-	# Axes properties
+	# instantiate the drawer plotting the topography
+	topo_drawer3 = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_units='km'
+	)
+
+	# axes properties
 	axes_properties = {
 		'fontsize': 14,
-		'title_left': 'Pressure [hPa]',
-		'title_right': str(timedelta(hours=6)),
-		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
+		#'title_left': '$x$-velocity [m s$^{-1}$]',
+		'x_label': '$y$ [km]',
+		#'x_lim': [0, 500],
 		'y_label': '$z$ [km]',
 		'y_lim': [0, 14],
-		'text': 'LF',
+		'text': '$x$-velocity',
 		'text_loc': 'upper right',
 	}
 
-	# Instantiate the lower-left collaborator
-	plot3 = Plot((drawer, topo_drawer1), False, axes_properties=axes_properties)
+	# instantiate the left collaborator
+	plot3 = Plot(
+		drawer, topo_drawer3, interactive=False, axes_properties=axes_properties
+	)
 
 	#
 	# Plot#4
 	#
-	# Index identifying the cross-section to visualize
-	y = 0
-
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
-		'cmap_name': 'Blues',
+		'fontsize': 14,
+		'cmap_name': 'BuRd',
 		'cbar_on': True,
-		'cbar_levels': 20,
+		'cbar_levels': 22,
 		'cbar_ticks_step': 2,
+		'cbar_center': 15,
+		'cbar_half_width': 10.5,
 		'cbar_ax': (3, 4),
 		'linecolor': 'black',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
+	# instantiate the drawer
 	drawer = Contourf(
-		grid2, 'air_pressure_on_interface_levels', 'hPa', y=y,
-		xaxis_units='km', zaxis_name='height', zaxis_units='km',
-		properties=drawer_properties,
+		grid, field2_name, field2_units, x=x, yaxis_units='km',
+		zaxis_name='height', zaxis_units='km', properties=drawer_properties
 	)
 
-	# Axes properties
+	# instantiate the drawer plotting the topography
+	topo_drawer4 = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_units='km'
+	)
+
+	# axes properties
 	axes_properties = {
 		'fontsize': 14,
-		'title_left': 'Pressure [hPa]',
-		'title_right': str(timedelta(hours=6)),
-		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
+		'x_label': '$y$ [km]',
+		#'x_lim': [0, 500],
 		'y_lim': [0, 14],
 		'y_ticklabels': [],
-		'text': 'MC',
+		'text': '$y$-velocity',
 		'text_loc': 'upper right',
 	}
 
-	# Instantiate the lower-left collaborator
-	plot4 = Plot((drawer, topo_drawer2), False, axes_properties=axes_properties)
+	# instantiate the right collaborator
+	plot4 = Plot(
+		drawer, topo_drawer4, interactive=False, axes_properties=axes_properties
+	)
 
 	#
 	# PlotComposite
 	#
-	# Figure properties
+	# figure properties
 	figure_properties = {
 		'fontsize': 14,
 		'figsize': (9, 12),
 		'tight_layout': False,
 	}
 
-	# Instantiate the monitor
-	monitor = PlotComposite(2, 2, (plot1, plot2, plot3, plot4), False, figure_properties)
+	# instantiate the monitor
+	monitor = PlotComposite(
+		plot1, plot2, plot3, plot4, nrows=2, ncols=2,
+		interactive=False, figure_properties=figure_properties)
 
-	# Plot
-	monitor.store(((state1, )*2, (state2, )*2, )*2, save_dest=save_dest)
+	# plot
+	monitor.store(*((state, state), )*4, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 

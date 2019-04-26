@@ -34,31 +34,32 @@ baseline_dir = 'baseline_images/py{}{}/test_quiver'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
-	# Field to plot
+def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography_2d):
+	# field to plot
 	xcomp_name  = 'x_velocity'
 	xcomp_units = 'm s^-1'
 	ycomp_name  = 'y_velocity'
 	ycomp_units = 'm s^-1'
 
-	# Make sure the baseline directory does exist
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_quiver_xy_velocity_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
 
-	# Index identifying the cross-section to visualize
+	# index identifying the cross-section to visualize
 	z = -1
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 16,
 		'x_step': 2,
@@ -76,15 +77,17 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 		'alpha': 0.5,
 	}
 
-	# Instantiate the drawer
-	drawer = Quiver(grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
-					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
-					xaxis_units='km', yaxis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Quiver(
+		grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
+		ycomp_name=ycomp_name, ycomp_units=ycomp_units,
+		xaxis_units='km', yaxis_units='km', properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography_2d(grid, xaxis_units='km', yaxis_units='km')
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 8),
@@ -100,11 +103,14 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 		'y_lim': None,
 	}
 
-	# Instantiate the monitor
-	monitor = Plot((topo_drawer, drawer), False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		topo_drawer, drawer, interactive=False,
+		figure_properties=figure_properties, axes_properties=axes_properties
+	)
 
-	# Plot
-	monitor.store((state, state), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -112,31 +118,32 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
-	# Field to plot
+def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography_2d):
+	# field to plot
 	xcomp_name  = 'x_velocity'
 	xcomp_units = 'm s^-1'
 	ycomp_name  = 'y_velocity'
 	ycomp_units = 'm s^-1'
 
-	# Make sure the baseline directory does exist
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_quiver_xy_velocity_bw_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
 
-	# Index identifying the cross-section to visualize
+	# index identifying the cross-section to visualize
 	z = -1
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 16,
 		'x_step': 2,
@@ -144,15 +151,17 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
 		'alpha': 0.5,
 	}
 
-	# Instantiate the drawer
-	drawer = Quiver(grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
-					ycomp_name=ycomp_name, ycomp_units=ycomp_units,
-					xaxis_units='km', yaxis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Quiver(
+		grid, z=z, xcomp_name=xcomp_name, xcomp_units=xcomp_units,
+		ycomp_name=ycomp_name, ycomp_units=ycomp_units,
+		xaxis_units='km', yaxis_units='km', properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography_2d(grid, xaxis_units='km', yaxis_units='km')
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 7),
@@ -168,11 +177,14 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
 		'y_lim': None,
 	}
 
-	# Instantiate the monitor
-	monitor = Plot((topo_drawer, drawer), False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		topo_drawer, drawer, interactive=False,
+		figure_properties=figure_properties, axes_properties=axes_properties
+	)
 
-	# Plot
-	monitor.store((state, state), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -181,5 +193,3 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography2d):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_dry_data
-	#test_quiver_xy_velocity(isentropic_dry_data())

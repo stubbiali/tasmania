@@ -31,7 +31,7 @@ import conf
 import utils
 
 from tasmania.python.grids.horizontal_grid import \
-	HorizontalGrid, PhysicalHorizontalGrid, ComputationalHorizontalGrid
+	HorizontalGrid, PhysicalHorizontalGrid, NumericalHorizontalGrid
 
 
 @given(hyp_st.data())
@@ -151,7 +151,7 @@ def test_physical_grid(data):
 
 
 @given(hyp_st.data())
-def test_computational_grid(data):
+def test_numerical_grid(data):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -175,18 +175,18 @@ def test_computational_grid(data):
 
 	pgrid = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)
 
-	grid = ComputationalHorizontalGrid(pgrid, hb)
+	grid = NumericalHorizontalGrid(pgrid, hb)
 
-	utils.compare_dataarrays(hb.get_computational_xaxis(x, dims='c_x'), grid.x)
+	utils.compare_dataarrays(hb.get_numerical_xaxis(x, dims='c_x'), grid.x)
 	utils.compare_dataarrays(
-		hb.get_computational_xaxis(xu, dims='c_x_at_u_locations'), grid.x_at_u_locations
+		hb.get_numerical_xaxis(xu, dims='c_x_at_u_locations'), grid.x_at_u_locations
 	)
 	utils.compare_dataarrays(dx, grid.dx)
 	assert grid.nx == hb.ni
 
-	utils.compare_dataarrays(hb.get_computational_yaxis(y, dims='c_y'), grid.y)
+	utils.compare_dataarrays(hb.get_numerical_yaxis(y, dims='c_y'), grid.y)
 	utils.compare_dataarrays(
-		hb.get_computational_yaxis(yv, dims='c_y_at_v_locations'), grid.y_at_v_locations
+		hb.get_numerical_yaxis(yv, dims='c_y_at_v_locations'), grid.y_at_v_locations
 	)
 	utils.compare_dataarrays(dy, grid.dy)
 	assert grid.ny == hb.nj

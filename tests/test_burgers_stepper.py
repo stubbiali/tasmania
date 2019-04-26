@@ -39,7 +39,7 @@ import tasmania.conf as taz_conf
 from tasmania.python.burgers.dynamics.stepper import \
 	BurgersStepper, _ForwardEuler, _RK2, _RK3WS
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
-from tasmania.python.grids.grid import ComputationalGrid
+from tasmania.python.grids.grid import NumericalGrid
 
 
 @settings(
@@ -68,7 +68,7 @@ def test_forward_euler(data):
 	)
 	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
-	grid = ComputationalGrid(pgrid, hb)
+	grid = NumericalGrid(pgrid, hb)
 
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
@@ -166,7 +166,7 @@ def test_rk2(data):
 	)
 	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
-	grid = ComputationalGrid(pgrid, hb)
+	grid = NumericalGrid(pgrid, hb)
 
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
@@ -292,7 +292,7 @@ def test_rk3ws(data):
 	)
 	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
-	grid = ComputationalGrid(pgrid, hb)
+	grid = NumericalGrid(pgrid, hb)
 
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
@@ -419,4 +419,3 @@ def test_rk3ws(data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_rk3ws()

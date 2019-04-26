@@ -38,43 +38,46 @@ result_dir = 'result_images/py{}{}/test_animation'.format(
 )
 
 
-def test_profile(isentropic_moist_sedimentation_data):
-	# Make sure the baseline directory does exist
+def test_profile(isentropic_dry_data):
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the result directory does exist
+	# make sure the result directory does exist
 	if not os.path.exists(result_dir):
 		os.makedirs(result_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline footage will exist at the end of this run
 	filename = 'test_profile.mp4'
-	baseline_img = os.path.join(baseline_dir, filename)
-	result_img = os.path.join(result_dir, filename)
-	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
+	baseline_video = os.path.join(baseline_dir, filename)
+	result_video = os.path.join(result_dir, filename)
+	save_dest = result_video if os.path.exists(baseline_video) else baseline_video
 
-	# Field to plot
-	field_name  = 'precipitation'
-	field_units = 'mm h^-1'
+	# field to plot
+	field_name  = 'x_velocity'
+	field_units = 'km hr^-1'
 
-	# Grab data
-	grid, states = isentropic_moist_sedimentation_data
+	# grab data
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
-	# Indices identifying the cross-line to visualize
-	y, z = 0, -1
+	# indices identifying the cross-line to visualize
+	y, z = int(grid.ny/2), -1
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'linecolor': 'blue',
 		'linestyle': '-',
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = LineProfile(grid, field_name, field_units, y=y, z=z,
-						 axis_units='km', properties=drawer_properties)
+	# instantiate the drawer
+	drawer = LineProfile(
+		grid, field_name, field_units, y=y, z=z,
+		axis_name='x', axis_units='km', properties=drawer_properties
+	)
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 7),
@@ -82,27 +85,36 @@ def test_profile(isentropic_moist_sedimentation_data):
 	}
 	axes_properties = {
 		'fontsize': 16,
-		'title_left': 'Precipitation [mm h$^{-1}$]',
+		'title_left': '$x$-velocity [km hr$^{-1}$]',
 		'x_label': '$x$ [km]',
-		'x_lim': [0, 500],
-		'y_lim': [0, 1.0],
+		#'x_lim': [0, 500],
+		'y_lim': [0, 100],
 		'grid_on': True,
 	}
 
-	# Instantiate the monitor
-	monitor = Plot(drawer, False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, interactive=False, figure_properties=figure_properties,
+		axes_properties=axes_properties
+	)
 
-	# Create the animation
-	animation = Animation(monitor, print_time='elapsed', fps=8)
+	# create the animation
+	animation = Animation(monitor, print_time='elapsed', fps=15)
+	for state in states:
+		animation.store(state)
+	for state in states:
+		animation.store(state)
+	for state in states:
+		animation.store(state)
 	for state in states:
 		animation.store(state)
 	animation.run(save_dest=save_dest)
 
-	# Asserts
+	# asserts
 	assert os.path.exists(save_dest)
 
 
-def test_plot_composite(isentropic_moist_sedimentation_data,
+def _test_plot_composite(isentropic_moist_sedimentation_data,
 						isentropic_moist_sedimentation_evaporation_data):
 	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
@@ -114,9 +126,9 @@ def test_plot_composite(isentropic_moist_sedimentation_data,
 
 	# Make sure the baseline image will exist at the end of this run
 	filename = 'test_plot_composite.mp4'
-	baseline_img = os.path.join(baseline_dir, filename)
-	result_img = os.path.join(result_dir, filename)
-	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
+	baseline_video = os.path.join(baseline_dir, filename)
+	result_video = os.path.join(result_dir, filename)
+	save_dest = result_video if os.path.exists(baseline_video) else baseline_video
 
 	# Field to plot
 	field_name  = 'accumulated_precipitation'
@@ -213,7 +225,7 @@ def test_plot_composite(isentropic_moist_sedimentation_data,
 	assert os.path.exists(save_dest)
 
 
-def test_contourf(isentropic_dry_data, drawer_topography2d):
+def _test_contourf(isentropic_dry_data, drawer_topography2d):
 	# Make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -224,9 +236,9 @@ def test_contourf(isentropic_dry_data, drawer_topography2d):
 
 	# Make sure the baseline image will exist at the end of this run
 	filename = 'test_contourf.mp4'
-	baseline_img = os.path.join(baseline_dir, filename)
-	result_img = os.path.join(result_dir, filename)
-	save_dest = result_img if os.path.exists(baseline_img) else baseline_img
+	baseline_video = os.path.join(baseline_dir, filename)
+	result_video = os.path.join(result_dir, filename)
+	save_dest = result_video if os.path.exists(baseline_video) else baseline_video
 
 	# Field to plot
 	field_name  = 'horizontal_velocity'

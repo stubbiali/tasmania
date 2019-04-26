@@ -34,74 +34,97 @@ import utils
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
 
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
+	deadline=None
+)
 @given(hyp_st.data())
 def test_zhao_solution_factory(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_grid_xyz(zaxis_length=(1, 1)))
+	grid = data.draw(utils.st_physical_grid(zaxis_length=(1, 1)))
 	eps = DataArray(data.draw(utils.st_floats()), attrs={'units': 'm^2 s^-1'})
+
 	el0 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx))
 	el1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx))
 	assume(el0 != el1)
 	slice_x = slice(el0, el1) if el0 < el1 else slice(el1, el0)
+
 	el0 = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny))
 	el1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny))
 	assume(el0 != el1)
 	slice_y = slice(el0, el1) if el0 < el1 else slice(el1, el0)
-	time = data.draw(hyp_st.timedeltas())
+
+	init_time = data.draw(hyp_st.datetimes())
+	time = data.draw(hyp_st.datetimes(min_value=init_time))
 
 	# ========================================
 	# test
 	# ========================================
-	zsf = ZhaoSolutionFactory(eps)
+	zsf = ZhaoSolutionFactory(init_time, eps)
 
-	u = zsf(grid, time, field_name='x_velocity')
-	v = zsf(grid, time, field_name='x_velocity')
+	u = zsf(time, grid, field_name='x_velocity')
+	v = zsf(time, grid, field_name='x_velocity')
 	assert u.shape == (grid.nx, grid.ny, grid.nz)
 	assert v.shape == (grid.nx, grid.ny, grid.nz)
 
-	u = zsf(grid, time, slice_x=slice_x, field_name='x_velocity')
-	v = zsf(grid, time, slice_x=slice_x, field_name='x_velocity')
+	u = zsf(time, grid, slice_x=slice_x, field_name='x_velocity')
+	v = zsf(time, grid, slice_x=slice_x, field_name='x_velocity')
 	assert u.shape == (slice_x.stop-slice_x.start, grid.ny, grid.nz)
 	assert v.shape == (slice_x.stop-slice_x.start, grid.ny, grid.nz)
 
-	u = zsf(grid, time, slice_y=slice_y, field_name='x_velocity')
-	v = zsf(grid, time, slice_y=slice_y, field_name='x_velocity')
+	u = zsf(time, grid, slice_y=slice_y, field_name='x_velocity')
+	v = zsf(time, grid, slice_y=slice_y, field_name='x_velocity')
 	assert u.shape == (grid.nx, slice_y.stop-slice_y.start, grid.nz)
 	assert v.shape == (grid.nx, slice_y.stop-slice_y.start, grid.nz)
 
-	u = zsf(grid, time, slice_x=slice_x, slice_y=slice_y, field_name='x_velocity')
-	v = zsf(grid, time, slice_x=slice_x, slice_y=slice_y, field_name='x_velocity')
+	u = zsf(time, grid, slice_x=slice_x, slice_y=slice_y, field_name='x_velocity')
+	v = zsf(time, grid, slice_x=slice_x, slice_y=slice_y, field_name='x_velocity')
 	assert u.shape == (slice_x.stop-slice_x.start, slice_y.stop-slice_y.start, grid.nz)
 	assert v.shape == (slice_x.stop-slice_x.start, slice_y.stop-slice_y.start, grid.nz)
 
 
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much,
+	),
+	deadline=None
+)
 @given(hyp_st.data())
 def test_zhao_state_factory(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_grid_xyz(zaxis_length=(1, 1)))
+	grid = data.draw(utils.st_physical_grid(zaxis_length=(1, 1)))
+
 	eps = DataArray(
 		data.draw(utils.st_floats(min_value=-1e10, max_value=1e10)),
 		attrs={'units': 'm^2 s^-1'}
 	)
-	time = data.draw(hyp_st.datetimes())
+
+	init_time = data.draw(hyp_st.datetimes())
+	time = data.draw(hyp_st.datetimes(min_value=init_time))
 
 	# ========================================
 	# test
 	# ========================================
-	zsf = ZhaoStateFactory(eps)
+	zsf = ZhaoStateFactory(init_time, eps)
 
-	state = zsf(grid, time)
+	state = zsf(init_time, grid)
 
 	assert 'time' in state
 	assert 'x_velocity' in state
 	assert 'y_velocity' in state
 	assert len(state) == 3
 
-	assert state['time'] == time
+	assert state['time'] == init_time
 
 	x = grid.x.to_units('m').values
 	x = np.tile(x[:, np.newaxis, np.newaxis], (1, grid.ny, grid.nz))

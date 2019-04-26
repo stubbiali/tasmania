@@ -20,53 +20,252 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from datetime import datetime, timedelta
+from hypothesis import \
+	assume, given, HealthCheck, reproduce_failure, seed, settings, strategies as hyp_st
+import numpy as np
 import pytest
+import tempfile
 
-from tasmania.python.utils.storage_utils import load_netcdf_dataset
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import utils
+
+from tasmania.python.utils.data_utils import make_dataarray_3d
+from tasmania.python.utils.storage_utils import NetCDFMonitor, load_netcdf_dataset
 
 
-def test_load_netcdf_dataset():
-	filename = 'baseline_datasets/isentropic_dry.nc'
-	grid, states = load_netcdf_dataset(filename)
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_store_pp(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label='domain')
 
-	assert grid.nx == 51
-	assert grid.dx.values.item() == 10e3
-	assert grid.x.values[0] == 0
-	assert grid.x.values[-1] == 500e3
+	pgrid = domain.physical_grid
+	pstate = data.draw(
+		utils.st_isentropic_state(pgrid, moist=True, precipitation=True), label='pstate'
+	)
 
-	assert grid.ny == 51
-	assert grid.dy.values.item() == 10e3
-	assert grid.y.values[0] == -250e3
-	assert grid.y.values[-1] == 250e3
+	filename = data.draw(hyp_st.text(), label='filename')
 
-	assert grid.nz == 50
-	assert grid.dz.values.item() == 2.0
-	assert grid.z_on_interface_levels.values[0] == 400.0
-	assert grid.z_on_interface_levels.values[-1] == 300.0
+	# ========================================
+	# test bed
+	# ========================================
+	netcdf = NetCDFMonitor(filename, domain, 'physical')
+	netcdf.store(pstate)
+	netcdf.store(pstate)
+	netcdf.store(pstate)
 
-	topo = grid.topography
-	assert topo.topo_type == 'gaussian'
-	assert topo.topo_time.total_seconds() == 1800.0
-	assert topo.topo_kwargs['topo_max_height'] == 1000.0
-	assert topo.topo_kwargs['topo_width_x'] == 50e3
-	assert topo.topo_kwargs['topo_width_y'] == 50e3
-	assert topo.topo_kwargs['topo_center_x'] == 250e3
-	assert topo.topo_kwargs['topo_center_y'] == 0.0
 
-	assert len(states) == 31
-	assert all(['time' in state.keys() for state in states])
-	assert all(['air_isentropic_density' in state.keys() for state in states])
-	assert all(['air_pressure_on_interface_levels' in state.keys() for state in states])
-	assert all(['exner_function_on_interface_levels' in state.keys() for state in states])
-	assert all(['height_on_interface_levels' in state.keys() for state in states])
-	assert all(['montgomery_potential' in state.keys() for state in states])
-	assert all(['x_momentum_isentropic' in state.keys() for state in states])
-	assert all(['x_velocity_at_u_locations' in state.keys() for state in states])
-	assert all(['y_momentum_isentropic' in state.keys() for state in states])
-	assert all(['y_velocity_at_v_locations' in state.keys() for state in states])
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow, HealthCheck.data_too_large,  # HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_store_pc(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label='domain')
+
+	cgrid = domain.numerical_grid
+	cstate = data.draw(
+		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label='cstate'
+	)
+
+	filename = data.draw(hyp_st.text(), label='filename')
+
+	# ========================================
+	# test bed
+	# ========================================
+	netcdf = NetCDFMonitor(filename, domain, 'physical')
+	netcdf.store(cstate)
+	netcdf.store(cstate)
+	netcdf.store(cstate)
+
+
+@settings(
+	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_store_cc(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label='domain')
+
+	cgrid = domain.physical_grid
+	cstate = data.draw(
+		utils.st_isentropic_state(cgrid, moist=True, precipitation=True), label='cstate'
+	)
+
+	filename = data.draw(hyp_st.text(), label='filename')
+
+	# ========================================
+	# test bed
+	# ========================================
+	netcdf = NetCDFMonitor(filename, domain, 'numerical')
+	netcdf.store(cstate)
+	netcdf.store(cstate)
+	netcdf.store(cstate)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow, HealthCheck.data_too_large,  # HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_store_cp(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label='domain')
+
+	pgrid = domain.numerical_grid
+	pstate = data.draw(
+		utils.st_isentropic_state(pgrid, moist=False, precipitation=False), label='pstate'
+	)
+
+	filename = data.draw(hyp_st.text(), label='filename')
+
+	# ========================================
+	# test bed
+	# ========================================
+	netcdf = NetCDFMonitor(filename, domain, 'numerical')
+	netcdf.store(pstate)
+	netcdf.store(pstate)
+	netcdf.store(pstate)
+
+
+def assert_grids(g1, g2):
+	# x-axis
+	assert g1.nx == g2.nx
+	assert g1.dx == g2.dx
+	utils.compare_dataarrays(g1.x, g2.x)
+	utils.compare_dataarrays(g1.x_at_u_locations, g2.x_at_u_locations)
+
+	# y-axis
+	assert g1.ny == g2.ny
+	assert g1.dy == g2.dy
+	utils.compare_dataarrays(g1.y, g2.y)
+	utils.compare_dataarrays(g1.y_at_v_locations, g2.y_at_v_locations)
+
+	# z-axis
+	assert g1.nz == g2.nz
+	assert g1.dz == g2.dz
+	utils.compare_dataarrays(g1.z, g2.z)
+	utils.compare_dataarrays(g1.z_on_interface_levels, g2.z_on_interface_levels)
+
+	# topography
+	topo1, topo2 = g1.topography, g2.topography
+	assert topo1.type == topo2.type
+	assert np.allclose(topo1.steady_profile, topo2.steady_profile)
+
+
+def assert_isentropic_states(state, state_ref):
+	assert len(state) == len(state_ref)
+
+	for name in state_ref:
+		assert name in state
+
+		if name == 'time':
+			assert state['time'] == state_ref['time']
+		else:
+			assert np.allclose(state[name], state_ref[name])
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_write_and_load(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label='domain')
+
+	assume(domain.horizontal_boundary.type != 'dirichlet')
+
+	pgrid = domain.physical_grid
+	cgrid = domain.numerical_grid
+
+	pstate = data.draw(
+		utils.st_isentropic_state(
+			pgrid, moist=False, precipitation=False,
+			time=datetime(year=1992, month=2, day=20)
+		),
+		label='pstate'
+	)
+
+	hb = domain.horizontal_boundary
+	cstate = {'time': pstate['time']}
+	for name in pstate:
+		if name != 'time':
+			pfield = pstate[name].values
+			units = pstate[name].attrs['units']
+			cfield = hb.get_numerical_field(pfield, field_name=name)
+			cstate[name] = make_dataarray_3d(cfield, cgrid, units, name=name)
+
+	if not os.path.exists('tmp'):
+		os.makedirs('tmp')
+
+	_, filename = tempfile.mkstemp(suffix='.nc', dir='tmp')
+	os.remove(filename)
+
+	# ========================================
+	# test bed
+	# ========================================
+	# instantiate the monitor
+	netcdf = NetCDFMonitor(filename, domain, 'physical')
+
+	# store the states
+	netcdf.store(cstate)
+	cstate['time'] += timedelta(hours=1)
+	netcdf.store(cstate)
+	cstate['time'] += timedelta(hours=1)
+	netcdf.store(cstate)
+
+	# dump to file
+	netcdf.write()
+
+	# retrieve data from file
+	load_domain, load_grid_type, load_states = load_netcdf_dataset(filename)
+
+	# physical grid
+	assert_grids(domain.physical_grid, load_domain.physical_grid)
+
+	# numerical grid
+	assert_grids(domain.numerical_grid, load_domain.numerical_grid)
+
+	# underlying grid type
+	assert load_grid_type == 'physical'
+
+	# states
+	assert len(load_states) == 3
+	for state in load_states:
+		assert_isentropic_states(state, pstate)
+		pstate['time'] += timedelta(hours=1)
+
+	# clean temporary directory
+	os.remove(filename)
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_load_netcdf_dataset()
 

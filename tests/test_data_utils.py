@@ -368,4 +368,3 @@ def test_make_dataarray_3d(data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_make_dataarray_3d()

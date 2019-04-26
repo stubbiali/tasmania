@@ -22,7 +22,7 @@
 #
 from datetime import datetime, timedelta
 from hypothesis import \
-	given, HealthCheck, settings, strategies as hyp_st
+	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
@@ -34,10 +34,7 @@ import utils
 from test_burgers_advection import \
 	first_order_advection, third_order_advection, fifth_order_advection
 
-import tasmania.conf as taz_conf
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
-from tasmania.python.burgers.state import ZhaoSolutionFactory
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
 @settings(
@@ -49,26 +46,26 @@ def test_forward_euler(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = 1  # TODO: nb = taz_conf.nb
+
 	domain = data.draw(
 		utils.st_domain(
-			xaxis_length=(2*taz_conf.nb+1, 40),
-			yaxis_length=(2*taz_conf.nb+1, 40),
-			zaxis_length=(1, 1)
-		)
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
+			zaxis_length=(1, 1),
+			nb=nb
+		),
+		label='domain',
 	)
 
-	grid = domain.computational_grid
+	assume(domain.horizontal_boundary.type != 'identity')
+
+	grid = domain.numerical_grid
 
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
-		label='in_state'
+		label='state'
 	)
-
-	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
-	tendency = {} if not if_tendency else \
-		data.draw(
-			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
-		)
 
 	timestep = data.draw(
 		utils.st_timedeltas(
@@ -78,23 +75,19 @@ def test_forward_euler(data):
 		label='timestep'
 	)
 
-	eps = data.draw(utils.st_floats(min_value=-1e3, max_value=1e3), label='eps')
-
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = grid.grid_xy.x.dtype
+	dtype = grid.x.dtype
 
 	# ========================================
 	# test
 	# ========================================
-	zsf = ZhaoSolutionFactory(eps)
-	hb = HorizontalBoundary.factory(
-		hb_type, grid, 1, init_time=state['time'], solution_factory=zsf
-	)
 	dycore = BurgersDynamicalCore(
-		grid, time_units='s', intermediate_tendencies=None,
+		domain, intermediate_tendencies=None,
 		time_integration_scheme='forward_euler', flux_scheme='first_order',
-		boundary=hb, backend=backend, dtype=dtype
+		backend=backend, dtype=dtype
 	)
+
+	domain.horizontal_boundary.reference_state = state
 
 	new_state = dycore(state, {}, timestep)
 
@@ -108,11 +101,8 @@ def test_forward_euler(data):
 	dt = timestep.total_seconds()
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
-	u = state['x_velocity'].to_units('m s^-1').values
-	v = state['y_velocity'].to_units('m s^-1').values
-
-	u0 = hb.from_physical_to_computational_domain(u)
-	v0 = hb.from_physical_to_computational_domain(v)
+	u0 = state['x_velocity'].to_units('m s^-1').values
+	v0 = state['y_velocity'].to_units('m s^-1').values
 
 	adv_u_x, adv_u_y = first_order_advection(dx, dy, u0, v0, u0)
 	adv_v_x, adv_v_y = first_order_advection(dx, dy, u0, v0, v0)
@@ -120,11 +110,15 @@ def test_forward_euler(data):
 	u1 = u0 - dt * (adv_u_x + adv_u_y)
 	v1 = v0 - dt * (adv_v_x + adv_v_y)
 
-	u1 = hb.from_computational_to_physical_domain(u1, out_dims=(grid.nx, grid.ny, grid.nz))
-	v1 = hb.from_computational_to_physical_domain(v1, out_dims=(grid.nx, grid.ny, grid.nz))
-
-	hb.enforce(u1, u0, field_name='x_velocity', time=new_state['time'])
-	hb.enforce(v1, v0, field_name='y_velocity', time=new_state['time'])
+	hb = domain.horizontal_boundary
+	hb.enforce_field(
+		u1, field_name='x_velocity', field_units='m s^-1',
+		time=new_state['time'], grid=grid
+	)
+	hb.enforce_field(
+		v1, field_name='y_velocity', field_units='m s^-1',
+		time=new_state['time'], grid=grid
+	)
 
 	assert new_state['x_velocity'].attrs['units'] == 'm s^-1'
 	assert np.allclose(u1, new_state['x_velocity'], equal_nan=True)
@@ -142,44 +136,48 @@ def test_rk2(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(2*taz_conf.nb+1, 40),
-			yaxis_length=(2*taz_conf.nb+1, 40),
-			zaxis_length=(1, 1)
+	nb = 2  # TODO: nb = taz_conf.nb
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
-		label='grid'
+		label='domain',
 	)
+
+	assume(domain.horizontal_boundary.type != 'identity')
+
+	grid = domain.numerical_grid
+
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
-		label='in_state'
+		label='state'
 	)
+
 	timestep = data.draw(
-		hyp_st.timedeltas(
+		utils.st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
-	hb_type = data.draw(
-		utils.st_one_of(('periodic', 'relaxed', 'zhao')), label='hb_type'
-	)
-	eps = data.draw(utils.st_floats(min_value=-1e3, max_value=1e3))
+
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = data.draw(utils.st_one_of(conf.datatype), label='dtype')
+	dtype = grid.x.dtype
 
 	# ========================================
 	# test
 	# ========================================
-	zsf = ZhaoSolutionFactory(eps)
-	hb = HorizontalBoundary.factory(
-		hb_type, grid, 2, init_time=state['time'], solution_factory=zsf
-	)
 	dycore = BurgersDynamicalCore(
-		grid, time_units='s', intermediate_tendencies=None,
+		domain, intermediate_tendencies=None,
 		time_integration_scheme='rk2', flux_scheme='third_order',
-		boundary=hb, backend=backend, dtype=dtype
+		backend=backend, dtype=dtype
 	)
+
+	domain.horizontal_boundary.reference_state = state
 
 	new_state = dycore(state, {}, timestep)
 
@@ -193,11 +191,8 @@ def test_rk2(data):
 	dt = timestep.total_seconds()
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
-	u = state['x_velocity'].to_units('m s^-1').values
-	v = state['y_velocity'].to_units('m s^-1').values
-
-	u0 = hb.from_physical_to_computational_domain(u)
-	v0 = hb.from_physical_to_computational_domain(v)
+	u0 = state['x_velocity'].to_units('m s^-1').values
+	v0 = state['y_velocity'].to_units('m s^-1').values
 
 	adv_u_x, adv_u_y = third_order_advection(dx, dy, u0, v0, u0)
 	adv_v_x, adv_v_y = third_order_advection(dx, dy, u0, v0, v0)
@@ -205,14 +200,15 @@ def test_rk2(data):
 	u1 = u0 - 0.5 * dt * (adv_u_x + adv_u_y)
 	v1 = v0 - 0.5 * dt * (adv_v_x + adv_v_y)
 
-	u1 = hb.from_computational_to_physical_domain(u1, out_dims=(grid.nx, grid.ny, grid.nz))
-	v1 = hb.from_computational_to_physical_domain(v1, out_dims=(grid.nx, grid.ny, grid.nz))
-
-	hb.enforce(u1, u0, field_name='x_velocity', time=state['time']+0.5*timestep)
-	hb.enforce(v1, v0, field_name='y_velocity', time=state['time']+0.5*timestep)
-
-	u1 = hb.from_physical_to_computational_domain(u1)
-	v1 = hb.from_physical_to_computational_domain(v1)
+	hb = domain.horizontal_boundary
+	hb.enforce_field(
+		u1, field_name='x_velocity', field_units='m s^-1',
+		time=state['time']+0.5*timestep, grid=grid
+	)
+	hb.enforce_field(
+		v1, field_name='y_velocity', field_units='m s^-1',
+		time=state['time']+0.5*timestep, grid=grid
+	)
 
 	adv_u_x, adv_u_y = third_order_advection(dx, dy, u1, v1, u1)
 	adv_v_x, adv_v_y = third_order_advection(dx, dy, u1, v1, v1)
@@ -220,11 +216,14 @@ def test_rk2(data):
 	u2 = u0 - dt * (adv_u_x + adv_u_y)
 	v2 = v0 - dt * (adv_v_x + adv_v_y)
 
-	u2 = hb.from_computational_to_physical_domain(u2, out_dims=(grid.nx, grid.ny, grid.nz))
-	v2 = hb.from_computational_to_physical_domain(v2, out_dims=(grid.nx, grid.ny, grid.nz))
-
-	hb.enforce(u2, u0, field_name='x_velocity', time=state['time']+timestep)
-	hb.enforce(v2, v0, field_name='y_velocity', time=state['time']+timestep)
+	hb.enforce_field(
+		u2, field_name='x_velocity', field_units='m s^-1',
+		time=state['time']+timestep, grid=grid
+	)
+	hb.enforce_field(
+		v2, field_name='y_velocity', field_units='m s^-1',
+		time=state['time']+timestep, grid=grid
+	)
 
 	assert new_state['x_velocity'].attrs['units'] == 'm s^-1'
 	assert np.allclose(u2, new_state['x_velocity'], equal_nan=True)
@@ -242,44 +241,48 @@ def test_rk3ws(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(
-		utils.st_grid_xyz(
-			xaxis_length=(2*taz_conf.nb+1, 40),
-			yaxis_length=(2*taz_conf.nb+1, 40),
-			zaxis_length=(1, 1)
+	nb = 3  # TODO: nb = taz_conf.nb
+
+	domain = data.draw(
+		utils.st_domain(
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
-		label='grid'
+		label='domain',
 	)
+
+	assume(domain.horizontal_boundary.type != 'identity')
+
+	grid = domain.numerical_grid
+
 	state = data.draw(
 		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
-		label='in_state'
+		label='state'
 	)
+
 	timestep = data.draw(
-		hyp_st.timedeltas(
+		utils.st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
-	hb_type = data.draw(
-		utils.st_one_of(('periodic', 'relaxed', 'zhao')), label='hb_type'
-	)
-	eps = data.draw(utils.st_floats(min_value=-1e3, max_value=1e3))
+
 	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
-	dtype = data.draw(utils.st_one_of(conf.datatype), label='dtype')
+	dtype = grid.x.dtype
 
 	# ========================================
 	# test
 	# ========================================
-	zsf = ZhaoSolutionFactory(eps)
-	hb = HorizontalBoundary.factory(
-		hb_type, grid, 3, init_time=state['time'], solution_factory=zsf
-	)
 	dycore = BurgersDynamicalCore(
-		grid, time_units='s', intermediate_tendencies=None,
+		domain, intermediate_tendencies=None,
 		time_integration_scheme='rk3ws', flux_scheme='fifth_order',
-		boundary=hb, backend=backend, dtype=dtype
+		backend=backend, dtype=dtype
 	)
+
+	domain.horizontal_boundary.reference_state = state
 
 	new_state = dycore(state, {}, timestep)
 
@@ -293,11 +296,8 @@ def test_rk3ws(data):
 	dt = timestep.total_seconds()
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
-	u = state['x_velocity'].to_units('m s^-1').values
-	v = state['y_velocity'].to_units('m s^-1').values
-
-	u0 = hb.from_physical_to_computational_domain(u)
-	v0 = hb.from_physical_to_computational_domain(v)
+	u0 = state['x_velocity'].to_units('m s^-1').values
+	v0 = state['y_velocity'].to_units('m s^-1').values
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u0, v0, u0)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u0, v0, v0)
@@ -305,14 +305,15 @@ def test_rk3ws(data):
 	u1 = u0 - 1.0/3.0 * dt * (adv_u_x + adv_u_y)
 	v1 = v0 - 1.0/3.0 * dt * (adv_v_x + adv_v_y)
 
-	u1 = hb.from_computational_to_physical_domain(u1, out_dims=(grid.nx, grid.ny, grid.nz))
-	v1 = hb.from_computational_to_physical_domain(v1, out_dims=(grid.nx, grid.ny, grid.nz))
-
-	hb.enforce(u1, u0, field_name='x_velocity', time=state['time']+1.0/3.0*timestep)
-	hb.enforce(v1, v0, field_name='y_velocity', time=state['time']+1.0/3.0*timestep)
-
-	u1 = hb.from_physical_to_computational_domain(u1)
-	v1 = hb.from_physical_to_computational_domain(v1)
+	hb = domain.horizontal_boundary
+	hb.enforce_field(
+		u1, field_name='x_velocity', field_units='m s^-1',
+		time=state['time']+1.0/3.0*timestep, grid=grid
+	)
+	hb.enforce_field(
+		v1, field_name='y_velocity', field_units='m s^-1',
+		time=state['time']+1.0/3.0*timestep, grid=grid
+	)
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u1, v1, u1)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u1, v1, v1)
@@ -320,14 +321,14 @@ def test_rk3ws(data):
 	u2 = u0 - 0.5 * dt * (adv_u_x + adv_u_y)
 	v2 = v0 - 0.5 * dt * (adv_v_x + adv_v_y)
 
-	u2 = hb.from_computational_to_physical_domain(u2, out_dims=(grid.nx, grid.ny, grid.nz))
-	v2 = hb.from_computational_to_physical_domain(v2, out_dims=(grid.nx, grid.ny, grid.nz))
-
-	hb.enforce(u2, u0, field_name='x_velocity', time=state['time']+0.5*timestep)
-	hb.enforce(v2, v0, field_name='y_velocity', time=state['time']+0.5*timestep)
-
-	u2 = hb.from_physical_to_computational_domain(u2)
-	v2 = hb.from_physical_to_computational_domain(v2)
+	hb.enforce_field(
+		u2, field_name='x_velocity', field_units='m s^-1',
+		time=state['time']+0.5*timestep, grid=grid
+	)
+	hb.enforce_field(
+		v2, field_name='y_velocity', field_units='m s^-1',
+		time=state['time']+0.5*timestep, grid=grid
+	)
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u2, v2, u2)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u2, v2, v2)
@@ -335,11 +336,14 @@ def test_rk3ws(data):
 	u3 = u0 - dt * (adv_u_x + adv_u_y)
 	v3 = v0 - dt * (adv_v_x + adv_v_y)
 
-	u3 = hb.from_computational_to_physical_domain(u3, out_dims=(grid.nx, grid.ny, grid.nz))
-	v3 = hb.from_computational_to_physical_domain(v3, out_dims=(grid.nx, grid.ny, grid.nz))
-
-	hb.enforce(u3, u0, field_name='x_velocity', time=state['time']+timestep)
-	hb.enforce(v3, v0, field_name='y_velocity', time=state['time']+timestep)
+	hb.enforce_field(
+		u3, field_name='x_velocity', field_units='m s^-1',
+		time=state['time']+timestep, grid=grid
+	)
+	hb.enforce_field(
+		v3, field_name='y_velocity', field_units='m s^-1',
+		time=state['time']+timestep, grid=grid
+	)
 
 	assert new_state['x_velocity'].attrs['units'] == 'm s^-1'
 	assert np.allclose(u3, new_state['x_velocity'], equal_nan=True)
@@ -350,4 +354,3 @@ def test_rk3ws(data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_rk3ws()

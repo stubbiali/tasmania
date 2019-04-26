@@ -22,14 +22,13 @@
 #
 from datetime import timedelta
 import numpy as np
-from sympl import DataArray
 
 import gridtools as gt
 
 
 # backend settings
 backend = (gt.mode.NUMPY, )
-datatype = (np.float64, )
+datatype = (np.float64, )  # TODO: datatype = (np.float32, no.float64)
 
 # x-axis
 axis_x = {
@@ -38,7 +37,7 @@ axis_x = {
 		'km': (-100, 100),
 		'm': (0, 2e5),
 	},
-	'length': (1, 40),
+	'length': (1, 20),
 	'increasing': True,
 }
 
@@ -49,7 +48,7 @@ axis_y = {
 		'km': (-100, 100),
 		'm': (0, 2e5),
 	},
-	'length': (1, 40),
+	'length': (1, 20),
 	'increasing': True,
 }
 
@@ -60,7 +59,7 @@ axis_z = {
 		'K': (270, 400),
 		'degC': (-20, 40),
 	},
-	'length': (1, 40),
+	'length': (1, 20),
 	'increasing': False,
 }
 
@@ -82,7 +81,9 @@ topography = {
 }
 
 # horizontal boundary
-horizontal_boundary_types = ('relaxed', 'periodic')
+horizontal_boundary_types = (
+	'relaxed', 'periodic', 'dirichlet',  # 'identity'
+)
 
 # isentropic model
 isentropic_state = {

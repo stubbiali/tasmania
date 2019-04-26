@@ -34,44 +34,47 @@ baseline_dir = 'baseline_images/py{}{}/test_contour'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_xy_velocity(isentropic_dry_data, drawer_topography2d):
-	# Field to plot
+def test_contour_xy_velocity(isentropic_dry_data, drawer_topography_2d):
+	# field to plot
 	field_name  = 'horizontal_velocity'
 	field_units = 'm s^-1'
 
-	# Make sure the baseline directory does exist
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_contour_xy_velocity_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
 
-	# Index identifying the cross-section to visualize
+	# index identifying the cross-section to visualize
 	z = -1
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 16,
 		'alpha': 1.0,
 		'colors': 'black',
 	}
 
-	# Instantiate the drawer
-	drawer = Contour(grid, field_name, field_units, z=z,
-					 xaxis_units='km', yaxis_units='km',
-					 properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Contour(
+		grid, field_name, field_units, z=z,
+		xaxis_units='km', yaxis_units='km',
+		properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography_2d(grid, xaxis_units='km', yaxis_units='km')
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 7),
@@ -87,11 +90,14 @@ def test_contour_xy_velocity(isentropic_dry_data, drawer_topography2d):
 		'y_lim': None,
 	}
 
-	# Instantiate the monitor
-	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, topo_drawer, interactive=False,
+		figure_properties=figure_properties, axes_properties=axes_properties
+	)
 
-	# Plot
-	monitor.store((state, state), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -99,43 +105,46 @@ def test_contour_xy_velocity(isentropic_dry_data, drawer_topography2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_xy_pressure(isentropic_dry_data, drawer_topography2d):
-	# Field to plot
+def test_contour_xy_pressure(isentropic_dry_data, drawer_topography_2d):
+	# field to plot
 	field_name  = 'air_pressure_on_interface_levels'
 	field_units = 'hPa'
 
-	# Make sure the baseline directory does exist
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_contour_xy_pressure_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grad data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
 
-	# Index identifying the cross-section to visualize
+	# index identifying the cross-section to visualize
 	z = -1
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 16,
 		'alpha': 0.1,
 	}
 
-	# Instantiate the drawer
-	drawer = Contour(grid, field_name, field_units, z=z,
-					 xaxis_units='km', yaxis_units='km',
-					 properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Contour(
+		grid, field_name, field_units, z=z,
+		xaxis_units='km', yaxis_units='km',
+		properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer = drawer_topography2d(grid, xaxis_units='km', yaxis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography_2d(grid, xaxis_units='km', yaxis_units='km')
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 7),
@@ -151,11 +160,14 @@ def test_contour_xy_pressure(isentropic_dry_data, drawer_topography2d):
 		'y_lim': None,
 	}
 
-	# Instantiate the monitor
-	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, topo_drawer, interactive=False,
+		figure_properties=figure_properties, axes_properties=axes_properties
+	)
 
-	# Plot
-	monitor.store((state, state), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -163,29 +175,30 @@ def test_contour_xy_pressure(isentropic_dry_data, drawer_topography2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_xz_velocity(isentropic_dry_data, drawer_topography1d):
-	# Field to plot
+def test_contour_xz_velocity(isentropic_dry_data, drawer_topography_1d):
+	# field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
 
-	# Make sure the baseline directory does exist
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_contour_xz_velocity_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
 
-	# Index identifying the cross-section to visualize
+	# index identifying the cross-section to visualize
 	y = int(grid.ny/2)
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 16,
 		'draw_vertical_levels': True,
@@ -193,15 +206,19 @@ def test_contour_xz_velocity(isentropic_dry_data, drawer_topography1d):
 		'linewidth': 1.5,
 	}
 
-	# Instantiate the drawer
-	drawer = Contour(grid, field_name, field_units, y=y,
-					 xaxis_units='km', zaxis_name='height', zaxis_units='km',
-					 properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Contour(
+		grid, field_name, field_units, y=y,
+		xaxis_units='km', zaxis_name='height', zaxis_units='km',
+		properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer = drawer_topography1d(grid, topo_units='km', y=y, axis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography_1d(
+		grid, topography_units='km', y=y, axis_name='x', axis_units='km'
+	)
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 7),
@@ -217,11 +234,14 @@ def test_contour_xz_velocity(isentropic_dry_data, drawer_topography1d):
 		'y_lim': [0, 15],
 	}
 
-	# Instantiate the monitor
-	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, topo_drawer, interactive=False,
+		figure_properties=figure_properties, axes_properties=axes_properties
+	)
 
-	# Plot
-	monitor.store((state, state), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -229,29 +249,30 @@ def test_contour_xz_velocity(isentropic_dry_data, drawer_topography1d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_yz_velocity(isentropic_dry_data, drawer_topography1d):
-	# Field to plot
+def test_contour_yz_velocity(isentropic_dry_data, drawer_topography_1d):
+	# field to plot
 	field_name  = 'y_velocity_at_v_locations'
 	field_units = 'km hr^-1'
 
-	# Make sure the baseline directory does exist
+	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
 
-	# Make sure the baseline image will exist at the end of this run
+	# make sure the baseline image will exist at the end of this run
 	save_dest = os.path.join(baseline_dir, 'test_contour_yz_velocity_nompl.eps')
 	if os.path.exists(save_dest):
 		os.remove(save_dest)
 
-	# Grab data from dataset
-	grid, states = isentropic_dry_data
+	# grab data from dataset
+	domain, grid_type, states = isentropic_dry_data
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
 
-	# Index identifying the cross-section to visualize
+	# index identifying the cross-section to visualize
 	x = int(grid.nx/2)
 
-	# Drawer properties
+	# drawer properties
 	drawer_properties = {
 		'fontsize': 16,
 		'draw_vertical_levels': True,
@@ -259,15 +280,19 @@ def test_contour_yz_velocity(isentropic_dry_data, drawer_topography1d):
 		'linewidth': 1.3,
 	}
 
-	# Instantiate the drawer
-	drawer = Contour(grid, field_name, field_units, x=x, yaxis_units='km',
-					 zaxis_name='height_on_interface_levels', zaxis_units='km',
-					 properties=drawer_properties)
+	# instantiate the drawer
+	drawer = Contour(
+		grid, field_name, field_units, x=x, yaxis_units='km',
+		zaxis_name='height_on_interface_levels', zaxis_units='km',
+		properties=drawer_properties
+	)
 
-	# Instantiate the drawer plotting the topography
-	topo_drawer = drawer_topography1d(grid, topo_units='km', x=x, axis_units='km')
+	# instantiate the drawer plotting the topography
+	topo_drawer = drawer_topography_1d(
+		grid, topography_units='km', x=x, axis_name='y', axis_units='km'
+	)
 
-	# Figure and axes properties
+	# figure and axes properties
 	figure_properties = {
 		'fontsize': 16,
 		'figsize': (7, 7),
@@ -283,11 +308,14 @@ def test_contour_yz_velocity(isentropic_dry_data, drawer_topography1d):
 		'y_lim': [0, 15],
 	}
 
-	# Instantiate the monitor
-	monitor = Plot((drawer, topo_drawer), False, figure_properties, axes_properties)
+	# instantiate the monitor
+	monitor = Plot(
+		drawer, topo_drawer, interactive=False,
+		figure_properties=figure_properties, axes_properties=axes_properties
+	)
 
-	# Plot
-	monitor.store((state, state), save_dest=save_dest)
+	# plot
+	monitor.store(state, state, save_dest=save_dest)
 
 	assert os.path.exists(save_dest)
 
@@ -296,5 +324,3 @@ def test_contour_yz_velocity(isentropic_dry_data, drawer_topography1d):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_dry_data
-	#test_contour_xz_velocity(isentropic_dry_data())
