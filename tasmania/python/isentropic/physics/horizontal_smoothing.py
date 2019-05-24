@@ -133,11 +133,12 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 		return self.input_properties
 
 	def array_call(self, state):
-		self._core(state['air_isentropic_density'], self._s_out)
+		#self._core(state['air_isentropic_density'], self._s_out)
 		self._core(state['x_momentum_isentropic'],  self._su_out)
 		self._core(state['y_momentum_isentropic'],  self._sv_out)
 		return_dict = {
-			'air_isentropic_density': self._s_out,
+			#'air_isentropic_density': self._s_out,
+			'air_isentropic_density': state['air_isentropic_density'],
 			'x_momentum_isentropic':  self._su_out,
 			'y_momentum_isentropic':  self._sv_out,
 		}

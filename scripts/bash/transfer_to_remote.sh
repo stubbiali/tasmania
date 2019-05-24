@@ -21,23 +21,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-#==================================================
-# User-customed code
-#==================================================
+# ==================================================
+# User input
+# ==================================================
 REMOTE=daint
-REMOTE_ROOT=/project/s299/subbiali/tasmania-restyling
+REMOTE_ROOT=/scratch/snx3000/subbiali/tasmania-develop
+LOCAL_ROOT=../..
 
-#==================================================
-# Case-independent code
-#==================================================
+# ==================================================
+# Code
+# ==================================================
 FILES_TO_COPY=()
+ALL_FILES=($(ls $LOCAL_ROOT))
 
-cd ../..
-ALL_FILES=($(ls ))
-LOCAL_ROOT=$(pwd)
-cd scripts/bash
-
-echo "About to transfer data from the local system to the remote server $REMOTE."
+echo "About to transfer data from the local folder $LOCAL_ROOT to the remote folder $REMOTE:$REMOTE_ROOT."
 echo "Only the files newer than the version at the destination will be transfered."
 read -n 1 -s -r -p "Press ENTER to continue, or CTRL-C to exit."
 echo ""

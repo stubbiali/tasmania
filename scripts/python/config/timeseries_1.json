@@ -1,0 +1,22 @@
+{
+	"field_name": "total_accumulated_precipitation",
+	"field_units": "kg",
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "hr",
+	"time_on_xaxis": true,
+	"drawer_properties": {
+		"fontsize": 16,
+		"linestyle": "-",
+		"linewidth": 1.5,
+		"linecolor": "orange",
+		"marker": "o",
+		"markersize": 7,
+		"markeredgewidth": 1,
+		"markerfacecolor": "orange",
+		"markeredgecolor": "orange",
+		"legend_label": "LCC"
+	}
+}

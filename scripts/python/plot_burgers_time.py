@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tasmania.python.plot.plot_utils as pu 
 
-#==================================================
+# ==================================================
 # User inputs
-#==================================================
-which = 'lazy'  # options: lazy, normal, exp
+# ==================================================
+which = 'normal'  # options: lazy, midlazy, normal
 
 dx = np.array([1/10, 1/20, 1/40, 1/80])
 
@@ -35,14 +35,14 @@ figure_properties = {
 	'fontsize': 16,
 	'figsize': (6, 7),
 	'tight_layout': True,
-	'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
+	'tight_layout_rect': None,  # (0.0, 0.0, 0.7, 1.0),
 }
 
 axes_properties = {
 	'fontsize': 16,
 	'x_label': '$\\Delta x = \\Delta y$ [m]',
 	'x_labelcolor': 'black',
-	'x_lim': (1/80/1.5, 1/10*1.5), #(-190, 210),
+	'x_lim': (1/80/1.5, 1/10*1.5),  # (-190, 210),
 	'invert_xaxis': True,
 	'x_scale': 'log',
 	'x_ticks': (1/10, 1/20, 1/40, 1/80),
@@ -77,19 +77,19 @@ axes_properties = {
 	'zaxis_visible': True,
 	# legend
 	'legend_on': True,
-	'legend_loc': 'best', #'center left',
-	'legend_bbox_to_anchor': None, #(1.04, 0.5),
+	'legend_loc': 'best',  # 'center left',
+	'legend_bbox_to_anchor': None,  # (1.04, 0.5),
 	'legend_framealpha': 1.0,
 	'legend_ncol': 1,
 	# textbox
-	'text': None, #'$w_{\\mathtt{FW}} = 0$',
+	'text': None,  # '$w_{\\mathtt{FW}} = 0$',
 	'text_loc': 'upper left',
 	# grid
 	'grid_on': True,
 	'grid_properties': {'linestyle': ':'},
 }
 
-ax2_label = '$\\Delta t$ (= $\\Delta x^2$) [s]'
+ax2_label = '$\\Delta t$ [s]'
 
 ax2_scale = 'log'
 
@@ -97,21 +97,21 @@ ax2_ticks = (1/10, 1/20, 1/40, 1/80)
 
 ax2_ticklabels = ('1/100', '1/400', '1/1600', '1/6400')
 
-labels = ['CC', 'LCC', 'PS', 'SUS', 'SSUS']
+labels = ['CC', 'LCC', 'PS', 'SUS', 'SSUS', 'SSUS (CFL=2)']
 
-linecolors = ['red', 'orange', 'mediumpurple', 'c', 'blue']
+linecolors = ['red', 'orange', 'mediumpurple', 'c', 'blue', 'blue']
 
-linestyles = [':',]*5
+linestyles = ['-', ]*5 + [':', ]
  
-linewidths = [2,]*5
+linewidths = [2, ]*6
 
-markers = ['s', 'o', '^', '<', '>']
+markers = ['s', 'o', '^', '<', '>', '>']
 
-markersizes = [8.5,]*5
+markersizes = [8.5, ]*6
 
-#==================================================
+# ==================================================
 # Code
-#==================================================
+# ==================================================
 if __name__ == '__main__':
 	if which == 'lazy':
 		err = [
@@ -121,7 +121,7 @@ if __name__ == '__main__':
 			np.array([3, 12, 50, 219], dtype=np.float32),
 			np.array([5, 20, 83, 351], dtype=np.float32),
 		]
-	elif which == 'normal':
+	elif which == 'midlazy':
 		err = [
 			np.array([2, 8, 34, 155], dtype=np.float32),
 			np.array([1, 7, 30, 135], dtype=np.float32),
@@ -131,11 +131,12 @@ if __name__ == '__main__':
 		]
 	else:
 		err = [
-			np.array([2, 8, 34, 155], dtype=np.float32),
-			np.array([1, 5, 21, 97], dtype=np.float32),
-			np.array([5, 19, 78, 388], dtype=np.float32),
-			np.array([4, 16, 68, 294], dtype=np.float32),
-			np.array([6, 27, 110, 463], dtype=np.float32),
+			np.array([2, 7, 31.5, 147], dtype=np.float32),
+			np.array([1, 7, 28, 130], dtype=np.float32),
+			np.array([4, 16, 67, 290], dtype=np.float32),
+			np.array([3, 14, 58, 252], dtype=np.float32),
+			np.array([5, 22, 93, 400], dtype=np.float32),
+			np.array([2, 11, 46, 199], dtype=np.float32),
 		]
 
 	fig, ax = pu.get_figure_and_axes(**figure_properties)
@@ -149,14 +150,15 @@ if __name__ == '__main__':
 
 	pu.set_axes_properties(ax, **axes_properties)
 
-	ax2 = ax.twiny()
-	ax2.set_xscale(ax2_scale)
-	ax2.set_xlim(ax.get_xlim())
-	ax2.set_xticks(ax2_ticks)
-	ax2.set_xticklabels(ax2_ticklabels)
-	ax2.get_xaxis().set_tick_params(which='minor', size=0)
-	ax2.get_xaxis().set_tick_params(which='minor', width=0)
-	ax2.set_xlabel(ax2_label)
+	if False:
+		ax2 = ax.twiny()
+		ax2.set_xscale(ax2_scale)
+		ax2.set_xlim(ax.get_xlim())
+		ax2.set_xticks(ax2_ticks)
+		ax2.set_xticklabels(ax2_ticklabels)
+		ax2.get_xaxis().set_tick_params(which='minor', size=0)
+		ax2.get_xaxis().set_tick_params(which='minor', width=0)
+		ax2.set_xlabel(ax2_label)
 
 	pu.set_figure_properties(fig, **figure_properties)
 

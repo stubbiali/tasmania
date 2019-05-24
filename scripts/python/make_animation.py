@@ -20,33 +20,63 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from datetime import datetime
+import json
 import tasmania as taz
 
 
-#==================================================
-# User inputs
-#==================================================
-module = 'make_contourf_xz'
+class AnimationWrapper:
+	def __init__(self, json_filename):
+		with open(json_filename, 'r') as json_file:
+			data = json.load(json_file)
 
-tlevels = range(0, 10, 2)
+			wrapper_module = data['artist']['wrapper_module']
+			wrapper_classname = data['artist']['wrapper_classname']
+			wrapper_config = data['artist']['wrapper_config']
 
-print_time = 'elapsed'  # 'elapsed', 'absolute'
-fps = 10
+			import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
+			exec(import_str)
+			self._artist_wrapper = locals()[wrapper_classname](wrapper_config)
 
-save_dest = '../results/movies/smolarkiewicz/rk2_third_order_upwind_centered_' \
-	'nx51_ny51_nz50_dt20_nt8640_flat_terrain.mp4'
+			print_time = data['print_time']
+			fps = data['fps']
+
+			if 'init_time' in data:
+				init_time = datetime(
+					year=data['init_time']['year'],
+					month=data['init_time']['month'],
+					day=data['init_time']['day'],
+					hour=data['init_time'].get('hour', 0),
+					minute=data['init_time'].get('minute', 0),
+					second=data['init_time'].get('second', 0)
+				)
+			else:
+				init_time = None
+
+			self._core = taz.Animation(
+				self._artist_wrapper.get_artist(), print_time=print_time,
+				init_time=init_time, fps=fps
+			)
+
+			self._tlevels = range(data['tlevels'][0], data['tlevels'][1], data['tlevels'][2])
+			self._save_dest = data['save_dest']
+
+	def store(self):
+		for tlevel in self._tlevels:
+			states = self._artist_wrapper.get_states(tlevel)
+			self._core.store(*states)
+
+	def run(self):
+		self._core.run(save_dest=self._save_dest)
 
 
-#==================================================
-# Code
-#==================================================
 if __name__ == '__main__':
-	exec('from {} import get_plot as get_artist, get_states'.format(module))
-	artist = locals()['get_artist']()
-
-	engine = taz.Animation(artist, print_time=print_time, fps=fps)
-
-	for t in tlevels:
-		engine.store(locals()['get_states'](t, artist))
-
-	engine.run(save_dest=save_dest)
+	import argparse
+	parser = argparse.ArgumentParser(description='Generate a figure with a single plot.')
+	parser.add_argument(
+		'configfile', metavar='configfile', type=str, help='JSON configuration file.'
+	)
+	args = parser.parse_args()
+	animation = AnimationWrapper(args.configfile)
+	animation.store()
+	animation.run()

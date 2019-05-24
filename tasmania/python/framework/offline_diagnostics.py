@@ -26,6 +26,7 @@ This module contains:
 	OfflineDiagnosticComponent
 	RMSD(OfflineDiagnosticComponent)
 	RRMSD(OfflineDiagnosticComponent)
+	ColumnSum(OfflineDiagnosticComponent)
 """
 import abc
 import numpy as np
@@ -369,3 +370,41 @@ class RRMSD(OfflineDiagnosticComponent):
 			diags['rrmsd_of_' + name] = np.array(tmp)[np.newaxis, np.newaxis, np.newaxis]
 
 		return diags
+
+
+class ColumnSum(OfflineDiagnosticComponent):
+	"""
+	Sum the values of a field over each column.
+	"""
+	def __init__(self, grid, field_name, field_units):
+		self._grid   = grid
+		self._fname  = field_name
+		self._funits = field_units
+		super().__init__()
+
+	@property
+	def input_properties(self):
+		g = self._grid
+		dimx = g.x_at_u_locations.dims[0] if 'u_locations' in self._fname else g.x.dims[0]
+		dimy = g.y_at_v_locations.dims[0] if 'v_locations' in self._fname else g.y.dims[0]
+		dimz = g.z_on_interface_levels[0] if 'interface_levels' in self._fname else g.z.dims[0]
+
+		return_list = list()
+		return_list.append({'dims': (dimx, dimy, dimz), 'units': self._funits})
+
+		return return_list
+
+	@property
+	def diagnostic_properties(self):
+		g = self._grid
+		dimx = g.x_at_u_locations.dims[0] if 'u_locations' in self._fname else g.x.dims[0]
+		dimy = g.y_at_v_locations.dims[0] if 'v_locations' in self._fname else g.y.dims[0]
+		dimz = g.z_on_interface_levels[0] if 'interface_levels' in self._fname else g.z.dims[0]
+		dimz += '_at_surface_level'
+		return {'dims': (dimx, dimy, dimz), 'units': self._funits}
+
+	def array_call(self, state):
+		field = state[self._fname]
+		out = np.zeros((field.shape[0], field.shape[1], 1), dtype=field.dtype)
+		np.sum(field, axis=2, out=out)
+		return out

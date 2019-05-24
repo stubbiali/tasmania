@@ -673,7 +673,7 @@ def test_plot2d_r2c2(isentropic_dry_data, drawer_topography_1d):
 		'cbar_ticks_step': 2,
 		'cbar_center': 15,
 		'cbar_half_width': 10.5,
-		'cbar_ax': (3, 4),
+		'cbar_ax': (2, 3),
 		'linecolor': 'black',
 		'linewidth': 1.5,
 	}

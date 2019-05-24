@@ -27,7 +27,7 @@ import tasmania.python.plot.plot_utils as pu
 #==================================================
 # User inputs
 #==================================================
-which = 'normal'  # options: lazy, normal, exp
+which = 'expl'  # options: lazy, normal, exp
 
 dx = np.array([1/10, 1/20, 1/40, 1/80])
 
@@ -52,13 +52,13 @@ axes_properties = {
 	'xaxis_visible': True,
 	# y-axis
 	'y_label': '$||u - u_{ex}||_2$ [m s$^{-1}$]',
-	'y_labelcolor': 'white',
+	'y_labelcolor': 'black',
 	'y_lim': (2e-9, 2e-4),
 	'invert_yaxis': False,
 	'y_scale': 'log',
 	'y_ticks': None,
 	'y_ticklabels': None, #['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
-	'y_tickcolor': 'white',
+	'y_tickcolor': 'black',
 	'yaxis_minor_ticks_visible': False,
 	'yaxis_visible': True,
 	# z-axis
@@ -86,7 +86,7 @@ axes_properties = {
 	'grid_properties': {'linestyle': ':'},
 }
 
-ax2_label = '$\\Delta t$ (= $\\Delta x^2$) [s]'
+ax2_label = '$\\Delta t$ [s]'
 
 ax2_scale = 'log'
 
@@ -94,17 +94,24 @@ ax2_ticks = (1/10, 1/20, 1/40, 1/80)
 
 ax2_ticklabels = ('1/100', '1/400', '1/1600', '1/6400')
 
-labels = ['CC', 'LCC', 'PS', 'SUS', 'SSUS']
+labels = [
+	'CC',
+	'LCC',
+	'PS',
+	'SUS',
+	'SSUS',
+	'SSUS (CFL=2)',
+]
 
-linecolors = ['red', 'orange', 'mediumpurple', 'c', 'blue']
+linecolors = ['red', 'orange', 'mediumpurple', 'c', 'blue', 'blue']
 
-linestyles = ['--',]*5
+linestyles = ['-', ]*5 + [':']
  
-linewidths = [2,]*5
+linewidths = [2, ]*6
 
-markers = ['s', 'o', '^', '<', '>']
+markers = ['s', 'o', '^', '<', '>', '>']
 
-markersizes = [8.5,]*5
+markersizes = [8.5, ]*6
 
 #==================================================
 # Code
@@ -133,6 +140,7 @@ if __name__ == '__main__':
 			np.array([4.9697e-5, 1.5146e-5, 5.9153e-6, 1.7287e-6]),
 			np.array([1.0892e-5, 3.6137e-6, 2.8240e-6, 9.1709e-7]),
 			np.array([9.7639e-6, 1.8710e-6, 5.2504e-8, 5.1080e-9]),
+			np.array([1.1997e-5, 1.8339e-6, 9.3699e-8, 1.9796e-8]),
 		]
 
 	fig, ax = pu.get_figure_and_axes(**figure_properties)
@@ -146,14 +154,15 @@ if __name__ == '__main__':
 
 	pu.set_axes_properties(ax, **axes_properties)
 
-	ax2 = ax.twiny()
-	ax2.set_xscale(ax2_scale)
-	ax2.set_xlim(ax.get_xlim())
-	ax2.set_xticks(ax2_ticks)
-	ax2.set_xticklabels(ax2_ticklabels)
-	ax2.get_xaxis().set_tick_params(which='minor', size=0)
-	ax2.get_xaxis().set_tick_params(which='minor', width=0)
-	ax2.set_xlabel(ax2_label)
+	if False:
+		ax2 = ax.twiny()
+		ax2.set_xscale(ax2_scale)
+		ax2.set_xlim(ax.get_xlim())
+		ax2.set_xticks(ax2_ticks)
+		ax2.set_xticklabels(ax2_ticklabels)
+		ax2.get_xaxis().set_tick_params(which='minor', size=0)
+		ax2.get_xaxis().set_tick_params(which='minor', width=0)
+		ax2.set_xlabel(ax2_label)
 
 	pu.set_figure_properties(fig, **figure_properties)
 

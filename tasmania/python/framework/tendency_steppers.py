@@ -24,6 +24,7 @@
 This module contain:
 	get_increment
 	tendencystepper_factory
+	TendencyStepper
 	ForwardEuler
 	RungeKutta2
 	RungeKutta3WS
@@ -163,6 +164,8 @@ class TendencyStepper:
 	@property
 	def prognostic(self):
 		"""
+		Return
+		------
 		obj :
 			The :class:`tasmania.ConcurrentCoupling` calculating the tendencies.
 		"""
@@ -171,6 +174,8 @@ class TendencyStepper:
 	@property
 	def input_properties(self):
 		"""
+		Return
+		------
 		dict :
 			Dictionary whose keys are strings denoting model variables
 			which should be present in the input state dictionary, and
@@ -203,6 +208,8 @@ class TendencyStepper:
 	@property
 	def diagnostic_properties(self):
 		"""
+		Return
+		------
 		dict :
 			Dictionary whose keys are strings denoting diagnostics
 			which are retrieved from the input state dictionary, and 
@@ -214,6 +221,8 @@ class TendencyStepper:
 	@property
 	def output_properties(self):
 		"""
+		Return
+		------
 		dict :
 			Dictionary whose keys are strings denoting model variables
 			present in the output state dictionary, and whose values are 
@@ -245,8 +254,13 @@ class TendencyStepper:
 			
 		Return
 		------
-		dict :
-			Dictionary whose keys are strings denoting the output model 
+		diagnostics : dict
+			Dictionary whose keys are strings denoting diagnostic
+			variables retrieved from the input state, and whose values
+			are :class:`sympl.DataArray`\s storing values for those
+			variables.
+		out_state : dict
+			Dictionary whose keys are strings denoting the output model
 			variables, and whose values are :class:`sympl.DataArray`\s
 			storing values for those variables.
 		"""
@@ -283,8 +297,13 @@ class TendencyStepper:
 			
 		Return
 		------
-		dict :
-			Dictionary whose keys are strings denoting the output model 
+		diagnostics : dict
+			Dictionary whose keys are strings denoting diagnostic
+			variables retrieved from the input state, and whose values
+			are :class:`sympl.DataArray`\s storing values for those
+			variables.
+		out_state : dict
+			Dictionary whose keys are strings denoting the output model
 			variables, and whose values are :class:`sympl.DataArray`\s
 			storing values for those variables.
 		"""
@@ -489,8 +508,10 @@ class RungeKutta3WS(TendencyStepper):
 
 	def _call(self, state, timestep):
 		# shortcuts
-		out_units = {name: properties['units']
-					 for name, properties in self.output_properties.items()}
+		out_units = {
+			name: properties['units']
+			for name, properties in self.output_properties.items()
+		}
 
 		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)

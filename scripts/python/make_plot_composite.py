@@ -20,65 +20,66 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import json
 import tasmania as taz
+from tasmania.python.utils.utils import assert_sequence
 
 
-#==================================================
-# User inputs
-#==================================================
-nrows = 1
-ncols = 3
+class PlotCompositeWrapper:
+	def __init__(self, json_filename):
+		with open(json_filename, 'r') as json_file:
+			data = json.load(json_file)
 
-modules = [
-	'make_plot',
-	'make_plot_1',
-	'make_plot_2',
-]
+			self._plot_wrappers = []
 
-tlevels = [16, 28, 40]
+			for plot_data in data['plots']:
+				wrapper_module = plot_data['wrapper_module']
+				wrapper_classname = plot_data['wrapper_classname']
+				wrapper_config = plot_data['wrapper_config']
 
-figure_properties = {
-	'fontsize': 16,
-	'figsize': (15, 7), # (15, 7), (10.5, 7)
-	'tight_layout': True,
-}
+				import_str = 'from {} import {}'.format(wrapper_module, wrapper_classname)
+				exec(import_str)
+				self._plot_wrappers.append(locals()[wrapper_classname](wrapper_config))
 
-save_dest = None
+			nrows = data['nrows']
+			ncols = data['ncols']
+			figure_properties = data['figure_properties']
 
+			self._core = taz.PlotComposite(
+				*(wrapper.get_artist() for wrapper in self._plot_wrappers),
+				nrows=nrows, ncols=ncols, interactive=False, figure_properties=figure_properties
+			)
 
-#==================================================
-# Code
-#==================================================
-def get_plot():
-	subplots = []
+			self._tlevels = data.get('tlevels', (0, )*len(self._plot_wrappers))
+			self._save_dest = data.get('save_dest', None)
 
-	for module in modules:
-		import_str = 'from {} import get_plot as get_subplot'.format(module)
-		exec(import_str)
-		subplots.append(locals()['get_subplot']())
+	def get_artist(self):
+		return self._core
 
-	plot = taz.PlotComposite(
-		nrows, ncols, subplots, interactive=False, figure_properties=figure_properties
-	)
+	def get_states(self, tlevels=None):
+		tlevels = self._tlevels if tlevels is None else tlevels
+		tlevels = (tlevels, )*len(self._plot_wrappers) if isinstance(tlevels, int) else tlevels
+		assert_sequence(tlevels, reflen=len(self._plot_wrappers), reftype=int)
 
-	return plot
+		states = tuple(plot_wrapper.get_states(tlevels) for plot_wrapper in self._plot_wrappers)
 
+		return states
 
-def get_states(tlevels, plot):
-	subplots = plot.artists
-	states = []
-
-	tlevels = (tlevels, ) * len(subplots) if isinstance(tlevels, int) else tlevels
-
-	for i in range(len(subplots)):
-		import_str = 'from {} import get_states'.format(modules[i])
-		exec(import_str)
-		states.append(locals()['get_states'](tlevels[i], subplots[i]))
-
-	return states
+	def store(self, tlevels=None, fig=None, show=False):
+		states = self.get_states(tlevels)
+		return self._core.store(*states, fig=fig, save_dest=self._save_dest, show=show)
 
 
 if __name__ == '__main__':
-	plot = get_plot()
-	states = get_states(tlevels, plot)
-	plot.store(states, save_dest=save_dest, show=True)
+	import argparse
+	parser = argparse.ArgumentParser(description='Generate a figure with multiple subplots.')
+	parser.add_argument(
+		'configfile', metavar='configfile', type=str, help='JSON configuration file.'
+	)
+	parser.add_argument(
+		'show', metavar='show', type=int, help='1 to show the generated plot, 0 otherwise.'
+	)
+	args = parser.parse_args()
+	plot_wrapper = PlotCompositeWrapper(args.configfile)
+	plot_wrapper.store(show=args.show)
+

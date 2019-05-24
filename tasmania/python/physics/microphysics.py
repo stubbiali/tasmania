@@ -22,12 +22,14 @@
 #
 """
 This module contains:
+	Clipping(DiagnosticComponent)
 	Kessler(TendencyComponent)
 	SaturationAdjustmentKessler(DiagnosticComponent)
 	RaindropFallVelocity(DiagnosticComponent)
     SedimentationFlux
     _{First, Second}OrderUpwind(SedimentationFlux)
     Sedimentation(ImplicitTendencyComponent)
+    AccumulatedPrecipitation(ImplicitTendencyComponent)
 """
 import abc
 import numpy as np
@@ -44,6 +46,59 @@ try:
 	from tasmania.conf import datatype
 except ImportError:
 	from numpy import float32 as datatype
+
+
+class Clipping(DiagnosticComponent):
+	"""
+	Clipping negative values of water species.
+	"""
+	def __init__(self, domain, grid_type, water_species_names=None):
+		"""
+		Parameters
+		----------
+		domain : tasmania.Domain
+			The underlying domain.
+		grid_type : str
+			The type of grid over which instantiating the class. Either:
+
+				* 'physical';
+				* 'numerical'.
+
+		water_species_names : `tuple`, optional
+			The names of the water species to clip.
+		"""
+		self._names = water_species_names
+		super().__init__(domain, grid_type)
+
+	@property
+	def input_properties(self):
+		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+
+		return_dict = {}
+		for name in self._names:
+			return_dict[name] = {'dims': dims, 'units': 'g g^-1'}
+
+		return return_dict
+
+	@property
+	def diagnostic_properties(self):
+		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+
+		return_dict = {}
+		for name in self._names:
+			return_dict[name] = {'dims': dims, 'units': 'g g^-1'}
+
+		return return_dict
+
+	def array_call(self, state):
+		diagnostics = {}
+
+		for name in self._names:
+			q = state[name]
+			q[q < 0.0] = 0.0
+			diagnostics[name] = q
+
+		return diagnostics
 
 
 class Kessler(TendencyComponent):
@@ -80,7 +135,7 @@ class Kessler(TendencyComponent):
 	}
 
 	def __init__(
-		self, domain, grid_type, air_pressure_on_interface_levels=True,
+		self, domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 		tendency_of_air_potential_temperature_in_diagnostics=False,
 		rain_evaporation=True, autoconversion_threshold=_d_a,
 		autoconversion_rate=_d_k1, collection_rate=_d_k2,
@@ -1128,3 +1183,98 @@ class Sedimentation(ImplicitTendencyComponent):
 		out_prec[k] = 3.6e6 * in_rho[k] * in_qr[k] * tmp_vt[k] / rhow
 
 		return out_prec
+
+
+class AccumulatedPrecipitation(ImplicitTendencyComponent):
+	"""
+	Update the accumulated precipitation.
+	"""
+	def __init__(
+		self, domain, grid_type='numerical', backend=gt.mode.NUMPY, dtype=datatype,	**kwargs
+	):
+		"""
+		Parameters
+		----------
+		domain : tasmania.Domain
+			The underlying domain.
+		grid_type : `str`, optional
+			The type of grid over which instantiating the class. Either:
+
+				* 'physical';
+				* 'numerical' (default).
+
+		backend : `obj`, optional
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
+		**kwargs :
+			Additional keyword arguments to be directly forwarded to the parent
+			:class:`~tasmania.ImplicitTendencyComponent`.
+		"""
+		super().__init__(domain, grid_type, **kwargs)
+
+		nx, ny = self.grid.nx, self.grid.ny
+		self._dt = gt.Global()
+		self._in_prec = np.zeros((nx, ny, 1), dtype=dtype)
+		self._in_accprec = np.zeros((nx, ny, 1), dtype=dtype)
+		self._out_accprec = np.zeros((nx, ny, 1), dtype=dtype)
+
+		self._stencil = gt.NGStencil(
+			definitions_func=self._stencil_defs,
+			inputs={'in_prec': self._in_prec, 'in_accprec': self._in_accprec},
+			global_inputs={'dt': self._dt},
+			outputs={'out_accprec': self._out_accprec},
+			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, 0)),
+			mode=backend
+		)
+
+	@property
+	def input_properties(self):
+		g = self.grid
+		if g.nz > 1:
+			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level')
+		else:
+			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+
+		return {
+			'precipitation': {'dims': dims, 'units': 'mm hr^-1'},
+			'accumulated_precipitation': {'dims': dims, 'units': 'mm'}
+		}
+
+	@property
+	def tendency_properties(self):
+		return {}
+
+	@property
+	def diagnostic_properties(self):
+		g = self.grid
+		if g.nz > 1:
+			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level')
+		else:
+			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+
+		return {'accumulated_precipitation': {'dims': dims, 'units': 'mm'}}
+
+	def array_call(self, state, timestep):
+		self._dt.value = timestep.total_seconds()
+		self._in_prec[...] = state['precipitation'][...]
+		self._in_accprec[...] = state['accumulated_precipitation'][...]
+
+		self._stencil.compute()
+
+		tendencies = {}
+		diagnostics = {'accumulated_precipitation': self._out_accprec}
+
+		return tendencies, diagnostics
+
+	@staticmethod
+	def _stencil_defs(dt, in_prec, in_accprec):
+		i = gt.Index(axis=0)
+		j = gt.Index(axis=1)
+
+		out_accprec = gt.Equation()
+
+		out_accprec[i, j] = in_accprec[i, j] + dt * in_prec[i, j] / 3.6e3
+
+		return out_accprec

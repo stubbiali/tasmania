@@ -37,7 +37,8 @@ import utils
 import gridtools as gt
 from tasmania.python.physics.microphysics import \
 	Kessler, SaturationAdjustmentKessler, RaindropFallVelocity, \
-	SedimentationFlux, _FirstOrderUpwind, _SecondOrderUpwind, Sedimentation
+	SedimentationFlux, _FirstOrderUpwind, _SecondOrderUpwind, Sedimentation, \
+	AccumulatedPrecipitation
 from tasmania.python.utils.data_utils import make_dataarray_3d
 from tasmania.python.utils.meteo_utils import \
 	goff_gratch_formula, tetens_formula
@@ -651,6 +652,55 @@ def test_sedimentation(data):
 	utils.compare_dataarrays(
 		make_dataarray_3d(raw_prec_val, grid, 'mm hr^-1'),
 		diagnostics['precipitation'], compare_coordinate_values=False
+	)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_accumulated_precipitation(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(utils.st_domain(), label="domain")
+
+	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	state = data.draw(utils.st_isentropic_state_f(grid, moist=True, precipitation=True), label="state")
+
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=1e-6), max_value=timedelta(hours=1)
+		),
+		label="timestep"
+	)
+
+	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+
+	# ========================================
+	# test bed
+	# ========================================
+	dtype = grid.x.dtype
+	prec = state['precipitation'].to_units('mm s^-1').values
+	accprec = state['accumulated_precipitation'].to_units('mm').values
+
+	comp = AccumulatedPrecipitation(domain, grid_type, backend, dtype)
+
+	tendencies, diagnostics = comp(state, timestep)
+
+	assert len(tendencies) == 0
+
+	assert 'accumulated_precipitation' in diagnostics
+	accprec_val = accprec + timestep.total_seconds() * prec
+	utils.compare_dataarrays(
+		make_dataarray_3d(accprec_val, grid, 'mm'),
+		diagnostics['accumulated_precipitation'], compare_coordinate_values=False
 	)
 
 

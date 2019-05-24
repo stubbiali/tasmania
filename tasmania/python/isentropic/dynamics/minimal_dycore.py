@@ -712,17 +712,17 @@ class IsentropicMinimalDynamicalCore(DynamicalCore):
 			self._damper(timestep, self._s_now , s_new       , self._s_ref , self._s_damped )
 			self._damper(timestep, self._su_now, su_new      , self._su_ref, self._su_damped)
 			self._damper(timestep, self._sv_now, sv_new      , self._sv_ref, self._sv_damped)
-			self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
-			self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
-			self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
+			#self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
+			#self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
+			#self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
 
 		# properly set pointers to current solution
 		s_new  = self._s_damped if damped else raw_state_new['air_isentropic_density']
 		su_new = self._su_damped if damped else raw_state_new['x_momentum_isentropic']
 		sv_new = self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
-		qv_new = self._qv_damped if damped else self._qv_new
-		qc_new = self._qc_damped if damped else self._qc_new
-		qr_new = self._qr_damped if damped else self._qr_new
+		qv_new = self._qv_new  #self._qv_damped if damped else self._qv_new
+		qc_new = self._qc_new  #self._qc_damped if damped else self._qc_new
+		qr_new = self._qr_new  #self._qr_damped if damped else self._qr_new
 
 		smoothed = False
 		if self._smooth and (self._smooth_at_every_stage or stage == self.stages-1):

@@ -1,0 +1,29 @@
+{
+	"field_name": "horizontal_velocity",
+	"field_units": "m s^-1",
+	"x": null,
+	"y": 25,
+	"z": null,
+	"xaxis_name": "x",
+	"xaxis_units": "km",
+	"xaxis_y": null,
+	"xaxis_z": null,
+	"yaxis_name": "y",
+	"yaxis_units": "km",
+	"yaxis_x": null,
+	"yaxis_z": null,
+	"zaxis_name": "height",
+	"zaxis_units": "km",
+	"zaxis_x": null,
+	"zaxis_y": null,
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"field_bias": 0.0,
+		"field_factor": 1.0,
+		"alpha": 1.0,
+		"colors": "black",
+		"draw_vertical_levels": true
+	}
+}
