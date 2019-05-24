@@ -22,11 +22,25 @@
 #
 """
 This module contains:
+	get_time
 	Animation
 """
 import matplotlib.animation as manimation
 
 from tasmania.python.plot.monitors import PlotComposite
+
+
+def get_time(states):
+	for level0 in states:
+		if isinstance(level0, dict):  # level0 is a state dictionary
+			if 'time' in level0:
+				return level0['time']
+		else:  # level0 is a collection of state dictionaries
+			for level1 in level0:
+				if 'time' in level1:
+					return level1['time']
+
+	raise ValueError('No state dictionary contains the key ''time''.')
 
 
 class Animation:
@@ -69,7 +83,7 @@ class Animation:
 		# initialize the list of states
 		self._states = []
 
-	def store(self, states):
+	def store(self, *states):
 		"""
 		Append a new state (respectively, a list of states), to the list of
 		states (resp., lists of states) stored in this object.
@@ -115,11 +129,8 @@ class Animation:
 		fig = self._artist.figure
 
 		# save initial time
-		if self._itime is None:
-			try:
-				self._itime = self._states[0]['time']
-			except TypeError:
-				self._itime = self._states[0][0]['time']
+		if self._ptime == 'elapsed' and self._itime is None:
+			self._itime = get_time(self._states[0])
 
 		with writer.saving(fig, save_dest, nt):
 			for n in range(nt):
@@ -127,10 +138,8 @@ class Animation:
 				fig.clear()
 
 				# get current time
-				try:
-					time = self._states[n]['time']
-				except TypeError:
-					time = self._states[n][0]['time']
+				if self._ptime in ('elapsed', 'absolute'):
+					time = get_time(self._states[n])
 
 				# get the string with the time
 				if self._ptime == 'elapsed':
@@ -149,7 +158,7 @@ class Animation:
 						self._artist.axes_properties['title_right'] = time_str
 
 				# create the frame
-				_ = self._artist.store(self._states[n], fig=fig, show=False)
+				_ = self._artist.store(*self._states[n], fig=fig, show=False)
 
-				# Let the writer grab the frame
+				# let the writer grab the frame
 				writer.grab_frame()

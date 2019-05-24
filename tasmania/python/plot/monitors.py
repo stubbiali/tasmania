@@ -176,7 +176,7 @@ class Plot(Monitor):
 		# set plot-independent properties
 		if self.axes_properties != {}:
 			set_axes_properties(out_ax, **self.axes_properties)
-		if self.figure_properties != {}:
+		if fig is None and self.figure_properties != {}:
 			set_figure_properties(out_fig, **self.figure_properties)
 
 		# save
@@ -359,24 +359,28 @@ class PlotComposite:
 		if fig is None:
 			out_fig.clear()
 
-		# generate all the subplots
-		index = 1
-		for state, artist in zip(states, self.artists):
+		# generate all the subplot axes
+		axes = []
+		for i in range(len(self.artists)):
 			out_fig, ax = get_figure_and_axes(
 				out_fig, nrows=self._nrows, ncols=self._ncols,
-				index=index, **self.figure_properties,
+				index=i+1, **self.figure_properties,
 				**{
-					key: val for key, val in artist.axes_properties.items()
+					key: val for key, val in self.artists[i].axes_properties.items()
 					if key not in self.figure_properties
 				},
 			)
+			axes.append(ax)
+
+		for i in range(len(self.artists)):
+			artist = self.artists[i]
+			state = states[i]
+			ax = axes[i]
 
 			if isinstance(state, dict):
 				out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
 			else:
 				out_fig, _ = artist.store(*state, fig=out_fig, ax=ax, show=False)
-
-			index += 1
 
 		# set figure properties
 		set_figure_properties(out_fig, **self.figure_properties)

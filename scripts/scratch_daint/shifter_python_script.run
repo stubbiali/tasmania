@@ -1,0 +1,37 @@
+#!/bin/bash -l
+#SBATCH --account=s299m
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1
+#SBATCH --partition=normal
+#SBATCH --constraint=mc
+#SBATCH --output=output/slurm-%j.out
+#SBATCH --error=error/slurm-%j.err
+
+# ==================================================
+# User inputs
+# ==================================================
+VENV=py36  # options: py35, py36, py37
+ROOT_DIR=tasmania-develop  # options: tasmania, tasmania-develop, tasmania-restyling
+DIR=scripts/python  # options: any directory under DIR
+SCRIPT_NAME=compress.py  # options: any python script under ROOT_DIR/DIR
+
+#==================================================
+# Code
+#==================================================
+module load daint-mc
+module load shifter-ng
+
+srun --unbuffered shifter run \
+	--writable-volatile=/home/tasmania-user/$VENV \
+	--writable-volatile=/home/tasmania-user/tasmania \
+	load/library/tasmania:master \
+	bash -c \
+		"cp -r $ROOT_DIR/tasmania/python ~/tasmania/tasmania; \
+		 cp -r $ROOT_DIR/tasmania/__init__.py ~/tasmania/tasmania; \
+		 cp -r $ROOT_DIR/tasmania/conf.py ~/tasmania/tasmania; \
+		 cd ~; \
+		 . $VENV/bin/activate; \
+		 cd $SCRATCH/$ROOT_DIR/$DIR; \
+		 python $SCRIPT_NAME; \
+		 deactivate; \
+		 exit"

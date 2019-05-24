@@ -202,7 +202,7 @@ class Contour(Drawer):
 
 
 def make_contour_xy(
-	grid, xaxis_units, yaxis_units, field_retriever,state, ax, **kwargs
+	grid, xaxis_units, yaxis_units, field_retriever, state, ax, **kwargs
 ):
 	field = np.squeeze(field_retriever(state))
 

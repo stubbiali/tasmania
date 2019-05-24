@@ -22,14 +22,10 @@
 #
 
 NAMELISTS=(
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
-	namelist_zhao_lcc.py
+	namelist_zhao_ps.py
+	namelist_zhao_ps.py
+	namelist_zhao_ps.py
+	namelist_zhao_ps.py
 )
 
 FACTORS=(
@@ -37,21 +33,13 @@ FACTORS=(
 	1
 	2
 	3
-	0
-	1
-	2
-	3
 )
 
 DRIVERS=(
-	driver_namelist_zhao_lcc.py
-	driver_namelist_zhao_lcc.py
-	driver_namelist_zhao_lcc.py
-	driver_namelist_zhao_lcc.py
-	driver_namelist_zhao_lcc_lazy.py
-	driver_namelist_zhao_lcc_lazy.py
-	driver_namelist_zhao_lcc_lazy.py
-	driver_namelist_zhao_lcc_lazy.py
+	driver_namelist_zhao_ps.py
+	driver_namelist_zhao_ps.py
+	driver_namelist_zhao_ps.py
+	driver_namelist_zhao_ps.py
 )
 
 for i in $(seq 0 $((${#NAMELISTS[@]} - 1))); do

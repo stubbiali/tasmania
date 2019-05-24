@@ -1,0 +1,37 @@
+{
+	"field_name": "x_velocity",
+	"field_units": "m s^-1",
+	"x": 27,
+	"y": 25,
+	"z": null,
+	"axis_name": "height",
+	"axis_units": "km",
+	"axis_x": null,
+	"axis_y": null,
+	"axis_z": null,
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "hr",
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"field_bias": 0.0,
+		"field_factor": 1.0,
+		"cmap_name": "BuRd",
+		"cbar_on": true,
+		"cbar_levels": 18,
+		"cbar_ticks_step": 4,
+		"cbar_ticks_pos": "center",
+		"cbar_center": 15.0,
+		"cbar_half_width": 8.5,
+		"cbar_x_label": "$x$-velocity [m s$^{-1}$]",
+		"cbar_y_level": "",
+		"cbar_title": "",
+		"cbar_orientation": "horizontal",
+		"cbar_ax": null,
+		"draw_vertical_levels": false
+	}
+}

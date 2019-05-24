@@ -25,9 +25,13 @@ This module contains:
 	BurgersDynamicalCore(DynamicalCore)
 """
 import gridtools as gt
-from tasmania.conf import datatype
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
+
+try:
+	from tasmania.conf import datatype
+except TypeError:
+	from numpy import float32 as datatype
 
 
 class BurgersDynamicalCore(DynamicalCore):

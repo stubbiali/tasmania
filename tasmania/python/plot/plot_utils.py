@@ -841,7 +841,7 @@ def make_contour(x, y, field, ax, **kwargs):
 
 	# plot the field
 	if field.min() != field.max():
-		plt.contour(x, y, field, colors=colors, alpha=alpha)
+		ax.contour(x, y, field, colors=colors, alpha=alpha)
 
 	# bring axes and field back to original units
 	x     /= x_factor
@@ -951,7 +951,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 
 	# create colorbar for colormap
 	field_min, field_max = np.amin(field), np.amax(field)
-	if cbar_center is None or not (lt(field_min, cbar_center) and lt(cbar_center, field_max)):
+	if cbar_center is None:
 		cbar_lb, cbar_ub = field_min, field_max
 	else:
 		half_width = max(cbar_center-field_min, field_max-cbar_center) \
@@ -966,6 +966,8 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 		cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
 	elif cmap_name == 'BuYlRd':
 		cm = reverse_colormap(plt.get_cmap('RdYlBu'), 'BuYlRd')
+	elif cmap_name == 'CMRmap_r':
+		cm = reverse_colormap(plt.get_cmap('CMRmap'), 'CMRmap_r')
 	else:
 		cm = plt.get_cmap(cmap_name)
 
@@ -975,7 +977,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
 
 	# plot the field
-	surf = ax.contourf(x, y, field, color_levels, cmap=cm)
+	surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
 
 	# set the colorbar
 	if cbar_on:
@@ -1164,6 +1166,8 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 			cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
 		elif cmap_name == 'BuYlRd':
 			cm = reverse_colormap(plt.get_cmap('RdYlBu'), 'BuYlRd')
+		elif cmap_name == 'CMRmap_r':
+			cm = reverse_colormap(plt.get_cmap('CMRmap'), 'CMRmap_r')
 		else:
 			cm = plt.get_cmap(cmap_name)
 	else:

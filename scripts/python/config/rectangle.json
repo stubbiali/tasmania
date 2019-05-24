@@ -1,0 +1,12 @@
+{
+	"drawer_properties": {
+		"fontsize": 16,
+		"xy": [0.2, 0.45],
+		"width": 0.5,
+		"height": 0.1,
+		"angle": 45,
+		"linewidth": 2.5,
+		"edgecolor": "black",
+		"facecolor": "blue"
+	}
+}

@@ -1,0 +1,45 @@
+{
+	"plots": [
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/plot.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/plot_1.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/plot_2.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/plot_3.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/plot_4.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/plot_5.json"
+		}
+	],
+	"tlevels": 10,
+	"nrows": 2,
+	"ncols": 3,
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [14, 7],
+		"tight_layout": false,
+		"tight_layout_rect": null,
+		"suptitle": "00:53:40"
+	},
+	"save_dest": null
+}

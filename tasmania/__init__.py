@@ -39,7 +39,10 @@ from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.framework.offline_diagnostics import \
 	OfflineDiagnosticComponent, RMSD, RRMSD
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
-from tasmania.python.framework.sequential_splitting import SequentialUpdateSplitting
+from tasmania.python.framework.sequential_tendency_splitting import \
+	SequentialTendencySplitting
+from tasmania.python.framework.sequential_update_splitting import \
+	SequentialUpdateSplitting
 # grids
 from tasmania.python.grids.domain import Domain
 from tasmania.python.grids.grid import Grid, PhysicalGrid, NumericalGrid
@@ -61,6 +64,7 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import \
 	IsentropicHorizontalSmoothing
 from tasmania.python.isentropic.physics.pressure_gradient import \
 	IsentropicNonconservativePressureGradient, IsentropicConservativePressureGradient
+from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.isentropic.physics.vertical_advection import \
 	IsentropicVerticalAdvection, PrescribedSurfaceHeating
 from tasmania.python.isentropic.state import \
@@ -68,7 +72,9 @@ from tasmania.python.isentropic.state import \
 	get_isentropic_state_from_temperature
 # physics
 from tasmania.python.physics.microphysics import \
-	Kessler, RaindropFallVelocity, SaturationAdjustmentKessler, Sedimentation
+	Clipping, Kessler, RaindropFallVelocity, SaturationAdjustmentKessler, \
+	Sedimentation, AccumulatedPrecipitation
+from tasmania.python.physics.turbulence import Smagorinsky2d
 # plot
 from tasmania.python.plot.animation import Animation
 from tasmania.python.plot.contour import Contour
@@ -95,13 +101,12 @@ __version__ = '0.3.0'
 
 
 __all__ = (
+	AccumulatedPrecipitation,
 	Animation,
 	BurgersDynamicalCore,
 	BurgersHorizontalDiffusion,
 	Circle,
-	NumericalGrid,
-	NumericalHorizontalGrid,
-	NumericalTopography,
+	Clipping,
 	ConcurrentCoupling,
 	ConstantNotFoundError,
 	Contour,
@@ -135,6 +140,7 @@ __all__ = (
 	IsentropicHorizontalDiffusion,
 	IsentropicHorizontalSmoothing,
 	IsentropicNonconservativePressureGradient,
+	IsentropicSmagorinsky,
 	IsentropicVelocityComponents,
 	IsentropicVerticalAdvection,
 	Kessler,
@@ -146,6 +152,9 @@ __all__ = (
 	make_state,
 	IsentropicMinimalDynamicalCore,
 	NetCDFMonitor,
+	NumericalGrid,
+	NumericalHorizontalGrid,
+	NumericalTopography,
 	OfflineDiagnosticComponent,
 	ParallelSplitting,
 	PhysicalGrid,
@@ -161,9 +170,11 @@ __all__ = (
 	RRMSD,
 	SaturationAdjustmentKessler,
 	Sedimentation,
+	SequentialTendencySplitting,
 	SequentialUpdateSplitting,
 	set_axes_properties,
 	set_figure_properties,
+	Smagorinsky2d,
 	Stepper,
 	TendencyComponent,
 	TimeInconsistencyError,

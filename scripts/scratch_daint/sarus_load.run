@@ -1,0 +1,25 @@
+#!/bin/bash -l
+#SBATCH --job-name=sarus-load
+#SBATCH --account=s299m
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=normal
+#SBATCH --constraint=mc
+#SBATCH --output=output/slurm-sarus-load.out
+#SBATCH --error=error/slurm-sarus-load.err
+
+# ==================================================
+# User inputs
+# ==================================================
+IMAGE_PATH=tasmania-develop/docker/tasmania_master.tar  # the path to the image to load
+IMAGE_NAME=tasmania
+IMAGE_TAG=develop
+
+# ==================================================
+# Code
+# ==================================================
+module load daint-mc
+module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5-daint
+
+srun --unbuffered sarus load $IMAGE_PATH $IMAGE_NAME:$IMAGE_TAG
+

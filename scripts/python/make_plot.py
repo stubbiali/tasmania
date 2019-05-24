@@ -20,145 +20,87 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from collections import OrderedDict
+import json
 import tasmania as taz
 
 
-#==================================================
-# User inputs
-<<<<<<< HEAD
-#==================================================
-modules = OrderedDict()
-modules['drawer_factories.timeseries'] = 'data_factories.rmsd'
-modules['drawer_factories.timeseries_1'] = 'data_factories.rmsd_1'
+class PlotWrapper:
+	def __init__(self, json_filename):
+		with open(json_filename, 'r') as json_file:
+			data = json.load(json_file)
 
-tlevel = 72
-=======
-#
-modules = [
-	#'make_contourf',
-	#'make_rectangle',
-	#'make_circle',
-	#'make_topography2d',
-	#'make_quiver',
+			self._drawer_wrappers = []
 
-	'make_profile',
-	'make_profile_1',
-	#'make_profile_2',
+			for drawer_data in data['drawers']:
+				loader_module = drawer_data['loader_module']
+				loader_classname = drawer_data['loader_classname']
+				loader_config = drawer_data['loader_config']
 
-	#'make_contourf_analytical',
+				import_str = "from {} import {}".format(loader_module, loader_classname)
+				exec(import_str)
+				loader = locals()[loader_classname](loader_config)
 
-	#'make_contourf',
-	#'make_topography1d',
-]
+				wrapper_module = drawer_data['wrapper_module']
+				wrapper_classname = drawer_data['wrapper_classname']
+				wrapper_config = drawer_data['wrapper_config']
 
-tlevel = 1
->>>>>>> 7b4d10fc95a458b6ba4210d36b856a2d1aac6f3c
+				import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
+				exec(import_str)
+				self._drawer_wrappers.append(locals()[wrapper_classname](loader, wrapper_config))
 
-figure_properties = {
-	'fontsize': 16,
-	'figsize': (6, 6.5),
-	'tight_layout': True,
-	'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
-}
+			figure_properties = data['figure_properties']
+			self._axes_properties = data['axes_properties']
 
-axes_properties = {
-	'fontsize': 16,
-	# title
-	'title_center': '',
-	'title_left': '$x$-velocity [m s$^{-1}$]',
-	'title_right': '08:00:00',
-<<<<<<< HEAD
-	# x-axis
-	'x_label': '$x$-momentum [km]', #'Time (UTC)',
-	'x_labelcolor': '',
-=======
-	'x_label': '$x$-momentum [km]', #'Time (UTC)',
->>>>>>> 7b4d10fc95a458b6ba4210d36b856a2d1aac6f3c
-	'x_lim': None,  #(-200, 200), #(-190, 210),
-	'invert_xaxis': False,
-	'x_scale': None,
-	'x_ticks': None,  #range(-200, 201, 100), #(-190, -90, 10, 110, 210),
-	'x_ticklabels': None,
-	'x_tickcolor': '',
-	'xaxis_minor_ticks_visible': False,
-	'xaxis_visible': True,
-	# y-axis
-	'y_label': '$z$ [km]',
-<<<<<<< HEAD
-	'y_labelcolor': '',
-=======
->>>>>>> 7b4d10fc95a458b6ba4210d36b856a2d1aac6f3c
-	'y_lim': None,  #(-200, 200), #(-200, 200), # (0.01, 0.15),
-	'invert_yaxis': False,
-	'y_scale': None,
-	'y_ticks': None, #(-200, -100, 0, 100, 200),
-	'y_ticklabels': None, #['{:1.1E}'.format(1e-4), '{:1.1E}'.format(1e-3), '{:1.1E}'.format(1e-2)],
-	'y_tickcolor': '',
-	'yaxis_minor_ticks_visible': False,
-	'yaxis_visible': True,
-	# z-axis
-	'z_label': '',
-	'z_labelcolor': '',
-	'z_lim': None,
-	'invert_zaxis': False,
-	'z_scale': None,
-	'z_ticks': None,
-	'z_ticklabels': None,
-	'z_tickcolor': '',
-	'zaxis_minor_ticks_visible': True,
-	'zaxis_visible': True,
-	# legend
-	'legend_on': False,
-	'legend_loc': 'best', #'center left',
-	'legend_bbox_to_anchor': None, #(1.04, 0.5),
-	'legend_framealpha': 1.0,
-	'legend_ncol': 1,
-	# text
-	'text': None, #'$w_{\\mathtt{FW}} = 0$',
-	'text_loc': 'upper right',
-	# grid
-	'grid_on': True,
-	'grid_properties': {'linestyle': ':'},
-}
+			self._core = taz.Plot(
+				*(wrapper.get_drawer() for wrapper in self._drawer_wrappers),
+				interactive=False, figure_properties=figure_properties,
+				axes_properties=self._axes_properties
+			)
 
-print_time = None  # 'elapsed', 'absolute'
+			self._tlevels = data.get('tlevels', 0)
+			self._print_time = data.get('print_time', None)
+			self._save_dest = data.get('save_dest', None)
 
-save_dest = None
+	def get_artist(self):
+		return self._core
 
+	def get_states(self, tlevels=None):
+		wrappers = self._drawer_wrappers
 
-#==================================================
-# Code
-#==================================================
-def get_plot():
-	drawers = []
+		tlevels = self._tlevels if tlevels is None else tlevels
+		tlevels = (tlevels, )*len(wrappers) if isinstance(tlevels, int) else tlevels
 
-	for drawer_module in modules:
-		import_str = 'from {} import get_drawer'.format(drawer_module)
-		exec(import_str)
-		drawer = locals()['get_drawer'](modules[drawer_module])
-		drawers.append(drawer)
+		states = []
 
-	return taz.Plot(drawers, False, figure_properties, axes_properties)
+		for wrapper, tlevel in zip(wrappers, tlevels):
+			states.append(wrapper.get_state(tlevel))
 
+		if self._print_time == 'elapsed':
+			for wrapper in wrappers:
+				try:
+					init_time = wrapper.get_initial_time()
+					break
+				except NotImplementedError:
+					pass
 
-def get_states(tlevel, plot):
-	drawers = plot.artists
-	axes_properties = plot.axes_properties
-	states  = []
+			assert 'init_time' in locals()
+			self._axes_properties['title_right'] = str(states[0]['time'] - init_time)
+		elif self._print_time == 'absolute':
+			self._axes_properties['title_right'] = str(states[0]['time'])
 
-	for drawer_module, drawer in zip(modules.keys(), drawers):
-		import_str = 'from {} import get_state'.format(drawer_module)
-		exec(import_str)
-		state = locals()['get_state'](
-			modules[drawer_module], drawer, tlevel, axes_properties, print_time
-		)
-		states.append(state)
+		return states
 
-	return states
+	def store(self, tlevels=None, fig=None, ax=None, show=False):
+		states = self.get_states(tlevels)
+		return self._core.store(*states, fig=fig, ax=ax, save_dest=self._save_dest, show=show)
 
 
 if __name__ == '__main__':
-	plot = get_plot()
-	states = get_states(tlevel, plot)
-	plot.store(states, save_dest=save_dest, show=True)
+	import argparse
+	parser = argparse.ArgumentParser(description='Generate a figure with a single plot.')
+	parser.add_argument(
+		'configfile', metavar='configfile', type=str, help='JSON configuration file.'
+	)
+	args = parser.parse_args()
+	plot_wrapper = PlotWrapper(args.configfile)
+	plot_wrapper.store(show=True)

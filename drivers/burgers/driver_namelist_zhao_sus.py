@@ -39,7 +39,7 @@ domain = taz.Domain(
 	topography_type='flat_terrain', dtype=nl.dtype
 )
 pgrid = domain.physical_grid
-cgrid = domain.computational_grid
+cgrid = domain.numerical_grid
 
 # ============================================================
 # The initial state
