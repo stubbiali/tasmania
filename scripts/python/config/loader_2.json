@@ -1,7 +1,7 @@
 {
 	"filename": [
 		"../../data/",
-		"isentropic_moist_rk3ws_fifth_order_upwind_rk2_pg2_",
-		"nx41_ny41_nz60_dt36_nt1200_gaussian_L25000_H1000_u15_turb_f_sed_sus.nc"
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_pg2_",
+		"nx41_ny41_nz60_dt45_nt640_gaussian_L50000_H1000_u15_turb_f_sed_ps.nc"
 	]
 }

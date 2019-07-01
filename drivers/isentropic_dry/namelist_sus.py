@@ -101,7 +101,7 @@ coriolis           = True
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
-timestep = Timedelta(seconds=32)
+timestep = Timedelta(seconds=50)
 niter    = int(12*60*60 / timestep.total_seconds())
 
 # output
@@ -117,6 +117,7 @@ filename = \
 		'_diff' if diff else '', '_smooth' if smooth else '',
 		'_turb' if turbulence else '', '_f' if coriolis else ''
 	)
+filename = None
 store_names = (
 	'air_isentropic_density',
 	'height_on_interface_levels',
@@ -124,5 +125,5 @@ store_names = (
 	'y_momentum_isentropic'
 )
 save_frequency  = -1
-print_frequency = 10
+print_frequency = 1
 plot_frequency  = -1

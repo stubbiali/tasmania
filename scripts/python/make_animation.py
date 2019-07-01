@@ -38,25 +38,9 @@ class AnimationWrapper:
 			exec(import_str)
 			self._artist_wrapper = locals()[wrapper_classname](wrapper_config)
 
-			print_time = data['print_time']
 			fps = data['fps']
 
-			if 'init_time' in data:
-				init_time = datetime(
-					year=data['init_time']['year'],
-					month=data['init_time']['month'],
-					day=data['init_time']['day'],
-					hour=data['init_time'].get('hour', 0),
-					minute=data['init_time'].get('minute', 0),
-					second=data['init_time'].get('second', 0)
-				)
-			else:
-				init_time = None
-
-			self._core = taz.Animation(
-				self._artist_wrapper.get_artist(), print_time=print_time,
-				init_time=init_time, fps=fps
-			)
+			self._core = taz.Animation(self._artist_wrapper.get_artist(), fps=fps)
 
 			self._tlevels = range(data['tlevels'][0], data['tlevels'][1], data['tlevels'][2])
 			self._save_dest = data['save_dest']

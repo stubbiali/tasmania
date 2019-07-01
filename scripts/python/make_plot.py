@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from datetime import datetime
 import json
 import tasmania as taz
 
@@ -48,17 +49,30 @@ class PlotWrapper:
 				exec(import_str)
 				self._drawer_wrappers.append(locals()[wrapper_classname](loader, wrapper_config))
 
+			print_time = data['print_time']
+			
+			if print_time == 'elapsed' and 'init_time' in data:
+				init_time = datetime(
+					year=data['init_time']['year'],
+					month=data['init_time']['month'],
+					day=data['init_time']['day'],
+					hour=data['init_time'].get('hour', 0),
+					minute=data['init_time'].get('minute', 0),
+					second=data['init_time'].get('second', 0)
+				)
+			else:
+				init_time = None
+
 			figure_properties = data['figure_properties']
 			self._axes_properties = data['axes_properties']
 
 			self._core = taz.Plot(
 				*(wrapper.get_drawer() for wrapper in self._drawer_wrappers),
-				interactive=False, figure_properties=figure_properties,
-				axes_properties=self._axes_properties
+				interactive=False, print_time=print_time, init_time=init_time,
+				figure_properties=figure_properties, axes_properties=self._axes_properties
 			)
 
 			self._tlevels = data.get('tlevels', 0)
-			self._print_time = data.get('print_time', None)
 			self._save_dest = data.get('save_dest', None)
 
 	def get_artist(self):
@@ -75,19 +89,6 @@ class PlotWrapper:
 		for wrapper, tlevel in zip(wrappers, tlevels):
 			states.append(wrapper.get_state(tlevel))
 
-		if self._print_time == 'elapsed':
-			for wrapper in wrappers:
-				try:
-					init_time = wrapper.get_initial_time()
-					break
-				except NotImplementedError:
-					pass
-
-			assert 'init_time' in locals()
-			self._axes_properties['title_right'] = str(states[0]['time'] - init_time)
-		elif self._print_time == 'absolute':
-			self._axes_properties['title_right'] = str(states[0]['time'])
-
 		return states
 
 	def store(self, tlevels=None, fig=None, ax=None, show=False):
@@ -101,6 +102,9 @@ if __name__ == '__main__':
 	parser.add_argument(
 		'configfile', metavar='configfile', type=str, help='JSON configuration file.'
 	)
+	parser.add_argument(
+		'show', metavar='show', type=int, help='1 to show the generated plot, 0 otherwise.'
+	)
 	args = parser.parse_args()
 	plot_wrapper = PlotWrapper(args.configfile)
-	plot_wrapper.store(show=True)
+	plot_wrapper.store(show=args.show)

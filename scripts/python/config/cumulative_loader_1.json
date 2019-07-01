@@ -1,9 +1,12 @@
 {
 	"filename": [
 		"../../data/",
-		"isentropic_moist_rk3ws_fifth_order_upwind_pg2_",
-		"nx41_ny41_nz60_dt32_nt900_gaussian_L25000_H1000_u15_turb_f_sed_lcc.nc"
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx41_ny41_nz60_dt45_nt160_",
+		"gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_lcc_1.nc"
 	],
+	"field_name": "domain_cumulative_precipitation",
+	"field_units": "kg hr^-1",
 	"xslice": [10, 31, null],
-	"yslice": [10, 31, null]
+	"yslice": [10, 31, null],
+	"zslice": [0, 1, null]
 }

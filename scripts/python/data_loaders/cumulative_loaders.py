@@ -112,6 +112,46 @@ class ColumnCumulativeLoader(BaseLoader):
 		return state
 
 
+class TotalPrecipitationLoader(BaseLoader):
+	def __init__(self, json_filename):
+		with open(json_filename, 'r') as json_file:
+			data = json.load(json_file)
+			filename = ''.join(data['filename'])
+			self._dsmounter = DatasetMounter(filename)
+
+			start, stop, step = data['xslice']
+			self._xslice = None if start == stop == step is None else slice(start, stop, step)
+			start, stop, step = data['yslice']
+			self._yslice = None if start == stop == step is None else slice(start, stop, step)
+			start, stop, step = data['zslice']
+			self._zslice = None if start == stop == step is None else slice(start, stop, step)
+
+	def get_grid(self):
+		return self._dsmounter.get_grid()
+
+	def get_nt(self):
+		return self._dsmounter.get_nt()
+
+	def get_initial_time(self):
+		return self._dsmounter.get_state(0)['time']
+
+	def get_state(self, tlevel):
+		g = self._dsmounter.get_grid()
+		nx, ny = g.nx, g.ny
+		x, y, z = self._xslice, self._yslice, self._zslice
+
+		state = self._dsmounter.get_state(tlevel)
+		field = state['precipitation'].to_units('m hr^-1').values[x, y, z]
+		dx = g.dx.to_units('m').values.item()
+		dy = g.dx.to_units('m').values.item()
+		state['domain_cumulative_precipitation'] = taz.make_dataarray_3d(
+			1000 * dx * dy * np.sum(np.sum(np.sum(field, axis=2), axis=1), axis=0) * np.ones((nx, ny, 1)),
+			g, 'kg hr^-1'
+		)
+
+		return state
+
+
 class TotalAccumulatedPrecipitationLoader(BaseLoader):
 	def __init__(self, json_filename):
 		with open(json_filename, 'r') as json_file:
