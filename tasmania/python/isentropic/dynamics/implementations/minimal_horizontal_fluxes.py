@@ -29,7 +29,7 @@ This module contains:
 """
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalHorizontalFlux
-from tasmania.python.isentropic.dynamics._horizontal_fluxes import \
+from tasmania.python.isentropic.dynamics.implementations.horizontal_fluxes import \
 	get_centered_flux_x, get_centered_flux_y, \
 	get_fifth_order_upwind_flux_x, get_fifth_order_upwind_flux_y, \
 	get_maccormack_flux_x, get_maccormack_flux_x_s, \

@@ -22,6 +22,7 @@
 #
 """
 This module contain:
+	get_time
 	Plot(Monitor)
 	PlotComposite
 """
@@ -39,6 +40,19 @@ from tasmania.python.plot.utils import assert_sequence
 SequenceType = (tuple, list)
 
 
+def get_time(states):
+	for level0 in states:
+		if isinstance(level0, dict):  # level0 is a state dictionary
+			if 'time' in level0:
+				return level0['time']
+		else:  # level0 is a collection of state dictionaries
+			for level1 in level0:
+				if 'time' in level1:
+					return level1['time']
+
+	raise ValueError('No state dictionary contains the key ''time''.')
+
+
 class Plot(Monitor):
 	"""
 	A :class:`sympl.Monitor` for visualization purposes, generating a
@@ -54,18 +68,18 @@ class Plot(Monitor):
 
 	Attributes
 	----------
-    interactive : bool
-        :obj:`True` if interactive plotting is enabled,
-        :obj:`False` otherwise.
-    figure_properties : dict
+	interactive : bool
+		:obj:`True` if interactive plotting is enabled,
+		:obj:`False` otherwise.
+	figure_properties : dict
 		Keyword arguments specifying settings for the
 		:class:`~matplotlib.figure.Figure` containing the plot.
-    axes_properties : dict
+	axes_properties : dict
 		Keyword arguments specifying settings for the
 		:class:`~matplotlib.axes.Axes` enclosing the plot.
 	"""
 	def __init__(
-		self, *drawers, interactive=True,
+		self, *drawers, interactive=True, print_time=None, init_time=None,
 		figure_properties=None, axes_properties=None
 	):
 		"""
@@ -76,12 +90,25 @@ class Plot(Monitor):
 		interactive : `bool`, optional
 			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
-    	figure_properties : `dict`, optional
+		print_time : `str`, optional
+			String specifying if time should be printed above the plot,
+			flush with the right edge. Available options are:
+
+				* 'elapsed', to print the time elapsed since `init_time`;
+				* 'absolute', to print the absolute time of the snapshot;
+				* anything else, not to print anything.
+
+			Defaults to :obj:`None`.
+		init_time : `datetime`, optional
+			The initial time of the simulation. Only effective if `print_time`
+			is 'elapsed'. If not specified, the elapsed time is calculated
+			with respect to the first passed state.
+		figure_properties : `dict`, optional
 			Keyword arguments specifying settings for the figure containing
 			the plot. To be broadcast to
 			:func:`~tasmania.get_figure_and_axes_properties`
 			and :func:`~tasmania.set_figure_properties`.
-    	axes_properties : `dict`, optional
+		axes_properties : `dict`, optional
 			Keyword arguments specifying settings for the axes enclosing
 			the plot. To be broadcast to
 			:func:`~tasmania.get_figure_and_axes_properties`
@@ -91,6 +118,9 @@ class Plot(Monitor):
 		self._artists = drawers
 
 		self.interactive = interactive
+
+		self._ptime = print_time
+		self._itime = init_time
 
 		self.figure_properties = {} if figure_properties is None else figure_properties
 		self.axes_properties = {} if axes_properties is None else axes_properties
@@ -161,7 +191,7 @@ class Plot(Monitor):
 			**self.figure_properties,
 			**{
 				key: value for key, value in self.axes_properties.items()
-			   	if key not in self.figure_properties
+				if key not in self.figure_properties
 			},
 		)
 
@@ -169,13 +199,31 @@ class Plot(Monitor):
 		if ax is None:
 			out_ax.cla()
 
+		# save initial time
+		if self._ptime == 'elapsed' and self._itime is None:
+			self._itime = get_time(states)
+
 		# let the drawers draw
 		for drawer, state in zip(self._artists, states):
 			drawer(state, out_fig, out_ax)
 
-		# set plot-independent properties
+		# set axes properties
 		if self.axes_properties != {}:
+			time = get_time(states)
+
+			if self._ptime == 'elapsed':
+				time_str = str(time - self._itime)
+			elif self._ptime == 'absolute':
+				time_str = str(time)
+			else:
+				time_str = None
+
+			if time_str is not None:
+				self.axes_properties['title_right'] = time_str
+
 			set_axes_properties(out_ax, **self.axes_properties)
+
+		# if figure is not provided, set figure properties
 		if fig is None and self.figure_properties != {}:
 			set_figure_properties(out_fig, **self.figure_properties)
 
@@ -233,7 +281,8 @@ class PlotComposite:
 		and :func:`~tasmania.set_figure_properties`.
 	"""
 	def __init__(
-		self, *artists, nrows=1, ncols=1, interactive=True, figure_properties=None
+		self, *artists, nrows=1, ncols=1, interactive=True, 
+		print_time=None, init_time=None, figure_properties=None
 	):
 		"""
 		Parameters
@@ -248,6 +297,19 @@ class PlotComposite:
 		interactive : `bool`, optional
 			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
+		print_time : `str`, optional
+			String specifying if time should be printed as suptitle.
+			Available options are:
+
+				* 'elapsed', to print the time elapsed since `init_time`;
+				* 'absolute', to print the absolute time of the snapshot;
+				* anything else, not to print anything.
+
+			Defaults to :obj:`None`.
+		init_time : `datetime`, optional
+			The initial time of the simulation. Only effective if `print_time`
+			is 'elapsed'. If not specified, the elapsed time is calculated
+			with respect to the first passed state.
     	figure_properties : `dict`, optional
 			Keyword arguments specifying settings for the figure containing
 			the plot. To be broadcast to
@@ -262,6 +324,8 @@ class PlotComposite:
 		self._nrows	  	  = nrows
 		self._ncols	  	  = ncols
 		self._interactive = interactive
+		self._ptime       = print_time
+		self._itime       = init_time
 
 		# store input arguments as public attributes
 		self.figure_properties = \
@@ -359,6 +423,10 @@ class PlotComposite:
 		if fig is None:
 			out_fig.clear()
 
+		# get the initial time
+		if self._ptime == 'elapsed' and self._itime is None:
+			self._itime = get_time(states)
+
 		# generate all the subplot axes
 		axes = []
 		for i in range(len(self.artists)):
@@ -381,6 +449,18 @@ class PlotComposite:
 				out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
 			else:
 				out_fig, _ = artist.store(*state, fig=out_fig, ax=ax, show=False)
+
+		time = get_time(states)
+
+		if self._ptime == 'elapsed':
+			time_str = str(time - self._itime)
+		elif self._ptime == 'absolute':
+			time_str = str(time)
+		else:
+			time_str = None
+
+		if time_str is not None:
+			self.figure_properties['suptitle'] = time_str
 
 		# set figure properties
 		set_figure_properties(out_fig, **self.figure_properties)

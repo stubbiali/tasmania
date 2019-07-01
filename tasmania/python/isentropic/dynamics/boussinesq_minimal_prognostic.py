@@ -22,14 +22,14 @@
 #
 """
 This module contains:
-	IsentropicMinimalPrognostic
+	IsentropicBoussinesqMinimalPrognostic
 """
 import abc
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.fluxes import \
-	IsentropicMinimalHorizontalFlux
+	IsentropicBoussinesqMinimalHorizontalFlux
 
 try:
 	from tasmania.conf import datatype
@@ -43,12 +43,12 @@ mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
-class IsentropicMinimalPrognostic:
+class IsentropicBoussinesqMinimalPrognostic:
 	"""
 	Abstract base class whose derived classes implement different
 	schemes to carry out the prognostic steps of the three-dimensional
-	minimal, moist, isentropic dynamical core. Here, *minimal* means
-	that only horizontal advection is integrated with the dynamical core.
+	isentropic, Boussinesq and minimal dynamical core. Here, *minimal* means
+	that only horizontal advection is integrated within the dynamical core.
 	The vertical advection, the Coriolis acceleration, the pressure gradient
 	and the sedimentation motion are not included in the dynamics, but
 	rather parameterized. The conservative form of the governing equations is used.
@@ -65,13 +65,15 @@ class IsentropicMinimalPrognostic:
 		----------
 		horizontal_flux_scheme : str
 			The numerical horizontal flux scheme to implement.
-			See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+			See :class:`~tasmania.IsentropicBoussinesqMinimalHorizontalFlux`
 			for the complete list of the available options.
 		mode : str
 			Either
+
 				* 'x', to integrate only the x-advection,
 				* 'y', to integrate only the y-advection, or
 				* 'xy', to integrate both the x- and the y-advection.
+
 		grid : tasmania.Grid
 			The underlying grid.
 		hb : tasmania.HorizontalBoundary
@@ -97,7 +99,7 @@ class IsentropicMinimalPrognostic:
 		self._dtype			= dtype
 
 		# instantiate the class computing the numerical horizontal fluxes
-		self._hflux = IsentropicMinimalHorizontalFlux.factory(
+		self._hflux = IsentropicBoussinesqMinimalHorizontalFlux.factory(
 			self._hflux_scheme, grid, moist,
 		)
 		assert hb.nb >= self._hflux.extent, \
@@ -212,8 +214,8 @@ class IsentropicMinimalPrognostic:
 			The stage to perform.
 		substep : int
 			The substep to perform.
-		timestep : timedelta
-			:class:`datetime.timedelta` representing the time step.
+		timestep : datetime.timedelta
+			The time step.
 		state : dict
 			The raw state at the current *main* time level.
 		stage_state : dict
@@ -277,13 +279,15 @@ class IsentropicMinimalPrognostic:
 
 		horizontal_flux_scheme : str
 			The numerical horizontal flux scheme to implement.
-			See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+			See :class:`~tasmania.IsentropicBoussinesqMinimalHorizontalFlux`
 			for the complete list of the available options.
 		mode : str
 			Either
+
 				* 'x', to integrate only the x-advection,
 				* 'y', to integrate only the y-advection, or
 				* 'xy', to integrate both the x- and the y-advection.
+
 		grid : tasmania.Grid
 			The underlying grid.
 		hb : tasmania.HorizontalBoundary
@@ -304,7 +308,7 @@ class IsentropicMinimalPrognostic:
 		obj :
 			An instance of the derived class implementing ``time_integration_scheme``.
 		"""
-		from .implementations.minimal_prognostic import \
+		from .implementations.boussinesq_minimal_prognostic import \
 			ForwardEuler, Centered, RK2, RK3WS, RK3
 		args = (
 			horizontal_flux_scheme, mode,
@@ -342,11 +346,12 @@ class IsentropicMinimalPrognostic:
 
 		# allocate the Numpy arrays which will store the current solution
 		# and serve as stencil's inputs
-		self._in_s	= np.zeros((  nx,	ny, nz), dtype=dtype)
-		self._in_u	= np.zeros((nx+1,	ny, nz), dtype=dtype)
-		self._in_v	= np.zeros((  nx, ny+1, nz), dtype=dtype)
-		self._in_su = np.zeros((  nx,	ny, nz), dtype=dtype)
-		self._in_sv = np.zeros((  nx,	ny, nz), dtype=dtype)
+		self._in_s	   = np.zeros((  nx,   ny, nz), dtype=dtype)
+		self._in_u	   = np.zeros((nx+1,   ny, nz), dtype=dtype)
+		self._in_v	   = np.zeros((  nx, ny+1, nz), dtype=dtype)
+		self._in_su    = np.zeros((  nx,   ny, nz), dtype=dtype)
+		self._in_sv    = np.zeros((  nx,   ny, nz), dtype=dtype)
+		self._in_ddmtg = np.zeros((  nx,   ny, nz), dtype=dtype)
 		if self._moist:
 			self._in_sqv = np.zeros((nx, ny, nz), dtype=dtype)
 			self._in_sqc = np.zeros((nx, ny, nz), dtype=dtype)
@@ -378,9 +383,10 @@ class IsentropicMinimalPrognostic:
 		dtype = self._dtype
 
 		# allocate the Numpy arrays which will serve as stencil's outputs
-		self._out_s  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_su = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_sv = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_s     = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_su    = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_sv    = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_ddmtg = np.zeros((nx, ny, nz), dtype=dtype)
 		if self._moist:
 			self._out_sqv = np.zeros((nx, ny, nz), dtype=dtype)
 			self._out_sqc = np.zeros((nx, ny, nz), dtype=dtype)
@@ -406,11 +412,12 @@ class IsentropicMinimalPrognostic:
 		self._dt.value = timestep.total_seconds()
 
 		# update the Numpy arrays which serve as inputs to the GT4Py stencils
-		self._in_s[...]  = state['air_isentropic_density'][...]
-		self._in_u[...]  = state['x_velocity_at_u_locations'][...]
-		self._in_v[...]  = state['y_velocity_at_v_locations'][...]
-		self._in_su[...] = state['x_momentum_isentropic'][...]
-		self._in_sv[...] = state['y_momentum_isentropic'][...]
+		self._in_s[...]  	= state['air_isentropic_density'][...]
+		self._in_u[...]  	= state['x_velocity_at_u_locations'][...]
+		self._in_v[...]  	= state['y_velocity_at_v_locations'][...]
+		self._in_su[...] 	= state['x_momentum_isentropic'][...]
+		self._in_sv[...] 	= state['y_momentum_isentropic'][...]
+		self._in_ddmtg[...] = state['dd_montgomery_potential'][...]
 		if self._moist:
 			self._in_sqv[...] = state['isentropic_density_of_water_vapor'][...]
 			self._in_sqc[...] = state['isentropic_density_of_cloud_liquid_water'][...]
@@ -476,10 +483,6 @@ class IsentropicMinimalPrognostic:
 				self._substep_stencil_outputs[var] = np.zeros((nx, ny, nz), dtype=dtype)
 				outputs['out_' + shand] = self._substep_stencil_outputs[var]
 
-		if 'accumulated_precipitation' in self._substep_output_properties:
-			self._substep_stencil_outputs['accumulated_precipitation'] = \
-				np.zeros((nx, ny), dtype=dtype)
-
 		self._substep_stencil = gt.NGStencil(
 			definitions_func=self.__class__._substep_stencil_defs,
 			inputs=inputs,
@@ -500,15 +503,14 @@ class IsentropicMinimalPrognostic:
 			self.substep_fractions[stage] * self._substeps
 
 		for var in self._substep_output_properties:
-			if var != 'accumulated_precipitation':
-				if substep == 0:
-					self._substep_stencil_state_inputs[var][...] = state[var][...]
-				self._substep_stencil_stage_state_inputs[var][...] = stage_state[var][...]
-				self._substep_stencil_tmp_state_inputs[var][...] = \
-					state[var][...] if substep == 0 else tmp_state[var][...]
-				if var in tendency_names:
-					self._substep_stencil_tendencies_inputs[var][...] = \
-						tendencies[var][...]
+			if substep == 0:
+				self._substep_stencil_state_inputs[var][...] = state[var][...]
+			self._substep_stencil_stage_state_inputs[var][...] = stage_state[var][...]
+			self._substep_stencil_tmp_state_inputs[var][...] = \
+				state[var][...] if substep == 0 else tmp_state[var][...]
+			if var in tendency_names:
+				self._substep_stencil_tendencies_inputs[var][...] = \
+					tendencies[var][...]
 
 	@staticmethod
 	def _substep_stencil_defs(
@@ -531,11 +533,11 @@ class IsentropicMinimalPrognostic:
 
 			if tnd_s is None:
 				out_s[i, j, k] = tmp_s[i, j, k] + \
-								 (stage_s[i, j, k] - s[i, j, k]) / substeps
+					(stage_s[i, j, k] - s[i, j, k]) / substeps
 			else:
 				out_s[i, j, k] = tmp_s[i, j, k] + \
-								 (stage_s[i, j, k] - s[i, j, k]) / substeps + \
-								 dts * tnd_s[i, j, k]
+					(stage_s[i, j, k] - s[i, j, k]) / substeps + \
+					dts * tnd_s[i, j, k]
 
 			outs.append(out_s)
 
@@ -544,11 +546,11 @@ class IsentropicMinimalPrognostic:
 
 			if tnd_su is None:
 				out_su[i, j, k] = tmp_su[i, j, k] + \
-								  (stage_su[i, j, k] - su[i, j, k]) / substeps
+					(stage_su[i, j, k] - su[i, j, k]) / substeps
 			else:
 				out_su[i, j, k] = tmp_su[i, j, k] + \
-								  (stage_su[i, j, k] - su[i, j, k]) / substeps + \
-								  dts * tnd_su[i, j, k]
+					(stage_su[i, j, k] - su[i, j, k]) / substeps + \
+					dts * tnd_su[i, j, k]
 
 			outs.append(out_su)
 
@@ -557,11 +559,11 @@ class IsentropicMinimalPrognostic:
 
 			if tnd_sv is None:
 				out_sv[i, j, k] = tmp_sv[i, j, k] + \
-								  (stage_sv[i, j, k] - sv[i, j, k]) / substeps
+					(stage_sv[i, j, k] - sv[i, j, k]) / substeps
 			else:
 				out_sv[i, j, k] = tmp_sv[i, j, k] + \
-								  (stage_sv[i, j, k] - sv[i, j, k]) / substeps + \
-								  dts * tnd_sv[i, j, k]
+					(stage_sv[i, j, k] - sv[i, j, k]) / substeps + \
+					dts * tnd_sv[i, j, k]
 
 			outs.append(out_sv)
 
@@ -570,11 +572,11 @@ class IsentropicMinimalPrognostic:
 
 			if tnd_qv is None:
 				out_qv[i, j, k] = tmp_qv[i, j, k] + \
-								  (stage_qv[i, j, k] - qv[i, j, k]) / substeps
+					(stage_qv[i, j, k] - qv[i, j, k]) / substeps
 			else:
 				out_qv[i, j, k] = tmp_qv[i, j, k] + \
-								  (stage_qv[i, j, k] - qv[i, j, k]) / substeps + \
-								  dts * tnd_qv[i, j, k]
+					(stage_qv[i, j, k] - qv[i, j, k]) / substeps + \
+					dts * tnd_qv[i, j, k]
 
 			outs.append(out_qv)
 
@@ -583,11 +585,11 @@ class IsentropicMinimalPrognostic:
 
 			if tnd_qc is None:
 				out_qc[i, j, k] = tmp_qc[i, j, k] + \
-								  (stage_qc[i, j, k] - qc[i, j, k]) / substeps
+					(stage_qc[i, j, k] - qc[i, j, k]) / substeps
 			else:
 				out_qc[i, j, k] = tmp_qc[i, j, k] + \
-								  (stage_qc[i, j, k] - qc[i, j, k]) / substeps + \
-								  dts * tnd_qc[i, j, k]
+					(stage_qc[i, j, k] - qc[i, j, k]) / substeps + \
+					dts * tnd_qc[i, j, k]
 
 			outs.append(out_qc)
 
@@ -596,11 +598,11 @@ class IsentropicMinimalPrognostic:
 
 			if tnd_qr is None:
 				out_qr[i, j, k] = tmp_qr[i, j, k] + \
-								  (stage_qr[i, j, k] - qr[i, j, k]) / substeps
+					(stage_qr[i, j, k] - qr[i, j, k]) / substeps
 			else:
 				out_qr[i, j, k] = tmp_qr[i, j, k] + \
-								  (stage_qr[i, j, k] - qr[i, j, k]) / substeps + \
-								  dts * tnd_qr[i, j, k]
+					(stage_qr[i, j, k] - qr[i, j, k]) / substeps + \
+					dts * tnd_qr[i, j, k]
 
 			outs.append(out_qr)
 

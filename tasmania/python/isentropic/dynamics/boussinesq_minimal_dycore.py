@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	IsentropicDynamicalCore(DynamicalCore)
+	IsentropicBoussinesqMinimalDynamicalCore(DynamicalCore)
 """
 import numpy as np
 
@@ -32,7 +32,8 @@ from tasmania.python.dwarfs.diagnostics import \
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+from tasmania.python.isentropic.dynamics.boussinesq_minimal_prognostic import \
+	IsentropicBoussinesqMinimalPrognostic
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
@@ -47,25 +48,26 @@ mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
-class IsentropicDynamicalCore(DynamicalCore):
+class IsentropicBoussinesqMinimalDynamicalCore(DynamicalCore):
 	"""
-	The three-dimensional (moist) isentropic dynamical core. Note that only
-	the pressure gradient is included in the so-called *dynamics*. Any other
-	large-scale process (e.g., vertical advection, Coriolis acceleration) might
-	be included in the model only via physical parameterizations.
+	The three-dimensional (moist) isentropic, Boussinesq and minimal
+	dynamical core. Here, *minimal* refers to the fact that only the
+	horizontal advection is included in the so-called *dynamics*. Any
+	other large-scale process (e.g., vertical advection, pressure gradient,
+	Coriolis acceleration) might be included in the model only via parameterizations.
 	The conservative form of the governing equations is used.
 	"""
 	def __init__(
 		self, domain, intermediate_tendencies=None, intermediate_diagnostics=None,
-		substeps=0, fast_tendencies=None, fast_diagnostics=None,
-		moist=False, time_integration_scheme='forward_euler_si',
-		horizontal_flux_scheme='upwind', time_integration_properties=None,
+		substeps=0, fast_tendencies=None, fast_diagnostics=None, moist=False,
+		time_integration_scheme='forward_euler', horizontal_flux_scheme='upwind',
 		damp=True, damp_at_every_stage=True,
 		damp_type='rayleigh', damp_depth=15, damp_max=0.0002,
 		smooth=True, smooth_at_every_stage=True, smooth_type='first_order',
 		smooth_coeff=.03, smooth_coeff_max=.24, smooth_damp_depth=10,
-		smooth_moist=False, smooth_moist_at_every_stage=True, smooth_moist_type='first_order',
-		smooth_moist_coeff=.03, smooth_moist_coeff_max=.24, smooth_moist_damp_depth=10,
+		smooth_moist=False, smooth_moist_at_every_stage=True,
+		smooth_moist_type='first_order', smooth_moist_coeff=.03,
+		smooth_moist_coeff_max=.24, smooth_moist_damp_depth=10,
 		backend=gt.mode.NUMPY, dtype=datatype
 	):
 		"""
@@ -127,16 +129,12 @@ class IsentropicDynamicalCore(DynamicalCore):
 			Defaults to :obj:`False`.
 		time_integration_scheme : str
 			String specifying the time stepping method to implement. 
-			See :class:`tasmania.IsentropicMinimalPrognostic`
+			See :class:`tasmania.IsentropicBoussinesqMinimalPrognostic`
 			for all available options. Defaults to 'forward_euler'.
 		horizontal_flux_scheme : str
 			String specifying the numerical horizontal flux to use. 
-			See :class:`tasmania.HorizontalIsentropicMinimalFlux`
+			See :class:`tasmania.HorizontalIsentropicBoussinesqMinimalFlux`
 			for all available options. Defaults to 'upwind'.
-		time_integration_properties : dict
-			Additional properties to be passed to the constructor of
-			:class:`~tasmania.python.isentropic.dynamics.IsentropicPrognostic`
-			as keyword arguments.
 		damp : `bool`, optional
 			:obj:`True` to enable vertical damping, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
@@ -222,11 +220,11 @@ class IsentropicDynamicalCore(DynamicalCore):
 		#
 		# prognostic
 		#
-		kwargs = {} if time_integration_properties is None else time_integration_properties
-		self._prognostic = IsentropicPrognostic.factory(
-			time_integration_scheme, horizontal_flux_scheme, self.grid,
-			self.horizontal_boundary, moist, backend, dtype, **kwargs
+		self._prognostic = IsentropicBoussinesqMinimalPrognostic.factory(
+			time_integration_scheme, horizontal_flux_scheme, 'xy',
+			self.grid, self.horizontal_boundary, moist, substeps, backend, dtype
 		)
+		self._prognostic.substep_output_properties = self._substep_output_properties
 
 		#
 		# vertical damping
@@ -272,18 +270,20 @@ class IsentropicDynamicalCore(DynamicalCore):
 		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
 		if damp:
-			self._s_damped  = np.zeros((nx, ny, nz), dtype=dtype)
-			self._su_damped = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sv_damped = np.zeros((nx, ny, nz), dtype=dtype)
+			self._s_damped     = np.zeros((nx, ny, nz), dtype=dtype)
+			self._su_damped    = np.zeros((nx, ny, nz), dtype=dtype)
+			self._sv_damped    = np.zeros((nx, ny, nz), dtype=dtype)
+			self._ddmtg_damped = np.zeros((nx, ny, nz), dtype=dtype)
 			if moist:
 				self._qv_damped = np.zeros((nx, ny, nz), dtype=dtype)
 				self._qc_damped = np.zeros((nx, ny, nz), dtype=dtype)
 				self._qr_damped = np.zeros((nx, ny, nz), dtype=dtype)
 
 		if smooth:
-			self._s_smoothed  = np.zeros((nx, ny, nz), dtype=dtype)
-			self._su_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sv_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
+			self._s_smoothed  	 = np.zeros((nx, ny, nz), dtype=dtype)
+			self._su_smoothed 	 = np.zeros((nx, ny, nz), dtype=dtype)
+			self._sv_smoothed 	 = np.zeros((nx, ny, nz), dtype=dtype)
+			self._ddmtg_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
 
 		if smooth_moist:
 			self._qv_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
@@ -303,14 +303,17 @@ class IsentropicDynamicalCore(DynamicalCore):
 
 	@property
 	def _input_properties(self):
-		g = self.grid
-		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-		dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
-		dims_stg_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
+		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+		dims_stg_x = (
+			self.grid.x_at_u_locations.dims[0], self.grid.y.dims[0], self.grid.z.dims[0]
+		)
+		dims_stg_y = (
+			self.grid.x.dims[0], self.grid.y_at_v_locations.dims[0], self.grid.z.dims[0]
+		)
 
 		return_dict = {
 			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'montgomery_potential': {'dims': dims, 'units': 'm^2 s^-2'},
+			'dd_montgomery_potential': {'dims': dims, 'units': 'm^2 K^-2 s^-2'},
 			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
 			'x_velocity_at_u_locations': {'dims': dims_stg_x, 'units': 'm s^-1'},
 			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
@@ -377,15 +380,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 			):
 				return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1'}
 
-			if (
-				ftends is not None and 'precipitation' in ftends.diagnostic_properties
-			):
-				dims2d = (self.grid.x.dims[0], self.grid.y.dims[0])
-				return_dict.update({
-					'precipitation': {'dims': dims2d, 'units': 'mm hr^-1'},
-					'accumulated_precipitation': {'dims': dims2d, 'units': 'mm'},
-				})
-
 		return return_dict
 
 	@property
@@ -411,13 +405,17 @@ class IsentropicDynamicalCore(DynamicalCore):
 
 	@property
 	def _output_properties(self):
-		g = self.grid
-		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-		dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
-		dims_stg_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
+		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+		dims_stg_x = (
+			self.grid.x_at_u_locations.dims[0], self.grid.y.dims[0], self.grid.z.dims[0]
+		)
+		dims_stg_y = (
+			self.grid.x.dims[0], self.grid.y_at_v_locations.dims[0], self.grid.z.dims[0]
+		)
 
 		return_dict = {
 			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
+			'dd_montgomery_potential': {'dims': dims, 'units': 'm^2 K^-2 s^-2'},
 			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
 			'x_velocity_at_u_locations': {'dims': dims_stg_x, 'units': 'm s^-1'},
 			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
@@ -452,18 +450,16 @@ class IsentropicDynamicalCore(DynamicalCore):
 
 			if self._moist:
 				if mfwv in self._substep_input_properties:
-					self.__substep_output_properties[mfwv] = {'dims': dims, 'units': 'g g^-1'}
+					self.__substep_output_properties[mfwv] = \
+						{'dims': dims, 'units': 'g g^-1'}
 
 				if mfcw in self._substep_input_properties:
-					self.__substep_output_properties[mfcw] = {'dims': dims, 'units': 'g g^-1'}
+					self.__substep_output_properties[mfcw] = \
+						{'dims': dims, 'units': 'g g^-1'}
 
 				if mfpw in self._substep_input_properties:
-					self.__substep_output_properties[mfpw] = {'dims': dims, 'units': 'g g^-1'}
-
-				if 'precipitation' in self._substep_input_properties:
-					dims2d = (self.grid.x.dims[0], self.grid.y.dims[0])
-					self.__substep_output_properties['accumulated_precipitation'] = \
-						{'dims': dims2d, 'units': 'mm'}
+					self.__substep_output_properties[mfpw] = \
+						{'dims': dims, 'units': 'g g^-1'}
 
 		return self.__substep_output_properties
 
@@ -487,6 +483,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 
 		names = [
 			'air_isentropic_density',
+			'dd_montgomery_potential',
 			'x_velocity_at_u_locations',
 			'x_momentum_isentropic',
 			'y_velocity_at_v_locations',
@@ -534,6 +531,8 @@ class IsentropicDynamicalCore(DynamicalCore):
 					ref_state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
 				self._sv_ref = \
 					ref_state['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+				self._ddmtg_ref = \
+					ref_state['dd_montgomery_potential'].to_units('m^2 K^-2 s^-2').values
 			except KeyError:
 				raise RuntimeError(
 					"Reference state not set in the object handling the horizontal "
@@ -541,9 +540,10 @@ class IsentropicDynamicalCore(DynamicalCore):
 				)
 
 			# save the current solution
-			self._s_now  = raw_state['air_isentropic_density']
-			self._su_now = raw_state['x_momentum_isentropic']
-			self._sv_now = raw_state['y_momentum_isentropic']
+			self._s_now  	= raw_state['air_isentropic_density']
+			self._su_now 	= raw_state['x_momentum_isentropic']
+			self._sv_now 	= raw_state['y_momentum_isentropic']
+			self._ddmtg_now = raw_state['dd_montgomery_potential']
 
 		# perform the prognostic step
 		raw_state_new = self._prognostic.stage_call(
@@ -558,28 +558,35 @@ class IsentropicDynamicalCore(DynamicalCore):
 			damped = True
 
 			# extract the stepped prognostic model variables
-			s_new  = raw_state_new['air_isentropic_density']
-			su_new = raw_state_new['x_momentum_isentropic']
-			sv_new = raw_state_new['y_momentum_isentropic']
+			s_new     = raw_state_new['air_isentropic_density']
+			su_new 	  = raw_state_new['x_momentum_isentropic']
+			sv_new 	  = raw_state_new['y_momentum_isentropic']
+			ddmtg_new = raw_state_new['dd_montgomery_potential']
 
 			# apply vertical damping
 			self._damper(timestep, self._s_now , s_new , self._s_ref , self._s_damped )
 			self._damper(timestep, self._su_now, su_new, self._su_ref, self._su_damped)
 			self._damper(timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped)
+			self._damper(
+				timestep, self._ddmtg_now, ddmtg_new, self._ddmtg_ref, self._ddmtg_damped
+			)
 
 		# properly set pointers to current solution
 		s_new  = self._s_damped if damped else raw_state_new['air_isentropic_density']
 		su_new = self._su_damped if damped else raw_state_new['x_momentum_isentropic']
 		sv_new = self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
+		ddmtg_new = \
+			self._ddmtg_damped if damped else raw_state_new['dd_montgomery_potential']
 
 		smoothed = False
 		if self._smooth and (self._smooth_at_every_stage or stage == self.stages-1):
 			smoothed = True
 
 			# apply horizontal smoothing
-			self._smoother(s_new , self._s_smoothed )
-			self._smoother(su_new, self._su_smoothed)
-			self._smoother(sv_new, self._sv_smoothed)
+			self._smoother(s_new 	, self._s_smoothed 	  )
+			self._smoother(su_new	, self._su_smoothed	  )
+			self._smoother(sv_new	, self._sv_smoothed	  )
+			self._smoother(ddmtg_new, self._ddmtg_smoothed)
 
 			# apply horizontal boundary conditions
 			raw_state_smoothed = {
@@ -587,13 +594,15 @@ class IsentropicDynamicalCore(DynamicalCore):
 				'air_isentropic_density': self._s_smoothed,
 				'x_momentum_isentropic': self._su_smoothed,
 				'y_momentum_isentropic': self._sv_smoothed,
+				'dd_montgomery_potential': self._ddmtg_smoothed
 			}
 			hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
 		# properly set pointers to output solution
-		s_out  = self._s_smoothed if smoothed else s_new
-		su_out = self._su_smoothed if smoothed else su_new
-		sv_out = self._sv_smoothed if smoothed else sv_new
+		s_out  	  = self._s_smoothed if smoothed else s_new
+		su_out 	  = self._su_smoothed if smoothed else su_new
+		sv_out 	  = self._sv_smoothed if smoothed else sv_new
+		ddmtg_out = self._ddmtg_smoothed if smoothed else ddmtg_new
 
 		# diagnose the velocity components
 		self._velocity_components.get_velocity_components(
@@ -614,6 +623,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 		raw_state_out = {
 			'time': raw_state_new['time'],
 			'air_isentropic_density': s_out,
+			'dd_montgomery_potential': ddmtg_out,
 			'x_momentum_isentropic': su_out,
 			'x_velocity_at_u_locations': self._u_out,
 			'y_momentum_isentropic': sv_out,
@@ -640,6 +650,8 @@ class IsentropicDynamicalCore(DynamicalCore):
 					ref_state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
 				self._sv_ref = \
 					ref_state['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+				self._ddmtg_ref = \
+					ref_state['dd_montgomery_potential'].to_units('m^2 K^-2 s^-2').values
 				self._qv_ref = ref_state[mfwv].to_units('g g^-1').values
 				self._qc_ref = ref_state[mfcw].to_units('g g^-1').values
 				self._qr_ref = ref_state[mfpw].to_units('g g^-1').values
@@ -650,12 +662,13 @@ class IsentropicDynamicalCore(DynamicalCore):
 				)
 
 			# save the current solution
-			self._s_now  = raw_state['air_isentropic_density']
-			self._su_now = raw_state['x_momentum_isentropic']
-			self._sv_now = raw_state['y_momentum_isentropic']
-			self._qv_now = raw_state[mfwv]
-			self._qc_now = raw_state[mfcw]
-			self._qr_now = raw_state[mfpw]
+			self._s_now  	= raw_state['air_isentropic_density']
+			self._su_now 	= raw_state['x_momentum_isentropic']
+			self._sv_now 	= raw_state['y_momentum_isentropic']
+			self._ddmtg_now = raw_state['dd_montgomery_potential']
+			self._qv_now 	= raw_state[mfwv]
+			self._qc_now 	= raw_state[mfcw]
+			self._qr_now 	= raw_state[mfpw]
 
 		# diagnose the isentropic density of all water constituents
 		s_now  = raw_state['air_isentropic_density']
@@ -702,34 +715,35 @@ class IsentropicDynamicalCore(DynamicalCore):
 			damped = True
 
 			# extract the stepped prognostic model variables
-			s_new  = raw_state_new['air_isentropic_density']
-			su_new = raw_state_new['x_momentum_isentropic']
-			sv_new = raw_state_new['y_momentum_isentropic']
+			s_new  	  = raw_state_new['air_isentropic_density']
+			su_new 	  = raw_state_new['x_momentum_isentropic']
+			sv_new 	  = raw_state_new['y_momentum_isentropic']
+			ddmtg_new = raw_state_new['dd_montgomery_potential']
 
 			# apply vertical damping
-			self._damper(timestep, self._s_now , s_new       , self._s_ref , self._s_damped )
-			self._damper(timestep, self._su_now, su_new      , self._su_ref, self._su_damped)
-			self._damper(timestep, self._sv_now, sv_new      , self._sv_ref, self._sv_damped)
-			# self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
-			# self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
-			# self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
+			self._damper(timestep, self._s_now , s_new , self._s_ref , self._s_damped )
+			self._damper(timestep, self._su_now, su_new, self._su_ref, self._su_damped)
+			self._damper(timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped)
+			self._damper(
+				timestep, self._ddmtg_now, ddmtg_new, self._ddmtg_ref, self._ddmtg_damped
+			)
 
 		# properly set pointers to current solution
 		s_new  = self._s_damped if damped else raw_state_new['air_isentropic_density']
 		su_new = self._su_damped if damped else raw_state_new['x_momentum_isentropic']
 		sv_new = self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
-		qv_new = self._qv_new  # self._qv_damped if damped else self._qv_new
-		qc_new = self._qc_new  # self._qc_damped if damped else self._qc_new
-		qr_new = self._qr_new  # self._qr_damped if damped else self._qr_new
+		ddmtg_new = \
+			self._ddmtg_damped if damped else raw_state_new['dd_montgomery_potential']
 
 		smoothed = False
 		if self._smooth and (self._smooth_at_every_stage or stage == self.stages-1):
 			smoothed = True
 
 			# apply horizontal smoothing
-			self._smoother(s_new , self._s_smoothed )
-			self._smoother(su_new, self._su_smoothed)
-			self._smoother(sv_new, self._sv_smoothed)
+			self._smoother(s_new    , self._s_smoothed    )
+			self._smoother(su_new   , self._su_smoothed   )
+			self._smoother(sv_new   , self._sv_smoothed   )
+			self._smoother(ddmtg_new, self._ddmtg_smoothed)
 
 			# apply horizontal boundary conditions
 			raw_state_smoothed = {
@@ -737,22 +751,27 @@ class IsentropicDynamicalCore(DynamicalCore):
 				'air_isentropic_density': self._s_smoothed,
 				'x_momentum_isentropic': self._su_smoothed,
 				'y_momentum_isentropic': self._sv_smoothed,
+				'dd_montgomery_potential': self._ddmtg_smoothed
 			}
 			hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
 		# properly set pointers to output solution
-		s_out  = self._s_smoothed if smoothed else s_new
-		su_out = self._su_smoothed if smoothed else su_new
-		sv_out = self._sv_smoothed if smoothed else sv_new
+		s_out  	  = self._s_smoothed if smoothed else s_new
+		su_out 	  = self._su_smoothed if smoothed else su_new
+		sv_out 	  = self._sv_smoothed if smoothed else sv_new
+		ddmtg_out = self._ddmtg_smoothed if smoothed else ddmtg_new
 
 		smoothed_moist = False
-		if self._smooth_moist and (self._smooth_moist_at_every_stage or stage == self.stages-1):
+		if (
+			self._smooth_moist and
+			(self._smooth_moist_at_every_stage or stage == self.stages-1)
+		):
 			smoothed_moist = True
 
 			# apply horizontal smoothing
-			self._smoother(qv_new, self._qv_smoothed)
-			self._smoother(qc_new, self._qc_smoothed)
-			self._smoother(qr_new, self._qr_smoothed)
+			self._smoother(self._qv_new, self._qv_smoothed)
+			self._smoother(self._qc_new, self._qc_smoothed)
+			self._smoother(self._qr_new, self._qr_smoothed)
 
 			# apply horizontal boundary conditions
 			raw_state_smoothed = {
@@ -764,9 +783,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 			hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
 		# properly set pointers to output solution
-		qv_out = self._qv_smoothed if smoothed_moist else qv_new
-		qc_out = self._qc_smoothed if smoothed_moist else qc_new
-		qr_out = self._qr_smoothed if smoothed_moist else qr_new
+		qv_out = self._qv_smoothed if smoothed_moist else self._qv_new
+		qc_out = self._qc_smoothed if smoothed_moist else self._qc_new
+		qr_out = self._qr_smoothed if smoothed_moist else self._qr_new
 
 		# diagnose the velocity components
 		self._velocity_components.get_velocity_components(
@@ -787,6 +806,7 @@ class IsentropicDynamicalCore(DynamicalCore):
 		raw_state_out = {
 			'time': raw_state_new['time'],
 			'air_isentropic_density': s_out,
+			'dd_montgomery_potential': ddmtg_out,
 			mfwv: qv_out,
 			mfcw: qc_out,
 			mfpw: qr_out,
@@ -802,4 +822,8 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self, stage, substep, raw_state, raw_stage_state, raw_tmp_state,
 		raw_tendencies, timestep
 	):
-		raise NotImplementedError()
+		# merely perform the sub-step
+		return self._prognostic.substep_call(
+			stage, substep, timestep, raw_state, raw_stage_state,
+			raw_tmp_state, raw_tendencies
+		)
