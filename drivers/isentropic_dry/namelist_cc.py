@@ -48,8 +48,8 @@ topo_type   = 'gaussian'
 topo_kwargs = {
 	'time': timedelta(seconds=1800),
 	'max_height': DataArray(1.0, attrs={'units': 'km'}),
-	'width_x': DataArray(25.0, attrs={'units': 'km'}),
-	'width_y': DataArray(25.0, attrs={'units': 'km'}),
+	'width_x': DataArray(50.0, attrs={'units': 'km'}),
+	'width_y': DataArray(50.0, attrs={'units': 'km'}),
 	'smooth': False,
 }
 
@@ -67,7 +67,7 @@ substeps                = 0
 horizontal_flux_scheme = 'fifth_order_upwind'
 
 # pressure gradient
-pg_scheme = 'pressure_thickness_weighted'
+pg_scheme = 'second_order'
 
 # damping
 damp                = True
@@ -101,7 +101,7 @@ coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
 timestep = Timedelta(seconds=32)
-niter    = int(12*60*60 / timestep.total_seconds())
+niter    = int(8*60*60 / timestep.total_seconds())
 
 # output
 filename = \
@@ -124,5 +124,5 @@ store_names = (
 	'y_momentum_isentropic'
 )
 save_frequency  = -1
-print_frequency = 2
+print_frequency = 1
 plot_frequency  = -1

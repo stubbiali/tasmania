@@ -24,14 +24,16 @@
 PYTHON_SCRIPT=make_plot_composite.py
 JSON_FILE=plot_composite.json
 SHOW=0
-TIME_LEVELS_START=25
-TIME_LEVELS_STOP=90
-OUTPUT_ROOT=..\\/..\\/results\\/isentropic_moist_rh90\\/isentropic_moist_rh90_
+TIME_LEVELS_START=00
+TIME_LEVELS_STEP=02
+TIME_LEVELS_STOP=64
+OUTPUT_ROOT=..\\/..\\/results\\/figures\\/isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx41_ny41_nz60_dt45_nt640_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap\\/qr_xy_
 
-for i in $(seq ${TIME_LEVELS_START} ${TIME_LEVELS_STOP})
+for i in $(seq -w ${TIME_LEVELS_START} ${TIME_LEVELS_STEP} ${TIME_LEVELS_STOP})
 do
 	echo ""
-	sed -i "s/.*tlevels.*/\t\"tlevels\": ${i},/g" config/${JSON_FILE}
+	j=$(printf "%d" ${i})
+	sed -i "s/.*tlevels.*/\t\"tlevels\": ${j},/g" config/${JSON_FILE}
 	sed -i "s/.*save_dest.*/\t\"save_dest\": \"${OUTPUT_ROOT}${i}.eps\"/g" config/${JSON_FILE}
 	python ${PYTHON_SCRIPT} config/${JSON_FILE} ${SHOW}
 done

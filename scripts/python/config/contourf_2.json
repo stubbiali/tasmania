@@ -28,7 +28,7 @@
 		"cbar_ticks_step": 3,
 		"cbar_ticks_pos": "interface",
 		"cbar_center": 0,
-		"cbar_half_width": 10,
+		"cbar_half_width": 10.0,
 		"cbar_x_label": "",
 		"cbar_y_label": "Discrepancy [cm s$^{-1}$]",
 		"cbar_title": "",
