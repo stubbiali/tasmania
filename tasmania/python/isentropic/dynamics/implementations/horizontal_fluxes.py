@@ -60,7 +60,7 @@ class Upwind(IsentropicHorizontalFlux):
 		----
 		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
 		are not actually used, yet they are retained as default arguments for
-		compliancy with the class hierarchy interface.
+		compliance with the class hierarchy interface.
 		"""
 		# Compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_upwind_flux_x(i, j, u, s)
@@ -142,7 +142,7 @@ class Centered(IsentropicHorizontalFlux):
 		----
 		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
 		are not actually used, yet they are retained as default arguments for
-		compliancy with the class hierarchy interface.
+		compliance with the class hierarchy interface.
 		"""
 		# Compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_centered_flux_x(i, j, u, s)
@@ -416,7 +416,7 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
 		----
 		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
 		are not actually used, yet they are retained as default arguments for
-		compliancy with the class hierarchy interface.
+		compliance with the class hierarchy interface.
 		"""
 		# Compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_third_order_upwind_flux_x(i, j, u, s)
@@ -521,7 +521,7 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
 		----
 		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
 		are not actually used, yet they are retained as default arguments for
-		compliancy with the class hierarchy interface.
+		compliance with the class hierarchy interface.
 		"""
 		# Compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_fifth_order_upwind_flux_x(i, j, u, s)
@@ -532,8 +532,9 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
 		flux_sv_y = get_fifth_order_upwind_flux_y(i, j, v, sv)
 
 		# Initialize the return list
-		return_list = [flux_s_x, flux_s_y, flux_su_x, flux_su_y,
-					   flux_sv_x, flux_sv_y]
+		return_list = [
+			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
+		]
 
 		if self._moist:
 			# Compute fluxes for the water constituents

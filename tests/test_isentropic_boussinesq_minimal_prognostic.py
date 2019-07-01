@@ -25,22 +25,33 @@ from datetime import timedelta
 from hypothesis import \
 	given, HealthCheck, settings, strategies as hyp_st
 import numpy as np
-import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
-from tasmania.python.isentropic.dynamics.minimal_prognostic \
-	import IsentropicMinimalPrognostic
-from tasmania.python.isentropic.dynamics.implementations.minimal_prognostic \
+from tasmania.python.isentropic.dynamics.boussinesq_minimal_prognostic \
+	import IsentropicBoussinesqMinimalPrognostic
+from tasmania.python.isentropic.dynamics.implementations.boussinesq_minimal_prognostic \
 	import Centered, ForwardEuler, RK2, RK3WS, RK3
 from tasmania.python.utils.data_utils import make_raw_state
-from test_isentropic_minimal_horizontal_fluxes import \
-	get_upwind_fluxes, get_centered_fluxes, \
-	get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_isentropic_minimal_horizontal_fluxes import \
+		get_upwind_fluxes, get_centered_fluxes, \
+		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+	from .test_isentropic_minimal_prognostic import \
+		forward_euler_step, rk3_first_step, rk3_second_step, rk3_third_step, \
+		substep
+	from .utils import compare_arrays, compare_datetimes, st_domain, st_one_of, \
+		st_isentropic_boussinesq_state_f, st_isentropic_boussinesq_state_ff
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_isentropic_minimal_horizontal_fluxes import \
+		get_upwind_fluxes, get_centered_fluxes, \
+		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+	from test_isentropic_minimal_prognostic import \
+		forward_euler_step, rk3_first_step, rk3_second_step, rk3_third_step, \
+		substep
+	from utils import compare_arrays, compare_datetimes, st_domain, st_one_of, \
+		st_isentropic_boussinesq_state_f, st_isentropic_boussinesq_state_ff
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -62,13 +73,13 @@ def test_factory(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
 		label="domain"
 	)
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
 	moist = data.draw(hyp_st.booleans(), label="moist")
 	substeps = data.draw(hyp_st.integers(min_value=0, max_value=12), label="substeps")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -77,23 +88,23 @@ def test_factory(data):
 	hb = domain.horizontal_boundary
 	dtype = grid.x.dtype
 
-	imp_centered = IsentropicMinimalPrognostic.factory(
+	imp_centered = IsentropicBoussinesqMinimalPrognostic.factory(
 		'centered', 'centered', mode, grid, hb,
 		moist, substeps, backend=backend, dtype=dtype
 	)
-	imp_euler = IsentropicMinimalPrognostic.factory(
+	imp_euler = IsentropicBoussinesqMinimalPrognostic.factory(
 		'forward_euler', 'upwind', mode, grid, hb,
 		moist, substeps, backend=backend, dtype=dtype
 	)
-	imp_rk2 = IsentropicMinimalPrognostic.factory(
+	imp_rk2 = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk2', 'third_order_upwind', mode, grid, hb,
 		moist, substeps, backend=backend, dtype=dtype
 	)
-	imp_rk3ws = IsentropicMinimalPrognostic.factory(
+	imp_rk3ws = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk3ws', 'fifth_order_upwind', mode, grid, hb,
 		moist, substeps, backend=backend, dtype=dtype
 	)
-	imp_rk3 = IsentropicMinimalPrognostic.factory(
+	imp_rk3 = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk3', 'fifth_order_upwind', mode, grid, hb,
 		moist, substeps, backend=backend, dtype=dtype
 	)
@@ -103,21 +114,6 @@ def test_factory(data):
 	assert isinstance(imp_rk2, RK2)
 	assert isinstance(imp_rk3ws, RK3WS)
 	assert isinstance(imp_rk3, RK3)
-
-
-def compare_datetimes(td1, td2):
-	assert abs(td1 - td2).total_seconds() <= 1e-6
-
-
-def forward_euler_step(
-	get_fluxes, mode, dx, dy, dt, u_tmp, v_tmp, phi, phi_tmp, phi_tnd, phi_out
-):
-	flux_x, flux_y = get_fluxes(u_tmp, v_tmp, phi_tmp)
-	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] - dt * (
-		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
-		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
-		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
-	)
 
 
 @settings(
@@ -133,9 +129,9 @@ def test_leapfrog(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf.nb))
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -144,7 +140,9 @@ def test_leapfrog(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_ff(grid, moist=moist), label="state")
+	state = data.draw(
+		st_isentropic_boussinesq_state_ff(grid, moist=moist), label="state"
+	)
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -161,8 +159,8 @@ def test_leapfrog(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -175,9 +173,9 @@ def test_leapfrog(data):
 	# ========================================
 	# test bed
 	# ========================================
-	imp = IsentropicMinimalPrognostic.factory(
+	imp = IsentropicBoussinesqMinimalPrognostic.factory(
 		'centered', 'centered', mode, grid, hb,
-        moist, backend=backend, dtype=dtype
+		moist, backend=backend, dtype=dtype
 	)
 
 	raw_state = make_raw_state(state)
@@ -204,7 +202,7 @@ def test_leapfrog(data):
 	raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
 	assert 'time' in raw_state_new.keys()
-	assert raw_state_new['time'] == raw_state['time'] + timestep
+	compare_datetimes(raw_state_new['time'], raw_state['time'] + timestep)
 
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
@@ -213,7 +211,8 @@ def test_leapfrog(data):
 	v  = raw_state['y_velocity_at_v_locations']
 
 	names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density', 'x_momentum_isentropic',
+		'y_momentum_isentropic', 'dd_montgomery_potential'
 	]
 	if moist:
 		names.append('isentropic_density_of_water_vapor')
@@ -229,9 +228,7 @@ def test_leapfrog(data):
 			get_centered_fluxes, 'xy', dx, dy, 2*dt, u, v, phi, phi, phi_tnd, phi_out
 		)
 		assert name in raw_state_new
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_new[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_new[name][nb:-nb, nb:-nb])
 
 
 @settings(
@@ -243,13 +240,13 @@ def test_leapfrog(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_upwind(data):
+def _test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf.nb))
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -258,7 +255,9 @@ def test_upwind(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(
+		st_isentropic_boussinesq_state_ff(grid, moist=moist), label="state"
+	)
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -275,8 +274,8 @@ def test_upwind(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -289,7 +288,7 @@ def test_upwind(data):
 	# ========================================
 	# test bed
 	# ========================================
-	imp = IsentropicMinimalPrognostic.factory(
+	imp = IsentropicBoussinesqMinimalPrognostic.factory(
 		'forward_euler', 'upwind', mode, grid, hb,
 		moist, backend=backend, dtype=dtype
 	)
@@ -318,7 +317,7 @@ def test_upwind(data):
 	raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
 	assert 'time' in raw_state_new.keys()
-	assert raw_state_new['time'] == raw_state['time'] + timestep
+	compare_datetimes(raw_state_new['time'], raw_state['time'] + timestep)
 
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
@@ -327,7 +326,8 @@ def test_upwind(data):
 	v  = raw_state['y_velocity_at_v_locations']
 
 	names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic',
+		'dd_montgomery_potential'
 	]
 	if moist:
 		names.append('isentropic_density_of_water_vapor')
@@ -343,9 +343,7 @@ def test_upwind(data):
 			get_upwind_fluxes, mode, dx, dy, dt, u, v, phi, phi, phi_tnd, phi_out
 		)
 		assert name in raw_state_new
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_new[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_new[name][nb:-nb, nb:-nb])
 
 
 @settings(
@@ -357,13 +355,13 @@ def test_upwind(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_rk2(data):
+def _test_rk2(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf.nb))
+	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -372,7 +370,9 @@ def test_rk2(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(
+		st_isentropic_boussinesq_state_ff(grid, moist=moist), label="state"
+	)
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -389,8 +389,8 @@ def test_rk2(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -403,7 +403,7 @@ def test_rk2(data):
 	# ========================================
 	# test bed
 	# ========================================
-	imp = IsentropicMinimalPrognostic.factory(
+	imp = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk2', 'third_order_upwind', mode, grid, hb,
 		moist, backend=backend, dtype=dtype
 	)
@@ -436,7 +436,8 @@ def test_rk2(data):
 	v  = raw_state['y_velocity_at_v_locations']
 
 	names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic',
+		'dd_montgomery_potential'
 	]
 	if moist:
 		names.append('isentropic_density_of_water_vapor')
@@ -451,7 +452,7 @@ def test_rk2(data):
 	raw_state_1 = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
 	assert 'time' in raw_state_1.keys()
-	assert raw_state_1['time'] == raw_state['time'] + 0.5*timestep
+	compare_datetimes(raw_state_1['time'], raw_state['time'] + 0.5*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -461,9 +462,7 @@ def test_rk2(data):
 			phi, phi, phi_tnd, phi_out
 		)
 		assert name in raw_state_1
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb])
 
 	#
 	# stage 1
@@ -486,7 +485,7 @@ def test_rk2(data):
 	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
 
 	assert 'time' in raw_state_2.keys()
-	assert raw_state_2['time'] == raw_state_1['time'] + 0.5*timestep
+	compare_datetimes(raw_state_2['time'], raw_state_1['time'] + 0.5*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -497,9 +496,7 @@ def test_rk2(data):
 			phi, phi_tmp, phi_tnd, phi_out
 		)
 		assert name in raw_state_2
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb])
 
 
 @settings(
@@ -511,13 +508,13 @@ def test_rk2(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_rk3ws(data):
+def _test_rk3ws(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -526,7 +523,9 @@ def test_rk3ws(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(
+		st_isentropic_boussinesq_state_ff(grid, moist=moist), label="state"
+	)
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -543,8 +542,8 @@ def test_rk3ws(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -557,7 +556,7 @@ def test_rk3ws(data):
 	# ========================================
 	# test bed
 	# ========================================
-	imp = IsentropicMinimalPrognostic.factory(
+	imp = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk3ws', 'fifth_order_upwind', mode, grid, hb,
 		moist, backend=backend, dtype=dtype
 	)
@@ -590,7 +589,8 @@ def test_rk3ws(data):
 	v  = raw_state['y_velocity_at_v_locations']
 
 	names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic',
+		'dd_montgomery_potential'
 	]
 	if moist:
 		names.append('isentropic_density_of_water_vapor')
@@ -605,7 +605,7 @@ def test_rk3ws(data):
 	raw_state_1 = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
 	assert 'time' in raw_state_1.keys()
-	assert raw_state_1['time'] == raw_state['time'] + 1.0/3.0*timestep
+	compare_datetimes(raw_state_1['time'], raw_state['time'] + 1.0/3.0*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -615,9 +615,7 @@ def test_rk3ws(data):
 			phi, phi, phi_tnd, phi_out
 		)
 		assert name in raw_state_1
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb])
 
 	#
 	# stage 1
@@ -640,7 +638,7 @@ def test_rk3ws(data):
 	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
 
 	assert 'time' in raw_state_2.keys()
-	assert raw_state_2['time'] == raw_state_1['time'] + 1.0/6.0*timestep
+	compare_datetimes(raw_state_2['time'], raw_state_1['time'] + 1.0/6.0*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -651,9 +649,7 @@ def test_rk3ws(data):
 			phi, phi_tmp, phi_tnd, phi_out
 		)
 		assert name in raw_state_2
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb])
 
 	#
 	# stage 2
@@ -676,7 +672,7 @@ def test_rk3ws(data):
 	raw_state_3 = imp.stage_call(2, timestep, raw_state_2, raw_tendencies)
 
 	assert 'time' in raw_state_3.keys()
-	assert raw_state_3['time'] == raw_state_2['time'] + 0.5*timestep
+	compare_datetimes(raw_state_3['time'], raw_state_2['time'] + 0.5*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -687,50 +683,7 @@ def test_rk3ws(data):
 			phi, phi_tmp, phi_tnd, phi_out
 		)
 		assert name in raw_state_3
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_3[name][nb:-nb, nb:-nb], equal_nan=True
-		)
-
-
-def rk3_first_step(
-	get_fluxes, mode, dx, dy, dt, a1, u, v, phi, phi_tnd,
-	phi_k0, phi_out
-):
-	flux_x, flux_y = get_fluxes(u, v, phi)
-	phi_k0[1:-1, 1:-1] = - dt * (
-		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
-		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
-		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
-	)
-	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] + a1 * phi_k0[1:-1, 1:-1]
-
-
-def rk3_second_step(
-	get_fluxes, mode, dx, dy, dt, a2, b21, u_tmp, v_tmp, phi, phi_tmp, phi_k0, phi_tnd,
-	phi_k1, phi_out
-):
-	flux_x, flux_y = get_fluxes(u_tmp, v_tmp, phi_tmp)
-	phi_k1[1:-1, 1:-1] = - dt * (
-		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
-		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
-		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
-	)
-	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] + \
-		b21 * phi_k0[1:-1, 1:-1] + (a2 - b21) * phi_k1[1:-1, 1:-1]
-
-
-def rk3_third_step(
-	get_fluxes, mode, dx, dy, dt, g0, g1, g2, u_tmp, v_tmp, phi, phi_tmp, phi_k0, phi_k1, phi_tnd,
-	phi_k2, phi_out
-):
-	flux_x, flux_y = get_fluxes(u_tmp, v_tmp, phi_tmp)
-	phi_k2[1:-1, 1:-1] = - dt * (
-		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
-		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
-		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
-	)
-	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] + \
-		g0 * phi_k0[1:-1, 1:-1] + g1 * phi_k1[1:-1, 1:-1] + g2 * phi_k2[1:-1, 1:-1]
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_3[name][nb:-nb, nb:-nb])
 
 
 @settings(
@@ -742,13 +695,13 @@ def rk3_third_step(
 	deadline=None
 )
 @given(hyp_st.data())
-def test_rk3(data):
+def _test_rk3(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -757,7 +710,9 @@ def test_rk3(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(
+		st_isentropic_boussinesq_state_ff(grid, moist=moist), label="state"
+	)
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -774,8 +729,8 @@ def test_rk3(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -788,7 +743,7 @@ def test_rk3(data):
 	# ========================================
 	# test bed
 	# ========================================
-	imp = IsentropicMinimalPrognostic.factory(
+	imp = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk3', 'fifth_order_upwind', mode, grid, hb,
 		moist, backend=backend, dtype=dtype
 	)
@@ -834,7 +789,8 @@ def test_rk3(data):
 	v  = raw_state['y_velocity_at_v_locations']
 
 	names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic',
+		'dd_montgomery_potential'
 	]
 	if moist:
 		names.append('isentropic_density_of_water_vapor')
@@ -854,7 +810,7 @@ def test_rk3(data):
 	raw_state_1 = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
 	assert 'time' in raw_state_1.keys()
-	assert raw_state_1['time'] == raw_state['time'] + a1*timestep
+	compare_datetimes(raw_state_1['time'], raw_state['time'] + a1*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -864,9 +820,7 @@ def test_rk3(data):
 			phi, phi_tnd, phi_k0, phi_out
 		)
 		assert name in raw_state_1
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb])
 		k0[name] = deepcopy(phi_k0)
 
 	#
@@ -890,7 +844,7 @@ def test_rk3(data):
 	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
 
 	assert 'time' in raw_state_2.keys()
-	assert raw_state_2['time'] == raw_state_1['time'] + (a2-a1)*timestep
+	compare_datetimes(raw_state_2['time'], raw_state_1['time'] + (a2-a1)*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -901,9 +855,7 @@ def test_rk3(data):
 			phi, phi_tmp, k0[name], phi_tnd, phi_k1, phi_out
 		)
 		assert name in raw_state_2
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb])
 		k1[name] = deepcopy(phi_k1)
 
 	#
@@ -927,7 +879,7 @@ def test_rk3(data):
 	raw_state_3 = imp.stage_call(2, timestep, raw_state_2, raw_tendencies)
 
 	assert 'time' in raw_state_3.keys()
-	assert raw_state_3['time'] == raw_state_2['time'] + (1-a2-a1)*timestep
+	compare_datetimes(raw_state_3['time'], raw_state_2['time'] + (1-a2-a1)*timestep)
 
 	for name in names:
 		phi     = raw_state[name]
@@ -938,14 +890,7 @@ def test_rk3(data):
 			phi, phi_tmp, k0[name], k1[name], phi_tnd, phi_k2, phi_out
 		)
 		assert name in raw_state_3
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_3[name][nb:-nb, nb:-nb], equal_nan=True
-		)
-
-
-def substep(substeps, dts, phi, phi_stage, phi_tmp, phi_tnd, phi_out):
-	phi_out[...] = phi_tmp[...] + (phi_stage[...] - phi[...]) / substeps + \
-		(dts * phi_tnd[...] if phi_tnd is not None else 0.0)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_3[name][nb:-nb, nb:-nb])
 
 
 @settings(
@@ -961,9 +906,9 @@ def test_rk3ws_substepping(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -972,7 +917,9 @@ def test_rk3ws_substepping(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(
+		st_isentropic_boussinesq_state_ff(grid, moist=moist), label="state"
+	)
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -989,8 +936,8 @@ def test_rk3ws_substepping(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -1003,7 +950,7 @@ def test_rk3ws_substepping(data):
 	# ========================================
 	# test bed
 	# ========================================
-	imp = IsentropicMinimalPrognostic.factory(
+	imp = IsentropicBoussinesqMinimalPrognostic.factory(
 		'rk3ws', 'fifth_order_upwind', mode, grid, hb,
 		moist, substeps=6, backend=backend, dtype=dtype
 	)
@@ -1045,7 +992,8 @@ def test_rk3ws_substepping(data):
 	v  = raw_state['y_velocity_at_v_locations']
 
 	names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic',
+		'dd_montgomery_potential'
 	]
 	if moist:
 		names.append('isentropic_density_of_water_vapor')
@@ -1078,9 +1026,7 @@ def test_rk3ws_substepping(data):
 			phi, phi, phi_tnd, phi_out
 		)
 		assert name in raw_state_0
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_0[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_0[name][nb:-nb, nb:-nb])
 
 	if moist:
 		raw_state_0[mfwv] = \
@@ -1110,9 +1056,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(2, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_00
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_00[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_00[name][nb:-nb, nb:-nb])
 
 	raw_state_00_dc = deepcopy(raw_state_00)
 
@@ -1133,10 +1077,10 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(2, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_01
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_01[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_01[name][nb:-nb, nb:-nb])
 
+	raw_state_01['dd_montgomery_potential'] = \
+		deepcopy(raw_state_0['dd_montgomery_potential'])
 	raw_state_01['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
 	raw_state_01['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	if moist:
@@ -1175,9 +1119,7 @@ def test_rk3ws_substepping(data):
 			phi, phi_tmp, phi_tnd, phi_out
 		)
 		assert name in raw_state_1
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb])
 
 	raw_state_1['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
 	raw_state_1['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
@@ -1209,9 +1151,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(3, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_10
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_10[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_10[name][nb:-nb, nb:-nb])
 
 	raw_state_10_dc = deepcopy(raw_state_10)
 
@@ -1232,9 +1172,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(3, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_11
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_11[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_11[name][nb:-nb, nb:-nb])
 
 	raw_state_11_dc = deepcopy(raw_state_11)
 
@@ -1255,10 +1193,10 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(3, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_12
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_12[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_12[name][nb:-nb, nb:-nb])
 
+	raw_state_12['dd_montgomery_potential'] = \
+		deepcopy(raw_state_1['dd_montgomery_potential'])
 	raw_state_12['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
 	raw_state_12['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	if moist:
@@ -1297,9 +1235,7 @@ def test_rk3ws_substepping(data):
 			phi, phi_tmp, phi_tnd, phi_out
 		)
 		assert name in raw_state_2
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb])
 
 	raw_state_2['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
 	raw_state_2['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
@@ -1331,9 +1267,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(6, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_20
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_20[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_20[name][nb:-nb, nb:-nb])
 
 	raw_state_20_dc = deepcopy(raw_state_20)
 
@@ -1354,9 +1288,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(6, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_21
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_21[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_21[name][nb:-nb, nb:-nb])
 
 	raw_state_21_dc = deepcopy(raw_state_21)
 
@@ -1377,9 +1309,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(6, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_22
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_22[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_22[name][nb:-nb, nb:-nb])
 
 	raw_state_22_dc = deepcopy(raw_state_22)
 
@@ -1400,9 +1330,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(6, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_23
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_23[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_23[name][nb:-nb, nb:-nb])
 
 	raw_state_23_dc = deepcopy(raw_state_23)
 
@@ -1423,9 +1351,7 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(6, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_24
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_24[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_24[name][nb:-nb, nb:-nb])
 
 	raw_state_24_dc = deepcopy(raw_state_24)
 
@@ -1446,10 +1372,9 @@ def test_rk3ws_substepping(data):
 		phi_tnd   = raw_tendencies.get(name, None)
 		substep(6, dt/6.0, phi, phi_stage, phi_tmp, phi_tnd, phi_out)
 		assert name in raw_state_25
-		assert np.allclose(
-			phi_out[nb:-nb, nb:-nb], raw_state_25[name][nb:-nb, nb:-nb], equal_nan=True
-		)
+		compare_arrays(phi_out[nb:-nb, nb:-nb], raw_state_25[name][nb:-nb, nb:-nb])
 
 
 if __name__ == '__main__':
-	pytest.main([__file__])
+	#pytest.main([__file__])
+	test_rk3ws_substepping()

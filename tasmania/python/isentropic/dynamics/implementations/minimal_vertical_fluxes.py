@@ -50,16 +50,15 @@ class Upwind(IsentropicMinimalVerticalFlux):
 		out_s  = get_upwind_flux(k, w, s)
 		out_su = get_upwind_flux(k, w, su)
 		out_sv = get_upwind_flux(k, w, sv)
+		return_list = [out_s, out_su, out_sv]
 
 		if self._moist:
 			out_sqv = get_upwind_flux(k, w, sqv)
 			out_sqc = get_upwind_flux(k, w, sqc)
 			out_sqr = get_upwind_flux(k, w, sqr)
+			return_list += [out_sqv, out_sqc, out_sqr]
 
-		if not self._moist:
-			return out_s, out_su, out_sv
-		else:
-			return out_s, out_su, out_sv, out_sqv, out_sqc, out_sqr
+		return return_list
 
 
 def get_upwind_flux(k, w, phi):
@@ -86,16 +85,15 @@ class Centered(IsentropicMinimalVerticalFlux):
 		out_s  = get_centered_flux(k, w, s)
 		out_su = get_centered_flux(k, w, su)
 		out_sv = get_centered_flux(k, w, sv)
+		return_list = [out_s, out_su, out_sv]
 
 		if self._moist:
 			out_sqv = get_centered_flux(k, w, sqv)
 			out_sqc = get_centered_flux(k, w, sqc)
 			out_sqr = get_centered_flux(k, w, sqr)
+			return_list += [out_sqv, out_sqc, out_sqr]
 
-		if not self._moist:
-			return out_s, out_su, out_sv
-		else:
-			return out_s, out_su, out_sv, out_sqv, out_sqc, out_sqr
+		return return_list
 
 
 def get_centered_flux(k, w, phi):
@@ -122,16 +120,15 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
 		out_s  = get_third_order_upwind_flux(k, w, s)
 		out_su = get_third_order_upwind_flux(k, w, su)
 		out_sv = get_third_order_upwind_flux(k, w, sv)
+		return_list = [out_s, out_su, out_sv]
 
 		if self._moist:
 			out_sqv = get_third_order_upwind_flux(k, w, sqv)
 			out_sqc = get_third_order_upwind_flux(k, w, sqc)
 			out_sqr = get_third_order_upwind_flux(k, w, sqr)
+			return_list += [out_sqv, out_sqc, out_sqr]
 
-		if not self._moist:
-			return out_s, out_su, out_sv
-		else:
-			return out_s, out_su, out_sv, out_sqv, out_sqc, out_sqr
+		return return_list
 
 
 def get_third_order_upwind_flux(k, w, phi):
@@ -166,16 +163,15 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
 		out_s  = get_fifth_order_upwind_flux(k, w, s)
 		out_su = get_fifth_order_upwind_flux(k, w, su)
 		out_sv = get_fifth_order_upwind_flux(k, w, sv)
+		return_list = [out_s, out_su, out_sv]
 
 		if self._moist:
 			out_sqv = get_fifth_order_upwind_flux(k, w, sqv)
 			out_sqc = get_fifth_order_upwind_flux(k, w, sqc)
 			out_sqr = get_fifth_order_upwind_flux(k, w, sqr)
+			return_list += [out_sqv, out_sqc, out_sqr]
 
-		if not self._moist:
-			return out_s, out_su, out_sv
-		else:
-			return out_s, out_su, out_sv, out_sqv, out_sqc, out_sqr
+		return return_list
 
 
 def get_fifth_order_upwind_flux(k, w, phi):

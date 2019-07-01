@@ -26,16 +26,24 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalVerticalFlux
-from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import \
+from tasmania.python.isentropic.dynamics.fluxes import \
+	IsentropicBoussinesqMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.implementations.boussinesq_minimal_vertical_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_isentropic_minimal_vertical_fluxes import \
+		get_upwind_flux, get_centered_flux, \
+		get_third_order_upwind_flux, get_fifth_order_upwind_flux
+	from .utils import compare_arrays, st_domain, st_floats, st_one_of
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_isentropic_minimal_vertical_fluxes import \
+		get_upwind_flux, get_centered_flux, \
+		get_third_order_upwind_flux, get_fifth_order_upwind_flux
+	from utils import compare_arrays, st_domain, st_floats, st_one_of
 
 
 class WrappingStencil:
@@ -44,22 +52,24 @@ class WrappingStencil:
 		self.nb = nb
 		self.backend = backend
 
-	def __call__(self, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+	def __call__(self, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
 		mi, mj, mk = s.shape
 
-		inputs = {'w': w, 's': s, 'su': su, 'sv': sv}
+		inputs = {'w': w, 's': s, 'su': su, 'sv': sv, 'ddmtg': ddmtg}
 		if sqv is not None:
 			inputs['sqv'] = sqv
 			inputs['sqc'] = sqc
 			inputs['sqr'] = sqr
 
-		self.flux_s  = np.zeros_like(s, dtype=s.dtype)
-		self.flux_su = np.zeros_like(s, dtype=s.dtype)
-		self.flux_sv = np.zeros_like(s, dtype=s.dtype)
+		self.flux_s     = np.zeros_like(s, dtype=s.dtype)
+		self.flux_su    = np.zeros_like(s, dtype=s.dtype)
+		self.flux_sv    = np.zeros_like(s, dtype=s.dtype)
+		self.flux_ddmtg = np.zeros_like(s, dtype=s.dtype)
 		outputs = {
-			'flux_s_z' : self.flux_s,
-			'flux_su_z': self.flux_su,
-			'flux_sv_z': self.flux_sv,
+			'flux_s_z'    : self.flux_s,
+			'flux_su_z'   : self.flux_su,
+			'flux_sv_z'   : self.flux_sv,
+			'flux_ddmtg_z': self.flux_ddmtg
 		}
 		if sqv is not None:
 			self.flux_sqv = np.zeros_like(s, dtype=s.dtype)
@@ -82,81 +92,26 @@ class WrappingStencil:
 
 		stencil.compute()
 
-	def stencil_defs(self, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+	def stencil_defs(self, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
 		k = gt.Index(axis=2)
 
-		fs = self.core(k, w, s, su, sv, sqv, sqc, sqr)
+		fs = self.core(k, w, s, su, sv, ddmtg, sqv, sqc, sqr)
 
-		if len(fs) == 3:
-			return fs[0], fs[1], fs[2]
+		if len(fs) == 4:
+			return fs[0], fs[1], fs[2], fs[3]
 		else:
-			return fs[0], fs[1], fs[2], fs[3], fs[4], fs[5]
-
-
-def get_upwind_flux(w, phi):
-	nx, ny, nz = phi.shape[0], phi.shape[1], phi.shape[2]
-
-	f = np.zeros_like(phi, dtype=phi.dtype)
-
-	for i in range(0, nx):
-		for j in range(0, ny):
-			for k in range(1, nz):
-				f[i, j, k] = w[i, j, k] * (phi[i, j, k] if w[i, j, k] > 0 else phi[i, j, k-1])
-
-	return f
-
-
-def get_centered_flux(w, phi):
-	f = np.zeros_like(phi, dtype=phi.dtype)
-
-	f[:, :, 1:] = w[:, :, 1:-1] * 0.5 * (phi[:, :, :-1] + phi[:, :, 1:])
-
-	return f
-
-
-def get_third_order_upwind_flux(w, phi):
-	f4 = np.zeros_like(phi, dtype=phi.dtype)
-
-	f4[:, :, 2:-1] = w[:, :, 2:-2] / 12.0 * (
-		7.0 * (phi[:, :, 1:-2] + phi[:, :, 2:-1]) -
-		(phi[:, :, :-3] + phi[:, :, 3:])
-	)
-
-	f = np.zeros_like(phi, dtype=phi.dtype)
-
-	f[:, :, 2:-1] = f4[:, :, 2:-1] - np.abs(w[:, :, 2:-2]) / 12.0 * (
-		3.0 * (phi[:, :, 1:-2] - phi[:, :, 2:-1]) -
-		(phi[:, :, :-3] - phi[:, :, 3:])
-	)
-
-	return f
-
-
-def get_fifth_order_upwind_flux(w, phi):
-	f6 = np.zeros_like(phi, dtype=phi.dtype)
-
-	f6[:, :, 3:-2] = w[:, :, 3:-3] / 60.0 * (
-		37.0 * (phi[:, :, 2:-3] + phi[:, :, 3:-2]) -
-		8.0 * (phi[:, :, 1:-4] + phi[:, :, 4:-1]) +
-		(phi[:, :, :-5] + phi[:, :, 5:])
-	)
-
-	f = np.zeros_like(phi, dtype=phi.dtype)
-
-	f[:, :, 3:-2] = f6[:, :, 3:-2] - np.abs(w[:, :, 3:-3]) / 60.0 * (
-		10.0 * (phi[:, :, 2:-3] - phi[:, :, 3:-2]) -
-		5.0 * (phi[:, :, 1:-4] - phi[:, :, 4:-1]) +
-		(phi[:, :, :-5] - phi[:, :, 5:])
-	)
-
-	return f
+			return fs[0], fs[1], fs[2], fs[3], fs[4], fs[5], fs[6]
 
 
 flux_properties = {
-	'upwind': {'type': Upwind, 'get_fluxes': get_upwind_flux},
-	'centered': {'type': Centered, 'get_fluxes': get_centered_flux},
-	'third_order_upwind': {'type': ThirdOrderUpwind, 'get_fluxes': get_third_order_upwind_flux},
-	'fifth_order_upwind': {'type': FifthOrderUpwind, 'get_fluxes': get_fifth_order_upwind_flux},
+	'upwind':
+		{'type': Upwind, 'get_fluxes': get_upwind_flux},
+	'centered':
+		{'type': Centered, 'get_fluxes': get_centered_flux},
+	'third_order_upwind':
+		{'type': ThirdOrderUpwind, 'get_fluxes': get_third_order_upwind_flux},
+	'fifth_order_upwind':
+		{'type': FifthOrderUpwind, 'get_fluxes': get_fifth_order_upwind_flux},
 }
 
 
@@ -171,48 +126,55 @@ def validation(flux_scheme, domain, field, backend):
 	# ========================================
 	k = gt.Index(axis=2)
 
-	w_eq   = gt.Equation(name='w')
-	s_eq   = gt.Equation(name='s')
-	su_eq  = gt.Equation(name='su')
-	sv_eq  = gt.Equation(name='sv')
-	sqv_eq = gt.Equation(name='sqv')
-	sqc_eq = gt.Equation(name='sqc')
-	sqr_eq = gt.Equation(name='sqr')
+	w_eq     = gt.Equation(name='w')
+	s_eq     = gt.Equation(name='s')
+	su_eq    = gt.Equation(name='su')
+	sv_eq    = gt.Equation(name='sv')
+	ddmtg_eq = gt.Equation(name='ddmtg')
+	sqv_eq   = gt.Equation(name='sqv')
+	sqc_eq   = gt.Equation(name='sqc')
+	sqr_eq   = gt.Equation(name='sqr')
 
 	#
 	# dry
 	#
-	fluxer_dry = IsentropicMinimalVerticalFlux.factory(flux_scheme, grid, False)
+	fluxer_dry = IsentropicBoussinesqMinimalVerticalFlux.factory(
+		flux_scheme, grid, False
+	)
 
 	assert isinstance(fluxer_dry, flux_type)
 
-	out = fluxer_dry(k, w_eq, s_eq, su_eq, sv_eq)
+	out = fluxer_dry(k, w_eq, s_eq, su_eq, sv_eq, ddmtg_eq)
 
-	assert len(out) == 3
+	assert len(out) == 4
 	assert all(isinstance(obj, gt.Equation) for obj in out)
 	assert out[0].get_name() == 'flux_s_z'
 	assert out[1].get_name() == 'flux_su_z'
 	assert out[2].get_name() == 'flux_sv_z'
+	assert out[3].get_name() == 'flux_ddmtg_z'
 
 	#
 	# moist
 	#
-	fluxer_moist = IsentropicMinimalVerticalFlux.factory(flux_scheme, grid, True)
+	fluxer_moist = IsentropicBoussinesqMinimalVerticalFlux.factory(
+		flux_scheme, grid, True
+	)
 
 	assert isinstance(fluxer_moist, flux_type)
 
 	out = fluxer_moist(
-		k, w_eq, s_eq, su_eq, sv_eq, sqv=sqv_eq, sqc=sqc_eq, sqr=sqr_eq
+		k, w_eq, s_eq, su_eq, sv_eq, ddmtg_eq, sqv=sqv_eq, sqc=sqc_eq, sqr=sqr_eq
 	)
 
-	assert len(out) == 6
+	assert len(out) == 7
 	assert all(isinstance(obj, gt.Equation) for obj in out)
 	assert out[0].get_name() == 'flux_s_z'
 	assert out[1].get_name() == 'flux_su_z'
 	assert out[2].get_name() == 'flux_sv_z'
-	assert out[3].get_name() == 'flux_sqv_z'
-	assert out[4].get_name() == 'flux_sqc_z'
-	assert out[5].get_name() == 'flux_sqr_z'
+	assert out[3].get_name() == 'flux_ddmtg_z'
+	assert out[4].get_name() == 'flux_sqv_z'
+	assert out[5].get_name() == 'flux_sqc_z'
+	assert out[6].get_name() == 'flux_sqr_z'
 
 	# ========================================
 	# test_numerics
@@ -221,6 +183,7 @@ def validation(flux_scheme, domain, field, backend):
 	s = field[:-1, :-1, :-1]
 	su = field[1:, :-1, :-1]
 	sv = field[:-1, :-1, :-1]
+	ddmtg = field[1:, 1:, 1:]
 	sqv = field[:-1, :-1, 1:]
 	sqc = field[1:, :-1, 1:]
 	sqr = field[:-1, :-1, 1:]
@@ -231,37 +194,42 @@ def validation(flux_scheme, domain, field, backend):
 	# dry
 	#
 	ws = WrappingStencil(fluxer_dry, nb, backend)
-	ws(w, s, su, sv)
+	ws(w, s, su, sv, ddmtg)
 
 	flux_s = get_fluxes(w, s)
-	assert np.allclose(ws.flux_s[:, :, z], flux_s[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_s[:, :, z], flux_s[:, :, z])
 
 	flux_su = get_fluxes(w, su)
-	assert np.allclose(ws.flux_su[:, :, z], flux_su[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_su[:, :, z], flux_su[:, :, z])
 
 	flux_sv = get_fluxes(w, sv)
-	assert np.allclose(ws.flux_sv[:, :, z], flux_sv[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_sv[:, :, z], flux_sv[:, :, z])
+
+	flux_ddmtg = get_fluxes(w, ddmtg)
+	compare_arrays(ws.flux_ddmtg[:, :, z], flux_ddmtg[:, :, z])
 
 	#
 	# moist
 	#
 	ws = WrappingStencil(fluxer_moist, nb, backend)
-	ws(w, s, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
+	ws(w, s, su, sv, ddmtg, sqv=sqv, sqc=sqc, sqr=sqr)
 
-	assert np.allclose(ws.flux_s[:, :, z], flux_s[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_s[:, :, z], flux_s[:, :, z])
 
-	assert np.allclose(ws.flux_su[:, :, z], flux_su[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_su[:, :, z], flux_su[:, :, z])
 
-	assert np.allclose(ws.flux_sv[:, :, z], flux_sv[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_sv[:, :, z], flux_sv[:, :, z])
+
+	compare_arrays(ws.flux_ddmtg[:, :, z], flux_ddmtg[:, :, z])
 
 	flux_sqv = get_fluxes(w, sqv)
-	assert np.allclose(ws.flux_sqv[:, :, z], flux_sqv[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_sqv[:, :, z], flux_sqv[:, :, z])
 
 	flux_sqc = get_fluxes(w, sqc)
-	assert np.allclose(ws.flux_sqc[:, :, z], flux_sqc[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_sqc[:, :, z], flux_sqc[:, :, z])
 
 	flux_sqr = get_fluxes(w, sqr)
-	assert np.allclose(ws.flux_sqr[:, :, z], flux_sqr[:, :, z], equal_nan=True)
+	compare_arrays(ws.flux_sqr[:, :, z], flux_sqr[:, :, z])
 
 
 @settings(
@@ -277,16 +245,16 @@ def test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -307,16 +275,16 @@ def test_centered(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -337,17 +305,17 @@ def test_third_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	assume(grid.nz >= 5)
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -368,17 +336,17 @@ def test_fifth_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	assume(grid.nz >= 7)
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed

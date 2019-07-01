@@ -58,6 +58,14 @@ default_physical_constants = {
 unit_registry = UnitRegistry()
 
 
+def compare_datetimes(td1, td2):
+	assert abs(td1 - td2).total_seconds() <= 1e-6
+
+
+def compare_arrays(field_a, field_b):
+	assert np.allclose(field_a, field_b, equal_nan=True)
+
+
 def compare_dataarrays(da1, da2, compare_coordinate_values=True):
 	"""
 	Assert whether two :class:`sympl.DataArray`\s are equal.
@@ -785,8 +793,6 @@ def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=F
 	Strategy drawing a valid isentropic model state over `grid`.
 	"""
 	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
-	dz = grid.dz.to_units('K').values.item()
-	dtype = grid.grid_xy.x.dtype
 
 	return_dict = {}
 
@@ -933,13 +939,38 @@ def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=F
 
 
 @hyp_st.composite
+def st_isentropic_boussinesq_state_f(
+	draw, grid, *, time=None, moist=False, precipitation=False
+):
+	"""
+	Strategy drawing a valid isentropic Boussinesq model state over `grid`.
+	"""
+	return_dict = draw(
+		st_isentropic_state_f(
+			grid, time=time, moist=moist, precipitation=precipitation
+		)
+	)
+
+	ddmtg = draw(
+		st_arrays(
+			grid.x.dtype, (grid.nx, grid.ny, grid.nz),
+			elements=st_floats(min_value=-1000, max_value=1000),
+			fill=hyp_st.nothing(),
+		)
+	)
+	return_dict['dd_montgomery_potential'] = taz.make_dataarray_3d(
+		ddmtg, grid, 'm^2 K^-2 s^-2', name='dd_montgomery_potential'
+	)
+
+	return return_dict
+
+
+@hyp_st.composite
 def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=False):
 	"""
 	Strategy drawing a valid isentropic model state over `grid`.
 	"""
 	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
-	dz = grid.dz.to_units('K').values.item()
-	dtype = grid.grid_xy.x.dtype
 
 	return_dict = {}
 
@@ -1069,6 +1100,33 @@ def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=
 			return_dict['accumulated_precipitation'] = taz.make_dataarray_3d(
 				app, grid, units, name='accumulated_precipitation'
 			)
+
+	return return_dict
+
+
+@hyp_st.composite
+def st_isentropic_boussinesq_state_ff(
+	draw, grid, *, time=None, moist=False, precipitation=False
+):
+	"""
+	Strategy drawing a valid isentropic Boussinesq model state over `grid`.
+	"""
+	return_dict = draw(
+		st_isentropic_state_ff(
+			grid, time=time, moist=moist, precipitation=precipitation
+		)
+	)
+
+	ddmtg = draw(
+		st_arrays(
+			grid.x.dtype, (grid.nx, grid.ny, grid.nz),
+			elements=st_floats(min_value=-1000, max_value=1000),
+			fill=hyp_st.nothing(),
+		)
+	)
+	return_dict['dd_montgomery_potential'] = taz.make_dataarray_3d(
+		ddmtg, grid, 'm^2 K^-2 s^-2', name='dd_montgomery_potential'
+	)
 
 	return return_dict
 
