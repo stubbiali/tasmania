@@ -1069,5 +1069,4 @@ def test3(data):
 
 
 if __name__ == '__main__':
-	#pytest.main([__file__])
-	test3()
+	pytest.main([__file__])
