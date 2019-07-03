@@ -136,10 +136,10 @@ class HorizontalBoundary:
 	@property
 	def kwargs(self):
 		"""
-        Return
-        ------
-        dict :
-        	The keyword arguments passed to the constructor of the derived class.
+		Return
+		------
+		dict :
+			The keyword arguments passed to the constructor of the derived class.
 		"""
 		return self._kwargs
 

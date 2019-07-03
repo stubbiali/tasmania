@@ -81,7 +81,7 @@ class IsentropicMinimalPrognostic:
 		substeps : int
 			The number of substeps to perform.
 		backend : obj
-            TODO
+			TODO
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
@@ -244,17 +244,6 @@ class IsentropicMinimalPrognostic:
 		# run the stencil
 		self._substep_stencil.compute()
 
-		# diagnose the accumulated precipitation
-		if 'accumulated_precipitation' in self.substep_output_properties:
-			if stage == self.stages-1:
-				self._substep_stencil_outputs['accumulated_precipitation'][:, :] = \
-					tmp_state['accumulated_precipitation'][:, :] + \
-					tmp_state['precipitation'][:, :] * \
-					timestep.total_seconds() / self._substeps / 3.6e3
-			elif stage == 0 and substep == 0:
-				self._substep_stencil_outputs['accumulated_precipitation'][...] = \
-					tmp_state['accumulated_precipitation'][...]
-
 		# compose the output state
 		out_time = state['time'] + timestep / self._substeps if substep == 0 else \
 			tmp_state['time'] + timestep / self._substeps
@@ -305,7 +294,7 @@ class IsentropicMinimalPrognostic:
 		substeps : int
 			The number of substeps to perform.
 		backend : obj
-            TODO
+			TODO
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
@@ -315,22 +304,23 @@ class IsentropicMinimalPrognostic:
 		obj :
 			An instance of the derived class implementing ``time_integration_scheme``.
 		"""
-		import tasmania.python.isentropic.dynamics._minimal_prognostic as module
+		from .implementations.minimal_prognostic import \
+			ForwardEuler, Centered, RK2, RK3WS, RK3
 		args = (
 			horizontal_flux_scheme, mode,
 			grid, hb, moist, substeps, backend, dtype
 		)
 
 		if time_integration_scheme == 'forward_euler':
-			return module.ForwardEuler(*args)
+			return ForwardEuler(*args)
 		elif time_integration_scheme == 'centered':
-			return module.Centered(*args)
+			return Centered(*args)
 		elif time_integration_scheme == 'rk2':
-			return module.RK2(*args)
+			return RK2(*args)
 		elif time_integration_scheme == 'rk3ws':
-			return module.RK3WS(*args)
+			return RK3WS(*args)
 		elif time_integration_scheme == 'rk3':
-			return module.RK3(*args)
+			return RK3(*args)
 		else:
 			raise ValueError(
 				"Unknown time integration scheme {}. Available options are: "

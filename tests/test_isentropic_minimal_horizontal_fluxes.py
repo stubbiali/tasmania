@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import \
-	given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+	given, HealthCheck, settings, strategies as hyp_st
 from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
@@ -34,8 +34,8 @@ import utils
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalHorizontalFlux
-from tasmania.python.isentropic.dynamics._minimal_horizontal_fluxes import \
-	Upwind, Centered, MacCormack, ThirdOrderUpwind, FifthOrderUpwind
+from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_fluxes import \
+	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 
 
 class WrappingStencil:

@@ -28,20 +28,23 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 import gridtools as gt
 from tasmania.python.physics.microphysics import \
 	Kessler, SaturationAdjustmentKessler, RaindropFallVelocity, \
 	SedimentationFlux, _FirstOrderUpwind, _SecondOrderUpwind, Sedimentation, \
-	AccumulatedPrecipitation
+	Precipitation
 from tasmania.python.utils.data_utils import make_dataarray_3d
 from tasmania.python.utils.meteo_utils import \
 	goff_gratch_formula, tetens_formula
+
+try:
+	from .conf import backend as conf_backend
+	from .utils import compare_arrays, compare_dataarrays, compare_datetimes, \
+		st_floats, st_one_of, st_domain, st_isentropic_state_f
+except ModuleNotFoundError:
+	from conf import backend as conf_backend
+	from utils import compare_arrays, compare_dataarrays, compare_datetimes, \
+		st_floats, st_one_of, st_domain, st_isentropic_state_f
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -94,22 +97,22 @@ def test_kessler(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
 	apoif = data.draw(hyp_st.booleans(), label="apoif")
 	toaptid = data.draw(hyp_st.booleans(), label="toaptid")
 	re = data.draw(hyp_st.booleans(), label="re")
-	swvf_type = data.draw(utils.st_one_of(('tetens', 'goff_gratch')), label="swvf_type")
+	swvf_type = data.draw(st_one_of(('tetens', 'goff_gratch')), label="swvf_type")
 
 	a = data.draw(hyp_st.floats(min_value=0, max_value=10), label="a")
 	k1 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k1")
 	k2 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k2")
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -217,27 +220,27 @@ def test_kessler(data):
 		rho, p, t, exn, qv, qc, qr, a, k1, k2/3600.0, swvf, beta, lhvw, re
 	)
 
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(tnd_qc, grid, 'g g^-1 s^-1'), tendencies[mfcw],
 		compare_coordinate_values=False
 	)
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(tnd_qr, grid, 'g g^-1 s^-1'), tendencies[mfpw],
 		compare_coordinate_values=False
 	)
 	if mfwv in tendency_names:
-		utils.compare_dataarrays(
+		compare_dataarrays(
 			make_dataarray_3d(tnd_qv, grid, 'g g^-1 s^-1'), tendencies[mfwv],
 			compare_coordinate_values=False
 		)
 	if 'air_potential_temperature' in tendency_names:
-		utils.compare_dataarrays(
+		compare_dataarrays(
 			make_dataarray_3d(tnd_theta, grid, 'K s^-1'),
 			tendencies['air_potential_temperature'],
 			compare_coordinate_values=False
 		)
 	if 'tendency_of_air_potential_temperature' in diagnostic_names:
-		utils.compare_dataarrays(
+		compare_dataarrays(
 			make_dataarray_3d(tnd_theta, grid, 'K s^-1'),
 			diagnostics['tendency_of_air_potential_temperature'],
 			compare_coordinate_values=False
@@ -265,15 +268,15 @@ def test_saturation_adjustment_kessler(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
 	apoif = data.draw(hyp_st.booleans(), label="apoif")
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -330,11 +333,11 @@ def test_saturation_adjustment_kessler(data):
 
 	out_qv, out_qc = saturation_adjustment_kessler_validation(p, t, qv, qc, beta, lhvw, cp)
 
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(out_qv, grid, 'g g^-1'), diagnostics[mfwv],
 		compare_coordinate_values=False
 	)
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(out_qc, grid, 'g g^-1'), diagnostics[mfcw],
 		compare_coordinate_values=False
 	)
@@ -357,13 +360,13 @@ def test_raindrop_fall_velocity(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -395,7 +398,7 @@ def test_raindrop_fall_velocity(data):
 
 	vt = raindrop_fall_velocity_validation(rho, qr)
 
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(vt, grid, 'm s^-1'), diagnostics['raindrop_fall_velocity'],
 		compare_coordinate_values=False
 	)
@@ -482,16 +485,16 @@ def test_sedimentation_flux(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	dtype = grid.x.dtype
 
 	rho = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label="rho"
@@ -499,7 +502,7 @@ def test_sedimentation_flux(data):
 	h = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label="h"
@@ -507,7 +510,7 @@ def test_sedimentation_flux(data):
 	qr = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label="qr"
@@ -515,18 +518,18 @@ def test_sedimentation_flux(data):
 	vt = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label="vt"
 	)
 
 	flux_type = data.draw(
-		utils.st_one_of(('first_order_upwind', 'second_order_upwind')),
+		st_one_of(('first_order_upwind', 'second_order_upwind')),
 		label="flux_type"
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -583,14 +586,14 @@ def test_sedimentation(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
 	flux_type = data.draw(
-		utils.st_one_of(('first_order_upwind', 'second_order_upwind')),
+		st_one_of(('first_order_upwind', 'second_order_upwind')),
 		label="flux_type"
 	)
 	maxcfl = data.draw(hyp_st.floats(min_value=0, max_value=1), label="maxcfl")
@@ -602,7 +605,7 @@ def test_sedimentation(data):
 		label="timestep"
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -630,8 +633,7 @@ def test_sedimentation(data):
 	assert mfpw in sed.tendency_properties
 	assert len(sed.tendency_properties) == 1
 
-	assert 'precipitation' in sed.diagnostic_properties
-	assert len(sed.diagnostic_properties) == 1
+	assert len(sed.diagnostic_properties) == 0
 
 	#
 	# test numerics
@@ -640,19 +642,13 @@ def test_sedimentation(data):
 
 	assert mfpw in tendencies
 	raw_mfpw_val = sedimentation_validation(state, timestep, flux_type, maxcfl)
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(raw_mfpw_val, grid, 'g g^-1 s^-1'),
 		tendencies[mfpw], compare_coordinate_values=False
 	)
 	assert len(tendencies) == 1
 
-	assert 'precipitation' in diagnostics
-	rhow = sed._physical_constants['density_of_liquid_water']
-	raw_prec_val = precipitation_validation(state, timestep, maxcfl, rhow)
-	utils.compare_dataarrays(
-		make_dataarray_3d(raw_prec_val, grid, 'mm hr^-1'),
-		diagnostics['precipitation'], compare_coordinate_values=False
-	)
+	assert len(diagnostics) == 0
 
 
 @settings(
@@ -664,15 +660,15 @@ def test_sedimentation(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_accumulated_precipitation(data):
+def test_precipitation(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label="grid_type")
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True, precipitation=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True, precipitation=True), label="state")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -681,27 +677,42 @@ def test_accumulated_precipitation(data):
 		label="timestep"
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
 	dtype = grid.x.dtype
-	prec = state['precipitation'].to_units('mm s^-1').values
-	accprec = state['accumulated_precipitation'].to_units('mm').values
 
-	comp = AccumulatedPrecipitation(domain, grid_type, backend, dtype)
+	rfv = RaindropFallVelocity(domain, grid_type, backend=backend, dtype=dtype)
+	state.update(rfv(state))
+
+	comp = Precipitation(domain, grid_type, backend=backend, dtype=dtype)
 
 	tendencies, diagnostics = comp(state, timestep)
 
 	assert len(tendencies) == 0
 
+	rho = state['air_density'].to_units('kg m^-3').values[:, :, -1:]
+	qr = state[mfpw].to_units('g g^-1').values[:, :, -1:]
+	vt = state['raindrop_fall_velocity'].to_units('m s^-1').values[:, :, -1:]
+	rhow = comp._rhow.value
+	prec = 3.6e6 * rho * qr * vt / rhow
+	assert 'precipitation' in diagnostics
+	compare_dataarrays(
+		make_dataarray_3d(prec, grid, 'mm hr^-1'),
+		diagnostics['precipitation'], compare_coordinate_values=False
+	)
+
+	accprec = state['accumulated_precipitation'].to_units('mm').values
+	accprec_val = accprec + timestep.total_seconds() * prec / 3.6e3
 	assert 'accumulated_precipitation' in diagnostics
-	accprec_val = accprec + timestep.total_seconds() * prec
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		make_dataarray_3d(accprec_val, grid, 'mm'),
 		diagnostics['accumulated_precipitation'], compare_coordinate_values=False
 	)
+
+	assert len(diagnostics) == 2
 
 
 if __name__ == '__main__':

@@ -20,937 +20,1081 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from datetime import timedelta
+from hypothesis import \
+	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
+from sympl import DataArray
 
-import gridtools as gt
-from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics, HorizontalVelocity
-from spike.horizontal_boundary import HorizontalBoundary
-from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.isentropic.dynamics._prognostic import \
-	Centered, ForwardEuler, RK2, RK3COSMO, RK3
-from tasmania.python.physics.microphysics import RaindropFallVelocity
+from tasmania.python.isentropic.dynamics.diagnostics import \
+	IsentropicDiagnostics
+from tasmania.python.isentropic.dynamics.fluxes import \
+	IsentropicMinimalHorizontalFlux
+from tasmania.python.isentropic.dynamics.prognostic \
+	import IsentropicPrognostic
+from tasmania.python.isentropic.dynamics.implementations.prognostic \
+	import ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
 from tasmania.python.utils.data_utils import make_raw_state
 
-
-mf_wv  = 'mass_fraction_of_water_vapor_in_air'
-mf_clw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mf_pw  = 'mass_fraction_of_precipitation_water_in_air'
-
-
-def test_factory(grid):
-	backend = gt.mode.NUMPY
-
-	diags = IsentropicDiagnostics(grid)
-	hb = HorizontalBoundary.factory('relaxed', grid, 1)
-	rfv = RaindropFallVelocity(grid, backend)
-
-	ip_centered = IsentropicPrognostic.factory('centered', grid, True, diags, hb,
-											   horizontal_flux_scheme='centered',
-											   adiabatic_flow=True,
-											   sedimentation_on=True,
-											   sedimentation_flux_scheme='second_order_upwind',
-											   sedimentation_substeps=2,
-											   raindrop_fall_velocity_diagnostic=rfv,
-											   backend=backend)
-	ip_euler = IsentropicPrognostic.factory('forward_euler', grid, True, diags, hb,
-											horizontal_flux_scheme='upwind',
-											adiabatic_flow=True,
-											sedimentation_on=True,
-											sedimentation_flux_scheme='first_order_upwind',
-											sedimentation_substeps=1,
-											raindrop_fall_velocity_diagnostic=rfv,
-											backend=backend)
-	ip_rk2 = IsentropicPrognostic.factory('rk2', grid, True, diags, hb,
-										  horizontal_flux_scheme='third_order_upwind',
-										  adiabatic_flow=True,
-										  sedimentation_on=True,
-										  sedimentation_flux_scheme='first_order_upwind',
-										  sedimentation_substeps=1,
-										  raindrop_fall_velocity_diagnostic=rfv,
-										  backend=backend)
-	ip_rk3c = IsentropicPrognostic.factory('rk3cosmo', grid, True, diags, hb,
-										   horizontal_flux_scheme='fifth_order_upwind',
-										   adiabatic_flow=True,
-										   sedimentation_on=True,
-										   sedimentation_flux_scheme='first_order_upwind',
-										   sedimentation_substeps=1,
-										   raindrop_fall_velocity_diagnostic=rfv,
-										   backend=backend)
-	ip_rk3 = IsentropicPrognostic.factory('rk3', grid, True, diags, hb,
-										  horizontal_flux_scheme='fifth_order_upwind',
-										  adiabatic_flow=True,
-										  sedimentation_on=True,
-										  sedimentation_flux_scheme='first_order_upwind',
-										  sedimentation_substeps=1,
-										  raindrop_fall_velocity_diagnostic=rfv,
-										  backend=backend)
-
-	assert isinstance(ip_centered, Centered)
-	assert isinstance(ip_euler, ForwardEuler)
-	assert isinstance(ip_rk2, RK2)
-	assert isinstance(ip_rk3c, RK3COSMO)
-	assert isinstance(ip_rk3, RK3)
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_isentropic_minimal_horizontal_fluxes import \
+		get_upwind_fluxes, get_centered_fluxes, \
+		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+	from .test_isentropic_minimal_prognostic import \
+		forward_euler_step
+	from .utils import compare_arrays, compare_datetimes, \
+		st_domain, st_floats, st_one_of, st_isentropic_state_f
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_isentropic_minimal_horizontal_fluxes import \
+		get_upwind_fluxes, get_centered_fluxes, \
+		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+	from test_isentropic_minimal_prognostic import \
+		forward_euler_step
+	from utils import compare_arrays, compare_datetimes, \
+		st_domain, st_floats, st_one_of, st_isentropic_state_f
 
 
-def test_leapfrog(isentropic_moist_data):
-	grid, states = isentropic_moist_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-	backend = gt.mode.NUMPY
-
-	diags = IsentropicDiagnostics(grid)
-	hb = HorizontalBoundary.factory('periodic', grid, 1)
-	rfv = RaindropFallVelocity(grid, backend)
-
-	ip_centered = IsentropicPrognostic.factory('centered', grid, True, diags, hb,
-											   horizontal_flux_scheme='centered',
-											   sedimentation_on=True,
-											   sedimentation_flux_scheme='first_order_upwind',
-											   raindrop_fall_velocity_diagnostic=rfv,
-											   backend=backend, dtype=np.float64)
-
-	dt = timedelta(seconds=10)
-
-	raw_state = make_raw_state(state)
-	raw_state['isentropic_density_of_water_vapor'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_wv]
-	raw_state['isentropic_density_of_cloud_liquid_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_clw]
-	raw_state['isentropic_density_of_precipitation_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_pw]
-
-	raw_tendencies = {}
-
-	raw_state_prv = ip_centered.step_neglecting_vertical_motion(0, dt, raw_state, raw_tendencies)
-
-	assert 'time' in raw_state_prv.keys()
-	assert raw_state_prv['time'] == raw_state['time'] + dt
-
-	dx  = grid.dx.values.item()
-	s   = raw_state['air_isentropic_density']
-	u   = raw_state['x_velocity_at_u_locations']
-	mtg = raw_state['montgomery_potential']
-	su  = raw_state['x_momentum_isentropic']
-	sv  = raw_state['y_momentum_isentropic']
-	sqv = raw_state['isentropic_density_of_water_vapor']
-	sqc = raw_state['isentropic_density_of_cloud_liquid_water']
-	sqr = raw_state['isentropic_density_of_precipitation_water']
-
-	s_prv = np.zeros_like(s, dtype=np.float64)
-	s_prv[1:-1, :, :] = s[1:-1, :, :] - \
-						dt.seconds * (su[2:, :, :] - su[:-2, :, :]) / dx
-	assert 'air_isentropic_density' in raw_state_prv.keys()
-	assert np.allclose(s_prv[1:-1, :, :], raw_state_prv['air_isentropic_density'][1:-1, :, :])
-
-	su_prv = np.zeros_like(su, dtype=np.float64)
-	su_prv[1:-1, :, :] = su[1:-1, :, :] - \
-						 dt.seconds / dx * (u[2:-1, :, :] * (su[2:, :, :] + su[1:-1, :, :]) -
-											u[1:-2, :, :] * (su[1:-1, :, :] + su[:-2, :, :])) - \
-						 dt.seconds / dx * s[1:-1, :, :] * (mtg[2:, :, :] - mtg[:-2, :, :])
-	assert 'x_momentum_isentropic' in raw_state_prv.keys()
-	assert np.allclose(su_prv[1:-1, :, :], raw_state_prv['x_momentum_isentropic'][1:-1, :, :])
-
-	assert 'y_momentum_isentropic' in raw_state_prv.keys()
-	assert np.allclose(sv, raw_state_prv['y_momentum_isentropic'])
-
-	sqv_prv = np.zeros_like(sqv, dtype=np.float64)
-	sqv_prv[1:-1, :, :] = sqv[1:-1, :, :] - \
-						  dt.seconds / dx * (u[2:-1, :, :] * (sqv[2:, :, :] + sqv[1:-1, :, :]) -
-											 u[1:-2, :, :] * (sqv[1:-1, :, :] + sqv[:-2, :, :]))
-	assert 'isentropic_density_of_water_vapor' in raw_state_prv.keys()
-	assert np.allclose(sqv_prv[1:-1, :, :],
-					   raw_state_prv['isentropic_density_of_water_vapor'][1:-1, :, :])
-
-	sqc_prv = np.zeros_like(sqc, dtype=np.float64)
-	sqc_prv[1:-1, :, :] = sqc[1:-1, :, :] - \
-						  dt.seconds / dx * (u[2:-1, :, :] * (sqc[2:, :, :] + sqc[1:-1, :, :]) -
-											 u[1:-2, :, :] * (sqc[1:-1, :, :] + sqc[:-2, :, :]))
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_prv.keys()
-	assert np.allclose(sqc_prv[1:-1, :, :],
-					   raw_state_prv['isentropic_density_of_cloud_liquid_water'][1:-1, :, :])
-
-	sqr_prv = np.zeros_like(sqr, dtype=np.float64)
-	sqr_prv[1:-1, :, :] = sqr[1:-1, :, :] - \
-						  dt.seconds / dx * (u[2:-1, :, :] * (sqr[2:, :, :] + sqr[1:-1, :, :]) -
-											 u[1:-2, :, :] * (sqr[1:-1, :, :] + sqr[:-2, :, :]))
-	assert 'isentropic_density_of_precipitation_water' in raw_state_prv.keys()
-	assert np.allclose(sqr_prv[1:-1, :, :],
-					   raw_state_prv['isentropic_density_of_precipitation_water'][1:-1, :, :])
-
-	raw_state_prv[mf_pw] = \
-		raw_state_prv['isentropic_density_of_precipitation_water'] / \
-		raw_state_prv['air_isentropic_density']
-	raw_state_new = ip_centered.step_integrating_sedimentation_flux(0, dt, raw_state,
-																	raw_state_prv)
-
-	#assert 'time' in raw_state_new.keys()
-	#assert raw_state_new['time'] == raw_state['time'] + dt
-
-	assert np.allclose(s_prv[1:-1, :, :], raw_state_prv['air_isentropic_density'][1:-1, :, :])
+mfwv = 'mass_fraction_of_water_vapor_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
-def test_upwind(isentropic_moist_data):
-	grid, states = isentropic_moist_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-	backend = gt.mode.NUMPY
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_factory(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	domain = data.draw(
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
+		label='domain'
+	)
+	moist = data.draw(hyp_st.booleans(), label='moist')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	pt = DataArray(
+		data.draw(st_floats(min_value=0, max_value=100), label='pt'), attrs={'units': 'Pa'}
+	)
+	eps = data.draw(st_floats(min_value=0, max_value=1), label='eps')
+	a = data.draw(st_floats(min_value=0, max_value=1), label='a')
+	b = data.draw(st_floats(min_value=0, max_value=1), label='b')
+	c = data.draw(st_floats(min_value=0, max_value=1), label='c')
 
-	diags = IsentropicDiagnostics(grid)
-	hb = HorizontalBoundary.factory('periodic', grid, 1)
-	rfv = RaindropFallVelocity(grid, backend)
+	# ========================================
+	# test bed
+	# ========================================
+	grid = domain.numerical_grid
+	hb = domain.horizontal_boundary
+	dtype = grid.x.dtype
 
-	ip_euler = IsentropicPrognostic.factory('forward_euler', grid, True, diags, hb,
-											horizontal_flux_scheme='upwind',
-											sedimentation_on=True,
-											sedimentation_flux_scheme='first_order_upwind',
-											raindrop_fall_velocity_diagnostic=rfv,
-											backend=backend, dtype=np.float64)
+	imp_euler_si = IsentropicPrognostic.factory(
+		'forward_euler_si', 'upwind', grid, hb, moist,
+		backend=backend, dtype=dtype, pt=pt, eps=eps
+	)
+	assert isinstance(imp_euler_si, ForwardEulerSI)
+	assert isinstance(imp_euler_si._hflux, IsentropicMinimalHorizontalFlux)
 
-	dt = timedelta(seconds=10)
+	imp_rk3ws_si = IsentropicPrognostic.factory(
+		'rk3ws_si', 'fifth_order_upwind', grid, hb, moist,
+		backend=backend, dtype=dtype, pt=pt, eps=eps
+	)
+	assert isinstance(imp_rk3ws_si, RK3WSSI)
+	assert isinstance(imp_rk3ws_si._hflux, IsentropicMinimalHorizontalFlux)
+
+	imp_sil3 = IsentropicPrognostic.factory(
+		'sil3', 'fifth_order_upwind', grid, hb, moist,
+		backend=backend, dtype=dtype, pt=pt, a=a, b=b, c=c
+	)
+	assert isinstance(imp_sil3, SIL3)
+	assert isinstance(imp_sil3._hflux, IsentropicMinimalHorizontalFlux)
+	assert np.isclose(imp_sil3._a.value, a)
+	assert np.isclose(imp_sil3._b.value, b)
+	assert np.isclose(imp_sil3._c.value, c)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_upwind_si(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
+	domain = data.draw(
+		st_domain(xaxis_length=(3, 30), yaxis_length=(3, 30), nb=nb),
+		label='domain'
+	)
+	hb = domain.horizontal_boundary
+	assume(hb.type != 'dirichlet')
+	grid = domain.numerical_grid
+	moist = data.draw(hyp_st.booleans(), label='moist')
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
+	tendencies = {}
+	if data.draw(hyp_st.booleans(), label='s_tnd'):
+		tendencies['air_isentropic_density'] = state['air_isentropic_density']
+	if data.draw(hyp_st.booleans(), label='su_tnd'):
+		tendencies['x_momentum_isentropic'] = state['x_momentum_isentropic']
+	if data.draw(hyp_st.booleans(), label='sv_tn:'):
+		tendencies['y_momentum_isentropic'] = state['y_momentum_isentropic']
+	if moist:
+		if data.draw(hyp_st.booleans(), label='qv_tnd'):
+			tendencies[mfwv] = state[mfwv]
+		if data.draw(hyp_st.booleans(), label='qc_tnd'):
+			tendencies[mfcw] = state[mfcw]
+		if data.draw(hyp_st.booleans(), label='qr_tnd'):
+			tendencies[mfpw] = state[mfpw]
+
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	pt = state['air_pressure_on_interface_levels'][0, 0, 0]
+	eps = data.draw(st_floats(min_value=0, max_value=1), label='eps')
+
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=0),
+			max_value=timedelta(minutes=60)
+		),
+		label='timestep'
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	hb.reference_state = state
+	dtype = grid.x.dtype
+
+	imp = IsentropicPrognostic.factory(
+		'forward_euler_si', 'upwind', grid, hb, moist,
+		backend=backend, dtype=dtype, pt=pt, eps=eps
+	)
 
 	raw_state = make_raw_state(state)
-	raw_state['isentropic_density_of_water_vapor'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_wv]
-	raw_state['isentropic_density_of_cloud_liquid_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_clw]
-	raw_state['isentropic_density_of_precipitation_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_pw]
+	if moist:
+		raw_state['isentropic_density_of_water_vapor'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfwv]
+		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfcw]
+		raw_state['isentropic_density_of_precipitation_water'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
-	raw_tendencies = {}
+	raw_tendencies = make_raw_state(tendencies)
+	if moist:
+		if mfwv in raw_tendencies:
+			raw_tendencies['isentropic_density_of_water_vapor'] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
+		if mfcw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
+		if mfpw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
-	raw_state_prv = ip_euler.step_neglecting_vertical_motion(0, dt, raw_state, raw_tendencies)
+	raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
-	assert 'time' in raw_state_prv.keys()
-	assert raw_state_prv['time'] == raw_state['time'] + dt
+	assert 'time' in raw_state_new.keys()
+	compare_datetimes(raw_state_new['time'], raw_state['time'] + timestep)
 
-	dx  = grid.dx.values.item()
-	s   = raw_state['air_isentropic_density']
-	u   = raw_state['x_velocity_at_u_locations']
-	pt  = raw_state['air_pressure_on_interface_levels'][0, 0, 0]
-	su  = raw_state['x_momentum_isentropic']
-	sv  = raw_state['y_momentum_isentropic']
-	sqv = raw_state['isentropic_density_of_water_vapor']
-	sqc = raw_state['isentropic_density_of_cloud_liquid_water']
-	sqr = raw_state['isentropic_density_of_precipitation_water']
+	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	dx = grid.dx.to_units('m').values.item()
+	dy = grid.dy.to_units('m').values.item()
+	dt = timestep.total_seconds()
+	u_now = raw_state['x_velocity_at_u_locations']
+	v_now = raw_state['y_velocity_at_v_locations']
 
-	flux = (u[1:-1, :, :] > 0) * u[1:-1, :, :] * s[:-1, :, :] + \
-		   (u[1:-1, :, :] < 0) * u[1:-1, :, :] * s[1:, :, :]
-	flux_s_x = np.concatenate((flux[-1:, :, :], flux, flux[:1, :, :]), axis=0)
-	s_prv = s - dt.seconds / dx * (flux_s_x[1:, :, :] - flux_s_x[:-1, :, :])
-	assert 'air_isentropic_density' in raw_state_prv.keys()
-	assert np.allclose(s_prv, raw_state_prv['air_isentropic_density'])
+	# isentropic density
+	s_now = raw_state['air_isentropic_density']
+	s_tnd = raw_tendencies.get('air_isentropic_density', None)
+	s_new = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_upwind_fluxes, 'xy', dx, dy, dt, u_now, v_now, s_now, s_now, s_tnd, s_new
+	)
+	hb.dmn_enforce_field(
+		s_new, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+timestep
+	)
+	assert 'air_isentropic_density' in raw_state_new
+	compare_arrays(
+		s_new[nb:-nb, nb:-nb], raw_state_new['air_isentropic_density'][nb:-nb, nb:-nb]
+	)
 
-	flux = (u[1:-1, :, :] > 0) * u[1:-1, :, :] * su[:-1, :, :] + \
-		   (u[1:-1, :, :] < 0) * u[1:-1, :, :] * su[1:, :, :]
-	flux_su_x = np.concatenate((flux[-1:, :, :], flux, flux[:1, :, :]), axis=0)
-	su_tmp = su - dt.seconds / dx * (flux_su_x[1:, :, :] - flux_su_x[:-1, :, :])
-	_, _, mtg_prv, _ = diags.get_diagnostic_variables(s_prv, pt)
-	su_prv = su_tmp[1:-1, :, :] - \
-			 0.5 * dt.seconds / dx * s_prv[1:-1, :, :] * (mtg_prv[2:, :, :] - mtg_prv[:-2, :, :])
-	assert 'x_momentum_isentropic' in raw_state_prv.keys()
-	assert np.allclose(su_prv, raw_state_prv['x_momentum_isentropic'][1:-1, :, :])
+	if moist:
+		# water species
+		names = [
+			'isentropic_density_of_water_vapor',
+			'isentropic_density_of_cloud_liquid_water',
+			'isentropic_density_of_precipitation_water',
+		]
+		sq_new = np.zeros((nx, ny, nz), dtype=dtype)
+		for name in names:
+			sq_now = raw_state[name]
+			sq_tnd = raw_tendencies.get(name, None)
+			forward_euler_step(
+				get_upwind_fluxes, 'xy', dx, dy, dt, u_now, v_now,
+				sq_now, sq_now, sq_tnd, sq_new
+			)
+			assert name in raw_state_new
+			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_new[name][nb:-nb, nb:-nb])
 
-	assert np.allclose(np.zeros_like(sv, dtype=np.float64),
-					   raw_state_prv['y_momentum_isentropic'])
+	# montgomery potential
+	ids = IsentropicDiagnostics(grid, backend, dtype)
+	mtg_new = np.zeros((nx, ny, nz), dtype=dtype)
+	ids.get_montgomery_potential(s_new, pt.values.item(), mtg_new)
+	compare_arrays(mtg_new, imp._mtg_new)
 
-	flux = (u[1:-1, :, :] > 0) * u[1:-1, :, :] * sqv[:-1, :, :] + \
-		   (u[1:-1, :, :] < 0) * u[1:-1, :, :] * sqv[1:, :, :]
-	flux_sqv_x = np.concatenate((flux[-1:, :, :], flux, flux[:1, :, :]), axis=0)
-	sqv_prv = sqv - dt.seconds / dx * (flux_sqv_x[1:, :, :] - flux_sqv_x[:-1, :, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_prv.keys()
-	assert np.allclose(sqv_prv, raw_state_prv['isentropic_density_of_water_vapor'])
+	# x-momentum
+	mtg_now = raw_state['montgomery_potential']
+	su_now = raw_state['x_momentum_isentropic']
+	su_tnd = raw_tendencies.get('x_momentum_isentropic', None)
+	su_new = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_upwind_fluxes, 'xy', dx, dy, dt, u_now, v_now, su_now, su_now, su_tnd, su_new
+	)
+	su_new[1:-1, 1:-1] -= dt * (
+		(1-eps) * s_now[1:-1, 1:-1] *
+			(mtg_now[2:, 1:-1] - mtg_now[:-2, 1:-1]) / (2.0 * dx) +
+		eps * s_new[1:-1, 1:-1] *
+			(mtg_new[2:, 1:-1] - mtg_new[:-2, 1:-1]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_new
+	compare_arrays(
+		su_new[nb:-nb, nb:-nb], raw_state_new['x_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
 
-	flux = (u[1:-1, :, :] > 0) * u[1:-1, :, :] * sqc[:-1, :, :] + \
-		   (u[1:-1, :, :] < 0) * u[1:-1, :, :] * sqc[1:, :, :]
-	flux_sqc_x = np.concatenate((flux[-1:, :, :], flux, flux[:1, :, :]), axis=0)
-	sqc_prv = sqc - dt.seconds / dx * (flux_sqc_x[1:, :, :] - flux_sqc_x[:-1, :, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_prv.keys()
-	assert np.allclose(sqc_prv, raw_state_prv['isentropic_density_of_cloud_liquid_water'])
-
-	flux = (u[1:-1, :, :] > 0) * u[1:-1, :, :] * sqr[:-1, :, :] + \
-		   (u[1:-1, :, :] < 0) * u[1:-1, :, :] * sqr[1:, :, :]
-	flux_sqr_x = np.concatenate((flux[-1:, :, :], flux, flux[:1, :, :]), axis=0)
-	sqr_prv = sqr - dt.seconds / dx * (flux_sqr_x[1:, :, :] - flux_sqr_x[:-1, :, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_prv.keys()
-	assert np.allclose(sqr_prv, raw_state_prv['isentropic_density_of_precipitation_water'])
-
-	raw_state_prv[mf_pw] = \
-		raw_state_prv['isentropic_density_of_precipitation_water'] / \
-		raw_state_prv['air_isentropic_density']
-	raw_state_new = ip_euler.step_integrating_sedimentation_flux(0, dt, raw_state, raw_state_prv)
-
-	#assert 'time' in raw_state_new.keys()
-	#assert raw_state_new['time'] == raw_state['time'] + dt
-
-	assert np.allclose(s_prv, raw_state_prv['air_isentropic_density'])
+	# y-momentum
+	sv_now = raw_state['y_momentum_isentropic']
+	sv_tnd = raw_tendencies.get('y_momentum_isentropic', None)
+	sv_new = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_upwind_fluxes, 'xy', dx, dy, dt, u_now, v_now, sv_now, sv_now, sv_tnd, sv_new
+	)
+	sv_new[1:-1, 1:-1] -= dt * (
+		(1-eps) * s_now[1:-1, 1:-1] *
+			(mtg_now[1:-1, 2:] - mtg_now[1:-1, :-2]) / (2.0 * dy) +
+		eps * s_new[1:-1, 1:-1] *
+			(mtg_new[1:-1, 2:] - mtg_new[1:-1, :-2]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_new
+	compare_arrays(
+		sv_new[nb:-nb, nb:-nb], raw_state_new['y_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
 
 
-def test_rk2(isentropic_moist_data):
-	grid, states = isentropic_moist_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-	backend = gt.mode.NUMPY
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_rk3ws_si(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
+	domain = data.draw(
+		st_domain(xaxis_length=(7, 50), yaxis_length=(7, 50), nb=nb),
+		label='domain'
+	)
+	hb = domain.horizontal_boundary
+	assume(hb.type != 'dirichlet')
+	grid = domain.numerical_grid
+	moist = data.draw(hyp_st.booleans(), label='moist')
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
+	tendencies = {}
+	if data.draw(hyp_st.booleans(), label='s_tnd'):
+		tendencies['air_isentropic_density'] = state['air_isentropic_density']
+	if data.draw(hyp_st.booleans(), label='su_tnd'):
+		tendencies['x_momentum_isentropic'] = state['x_momentum_isentropic']
+	if data.draw(hyp_st.booleans(), label='sv_tn:'):
+		tendencies['y_momentum_isentropic'] = state['y_momentum_isentropic']
+	if moist:
+		if data.draw(hyp_st.booleans(), label='qv_tnd'):
+			tendencies[mfwv] = state[mfwv]
+		if data.draw(hyp_st.booleans(), label='qc_tnd'):
+			tendencies[mfcw] = state[mfcw]
+		if data.draw(hyp_st.booleans(), label='qr_tnd'):
+			tendencies[mfpw] = state[mfpw]
 
-	diags = IsentropicDiagnostics(grid)
-	hb = HorizontalBoundary.factory('periodic', grid)
-	hv = HorizontalVelocity(grid, dtype=np.float64)
-	rfv = RaindropFallVelocity(grid, backend)
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	pt = state['air_pressure_on_interface_levels'][0, 0, 0]
+	eps = data.draw(st_floats(min_value=0, max_value=1), label='eps')
 
-	ip_rk2 = IsentropicPrognostic.factory('rk2', grid, True, diags, hb,
-										  horizontal_flux_scheme='third_order_upwind',
-										  sedimentation_on=True,
-										  sedimentation_flux_scheme='second_order_upwind',
-										  raindrop_fall_velocity_diagnostic=rfv,
-										  backend=backend, dtype=np.float64)
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=1),
+			max_value=timedelta(minutes=60)
+		),
+		label='timestep'
+	)
 
-	dt = timedelta(seconds=10)
+	# ========================================
+	# test bed
+	# ========================================
+	hb.reference_state = state
+	dtype = grid.x.dtype
+
+	imp = IsentropicPrognostic.factory(
+		'rk3ws_si', 'fifth_order_upwind', grid, hb, moist,
+		backend=backend, dtype=dtype, pt=pt, eps=eps
+	)
 
 	raw_state = make_raw_state(state)
-	raw_state['isentropic_density_of_water_vapor'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_wv]
-	raw_state['isentropic_density_of_cloud_liquid_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_clw]
-	raw_state['isentropic_density_of_precipitation_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_pw]
+	if moist:
+		raw_state['isentropic_density_of_water_vapor'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfwv]
+		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfcw]
+		raw_state['isentropic_density_of_precipitation_water'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
-	raw_tendencies = {}
+	raw_tendencies = make_raw_state(tendencies)
+	if moist:
+		if mfwv in raw_tendencies:
+			raw_tendencies['isentropic_density_of_water_vapor'] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
+		if mfcw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
+		if mfpw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
-	raw_state_1 = ip_rk2.step_neglecting_vertical_motion(0, dt, raw_state, raw_tendencies)
+	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	dx = grid.dx.to_units('m').values.item()
+	dy = grid.dy.to_units('m').values.item()
+	u = raw_state['x_velocity_at_u_locations']
+	v = raw_state['y_velocity_at_v_locations']
 
-	dx  = grid.dx.values.item()
-	s   = raw_state['air_isentropic_density']
-	u   = raw_state['x_velocity_at_u_locations']
-	mtg = raw_state['montgomery_potential']
-	su  = raw_state['x_momentum_isentropic']
-	sv  = raw_state['y_momentum_isentropic']
-	sqv = raw_state['isentropic_density_of_water_vapor']
-	sqc = raw_state['isentropic_density_of_cloud_liquid_water']
-	sqr = raw_state['isentropic_density_of_precipitation_water']
-	pt  = raw_state['air_pressure_on_interface_levels'][0, 0, 0]
+	names = [
+		'isentropic_density_of_water_vapor',
+		'isentropic_density_of_cloud_liquid_water',
+		'isentropic_density_of_precipitation_water'
+	]
+	sq_new = np.zeros((nx, ny, nz), dtype=dtype)
 
-	s_   = hb.from_physical_to_computational_domain(s)
-	u_   = hb.from_physical_to_computational_domain(u)
-	mtg_ = hb.from_physical_to_computational_domain(mtg)
-	su_  = hb.from_physical_to_computational_domain(su)
-	sqv_ = hb.from_physical_to_computational_domain(sqv)
-	sqc_ = hb.from_physical_to_computational_domain(sqc)
-	sqr_ = hb.from_physical_to_computational_domain(sqr)
+	#
+	# stage 0
+	#
+	dts = (timestep/3.0).total_seconds()
 
-	flux4 = u_[2:-2, :, :] / 12. * (7. * (s_[2:-1, :, :] + s_[1:-2, :, :]) -
-									1. * (s_[3:, :, :] + s_[:-3, :, :]))
-	flux = flux4 - np.abs(u_[2:-2, :, :]) / 12. * (3. * (s_[2:-1, :, :] - s_[1:-2, :, :]) -
-												   1. * (s_[3:, :, :] - s_[:-3, :, :]))
-	s1 = s - 1./2. * dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'air_isentropic_density' in raw_state_1.keys()
-	assert np.allclose(s1, raw_state_1['air_isentropic_density'])
+	raw_state_1 = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
-	flux4 = u_[2:-2, :, :] / 12. * (7. * (su_[2:-1, :, :] + su_[1:-2, :, :]) -
-									1. * (su_[3:, :, :] + su_[:-3, :, :]))
-	flux = flux4 - np.abs(u_[2:-2, :, :]) / 12. * (3. * (su_[2:-1, :, :] - su_[1:-2, :, :]) -
-												   1. * (su_[3:, :, :] - su_[:-3, :, :]))
-	su1 = su - 1./2. * dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :]) \
-		  	 - 1./2. * dt.seconds * s_[2:-2, 2:-2, :] * (mtg_[3:-1, 2:-2, :] -
-														 mtg_[1:-3, 2:-2, :]) / (2. * dx)
-	assert 'x_momentum_isentropic' in raw_state_1.keys()
-	assert np.allclose(su1, raw_state_1['x_momentum_isentropic'])
+	assert 'time' in raw_state_1.keys()
+	compare_datetimes(raw_state_1['time'], raw_state['time'] + 1.0/3.0*timestep)
 
-	flux4 = u_[2:-2, :, :] / 12. * (7. * (sqv_[2:-1, :, :] + sqv_[1:-2, :, :]) -
-									1. * (sqv_[3:, :, :] + sqv_[:-3, :, :]))
-	flux = flux4 - np.abs(u_[2:-2, :, :]) / 12. * (3. * (sqv_[2:-1, :, :] - sqv_[1:-2, :, :]) -
-												   1. * (sqv_[3:, :, :] - sqv_[:-3, :, :]))
-	sqv1 = sqv - 1./2. * dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_1.keys()
-	assert np.allclose(sqv1, raw_state_1['isentropic_density_of_water_vapor'])
+	# isentropic density
+	s0 = raw_state['air_isentropic_density']
+	s_tnd = raw_tendencies.get('air_isentropic_density', None)
+	s1 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, s0, s0, s_tnd, s1
+	)
+	hb.dmn_enforce_field(
+		s1, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+1.0/3.0*timestep
+	)
+	assert 'air_isentropic_density' in raw_state_1
+	compare_arrays(s1, raw_state_1['air_isentropic_density'])
 
-	flux4 = u_[2:-2, :, :] / 12. * (7. * (sqc_[2:-1, :, :] + sqc_[1:-2, :, :]) -
-									1. * (sqc_[3:, :, :] + sqc_[:-3, :, :]))
-	flux = flux4 - np.abs(u_[2:-2, :, :]) / 12. * (3. * (sqc_[2:-1, :, :] - sqc_[1:-2, :, :]) -
-												   1. * (sqc_[3:, :, :] - sqc_[:-3, :, :]))
-	sqc1 = sqc - 1./2. * dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_1.keys()
-	assert np.allclose(sqc1, raw_state_1['isentropic_density_of_cloud_liquid_water'])
+	if moist:
+		# water species
+		for name in names:
+			sq0 = raw_state[name]
+			sq_tnd = raw_tendencies.get(name, None)
+			forward_euler_step(
+				get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
+				sq0, sq0, sq_tnd, sq_new
+			)
+			assert name in raw_state_1
+			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb])
 
-	flux4 = u_[2:-2, :, :] / 12. * (7. * (sqr_[2:-1, :, :] + sqr_[1:-2, :, :]) -
-									1. * (sqr_[3:, :, :] + sqr_[:-3, :, :]))
-	flux = flux4 - np.abs(u_[2:-2, :, :]) / 12. * (3. * (sqr_[2:-1, :, :] - sqr_[1:-2, :, :]) -
-												   5. * (sqr_[3:, :, :] - sqr_[:-3, :, :]))
-	sqr1 = sqr - 1./2. * dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_1.keys()
-	assert np.allclose(sqr1, raw_state_1['isentropic_density_of_precipitation_water'])
+	# montgomery potential
+	ids = IsentropicDiagnostics(grid, backend, dtype)
+	mtg1 = np.zeros((nx, ny, nz), dtype=dtype)
+	ids.get_montgomery_potential(s1, pt.to_units('Pa').values.item(), mtg1)
+	compare_arrays(mtg1, imp._mtg_new)
 
-	u1, v1 = hv.get_velocity_components(s1, su1, sv)
-	_, _, mtg1, _ = diags.get_diagnostic_variables(s1, pt)
-	raw_state_1['x_velocity_at_u_locations'] = u1
-	raw_state_1['y_velocity_at_v_locations'] = v1
+	# x-momentum
+	mtg0 = raw_state['montgomery_potential']
+	compare_arrays(mtg0, imp._mtg_now)
+	su0 = raw_state['x_momentum_isentropic']
+	su_tnd = raw_tendencies.get('x_momentum_isentropic', None)
+	su1 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, su0, su0, su_tnd, su1
+	)
+	su1[nb:-nb, nb:-nb] -= dts * (
+		(1-eps) * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb+1:-nb+1, nb:-nb] - mtg0[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		eps * s1[nb:-nb, nb:-nb] *
+			(mtg1[nb+1:-nb+1, nb:-nb] - mtg1[nb-1:-nb-1, nb:-nb]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_1
+	compare_arrays(
+		su1[nb:-nb, nb:-nb], raw_state_1['x_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
+
+	# y-momentum
+	sv0 = raw_state['y_momentum_isentropic']
+	sv_tnd = raw_tendencies.get('y_momentum_isentropic', None)
+	sv1 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, sv0, sv0, sv_tnd, sv1
+	)
+	sv1[nb:-nb, nb:-nb] -= dts * (
+		(1-eps) * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb:-nb, nb+1:-nb+1] - mtg0[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		eps * s1[nb:-nb, nb:-nb] *
+			(mtg1[nb:-nb, nb+1:-nb+1] - mtg1[nb:-nb, nb-1:-nb-1]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_1
+	compare_arrays(
+		sv1[nb:-nb, nb:-nb], raw_state_1['y_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
+
+	#
+	# stage 1
+	#
+	raw_state_1['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
+	raw_state_1['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
+	raw_state_1_dc = deepcopy(raw_state_1)
+
+	if moist:
+		if mfwv in raw_tendencies:
+			raw_tendencies['isentropic_density_of_water_vapor'] = \
+				raw_state_1['air_isentropic_density'] * raw_tendencies[mfwv]
+		if mfcw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+				raw_state_1['air_isentropic_density'] * raw_tendencies[mfcw]
+		if mfpw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+				raw_state_1['air_isentropic_density'] * raw_tendencies[mfpw]
+
+	dts = (0.5*timestep).total_seconds()
+
+	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
+
+	assert 'time' in raw_state_2.keys()
+	compare_datetimes(raw_state_2['time'], raw_state['time'] + 0.5*timestep)
+
+	# isentropic density
+	s2 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, s0, s1, s_tnd, s2
+	)
+	hb.dmn_enforce_field(
+		s2, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+0.5*timestep
+	)
+	assert 'air_isentropic_density' in raw_state_2
+	compare_arrays(s2, raw_state_2['air_isentropic_density'])
+
+	if moist:
+		# water species
+		for name in names:
+			sq0 = raw_state[name]
+			sq1 = raw_state_1_dc[name]
+			sq_tnd = raw_tendencies.get(name, None)
+			forward_euler_step(
+				get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
+				sq0, sq1, sq_tnd, sq_new
+			)
+			assert name in raw_state_2
+			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb])
+
+	# montgomery potential
+	mtg2 = np.zeros((nx, ny, nz), dtype=dtype)
+	ids.get_montgomery_potential(s2, pt.to_units('Pa').values.item(), mtg2)
+	compare_arrays(mtg2, imp._mtg_new)
+
+	# x-momentum
+	su1 = raw_state_1_dc['x_momentum_isentropic']
+	su2 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, su0, su1, su_tnd, su2
+	)
+	su2[nb:-nb, nb:-nb] -= dts * (
+		(1-eps) * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb+1:-nb+1, nb:-nb] - mtg0[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		eps * s2[nb:-nb, nb:-nb] *
+		(mtg2[nb+1:-nb+1, nb:-nb] - mtg2[nb-1:-nb-1, nb:-nb]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_2
+	compare_arrays(
+		su2[nb:-nb, nb:-nb], raw_state_2['x_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
+
+	# y-momentum
+	sv1 = raw_state_1_dc['y_momentum_isentropic']
+	sv2 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, sv0, sv1, sv_tnd, sv2
+	)
+	sv2[nb:-nb, nb:-nb] -= dts * (
+		(1-eps) * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb:-nb, nb+1:-nb+1] - mtg0[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		eps * s2[nb:-nb, nb:-nb] *
+			(mtg2[nb:-nb, nb+1:-nb+1] - mtg2[nb:-nb, nb-1:-nb-1]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_2
+	compare_arrays(
+		sv2[nb:-nb, nb:-nb], raw_state_2['y_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
+
+	#
+	# stage 2
+	#
+	raw_state_2['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
+	raw_state_2['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
+	raw_state_2_dc = deepcopy(raw_state_2)
+
+	if moist:
+		if mfwv in raw_tendencies:
+			raw_tendencies['isentropic_density_of_water_vapor'] = \
+				raw_state_2['air_isentropic_density'] * raw_tendencies[mfwv]
+		if mfcw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+				raw_state_2['air_isentropic_density'] * raw_tendencies[mfcw]
+		if mfpw in raw_tendencies:
+			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+				raw_state_2['air_isentropic_density'] * raw_tendencies[mfpw]
+
+	dts = timestep.total_seconds()
+
+	raw_state_3 = imp.stage_call(2, timestep, raw_state_2, raw_tendencies)
+
+	assert 'time' in raw_state_3.keys()
+	compare_datetimes(raw_state_3['time'], raw_state['time'] + timestep)
+
+	# isentropic density
+	s3 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, s0, s2, s_tnd, s3
+	)
+	hb.dmn_enforce_field(
+		s3, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+timestep
+	)
+	assert 'air_isentropic_density' in raw_state_3
+	compare_arrays(s3, raw_state_3['air_isentropic_density'])
+
+	if moist:
+		# water species
+		for name in names:
+			sq0 = raw_state[name]
+			sq2 = raw_state_2_dc[name]
+			sq_tnd = raw_tendencies.get(name, None)
+			forward_euler_step(
+				get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
+				sq0, sq2, sq_tnd, sq_new
+			)
+			assert name in raw_state_3
+			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_3[name][nb:-nb, nb:-nb])
+
+	# montgomery potential
+	mtg3 = np.zeros((nx, ny, nz), dtype=dtype)
+	ids.get_montgomery_potential(s3, pt.to_units('Pa').values.item(), mtg3)
+	compare_arrays(mtg3, imp._mtg_new)
+
+	# x-momentum
+	su2 = raw_state_2_dc['x_momentum_isentropic']
+	su3 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, su0, su2, su_tnd, su3
+	)
+	su3[nb:-nb, nb:-nb] -= dts * (
+		(1-eps) * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb+1:-nb+1, nb:-nb] - mtg0[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		eps * s3[nb:-nb, nb:-nb] *
+			(mtg3[nb+1:-nb+1, nb:-nb] - mtg3[nb-1:-nb-1, nb:-nb]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_3
+	compare_arrays(
+		su3[nb:-nb, nb:-nb], raw_state_3['x_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
+
+	# y-momentum
+	sv2 = raw_state_2_dc['y_momentum_isentropic']
+	sv3 = np.zeros((nx, ny, nz), dtype=dtype)
+	forward_euler_step(
+		get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v, sv0, sv2, sv_tnd, sv3
+	)
+	sv3[nb:-nb, nb:-nb] -= dts * (
+		(1-eps) * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb:-nb, nb+1:-nb+1] - mtg0[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		eps * s3[nb:-nb, nb:-nb] *
+			(mtg3[nb:-nb, nb+1:-nb+1] - mtg3[nb:-nb, nb-1:-nb-1]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_3
+	compare_arrays(
+		sv3[nb:-nb, nb:-nb], raw_state_3['y_momentum_isentropic'][nb:-nb, nb:-nb]
+	)
+
+
+@settings(
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
+	deadline=None
+)
+@given(hyp_st.data())
+def test_sil3(data):
+	# ========================================
+	# random data generation
+	# ========================================
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
+	domain = data.draw(
+		st_domain(xaxis_length=(7, 50), yaxis_length=(7, 50), nb=nb),
+		label='domain'
+	)
+	hb = domain.horizontal_boundary
+	assume(hb.type != 'dirichlet')
+	grid = domain.numerical_grid
+	moist = data.draw(hyp_st.booleans(), label='moist')
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
+	tendencies = {}
+	if data.draw(hyp_st.booleans(), label='s_tnd'):
+		tendencies['air_isentropic_density'] = state['air_isentropic_density']
+	if data.draw(hyp_st.booleans(), label='su_tnd'):
+		tendencies['x_momentum_isentropic'] = state['x_momentum_isentropic']
+	if data.draw(hyp_st.booleans(), label='sv_tn:'):
+		tendencies['y_momentum_isentropic'] = state['y_momentum_isentropic']
+	if moist:
+		if data.draw(hyp_st.booleans(), label='qv_tnd'):
+			tendencies[mfwv] = state[mfwv]
+		if data.draw(hyp_st.booleans(), label='qc_tnd'):
+			tendencies[mfcw] = state[mfcw]
+		if data.draw(hyp_st.booleans(), label='qr_tnd'):
+			tendencies[mfpw] = state[mfpw]
+
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	pt = state['air_pressure_on_interface_levels'][0, 0, 0]
+	a = data.draw(st_floats(min_value=0, max_value=1), label='a')
+	b = data.draw(st_floats(min_value=0, max_value=1), label='b')
+	c = data.draw(st_floats(min_value=0, max_value=1), label='c')
+
+	timestep = data.draw(
+		hyp_st.timedeltas(
+			min_value=timedelta(seconds=1),
+			max_value=timedelta(minutes=60)
+		),
+		label='timestep'
+	)
+
+	# ========================================
+	# test bed
+	# ========================================
+	hb.reference_state = state
+	dtype = grid.x.dtype
+
+	imp = IsentropicPrognostic.factory(
+		'sil3', 'fifth_order_upwind', grid, hb, moist,
+		backend=backend, dtype=dtype, pt=pt, a=a, b=b, c=c
+	)
+
+	raw_state = make_raw_state(state)
+	if moist:
+		raw_state['isentropic_density_of_water_vapor'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfwv]
+		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfcw]
+		raw_state['isentropic_density_of_precipitation_water'] = \
+			raw_state['air_isentropic_density'] * raw_state[mfpw]
+
+	raw_tendencies = make_raw_state(tendencies)
+
+	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	dx = grid.dx.to_units('m').values.item()
+	dy = grid.dy.to_units('m').values.item()
+	u = raw_state['x_velocity_at_u_locations']
+	v = raw_state['y_velocity_at_v_locations']
+
+	dts = timestep.total_seconds()
+
+	#
+	# stage 0
+	#
+	raw_state_1 = imp.stage_call(0, timestep, raw_state, raw_tendencies)
+
+	assert 'time' in raw_state_1.keys()
+	compare_datetimes(raw_state_1['time'], raw_state['time'] + 1.0/3.0*timestep)
+
+	# isentropic density
+	s0 = raw_state['air_isentropic_density']
+	s_tnd = raw_tendencies.get('air_isentropic_density', None)
+	flux_s_x_0, flux_s_y_0 = get_fifth_order_upwind_fluxes(u, v, s0)
+	s1 = np.zeros((nx, ny, nz), dtype=dtype)
+	s1[nb:-nb, nb:-nb] = s0[nb:-nb, nb:-nb] - dts / 3.0 * (
+		(flux_s_x_0[nb:-nb, nb:-nb] - flux_s_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+		(flux_s_y_0[nb:-nb, nb:-nb] - flux_s_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+		(s_tnd[nb:-nb, nb:-nb] if s_tnd is not None else 0.0)
+	)
+	hb.dmn_enforce_field(
+		s1, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+1.0/3.0*timestep
+	)
+	assert 'air_isentropic_density' in raw_state_1
+	compare_arrays(s1, raw_state_1['air_isentropic_density'])
+
+	if moist:
+		# isentropic density of water vapor
+		sqv0 = raw_state['isentropic_density_of_water_vapor']
+		qv_tnd = raw_tendencies.get(mfwv, None)
+		flux_sqv_x_0, flux_sqv_y_0 = get_fifth_order_upwind_fluxes(u, v, sqv0)
+		sqv1 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqv1[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts / 3.0 * (
+			(flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(s0[nb:-nb, nb:-nb] * qv_tnd[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_water_vapor' in raw_state_1
+		compare_arrays(sqv1, raw_state_1['isentropic_density_of_water_vapor'])
+
+		# isentropic density of cloud liquid water
+		sqc0 = raw_state['isentropic_density_of_cloud_liquid_water']
+		qc_tnd = raw_tendencies.get(mfcw, None)
+		flux_sqc_x_0, flux_sqc_y_0 = get_fifth_order_upwind_fluxes(u, v, sqc0)
+		sqc1 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqc1[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts / 3.0 * (
+			(flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(s0[nb:-nb, nb:-nb] * qc_tnd[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_cloud_liquid_water' in raw_state_1
+		compare_arrays(sqc1, raw_state_1['isentropic_density_of_cloud_liquid_water'])
+
+		# isentropic density of precipitation water
+		sqr0 = raw_state['isentropic_density_of_precipitation_water']
+		qr_tnd = raw_tendencies.get(mfpw, None)
+		flux_sqr_x_0, flux_sqr_y_0 = get_fifth_order_upwind_fluxes(u, v, sqr0)
+		sqr1 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqr1[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts / 3.0 * (
+			(flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(s0[nb:-nb, nb:-nb] * qr_tnd[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_precipitation_water' in raw_state_1
+		compare_arrays(sqr1, raw_state_1['isentropic_density_of_precipitation_water'])
+
+	# montgomery potential
+	ids = IsentropicDiagnostics(grid, backend, dtype)
+	mtg1 = np.zeros((nx, ny, nz), dtype=dtype)
+	ids.get_montgomery_potential(s1, pt.to_units('Pa').values.item(), mtg1)
+	compare_arrays(mtg1, imp._mtg1)
+
+	# x-momentum
+	mtg0 = raw_state['montgomery_potential']
+	compare_arrays(mtg0, imp._mtg_now)
+	su0 = raw_state['x_momentum_isentropic']
+	su_tnd = raw_tendencies.get('x_momentum_isentropic', None)
+	flux_su_x_0, flux_su_y_0 = get_fifth_order_upwind_fluxes(u, v, su0)
+	su1 = np.zeros((nx, ny, nz), dtype=dtype)
+	su1[nb:-nb, nb:-nb] = su0[nb:-nb, nb:-nb] - dts * (
+		1.0 / 3.0 * (
+			(flux_su_x_0[nb:-nb, nb:-nb] - flux_su_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_su_y_0[nb:-nb, nb:-nb] - flux_su_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(su_tnd[nb:-nb, nb:-nb] if su_tnd is not None else 0.0)
+		) +
+		1.0 / 6.0 * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb+1:-nb+1, nb:-nb] - mtg0[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		1.0 / 6.0 * s1[nb:-nb, nb:-nb] *
+			(mtg1[nb+1:-nb+1, nb:-nb] - mtg1[nb-1:-nb-1, nb:-nb]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_1
+	compare_arrays(su1, raw_state_1['x_momentum_isentropic'])
+
+	# y-momentum
+	sv0 = raw_state['y_momentum_isentropic']
+	sv_tnd = raw_tendencies.get('y_momentum_isentropic', None)
+	flux_sv_x_0, flux_sv_y_0 = get_fifth_order_upwind_fluxes(u, v, sv0)
+	sv1 = np.zeros((nx, ny, nz), dtype=dtype)
+	sv1[nb:-nb, nb:-nb] = sv0[nb:-nb, nb:-nb] - dts * (
+		1.0 / 3.0 * (
+			(flux_sv_x_0[nb:-nb, nb:-nb] - flux_sv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sv_y_0[nb:-nb, nb:-nb] - flux_sv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(sv_tnd[nb:-nb, nb:-nb] if sv_tnd is not None else 0.0)
+		) +
+		1.0 / 6.0 * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb:-nb, nb+1:-nb+1] - mtg0[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		1.0 / 6.0 * s1[nb:-nb, nb:-nb] *
+			(mtg1[nb:-nb, nb+1:-nb+1] - mtg1[nb:-nb, nb-1:-nb-1]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_1
+	compare_arrays(sv1, raw_state_1['y_momentum_isentropic'])
+
+	#
+	# stage 1
+	#
+	raw_state_1['x_velocity_at_u_locations'] = u
+	raw_state_1['y_velocity_at_v_locations'] = v
 	raw_state_1['montgomery_potential'] = mtg1
 
-	raw_state_2 = ip_rk2.step_neglecting_vertical_motion(1, dt, raw_state_1, raw_tendencies)
+	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
 
-	s1_   = hb.from_physical_to_computational_domain(s1)
-	u1_   = hb.from_physical_to_computational_domain(u1)
-	mtg1_ = hb.from_physical_to_computational_domain(mtg1)
-	su1_  = hb.from_physical_to_computational_domain(su1)
-	sqv1_ = hb.from_physical_to_computational_domain(sqv1)
-	sqc1_ = hb.from_physical_to_computational_domain(sqc1)
-	sqr1_ = hb.from_physical_to_computational_domain(sqr1)
+	assert 'time' in raw_state_2.keys()
+	compare_datetimes(raw_state_2['time'], raw_state['time'] + 2.0/3.0*timestep)
 
-	flux4 = u1_[2:-2, :, :] / 12. * (7. * (s1_[2:-1, :, :] + s1_[1:-2, :, :]) -
-									 1. * (s1_[3:, :, :] + s1_[:-3, :, :]))
-	flux = flux4 - np.abs(u1_[2:-2, :, :]) / 12. * (3. * (s1_[2:-1, :, :] - s1_[1:-2, :, :]) -
-													1. * (s1_[3:, :, :] - s1_[:-3, :, :]))
-	s2 = s - dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'air_isentropic_density' in raw_state_2.keys()
-	assert np.allclose(s2, raw_state_2['air_isentropic_density'])
+	# isentropic density
+	flux_s_x_1, flux_s_y_1 = get_fifth_order_upwind_fluxes(u, v, s1)
+	s2 = np.zeros((nx, ny, nz), dtype=dtype)
+	s2[nb:-nb, nb:-nb] = s0[nb:-nb, nb:-nb] - dts * (
+		1.0 / 6.0 * (flux_s_x_0[nb:-nb, nb:-nb] - flux_s_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+		1.0 / 6.0 * (flux_s_y_0[nb:-nb, nb:-nb] - flux_s_y_0[nb:-nb, nb-1:-nb-1]) / dy +
+		0.5 * (flux_s_x_1[nb:-nb, nb:-nb] - flux_s_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+		0.5 * (flux_s_y_1[nb:-nb, nb:-nb] - flux_s_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+		2.0 / 3.0 * (s_tnd[nb:-nb, nb:-nb] if s_tnd is not None else 0.0)
+	)
+	hb.dmn_enforce_field(
+		s2, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+2.0/3.0*timestep
+	)
+	assert 'air_isentropic_density' in raw_state_2
+	compare_arrays(s2, raw_state_2['air_isentropic_density'])
 
-	flux4 = u1_[2:-2, :, :] / 12. * (7. * (su1_[2:-1, :, :] + su1_[1:-2, :, :]) -
-									 1. * (su1_[3:, :, :] + su1_[:-3, :, :]))
-	flux = flux4 - np.abs(u1_[2:-2, :, :]) / 12. * (3. * (su1_[2:-1, :, :] - su1_[1:-2, :, :]) -
-													1. * (su1_[3:, :, :] - su1_[:-3, :, :]))
-	su2 = su - dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :]) \
-		  	 - dt.seconds * s1_[2:-2, 2:-2, :] * (mtg1_[3:-1, 2:-2, :] -
-												  mtg1_[1:-3, 2:-2, :]) / (2. * dx)
-	assert 'x_momentum_isentropic' in raw_state_2.keys()
-	assert np.allclose(su2, raw_state_2['x_momentum_isentropic'])
+	if moist:
+		# isentropic density of water vapor
+		flux_sqv_x_1, flux_sqv_y_1 = get_fifth_order_upwind_fluxes(u, v, sqv1)
+		sqv2 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqv2[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts * (
+			1.0 / 6.0 * (flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			1.0 / 6.0 * (flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			1.0 / 6.0 * ((s0 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0) +
+			0.5 * (flux_sqv_x_1[nb:-nb, nb:-nb] - flux_sqv_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sqv_y_1[nb:-nb, nb:-nb] - flux_sqv_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * ((s1 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_water_vapor' in raw_state_2
+		compare_arrays(sqv2, raw_state_2['isentropic_density_of_water_vapor'])
 
-	flux4 = u1_[2:-2, :, :] / 12. * (7. * (sqv1_[2:-1, :, :] + sqv1_[1:-2, :, :]) -
-									 1. * (sqv1_[3:, :, :] + sqv1_[:-3, :, :]))
-	flux = flux4 - np.abs(u1_[2:-2, :, :]) / 12. * (3. * (sqv1_[2:-1, :, :] - sqv1_[1:-2, :, :]) -
-													1. * (sqv1_[3:, :, :] - sqv1_[:-3, :, :]))
-	sqv2 = sqv - dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_2.keys()
-	assert np.allclose(sqv2, raw_state_2['isentropic_density_of_water_vapor'])
+		# isentropic density of cloud liquid water
+		flux_sqc_x_1, flux_sqc_y_1 = get_fifth_order_upwind_fluxes(u, v, sqc1)
+		sqc2 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqc2[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts * (
+			1.0 / 6.0 * (flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			1.0 / 6.0 * (flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			1.0 / 6.0 * ((s0 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0) +
+			0.5 * (flux_sqc_x_1[nb:-nb, nb:-nb] - flux_sqc_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sqc_y_1[nb:-nb, nb:-nb] - flux_sqc_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * ((s1 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_cloud_liquid_water' in raw_state_2
+		compare_arrays(sqc2, raw_state_2['isentropic_density_of_cloud_liquid_water'])
 
-	flux4 = u1_[2:-2, :, :] / 12. * (7. * (sqc1_[2:-1, :, :] + sqc1_[1:-2, :, :]) -
-									 1. * (sqc1_[3:, :, :] + sqc1_[:-3, :, :]))
-	flux = flux4 - np.abs(u1_[2:-2, :, :]) / 12. * (3. * (sqc1_[2:-1, :, :] - sqc1_[1:-2, :, :]) -
-													1. * (sqc1_[3:, :, :] - sqc1_[:-3, :, :]))
-	sqc2 = sqc - dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_2.keys()
-	assert np.allclose(sqc2, raw_state_2['isentropic_density_of_cloud_liquid_water'])
+		# isentropic density of precipitation water
+		flux_sqr_x_1, flux_sqr_y_1 = get_fifth_order_upwind_fluxes(u, v, sqr1)
+		sqr2 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqr2[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts * (
+			1.0 / 6.0 * (flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			1.0 / 6.0 * (flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			1.0 / 6.0 * ((s0 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0) +
+			0.5 * (flux_sqr_x_1[nb:-nb, nb:-nb] - flux_sqr_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sqr_y_1[nb:-nb, nb:-nb] - flux_sqr_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * ((s1 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_precipitation_water' in raw_state_2
+		compare_arrays(sqr2, raw_state_2['isentropic_density_of_precipitation_water'])
 
-	flux4 = u1_[2:-2, :, :] / 12. * (7. * (sqr1_[2:-1, :, :] + sqr1_[1:-2, :, :]) -
-									 1. * (sqr1_[3:, :, :] + sqr1_[:-3, :, :]))
-	flux = flux4 - np.abs(u1_[2:-2, :, :]) / 12. * (3. * (sqr1_[2:-1, :, :] - sqr1_[1:-2, :, :]) -
-													1. * (sqr1_[3:, :, :] - sqr1_[:-3, :, :]))
-	sqr2 = sqr - dt.seconds / dx * (flux[1:, 2:-2, :] - flux[:-1, 2:-2, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_2.keys()
-	assert np.allclose(sqr2, raw_state_2['isentropic_density_of_precipitation_water'])
+	# montgomery potential
+	mtg2 = mtg1
+	ids.get_montgomery_potential(s2, pt.to_units('Pa').values.item(), mtg2)
+	compare_arrays(mtg2, imp._mtg2)
 
+	# x-momentum
+	flux_su_x_1, flux_su_y_1 = get_fifth_order_upwind_fluxes(u, v, su1)
+	su2 = np.zeros((nx, ny, nz), dtype=dtype)
+	su2[nb:-nb, nb:-nb] = su0[nb:-nb, nb:-nb] - dts * (
+		1.0 / 6.0 * (
+			(flux_su_x_0[nb:-nb, nb:-nb] - flux_su_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_su_y_0[nb:-nb, nb:-nb] - flux_su_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(su_tnd[nb:-nb, nb:-nb] if su_tnd is not None else 0.0)
+		) + 0.5 * (
+			(flux_su_x_1[nb:-nb, nb:-nb] - flux_su_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_su_y_1[nb:-nb, nb:-nb] - flux_su_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			(su_tnd[nb:-nb, nb:-nb] if su_tnd is not None else 0.0)
+		) +
+		1.0 / 3.0 * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb+1:-nb+1, nb:-nb] - mtg0[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		1.0 / 3.0 * s2[nb:-nb, nb:-nb] *
+			(mtg2[nb+1:-nb+1, nb:-nb] - mtg2[nb-1:-nb-1, nb:-nb]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_2
+	compare_arrays(su2, raw_state_2['x_momentum_isentropic'])
 
-def test_rk3cosmo(isentropic_moist_data):
-	grid, states = isentropic_moist_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-	backend = gt.mode.NUMPY
+	# y-momentum
+	flux_sv_x_1, flux_sv_y_1 = get_fifth_order_upwind_fluxes(u, v, sv1)
+	sv2 = np.zeros((nx, ny, nz), dtype=dtype)
+	sv2[nb:-nb, nb:-nb] = sv0[nb:-nb, nb:-nb] - dts * (
+		1.0 / 6.0 * (
+			(flux_sv_x_0[nb:-nb, nb:-nb] - flux_sv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sv_y_0[nb:-nb, nb:-nb] - flux_sv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(sv_tnd[nb:-nb, nb:-nb] if sv_tnd is not None else 0.0)
+		) + 0.5 * (
+			(flux_sv_x_1[nb:-nb, nb:-nb] - flux_sv_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sv_y_1[nb:-nb, nb:-nb] - flux_sv_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			(sv_tnd[nb:-nb, nb:-nb] if sv_tnd is not None else 0.0)
+		) +
+		1.0 / 3.0 * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb:-nb, nb+1:-nb+1] - mtg0[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		1.0 / 3.0 * s2[nb:-nb, nb:-nb] *
+			(mtg2[nb:-nb, nb+1:-nb+1] - mtg2[nb:-nb, nb-1:-nb-1]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_2
+	compare_arrays(sv2, raw_state_2['y_momentum_isentropic'])
 
-	diags = IsentropicDiagnostics(grid)
-	hb = HorizontalBoundary.factory('periodic', grid)
-	hv = HorizontalVelocity(grid, dtype=np.float64)
-	rfv = RaindropFallVelocity(grid, backend)
-
-	ip_rk3 = IsentropicPrognostic.factory('rk3cosmo', grid, True, diags, hb,
-										  horizontal_flux_scheme='fifth_order_upwind',
-										  sedimentation_on=True,
-										  sedimentation_flux_scheme='second_order_upwind',
-										  raindrop_fall_velocity_diagnostic=rfv,
-										  backend=backend, dtype=np.float64)
-
-	dt = timedelta(seconds=10)
-
-	raw_state = make_raw_state(state)
-	raw_state['isentropic_density_of_water_vapor'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_wv]
-	raw_state['isentropic_density_of_cloud_liquid_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_clw]
-	raw_state['isentropic_density_of_precipitation_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_pw]
-
-	raw_tendencies = {}
-
-	raw_state_1 = ip_rk3.step_neglecting_vertical_motion(0, dt, raw_state, raw_tendencies)
-
-	dx  = grid.dx.values.item()
-	s   = raw_state['air_isentropic_density']
-	u   = raw_state['x_velocity_at_u_locations']
-	mtg = raw_state['montgomery_potential']
-	su  = raw_state['x_momentum_isentropic']
-	sv  = raw_state['y_momentum_isentropic']
-	sqv = raw_state['isentropic_density_of_water_vapor']
-	sqc = raw_state['isentropic_density_of_cloud_liquid_water']
-	sqr = raw_state['isentropic_density_of_precipitation_water']
-	pt  = raw_state['air_pressure_on_interface_levels'][0, 0, 0]
-
-	s_   = hb.from_physical_to_computational_domain(s)
-	u_   = hb.from_physical_to_computational_domain(u)
-	mtg_ = hb.from_physical_to_computational_domain(mtg)
-	su_  = hb.from_physical_to_computational_domain(su)
-	sqv_ = hb.from_physical_to_computational_domain(sqv)
-	sqc_ = hb.from_physical_to_computational_domain(sqc)
-	sqr_ = hb.from_physical_to_computational_domain(sqr)
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (s_[3:-2, :, :] + s_[2:-3, :, :]) -
-								     8. * (s_[4:-1, :, :] + s_[1:-4, :, :]) +
-								     1. * (s_[  5:, :, :] + s_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (s_[3:-2, :, :] - s_[2:-3, :, :]) -
-											  		5. * (s_[4:-1, :, :] - s_[1:-4, :, :]) +
-											  		1. * (s_[  5:, :, :] - s_[ :-5, :, :]))
-	s1 = s - 1./3. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'air_isentropic_density' in raw_state_1.keys()
-	assert np.allclose(s1, raw_state_1['air_isentropic_density'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (su_[3:-2, :, :] + su_[2:-3, :, :]) -
-									 8. * (su_[4:-1, :, :] + su_[1:-4, :, :]) +
-									 1. * (su_[  5:, :, :] + su_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (su_[3:-2, :, :] - su_[2:-3, :, :]) -
-											  		5. * (su_[4:-1, :, :] - su_[1:-4, :, :]) +
-											  		1. * (su_[  5:, :, :] - su_[ :-5, :, :]))
-	su1 = su - 1./3. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :]) \
-		     - 1./3. * dt.seconds * s_[3:-3, 3:-3, :] * (1./12. * mtg_[1:-5, 3:-3, :] -
-													  	 8./12. * mtg_[2:-4, 3:-3, :] +
-													  	 8./12. * mtg_[4:-2, 3:-3, :] -
-													  	 1./12. * mtg_[5:-1, 3:-3, :]) / dx
-	assert 'x_momentum_isentropic' in raw_state_1.keys()
-	assert np.allclose(su1, raw_state_1['x_momentum_isentropic'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (sqv_[3:-2, :, :] + sqv_[2:-3, :, :]) -
-									 8. * (sqv_[4:-1, :, :] + sqv_[1:-4, :, :]) +
-									 1. * (sqv_[  5:, :, :] + sqv_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (sqv_[3:-2, :, :] - sqv_[2:-3, :, :]) -
-											  		5. * (sqv_[4:-1, :, :] - sqv_[1:-4, :, :]) +
-											  		1. * (sqv_[  5:, :, :] - sqv_[ :-5, :, :]))
-	sqv1 = sqv - 1./3. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_1.keys()
-	assert np.allclose(sqv1, raw_state_1['isentropic_density_of_water_vapor'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (sqc_[3:-2, :, :] + sqc_[2:-3, :, :]) -
-									 8. * (sqc_[4:-1, :, :] + sqc_[1:-4, :, :]) +
-									 1. * (sqc_[  5:, :, :] + sqc_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (sqc_[3:-2, :, :] - sqc_[2:-3, :, :]) -
-											  		5. * (sqc_[4:-1, :, :] - sqc_[1:-4, :, :]) +
-											  		1. * (sqc_[  5:, :, :] - sqc_[ :-5, :, :]))
-	sqc1 = sqc - 1./3. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_1.keys()
-	assert np.allclose(sqc1, raw_state_1['isentropic_density_of_cloud_liquid_water'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (sqr_[3:-2, :, :] + sqr_[2:-3, :, :]) -
-									 8. * (sqr_[4:-1, :, :] + sqr_[1:-4, :, :]) +
-									 1. * (sqr_[  5:, :, :] + sqr_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (sqr_[3:-2, :, :] - sqr_[2:-3, :, :]) -
-											  		5. * (sqr_[4:-1, :, :] - sqr_[1:-4, :, :]) +
-											  		1. * (sqr_[  5:, :, :] - sqr_[ :-5, :, :]))
-	sqr1 = sqr - 1./3. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_1.keys()
-	assert np.allclose(sqr1, raw_state_1['isentropic_density_of_precipitation_water'])
-
-	u1, v1 = hv.get_velocity_components(s1, su1, sv)
-	_, _, mtg1, _ = diags.get_diagnostic_variables(s1, pt)
-	raw_state_1['x_velocity_at_u_locations'] = u1
-	raw_state_1['y_velocity_at_v_locations'] = v1
-	raw_state_1['montgomery_potential'] = mtg1
-
-	raw_state_2 = ip_rk3.step_neglecting_vertical_motion(1, dt, raw_state_1, raw_tendencies)
-
-	s1_   = hb.from_physical_to_computational_domain(s1)
-	u1_   = hb.from_physical_to_computational_domain(u1)
-	mtg1_ = hb.from_physical_to_computational_domain(mtg1)
-	su1_  = hb.from_physical_to_computational_domain(su1)
-	sqv1_ = hb.from_physical_to_computational_domain(sqv1)
-	sqc1_ = hb.from_physical_to_computational_domain(sqc1)
-	sqr1_ = hb.from_physical_to_computational_domain(sqr1)
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (s1_[3:-2, :, :] + s1_[2:-3, :, :]) -
-									  8. * (s1_[4:-1, :, :] + s1_[1:-4, :, :]) +
-									  1. * (s1_[  5:, :, :] + s1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (s1_[3:-2, :, :] - s1_[2:-3, :, :]) -
-											   		 5. * (s1_[4:-1, :, :] - s1_[1:-4, :, :]) +
-											   		 1. * (s1_[  5:, :, :] - s1_[ :-5, :, :]))
-	s2 = s - 1./2. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'air_isentropic_density' in raw_state_2.keys()
-	assert np.allclose(s2, raw_state_2['air_isentropic_density'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (su1_[3:-2, :, :] + su1_[2:-3, :, :]) -
-									  8. * (su1_[4:-1, :, :] + su1_[1:-4, :, :]) +
-									  1. * (su1_[  5:, :, :] + su1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (su1_[3:-2, :, :] - su1_[2:-3, :, :]) -
-											   		 5. * (su1_[4:-1, :, :] - su1_[1:-4, :, :]) +
-											   		 1. * (su1_[  5:, :, :] - su1_[ :-5, :, :]))
-	su2 = su - 1./2. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :]) \
-		     - 1./2. * dt.seconds * s1_[3:-3, 3:-3, :] * (1./12. * mtg1_[1:-5, 3:-3, :] -
-												   		  8./12. * mtg1_[2:-4, 3:-3, :] +
-												   		  8./12. * mtg1_[4:-2, 3:-3, :] -
-												   		  1./12. * mtg1_[5:-1, 3:-3, :]) / dx
-	assert 'x_momentum_isentropic' in raw_state_2.keys()
-	assert np.allclose(su2, raw_state_2['x_momentum_isentropic'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (sqv1_[3:-2, :, :] + sqv1_[2:-3, :, :]) -
-									  8. * (sqv1_[4:-1, :, :] + sqv1_[1:-4, :, :]) +
-									  1. * (sqv1_[  5:, :, :] + sqv1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (sqv1_[3:-2, :, :] - sqv1_[2:-3, :, :]) -
-											   		 5. * (sqv1_[4:-1, :, :] - sqv1_[1:-4, :, :]) +
-											   		 1. * (sqv1_[  5:, :, :] - sqv1_[ :-5, :, :]))
-	sqv2 = sqv - 1./2. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_2.keys()
-	assert np.allclose(sqv2, raw_state_2['isentropic_density_of_water_vapor'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (sqc1_[3:-2, :, :] + sqc1_[2:-3, :, :]) -
-									  8. * (sqc1_[4:-1, :, :] + sqc1_[1:-4, :, :]) +
-									  1. * (sqc1_[  5:, :, :] + sqc1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (sqc1_[3:-2, :, :] - sqc1_[2:-3, :, :]) -
-											   		 5. * (sqc1_[4:-1, :, :] - sqc1_[1:-4, :, :]) +
-											   		 1. * (sqc1_[  5:, :, :] - sqc1_[ :-5, :, :]))
-	sqc2 = sqc - 1./2. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_2.keys()
-	assert np.allclose(sqc2, raw_state_2['isentropic_density_of_cloud_liquid_water'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (sqr1_[3:-2, :, :] + sqr1_[2:-3, :, :]) -
-									  8. * (sqr1_[4:-1, :, :] + sqr1_[1:-4, :, :]) +
-									  1. * (sqr1_[  5:, :, :] + sqr1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (sqr1_[3:-2, :, :] - sqr1_[2:-3, :, :]) -
-											   		 5. * (sqr1_[4:-1, :, :] - sqr1_[1:-4, :, :]) +
-											   		 1. * (sqr1_[  5:, :, :] - sqr1_[ :-5, :, :]))
-	sqr2 = sqr - 1./2. * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_2.keys()
-	assert np.allclose(sqr2, raw_state_2['isentropic_density_of_precipitation_water'])
-
-	u2, v2 = hv.get_velocity_components(s2, su2, sv)
-	_, _, mtg2, _ = diags.get_diagnostic_variables(s2, pt)
-	raw_state_2['x_velocity_at_u_locations'] = u2
-	raw_state_2['y_velocity_at_v_locations'] = v2
+	#
+	# stage 2
+	#
+	raw_state_2['x_velocity_at_u_locations'] = u
+	raw_state_2['y_velocity_at_v_locations'] = v
 	raw_state_2['montgomery_potential'] = mtg2
 
-	raw_state_3 = ip_rk3.step_neglecting_vertical_motion(2, dt, raw_state_2, raw_tendencies)
+	raw_state_3 = imp.stage_call(2, timestep, raw_state_2, raw_tendencies)
 
-	s2_   = hb.from_physical_to_computational_domain(s2)
-	u2_   = hb.from_physical_to_computational_domain(u2)
-	mtg2_ = hb.from_physical_to_computational_domain(mtg2)
-	su2_  = hb.from_physical_to_computational_domain(su2)
-	sqv2_ = hb.from_physical_to_computational_domain(sqv2)
-	sqc2_ = hb.from_physical_to_computational_domain(sqc2)
-	sqr2_ = hb.from_physical_to_computational_domain(sqr2)
+	assert 'time' in raw_state_3.keys()
+	compare_datetimes(raw_state_3['time'], raw_state['time'] + timestep)
 
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (s2_[3:-2, :, :] + s2_[2:-3, :, :]) -
-									  8. * (s2_[4:-1, :, :] + s2_[1:-4, :, :]) +
-									  1. * (s2_[  5:, :, :] + s2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (s2_[3:-2, :, :] - s2_[2:-3, :, :]) -
-													 5. * (s2_[4:-1, :, :] - s2_[1:-4, :, :]) +
-													 1. * (s2_[  5:, :, :] - s2_[ :-5, :, :]))
-	s3 = s - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'air_isentropic_density' in raw_state_3.keys()
-	assert np.allclose(s3, raw_state_3['air_isentropic_density'])
+	# isentropic density
+	flux_s_x_2, flux_s_y_2 = get_fifth_order_upwind_fluxes(u, v, s2)
+	s3 = np.zeros((nx, ny, nz), dtype=dtype)
+	s3[nb:-nb, nb:-nb] = s0[nb:-nb, nb:-nb] - dts * (
+		0.5 * (flux_s_x_0[nb:-nb, nb:-nb] - flux_s_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+		0.5 * (flux_s_y_0[nb:-nb, nb:-nb] - flux_s_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+		0.5 * (flux_s_x_1[nb:-nb, nb:-nb] - flux_s_x_1[nb-1:-nb-1, nb:-nb]) / dx -
+		0.5 * (flux_s_y_1[nb:-nb, nb:-nb] - flux_s_y_1[nb:-nb, nb-1:-nb-1]) / dy +
+		(flux_s_x_2[nb:-nb, nb:-nb] - flux_s_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+		(flux_s_y_2[nb:-nb, nb:-nb] - flux_s_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+		(s_tnd[nb:-nb, nb:-nb] if s_tnd is not None else 0.0)
+	)
+	hb.dmn_enforce_field(
+		s3, 'air_isentropic_density', 'kg m^-2 K^-1', time=state['time']+timestep
+	)
+	assert 'air_isentropic_density' in raw_state_3
+	compare_arrays(s3, raw_state_3['air_isentropic_density'])
 
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (su2_[3:-2, :, :] + su2_[2:-3, :, :]) -
-									  8. * (su2_[4:-1, :, :] + su2_[1:-4, :, :]) +
-									  1. * (su2_[  5:, :, :] + su2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (su2_[3:-2, :, :] - su2_[2:-3, :, :]) -
-													 5. * (su2_[4:-1, :, :] - su2_[1:-4, :, :]) +
-													 1. * (su2_[  5:, :, :] - su2_[ :-5, :, :]))
-	su3 = su - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :]) \
-		  	 - dt.seconds * s2_[3:-3, 3:-3, :] * (1./12. * mtg2_[1:-5, 3:-3, :] -
-												  8./12. * mtg2_[2:-4, 3:-3, :] +
-												  8./12. * mtg2_[4:-2, 3:-3, :] -
-												  1./12. * mtg2_[5:-1, 3:-3, :]) / dx
-	assert 'x_momentum_isentropic' in raw_state_3.keys()
-	assert np.allclose(su3[:, 3:4, :], raw_state_3['x_momentum_isentropic'][:, 3:4, :])
+	if moist:
+		# isentropic density of water vapor
+		flux_sqv_x_2, flux_sqv_y_2 = get_fifth_order_upwind_fluxes(u, v, sqv2)
+		sqv3 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqv3[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts * (
+			0.5 * (flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * ((s0 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0) -
+			0.5 * (flux_sqv_x_1[nb:-nb, nb:-nb] - flux_sqv_x_1[nb-1:-nb-1, nb:-nb]) / dx -
+			0.5 * (flux_sqv_y_1[nb:-nb, nb:-nb] - flux_sqv_y_1[nb:-nb, nb-1:-nb-1]) / dy +
+			0.5 * ((s1 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0) +
+			(flux_sqv_x_2[nb:-nb, nb:-nb] - flux_sqv_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sqv_y_2[nb:-nb, nb:-nb] - flux_sqv_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+			((s2 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_water_vapor' in raw_state_3
+		compare_arrays(sqv3, raw_state_3['isentropic_density_of_water_vapor'])
 
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (sqv2_[3:-2, :, :] + sqv2_[2:-3, :, :]) -
-									  8. * (sqv2_[4:-1, :, :] + sqv2_[1:-4, :, :]) +
-									  1. * (sqv2_[  5:, :, :] + sqv2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (sqv2_[3:-2, :, :] - sqv2_[2:-3, :, :]) -
-											 		 5. * (sqv2_[4:-1, :, :] - sqv2_[1:-4, :, :]) +
-											 		 1. * (sqv2_[  5:, :, :] - sqv2_[ :-5, :, :]))
-	sqv3 = sqv - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_3.keys()
-	assert np.allclose(sqv3, raw_state_3['isentropic_density_of_water_vapor'])
+		# isentropic density of cloud liquid water
+		flux_sqc_x_2, flux_sqc_y_2 = get_fifth_order_upwind_fluxes(u, v, sqc2)
+		sqc3 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqc3[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts * (
+			0.5 * (flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * ((s0 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0) -
+			0.5 * (flux_sqc_x_1[nb:-nb, nb:-nb] - flux_sqc_x_1[nb-1:-nb-1, nb:-nb]) / dx -
+			0.5 * (flux_sqc_y_1[nb:-nb, nb:-nb] - flux_sqc_y_1[nb:-nb, nb-1:-nb-1]) / dy +
+			0.5 * ((s1 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0) +
+			(flux_sqc_x_2[nb:-nb, nb:-nb] - flux_sqc_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sqc_y_2[nb:-nb, nb:-nb] - flux_sqc_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+			((s2 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_cloud_liquid_water' in raw_state_3
+		compare_arrays(sqc3, raw_state_3['isentropic_density_of_cloud_liquid_water'])
 
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (sqc2_[3:-2, :, :] + sqc2_[2:-3, :, :]) -
-									  8. * (sqc2_[4:-1, :, :] + sqc2_[1:-4, :, :]) +
-									  1. * (sqc2_[  5:, :, :] + sqc2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (sqc2_[3:-2, :, :] - sqc2_[2:-3, :, :]) -
-													 5. * (sqc2_[4:-1, :, :] - sqc2_[1:-4, :, :]) +
-													 1. * (sqc2_[  5:, :, :] - sqc2_[ :-5, :, :]))
-	sqc3 = sqc - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_3.keys()
-	assert np.allclose(sqc3, raw_state_3['isentropic_density_of_cloud_liquid_water'])
+		# isentropic density of precipitation water
+		flux_sqr_x_2, flux_sqr_y_2 = get_fifth_order_upwind_fluxes(u, v, sqr2)
+		sqr3 = np.zeros((nx, ny, nz), dtype=dtype)
+		sqr3[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts * (
+			0.5 * (flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * ((s0 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0) -
+			0.5 * (flux_sqr_x_1[nb:-nb, nb:-nb] - flux_sqr_x_1[nb-1:-nb-1, nb:-nb]) / dx -
+			0.5 * (flux_sqr_y_1[nb:-nb, nb:-nb] - flux_sqr_y_1[nb:-nb, nb-1:-nb-1]) / dy +
+			0.5 * ((s1 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0) +
+			(flux_sqr_x_2[nb:-nb, nb:-nb] - flux_sqr_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sqr_y_2[nb:-nb, nb:-nb] - flux_sqr_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+			((s2 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
+		)
+		assert 'isentropic_density_of_precipitation_water' in raw_state_3
+		compare_arrays(sqr3, raw_state_3['isentropic_density_of_precipitation_water'])
 
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (sqr2_[3:-2, :, :] + sqr2_[2:-3, :, :]) -
-									  8. * (sqr2_[4:-1, :, :] + sqr2_[1:-4, :, :]) +
-									  1. * (sqr2_[  5:, :, :] + sqr2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (sqr2_[3:-2, :, :] - sqr2_[2:-3, :, :]) -
-													 5. * (sqr2_[4:-1, :, :] - sqr2_[1:-4, :, :]) +
-													 1. * (sqr2_[  5:, :, :] - sqr2_[ :-5, :, :]))
-	sqr3 = sqr - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_3.keys()
-	assert np.allclose(sqr3, raw_state_3['isentropic_density_of_precipitation_water'])
+	# montgomery potential
+	mtg3 = np.zeros((nx, ny, nz), dtype=dtype)
+	ids.get_montgomery_potential(s3, pt.to_units('Pa').values.item(), mtg3)
+	compare_arrays(mtg3, imp._mtg_new)
 
+	# x-momentum
+	flux_su_x_2, flux_su_y_2 = get_fifth_order_upwind_fluxes(u, v, su2)
+	su3 = np.zeros((nx, ny, nz), dtype=dtype)
+	su3[nb:-nb, nb:-nb] = su0[nb:-nb, nb:-nb] - dts * (
+		0.5 * (
+			(flux_su_x_0[nb:-nb, nb:-nb] - flux_su_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_su_y_0[nb:-nb, nb:-nb] - flux_su_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(su_tnd[nb:-nb, nb:-nb] if su_tnd is not None else 0.0)
+		) - 0.5 * (
+			(flux_su_x_1[nb:-nb, nb:-nb] - flux_su_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_su_y_1[nb:-nb, nb:-nb] - flux_su_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			(su_tnd[nb:-nb, nb:-nb] if su_tnd is not None else 0.0)
+		) + (
+			(flux_su_x_2[nb:-nb, nb:-nb] - flux_su_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_su_y_2[nb:-nb, nb:-nb] - flux_su_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+			(su_tnd[nb:-nb, nb:-nb] if su_tnd is not None else 0.0)
+		) +
+		a * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb+1:-nb+1, nb:-nb] - mtg0[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		b * s2[nb:-nb, nb:-nb] *
+			(mtg2[nb+1:-nb+1, nb:-nb] - mtg2[nb-1:-nb-1, nb:-nb]) / (2.0 * dx) +
+		c * s3[nb:-nb, nb:-nb] *
+			(mtg3[nb+1:-nb+1, nb:-nb] - mtg3[nb-1:-nb-1, nb:-nb]) / (2.0 * dx)
+	)
+	assert 'x_momentum_isentropic' in raw_state_3
+	compare_arrays(su3, raw_state_3['x_momentum_isentropic'])
 
-def test_rk3(isentropic_moist_data):
-	grid, states = isentropic_moist_data
-	state = states[-1]
-	grid.update_topography(state['time'] - states[0]['time'])
-	backend = gt.mode.NUMPY
-
-	diags = IsentropicDiagnostics(grid)
-	hb = HorizontalBoundary.factory('periodic', grid)
-	hv = HorizontalVelocity(grid, dtype=np.float64)
-	rfv = RaindropFallVelocity(grid, backend)
-
-	ip_rk3 = IsentropicPrognostic.factory('rk3', grid, True, diags, hb,
-										  horizontal_flux_scheme='fifth_order_upwind',
-										  sedimentation_on=True,
-										  sedimentation_flux_scheme='second_order_upwind',
-										  raindrop_fall_velocity_diagnostic=rfv,
-										  backend=backend, dtype=np.float64)
-	a1, a2 = ip_rk3._alpha1, ip_rk3._alpha2
-	b21 = ip_rk3._beta21
-	g0, g1, g2 = ip_rk3._gamma0, ip_rk3._gamma1, ip_rk3._gamma2
-
-	dt = timedelta(seconds=10)
-
-	raw_state = make_raw_state(state)
-	raw_state['isentropic_density_of_water_vapor'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_wv]
-	raw_state['isentropic_density_of_cloud_liquid_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_clw]
-	raw_state['isentropic_density_of_precipitation_water'] = \
-		raw_state['air_isentropic_density'] * raw_state[mf_pw]
-
-	raw_tendencies = {}
-
-	raw_state_1 = ip_rk3.step_neglecting_vertical_motion(0, dt, raw_state, raw_tendencies)
-
-	dx  = grid.dx.values.item()
-	s   = raw_state['air_isentropic_density']
-	u   = raw_state['x_velocity_at_u_locations']
-	mtg = raw_state['montgomery_potential']
-	su  = raw_state['x_momentum_isentropic']
-	sv  = raw_state['y_momentum_isentropic']
-	sqv = raw_state['isentropic_density_of_water_vapor']
-	sqc = raw_state['isentropic_density_of_cloud_liquid_water']
-	sqr = raw_state['isentropic_density_of_precipitation_water']
-	pt  = raw_state['air_pressure_on_interface_levels'][0, 0, 0]
-
-	s_   = hb.from_physical_to_computational_domain(s)
-	u_   = hb.from_physical_to_computational_domain(u)
-	mtg_ = hb.from_physical_to_computational_domain(mtg)
-	su_  = hb.from_physical_to_computational_domain(su)
-	sqv_ = hb.from_physical_to_computational_domain(sqv)
-	sqc_ = hb.from_physical_to_computational_domain(sqc)
-	sqr_ = hb.from_physical_to_computational_domain(sqr)
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (s_[3:-2, :, :] + s_[2:-3, :, :]) -
-									8. * (s_[4:-1, :, :] + s_[1:-4, :, :]) +
-									1. * (s_[  5:, :, :] + s_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (s_[3:-2, :, :] - s_[2:-3, :, :]) -
-												   5. * (s_[4:-1, :, :] - s_[1:-4, :, :]) +
-												   1. * (s_[  5:, :, :] - s_[ :-5, :, :]))
-	k0_s = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	s1 = s + a1 * k0_s
-	assert 'air_isentropic_density' in raw_state_1.keys()
-	assert np.allclose(s1, raw_state_1['air_isentropic_density'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (su_[3:-2, :, :] + su_[2:-3, :, :]) -
-									8. * (su_[4:-1, :, :] + su_[1:-4, :, :]) +
-									1. * (su_[  5:, :, :] + su_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (su_[3:-2, :, :] - su_[2:-3, :, :]) -
-												   5. * (su_[4:-1, :, :] - su_[1:-4, :, :]) +
-												   1. * (su_[  5:, :, :] - su_[ :-5, :, :]))
-	k0_su = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :]) \
-		    - dt.seconds * s_[3:-3, 3:-3, :] * (1./12. * mtg_[1:-5, 3:-3, :] -
-												8./12. * mtg_[2:-4, 3:-3, :] +
-												8./12. * mtg_[4:-2, 3:-3, :] -
-												1./12. * mtg_[5:-1, 3:-3, :]) / dx
-	su1 = su + a1 * k0_su
-	assert 'x_momentum_isentropic' in raw_state_1.keys()
-	assert np.allclose(su1, raw_state_1['x_momentum_isentropic'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (sqv_[3:-2, :, :] + sqv_[2:-3, :, :]) -
-									8. * (sqv_[4:-1, :, :] + sqv_[1:-4, :, :]) +
-									1. * (sqv_[  5:, :, :] + sqv_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (sqv_[3:-2, :, :] - sqv_[2:-3, :, :]) -
-												   5. * (sqv_[4:-1, :, :] - sqv_[1:-4, :, :]) +
-												   1. * (sqv_[  5:, :, :] - sqv_[ :-5, :, :]))
-	k0_sqv = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	sqv1 = sqv + a1 * k0_sqv
-	assert 'isentropic_density_of_water_vapor' in raw_state_1.keys()
-	assert np.allclose(sqv1, raw_state_1['isentropic_density_of_water_vapor'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (sqc_[3:-2, :, :] + sqc_[2:-3, :, :]) -
-									8. * (sqc_[4:-1, :, :] + sqc_[1:-4, :, :]) +
-									1. * (sqc_[  5:, :, :] + sqc_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (sqc_[3:-2, :, :] - sqc_[2:-3, :, :]) -
-												   5. * (sqc_[4:-1, :, :] - sqc_[1:-4, :, :]) +
-												   1. * (sqc_[  5:, :, :] - sqc_[ :-5, :, :]))
-	k0_sqc = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	sqc1 = sqc + a1 * k0_sqc
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_1.keys()
-	assert np.allclose(sqc1, raw_state_1['isentropic_density_of_cloud_liquid_water'])
-
-	flux6 = u_[3:-3, :, :] / 60. * (37. * (sqr_[3:-2, :, :] + sqr_[2:-3, :, :]) -
-									8. * (sqr_[4:-1, :, :] + sqr_[1:-4, :, :]) +
-									1. * (sqr_[  5:, :, :] + sqr_[ :-5, :, :]))
-	flux = flux6 - np.abs(u_[3:-3, :, :]) / 60. * (10. * (sqr_[3:-2, :, :] - sqr_[2:-3, :, :]) -
-												   5. * (sqr_[4:-1, :, :] - sqr_[1:-4, :, :]) +
-												   1. * (sqr_[  5:, :, :] - sqr_[ :-5, :, :]))
-	k0_sqr = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	sqr1 = sqr + a1 * k0_sqr
-	assert 'isentropic_density_of_precipitation_water' in raw_state_1.keys()
-	assert np.allclose(sqr1, raw_state_1['isentropic_density_of_precipitation_water'])
-
-	u1, v1 = hv.get_velocity_components(s1, su1, sv)
-	_, _, mtg1, _ = diags.get_diagnostic_variables(s1, pt)
-	raw_state_1['x_velocity_at_u_locations'] = u1
-	raw_state_1['y_velocity_at_v_locations'] = v1
-	raw_state_1['montgomery_potential'] = mtg1
-
-	raw_state_2 = ip_rk3.step_neglecting_vertical_motion(1, dt, raw_state_1, raw_tendencies)
-
-	s1_   = hb.from_physical_to_computational_domain(s1)
-	u1_   = hb.from_physical_to_computational_domain(u1)
-	mtg1_ = hb.from_physical_to_computational_domain(mtg1)
-	su1_  = hb.from_physical_to_computational_domain(su1)
-	sqv1_ = hb.from_physical_to_computational_domain(sqv1)
-	sqc1_ = hb.from_physical_to_computational_domain(sqc1)
-	sqr1_ = hb.from_physical_to_computational_domain(sqr1)
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (s1_[3:-2, :, :] + s1_[2:-3, :, :]) -
-									 8. * (s1_[4:-1, :, :] + s1_[1:-4, :, :]) +
-									 1. * (s1_[  5:, :, :] + s1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (s1_[3:-2, :, :] - s1_[2:-3, :, :]) -
-													5. * (s1_[4:-1, :, :] - s1_[1:-4, :, :]) +
-													1. * (s1_[  5:, :, :] - s1_[ :-5, :, :]))
-	k1_s = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	s2 = s + b21 * k0_s + (a2 - b21) * k1_s
-	assert 'air_isentropic_density' in raw_state_2.keys()
-	assert np.allclose(s2, raw_state_2['air_isentropic_density'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (su1_[3:-2, :, :] + su1_[2:-3, :, :]) -
-									 8. * (su1_[4:-1, :, :] + su1_[1:-4, :, :]) +
-									 1. * (su1_[  5:, :, :] + su1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (su1_[3:-2, :, :] - su1_[2:-3, :, :]) -
-													5. * (su1_[4:-1, :, :] - su1_[1:-4, :, :]) +
-													1. * (su1_[  5:, :, :] - su1_[ :-5, :, :]))
-	k1_su = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :]) \
-		    - dt.seconds * s1_[3:-3, 3:-3, :] * (1./12. * mtg1_[1:-5, 3:-3, :] -
-												 8./12. * mtg1_[2:-4, 3:-3, :] +
-												 8./12. * mtg1_[4:-2, 3:-3, :] -
-												 1./12. * mtg1_[5:-1, 3:-3, :]) / dx
-	su2 = su + b21 * k0_su + (a2 - b21) * k1_su
-	assert 'x_momentum_isentropic' in raw_state_2.keys()
-	assert np.allclose(su2, raw_state_2['x_momentum_isentropic'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (sqv1_[3:-2, :, :] + sqv1_[2:-3, :, :]) -
-									 8. * (sqv1_[4:-1, :, :] + sqv1_[1:-4, :, :]) +
-									 1. * (sqv1_[  5:, :, :] + sqv1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (sqv1_[3:-2, :, :] - sqv1_[2:-3, :, :]) -
-													5. * (sqv1_[4:-1, :, :] - sqv1_[1:-4, :, :]) +
-													1. * (sqv1_[  5:, :, :] - sqv1_[ :-5, :, :]))
-	k1_sqv = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	sqv2 = sqv + b21 * k0_sqv + (a2 - b21) * k1_sqv
-	assert 'isentropic_density_of_water_vapor' in raw_state_2.keys()
-	assert np.allclose(sqv2, raw_state_2['isentropic_density_of_water_vapor'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (sqc1_[3:-2, :, :] + sqc1_[2:-3, :, :]) -
-									 8. * (sqc1_[4:-1, :, :] + sqc1_[1:-4, :, :]) +
-									 1. * (sqc1_[  5:, :, :] + sqc1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (sqc1_[3:-2, :, :] - sqc1_[2:-3, :, :]) -
-													5. * (sqc1_[4:-1, :, :] - sqc1_[1:-4, :, :]) +
-													1. * (sqc1_[  5:, :, :] - sqc1_[ :-5, :, :]))
-	k1_sqc = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	sqc2 = sqc + b21 * k0_sqc + (a2 - b21) * k1_sqc
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_2.keys()
-	assert np.allclose(sqc2, raw_state_2['isentropic_density_of_cloud_liquid_water'])
-
-	flux6 = u1_[3:-3, :, :] / 60. * (37. * (sqr1_[3:-2, :, :] + sqr1_[2:-3, :, :]) -
-									 8. * (sqr1_[4:-1, :, :] + sqr1_[1:-4, :, :]) +
-									 1. * (sqr1_[  5:, :, :] + sqr1_[ :-5, :, :]))
-	flux = flux6 - np.abs(u1_[3:-3, :, :]) / 60. * (10. * (sqr1_[3:-2, :, :] - sqr1_[2:-3, :, :]) -
-													5. * (sqr1_[4:-1, :, :] - sqr1_[1:-4, :, :]) +
-													1. * (sqr1_[  5:, :, :] - sqr1_[ :-5, :, :]))
-	k1_sqr = - dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	sqr2 = sqr + b21 * k0_sqr + (a2 - b21) * k1_sqr
-	assert 'isentropic_density_of_precipitation_water' in raw_state_2.keys()
-	assert np.allclose(sqr2, raw_state_2['isentropic_density_of_precipitation_water'])
-
-	u2, v2 = hv.get_velocity_components(s2, su2, sv)
-	_, _, mtg2, _ = diags.get_diagnostic_variables(s2, pt)
-	raw_state_2['x_velocity_at_u_locations'] = u2
-	raw_state_2['y_velocity_at_v_locations'] = v2
-	raw_state_2['montgomery_potential'] = mtg2
-
-	raw_state_3 = ip_rk3.step_neglecting_vertical_motion(2, dt, raw_state_2, raw_tendencies)
-
-	s2_   = hb.from_physical_to_computational_domain(s2)
-	u2_   = hb.from_physical_to_computational_domain(u2)
-	mtg2_ = hb.from_physical_to_computational_domain(mtg2)
-	su2_  = hb.from_physical_to_computational_domain(su2)
-	sqv2_ = hb.from_physical_to_computational_domain(sqv2)
-	sqc2_ = hb.from_physical_to_computational_domain(sqc2)
-	sqr2_ = hb.from_physical_to_computational_domain(sqr2)
-
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (s2_[3:-2, :, :] + s2_[2:-3, :, :]) -
-									 8. * (s2_[4:-1, :, :] + s2_[1:-4, :, :]) +
-									 1. * (s2_[  5:, :, :] + s2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (s2_[3:-2, :, :] - s2_[2:-3, :, :]) -
-													5. * (s2_[4:-1, :, :] - s2_[1:-4, :, :]) +
-													1. * (s2_[  5:, :, :] - s2_[ :-5, :, :]))
-	s3 = s + g0 * k0_s + g1 * k1_s \
-		 - g2 * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'air_isentropic_density' in raw_state_3.keys()
-	assert np.allclose(s3, raw_state_3['air_isentropic_density'])
-
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (su2_[3:-2, :, :] + su2_[2:-3, :, :]) -
-									 8. * (su2_[4:-1, :, :] + su2_[1:-4, :, :]) +
-									 1. * (su2_[  5:, :, :] + su2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (su2_[3:-2, :, :] - su2_[2:-3, :, :]) -
-													5. * (su2_[4:-1, :, :] - su2_[1:-4, :, :]) +
-													1. * (su2_[  5:, :, :] - su2_[ :-5, :, :]))
-	su3 = su + g0 * k0_su + g1 * k1_su \
-		  - g2 * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :]) \
-		  - g2 * dt.seconds * s2_[3:-3, 3:-3, :] * (1./12. * mtg2_[1:-5, 3:-3, :] -
-											   		8./12. * mtg2_[2:-4, 3:-3, :] +
-											   		8./12. * mtg2_[4:-2, 3:-3, :] -
-											   		1./12. * mtg2_[5:-1, 3:-3, :]) / dx
-	assert 'x_momentum_isentropic' in raw_state_3.keys()
-	assert np.allclose(su3[:, 3:4, :], raw_state_3['x_momentum_isentropic'][:, 3:4, :])
-
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (sqv2_[3:-2, :, :] + sqv2_[2:-3, :, :]) -
-									 8. * (sqv2_[4:-1, :, :] + sqv2_[1:-4, :, :]) +
-									 1. * (sqv2_[  5:, :, :] + sqv2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (sqv2_[3:-2, :, :] - sqv2_[2:-3, :, :]) -
-													5. * (sqv2_[4:-1, :, :] - sqv2_[1:-4, :, :]) +
-													1. * (sqv2_[  5:, :, :] - sqv2_[ :-5, :, :]))
-	sqv3 = sqv + g0 * k0_sqv + g1 * k1_sqv \
-		   - g2 * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_water_vapor' in raw_state_3.keys()
-	assert np.allclose(sqv3, raw_state_3['isentropic_density_of_water_vapor'])
-
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (sqc2_[3:-2, :, :] + sqc2_[2:-3, :, :]) -
-									 8. * (sqc2_[4:-1, :, :] + sqc2_[1:-4, :, :]) +
-									 1. * (sqc2_[  5:, :, :] + sqc2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (sqc2_[3:-2, :, :] - sqc2_[2:-3, :, :]) -
-													5. * (sqc2_[4:-1, :, :] - sqc2_[1:-4, :, :]) +
-													1. * (sqc2_[  5:, :, :] - sqc2_[ :-5, :, :]))
-	sqc3 = sqc + g0 * k0_sqc + g1 * k1_sqc \
-		   - g2 * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_cloud_liquid_water' in raw_state_3.keys()
-	assert np.allclose(sqc3, raw_state_3['isentropic_density_of_cloud_liquid_water'])
-
-	flux6 = u2_[3:-3, :, :] / 60. * (37. * (sqr2_[3:-2, :, :] + sqr2_[2:-3, :, :]) -
-									 8. * (sqr2_[4:-1, :, :] + sqr2_[1:-4, :, :]) +
-									 1. * (sqr2_[  5:, :, :] + sqr2_[ :-5, :, :]))
-	flux = flux6 - np.abs(u2_[3:-3, :, :]) / 60. * (10. * (sqr2_[3:-2, :, :] - sqr2_[2:-3, :, :]) -
-													5. * (sqr2_[4:-1, :, :] - sqr2_[1:-4, :, :]) +
-													1. * (sqr2_[  5:, :, :] - sqr2_[ :-5, :, :]))
-	sqr3 = sqr + g0 * k0_sqr + g1 * k1_sqr \
-		   - g2 * dt.seconds / dx * (flux[1:, 3:-3, :] - flux[:-1, 3:-3, :])
-	assert 'isentropic_density_of_precipitation_water' in raw_state_3.keys()
-	assert np.allclose(sqr3, raw_state_3['isentropic_density_of_precipitation_water'])
+	# y-momentum
+	flux_sv_x_2, flux_sv_y_2 = get_fifth_order_upwind_fluxes(u, v, sv2)
+	sv3 = np.zeros((nx, ny, nz), dtype=dtype)
+	sv3[nb:-nb, nb:-nb] = sv0[nb:-nb, nb:-nb] - dts * (
+		0.5 * (
+			(flux_sv_x_0[nb:-nb, nb:-nb] - flux_sv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sv_y_0[nb:-nb, nb:-nb] - flux_sv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
+			(sv_tnd[nb:-nb, nb:-nb] if sv_tnd is not None else 0.0)
+		) - 0.5 * (
+			(flux_sv_x_1[nb:-nb, nb:-nb] - flux_sv_x_1[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sv_y_1[nb:-nb, nb:-nb] - flux_sv_y_1[nb:-nb, nb-1:-nb-1]) / dy -
+			(sv_tnd[nb:-nb, nb:-nb] if sv_tnd is not None else 0.0)
+		) + (
+			(flux_sv_x_2[nb:-nb, nb:-nb] - flux_sv_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sv_y_2[nb:-nb, nb:-nb] - flux_sv_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+			(sv_tnd[nb:-nb, nb:-nb] if sv_tnd is not None else 0.0)
+		) +
+		a * s0[nb:-nb, nb:-nb] *
+			(mtg0[nb:-nb, nb+1:-nb+1] - mtg0[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		b * s2[nb:-nb, nb:-nb] *
+			(mtg2[nb:-nb, nb+1:-nb+1] - mtg2[nb:-nb, nb-1:-nb-1]) / (2.0 * dy) +
+		c * s3[nb:-nb, nb:-nb] *
+			(mtg3[nb:-nb, nb+1:-nb+1] - mtg3[nb:-nb, nb-1:-nb-1]) / (2.0 * dy)
+	)
+	assert 'y_momentum_isentropic' in raw_state_3
+	compare_arrays(sv3, raw_state_3['y_momentum_isentropic'])
 
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#from conftest import isentropic_moist_data
-	#test_leapfrog(isentropic_moist_data())
-

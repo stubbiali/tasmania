@@ -30,7 +30,7 @@
 		"cbar_center": 0,
 		"cbar_half_width": 10,
 		"cbar_x_label": "",
-		"cbar_y_label": "Discrepancy [cm s$^{-1}$]",
+		"cbar_y_label": "Bias [cm s$^{-1}$]",
 		"cbar_title": "",
 		"cbar_orientation": "vertical",
 		"cbar_ax": [3, 4, 5],
