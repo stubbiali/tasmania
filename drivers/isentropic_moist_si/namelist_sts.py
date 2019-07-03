@@ -35,7 +35,7 @@ domain_x = DataArray([-176, 176], dims='x', attrs={'units': 'km'}).to_units('m')
 nx       = 41
 domain_y = DataArray([-176, 176], dims='y', attrs={'units': 'km'}).to_units('m')
 ny       = 41
-domain_z = DataArray([345, 285], dims='potential_temperature', attrs={'units': 'K'})
+domain_z = DataArray([360, 300], dims='potential_temperature', attrs={'units': 'K'})
 nz       = 60
 
 # horizontal boundary
@@ -64,6 +64,9 @@ relative_humidity = 0.9
 time_integration_scheme 		= 'rk3ws_si'
 substeps                		= 0
 eps 							= 0.5
+a 								= 0.375
+b 								= 0.375
+c 								= 0.25
 physics_time_integration_scheme = 'rk2'
 
 # advection
@@ -114,15 +117,16 @@ coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 # microphysics
 precipitation			  = True
 sedimentation    		  = True
-sedimentation_flux_scheme = 'second_order_upwind'
-rain_evaporation 		  = True
+sedimentation_flux_scheme = 'first_order_upwind'
+rain_evaporation 		  = False
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
 collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
+update_frequency 		  = 0
 
 # simulation length
-timestep = timedelta(seconds=45)
-niter    = int(2*60*60 / timestep.total_seconds())
+timestep = timedelta(seconds=56)
+niter    = int(1*60*60 / timestep.total_seconds())
 
 # output
 filename = \
@@ -138,6 +142,7 @@ filename = \
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
+filename = None
 store_names = (
 	'accumulated_precipitation',
 	'air_isentropic_density',
@@ -149,8 +154,8 @@ store_names = (
 	'x_momentum_isentropic',
 	'y_momentum_isentropic'
 )
-save_frequency = 2
-print_dry_frequency = 2
-print_moist_frequency = 2
+save_frequency = -1
+print_dry_frequency = -1
+print_moist_frequency = 1
 plot_frequency = -1
 

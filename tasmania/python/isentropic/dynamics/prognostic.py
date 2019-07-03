@@ -166,8 +166,9 @@ class IsentropicPrognostic:
 			The time stepping method to implement. Available options are:
 
 				* 'forward_euler_si', for the semi-implicit forward Euler scheme;
-				* 'centered', for the semi-implicit centered scheme;
-				* 'rk3ws', for the semi-implicit three-stages RK scheme.
+				* 'centered_si', for the semi-implicit centered scheme;
+				* 'rk3ws_si', for the semi-implicit three-stages RK scheme;
+				* 'sil3', for the semi-implicit Lorenz three cycle scheme.
 
 		horizontal_flux_scheme : str
 			The numerical horizontal flux scheme to implement.
@@ -193,8 +194,10 @@ class IsentropicPrognostic:
 			An instance of the derived class implementing ``time_integration_scheme``.
 		"""
 		from .implementations.prognostic import \
-			ForwardEulerSI, CenteredSI, RK3WSSI
+			ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
 		args = (horizontal_flux_scheme,	grid, hb, moist, backend, dtype)
+
+		available = ('forward_euler_si', 'centered_si', 'rk3ws_si', 'sil3')
 
 		if time_integration_scheme == 'forward_euler_si':
 			return ForwardEulerSI(*args, **kwargs)
@@ -202,12 +205,12 @@ class IsentropicPrognostic:
 			return CenteredSI(*args, **kwargs)
 		elif time_integration_scheme == 'rk3ws_si':
 			return RK3WSSI(*args, **kwargs)
+		elif time_integration_scheme == 'sil3':
+			return SIL3(*args, **kwargs)
 		else:
 			raise ValueError(
-				"Unknown time integration scheme {}. Available options are: "
-				"forward_euler_si, centered_si, rk3ws_si.".format(
-					time_integration_scheme
-				)
+				"Unknown time integration scheme {}. Available options are "
+				"{}.".format(time_integration_scheme, ','.join(available))
 			)
 
 	def _stencils_allocate(self, tendencies):
@@ -225,12 +228,12 @@ class IsentropicPrognostic:
 
 		# allocate the Numpy arrays which will store the current values
 		# for the model variables
-		self._s_now	  = np.zeros((  nx,	ny, nz), dtype=dtype)
-		self._u_now	  = np.zeros((nx+1,	ny, nz), dtype=dtype)
+		self._s_now	  = np.zeros((  nx,	  ny, nz), dtype=dtype)
+		self._u_now	  = np.zeros((nx+1,	  ny, nz), dtype=dtype)
 		self._v_now	  = np.zeros((  nx, ny+1, nz), dtype=dtype)
-		self._mtg_now = np.zeros((  nx,  ny, nz), dtype=dtype)
-		self._su_now  = np.zeros((  nx,	ny, nz), dtype=dtype)
-		self._sv_now  = np.zeros((  nx,	ny, nz), dtype=dtype)
+		self._mtg_now = np.zeros((  nx,   ny, nz), dtype=dtype)
+		self._su_now  = np.zeros((  nx,	  ny, nz), dtype=dtype)
+		self._sv_now  = np.zeros((  nx,	  ny, nz), dtype=dtype)
 		if self._moist:
 			self._sqv_now = np.zeros((nx, ny, nz), dtype=dtype)
 			self._sqc_now = np.zeros((nx, ny, nz), dtype=dtype)

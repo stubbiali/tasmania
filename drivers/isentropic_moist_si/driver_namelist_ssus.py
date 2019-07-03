@@ -95,7 +95,9 @@ if nl.coriolis:
 		coriolis_parameter=nl.coriolis_parameter,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args_before_dynamics.append({'component': cf, 'time_integrator': ptis, 'substeps': 1})
+	args_before_dynamics.append({
+		'component': cf, 'time_integrator': 'forward_euler', 'substeps': 1
+	})
 	args_after_dynamics.append({'component': cf, 'time_integrator': ptis, 'substeps': 1})
 
 if nl.smooth:
@@ -127,7 +129,9 @@ if nl.turbulence:
 		domain, 'numerical', smagorinsky_constant=nl.smagorinsky_constant,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args_before_dynamics.append({'component': turb, 'time_integrator': ptis, 'substeps': 1})
+	args_before_dynamics.append({
+		'component': turb, 'time_integrator': 'forward_euler', 'substeps': 1
+	})
 	args_after_dynamics.append({'component': turb, 'time_integrator': ptis, 'substeps': 1})
 
 # component calculating the microphysics
@@ -140,8 +144,23 @@ ke = taz.Kessler(
 	collection_rate=nl.collection_rate,
 	backend=nl.backend, dtype=nl.dtype,
 )
-args_before_dynamics.append({'component': ke, 'time_integrator': 'forward_euler', 'substeps': 1})
-args_after_dynamics.append({'component': ke, 'time_integrator': 'forward_euler', 'substeps': 1})
+if nl.update_frequency > 0:
+	from sympl import UpdateFrequencyWrapper
+	args_before_dynamics.append({
+		'component': UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
+		'time_integrator': 'forward_euler', 'substeps': 1
+	})
+	args_after_dynamics.append({
+		'component': UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
+		'time_integrator': ptis, 'substeps': 1
+	})
+else:
+	args_before_dynamics.append({
+		'component': ke, 'time_integrator': 'forward_euler', 'substeps': 1
+	})
+	args_after_dynamics.append({
+		'component': ke, 'time_integrator': ptis, 'substeps': 1
+	})
 
 # component clipping the negative values of the water species
 water_species_names = (
@@ -177,10 +196,12 @@ if nl.precipitation:
 		backend=nl.backend, dtype=nl.dtype
 	)
 	args_before_dynamics.append({
-		'component': taz.ConcurrentCoupling(rfv, sd), 'time_integrator': ptis, 'substeps': 1
+		'component': taz.ConcurrentCoupling(rfv, sd),
+		'time_integrator': 'forward_euler', 'substeps': 1
 	})
 	args_after_dynamics.append({
-		'component': taz.ConcurrentCoupling(rfv, sd), 'time_integrator': ptis, 'substeps': 1
+		'component': taz.ConcurrentCoupling(rfv, sd),
+		'time_integrator': ptis, 'substeps': 1
 	})
 
 # component performing the saturation adjustment

@@ -63,7 +63,7 @@ dycore = taz.IsentropicDynamicalCore(
 	# numerical scheme
 	time_integration_scheme=nl.time_integration_scheme,
 	horizontal_flux_scheme=nl.horizontal_flux_scheme,
-	time_integration_properties={'pt': pt, 'eps': nl.eps},
+	time_integration_properties={'pt': pt, 'eps': nl.eps, 'a': nl.a, 'b': nl.b, 'c': nl.c},
 	# vertical damping
 	damp=nl.damp, damp_type=nl.damp_type, damp_depth=nl.damp_depth,
 	damp_max=nl.damp_max, damp_at_every_stage=nl.damp_at_every_stage,
@@ -143,10 +143,16 @@ ke = taz.Kessler(
 	collection_rate=nl.collection_rate,
 	backend=nl.backend, dtype=nl.dtype,
 )
-args.append({
-	'component': ke,  #taz.ConcurrentCoupling(clp, ke, execution_policy='serial'),
-	'time_integrator': 'forward_euler', 'substeps': 1
-})
+if nl.update_frequency > 0:
+	from sympl import UpdateFrequencyWrapper
+	args.append({
+		'component': UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
+		'time_integrator': ptis, 'substeps': 1
+	})
+else:
+	args.append({
+		'component': ke, 'time_integrator': ptis, 'substeps': 1
+	})
 
 if nl.rain_evaporation:
 	# component integrating the vertical flux
