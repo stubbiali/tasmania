@@ -28,12 +28,6 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.dwarfs.diagnostics import \
 	HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
@@ -44,15 +38,28 @@ from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as RawIsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.minimal_dycore import IsentropicMinimalDynamicalCore
-from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 from tasmania.python.isentropic.physics.pressure_gradient import \
 	IsentropicConservativePressureGradient
-from tasmania.python.physics.microphysics import \
-	Kessler, SaturationAdjustmentKessler, RaindropFallVelocity, Sedimentation
-from test_isentropic_minimal_horizontal_fluxes import get_fifth_order_upwind_fluxes
-from test_isentropic_minimal_prognostic import \
-	compare_datetimes, forward_euler_step
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_isentropic_minimal_horizontal_fluxes import \
+		get_fifth_order_upwind_fluxes
+	from .test_isentropic_minimal_prognostic import \
+		forward_euler_step
+	from .utils import compare_arrays, compare_datetimes, \
+		st_floats, st_one_of, st_domain, \
+		st_isentropic_state_f
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_isentropic_minimal_horizontal_fluxes import \
+		get_fifth_order_upwind_fluxes
+	from test_isentropic_minimal_prognostic import \
+		forward_euler_step
+	from utils import compare_arrays, compare_datetimes, \
+		st_floats, st_one_of, st_domain, \
+		st_isentropic_state_f
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -61,38 +68,38 @@ mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 def rk3ws_stage(
-	stage, timestep, raw_state, raw_state_tmp, raw_state_ref, raw_tendencies, raw_state_out,
-	names, field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs,
+	stage, timestep, raw_state_now, raw_state_int, raw_state_ref, raw_tendencies,
+	raw_state_new, field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs
 ):
-	u_tmp = raw_state_tmp['x_velocity_at_u_locations']
-	v_tmp = raw_state_tmp['y_velocity_at_v_locations']
+	u_int = raw_state_int['x_velocity_at_u_locations']
+	v_int = raw_state_int['y_velocity_at_v_locations']
 
 	if moist:
 		wc.get_density_of_water_constituent(
-			raw_state_tmp['air_isentropic_density'],
-			raw_state_tmp[mfwv],
-			raw_state_tmp['isentropic_density_of_water_vapor']
+			raw_state_int['air_isentropic_density'],
+			raw_state_int[mfwv],
+			raw_state_int['isentropic_density_of_water_vapor']
 		)
 		wc.get_density_of_water_constituent(
-			raw_state_tmp['air_isentropic_density'],
-			raw_state_tmp[mfcw],
-			raw_state_tmp['isentropic_density_of_cloud_liquid_water']
+			raw_state_int['air_isentropic_density'],
+			raw_state_int[mfcw],
+			raw_state_int['isentropic_density_of_cloud_liquid_water']
 		)
 		wc.get_density_of_water_constituent(
-			raw_state_tmp['air_isentropic_density'],
-			raw_state_tmp[mfpw],
-			raw_state_tmp['isentropic_density_of_precipitation_water']
+			raw_state_int['air_isentropic_density'],
+			raw_state_int[mfpw],
+			raw_state_int['isentropic_density_of_precipitation_water']
 		)
 
 		if mfwv in raw_tendencies:
 			raw_tendencies['isentropic_density_of_water_vapor'] = \
-				raw_state_tmp['air_isentropic_density'] * raw_tendencies[mfwv]
+				raw_state_int['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
 			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
-				raw_state_tmp['air_isentropic_density'] * raw_tendencies[mfcw]
+				raw_state_int['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
 			raw_tendencies['isentropic_density_of_precipitation_water'] = \
-				raw_state_tmp['air_isentropic_density'] * raw_tendencies[mfpw]
+				raw_state_int['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	if stage == 0:
 		fraction = 1.0/3.0
@@ -101,79 +108,94 @@ def rk3ws_stage(
 	else:
 		fraction = 1.0
 
-	raw_state_out['time'] = raw_state['time'] + fraction*timestep
+	raw_state_new['time'] = raw_state_now['time'] + fraction * timestep
 
-	dt = timestep.total_seconds()
+	dt = fraction * timestep.total_seconds()
+
+	names = [
+		'air_isentropic_density',
+		'x_momentum_isentropic',
+		'y_momentum_isentropic'
+	]
+	if moist:
+		names.append('isentropic_density_of_water_vapor')
+		names.append('isentropic_density_of_cloud_liquid_water')
+		names.append('isentropic_density_of_precipitation_water')
 
 	for name in names:
-		phi = raw_state[name]
-		phi_tmp = raw_state_tmp[name]
+		phi_now = raw_state_now[name]
+		phi_int = raw_state_int[name]
 		phi_tnd = raw_tendencies.get(name, None)
-		phi_out = raw_state_out[name]
+		phi_new = raw_state_new[name]
 		forward_euler_step(
-			get_fifth_order_upwind_fluxes, 'xy', dx, dy, fraction*dt,
-			u_tmp, v_tmp, phi, phi_tmp, phi_tnd, phi_out
+			get_fifth_order_upwind_fluxes, 'xy', dx, dy, dt,
+			u_int, v_int, phi_now, phi_int, phi_tnd, phi_new
 		)
 
 	if moist:
 		wc.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_out['air_isentropic_density'],
-			raw_state_out['isentropic_density_of_water_vapor'],
-			raw_state_out[mfwv], clipping=True
+			raw_state_new['air_isentropic_density'],
+			raw_state_new['isentropic_density_of_water_vapor'],
+			raw_state_new[mfwv], clipping=True
 		)
 		wc.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_out['air_isentropic_density'],
-			raw_state_out['isentropic_density_of_cloud_liquid_water'],
-			raw_state_out[mfcw], clipping=True
+			raw_state_new['air_isentropic_density'],
+			raw_state_new['isentropic_density_of_cloud_liquid_water'],
+			raw_state_new[mfcw], clipping=True
 		)
 		wc.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_out['air_isentropic_density'],
-			raw_state_out['isentropic_density_of_precipitation_water'],
-			raw_state_out[mfpw], clipping=True
+			raw_state_new['air_isentropic_density'],
+			raw_state_new['isentropic_density_of_precipitation_water'],
+			raw_state_new[mfpw], clipping=True
 		)
 
-	hb.dmn_enforce_raw(raw_state_out, field_properties=field_properties)
+	hb.dmn_enforce_raw(raw_state_new, field_properties=field_properties)
 
 	if damp:
-		for name in field_properties:
-			phi_now = raw_state[name]
-			phi_new = raw_state_out[name]
+		names = (
+			'air_isentropic_density',
+			'x_momentum_isentropic',
+			'y_momentum_isentropic'
+		)
+		for name in names:
+			phi_now = raw_state_now[name]
+			phi_new = raw_state_new[name]
 			phi_ref = raw_state_ref[name]
-			phi_out = raw_state_out[name]
+			phi_out = raw_state_new[name]
 			vd(timestep, phi_now, phi_new, phi_ref, phi_out)
 
 	if smooth:
 		for name in field_properties:
-			phi = raw_state_out[name]
-			phi_out = raw_state_out[name]
+			phi = raw_state_new[name]
+			phi_out = raw_state_new[name]
 			hs(phi, phi_out)
 			hb.dmn_enforce_field(
 				phi_out, field_name=name,
 				field_units=field_properties[name]['units'],
-				time=raw_state_out['time']
+				time=raw_state_new['time']
 			)
 
 	hv.get_velocity_components(
-		raw_state_out['air_isentropic_density'],
-		raw_state_out['x_momentum_isentropic'],
-		raw_state_out['y_momentum_isentropic'],
-		raw_state_out['x_velocity_at_u_locations'],
-		raw_state_out['y_velocity_at_v_locations'],
+		raw_state_new['air_isentropic_density'],
+		raw_state_new['x_momentum_isentropic'],
+		raw_state_new['y_momentum_isentropic'],
+		raw_state_new['x_velocity_at_u_locations'],
+		raw_state_new['y_velocity_at_v_locations'],
 	)
 	hb.dmn_set_outermost_layers_x(
-		raw_state_out['x_velocity_at_u_locations'],
+		raw_state_new['x_velocity_at_u_locations'],
 		field_name='x_velocity_at_u_locations', field_units='m s^-1',
-		time=raw_state_out['time']
+		time=raw_state_new['time']
 	)
 	hb.dmn_set_outermost_layers_y(
-		raw_state_out['y_velocity_at_v_locations'],
+		raw_state_new['y_velocity_at_v_locations'],
 		field_name='y_velocity_at_v_locations', field_units='m s^-1',
-		time=raw_state_out['time']
+		time=raw_state_new['time']
 	)
 
 
 def rk3ws_step(
-	domain, moist, timestep, raw_state, raw_tendencies, hv, wc,
+	domain, moist, timestep, raw_state_0, raw_tendencies, hv, wc,
 	damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs,
 ):
 	grid, hb = domain.numerical_grid, domain.horizontal_boundary
@@ -182,26 +204,16 @@ def rk3ws_step(
 	dtype = grid.x.dtype
 
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state_0['isentropic_density_of_water_vapor'] = \
 			np.zeros((nx, ny, nz), dtype=dtype)
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state_0['isentropic_density_of_cloud_liquid_water'] = \
 			np.zeros((nx, ny, nz), dtype=dtype)
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state_0['isentropic_density_of_precipitation_water'] = \
 			np.zeros((nx, ny, nz), dtype=dtype)
 
-	raw_state_0 = deepcopy(raw_state)
-	raw_state_1 = deepcopy(raw_state)
-	raw_state_2 = deepcopy(raw_state)
-
-	names = [
-		'air_isentropic_density',
-		'x_momentum_isentropic',
-		'y_momentum_isentropic',
-	]
-	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+	raw_state_1 = deepcopy(raw_state_0)
+	raw_state_2 = deepcopy(raw_state_0)
+	raw_state_3 = deepcopy(raw_state_0)
 
 	field_properties = {
 		'air_isentropic_density': {'units': 'kg m^-2 K^-1'},
@@ -225,23 +237,23 @@ def rk3ws_step(
 	_damp = damp and damp_at_every_stage
 	_smooth = smooth and smooth_at_every_stage
 	rk3ws_stage(
-		0, timestep, raw_state, raw_state, raw_state_ref, raw_tendencies, raw_state_0,
-		names, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs
+		0, timestep, raw_state_0, raw_state_0, raw_state_ref, raw_tendencies,
+		raw_state_1, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs
 	)
 
 	# stage 1
 	rk3ws_stage(
-		1, timestep, raw_state, raw_state_0, raw_state_ref, raw_tendencies, raw_state_1,
-		names, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs
+		1, timestep, raw_state_0, raw_state_1, raw_state_ref, raw_tendencies,
+		raw_state_2, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs
 	)
 
 	# stage 2
 	rk3ws_stage(
-		2, timestep, raw_state, raw_state_1, raw_state_ref, raw_tendencies, raw_state_2,
-		names, field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs
+		2, timestep, raw_state_0, raw_state_2, raw_state_ref, raw_tendencies,
+		raw_state_3, field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs
 	)
 
-	return raw_state_2
+	return raw_state_3
 
 
 @settings(
@@ -264,7 +276,7 @@ def test1(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 20), yaxis_length=(7, 20), nb=3),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
 		label="domain"
 	)
 	grid = domain.numerical_grid
@@ -272,7 +284,7 @@ def test1(data):
 	assume(hb.type != 'dirichlet')
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 	timestep = data.draw(
 		hyp_st.timedeltas(
 			min_value=timedelta(seconds=0),
@@ -292,7 +304,7 @@ def test1(data):
 	)
 	smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 	dtype = grid.x.dtype
 
 	# ========================================
@@ -410,20 +422,18 @@ def test1(data):
 	else:
 		assert len(state_new) == 6
 
-	raw_state = {'time': state['time']}
+	raw_state_now = {'time': state['time']}
 	for name, props in dycore.input_properties.items():
-		raw_state[name] = state[name].to_units(props['units']).values
+		raw_state_now[name] = state[name].to_units(props['units']).values
 
 	raw_state_new_val = rk3ws_step(
-		domain, moist, timestep, raw_state, {}, hv, wc,
+		domain, moist, timestep, raw_state_now, {}, hv, wc,
 		damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs,
 	)
 
 	for name in state_new:
 		if name != 'time':
-			assert np.allclose(
-				state_new[name].values, raw_state_new_val[name], equal_nan=True
-			)
+			compare_arrays(state_new[name].values, raw_state_new_val[name])
 
 
 @settings(
@@ -446,7 +456,7 @@ def test2(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 20), yaxis_length=(7, 20), nb=3),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
 		label="domain"
 	)
 	grid = domain.numerical_grid
@@ -454,7 +464,7 @@ def test2(data):
 	assume(hb.type != 'dirichlet')
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 	timestep = data.draw(
 		hyp_st.timedeltas(
 			min_value=timedelta(seconds=0),
@@ -495,7 +505,7 @@ def test2(data):
 	)
 	smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 	dtype = grid.x.dtype
 
 	# ========================================
@@ -593,9 +603,9 @@ def test2(data):
 
 	for key in state:
 		if key == 'time':
-			assert state['time'] == state_dc['time']
+			compare_datetimes(state['time'], state_dc['time'])
 		else:
-			assert np.allclose(state[key], state_dc[key])
+			compare_arrays(state[key], state_dc[key])
 
 	assert 'time' in state_new
 	compare_datetimes(state_new['time'], state['time'] + timestep)
@@ -613,9 +623,9 @@ def test2(data):
 	else:
 		assert len(state_new) == 6
 
-	raw_state = {'time': state['time']}
+	raw_state_now = {'time': state['time']}
 	for name, props in dycore.input_properties.items():
-		raw_state[name] = state[name].to_units(props['units']).values
+		raw_state_now[name] = state[name].to_units(props['units']).values
 
 	raw_tendencies = {}
 	for name, props in dycore.tendency_properties.items():
@@ -623,15 +633,13 @@ def test2(data):
 			raw_tendencies[name] = tendencies[name].to_units(props['units']).values
 
 	raw_state_new_val = rk3ws_step(
-		domain, moist, timestep, raw_state, raw_tendencies, hv, wc,
+		domain, moist, timestep, raw_state_now, raw_tendencies, hv, wc,
 		damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs,
 	)
 
 	for name in state_new:
 		if name != 'time':
-			assert np.allclose(
-				state_new[name].values, raw_state_new_val[name], equal_nan=True
-			)
+			compare_arrays(state_new[name].values, raw_state_new_val[name])
 
 
 @settings(
@@ -643,7 +651,7 @@ def test2(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test3(data):
+def _test3(data):
 	"""
 	- Slow tendencies: yes
 	- Intermediate tendencies: yes
@@ -654,7 +662,7 @@ def test3(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 20), yaxis_length=(7, 20), nb=3),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
 		label="domain"
 	)
 	grid = domain.numerical_grid
@@ -662,7 +670,7 @@ def test3(data):
 	assume(hb.type != 'dirichlet')
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 	timestep = data.draw(
 		hyp_st.timedeltas(
 			min_value=timedelta(seconds=0),
@@ -703,7 +711,7 @@ def test3(data):
 	)
 	smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 	dtype = grid.x.dtype
 
 	# ========================================
@@ -842,16 +850,16 @@ def test3(data):
 	else:
 		assert len(state_new) == 10
 
-	raw_state = {'time': state['time']}
+	raw_state_now = {'time': state['time']}
 	for name, props in dycore.input_properties.items():
-		raw_state[name] = state[name].to_units(props['units']).values
+		raw_state_now[name] = state[name].to_units(props['units']).values
 	for name, props in dycore.output_properties.items():
 		if name not in dycore.input_properties:
-			raw_state[name] = state[name].to_units(props['units']).values
+			raw_state_now[name] = state[name].to_units(props['units']).values
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = np.zeros((nx, ny, nz), dtype=dtype)
-		raw_state['isentropic_density_of_cloud_liquid_water'] = np.zeros((nx, ny, nz), dtype=dtype)
-		raw_state['isentropic_density_of_precipitation_water'] = np.zeros((nx, ny, nz), dtype=dtype)
+		raw_state_now['isentropic_density_of_water_vapor'] = np.zeros((nx, ny, nz), dtype=dtype)
+		raw_state_now['isentropic_density_of_cloud_liquid_water'] = np.zeros((nx, ny, nz), dtype=dtype)
+		raw_state_now['isentropic_density_of_precipitation_water'] = np.zeros((nx, ny, nz), dtype=dtype)
 
 	raw_tendencies = {}
 	for name, props in dycore.tendency_properties.items():
@@ -867,9 +875,9 @@ def test3(data):
 
 	dx, dy = grid.dx.to_units('m').values.item(), grid.dy.to_units('m').values.item()
 
-	raw_state_0 = deepcopy(raw_state)
-	raw_state_1 = deepcopy(raw_state)
-	raw_state_2 = deepcopy(raw_state)
+	raw_state_0 = deepcopy(raw_state_now)
+	raw_state_1 = deepcopy(raw_state_now)
+	raw_state_2 = deepcopy(raw_state_now)
 
 	names = [
 		'air_isentropic_density',
@@ -904,8 +912,8 @@ def test3(data):
 	#
 	# stage 0
 	#
-	s = raw_state['air_isentropic_density']
-	mtg = raw_state['montgomery_potential']
+	s = raw_state_now['air_isentropic_density']
+	mtg = raw_state_now['montgomery_potential']
 	raw_tendencies['x_momentum_isentropic'][1:-1, 1:-1] = \
 		- s[1:-1, 1:-1] * (mtg[2:, 1:-1] - mtg[:-2, 1:-1]) / (2. * dx) + (
 			raw_tendencies_dc['x_momentum_isentropic'][1:-1, 1:-1]
@@ -920,7 +928,7 @@ def test3(data):
 	_damp = damp and damp_at_every_stage
 	_smooth = smooth and smooth_at_every_stage
 	rk3ws_stage(
-		0, timestep, raw_state, raw_state, raw_state_ref, raw_tendencies, raw_state_0,
+		0, timestep, raw_state_now, raw_state_now, raw_state_ref, raw_tendencies, raw_state_0,
 		names, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs,
 	)
 
@@ -962,7 +970,7 @@ def test3(data):
 	_damp = damp and damp_at_every_stage
 	_smooth = smooth and smooth_at_every_stage
 	rk3ws_stage(
-		1, timestep, raw_state, raw_state_0, raw_state_ref, raw_tendencies, raw_state_1,
+		1, timestep, raw_state_now, raw_state_0, raw_state_ref, raw_tendencies, raw_state_1,
 		names, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs,
 	)
 
@@ -1002,7 +1010,7 @@ def test3(data):
 		)
 
 	rk3ws_stage(
-		2, timestep, raw_state, raw_state_1, raw_state_ref, raw_tendencies, raw_state_2,
+		2, timestep, raw_state_now, raw_state_1, raw_state_ref, raw_tendencies, raw_state_2,
 		names, field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs,
 	)
 

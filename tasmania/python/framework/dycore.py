@@ -262,8 +262,8 @@ class DynamicalCore:
 				`_substep_input_properties` dictionary;
 			* #8: variables contained in `_output_properties` for which
 				`fast_tendencies` calculates a (fast) tendency should
-				 have dimensions and units compatible with those specified
-				 in the `tendency_properties` dictionary of `fast_tendencies`;
+				have dimensions and units compatible with those specified
+				in the `tendency_properties` dictionary of `fast_tendencies`;
 			* #9: any fast tendency calculated by `fast_tendencies`
 				should be present in the `_substep_tendency_properties`
 				dictionary, with compatible dimensions and units;

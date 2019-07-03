@@ -27,17 +27,22 @@ import numpy as np
 from pint import UnitRegistry
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as DynamicsIsentropicDiagnostics
 from tasmania.python.isentropic.physics.diagnostics import \
 	IsentropicDiagnostics, IsentropicVelocityComponents
 from tasmania.python.utils.data_utils import make_dataarray_3d
+
+try:
+	from .conf import backend as conf_backend
+	from .utils import compare_datetimes, compare_arrays, compare_dataarrays, \
+		st_floats, st_one_of, st_domain, st_physical_grid, \
+		st_isentropic_state, st_isentropic_boussinesque_state_f
+except ModuleNotFoundError:
+	from conf import backend as conf_backend
+	from utils import compare_datetimes, compare_arrays, compare_dataarrays, \
+		st_floats, st_one_of, st_domain, st_physical_grid, \
+		st_isentropic_state, st_isentropic_boussinesque_state_f
 
 
 @settings(
@@ -53,20 +58,20 @@ def test_diagnostic_variables(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(zaxis_name='z'), label='grid')
+	grid = data.draw(st_physical_grid(zaxis_name='z'), label='grid')
 	dtype = grid.x.dtype
 
 	s = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
 	)
-	pt = data.draw(utils.st_floats(min_value=1, max_value=1e5), label='pt')
+	pt = data.draw(st_floats(min_value=1, max_value=1e5), label='pt')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -133,20 +138,20 @@ def test_height(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(zaxis_name='z'), label='grid')
+	grid = data.draw(st_physical_grid(zaxis_name='z'), label='grid')
 	dtype = grid.x.dtype
 
 	s = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
 	)
-	pt = data.draw(utils.st_floats(min_value=1, max_value=1e5), label='pt')
+	pt = data.draw(st_floats(min_value=1, max_value=1e5), label='pt')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -199,13 +204,13 @@ def test_air_density(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(zaxis_name='z'), label='grid')
+	grid = data.draw(st_physical_grid(zaxis_name='z'), label='grid')
 	dtype = grid.x.dtype
 
 	s = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
@@ -213,13 +218,13 @@ def test_air_density(data):
 	h = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -251,19 +256,19 @@ def test_air_temperature(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(zaxis_name='z'), label='grid')
+	grid = data.draw(st_physical_grid(zaxis_name='z'), label='grid')
 	dtype = grid.x.dtype
 
 	exn = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -299,14 +304,14 @@ def test_isentropic_diagnostics(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label='domain')
+	domain = data.draw(st_domain(), label='domain')
 
 	grid = domain.numerical_grid
 	dtype = grid.x.dtype
 
-	state = data.draw(utils.st_isentropic_state(grid, moist=True), label='state')
+	state = data.draw(st_isentropic_state(grid, moist=True), label='state')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -354,7 +359,7 @@ def test_isentropic_diagnostics(data):
 	for i in range(len(names)):
 		assert names[i] in diags
 		val = make_dataarray_3d(raw_val[i], grid, units[i], name=names[i])
-		utils.compare_dataarrays(diags[names[i]], val)
+		compare_dataarrays(diags[names[i]], val)
 
 	assert len(diags) == len(names)
 
@@ -383,7 +388,7 @@ def test_isentropic_diagnostics(data):
 	for i in range(len(names)):
 		assert names[i] in diags
 		val = make_dataarray_3d(raw_val[i], grid, units[i], name=names[i])
-		utils.compare_dataarrays(diags[names[i]], val)
+		compare_dataarrays(diags[names[i]], val)
 
 	assert len(diags) == len(names)
 
@@ -401,7 +406,7 @@ def test_horizontal_velocity(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label='domain')
+	domain = data.draw(st_domain(), label='domain')
 
 	hb = domain.horizontal_boundary
 	assume(hb.type != 'dirichlet')
@@ -409,11 +414,11 @@ def test_horizontal_velocity(data):
 	grid = domain.numerical_grid
 	dtype = grid.x.dtype
 
-	state = data.draw(utils.st_isentropic_state(grid, moist=True), label='state')
+	state = data.draw(st_isentropic_state(grid, moist=True), label='state')
 
 	hb.reference_state = state
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -436,7 +441,7 @@ def test_horizontal_velocity(data):
 		u, field_name='x_velocity_at_u_locations', field_units='m s^-1', time=state['time']
 	)
 	u_val = make_dataarray_3d(u, grid, 'm s^-1', name='x_velocity_at_u_locations')
-	utils.compare_dataarrays(diags['x_velocity_at_u_locations'], u_val)
+	compare_dataarrays(diags['x_velocity_at_u_locations'], u_val)
 
 	assert 'y_velocity_at_v_locations' in diags
 	v[:, 1:-1] = (sv[:, :-1] + sv[:, 1:]) / (s[:, :-1] + s[:, 1:])
@@ -444,7 +449,7 @@ def test_horizontal_velocity(data):
 		v, field_name='y_velocity_at_v_locations', field_units='m s^-1', time=state['time']
 	)
 	v_val = make_dataarray_3d(v, grid, 'm s^-1', name='y_velocity_at_u_locations')
-	utils.compare_dataarrays(diags['y_velocity_at_v_locations'], v_val)
+	compare_dataarrays(diags['y_velocity_at_v_locations'], v_val)
 
 
 if __name__ == '__main__':

@@ -26,10 +26,10 @@ This module contains:
 	Kessler(TendencyComponent)
 	SaturationAdjustmentKessler(DiagnosticComponent)
 	RaindropFallVelocity(DiagnosticComponent)
-    SedimentationFlux
-    _{First, Second}OrderUpwind(SedimentationFlux)
-    Sedimentation(ImplicitTendencyComponent)
-    AccumulatedPrecipitation(ImplicitTendencyComponent)
+	SedimentationFlux
+	_{First, Second}OrderUpwind(SedimentationFlux)
+	Sedimentation(ImplicitTendencyComponent)
+	Precipitation(ImplicitTendencyComponent)
 """
 import abc
 import numpy as np
@@ -182,7 +182,7 @@ class Kessler(TendencyComponent):
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
-        physical_constants : `dict`, optional
+		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
 			storing the values and units of those constants. The constants might be:
@@ -533,7 +533,7 @@ class SaturationAdjustmentKessler(DiagnosticComponent):
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
-        physical_constants : `dict`, optional
+		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
 			storing the values and units of those constants. The constants might be:
@@ -990,15 +990,10 @@ class Sedimentation(ImplicitTendencyComponent):
 	"""
 	Calculate the vertical derivative of the sedimentation flux.
 	"""
-	_d_physical_constants = {
-		'density_of_liquid_water':
-			DataArray(1e3, attrs={'units': 'kg m^-3'}),
-	}
-
 	def __init__(
 		self, domain, grid_type='numerical',
 		sedimentation_flux_scheme='first_order_upwind', maximum_vertical_cfl=0.975,
-		backend=gt.mode.NUMPY, dtype=datatype, physical_constants=None, **kwargs
+		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
 	):
 		"""
 		Parameters
@@ -1022,28 +1017,14 @@ class Sedimentation(ImplicitTendencyComponent):
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
-        physical_constants : `dict`, optional
-			Dictionary whose keys are strings indicating physical constants used
-			within this object, and whose values are :class:`sympl.DataArray`\s
-			storing the values and units of those constants. The constants might be:
-
-				* 'density_of_liquid_water', in units compatible with [kg m^-3].
-
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.ImplicitTendencyComponent`.
 		"""
 		super().__init__(domain, grid_type, **kwargs)
-
 		self._max_cfl = maximum_vertical_cfl
-
 		self._sflux = SedimentationFlux.factory(sedimentation_flux_scheme)
-
-		self._physical_constants = get_physical_constants(
-			self._d_physical_constants, physical_constants
-		)
-
-		self._stencils_initialize(backend, dtype)
+		self._stencil_initialize(backend, dtype)
 
 	@property
 	def input_properties(self):
@@ -1074,37 +1055,23 @@ class Sedimentation(ImplicitTendencyComponent):
 
 	@property
 	def diagnostic_properties(self):
-		g = self.grid
-		if g.nz > 1:
-			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level')
-		else:
-			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-
-		return {
-			'precipitation': {'dims': dims, 'units': 'mm hr^-1'}
-		}
+		return {}
 
 	def array_call(self, state, timestep):
-		self._stencils_set_inputs(state, timestep)
+		self._stencil_set_inputs(state, timestep)
 
-		self._stencil_precipitation.compute()
-		self._stencil_sedimentation.compute()
+		self._stencil.compute()
 
-		tendencies = {
-			'mass_fraction_of_precipitation_water_in_air': self._out_qr
-		}
-		diagnostics = {
-			'precipitation': self._out_prec
-		}
+		tendencies = {'mass_fraction_of_precipitation_water_in_air': self._out_qr}
+		diagnostics = {}
 
 		return tendencies, diagnostics
 
-	def _stencils_initialize(self, backend, dtype):
+	def _stencil_initialize(self, backend, dtype):
 		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
 		self._dt = gt.Global()
 		self._maxcfl = gt.Global(self._max_cfl)
-		self._rhow = gt.Global(self._physical_constants['density_of_liquid_water'])
 
 		self._in_rho = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_h   = np.zeros((nx, ny, nz+1), dtype=dtype)
@@ -1114,8 +1081,8 @@ class Sedimentation(ImplicitTendencyComponent):
 		self._out_qr   = np.zeros((nx, ny, nz), dtype=dtype)
 		self._out_prec = np.zeros((nx, ny, 1), dtype=dtype)
 
-		self._stencil_sedimentation = gt.NGStencil(
-			definitions_func=self._stencil_sedimentation_defs,
+		self._stencil = gt.NGStencil(
+			definitions_func=self._stencil_defs,
 			inputs={
 				'in_rho': self._in_rho, 'in_h': self._in_h,
 				'in_qr': self._in_qr, 'in_vt': self._in_vt
@@ -1126,28 +1093,14 @@ class Sedimentation(ImplicitTendencyComponent):
 			mode=backend
 		)
 
-		self._stencil_precipitation = gt.NGStencil(
-			definitions_func=self._stencil_precipitation_defs,
-			inputs={
-				'in_rho': self._in_rho[:, :, -1:], 'in_h': self._in_h[:, :, -2:],
-				'in_qr': self._in_qr[:, :, -1:], 'in_vt': self._in_vt[:, :, -1:]
-			},
-			global_inputs={
-				'dt': self._dt, 'max_cfl': self._maxcfl, 'rhow': self._rhow
-			},
-			outputs={'out_prec': self._out_prec},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, 0)),
-			mode=backend
-		)
-
-	def _stencils_set_inputs(self, state, timestep):
+	def _stencil_set_inputs(self, state, timestep):
 		self._dt.value = timestep.total_seconds()
 		self._in_rho[...] = state['air_density'][...]
 		self._in_h[...]   = state['height_on_interface_levels'][...]
 		self._in_qr[...]  = state['mass_fraction_of_precipitation_water_in_air'][...]
 		self._in_vt[...]  = state['raindrop_fall_velocity'][...]
 
-	def _stencil_sedimentation_defs(self, dt, max_cfl, in_rho, in_h, in_qr, in_vt):
+	def _stencil_defs(self, dt, max_cfl, in_rho, in_h, in_qr, in_vt):
 		k = gt.Index(axis=2)
 
 		tmp_dh = gt.Equation()
@@ -1166,31 +1119,19 @@ class Sedimentation(ImplicitTendencyComponent):
 
 		return out_qr
 
-	@staticmethod
-	def _stencil_precipitation_defs(dt, max_cfl, rhow, in_rho, in_h, in_qr, in_vt):
-		k = gt.Index(axis=2)
 
-		tmp_dh = gt.Equation()
-		tmp_vt = gt.Equation()
-
-		out_prec = gt.Equation()
-
-		tmp_dh[k] = in_h[k] - in_h[k+1]
-		tmp_vt[k] = \
-			(in_vt[k] >  max_cfl * tmp_dh[k] / dt) * max_cfl * tmp_dh[k] / dt + \
-			(in_vt[k] <= max_cfl * tmp_dh[k] / dt) * in_vt[k]
-
-		out_prec[k] = 3.6e6 * in_rho[k] * in_qr[k] * tmp_vt[k] / rhow
-
-		return out_prec
-
-
-class AccumulatedPrecipitation(ImplicitTendencyComponent):
+class Precipitation(ImplicitTendencyComponent):
 	"""
-	Update the accumulated precipitation.
+	Update the (accumulated) precipitation.
 	"""
+	_d_physical_constants = {
+		'density_of_liquid_water':
+			DataArray(1e3, attrs={'units': 'kg m^-3'}),
+	}
+
 	def __init__(
-		self, domain, grid_type='numerical', backend=gt.mode.NUMPY, dtype=datatype,	**kwargs
+		self, domain, grid_type='numerical', backend=gt.mode.NUMPY, dtype=datatype,
+		physical_constants=None, **kwargs
 	):
 		"""
 		Parameters
@@ -1208,23 +1149,41 @@ class AccumulatedPrecipitation(ImplicitTendencyComponent):
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
+		physical_constants : `dict`, optional
+			Dictionary whose keys are strings indicating physical constants used
+			within this object, and whose values are :class:`sympl.DataArray`\s
+			storing the values and units of those constants. The constants might be:
+
+				* 'density_of_liquid_water', in units compatible with [kg m^-3].
+
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.ImplicitTendencyComponent`.
 		"""
 		super().__init__(domain, grid_type, **kwargs)
 
+		pcs = get_physical_constants(
+			self._d_physical_constants, physical_constants
+		)
+		self._rhow = gt.Global(pcs['density_of_liquid_water'])
+
 		nx, ny = self.grid.nx, self.grid.ny
 		self._dt = gt.Global()
-		self._in_prec = np.zeros((nx, ny, 1), dtype=dtype)
+		self._in_rho = np.zeros((nx, ny, 1), dtype=dtype)
+		self._in_qr = np.zeros((nx, ny, 1), dtype=dtype)
+		self._in_vt = np.zeros((nx, ny, 1), dtype=dtype)
 		self._in_accprec = np.zeros((nx, ny, 1), dtype=dtype)
+		self._out_prec = np.zeros((nx, ny, 1), dtype=dtype)
 		self._out_accprec = np.zeros((nx, ny, 1), dtype=dtype)
 
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
-			inputs={'in_prec': self._in_prec, 'in_accprec': self._in_accprec},
-			global_inputs={'dt': self._dt},
-			outputs={'out_accprec': self._out_accprec},
+			inputs={
+				'in_rho': self._in_rho, 'in_qr': self._in_qr, 'in_vt': self._in_vt,
+				'in_accprec': self._in_accprec
+			},
+			global_inputs={'rhow': self._rhow, 'dt': self._dt},
+			outputs={'out_prec': self._out_prec, 'out_accprec': self._out_accprec},
 			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, 0)),
 			mode=backend
 		)
@@ -1232,14 +1191,15 @@ class AccumulatedPrecipitation(ImplicitTendencyComponent):
 	@property
 	def input_properties(self):
 		g = self.grid
-		if g.nz > 1:
-			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level')
-		else:
-			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+		dims2d = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level') \
+			if g.nz > 1 else (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
 		return {
-			'precipitation': {'dims': dims, 'units': 'mm hr^-1'},
-			'accumulated_precipitation': {'dims': dims, 'units': 'mm'}
+			'air_density': {'dims': dims, 'units': 'kg m^-3'},
+			'mass_fraction_of_precipitation_water_in_air': {'dims': dims, 'units': 'g g^-1'},
+			'raindrop_fall_velocity': {'dims': dims, 'units': 'm s^-1'},
+			'accumulated_precipitation': {'dims': dims2d, 'units': 'mm'}
 		}
 
 	@property
@@ -1249,32 +1209,40 @@ class AccumulatedPrecipitation(ImplicitTendencyComponent):
 	@property
 	def diagnostic_properties(self):
 		g = self.grid
-		if g.nz > 1:
-			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level')
-		else:
-			dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+		dims2d = (g.x.dims[0], g.y.dims[0], g.z.dims[0]+'_at_surface_level') \
+			if g.nz > 1 else (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
-		return {'accumulated_precipitation': {'dims': dims, 'units': 'mm'}}
+		return {
+			'precipitation': {'dims': dims2d, 'units': 'mm hr^-1'},
+			'accumulated_precipitation': {'dims': dims2d, 'units': 'mm'}
+		}
 
 	def array_call(self, state, timestep):
 		self._dt.value = timestep.total_seconds()
-		self._in_prec[...] = state['precipitation'][...]
+		self._in_rho[...] = state['air_density'][:, :, -1:]
+		self._in_qr[...] = state['mass_fraction_of_precipitation_water_in_air'][:, :, -1:]
+		self._in_vt[...] = state['raindrop_fall_velocity'][:, :, -1:]
 		self._in_accprec[...] = state['accumulated_precipitation'][...]
 
 		self._stencil.compute()
 
 		tendencies = {}
-		diagnostics = {'accumulated_precipitation': self._out_accprec}
+		diagnostics = {
+			'precipitation': self._out_prec,
+			'accumulated_precipitation': self._out_accprec
+		}
 
 		return tendencies, diagnostics
 
 	@staticmethod
-	def _stencil_defs(dt, in_prec, in_accprec):
+	def _stencil_defs(rhow, dt, in_rho, in_qr, in_vt, in_accprec):
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
+		out_prec = gt.Equation()
 		out_accprec = gt.Equation()
 
-		out_accprec[i, j] = in_accprec[i, j] + dt * in_prec[i, j] / 3.6e3
+		out_prec[i, j] = 3.6e6 * in_rho[i, j] * in_qr[i, j] * in_vt[i, j] / rhow
+		out_accprec[i, j] = in_accprec[i, j] + dt * out_prec[i, j] / 3.6e3
 
-		return out_accprec
+		return out_prec, out_accprec

@@ -23,7 +23,7 @@
 from copy import deepcopy
 from datetime import timedelta
 from hypothesis import \
-	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+	given, HealthCheck, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
@@ -35,7 +35,7 @@ import utils
 
 from tasmania.python.isentropic.dynamics.minimal_prognostic \
 	import IsentropicMinimalPrognostic
-from tasmania.python.isentropic.dynamics._minimal_prognostic \
+from tasmania.python.isentropic.dynamics.implementations.minimal_prognostic \
 	import Centered, ForwardEuler, RK2, RK3WS, RK3
 from tasmania.python.utils.data_utils import make_raw_state
 from test_isentropic_minimal_horizontal_fluxes import \
@@ -43,9 +43,9 @@ from test_isentropic_minimal_horizontal_fluxes import \
 	get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 
 
-mfwv  = 'mass_fraction_of_water_vapor_in_air'
+mfwv = 'mass_fraction_of_water_vapor_in_air'
 mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw  = 'mass_fraction_of_precipitation_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 @settings(

@@ -116,6 +116,7 @@ clean:
 	@$(RM) -r $(TMP_FOLDERS) > /dev/null
 	@$(RM) -r $(HYPOTHESIS_DIR) > /dev/null
 	@find . -type f -name "*.sw[klmnop]" -delete
+	@$(RM) $(TEST_DIR)/.hypothesis
 
 distclean: clean
 	@cd $(PARSER_DIR) && $(MAKE) clean > /dev/null

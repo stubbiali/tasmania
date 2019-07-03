@@ -66,7 +66,7 @@ class IsentropicDiagnostics:
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` allocated and
 			used within this class.
-        physical_constants : `dict`, optional
+		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
 			storing the values and units of those constants. The constants might be:
@@ -176,6 +176,60 @@ class IsentropicDiagnostics:
 		exn[...] = self._in_exn[...]
 		mtg[...] = self._out_mtg[...]
 		h[...]   = self._out_h[...]
+
+	def get_montgomery_potential(self, s, pt, mtg):
+		"""
+		With the help of the isentropic density and the upper boundary
+		condition on the pressure distribution, diagnose the Montgomery
+		potential.
+
+		Parameters
+		----------
+		s : numpy.ndarray
+			The isentropic density, in units of [kg m^-2 K^-1].
+		pt : float
+			The upper boundary condition on the pressure distribution,
+			in units of [Pa].
+		mtg : numpy.ndarray
+			The buffer for the Montgomery potential, in units of [J kg^-1].
+		"""
+		# Instantiate the underlying stencils
+		if self._stencil_diagnosing_air_pressure is None:
+			self._stencil_diagnosing_air_pressure_initialize()
+		if self._stencil_diagnosing_montgomery is None:
+			self._stencil_diagnosing_montgomery_initialize()
+		if self._stencil_diagnosing_height is None:
+			self._stencil_diagnosing_height_initialize()
+
+		# Shortcuts
+		dz    = self._grid.dz.to_units('K').values.item()
+		cp    = self._physical_constants['specific_heat_of_dry_air_at_constant_pressure']
+		p_ref = self._physical_constants['air_pressure_at_sea_level']
+		rd    = self._physical_constants['gas_constant_of_dry_air']
+		g	  = self._physical_constants['gravitational_acceleration']
+
+		# Update the attributes which serve as inputs to the GT4Py stencils
+		self._in_s[...] = s[...]
+
+		# Apply upper boundary condition on pressure
+		self._out_p[:, :, 0] = pt
+
+		# Compute pressure at all other locations
+		self._stencil_diagnosing_air_pressure.compute()
+
+		# Compute the Exner function (not via a GT4Py stencils)
+		self._in_exn[...] = cp * (self._out_p[...] / p_ref) ** (rd / cp)
+
+		# Compute Montgomery potential at the lower main level
+		mtg_s = self._theta[:, :, -1] * self._in_exn[:, :, -1] \
+			+ g * self._grid.topography.profile.to_units('m').values
+		self._out_mtg[:, :, -1] = mtg_s + 0.5 * dz * self._in_exn[:, :, -1]
+
+		# Compute Montgomery potential at all other locations
+		self._stencil_diagnosing_montgomery.compute()
+
+		# Write the output into the provided buffer
+		mtg[...] = self._out_mtg[...]
 
 	def get_height(self, s, pt, h):
 		"""

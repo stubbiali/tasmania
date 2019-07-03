@@ -67,7 +67,7 @@ substeps                = 0
 horizontal_flux_scheme = 'fifth_order_upwind'
 
 # pressure gradient
-pg_scheme = 'pressure_thickness_weighted'
+pg_scheme = 'second_order'
 
 # damping
 damp                = True
@@ -96,12 +96,12 @@ turbulence 			 = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis           = True
+coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
-timestep = Timedelta(seconds=36)
-niter    = int(1*60*60 / timestep.total_seconds())
+timestep = Timedelta(seconds=30)
+niter    = int(4*60*60 / timestep.total_seconds())
 
 # output
 filename = \

@@ -68,13 +68,13 @@ class Plot(Monitor):
 
 	Attributes
 	----------
-    interactive : bool
-        :obj:`True` if interactive plotting is enabled,
-        :obj:`False` otherwise.
-    figure_properties : dict
+	interactive : bool
+		:obj:`True` if interactive plotting is enabled,
+		:obj:`False` otherwise.
+	figure_properties : dict
 		Keyword arguments specifying settings for the
 		:class:`~matplotlib.figure.Figure` containing the plot.
-    axes_properties : dict
+	axes_properties : dict
 		Keyword arguments specifying settings for the
 		:class:`~matplotlib.axes.Axes` enclosing the plot.
 	"""
@@ -103,12 +103,12 @@ class Plot(Monitor):
 			The initial time of the simulation. Only effective if `print_time`
 			is 'elapsed'. If not specified, the elapsed time is calculated
 			with respect to the first passed state.
-    	figure_properties : `dict`, optional
+		figure_properties : `dict`, optional
 			Keyword arguments specifying settings for the figure containing
 			the plot. To be broadcast to
 			:func:`~tasmania.get_figure_and_axes_properties`
 			and :func:`~tasmania.set_figure_properties`.
-    	axes_properties : `dict`, optional
+		axes_properties : `dict`, optional
 			Keyword arguments specifying settings for the axes enclosing
 			the plot. To be broadcast to
 			:func:`~tasmania.get_figure_and_axes_properties`
@@ -191,7 +191,7 @@ class Plot(Monitor):
 			**self.figure_properties,
 			**{
 				key: value for key, value in self.axes_properties.items()
-			   	if key not in self.figure_properties
+				if key not in self.figure_properties
 			},
 		)
 
