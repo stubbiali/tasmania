@@ -24,6 +24,8 @@ SCRIPT_NAME=compress.py  # options: any python script under TASMANIA_ROOT/SCRIPT
 module load daint-mc
 module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5-daint
 
+mkdir -p buffer
+
 srun --unbuffered \
 	sarus run \
 		--mount=type=bind,src=$TASMANIA_ROOT/buffer,dst=/home/tasmania-user/tasmania/buffer \

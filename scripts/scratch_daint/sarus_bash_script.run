@@ -12,9 +12,9 @@
 # User inputs
 # ==================================================
 IMAGE_NAME=tasmania  # options: tasmania
-IMAGE_TAG=develop  # options: develop
+IMAGE_TAG=master  # options: develop
 VENV=py36  # options: py35, py36, py37
-TASMANIA_ROOT=$PWD/tasmania-develop  # options: tasmania, tasmania-develop, tasmania-restyling
+TASMANIA_ROOT=/project/s299/subbiali/tasmania  # options: tasmania, tasmania-develop, tasmania-restyling
 SCRIPT_DIR=drivers/isentropic_dry/run.sh  # options: any directory under TASMANIA_ROOT
 SCRIPT_NAME=compress.py  # options: any bash script under TASMANIA_ROOT/SCRIPT_DIR
 
@@ -23,6 +23,8 @@ SCRIPT_NAME=compress.py  # options: any bash script under TASMANIA_ROOT/SCRIPT_D
 #==================================================
 module load daint-mc
 module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5-daint
+
+mkdir -p buffer
 
 srun --unbuffered \
 	sarus run \

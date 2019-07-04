@@ -154,6 +154,6 @@ store_names = (
 	'y_momentum_isentropic'
 )
 save_frequency = -1
-print_dry_frequency = 1
-print_moist_frequency = -1
+print_dry_frequency = -1
+print_moist_frequency = 5
 plot_frequency = -1

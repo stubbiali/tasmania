@@ -25,7 +25,7 @@
 # User input
 # ==================================================
 REMOTE=daint
-REMOTE_ROOT=/scratch/snx3000/subbiali/tasmania-develop
+REMOTE_ROOT=/project/s299/subbiali/tasmania
 LOCAL_ROOT=../..
 
 # ==================================================
