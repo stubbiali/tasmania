@@ -156,5 +156,5 @@ store_names = (
 )
 save_frequency = -1
 print_dry_frequency = -1
-print_moist_frequency = 1
+print_moist_frequency = 5
 plot_frequency = -1

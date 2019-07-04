@@ -20,13 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import numpy as np
+import argparse
 import os
 import tasmania as taz
 import time
 
-import namelist_ssus as nl
 
+# ============================================================
+# The namelist
+# ============================================================
+parser = argparse.ArgumentParser()
+parser.add_argument(
+	'-n', metavar='NAMELIST', type=str, default='namelist_suss.py',
+	help='The namelist file.', dest='namelist'
+)
+args = parser.parse_args()
+namelist = args.namelist.replace('/', '.')
+namelist = namelist[:-3] if namelist.endswith('.py') else namelist
+exec('import {} as namelist'.format(namelist))
+nl = locals()['namelist']
 
 # ============================================================
 # The underlying domain

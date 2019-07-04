@@ -22,11 +22,13 @@
 #
 
 IMAGE_NAME=tasmania
-IMAGE_TAG=develop
-TASMANIA_ROOT=$PWD/tasmania-develop
+IMAGE_TAG=master
+TASMANIA_ROOT=/project/s299/subbiali/tasmania
 
 module load daint-mc
 module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5-daint
+
+mkdir -p buffer
 
 sarus run \
 	--tty \
@@ -34,7 +36,7 @@ sarus run \
 	--mount=type=bind,src=$HOME,dst=/home/tasmania-user/mount-point/home \
 	--mount=type=bind,src=$SCRATCH,dst=/home/tasmania-user/mount-point/scratch \
 	--mount=type=bind,src=$TASMANIA_ROOT/buffer,dst=/home/tasmania-user/tasmania/buffer \
-	--mount=type=bind,src=$TASMANIA_ROOT/data,dst=/home/tasmania-user/tasmania/data \
+	--mount=type=bind,src=$PWD/buffer,dst=/home/tasmania-user/tasmania/data \
 	--mount=type=bind,src=$TASMANIA_ROOT/docker/gridtools4py,dst=/home/tasmania-user/tasmania/docker/gridtools4py \
 	--mount=type=bind,src=$TASMANIA_ROOT/docs,dst=/home/tasmania-user/tasmania/docs \
 	--mount=type=bind,src=$TASMANIA_ROOT/drivers,dst=/home/tasmania-user/tasmania/drivers \

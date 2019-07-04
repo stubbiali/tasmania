@@ -11,9 +11,9 @@
 # ==================================================
 # User inputs
 # ==================================================
-IMAGE_PATH=tasmania-develop/docker/tasmania_master.tar  # the path to the image to load
+IMAGE_PATH=/project/s299/subbiali/tasmania/docker/tasmania_master.tar  # the path to the image to load
 IMAGE_NAME=tasmania
-IMAGE_TAG=develop
+IMAGE_TAG=master
 
 # ==================================================
 # Code
