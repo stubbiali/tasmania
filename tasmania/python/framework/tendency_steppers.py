@@ -51,10 +51,16 @@ def get_increment(state, timestep, prognostic):
 	# multiply the tendencies by the time step
 	for name in tendencies:
 		if name != 'time':
-			tendencies[name].values[...] *= timestep.total_seconds()
 			tendencies[name].attrs['units'] += ' s'
 
 	return tendencies, diagnostics
+
+
+def restore_tendencies_units(tendencies):
+	for name in tendencies:
+		if name != 'time':
+			tendencies[name].attrs['units'] = \
+				clean_units(tendencies[name].attrs['units'] + ' s^-1')
 
 
 def tendencystepper_factory(scheme):
@@ -362,7 +368,7 @@ class ForwardEuler(TendencyStepper):
 
 		# step the solution
 		out_state = add(
-			state, increment,
+			state, multiply(timestep.total_seconds(), increment),
 			units=out_units, unshared_variables_in_output=False
 		)
 
@@ -371,6 +377,9 @@ class ForwardEuler(TendencyStepper):
 			self._hb.enforce(
 				out_state, field_names=self.output_properties.keys(), grid=self._grid
 			)
+
+		# restore original units for the tendencies
+		restore_tendencies_units(increment)
 
 		return diagnostics, out_state
 
@@ -430,7 +439,7 @@ class RungeKutta2(TendencyStepper):
 		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 = add(
-			state, multiply(0.5, k0),
+			state, multiply(0.5 * timestep.total_seconds(), k0),
 			units=out_units, unshared_variables_in_output=True
 		)
 		state_1['time'] = state['time'] + 0.5*timestep
@@ -441,10 +450,13 @@ class RungeKutta2(TendencyStepper):
 				state_1, field_names=self.output_properties.keys(), grid=self._grid
 			)
 
+		# restore original units for the tendencies
+		restore_tendencies_units(k0)
+
 		# second stage
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		out_state = add(
-			state, k1,
+			state, multiply(timestep.total_seconds(), k1),
 			units=out_units, unshared_variables_in_output=False
 		)
 		out_state['time'] = state['time'] + timestep
@@ -454,6 +466,9 @@ class RungeKutta2(TendencyStepper):
 			self._hb.enforce(
 				out_state, field_names=self.output_properties.keys(), grid=self._grid
 			)
+
+		# restore original units for the tendencies
+		restore_tendencies_units(k1)
 
 		return diagnostics, out_state
 
@@ -516,7 +531,7 @@ class RungeKutta3WS(TendencyStepper):
 		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
 		state_1 = add(
-			state, multiply(1.0/3.0, k0),
+			state, multiply(1.0/3.0 * timestep.total_seconds(), k0),
 			units=out_units, unshared_variables_in_output=True
 		)
 		state_1['time'] = state['time'] + 1.0/3.0 * timestep
@@ -527,10 +542,13 @@ class RungeKutta3WS(TendencyStepper):
 				state_1, field_names=self.output_properties.keys(), grid=self._grid
 			)
 
+		# restore original units for the tendencies
+		restore_tendencies_units(k0)
+
 		# second stage
 		k1, _ = get_increment(state_1, timestep, self.prognostic)
 		state_2 = add(
-			state, multiply(0.5, k1),
+			state, multiply(0.5 * timestep.total_seconds(), k1),
 			units=out_units, unshared_variables_in_output=True
 		)
 		state_2['time'] = state['time'] + 0.5 * timestep
@@ -541,10 +559,13 @@ class RungeKutta3WS(TendencyStepper):
 				state_2, field_names=self.output_properties.keys(), grid=self._grid
 			)
 
+		# restore original units for the tendencies
+		restore_tendencies_units(k1)
+
 		# second stage
 		k2, _ = get_increment(state_2, timestep, self.prognostic)
 		out_state = add(
-			state, k2,
+			state, multiply(timestep.total_seconds(), k2),
 			units=out_units, unshared_variables_in_output=False
 		)
 		out_state['time'] = state['time'] + timestep
@@ -554,6 +575,9 @@ class RungeKutta3WS(TendencyStepper):
 			self._hb.enforce(
 				out_state, field_names=self.output_properties.keys(), grid=self._grid
 			)
+
+		# restore original units for the tendencies
+		restore_tendencies_units(k2)
 
 		return diagnostics, out_state
 
@@ -624,11 +648,12 @@ class RungeKutta3(TendencyStepper):
 		a1, a2     = self._alpha1, self._alpha2
 		b21        = self._beta21
 		g0, g1, g2 = self._gamma0, self._gamma1, self._gamma2
+		dt = timestep.total_seconds()
 
 		# first stage
 		k0, diagnostics = get_increment(state, timestep, self.prognostic)
-		state_1 		= add(
-			state, multiply(a1, k0),
+		state_1 = add(
+			state, multiply(a1 * dt, k0),
 			units=out_units, unshared_variables_in_output=True
 		)
 		state_1['time'] = state['time'] + a1 * timestep
@@ -642,7 +667,7 @@ class RungeKutta3(TendencyStepper):
 		# second stage
 		k1, _ 	= get_increment(state_1, timestep, self.prognostic)
 		state_2 = add(
-			state, add(multiply(b21, k0), multiply((a2 - b21), k1)),
+			state, add(multiply(b21 * dt, k0), multiply((a2 - b21) * dt, k1)),
 			units=out_units, unshared_variables_in_output=True
 		)
 		state_2['time'] = state['time'] + a2 * timestep
@@ -653,10 +678,10 @@ class RungeKutta3(TendencyStepper):
 				state_2, field_names=self.output_properties.keys(), grid=self._grid
 			)
 
-		# second stage
+		# third stage
 		k2, _     = get_increment(state_2, timestep, self.prognostic)
-		k1k2      = add(multiply(g1, k1), multiply(g2, k2))
-		k0k1k2 	  = add(multiply(g0, k0), k1k2)
+		k1k2      = add(multiply(g1 * dt, k1), multiply(g2 * dt, k2))
+		k0k1k2 	  = add(multiply(g0 * dt, k0), k1k2)
 		out_state = add(
 			state, k0k1k2,
 			units=out_units, unshared_variables_in_output=False
@@ -668,5 +693,10 @@ class RungeKutta3(TendencyStepper):
 			self._hb.enforce(
 				out_state, field_names=self.output_properties.keys(), grid=self._grid
 			)
+
+		# restore original units for the tendencies
+		restore_tendencies_units(k0)
+		restore_tendencies_units(k1)
+		restore_tendencies_units(k2)
 
 		return diagnostics, out_state
