@@ -1,6 +1,3 @@
-# GT4Py source files
-gridtools4py/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -34,6 +31,9 @@ todo.ods
 
 # Archives
 *.tar
+
+# mac
+.DS_Store/
 
 # AUTOMATICALLY GENERATED TEXT
 # The text after this comment and up to the end of file

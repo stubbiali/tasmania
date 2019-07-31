@@ -32,7 +32,9 @@ echo ""
 
 if [[ $key = "" ]]; then
 	if [ ! -d "gridtools4py" ]; then
-		git clone https://github.com/eth-cscs/gridtools4py.git
+		cd ..
+		git submodule add https://github.com/eth-cscs/gridtools4py.git docker/gridtools4py
+		cd docker
 	fi
 
 	cd gridtools4py
