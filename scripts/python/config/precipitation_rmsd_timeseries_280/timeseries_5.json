@@ -1,0 +1,27 @@
+{
+	"field_name": "rmsd_of_precipitation",
+	"field_units": "mm hr^-1",
+	"x": 0,
+	"y": 0,
+	"z": 0,
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "hr",
+	"time_on_xaxis": true,
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"linestyle": "solid",
+		"linewidth": 1.5,
+		"linecolor": "blue",
+		"marker": null,
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markerfacecolor": "blue",
+		"markeredgecolor": "blue",
+		"legend_label": "SSUS"
+	}
+}

@@ -151,7 +151,7 @@ sa = taz.SaturationAdjustmentKessler(
 )
 
 # wrap the components in a DiagnosticComponentComposite object
-inter_diags = taz.DiagnosticComponentComposite(dv, sa)
+inter_diags = taz.DiagnosticComponentComposite(dv)  #, sa)
 
 # ============================================================
 # The slow diagnostics
@@ -159,6 +159,8 @@ inter_diags = taz.DiagnosticComponentComposite(dv, sa)
 args = []
 
 if nl.precipitation:
+	args.append(rfv)
+ 
 	# component calculating the accumulated precipitation
 	ap = taz.Precipitation(
 		domain, 'numerical', backend=nl.backend, dtype=nl.dtype

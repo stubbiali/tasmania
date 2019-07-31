@@ -1,0 +1,22 @@
+{
+	"field_name": "precipitation",
+	"field_units": "mm hr^-1",
+	"x": [8, 33, null],
+	"y": [8, 33, null],
+	"z": [0, 1, null],
+	"drawer_properties": {
+		"fontsize": 16,
+		"data_on_xaxis": false,
+		"number_of_bins": 1000,
+		"threshold": 0.0,
+		"linestyle": ":",
+		"linewidth": 1.5,
+		"linecolor": "blue",
+		"marker": null,
+		"markersize": 7,
+		"markeredgewidth": 1,
+		"markerfacecolor": "red",
+		"markeredgecolor": "red",
+		"legend_label": "SSUS_MC5"
+	}
+}

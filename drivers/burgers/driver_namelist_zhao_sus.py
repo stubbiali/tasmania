@@ -66,7 +66,7 @@ dycore = taz.BurgersDynamicalCore(
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
-	domain, 'computational', nl.diffusion_type, nl.diffusion_coeff,
+	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff,
 	nl.backend, nl.dtype
 )
 
@@ -101,12 +101,12 @@ for i in range(nt):
 	compute_time_start = time.time()
 
 	# Calculate the dynamics
-	state.update(dycore(state, {}, dt))
-
+	taz.dict_update(state, dycore(state, {}, dt))
 	state['time'] = nl.init_time + i*dt
 
 	# Calculate the physics
 	physics(state, dt)
+	state['time'] = nl.init_time + (i+1)*dt
 
 	#assert state['time'] == nl.init_time + (i+1)*dt
 

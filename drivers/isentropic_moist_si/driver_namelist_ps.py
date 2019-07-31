@@ -186,7 +186,7 @@ if nl.precipitation:
 		backend=nl.backend, dtype=nl.dtype
 	)
 	args.append({
-		'component': taz.ConcurrentCoupling(rfv, sd), 'time_integrator': ptis, 'substeps': 1
+		'component': taz.ConcurrentCoupling(rfv, sd), 'time_integrator': 'rk3ws', 'substeps': 1
 	})
 
 	# component calculating the accumulated precipitation

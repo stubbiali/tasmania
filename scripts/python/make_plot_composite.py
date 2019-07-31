@@ -79,7 +79,9 @@ class PlotCompositeWrapper:
 		tlevels = (tlevels, )*len(self._plot_wrappers) if isinstance(tlevels, int) else tlevels
 		assert_sequence(tlevels, reflen=len(self._plot_wrappers), reftype=int)
 
-		states = tuple(plot_wrapper.get_states(tlevels) for plot_wrapper in self._plot_wrappers)
+		states = tuple(
+      		plot_wrapper.get_states(tlevel) for plot_wrapper, tlevel in zip(self._plot_wrappers, tlevels)
+        )
 
 		return states
 

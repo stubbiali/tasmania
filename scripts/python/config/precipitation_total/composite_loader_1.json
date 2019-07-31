@@ -1,0 +1,24 @@
+{
+    "loaders": [
+        {
+            "module": "data_loaders.cumulative_loaders",
+            "classname": "DomainCumulativePrecipitationLoader",
+            "config": "config/precipitation_total/tap_loader_10.json"
+        },
+        {
+            "module": "data_loaders.cumulative_loaders",
+            "classname": "DomainCumulativePrecipitationLoader",
+            "config": "config/precipitation_total/tap_loader_11.json"
+        },
+        {
+            "module": "data_loaders.cumulative_loaders",
+            "classname": "DomainCumulativePrecipitationLoader",
+            "config": "config/precipitation_total/tap_loader_12.json"
+        },
+        {
+            "module": "data_loaders.cumulative_loaders",
+            "classname": "DomainCumulativePrecipitationLoader",
+            "config": "config/precipitation_total/tap_loader_13.json"
+        }
+    ]
+}

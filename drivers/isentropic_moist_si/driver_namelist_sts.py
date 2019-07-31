@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
+import numpy as np
 import os
 import tasmania as taz
 import time
@@ -191,12 +192,12 @@ if nl.precipitation:
 		backend=nl.backend, dtype=nl.dtype
 	)
 	args.append({
-		'component': taz.ConcurrentCoupling(rfv, sd), 'time_integrator': ptis, 'substeps': 1
+		'component': taz.ConcurrentCoupling(rfv, sd), 'time_integrator': 'rk3ws', 'substeps': 1
 	})
 
 	# component calculating the accumulated precipitation
 	ap = taz.Precipitation(domain, 'numerical', backend=nl.backend, dtype=nl.dtype)
-	args.append({'component': ap})
+	args.append({'component': taz.ConcurrentCoupling(rfv, ap)})
 
 # component clipping the negative values of the water species
 water_species_names = (
@@ -212,7 +213,7 @@ sa = taz.SaturationAdjustmentKessler(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 	backend=nl.backend, dtype=nl.dtype
 )
-args.append({'component': sa})
+#args.append({'component': sa})
 
 # wrap the components in a SequentialTendencySplitting object
 physics = taz.SequentialTendencySplitting(*args)

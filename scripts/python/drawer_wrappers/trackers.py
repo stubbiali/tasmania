@@ -35,6 +35,9 @@ class TimeSeriesWrapper(DrawerWrapper):
 
 			field_name = data['field_name']
 			field_units = data['field_units']
+			x = data['x']
+			y = data['y']
+			z = data['z']
 			time_mode = data['time_mode']
 			init_time = datetime(
 				year=data['init_time']['year'],
@@ -49,7 +52,7 @@ class TimeSeriesWrapper(DrawerWrapper):
 			drawer_properties = data['drawer_properties']
 
 			self._core = taz.TimeSeries(
-				loader.get_grid(), field_name, field_units,
+				loader.get_grid(), field_name, field_units, x, y, z,
 				time_mode=time_mode, init_time=init_time,
 				time_units=time_units, time_on_xaxis=time_on_xaxis,
 				properties=drawer_properties

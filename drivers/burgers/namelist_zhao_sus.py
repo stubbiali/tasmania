@@ -28,7 +28,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 3
+factor = 2
 
 # backend settings
 backend = gt.mode.NUMPY

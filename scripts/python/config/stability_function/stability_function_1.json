@@ -1,0 +1,25 @@
+{
+	"coupling_method": "lfc",
+	"xlim": [-4, 0],
+	"nx": 101,
+	"ylim": [-3, 3],
+	"ny": 201,
+	"drawer_properties": {
+		"fontsize": 16,
+		"cmap_name": "jet",
+		"cbar_on": false,
+		"cbar_levels": 11,
+		"cbar_ticks_step": 4,
+		"cbar_ticks_pos": "interface",
+		"cbar_center": 0.5,
+		"cbar_half_width": 0.5, 
+		"cbar_x_label": "",
+		"cbar_y_label": "$\\mathcal{S} \\, (\\beta \\Delta t, \\, \\alpha \\Delta t)$",
+		"cbar_title": "",
+		"cbar_orientation": "vertical",
+		"cbar_ax": [0, 1, 2, 3, 4, 5],
+		"cbar_format": "%3.1f",
+		"cbar_extend": false,
+		"draw_vertical_levels": false
+	}
+}

@@ -35,7 +35,7 @@ domain_x = DataArray([-176, 176], dims='x', attrs={'units': 'km'}).to_units('m')
 nx       = 41
 domain_y = DataArray([-176, 176], dims='y', attrs={'units': 'km'}).to_units('m')
 ny       = 41
-domain_z = DataArray([360, 300], dims='potential_temperature', attrs={'units': 'K'})
+domain_z = DataArray([340, 280], dims='potential_temperature', attrs={'units': 'K'})
 nz       = 60
 
 # horizontal boundary
@@ -111,13 +111,13 @@ turbulence 			 = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis           = True
+coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
 precipitation			  = True
 sedimentation    		  = True
-sedimentation_flux_scheme = 'first_order_upwind'
+sedimentation_flux_scheme = 'second_order_upwind'
 rain_evaporation 		  = False
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
@@ -125,8 +125,8 @@ collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
 update_frequency 		  = 0
 
 # simulation length
-timestep = timedelta(seconds=56)
-niter    = int(1*60*60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter    = int(3*60*60 / timestep.total_seconds())
 
 # output
 filename = \
