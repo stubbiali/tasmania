@@ -77,20 +77,26 @@ from tasmania.python.isentropic.state import \
 from tasmania.python.isentropic.state_boussinesq import \
 	get_isentropic_boussinesq_state_from_brunt_vaisala_frequency
 # physics
-from tasmania.python.physics.microphysics import \
-	Clipping, Kessler, RaindropFallVelocity, SaturationAdjustmentKessler, \
-	Sedimentation, Precipitation
+from tasmania.python.physics.microphysics.kessler import \
+	KesslerFallVelocity, KesslerMicrophysics, \
+	KesslerSaturationAdjustment, KesslerSedimentation
+from tasmania.python.physics.microphysics.porz import \
+	PorzFallVelocity, PorzMicrophysics
+from tasmania.python.physics.microphysics.utils import \
+	Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
 # plot
 from tasmania.python.plot.animation import Animation
 from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot, PlotComposite
+from tasmania.python.plot.offline import Line
 from tasmania.python.plot.patches import Circle, Rectangle
 from tasmania.python.plot.plot_utils import \
 	get_figure_and_axes, set_axes_properties, set_figure_properties
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.quiver import Quiver
+from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 # utilities
 from tasmania.python.utils.data_utils import \
@@ -110,6 +116,7 @@ __all__ = (
 	Animation,
 	BurgersDynamicalCore,
 	BurgersHorizontalDiffusion,
+	CDF,
 	Circle,
 	Clipping,
 	ConcurrentCoupling,
@@ -152,7 +159,11 @@ __all__ = (
 	IsentropicSmagorinsky,
 	IsentropicVelocityComponents,
 	IsentropicVerticalAdvection,
-	Kessler,
+	KesslerFallVelocity,
+	KesslerMicrophysics,
+	KesslerSaturationAdjustment,
+	KesslerSedimentation,
+	Line,
 	LineProfile,
 	load_netcdf_dataset,
 	make_dataarray_2d,
@@ -170,15 +181,13 @@ __all__ = (
 	PhysicalTopography,
 	Plot,
 	PlotComposite,
+	PorzMicrophysics,
 	Precipitation,
 	PrescribedSurfaceHeating,
 	Quiver,
-	RaindropFallVelocity,
 	Rectangle,
 	RMSD,
 	RRMSD,
-	SaturationAdjustmentKessler,
-	Sedimentation,
 	SequentialTendencySplitting,
 	SequentialUpdateSplitting,
 	set_axes_properties,

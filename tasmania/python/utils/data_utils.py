@@ -205,24 +205,36 @@ def make_dataarray_3d(raw_array, grid, units, name=None):
 			'Expected a 3-D array, got a {}-D one.'.format(len(raw_array.shape))
 		)
 
-	if ni == nx:
+	if ni == 1 and nx != 1:
+		x = DataArray(
+			np.array([grid.grid_xy.x.values[0]]),
+			dims=grid.grid_xy.x.dims[0] + '_gp',
+			attrs={'units': grid.grid_xy.x.attrs['units']}
+		)
+	elif ni == nx:
 		x = grid.grid_xy.x
 	elif ni == nx+1:
 		x = grid.grid_xy.x_at_u_locations
 	else:
 		raise ValueError(
 			'The array extent in the x-direction is {} but either '
-			'{} or {} was expected.'.format(ni, nx, nx+1)
+			'{}, {} or {} was expected.'.format(ni, 1, nx, nx+1)
 		)
 
-	if nj == ny:
+	if nj == 1 and ny != 1:
+		y = DataArray(
+			np.array([grid.grid_xy.y.values[0]]),
+			dims=grid.grid_xy.y.dims[0] + '_gp',
+			attrs={'units': grid.grid_xy.y.attrs['units']}
+		)
+	elif nj == ny:
 		y = grid.grid_xy.y
 	elif nj == ny+1:
 		y = grid.grid_xy.y_at_v_locations
 	else:
 		raise ValueError(
 			'The array extent in the y-direction is {} but either '
-			'{} or {} was expected.'.format(nj, ny, ny+1)
+			'{}, {} or {} was expected.'.format(nj, 1, ny, ny+1)
 		)
 
 	if nk == 1:

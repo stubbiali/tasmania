@@ -918,6 +918,13 @@ def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=F
 		units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
 		return_dict[mfpw] = taz.make_dataarray_3d(q, grid, units, name=mfpw)
 
+		# number density of precipitation water
+		name = 'number_density_of_precipitation_water'
+		n = field[1:, 1:, 1:]
+		n[n <= 0] = 0.0
+		units = draw(st_one_of(conf.isentropic_state[name].keys()))
+		return_dict[name] = taz.make_dataarray_3d(n, grid, units, name=name)
+
 		if precipitation:
 			# precipitation
 			pp = field[:-1, :-1, :1]

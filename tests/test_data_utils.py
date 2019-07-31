@@ -174,15 +174,16 @@ def test_make_dataarray_3d(data):
 	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
 	dtype = grid.z.dtype
 
-	#
-	# nx, ny, nz
-	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx, ny, nz), min_value=-1e5, max_value=1e5)
+	raw_array_ = data.draw(
+		utils.st_raw_field(dtype, (nx+1, ny+1, nz+1), min_value=-1e5, max_value=1e5)
 	)
 	units = data.draw(hyp_st.text(max_size=10))
 	name = data.draw(hyp_st.text(max_size=10))
 
+	#
+	# nx, ny, nz
+	#
+	raw_array = raw_array_[:-1, :-1, :-1]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx, ny, nz)
@@ -197,12 +198,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx+1, ny, nz
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx+1, ny, nz), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:, :-1, :-1]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx+1, ny, nz)
@@ -217,12 +213,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx, ny+1, nz
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx, ny+1, nz), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:-1, :, :-1]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx, ny+1, nz)
@@ -237,12 +228,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx+1, ny+1, nz
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx+1, ny+1, nz), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:, :, :-1]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx+1, ny+1, nz)
@@ -259,12 +245,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx, ny, nz+1
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx, ny, nz+1), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:-1, :-1, :]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx, ny, nz+1)
@@ -280,12 +261,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx+1, ny, nz+1
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx+1, ny, nz+1), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:, :-1, :]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx+1, ny, nz+1)
@@ -302,12 +278,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx, ny+1, nz+1
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx, ny+1, nz+1), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:-1, :, :]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx, ny+1, nz+1)
@@ -324,12 +295,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx+1, ny+1, nz+1
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx+1, ny+1, nz+1), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[...]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx+1, ny+1, nz+1)
@@ -346,12 +312,7 @@ def test_make_dataarray_3d(data):
 	#
 	# nx+1, ny+1, 1
 	#
-	raw_array = data.draw(
-		utils.st_raw_field(dtype, (nx+1, ny+1, 1), min_value=-1e5, max_value=1e5)
-	)
-	units = data.draw(hyp_st.text(max_size=10))
-	name = data.draw(hyp_st.text(max_size=10))
-
+	raw_array = raw_array_[:, :, 0:1]
 	array = du.make_dataarray_3d(raw_array, grid, units, name)
 
 	assert array.shape == (nx+1, ny+1, 1)
@@ -359,6 +320,56 @@ def test_make_dataarray_3d(data):
 		grid.grid_xy.x_at_u_locations.dims[0],
 		grid.grid_xy.y_at_v_locations.dims[0],
 		grid.z.dims[0] + '_at_surface_level' if nz > 1 else grid.z.dims[0]
+	)
+	assert array.attrs['units'] == units
+	assert array.name == name
+	assert np.allclose(raw_array, array.values)
+	assert id(raw_array) == id(array.values)
+
+	#
+	# 1, ny, nz
+	#
+	raw_array = raw_array_[0:1, :-1, :-1]
+	array = du.make_dataarray_3d(raw_array, grid, units, name)
+
+	assert array.shape == (1, ny, nz)
+	assert array.dims == (
+		grid.grid_xy.x.dims[0] + '_gp' if nx > 1 else grid.grid_xy.x.dims[0],
+		grid.grid_xy.y.dims[0], grid.z.dims[0]
+	)
+	assert array.attrs['units'] == units
+	assert array.name == name
+	assert np.allclose(raw_array, array.values)
+	assert id(raw_array) == id(array.values)
+
+	#
+	# nx+1, 1, nz
+	#
+	raw_array = raw_array_[:, 0:1, :-1]
+	array = du.make_dataarray_3d(raw_array, grid, units, name)
+
+	assert array.shape == (nx+1, 1, nz)
+	assert array.dims == (
+		grid.grid_xy.x_at_u_locations.dims[0],
+		grid.grid_xy.y.dims[0] + '_gp' if ny > 1 else grid.grid_xy.y.dims[0], 
+  		grid.z.dims[0]
+	)
+	assert array.attrs['units'] == units
+	assert array.name == name
+	assert np.allclose(raw_array, array.values)
+	assert id(raw_array) == id(array.values)
+
+	#
+	# 1, 1, nz+1
+	#
+	raw_array = raw_array_[0:1, 0:1, :]
+	array = du.make_dataarray_3d(raw_array, grid, units, name)
+
+	assert array.shape == (1, 1, nz+1)
+	assert array.dims == (
+		grid.grid_xy.x.dims[0] + '_gp' if nx > 1 else grid.grid_xy.x.dims[0], 
+		grid.grid_xy.y.dims[0] + '_gp' if ny > 1 else grid.grid_xy.y.dims[0], 
+  		grid.z_on_interface_levels.dims[0]
 	)
 	assert array.attrs['units'] == units
 	assert array.name == name

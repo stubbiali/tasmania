@@ -35,7 +35,7 @@ baseline_dir = 'baseline_images/py{}{}/test_plot_composite'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile(isentropic_dry_data):
+def test_profile(validation_data):
 	# make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -52,7 +52,7 @@ def test_profile(isentropic_dry_data):
 	field2_units = 'km hr^-1'
 
 	# load data
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
@@ -148,7 +148,7 @@ def test_profile(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile_share_yaxis(isentropic_dry_data):
+def test_profile_share_yaxis(validation_data):
 	# make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -163,7 +163,7 @@ def test_profile_share_yaxis(isentropic_dry_data):
 	field_units = 'm s^-1'
 
 	# load data
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
@@ -259,7 +259,7 @@ def test_profile_share_yaxis(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile_share_xaxis(isentropic_dry_data):
+def test_profile_share_xaxis(validation_data):
 	# make sure the baseline directory_composer does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -276,7 +276,7 @@ def test_profile_share_xaxis(isentropic_dry_data):
 	field2_units = 'm s^-1'
 
 	# load data
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
@@ -370,7 +370,7 @@ def test_profile_share_xaxis(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_plot2d_r1c2(isentropic_dry_data, drawer_topography_1d):
+def test_plot2d_r1c2(validation_data, drawer_topography_1d):
 	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -387,7 +387,7 @@ def test_plot2d_r1c2(isentropic_dry_data, drawer_topography_1d):
 	field2_units = None
 
 	# load data
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
@@ -507,7 +507,7 @@ def test_plot2d_r1c2(isentropic_dry_data, drawer_topography_1d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_plot2d_r2c2(isentropic_dry_data, drawer_topography_1d):
+def test_plot2d_r2c2(validation_data, drawer_topography_1d):
 	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -524,7 +524,7 @@ def test_plot2d_r2c2(isentropic_dry_data, drawer_topography_1d):
 	field2_units = None
 
 	# load data
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]

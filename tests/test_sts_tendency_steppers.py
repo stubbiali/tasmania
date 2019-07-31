@@ -42,7 +42,7 @@ from tasmania.python.utils.data_utils import make_state
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_forward_euler(data, make_fake_tendency_component_1):
+def test_forward_euler(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -134,7 +134,7 @@ def _test_forward_euler(data, make_fake_tendency_component_1):
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_forward_euler_hb(data, make_fake_tendency_component_1):
+def test_forward_euler_hb(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -209,7 +209,7 @@ def _test_forward_euler_hb(data, make_fake_tendency_component_1):
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_rk2(data, make_fake_tendency_component_1):
+def test_rk2(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -311,7 +311,7 @@ def _test_rk2(data, make_fake_tendency_component_1):
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_rk2_hb(data, make_fake_tendency_component_1):
+def test_rk2_hb(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -426,7 +426,7 @@ def _test_rk2_hb(data, make_fake_tendency_component_1):
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_rk3ws(data, make_fake_tendency_component_1):
+def test_rk3ws(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -535,7 +535,7 @@ def _test_rk3ws(data, make_fake_tendency_component_1):
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_rk3ws_hb(data, make_fake_tendency_component_1):
+def test_rk3ws_hb(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -680,7 +680,7 @@ def _test_rk3ws_hb(data, make_fake_tendency_component_1):
 	deadline=None
 )
 @given(data=hyp_st.data())
-def _test_rk3(data, make_fake_tendency_component_1):
+def test_rk3(data, make_fake_tendency_component_1):
 	# ========================================
 	# random data generation
 	# ========================================

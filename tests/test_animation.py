@@ -37,7 +37,7 @@ result_dir = 'result_images/py{}{}/test_animation'.format(
 )
 
 
-def test(isentropic_dry_data):
+def test(validation_data):
 	# make sure the baseline directory does exist
 	if not os.path.exists(baseline_dir):
 		os.makedirs(baseline_dir)
@@ -57,7 +57,7 @@ def test(isentropic_dry_data):
 	field_units = 'km hr^-1'
 
 	# grab data
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	# indices identifying the cross-line to visualize
@@ -98,7 +98,7 @@ def test(isentropic_dry_data):
 	)
 
 	# create the animation
-	animation = Animation(monitor, print_time='elapsed', fps=15)
+	animation = Animation(monitor, fps=15)
 	for state in states:
 		animation.store(state)
 	for state in states:
