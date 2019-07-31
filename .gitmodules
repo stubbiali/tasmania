@@ -1,0 +1,3 @@
+[submodule "docker/gridtools4py"]
+	path = docker/gridtools4py
+	url = git@github.com:eth-cscs/gridtools4py.git
