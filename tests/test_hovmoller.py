@@ -34,7 +34,7 @@ baseline_dir = 'baseline_images/py{}{}/test_hovmoller'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_x(isentropic_dry_data):
+def test_x(validation_data):
 	# field to plot
 	field_name  = 'horizontal_velocity'
 	field_units = 'km hr^-1'
@@ -49,7 +49,7 @@ def test_x(isentropic_dry_data):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	# indices identifying the line to visualize
@@ -104,7 +104,7 @@ def test_x(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_z(isentropic_dry_data):
+def test_z(validation_data):
 	# field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
@@ -119,7 +119,7 @@ def test_z(isentropic_dry_data):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	# indices identifying the line to visualize
@@ -176,7 +176,7 @@ def test_z(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_pressure(isentropic_dry_data):
+def test_pressure(validation_data):
 	# field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
@@ -191,7 +191,7 @@ def test_pressure(isentropic_dry_data):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	# indices identifying the line to visualize
@@ -249,7 +249,7 @@ def test_pressure(isentropic_dry_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_height(isentropic_dry_data):
+def test_height(validation_data):
 	# field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
@@ -264,7 +264,7 @@ def test_height(isentropic_dry_data):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	# indices identifying the line to visualize

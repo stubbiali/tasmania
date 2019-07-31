@@ -34,7 +34,7 @@ baseline_dir = 'baseline_images/py{}{}/test_contour'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_xy_velocity(isentropic_dry_data, drawer_topography_2d):
+def test_contour_xy_velocity(validation_data, drawer_topography_2d):
 	# field to plot
 	field_name  = 'horizontal_velocity'
 	field_units = 'm s^-1'
@@ -49,7 +49,7 @@ def test_contour_xy_velocity(isentropic_dry_data, drawer_topography_2d):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
@@ -105,7 +105,7 @@ def test_contour_xy_velocity(isentropic_dry_data, drawer_topography_2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_xy_pressure(isentropic_dry_data, drawer_topography_2d):
+def test_contour_xy_pressure(validation_data, drawer_topography_2d):
 	# field to plot
 	field_name  = 'air_pressure_on_interface_levels'
 	field_units = 'hPa'
@@ -120,7 +120,7 @@ def test_contour_xy_pressure(isentropic_dry_data, drawer_topography_2d):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
@@ -175,7 +175,7 @@ def test_contour_xy_pressure(isentropic_dry_data, drawer_topography_2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_xz_velocity(isentropic_dry_data, drawer_topography_1d):
+def test_contour_xz_velocity(validation_data, drawer_topography_1d):
 	# field to plot
 	field_name  = 'x_velocity_at_u_locations'
 	field_units = 'm s^-1'
@@ -190,7 +190,7 @@ def test_contour_xz_velocity(isentropic_dry_data, drawer_topography_1d):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]
@@ -249,7 +249,7 @@ def test_contour_xz_velocity(isentropic_dry_data, drawer_topography_1d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contour_yz_velocity(isentropic_dry_data, drawer_topography_1d):
+def test_contour_yz_velocity(validation_data, drawer_topography_1d):
 	# field to plot
 	field_name  = 'y_velocity_at_v_locations'
 	field_units = 'km hr^-1'
@@ -264,7 +264,7 @@ def test_contour_yz_velocity(isentropic_dry_data, drawer_topography_1d):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time']-states[0]['time'])
 	state = states[-1]

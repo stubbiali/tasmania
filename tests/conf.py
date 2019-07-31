@@ -110,6 +110,10 @@ isentropic_state = {
 		'g g^-1': (0, 5),
 		'g kg^-1': (0, 5000),
 	},
+	'number_density_of_precipitation_water': {
+		'g^-1': (0, 1e3),
+		'kg^-1': (0, 1e6),
+	},
 	'precipitation': {
 		'mm hr^-1': (0, 100),
 	},

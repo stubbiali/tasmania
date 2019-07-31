@@ -209,11 +209,11 @@ class Plot(Monitor):
 
 		# set axes properties
 		if self.axes_properties != {}:
-			time = get_time(states)
-
 			if self._ptime == 'elapsed':
+				time = get_time(states)
 				time_str = str(time - self._itime)
 			elif self._ptime == 'absolute':
+				time = get_time(states)
 				time_str = str(time)
 			else:
 				time_str = None

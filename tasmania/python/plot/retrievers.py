@@ -42,7 +42,7 @@ class DataRetriever:
 		"""
 		Parameters
 		----------
-		grid : tasmania.Grid
+		grids : tasmania.Grid
 			The underlying grid.
 		field_name : str
 			The field to retrieve.

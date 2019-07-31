@@ -32,8 +32,9 @@ This module contains:
 	make_contourf
 	make_quiver
 	make_rectangle
+	make_cdf
 """
-from matplotlib import rcParams
+from matplotlib import rc, rcParams
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
 import matplotlib.patches as patches
@@ -54,6 +55,29 @@ text_locations = {
 	'lower center' : 8,
 	'upper center' : 9,
 	'center'       : 10,
+}
+
+
+linestyle_dict = {
+	'-': 'solid',
+	'--': 'dashed',
+	':': 'dotted',
+	'-.': 'dashdot',
+	'solid': 'solid',
+	'dashed': 'dashed',
+	'dotted': 'dotted',
+    'dashdot': 'dashdot', 
+    'loosely dotted': (0, (1, 10)),
+    'dotted': (0, (1, 1)),
+    'densely dotted': (0, (1, 1)),
+    'loosely dashed': (0, (5, 10)),
+    'densely dashed': (0, (5, 1)),
+    'loosely dashdotted': (0, (3, 10, 1, 10)),
+    'dashdotted': (0, (3, 5, 1, 5)),
+    'densely dashdotted': (0, (3, 1, 1, 1)),
+    'dashdotdotted': (0, (3, 5, 1, 5, 1, 5)),
+    'loosely dashdotdotted': (0, (3, 10, 1, 10, 1, 10)),
+    'densely dashdotdotted': (0, (3, 1, 1, 1, 1, 1))
 }
 
 
@@ -228,7 +252,7 @@ def set_figure_properties(fig, **kwargs):
 	if tight_layout:
 		fig.tight_layout(rect=tight_layout_rect)
 
-	if suptitle != '':
+	if suptitle is not None and suptitle != '':
 		fig.suptitle(suptitle, fontsize=fontsize+1)
 
 
@@ -398,8 +422,32 @@ def set_axes_properties(ax, **kwargs):
 	# grid
 	grid_on                   = kwargs.get('grid_on', False)
 	grid_properties           = kwargs.get('grid_properties', None)
+	# x2-axis
+	ax2_on					   = kwargs.get('ax2_on', False)
+	x2_label                   = kwargs.get('x2_label', '')
+	x2_labelcolor              = kwargs.get('x2_labelcolor', 'black')
+	x2_lim                     = kwargs.get('x2_lim', None)
+	invert_x2axis              = kwargs.get('invert_x2axis', False)
+	x2_scale                   = kwargs.get('x2_scale', None)
+	x2_ticks                   = kwargs.get('x2_ticks', None)
+	x2_ticklabels              = kwargs.get('x2_ticklabels', None)
+	x2_ticklabelcolor          = kwargs.get('x2_ticklabelcolor', 'black')
+	x2axis_minor_ticks_visible = kwargs.get('x2axis_minor_ticks_visible', False)
+	x2axis_visible             = kwargs.get('x2axis_visible', True)
+	# y2-axis
+	y2_label                   = kwargs.get('y2_label', '')
+	y2_labelcolor              = kwargs.get('y2_labelcolor', 'black')
+	y2_lim                     = kwargs.get('y2_lim', None)
+	invert_y2axis              = kwargs.get('invert_y2axis', False)
+	y2_scale                   = kwargs.get('y2_scale', None)
+	y2_ticks                   = kwargs.get('y2_ticks', None)
+	y2_ticklabels              = kwargs.get('y2_ticklabels', None)
+	y2_ticklabelcolor          = kwargs.get('y2_ticklabelcolor', 'black')
+	y2axis_minor_ticks_visible = kwargs.get('y2axis_minor_ticks_visible', False)
+	y2axis_visible             = kwargs.get('y2axis_visible', True)
 
 	rcParams['font.size'] = fontsize
+	#rcParams['text.usetex'] = True
 
 	# plot titles
 	if ax.get_title(loc='center') == '':
@@ -427,7 +475,7 @@ def set_axes_properties(ax, **kwargs):
 		else:
 			pass
 
-	# axes labels
+	# axes labelcolors
 	if ax.get_xlabel() != '' and x_labelcolor != '':
 		ax.xaxis.label.set_color(x_labelcolor)
 	if ax.get_ylabel() != '' and y_labelcolor != '':
@@ -588,6 +636,53 @@ def set_axes_properties(ax, **kwargs):
 		gps = grid_properties if grid_properties is not None else {}
 		ax.grid(True, **gps)
 
+	if ax2_on:
+		ax2 = ax.twiny()
+
+		# x2-axis
+		if x2_label != '':
+			ax2.set_xlabel(x2_label)
+		if ax2.get_xlabel() != '' and x2_labelcolor != '':
+			ax2.xaxis.label.set_color(x2_labelcolor)
+		ax2.set_xlim(x2_lim if x2_lim is not None else ax.get_xlim())
+		if invert_x2axis:
+			ax2.invert_xaxis()
+		if x2_scale is not None:
+			ax2.set_xscale(x2_scale)
+		if x2_ticks is not None:
+			ax2.set_xticks(x2_ticks)
+		if x2_ticklabels is not None:
+			ax2.set_xticklabels(x2_ticklabels)
+		if x2_ticklabelcolor != '':
+			ax2.tick_params(axis='x', colors=x2_ticklabelcolor)
+		if x2axis_minor_ticks_visible:
+			ax2.get_xaxis().set_tick_params(which='minor', size=0)
+			ax2.get_xaxis().set_tick_params(which='minor', width=0)
+		if not x2axis_visible:
+			ax2.get_xaxis().set_visible(False)
+
+		# y2-axis
+		if y2_label != '':
+			ax2.set_ylabel(y2_label)
+		if ax2.get_ylabel() != '' and y2_labelcolor != '':
+			ax2.yaxis.label.set_color(y2_labelcolor)
+		ax2.set_ylim(y2_lim if y2_lim is not None else ax.get_ylim())
+		if invert_y2axis:
+			ax2.invert_yaxis()
+		if y2_scale is not None:
+			ax2.set_yscale(y2_scale)
+		if y2_ticks is not None:
+			ax2.set_yticks(y2_ticks)
+		if y2_ticklabels is not None:
+			ax2.set_yticklabels(y2_ticklabels)
+		if y2_ticklabelcolor != '':
+			ax2.tick_params(axis='y', colors=y2_ticklabelcolor)
+		if y2axis_minor_ticks_visible:
+			ax2.get_yaxis().set_tick_params(which='minor', size=0)
+			ax2.get_yaxis().set_tick_params(which='minor', width=0)
+		if not y2axis_visible:
+			ax2.get_yaxis().set_visible(False)
+
 
 def reverse_colormap(cmap, name=None):
 	"""
@@ -634,7 +729,7 @@ def reverse_colormap(cmap, name=None):
 def set_colorbar(
 	fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_pos='center',
 	cbar_title='', cbar_x_label='', cbar_y_label='', cbar_orientation='vertical',
-	cbar_ax=None
+	cbar_ax=None, cbar_format=None
 ):
 	"""
 	Ease the configuration of the colorbar in Matplotlib plots.
@@ -666,21 +761,24 @@ def set_colorbar(
 		is stolen. If multiple indices are given, the corresponding axes are
 		all evenly resized to make room for the colorbar. If no indices are given,
 		only the current axes are resized.
+	cbar_format : str
+		Format for colorbar tick labels.
 	"""
 	if cbar_ax is None:
-		cb = plt.colorbar(mappable, orientation=cbar_orientation)
+		cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 	else:
 		try:
 			axes = fig.get_axes()
 			cb = plt.colorbar(
-				mappable, orientation=cbar_orientation, ax=[axes[i] for i in cbar_ax]
+				mappable, orientation=cbar_orientation, format=cbar_format,
+    			ax=[axes[i] for i in cbar_ax]
 			)
 		except TypeError:
 			# cbar_ax is not iterable
-			cb = plt.colorbar(mappable, orientation=cbar_orientation)
+			cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 		except IndexError:
 			# cbar_ax contains an index which exceeds the number of axes in the figure
-			cb = plt.colorbar(mappable, orientation=cbar_orientation)
+			cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 
 	cb.ax.set_title(cbar_title)
 	cb.ax.set_xlabel(cbar_x_label)
@@ -714,7 +812,9 @@ def make_lineplot(x, y, ax, **kwargs):
 	y_factor : float
 		Scaling factor for the y-coordinates. Defaults to 1.
 	linestyle : str
-		String specifying the line style. Defaults to '-'.
+		String specifying the line style. Defaults to 'solid'.
+		Please see https://matplotlib.org/3.1.1/gallery/lines_bars_and_markers/linestyles.html
+		for all available options.
 	linewidth : float
 		The line width. Defaults to 1.5.
 	linecolor : str
@@ -736,7 +836,7 @@ def make_lineplot(x, y, ax, **kwargs):
 	fontsize     	= kwargs.get('fontsize', 16)
 	x_factor     	= kwargs.get('x_factor', 1.)
 	y_factor     	= kwargs.get('y_factor', 1.)
-	linestyle    	= kwargs.get('linestyle', '-')
+	linestyle    	= kwargs.get('linestyle', 'solid')
 	linewidth    	= kwargs.get('linewidth', 1.5)
 	linecolor	 	= kwargs.get('linecolor', 'blue')
 	marker  		= kwargs.get('marker', None)
@@ -756,13 +856,13 @@ def make_lineplot(x, y, ax, **kwargs):
 	# plot
 	if legend_label == '' or legend_label is None:
 		ax.plot(
-			x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
+			x, y, color=linecolor, linestyle=linestyle_dict[linestyle], linewidth=linewidth,
 			marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
 			markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor
 		)
 	else:
 		ax.plot(
-			x, y, color=linecolor, linestyle=linestyle, linewidth=linewidth,
+			x, y, color=linecolor, linestyle=linestyle_dict[linestyle], linewidth=linewidth,
 			marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
 			markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor,
 			label=legend_label
@@ -916,6 +1016,11 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 		is stolen. If multiple indices are given, the corresponding axes are
 		all evenly resized to make room for the colorbar. If no indices are given,
 		only the current axes are resized.
+	cbar_format : str
+		Format for colorbar tick labels.
+	cbar_extend : bool
+		:obj:`False` to set to white all values outside the range of the colorbar,
+		:obj:`True` to more nicely extends the colorbar. Defaults to :obj:`True`.
 	draw_vertical_levels : bool
 		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
@@ -938,7 +1043,9 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 	cbar_title		 = kwargs.get('cbar_title', '')
 	cbar_orientation = kwargs.get('cbar_orientation', 'vertical')
 	cbar_ax			 = kwargs.get('cbar_ax', None)
-	draw_vlevels 	 	 = kwargs.get('draw_vertical_levels', False)
+	cbar_format      = kwargs.get('cbar_format', None)
+	cbar_extend		 = kwargs.get('cbar_extend', True)
+	draw_vlevels 	 = kwargs.get('draw_vertical_levels', False)
 
 	# global settings
 	rcParams['font.size'] = fontsize
@@ -977,7 +1084,10 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
 
 	# plot the field
-	surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
+	if cbar_extend:
+		surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
+	else:
+		surf = ax.contourf(x, y, field, color_levels, cmap=cm)
 
 	# set the colorbar
 	if cbar_on:
@@ -985,7 +1095,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 			fig, surf, color_levels,
 			cbar_ticks_step=cbar_ticks_step, cbar_ticks_pos=cbar_ticks_pos,
 			cbar_title=cbar_title, cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax
+			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax, cbar_format=cbar_format
 		)
 
 	# bring axes and field back to original units
@@ -1084,6 +1194,8 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		is stolen. If multiple indices are given, the corresponding axes are
 		all evenly resized to make room for the colorbar. If no indices are given,
 		only the current axes are resized.
+	cbar_format : str
+		Format for colorbar tick labels.
 	quiverkey_on : bool
 		:obj:`True` to show the quiver key box, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
@@ -1127,6 +1239,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 	cbar_title		  	= kwargs.get('cbar_title', '')
 	cbar_orientation  	= kwargs.get('cbar_orientation', 'vertical')
 	cbar_ax			  	= kwargs.get('cbar_ax', None)
+	cbar_format         = kwargs.get('cbar_format', None)
 	quiverkey_on	  	= kwargs.get('quiverkey_on', False)
 	quiverkey_loc	  	= kwargs.get('quiverkey_loc', (1, 1))
 	quiverkey_length	= kwargs.get('quiverkey_length', 1.0)
@@ -1202,7 +1315,8 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 			cbar_ticks_step=cbar_ticks_step,
 			cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
 			cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax
+			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax,
+			cbar_format=cbar_format
 		)
 
 	# set quiver key
@@ -1299,3 +1413,61 @@ def make_rectangle(ax, **kwargs):
 		edgecolor=edgecolor, facecolor=facecolor
 	)
 	ax.add_patch(rect)
+
+
+def make_cdf(data, ax, **kwargs):
+	"""
+	Plot the cumulative distribution function (CDF) for an array of points.
+
+	Parameters
+	----------
+	data : numpy.ndarray
+		1-D array gathering the sample points.
+	ax : matplotlib.axes.Axes
+		The axes embodying the plot.
+
+	Keyword arguments
+	-----------------
+	fontsize : int
+		The fontsize to be used. Defaults to 16.
+	data_on_xaxis : bool
+		:obj:`True` to place the data values on the x-axis,
+		:obj:`False` to place the data values on the y-axis.
+		Defaults to :obj:`False`.
+	number_of_bins : int
+		Number of bins to be used to compute the CDF. Defaults to 1000.
+	threshold : float
+		Consider only the grid values greater than this threshold.
+		If not specified, all grid values will be considered.
+	**kwargs:
+		Any keyword argument accepted by :
+		func:`tasmania.python.plot.plot_utils.make_lineplot`.
+	"""
+	# get keyword arguments
+	fontsize     	= kwargs.get('fontsize', 16)
+	data_on_xaxis   = kwargs.get('data_on_xaxis', False)
+	number_of_bins  = kwargs.get('number_of_bins', 1000)
+	threshold       = kwargs.get('threshold', None)
+
+	# global settings
+	rcParams['font.size'] = fontsize
+
+ 	# filter data
+	if threshold is not None:
+		rdata = data[data > threshold]
+	else:
+		rdata = data
+
+	# compute the cdf
+	rdata_min, rdata_max = rdata.min(), rdata.max()
+	bins = np.linspace(0, 1, number_of_bins+1)
+	values = rdata_min + bins * (rdata_max - rdata_min)
+	cdf = np.zeros(number_of_bins+1)
+	for k in range(number_of_bins+1):
+		cdf[k] = np.sum(rdata <= values[k]) / rdata.size
+
+	# plot
+	if data_on_xaxis:
+		make_lineplot(values, cdf, ax, **kwargs)
+	else:
+		make_lineplot(cdf, values, ax, **kwargs)

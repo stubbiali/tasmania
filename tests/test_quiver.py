@@ -34,7 +34,7 @@ baseline_dir = 'baseline_images/py{}{}/test_quiver'.format(
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography_2d):
+def test_quiver_xy_velocity(validation_data, drawer_topography_2d):
 	# field to plot
 	xcomp_name  = 'x_velocity'
 	xcomp_units = 'm s^-1'
@@ -51,7 +51,7 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography_2d):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]
@@ -118,7 +118,7 @@ def test_quiver_xy_velocity(isentropic_dry_data, drawer_topography_2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography_2d):
+def test_quiver_xy_velocity_bw(validation_data, drawer_topography_2d):
 	# field to plot
 	xcomp_name  = 'x_velocity'
 	xcomp_units = 'm s^-1'
@@ -135,7 +135,7 @@ def test_quiver_xy_velocity_bw(isentropic_dry_data, drawer_topography_2d):
 		os.remove(save_dest)
 
 	# grab data from dataset
-	domain, grid_type, states = isentropic_dry_data
+	domain, grid_type, states = validation_data
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	grid.update_topography(states[-1]['time'] - states[0]['time'])
 	state = states[-1]

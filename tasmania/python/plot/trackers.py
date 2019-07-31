@@ -41,7 +41,7 @@ class TimeSeries(Drawer):
 	def __init__(
 		self, grid, field_name, field_units, x=0, y=0, z=0,
 		time_mode='elapsed', init_time=None, time_units='s', time_on_xaxis=True,
-		**kwargs
+		properties=None
 	):
 		"""
 		Parameters
@@ -75,11 +75,12 @@ class TimeSeries(Drawer):
 		time_on_xaxis : `bool`, optional
 			:obj:`True` to place time on the plot x-axis, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
-		**kwargs :
-			Keyword arguments specifying plot-specific settings.
+		properties : `dict`, optional
+			Dictionary whose keys are strings denoting plot-specific
+			settings, and whose values specify values for those settings.
 			See :func:`tasmania.python.plot.utils.make_lineplot`.
 		"""
-		super().__init__(**kwargs)
+		super().__init__(properties)
 
 		slice_x = slice(x, x+1 if x != -1 else None)
 		slice_y = slice(y, y+1 if y != -1 else None)
@@ -134,7 +135,7 @@ class HovmollerDiagram(Drawer):
 	def __init__(
 		self, grid, field_name, field_units, x=None, y=None, z=None,
 		axis_name=None, axis_units=None, axis_x=None, axis_y=None, axis_z=None,
-		time_mode='elapsed', init_time=None, time_units='s', **kwargs
+		time_mode='elapsed', init_time=None, time_units='s', properties=None
 	):
 		"""
 		Parameters
@@ -212,11 +213,12 @@ class HovmollerDiagram(Drawer):
 		time_units : `str`, optional
 			Units for time. Defaults to 's' (seconds).
 			Only effective if ``time_mode`` set on 'elapsed'.
-		**kwargs :
-			Keyword arguments specifying plot-specific settings.
+		properties : `dict`, optional
+			Dictionary whose keys are strings denoting plot-specific
+			settings, and whose values specify values for those settings.
 			See :func:`tasmania.python.plot.utils.make_contourf`.
 		"""
-		super().__init__(**kwargs)
+		super().__init__(properties)
 
 		self._retriever = LineProfile(
 			grid, field_name, field_units, x, y, z,

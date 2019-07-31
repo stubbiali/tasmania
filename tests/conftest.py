@@ -50,6 +50,11 @@ def isentropic_moist_sedimentation_evaporation_data():
 
 
 @pytest.fixture(scope='module')
+def validation_data():
+	return load_netcdf_dataset('baseline_datasets/validation.nc')
+
+
+@pytest.fixture(scope='module')
 def physical_constants():
 	return {
 		'air_pressure_at_sea_level':
