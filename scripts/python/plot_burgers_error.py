@@ -33,16 +33,16 @@ dx = np.array([1/10, 1/20, 1/40, 1/80])
 
 figure_properties = {
 	'fontsize': 16,
-	'figsize': (6, 7),
+	'figsize': (6, 6),
 	'tight_layout': True,
 	'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
 }
 
 axes_properties = {
 	'fontsize': 16,
-	'x_label': '$\\Delta x = \\Delta y$ [m]',
+	'x_label': '$\\Delta x = \\Delta y$',
 	'x_labelcolor': 'black',
-	'x_lim': (1/80/1.5, 1/10*1.5), #(-190, 210),
+	'x_lim': (1/80/1.75, 1/10*1.75), #(-190, 210),
 	'invert_xaxis': True,
 	'x_scale': 'log',
 	'x_ticks': (1/10, 1/20, 1/40, 1/80),
@@ -51,9 +51,9 @@ axes_properties = {
 	'xaxis_minor_ticks_visible': False,
 	'xaxis_visible': True,
 	# y-axis
-	'y_label': '$||u - u_{ex}||_2$ [m s$^{-1}$]',
+	'y_label': '$||u - u_{ex}||_2$',
 	'y_labelcolor': 'black',
-	'y_lim': (2e-9, 2e-4),
+	'y_lim': (7e-10, 1.5e-3),
 	'invert_yaxis': False,
 	'y_scale': 'log',
 	'y_ticks': None,
@@ -86,7 +86,7 @@ axes_properties = {
 	'grid_properties': {'linestyle': ':'},
 }
 
-ax2_label = '$\\Delta t$ [s]'
+ax2_label = '$\\Delta t$'
 
 ax2_scale = 'log'
 
@@ -95,23 +95,24 @@ ax2_ticks = (1/10, 1/20, 1/40, 1/80)
 ax2_ticklabels = ('1/100', '1/400', '1/1600', '1/6400')
 
 labels = [
-	'CC',
-	'LCC',
+	'FC',
+	'LFC',
 	'PS',
+	'STS',
 	'SUS',
 	'SSUS',
 	'SSUS (CFL=2)',
 ]
 
-linecolors = ['red', 'orange', 'mediumpurple', 'c', 'blue', 'blue']
+linecolors = ['purple', 'red', 'orange', 'green', 'cyan', 'blue', 'blue']
 
-linestyles = ['-', ]*5 + [':']
+linestyles = ['solid', ]*6 + ['dashed']
  
-linewidths = [2, ]*6
+linewidths = [1.5, ]*6
 
-markers = ['s', 'o', '^', '<', '>', '>']
+markers = ['s', 'o', 'p', '^', '<', '>', '>']
 
-markersizes = [8.5, ]*6
+markersizes = [8, ]*6
 
 #==================================================
 # Code
@@ -138,9 +139,10 @@ if __name__ == '__main__':
 			np.array([8.9845e-6, 1.9629e-6, 4.7262e-8, 7.2386e-9]),
 			np.array([1.0545E-4, 1.1048E-4, 3.8088E-5, 1.0351E-5]),
 			np.array([4.9697e-5, 1.5146e-5, 5.9153e-6, 1.7287e-6]),
+			np.array([  7.90e-6,   6.12e-6,   4.15e-6,   1.30e-6]),
 			np.array([1.0892e-5, 3.6137e-6, 2.8240e-6, 9.1709e-7]),
 			np.array([9.7639e-6, 1.8710e-6, 5.2504e-8, 5.1080e-9]),
-			np.array([1.1997e-5, 1.8339e-6, 9.3699e-8, 1.9796e-8]),
+			#np.array([1.1997e-5, 1.8339e-6, 9.3699e-8, 1.9796e-8]),
 		]
 
 	fig, ax = pu.get_figure_and_axes(**figure_properties)
@@ -149,20 +151,31 @@ if __name__ == '__main__':
 		pu.make_lineplot(
 			dx, err[i], ax, 
 			linecolor=linecolors[i], linestyle=linestyles[i], linewidth=linewidths[i], 
-			marker=markers[i], markersize=markersizes[i], legend_label=labels[i],
+			marker=markers[i], markersize=markersizes[i], markerfacecolor=linecolors[i],
+			markeredgecolor=linecolors[i], legend_label=labels[i],
 		)
 
 	pu.set_axes_properties(ax, **axes_properties)
 
-	if False:
-		ax2 = ax.twiny()
-		ax2.set_xscale(ax2_scale)
-		ax2.set_xlim(ax.get_xlim())
-		ax2.set_xticks(ax2_ticks)
-		ax2.set_xticklabels(ax2_ticklabels)
-		ax2.get_xaxis().set_tick_params(which='minor', size=0)
-		ax2.get_xaxis().set_tick_params(which='minor', width=0)
-		ax2.set_xlabel(ax2_label)
+	ax2 = ax.twiny()
+	ax2.set_xscale(ax2_scale)
+	ax2.set_xlim(ax.get_xlim())
+	ax2.set_xticks(ax2_ticks)
+	ax2.set_xticklabels(ax2_ticklabels)
+	ax2.get_xaxis().set_tick_params(which='minor', size=0)
+	ax2.get_xaxis().set_tick_params(which='minor', width=0)
+	ax2.set_xlabel(ax2_label)
+
+	ax.plot(dx, 1.5e-5 * dx**2/dx[-1]**2, linestyle='--', color='black')
+	ax.annotate(
+     	'$\\mathcal{O}(\\Delta t)$', (0.95*dx[-1], 1.7e-5), 
+      	horizontalalignment='left', verticalalignment='center', fontsize=16
+    )
+	ax.plot(dx, 1.5e-9 * dx**4/dx[-1]**4, linestyle='--', color='black')
+	ax.annotate(
+     	'$\\mathcal{O}(\\Delta t^2)$', (0.95*dx[-1], 1.5e-9), 
+      	horizontalalignment='left', verticalalignment='center', fontsize=16
+    )
 
 	pu.set_figure_properties(fig, **figure_properties)
 

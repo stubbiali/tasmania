@@ -1,0 +1,26 @@
+{
+	"field_name": "plane_average_mass_fraction_of_precipitation_water_in_air",
+	"field_units": "g kg^-1",
+	"x": 0,
+	"y": 0,
+	"z": null,
+	"axis_name": "z",
+	"axis_units": "K",
+	"axis_x": null,
+	"axis_y": null,
+	"axis_z": null,
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"linestyle": "dashed",
+		"linewidth": 1.5,
+		"linecolor": "orange",
+		"marker": null,
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markeredgecolor": "blue",
+		"markerfacecolor": "white",
+		"legend_label": "PS"
+	}
+}

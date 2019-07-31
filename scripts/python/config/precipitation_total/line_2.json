@@ -1,0 +1,22 @@
+{
+	"field_name": "domain_cumulative_precipitation",
+	"field_units": "kg hr^-1",
+	"x": 0,
+	"y": 0,
+	"z": 0,
+	"xdata": [1.0, 2.0, 3.0, 4.0],
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0e-9,
+		"linestyle": "solid",
+		"linewidth": 1.5,
+		"linecolor": "orange",
+		"marker": "p",
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markeredgecolor": "orange",
+		"markerfacecolor": "orange",
+		"legend_label": "PS"
+	}
+}

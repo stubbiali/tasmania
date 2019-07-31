@@ -1,0 +1,9 @@
+{
+	"filename": [
+		"../../data/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx161_ny161_nz60_dt10_nt1080_",
+		"gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_lcc.nc"
+	],
+	"x": [0, 161, null],
+	"y": [0, 161, null]
+}

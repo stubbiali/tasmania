@@ -110,38 +110,37 @@ turbulence 			 = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis           = True
+coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
 precipitation			  = True
 sedimentation    		  = True
-sedimentation_flux_scheme = 'first_order_upwind'
-rain_evaporation 		  = False
+sedimentation_flux_scheme = 'second_order_upwind'
+rain_evaporation 		  = True
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
 collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
 update_frequency 		  = 0
 
 # simulation length
-timestep = timedelta(seconds=56)
-niter    = int(1*60*60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter    = int(3*60*60 / timestep.total_seconds())
 
 # output
 filename = \
 	'../../data/isentropic_moist_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_lcc_1.nc'.format(
+	'{}_L{}_H{}_u{}_rh{}_thetas{}_mcfreq{}{}{}{}{}{}{}_lcc.nc'.format(
 		time_integration_scheme, horizontal_flux_scheme,
 		nx, ny, nz, int(timestep.total_seconds()), niter,
 		topo_type, int(topo_kwargs['width_x'].to_units('m').values.item()),
 		int(topo_kwargs['max_height'].to_units('m').values.item()),
 		int(x_velocity.to_units('m s^-1').values.item()),
-		int(relative_humidity * 100),
-		'_diff' if diff else '', '_smooth' if smooth else '',
+		int(relative_humidity * 100), int(domain_z.to_units('K').values[1]),
+		update_frequency, '_diff' if diff else '', '_smooth' if smooth else '',
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
-filename = None
 store_names = (
 	'accumulated_precipitation',
 	'air_isentropic_density',
@@ -153,7 +152,7 @@ store_names = (
 	'x_momentum_isentropic',
 	'y_momentum_isentropic'
 )
-save_frequency = -1
+save_frequency = 5
 print_dry_frequency = -1
-print_moist_frequency = 1
+print_moist_frequency = 5
 plot_frequency = -1

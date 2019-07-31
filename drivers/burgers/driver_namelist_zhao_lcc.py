@@ -57,7 +57,7 @@ domain.horizontal_boundary.reference_state = state
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
-	domain, 'computational', nl.diffusion_type, nl.diffusion_coeff,
+	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff,
 	nl.backend, nl.dtype
 )
 
@@ -98,8 +98,7 @@ for i in range(nt):
 	tendencies, _ = diff(state)
 
 	# step the solution
-	state.update(dycore(state, tendencies, dt))
-
+	taz.dict_update(state, dycore(state, tendencies, dt))
 	state['time'] = nl.init_time + (i+1)*dt
 
 	compute_time += time.time() - compute_time_start

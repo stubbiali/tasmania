@@ -1,0 +1,42 @@
+{
+	"plots": [
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/precipitation_field_convergence/plot_0.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/precipitation_field_convergence/plot_1.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/precipitation_field_convergence/plot_2.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/precipitation_field_convergence/plot_3.json"
+		}
+	],
+	"tlevels": 9,
+	"nrows": 2,
+	"ncols": 2,
+	"print_time": null,
+	"init_time": {
+		"year": 1992,
+		"month": 2,
+		"day": 20,
+		"hour": 0
+	},
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [9.5, 7],
+		"tight_layout": false,
+		"tight_layout_rect": null,
+		"suptitle": null
+	},
+	"save_dest": null
+}

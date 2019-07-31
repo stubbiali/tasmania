@@ -46,6 +46,13 @@ class DifferenceLoader(BaseLoader):
 			self._fname = data['field_name']
 			self._funits = data['field_units']
 
+			start, stop, step = data.get('x2', (None, None, None))
+			self._x2 = None if start == stop == step is None else slice(start, stop, step)
+			start, stop, step = data.get('y2', (None, None, None))
+			self._y2 = None if start == stop == step is None else slice(start, stop, step)
+			start, stop, step = data.get('z2', (None, None, None))
+			self._z2 = None if start == stop == step is None else slice(start, stop, step)
+
 	def get_grid(self):
 		return self._dsmounter1.get_grid()
 
@@ -56,12 +63,14 @@ class DifferenceLoader(BaseLoader):
 		return self._dsmounter1.get_state(0)['time']
 
 	def get_state(self, tlevel):
+		x2, y2, z2 = self._x2, self._y2, self._z2
+
 		state1 = self._dsmounter1.get_state(tlevel)
 		state2 = self._dsmounter2.get_state(tlevel)
 
 		diff = \
 			state1[self._fname].to_units(self._funits).values - \
-			state2[self._fname].to_units(self._funits).values
+			state2[self._fname].to_units(self._funits).values[x2, y2, z2]
 		state1['diff_of_' + self._fname] = taz.make_dataarray_3d(
 			diff, self.get_grid(), self._funits
 		)
@@ -208,7 +217,8 @@ class RMSDLoader(BaseLoader):
 		field2 = state2[fname].to_units(funits).values[x2, y2, z2]
 		raw_rmsd = np.linalg.norm(field1 - field2) / np.sqrt(field1.size)
 		state1['rmsd_of_' + fname] = DataArray(
-			np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis]
+			np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis],
+			attrs={'units': funits}
 		)
 
 		return state1
@@ -260,7 +270,8 @@ class RMSDVelocityLoader(RMSDLoader):
 		field2 = state2[fname].to_units(funits).values[x2, y2, z2]
 		raw_rmsd = np.linalg.norm(field1 - field2) / np.sqrt(field1.size)
 		state1['rmsd_of_' + fname] = DataArray(
-			np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis]
+			np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis],
+			attrs={'units': funits}
 		)
 
 		return state1
@@ -315,7 +326,8 @@ class RRMSDLoader(BaseLoader):
 		field2 = state2[fname].to_units(funits).values[x2, y2, z2]
 		raw_rmsd = np.linalg.norm(field1 - field2) / np.linalg.norm(field2)
 		state1['rrmsd_of_' + fname] = DataArray(
-			np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis]
+			np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis],
+			attrs={'units': '1'}
 		)
 
 		return state1

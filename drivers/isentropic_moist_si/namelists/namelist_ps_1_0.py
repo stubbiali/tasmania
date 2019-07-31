@@ -117,16 +117,16 @@ coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 # microphysics
 precipitation			  = True
 sedimentation    		  = True
-sedimentation_flux_scheme = 'first_order_upwind'
-rain_evaporation 		  = False
+sedimentation_flux_scheme = 'second_order_upwind'
+rain_evaporation 		  = True
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
 collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
 update_frequency          = 0
 
 # simulation length
-timestep = timedelta(seconds=48)
-niter    = int(4*60*60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter    = int(3*60*60 / timestep.total_seconds())
 
 # output
 filename = \

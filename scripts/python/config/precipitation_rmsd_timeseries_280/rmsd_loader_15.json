@@ -1,0 +1,20 @@
+{
+	"filename1": [
+		"../../data/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_pg2_nx81_ny81_nz60_dt20_nt540_",
+		"gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_ssus.nc"
+	],
+	"filename2": [
+		"../../data/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx161_ny161_nz60_dt5_nt2160_",
+		"gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_cc.nc"
+	],
+	"field_name": "precipitation",
+	"field_units": "mm hr^-1",
+	"x1": [20, 61, null],
+	"x2": [40, 121, 2],
+	"y1": [20, 61, null],
+	"y2": [40, 121, 2],
+	"z1": [0, 1, null],
+	"z2": [0, 1, null]
+}

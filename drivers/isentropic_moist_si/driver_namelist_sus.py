@@ -168,7 +168,7 @@ if nl.update_frequency > 0:
 	from sympl import UpdateFrequencyWrapper
 	args.append({
 		'component': UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
-		'time_integrator': 'forward_euler', 'substeps': 1
+		'time_integrator': ptis, 'substeps': 1
 	})
 else:
 	args.append({
@@ -195,11 +195,12 @@ if nl.precipitation:
 	)
 	args.append({
 		'component': taz.ConcurrentCoupling(rfv, sd),
-		'time_integrator': ptis, 'substeps': 1
+		'time_integrator': 'rk3ws', 'substeps': 1
 	})
 
 	# component calculating the accumulated precipitation
 	ap = taz.Precipitation(domain, 'numerical', backend=nl.backend, dtype=nl.dtype)
+	args.append({'component': rfv})
 	args.append({'component': ap})
 
 # component performing the saturation adjustment
@@ -207,7 +208,7 @@ sa = taz.SaturationAdjustmentKessler(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 	backend=nl.backend, dtype=nl.dtype
 )
-args.append({'component': sa})
+#args.append({'component': sa})
 
 # wrap the components in a SequentialUpdateSplitting object
 physics = taz.SequentialUpdateSplitting(*args)

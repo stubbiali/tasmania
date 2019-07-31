@@ -1,0 +1,22 @@
+#!/bin/bash -l
+#SBATCH --account=s299m
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=xfer
+#SBATCH --constraint=mc
+#SBATCH --output=output/slurm-%j.out
+#SBATCH --error=error/slurm-%j.err
+
+# ==================================================
+# User inputs
+# ==================================================
+SOURCE=/scratch/snx3000/subbiali/buffer/*
+DESTINATION=/project/s299/subbiali/tasmania/data
+
+
+# ==================================================
+# Code
+# ==================================================
+module load daint-mc
+
+srun cp -ruv $SOURCE $DESTINATION 

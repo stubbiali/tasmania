@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
+import numpy as np
 import os
 import tasmania as taz
 import time
@@ -31,7 +32,7 @@ import time
 # ============================================================
 parser = argparse.ArgumentParser()
 parser.add_argument(
-	'-n', metavar='NAMELIST', type=str, default='namelist_suss.py',
+	'-n', metavar='NAMELIST', type=str, default='namelist_ssus.py',
 	help='The namelist file.', dest='namelist'
 )
 args = parser.parse_args()
@@ -108,7 +109,7 @@ if nl.coriolis:
 		backend=nl.backend, dtype=nl.dtype
 	)
 	args_before_dynamics.append({
-		'component': cf, 'time_integrator': 'forward_euler', 'substeps': 1
+		'component': cf, 'time_integrator': ptis, 'substeps': 1
 	})
 	args_after_dynamics.append({'component': cf, 'time_integrator': ptis, 'substeps': 1})
 
@@ -142,7 +143,7 @@ if nl.turbulence:
 		backend=nl.backend, dtype=nl.dtype
 	)
 	args_before_dynamics.append({
-		'component': turb, 'time_integrator': 'forward_euler', 'substeps': 1
+		'component': turb, 'time_integrator': ptis, 'substeps': 1
 	})
 	args_after_dynamics.append({'component': turb, 'time_integrator': ptis, 'substeps': 1})
 
@@ -160,7 +161,7 @@ if nl.update_frequency > 0:
 	from sympl import UpdateFrequencyWrapper
 	args_before_dynamics.append({
 		'component': UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
-		'time_integrator': 'forward_euler', 'substeps': 1
+		'time_integrator': ptis, 'substeps': 1
 	})
 	args_after_dynamics.append({
 		'component': UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
@@ -168,7 +169,7 @@ if nl.update_frequency > 0:
 	})
 else:
 	args_before_dynamics.append({
-		'component': ke, 'time_integrator': 'forward_euler', 'substeps': 1
+		'component': ke, 'time_integrator': ptis, 'substeps': 1
 	})
 	args_after_dynamics.append({
 		'component': ke, 'time_integrator': ptis, 'substeps': 1
@@ -205,15 +206,15 @@ if nl.precipitation:
 	# component integrating the sedimentation flux
 	sd = taz.Sedimentation(
 		domain, 'numerical', sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
-		backend=nl.backend, dtype=nl.dtype
+		maximum_vertical_cfl=0.5*0.975, backend=nl.backend, dtype=nl.dtype
 	)
 	args_before_dynamics.append({
 		'component': taz.ConcurrentCoupling(rfv, sd),
-		'time_integrator': 'forward_euler', 'substeps': 1
+		'time_integrator': 'rk3ws', 'substeps': 1
 	})
 	args_after_dynamics.append({
 		'component': taz.ConcurrentCoupling(rfv, sd),
-		'time_integrator': ptis, 'substeps': 1
+		'time_integrator': 'rk3ws', 'substeps': 1
 	})
 
 # component performing the saturation adjustment
@@ -221,14 +222,14 @@ sa = taz.SaturationAdjustmentKessler(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 	backend=nl.backend, dtype=nl.dtype
 )
-args_after_dynamics.append({'component': sa})
+#args_after_dynamics.append({'component': sa})
 
 # component calculating the accumulated precipitation
 ap = taz.Precipitation(
 	domain, 'numerical', backend=nl.backend, dtype=nl.dtype
 )
 args_before_dynamics.append({'component': ap})
-args_after_dynamics.append({'component': ap})
+args_after_dynamics.append({'component': taz.ConcurrentCoupling(rfv, ap)})
 state['raindrop_fall_velocity'] = taz.make_dataarray_3d(
 	np.zeros((cgrid.nx, cgrid.ny, cgrid.nz), dtype=nl.dtype), cgrid, 'm s^-1'
 )

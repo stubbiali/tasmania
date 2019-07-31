@@ -1,0 +1,22 @@
+{
+	"field_name": "rmsd_of_precipitation",
+	"field_units": "mm hr^-1",
+	"x": 0,
+	"y": 0,
+	"z": 0,
+	"xdata": [1, 2, 3],
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"linestyle": "-",
+		"linewidth": 1.5,
+		"linecolor": "cyan",
+		"marker": "<",
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markeredgecolor": "cyan",
+		"markerfacecolor": "cyan",
+		"legend_label": "SUS"
+	}
+}

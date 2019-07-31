@@ -1,0 +1,22 @@
+{
+	"field_name": "domain_cumulative_accumulated_precipitation",
+	"field_units": "kg",
+	"x": 0,
+	"y": 0,
+	"z": 0,
+	"xdata": [1.0, 2.0, 3.0],
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0e-9,
+		"linestyle": "solid",
+		"linewidth": 1.5,
+		"linecolor": "purple",
+		"marker": "s",
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markeredgecolor": "purple",
+		"markerfacecolor": "purple",
+		"legend_label": "FC"
+	}
+}

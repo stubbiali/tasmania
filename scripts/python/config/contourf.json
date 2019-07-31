@@ -1,9 +1,9 @@
 {
-	"field_name": "x_velocity",
+	"field_name": "horizontal_velocity",
 	"field_units": "m s^-1",
 	"x": null,
-	"y": 20,
-	"z": null,
+	"y": null,
+	"z": -1,
 	"xaxis_name": "x",
 	"xaxis_units": "km",
 	"xaxis_y": null,
@@ -30,10 +30,10 @@
 		"cbar_center": 15,
 		"cbar_half_width": 7.5,
 		"cbar_x_label": "",
-		"cbar_y_label": "$x$-velocity [m s$^{-1}$]",
+		"cbar_y_label": "",
 		"cbar_title": "",
 		"cbar_orientation": "vertical",
-		"cbar_ax": [0, 1, 2],
+		"cbar_ax": null,
 		"draw_vertical_levels": false
 	}
 }

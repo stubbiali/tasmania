@@ -21,4 +21,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-srun --pty --x11 --account=s299m --constraint=mc --partition=normal --time=03:00:00 bash
+srun --pty --x11 --account=s299m --constraint=mc --partition=normal --time=04:00:00 bash

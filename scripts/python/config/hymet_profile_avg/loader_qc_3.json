@@ -1,0 +1,11 @@
+{
+	"filename": [
+		"../../data/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_pg2_nx41_ny41_nz60_dt40_nt270_",
+		"gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_sts.nc"
+	],
+	"field_name": "mass_fraction_of_cloud_liquid_water_in_air",
+	"field_units": "g kg^-1",
+	"x": [11, 25, null],
+	"y": [15, 25, null]
+}

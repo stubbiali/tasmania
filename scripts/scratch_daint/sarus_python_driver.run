@@ -1,12 +1,12 @@
 #!/bin/bash -l
-#SBATCH --job-name=moist-cc3
+#SBATCH --job-name=moist_si_cc_280_4
 #SBATCH --account=s299m
-#SBATCH --time=04:30:00
+#SBATCH --time=14:00:00
 #SBATCH --nodes=1
 #SBATCH --partition=normal
 #SBATCH --constraint=mc
-#SBATCH --output=output/slurm-moist-cc3.out
-#SBATCH --error=error/slurm-moist-cc3.err
+#SBATCH --output=output/slurm_moist_si_cc_280_4.out
+#SBATCH --error=error/slurm_moist_si_cc_280_4.err
 
 # ==================================================
 # User inputs
@@ -16,8 +16,8 @@ IMAGE_TAG=master  # options: master
 VENV=py36  # options: py35, py36, py37
 TASMANIA_ROOT=/project/s299/subbiali/tasmania  # options: /project/s299/subbiali/tasmania
 DRIVER_DIR=isentropic_moist_si  # options: any directory under TASMANIA_ROOT/drivers
-DRIVER_NAME=driver_namelist_cc.py  # options: any driver under TASMANIA_ROOT/drivers/DRIVER_DIR
-NAMELIST=namelists/namelist_cc_3.py  # options: any namelist under DRIVER_DIR/
+DRIVER_NAME=driver_namelist_cc.py
+NAMELIST=namelists/thetas280/namelist_cc_4_0.py
 
 # ==================================================
 # Code
@@ -50,7 +50,7 @@ srun --unbuffered \
 		bash -c \
 		 	". $VENV/bin/activate; \
 		 	 cd tasmania/drivers/$DRIVER_DIR; \
-		 	 python $DRIVER_NAME -n $NAMELIST; \
+		 	 python ${DRIVER_NAME} -n ${NAMELIST}; \
 		 	 deactivate; \
 		 	 exit"
 

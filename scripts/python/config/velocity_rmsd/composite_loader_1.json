@@ -1,0 +1,19 @@
+{
+    "loaders": [
+        {
+            "module": "data_loaders.diff_loaders",
+            "classname": "RMSDVelocityLoader",
+            "config": "config/precipitation_rmsd/rmsd_loader_10.json"
+        },
+        {
+            "module": "data_loaders.diff_loaders",
+            "classname": "RMSDVelocityLoader",
+            "config": "config/precipitation_rmsd/rmsd_loader_11.json"
+        },
+        {
+            "module": "data_loaders.diff_loaders",
+            "classname": "RMSDVelocityLoader",
+            "config": "config/precipitation_rmsd/rmsd_loader_12.json"
+        }
+    ]
+}

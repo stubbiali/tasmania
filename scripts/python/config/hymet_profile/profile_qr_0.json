@@ -1,0 +1,26 @@
+{
+	"field_name": "mass_fraction_of_precipitation_water_in_air",
+	"field_units": "g kg^-1",
+	"x": 19,
+	"y": 20,
+	"z": null,
+	"axis_name": "height",
+	"axis_units": "km",
+	"axis_x": null,
+	"axis_y": null,
+	"axis_z": null,
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"linestyle": "solid",
+		"linewidth": 1.5,
+		"linecolor": "purple",
+		"marker": null,
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markeredgecolor": "blue",
+		"markerfacecolor": "white",
+		"legend_label": "CC"
+	}
+}
