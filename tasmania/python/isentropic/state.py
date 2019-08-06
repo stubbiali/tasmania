@@ -59,7 +59,7 @@ mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 def get_isentropic_state_from_brunt_vaisala_frequency(
 	grid, time, x_velocity, y_velocity, brunt_vaisala,
-	moist=False, precipitation=False, relative_humidity=0.5,
+	moist=False, tracers=None, precipitation=False, relative_humidity=0.5,
 	dtype=datatype, physical_constants=None
 ):
 	"""
@@ -84,6 +84,10 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 	moist : `bool`, optional
 		:obj:`True` to include some water species in the model state,
 		:obj:`False` for a fully dry configuration. Defaults to :obj:`False`.
+	tracers : `dict`, optional
+		Dictionary whose keys are strings denoting the tracers included in
+		the model, and whose values are	dictionaries specifying fundamental
+		properties ('units', 'sedimentation_velocity') for those tracers.
 	precipitation : `bool`, optional
 		:obj:`True` if the model takes care of precipitation,
 		:obj:`False` otherwise. Defaults to :obj:`False`.
@@ -108,6 +112,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 	dict :
 		The model state dictionary.
 	"""
+	tracers = {} if tracers is None else tracers
+
 	# shortcuts
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
 	dz = grid.dz.to_units('K').values.item()
@@ -195,7 +201,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 			),
 	}
 
-	if moist:
+	if moist or len(tracers) > 0:
 		# diagnose the air density and temperature
 		rho  = s * dz / (h[:, :, :-1] - h[:, :, 1:])
 		state['air_density'] = make_dataarray_3d(
@@ -206,6 +212,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 			temp, grid, 'K', name='air_temperature'
 		)
 
+	if moist:
 		# initialize the relative humidity
 		rh = relative_humidity * np.ones((nx, ny, nz))
 		rh_ = make_dataarray_3d(rh, grid, '1')
@@ -221,8 +228,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 		state[mfwv] = make_dataarray_3d(qv, grid, 'g g^-1', name=mfwv)
 
 		# initialize the mass fraction of cloud liquid water and precipitation water
-		qc = 0.0000 * np.ones((nx, ny, nz), dtype=dtype)
-		qc[:, :, -10:] = 0.0005
+		qc = np.zeros((nx, ny, nz), dtype=dtype)
 		state[mfcw] = make_dataarray_3d(qc, grid, 'g g^-1', name=mfcw)
 		qr = np.zeros((nx, ny, nz), dtype=dtype)
 		state[mfpw] = make_dataarray_3d(qr, grid, 'g g^-1', name=mfpw)
@@ -236,6 +242,21 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 			state['accumulated_precipitation'] = make_dataarray_3d(
 				np.zeros((nx, ny, 1), dtype=dtype), grid, 'mm',
 				name='accumulated_precipitation'
+			)
+
+	for name in tracers:
+		# tracer
+		if name not in [mfwv, mfcw, mfpw]:
+			q = np.zeros((nx, ny, nz), dtype=dtype)
+			state[name] = make_dataarray_3d(
+				q, grid, tracers[name]['units'], name=name
+			)
+
+		# sedimentation velocity of the tracer
+		if 'sedimentation_velocity' in tracers[name]:
+			vt = np.zeros((nx, ny, nz), dtype=dtype)
+			state[tracers[name]['sedimentation_velocity']] = make_dataarray_3d(
+				vt, grid, 'm s^-1', name=tracers[name]['sedimentation_velocity']
 			)
 
 	return state

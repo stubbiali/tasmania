@@ -23,11 +23,14 @@
 """
 This module contains:
 	IsentropicHorizontalFlux
+	NGIsentropicHorizontalFlux
 	IsentropicVerticalFlux
 	IsentropicNonconservativeHorizontalFlux
 	IsentropicNonconservativeVerticalFlux
 	IsentropicMinimalHorizontalFlux
 	IsentropicMinimalVerticalFlux
+	NGIsentropicMinimalHorizontalFlux
+	NGIsentropicMinimalVerticalFlux
 	IsentropicBoussinesqMinimalHorizontalFlux
 	IsentropicBoussinesqMinimalVerticalFlux
 """
@@ -192,6 +195,167 @@ class IsentropicHorizontalFlux:
 			return ThirdOrderUpwind(grid, moist)
 		elif scheme == 'fifth_order_upwind':
 			return FifthOrderUpwind(grid, moist)
+		else:
+			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
+
+
+class NGIsentropicHorizontalFlux:
+	"""
+	Abstract base class whose derived classes implement different schemes
+	to compute the horizontal numerical fluxes for the three-dimensional
+	isentropic dynamical core. The conservative form of the governing
+	equations is used.
+	"""
+	# make the class abstract
+	__metaclass__ = abc.ABCMeta
+
+	# class attributes
+	extent = None
+	order = None
+
+	def __init__(self, grid, tracers):
+		"""
+		Parameters
+		----------
+		grid : tasmania.Grid
+			The underlying grid.
+		tracers : ordered dict
+			TODO
+		"""
+		self._grid = grid
+
+		tracers = {} if tracers is None else tracers
+		self._tracers = []
+		for name, props in tracers.items():
+			if 'stencil_symbol' not in props:
+				import warnings
+				warning_msg = \
+					'Although not mandatory, it is advisable to specify ' \
+					'a concise stencil symbol for {} to improve the readability ' \
+					'of the generated code.'.format(name)
+				warnings.warn(warning_msg, Warning)
+			self._tracers.append(props.get('stencil_symbol', name))
+			props['stencil_symbol'] = self._tracers[-1]
+
+	@abc.abstractmethod
+	def __call__(
+		self, i, j, dt, s, u, v, mtg, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
+	):
+		"""
+		This method returns the :class:`gridtools.Equation`\s representing
+		the x- and y-fluxes for all the conservative model variables.
+		As this method is marked as abstract, its implementation is delegated
+		to the derived classes.
+
+		Parameters
+		----------
+		i : gridtools.Index
+			The index running along the first horizontal dimension.
+		j : gridtools.Index
+			The index running along the second horizontal dimension.
+		dt : gridtools.Global
+			The time step, in seconds.
+		s : gridtools.Equation
+			The isentropic density, in units of [kg m^-2 K^-1].
+		u : gridtools.Equation
+			The x-staggered x-velocity, in units of [m s^-1].
+		v : gridtools.Equation
+			The y-staggered y-velocity, in units of [m s^-1].
+		mtg : gridtools.Equation
+			The Montgomery potential, in units of [m^2 s^-2].
+		su : gridtools.Equation
+			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
+		sv : gridtools.Equation
+			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
+		s_tnd : `gridtools.Equation`, optional
+			The tendency of the isentropic density coming from physical parameterizations,
+			in units of [kg m^-2 K^-1 s^-1].
+		su_tnd : `gridtools.Equation`, optional
+			The tendency of the x-momentum coming from physical parameterizations,
+			in units of [kg m^-1 K^-1 s^-2].
+		sv_tnd : `gridtools.Equation`, optional
+			The tendency of the y-momentum coming from physical parameterizations,
+			in units of [kg m^-1 K^-1 s^-2].
+		**tracer_kwargs:
+			TODO
+
+		Returns
+		-------
+		flux_s_x : gridtools.Equation
+			The x-flux for the isentropic density.
+		flux_s_y : gridtools.Equation
+			The y-flux for the isentropic density.
+		flux_su_x : gridtools.Equation
+			The x-flux for the x-momentum.
+		flux_su_y : gridtools.Equation
+			The y-flux for the x-momentum.
+		flux_sv_x : gridtools.Equation
+			The x-flux for the y-momentum.
+		flux_sv_y : gridtools.Equation
+			The y-flux for the y-momentum.
+		flux_sqv_x : `gridtools.Equation`, optional
+			The x-flux for the isentropic density of water vapor.
+		flux_sqv_y : `gridtools.Equation`, optional
+			The y-flux for the isentropic density of water vapor.
+		flux_sqc_x : `gridtools.Equation`, optional
+			The x-flux for the isentropic density of cloud liquid water.
+		flux_sqc_y : `gridtools.Equation`, optional
+			The y-flux for the isentropic density of cloud liquid water.
+		flux_sqr_x : `gridtools.Equation`, optional
+			The x-flux for the isentropic density of precipitation water.
+		flux_sqr_y : `gridtools.Equation`, optional
+			The y-flux for the isentropic density of precipitation water.
+		"""
+
+	@staticmethod
+	def factory(scheme, grid, tracers=None):
+		"""
+		Static method which returns an instance of the derived class
+		implementing the numerical scheme specified by :data:`scheme`.
+
+		Parameters
+		----------
+		scheme : str
+			String specifying the numerical scheme to implement. Either:
+
+				* 'upwind', for the upwind scheme;
+				* 'centered', for a second-order centered scheme;
+				* 'maccormack', for the MacCormack scheme;
+				* 'third_order_upwind', for the third-order upwind scheme;
+				* 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+		grid : tasmania.Grid
+			The underlying grid.
+		tracers : `ordered dict`, optional
+			TODO
+
+		Return
+		------
+		obj :
+			Instance of the derived class implementing the scheme
+			specified by :data:`scheme`.
+
+		References
+		----------
+		Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
+			elastic models using forward time schemes. *Monthly Weather Review*, \
+			*130*:2088-2097.
+		Zeman, C. (2016). An isentropic mountain flow model with iterative \
+			synchronous flux correction. *Master thesis, ETH Zurich*.
+		"""
+		from .implementations.ng_horizontal_fluxes import \
+			Upwind, Centered, MacCormack, ThirdOrderUpwind, FifthOrderUpwind
+		if scheme == 'upwind':
+			return Upwind(grid, tracers)
+		elif scheme == 'centered':
+			return Centered(grid, tracers)
+		elif scheme == 'maccormack':
+			return MacCormack(grid, tracers)
+		elif scheme == 'third_order_upwind':
+			return ThirdOrderUpwind(grid, tracers)
+		elif scheme == 'fifth_order_upwind':
+			return FifthOrderUpwind(grid, tracers)
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
 
@@ -852,6 +1016,274 @@ class IsentropicMinimalVerticalFlux:
 			return ThirdOrderUpwind(grid, moist)
 		elif scheme == 'fifth_order_upwind':
 			return FifthOrderUpwind(grid, moist)
+		else:
+			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))
+
+
+class NGIsentropicMinimalHorizontalFlux:
+	"""
+	Abstract base class whose derived classes implement different schemes
+	to compute the horizontal numerical fluxes for the three-dimensional
+	isentropic and *minimal* dynamical core. The conservative form of the
+	governing equations is used.
+	"""
+	# make the class abstract
+	__metaclass__ = abc.ABCMeta
+
+	# class attributes
+	extent = None
+	order = None
+
+	def __init__(self, grid, tracers):
+		"""
+		Parameters
+		----------
+		grid : tasmania.Grid
+			The underlying grid.
+		tracers : ordered dict
+			TODO
+		"""
+		self._grid = grid
+
+		tracers = {} if tracers is None else tracers
+		self._tracers = []
+		for name, props in tracers.items():
+			if 'stencil_symbol' not in props:
+				import warnings
+				warning_msg = \
+					'Although not mandatory, it is advisable to specify ' \
+					'a concise stencil symbol for {} to improve the readability ' \
+					'of the generated code.'.format(name)
+				warnings.warn(warning_msg, Warning)
+			self._tracers.append(props.get('stencil_symbol', name))
+			props['stencil_symbol'] = self._tracers[-1]
+
+	@abc.abstractmethod
+	def __call__(
+		self, i, j, dt, s, u, v, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
+	):
+		"""
+		This method returns the :class:`gridtools.Equation`\s representing
+		the x- and y-fluxes for all the conservative model variables.
+		As this method is marked as abstract, its implementation is delegated
+		to the derived classes.
+
+		Parameters
+		----------
+		i : gridtools.Index
+			The index running along the first horizontal dimension.
+		j : gridtools.Index
+			The index running along the second horizontal dimension.
+		dt : gridtools.Global
+			The time step, in seconds.
+		s : gridtools.Equation
+			The isentropic density, in units of [kg m^-2 K^-1].
+		u : gridtools.Equation
+			The x-staggered x-velocity, in units of [m s^-1].
+		v : gridtools.Equation
+			The y-staggered y-velocity, in units of [m s^-1].
+		su : gridtools.Equation
+			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
+		sv : gridtools.Equation
+			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
+		s_tnd : `gridtools.Equation`, optional
+			The tendency of the isentropic density coming from physical parameterizations,
+			in units of [kg m^-2 K^-1 s^-1].
+		su_tnd : `gridtools.Equation`, optional
+			The tendency of the x-momentum coming from physical parameterizations,
+			in units of [kg m^-1 K^-1 s^-2].
+		sv_tnd : `gridtools.Equation`, optional
+			The tendency of the y-momentum coming from physical parameterizations,
+			in units of [kg m^-1 K^-1 s^-2].
+		**tracer_kwargs :
+			TODO
+
+		Returns
+		-------
+		flux_s_x : gridtools.Equation
+			The x-flux for the isentropic density.
+		flux_s_y : gridtools.Equation
+			The y-flux for the isentropic density.
+		flux_su_x : gridtools.Equation
+			The x-flux for the x-momentum.
+		flux_su_y : gridtools.Equation
+			The y-flux for the x-momentum.
+		flux_sv_x : gridtools.Equation
+			The x-flux for the y-momentum.
+		flux_sv_y : gridtools.Equation
+			The y-flux for the y-momentum.
+		"""
+
+	@staticmethod
+	def factory(scheme, grid, tracers=None):
+		"""
+		Static method which returns an instance of the derived class
+		implementing the numerical scheme specified by :data:`scheme`.
+
+		Parameters
+		----------
+		scheme : str
+			String specifying the numerical scheme to implement. Either:
+
+				* 'upwind', for the upwind scheme;
+				* 'centered', for a second-order centered scheme;
+				* 'maccormack', for the MacCormack scheme;
+				* 'third_order_upwind', for the third-order upwind scheme;
+				* 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+		grid : tasmania.Grid
+			The underlying grid.
+		tracers : `ordered dict`, optional
+			TODO
+
+		Return
+		------
+		obj :
+			Instance of the derived class implementing the scheme
+			specified by :data:`scheme`.
+
+		References
+		----------
+		Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
+			elastic models using forward time schemes. *Monthly Weather Review*, \
+			*130*:2088-2097.
+		Zeman, C. (2016). An isentropic mountain flow model with iterative \
+			synchronous flux correction. *Master thesis, ETH Zurich*.
+		"""
+		from .implementations.ng_minimal_horizontal_fluxes import \
+			Upwind, Centered, MacCormack, ThirdOrderUpwind, FifthOrderUpwind
+		if scheme == 'upwind':
+			return Upwind(grid, tracers)
+		elif scheme == 'centered':
+			return Centered(grid, tracers)
+		elif scheme == 'maccormack':
+			return MacCormack(grid, tracers)
+		elif scheme == 'third_order_upwind':
+			return ThirdOrderUpwind(grid, tracers)
+		elif scheme == 'fifth_order_upwind':
+			return FifthOrderUpwind(grid, tracers)
+		else:
+			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
+
+
+class NGIsentropicMinimalVerticalFlux:
+	"""
+	Abstract base class whose derived classes implement different schemes
+	to compute the vertical numerical fluxes for the three-dimensional
+	isentropic and *minimal* dynamical core. The conservative form of the
+	governing equations is used.
+	"""
+	# make the class abstract
+	__metaclass__ = abc.ABCMeta
+
+	# class attributes
+	extent = None
+	order = None
+
+	def __init__(self, grid, tracers):
+		"""
+		Parameters
+		----------
+		grid : tasmania.Grid
+			The underlying grid.
+		tracers : ordered dict
+			TODO
+		"""
+		self._grid = grid
+
+		tracers = {} if tracers is None else tracers
+		self._tracers = []
+		for name, props in tracers.items():
+			if 'stencil_symbol' not in props:
+				import warnings
+				warning_msg = \
+					'Although not mandatory, it is advisable to specify ' \
+					'a concise stencil symbol for {} to improve the readability ' \
+					'of the generated code.'.format(name)
+				warnings.warn(warning_msg, Warning)
+			self._tracers.append(props.get('stencil_symbol', name))
+			props['stencil_symbol'] = self._tracers[-1]
+
+	@abc.abstractmethod
+	def __call__(self, k, w, s, su, sv, **tracer_kwargs):
+		"""
+		This method returns the :class:`gridtools.Equation`\s representing
+		the vertical flux for all the conservative model variables.
+		As this method is marked as abstract, its implementation is delegated
+		to the derived classes.
+
+		Parameters
+		----------
+		k : gridtools.Index
+			The index running along the vertical dimension.
+		w : gridtools.Equation
+			The vertical velocity, i.e., the change over time in potential temperature,
+			defined at the vertical interface levels, in units of [K s^-1].
+		s : gridtools.Equation
+			The isentropic density, in units of [kg m^-2 K^-1].
+		su : gridtools.Equation
+			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
+		sv : gridtools.Equation
+			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
+		**tracer_kwargs:
+			TODO
+
+		Returns
+		-------
+		flux_s_z : gridtools.Equation
+			The vertical flux for the isentropic density.
+		flux_su_z : gridtools.Equation
+			The vertical flux for the x-momentum.
+		flux_sv_z : gridtools.Equation
+			The vertical flux for the y-momentum.
+		"""
+
+	@staticmethod
+	def factory(scheme, grid, tracers=None):
+		"""
+		Static method which returns an instance of the derived class
+		implementing the numerical scheme specified by :data:`scheme`.
+
+		Parameters
+		----------
+		scheme : str
+			String specifying the numerical scheme to implement. Either:
+
+				* 'upwind', for the upwind scheme;
+				* 'centered', for a second-order centered scheme;
+				* 'third_order_upwind', for the third-order upwind scheme;
+				* 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+		grid : tasmania.Grid
+			The underlying grid.
+		tracers : `ordered dict`, optional
+			TODO
+
+		Return
+		------
+		obj :
+			Instance of the derived class implementing the scheme
+			specified by :data:`scheme`.
+
+		References
+		----------
+		Wicker, L. J., and W. C. Skamarock. (2002). Time-splitting methods for \
+			elastic models using forward time schemes. *Monthly Weather Review*, \
+			*130*:2088-2097.
+		Zeman, C. (2016). An isentropic mountain flow model with iterative \
+			synchronous flux correction. *Master thesis, ETH Zurich*.
+		"""
+		from .implementations.ng_minimal_vertical_fluxes import \
+			Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
+		if scheme == 'upwind':
+			return Upwind(grid, tracers)
+		elif scheme == 'centered':
+			return Centered(grid, tracers)
+		elif scheme == 'third_order_upwind':
+			return ThirdOrderUpwind(grid, tracers)
+		elif scheme == 'fifth_order_upwind':
+			return FifthOrderUpwind(grid, tracers)
 		else:
 			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))
 

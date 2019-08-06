@@ -25,21 +25,27 @@ from hypothesis import \
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.physics.horizontal_smoothing import \
 	IsentropicHorizontalSmoothing
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_dataarrays
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_dataarrays
 
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+
+__tracers = {
+	'tracer0': {'units': 'g g^-1'},
+	'tracer1': {'units': 'g g^-1'},
+	'tracer2': {'units': 'g kg^-1'},
+	'tracer3': {'units': 'kg^-1'}
+}
 
 
 @settings(
@@ -56,22 +62,27 @@ def test(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 40), yaxis_length=(7, 40)), label='domain'
+		st_domain(xaxis_length=(7, 40), yaxis_length=(7, 40)), label='domain'
 	)
 
 	grid = domain.numerical_grid
 	dtype = grid.x.dtype
 
-	state = data.draw(utils.st_isentropic_state(grid, moist=True), label='state')
+	q_on = {
+		name: data.draw(hyp_st.booleans(), label=name+'_on')
+		for name in __tracers
+	}
+	tracers = {name: __tracers[name] for name in __tracers if q_on[name]}
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label='state')
 
-	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1))
-	smooth_coeff_max = data.draw(utils.st_floats(min_value=smooth_coeff, max_value=1))
+	smooth_coeff = data.draw(st_floats(min_value=0, max_value=1))
+	smooth_coeff_max = data.draw(st_floats(min_value=smooth_coeff, max_value=1))
 	smooth_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
-	smooth_moist_coeff = data.draw(utils.st_floats(min_value=0, max_value=1))
-	smooth_moist_coeff_max = data.draw(utils.st_floats(min_value=smooth_moist_coeff, max_value=1))
-	smooth_moist_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+	smooth_tracer_coeff = data.draw(st_floats(min_value=0, max_value=1))
+	smooth_tracer_coeff_max = data.draw(st_floats(min_value=smooth_tracer_coeff, max_value=1))
+	smooth_tracer_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -89,9 +100,9 @@ def test(data):
 			smooth_type, (nx, ny, nz), smooth_coeff, smooth_coeff_max,
 			smooth_damp_depth, nb, backend, dtype
 		)
-		hs_moist = HorizontalSmoothing.factory(
-			smooth_type, (nx, ny, nz), smooth_moist_coeff, smooth_moist_coeff_max,
-			smooth_moist_damp_depth, nb, backend, dtype
+		hs_tracer = HorizontalSmoothing.factory(
+			smooth_type, (nx, ny, nz), smooth_tracer_coeff, smooth_tracer_coeff_max,
+			smooth_tracer_damp_depth, nb, backend, dtype
 		)
 
 		val = {}
@@ -112,12 +123,12 @@ def test(data):
 			hs(field, field_val)
 			val[names[i]] = field_val
 
-		names = (mfwv, mfcw, mfpw)
-		units = ('g g^-1',) * 3
+		names = tuple(name for name in tracers)
+		units = tuple(tracers[name]['units'] for name in tracers)
 		for i in range(len(names)):
 			field = state[names[i]].to_units(units[i]).values
 			field_val = np.zeros_like(field, dtype=dtype)
-			hs_moist(field, field_val)
+			hs_tracer(field, field_val)
 			val[names[i]] = field_val
 
 		#
@@ -127,25 +138,25 @@ def test(data):
 			domain, smooth_type,
 			smooth_coeff=smooth_coeff, smooth_coeff_max=smooth_coeff_max,
 			smooth_damp_depth=smooth_damp_depth,
-			backend=backend, dtype=dtype
+			tracers=tracers, backend=backend, dtype=dtype
 		)
 
 		diagnostics = ihs(state)
 
-		names = (
+		names = [
 			'air_isentropic_density',
 			'x_momentum_isentropic',
 			'y_momentum_isentropic',
-		)
-		units = (
+		]
+		units = [
 			'kg m^-2 K^-1',
 			'kg m^-1 K^-1 s^-1',
 			'kg m^-1 K^-1 s^-1',
-		)
+		]
 		for i in range(len(names)):
 			assert names[i] in diagnostics
 			field_val = make_dataarray_3d(val[names[i]], grid, units[i], name=names[i])
-			utils.compare_dataarrays(diagnostics[names[i]], field_val)
+			compare_dataarrays(diagnostics[names[i]], field_val)
 
 		assert len(diagnostics) == len(names)
 
@@ -156,34 +167,20 @@ def test(data):
 			domain, smooth_type,
 			smooth_coeff=smooth_coeff, smooth_coeff_max=smooth_coeff_max,
 			smooth_damp_depth=smooth_damp_depth,
-			moist=True,
-			smooth_moist_coeff=smooth_moist_coeff, smooth_moist_coeff_max=smooth_moist_coeff_max,
-			smooth_moist_damp_depth=smooth_moist_damp_depth,
+			tracers=tracers, smooth_tracer_coeff=smooth_tracer_coeff,
+			smooth_tracer_coeff_max=smooth_tracer_coeff_max,
+			smooth_tracer_damp_depth=smooth_tracer_damp_depth,
 			backend=backend, dtype=dtype
 		)
 
 		diagnostics = ihs(state)
 
-		names = (
-			'air_isentropic_density',
-			'x_momentum_isentropic',
-			'y_momentum_isentropic',
-			mfwv,
-			mfcw,
-			mfpw,
-		)
-		units = (
-			'kg m^-2 K^-1',
-			'kg m^-1 K^-1 s^-1',
-			'kg m^-1 K^-1 s^-1',
-			'g g^-1',
-			'g g^-1',
-			'g g^-1',
-		)
+		names += [name for name in tracers]
+		units += [tracers[name]['units'] for name in tracers]
 		for i in range(len(names)):
 			assert names[i] in diagnostics
 			field_val = make_dataarray_3d(val[names[i]], grid, units[i], name=names[i])
-			utils.compare_dataarrays(diagnostics[names[i]], field_val)
+			compare_dataarrays(diagnostics[names[i]], field_val)
 
 		assert len(diagnostics) == len(names)
 

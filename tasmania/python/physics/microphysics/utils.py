@@ -108,8 +108,7 @@ class Precipitation(ImplicitTendencyComponent):
 
 	def __init__(
 		self, domain, grid_type='numerical', backend=gt.mode.NUMPY,
-		dtype=datatype,
-		physical_constants=None, **kwargs
+		dtype=datatype,	physical_constants=None, **kwargs
 	):
 		"""
 		Parameters
@@ -380,7 +379,7 @@ class Sedimentation(ImplicitTendencyComponent):
 		tracers : dict
 			Dictionary whose keys are the names of the precipitating tracers to
 			consider, and whose values are dictionaries specifying 'units' and
-			'velocity' for those tracers.
+			'sedimentation_velocity' for those tracers.
 		sedimentation_flux_scheme : `str`, optional
 			The numerical sedimentation flux scheme. Please refer to
 			:class:`~tasmania.SedimentationFlux` for the available options.
@@ -407,10 +406,11 @@ class Sedimentation(ImplicitTendencyComponent):
 				)
 
 			try:
-				self._velocities[tracer] = tracers[tracer]['velocity']
+				self._velocities[tracer] = tracers[tracer]['sedimentation_velocity']
 			except KeyError:
 				raise KeyError(
-					'Dictionary for ''{}'' misses the key ''velocity''.'.format(tracer)
+					'Dictionary for ''{}'' misses the key ''sedimentation_velocity''.'
+						.format(tracer)
 				)
 
 		super().__init__(domain, grid_type, **kwargs)
