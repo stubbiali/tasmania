@@ -48,9 +48,9 @@ def test_upwind_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalIsentropicFlux.factory('upwind', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd)
 
@@ -62,7 +62,7 @@ def test_upwind_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'flux_sv_x'
 	assert fluxes[5].get_name() == 'flux_sv_y'
 
-	fluxer = HorizontalIsentropicFlux.factory('upwind', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('upwind', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd,
 					qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd)
@@ -105,9 +105,9 @@ def test_centered_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalIsentropicFlux.factory('centered', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('centered', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd)
 
@@ -119,7 +119,7 @@ def test_centered_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'flux_sv_x'
 	assert fluxes[5].get_name() == 'flux_sv_y'
 
-	fluxer = HorizontalIsentropicFlux.factory('centered', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('centered', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd,
 					qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd)
@@ -162,9 +162,9 @@ def test_maccormack_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalIsentropicFlux.factory('maccormack', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('maccormack', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd)
 
@@ -176,7 +176,7 @@ def test_maccormack_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'flux_sv_x'
 	assert fluxes[5].get_name() == 'flux_sv_y'
 
-	fluxer = HorizontalIsentropicFlux.factory('maccormack', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('maccormack', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd,
 					qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd)
@@ -219,9 +219,9 @@ def test_third_order_upwind_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalIsentropicFlux.factory('third_order_upwind', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('third_order_upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd)
 
@@ -233,7 +233,7 @@ def test_third_order_upwind_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'third_order_flux_sv_x'
 	assert fluxes[5].get_name() == 'third_order_flux_sv_y'
 
-	fluxer = HorizontalIsentropicFlux.factory('third_order_upwind', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('third_order_upwind', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd,
 					qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd)
@@ -276,9 +276,9 @@ def test_fifth_order_upwind_horizontal_flux(grid):
 	qc_tnd 	= gt.Equation()
 	qr_tnd 	= gt.Equation()
 
-	from tasmania.python.isentropic.dynamics.fluxes import HorizontalIsentropicFlux
+	from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
 
-	fluxer = HorizontalIsentropicFlux.factory('fifth_order_upwind', grid, False)
+	fluxer = IsentropicHorizontalFlux.factory('fifth_order_upwind', grid, False)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd)
 
@@ -290,7 +290,7 @@ def test_fifth_order_upwind_horizontal_flux(grid):
 	assert fluxes[4].get_name() == 'fifth_order_flux_sv_x'
 	assert fluxes[5].get_name() == 'fifth_order_flux_sv_y'
 
-	fluxer = HorizontalIsentropicFlux.factory('fifth_order_upwind', grid, True)
+	fluxer = IsentropicHorizontalFlux.factory('fifth_order_upwind', grid, True)
 	fluxes = fluxer(i, j, k, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr,
 					s_tnd=s_tnd, su_tnd=su_tnd, sv_tnd=sv_tnd,
 					qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd)

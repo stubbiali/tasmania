@@ -30,7 +30,7 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.fluxes import NGIsentropicMinimalVerticalFlux
 from tasmania.python.utils.data_utils import get_physical_constants
 
 try:
@@ -48,7 +48,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
 	numerical grid of the underlying domain.
 	"""
 	def __init__(
-		self, domain, flux_scheme='upwind', moist=False,
+		self, domain, flux_scheme='upwind', tracers=None,
 		tendency_of_air_potential_temperature_on_interface_levels=False,
 		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
 	):
@@ -61,9 +61,10 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			The numerical flux scheme to implement. Defaults to 'upwind'.
 			See :class:`~tasmania.IsentropicMinimalVerticalFlux` for all
 			available options.
-		moist : `bool`, optional
-			:obj:`True` if water species are included in the model,
-			:obj:`False` otherwise. Defaults to :obj:`False`.
+		tracers : `ordered dict`, optional
+			(Ordered) dictionary whose keys are strings denoting the tracers
+			included in the model, and whose values are	dictionaries specifying
+			fundamental properties ('units', 'stencil_symbol') for those tracers.
 		tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
 			:obj:`True` if the input tendency of air potential temperature
 			is defined at the interface levels, :obj:`False` otherwise.
@@ -78,16 +79,20 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			:class:`~tasmania.TendencyComponent`.
 		"""
 		# keep track of input arguments
-		self._moist   = moist
+		self._tracers = {} if tracers is None else tracers
 		self._stgz    = tendency_of_air_potential_temperature_on_interface_levels
 
 		# call parent's constructor
 		super().__init__(domain, 'numerical', **kwargs)
 
 		# instantiate the object calculating the flux
-		self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme, self.grid, moist)
+		self._vflux = NGIsentropicMinimalVerticalFlux.factory(
+			flux_scheme, self.grid, tracers
+		)
 
 		# initialize the underlying GT4Py stencil
+		# remark: thanks to _vflux, now each dictionary in _tracers has the
+		# 'stencil_symbol' key
 		self._stencil_initialize(backend, dtype)
 
 	@property
@@ -111,13 +116,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			return_dict['tendency_of_air_potential_temperature'] = \
 				{'dims': dims, 'units': 'K s^-1'}
 
-		if self._moist:
-			return_dict['mass_fraction_of_water_vapor_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1'}
-			return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1'}
-			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1'}
+		for tracer, props in self._tracers.items():
+			return_dict[tracer] = {'dims': dims, 'units': props['units']}
 
 		return return_dict
 
@@ -131,13 +131,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
 			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
 		}
-		if self._moist:
-			return_dict['mass_fraction_of_water_vapor_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1 s^-1'}
+		for tracer, props in self._tracers.items():
+			return_dict[tracer] = {'dims': dims, 'units': props['units'] + ' s^-1'}
 
 		return return_dict
 
@@ -161,10 +156,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			'x_momentum_isentropic': self._out_su,
 			'y_momentum_isentropic': self._out_sv,
 		}
-		if self._moist:
-			tendencies['mass_fraction_of_water_vapor_in_air'] = self._out_qv
-			tendencies['mass_fraction_of_cloud_liquid_water_in_air'] = self._out_qc
-			tendencies['mass_fraction_of_precipitation_water_in_air'] = self._out_qr
+		tendencies.update({tracer: self._out_q[tracer] for tracer in self._tracers})
 
 		return tendencies, {}
 
@@ -179,38 +171,38 @@ class IsentropicVerticalAdvection(TendencyComponent):
 		self._in_s  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_su = np.zeros((nx, ny, nz), dtype=dtype)
 		self._in_sv = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._in_qv = np.zeros((nx, ny, nz), dtype=dtype)
-			self._in_qc = np.zeros((nx, ny, nz), dtype=dtype)
-			self._in_qr = np.zeros((nx, ny, nz), dtype=dtype)
+		self._in_q  = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 		# allocate arrays serving as stencil's outputs
 		self._out_s  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._out_su = np.zeros((nx, ny, nz), dtype=dtype)
 		self._out_sv = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._out_qv = np.zeros((nx, ny, nz), dtype=dtype)
-			self._out_qc = np.zeros((nx, ny, nz), dtype=dtype)
-			self._out_qr = np.zeros((nx, ny, nz), dtype=dtype)
+		self._out_q  = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 		# set stencil's inputs
 		inputs = {
 			'in_w': self._in_w, 'in_s': self._in_s,
 			'in_su': self._in_su, 'in_sv': self._in_sv,
 		}
-		if self._moist:
-			inputs['in_qv'] = self._in_qv
-			inputs['in_qc'] = self._in_qc
-			inputs['in_qr'] = self._in_qr
+		inputs.update({
+			'in_' + props['stencil_symbol']: self._in_q[tracer]
+			for tracer, props in self._tracers.items()
+		})
 
 		# set stencil's outputs
 		outputs = {
 			'out_s': self._out_s, 'out_su': self._out_su, 'out_sv': self._out_sv,
 		}
-		if self._moist:
-			outputs['out_qv'] = self._out_qv
-			outputs['out_qc'] = self._out_qc
-			outputs['out_qr'] = self._out_qr
+		outputs.update({
+			'out_' + props['stencil_symbol']: self._out_q[tracer]
+			for tracer, props in self._tracers.items()
+		})
 
 		# instantiate the stencil
 		self._stencil = gt.NGStencil(
@@ -232,31 +224,40 @@ class IsentropicVerticalAdvection(TendencyComponent):
 		self._in_su[...] = state['x_momentum_isentropic'][...]
 		self._in_sv[...] = state['y_momentum_isentropic'][...]
 
-		if self._moist:
-			self._in_qv[...] = state['mass_fraction_of_water_vapor_in_air'][...]
-			self._in_qc[...] = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
-			self._in_qr[...] = state['mass_fraction_of_precipitation_water_in_air'][...]
+		for tracer in self._tracers:
+			self._in_q[tracer][...] = state[tracer][...]
 
-	def _stencil_defs(
-		self, in_w, in_s, in_su, in_sv, in_qv=None, in_qc=None, in_qr=None
-	):
+	def _stencil_defs(self, in_w, in_s, in_su, in_sv, **tracer_kwargs):
 		# shortcuts
 		dz = self._grid.dz.to_units('K').values.item()
+		ts = {
+			tracer: props['stencil_symbol']
+			for tracer, props in self._tracers.items()
+		}
 
 		# vertical index
 		k = gt.Index(axis=2)
+
+		# temporary fields
+		in_sq = {
+			's' + ts[tracer]: gt.Equation(name='in_s' + ts[tracer])
+			for tracer in ts
+		}
 
 		# output fields
 		out_s  = gt.Equation()
 		out_su = gt.Equation()
 		out_sv = gt.Equation()
-		if self._moist:
-			in_sqv = gt.Equation()
-			in_sqc = gt.Equation()
-			in_sqr = gt.Equation()
-			out_qv = gt.Equation()
-			out_qc = gt.Equation()
-			out_qr = gt.Equation()
+		out_q  = {
+			tracer: gt.Equation(name='out_' + ts[tracer])
+			for tracer in ts
+		}
+
+		# retrieve tracers
+		in_q = {
+			tracer: tracer_kwargs['in_' + ts[tracer]]
+			for tracer in ts
+		}
 
 		# vertical velocity at the interface levels
 		if self._stgz:
@@ -266,28 +267,21 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			w[k] = 0.5 * (in_w[k] + in_w[k-1])
 
 		# vertical fluxes
-		if not self._moist:
-			flux_s, flux_su, flux_sv = self._vflux(k, w, in_s, in_su, in_sv)
-		else:
-			in_sqv[k] = in_s[k] * in_qv[k]
-			in_sqc[k] = in_s[k] * in_qc[k]
-			in_sqr[k] = in_s[k] * in_qr[k]
-			flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = \
-				self._vflux(k, w, in_s, in_su, in_sv, in_sqv, in_sqc, in_sqr)
+		for tracer in ts:
+			in_sq['s' + ts[tracer]][k] = in_s[k] * in_q[tracer][k]
+		fluxes = self._vflux(k, w, in_s, in_su, in_sv, **in_sq)
 
 		# vertical advection
-		out_s[k]  = (flux_s[k+1]  - flux_s[k] ) / dz
-		out_su[k] = (flux_su[k+1] - flux_su[k]) / dz
-		out_sv[k] = (flux_sv[k+1] - flux_sv[k]) / dz
-		if self._moist:
-			out_qv[k] = (flux_sqv[k+1] - flux_sqv[k]) / (in_s[k] * dz)
-			out_qc[k] = (flux_sqc[k+1] - flux_sqc[k]) / (in_s[k] * dz)
-			out_qr[k] = (flux_sqr[k+1] - flux_sqr[k]) / (in_s[k] * dz)
+		out_s[k]  = (fluxes[0][k+1] - fluxes[0][k]) / dz
+		out_su[k] = (fluxes[1][k+1] - fluxes[1][k]) / dz
+		out_sv[k] = (fluxes[2][k+1] - fluxes[2][k]) / dz
+		for idx, tracer in enumerate(ts.keys()):
+			out_q[tracer][k] = (fluxes[3 + idx][k+1] - fluxes[3 + idx][k]) / \
+							   (in_s[k] * dz)
 
-		if not self._moist:
-			return out_s, out_su, out_sv
-		else:
-			return out_s, out_su, out_sv, out_qv, out_qc, out_qr
+		return_list = [out_s, out_su, out_sv] + [out_q[tracer] for tracer in ts]
+
+		return return_list
 
 	def _set_lower_layers(self):
 		dz = self._grid.dz.to_units('K').values.item()
@@ -299,10 +293,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
 		s  = self._in_s
 		su = self._in_su
 		sv = self._in_sv
-		if self._moist:
-			qv = self._in_qv
-			qc = self._in_qc
-			qr = self._in_qr
+		q  = self._in_q
 
 		if order == 1:
 			self._out_s[:, :, -nb:] = (
@@ -318,18 +309,10 @@ class IsentropicVerticalAdvection(TendencyComponent):
 				w[:, :, -nb:    ] * sv[:, :, -nb:    ]
 			) / dz
 
-			if self._moist:
-				self._out_qv[:, :, -nb:] = (
-					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qv[:, :, -nb-1:-1] -
-					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qv[:, :, -nb:    ]
-				) / (dz * s[:, :, -nb:])
-				self._out_qc[:, :, -nb:] = (
-					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qc[:, :, -nb-1:-1] -
-					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qc[:, :, -nb:    ]
-				) / (dz * s[:, :, -nb:])
-				self._out_qr[:, :, -nb:] = (
-					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qr[:, :, -nb-1:-1] -
-					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qr[:, :, -nb:    ]
+			for tracer in self._tracers:
+				self._out_q[tracer][:, :, -nb:] = (
+					w[:, :, -nb-1:-1] * (s[:, :, -nb-1:-1] * q[tracer][:, :, -nb-1:-1]) -
+					w[:, :, -nb:    ] * (s[:, :, -nb:    ] * q[tracer][:, :, -nb:    ])
 				) / (dz * s[:, :, -nb:])
 		else:
 			self._out_s[:, :, -nb:] = 0.5 * (
@@ -348,21 +331,11 @@ class IsentropicVerticalAdvection(TendencyComponent):
 				- 1.0 * w[:, :, -nb-2:-2] * sv[:, :, -nb-2:-2]
 			) / dz
 
-			if self._moist:
-				self._out_qv[:, :, -nb:] = 0.5 * (
-					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qv[:, :, -nb:    ]
-					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qv[:, :, -nb-1:-1]
-					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qv[:, :, -nb-2:-2]
-				) / (dz * s[:, :, -nb:])
-				self._out_qc[:, :, -nb:] = 0.5 * (
-					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qc[:, :, -nb:    ]
-					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qc[:, :, -nb-1:-1]
-					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qc[:, :, -nb-2:-2]
-				) / (dz * s[:, :, -nb:])
-				self._out_qr[:, :, -nb:] = 0.5 * (
-					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qr[:, :, -nb:    ]
-					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qr[:, :, -nb-1:-1]
-					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qr[:, :, -nb-2:-2]
+			for tracer in self._tracers:
+				self._out_q[tracer][:, :, -nb:] = 0.5 * (
+					- 3.0 * w[:, :, -nb:    ] * (s[:, :, -nb:    ] * q[tracer][:, :, -nb:    ])
+					+ 4.0 * w[:, :, -nb-1:-1] * (s[:, :, -nb-1:-1] * q[tracer][:, :, -nb-1:-1])
+					- 1.0 * w[:, :, -nb-2:-2] * (s[:, :, -nb-2:-2] * q[tracer][:, :, -nb-2:-2])
 				) / (dz * s[:, :, -nb:])
 
 
