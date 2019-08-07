@@ -30,7 +30,8 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.isentropic.dynamics.fluxes import NGIsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import \
+	NGIsentropicMinimalVerticalFlux
 from tasmania.python.utils.data_utils import get_physical_constants
 
 try:

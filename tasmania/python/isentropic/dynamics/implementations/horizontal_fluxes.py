@@ -38,7 +38,7 @@ This module contains:
 	get_sixth_order_centered_flux_{x, y}
 """
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHorizontalFlux
 
 
 class Upwind(IsentropicHorizontalFlux):
@@ -48,21 +48,21 @@ class Upwind(IsentropicHorizontalFlux):
 	extent = 1
 	order = 1
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+	def __init__(self, grid, tracers):
+		super().__init__(grid, tracers)
 
 	def __call__(
-		self, i, j, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
-		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		self, i, j, dt, s, u, v, mtg, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
 	):
 		"""
 		Note
 		----
-		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
-		are not actually used, yet they are retained as default arguments for
-		compliance with the class hierarchy interface.
+		``s_tnd``, ``su_tnd`` and ``sv_tnd`` are not actually used, yet they
+		are retained as default arguments for compliance with the class
+		hierarchy interface.
 		"""
-		# Compute fluxes for the isentropic density and the momenta
+		# compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_upwind_flux_x(i, j, u, s)
 		flux_s_y  = get_upwind_flux_y(i, j, v, s)
 		flux_su_x = get_upwind_flux_x(i, j, u, su)
@@ -70,24 +70,21 @@ class Upwind(IsentropicHorizontalFlux):
 		flux_sv_x = get_upwind_flux_x(i, j, u, sv)
 		flux_sv_y = get_upwind_flux_y(i, j, v, sv)
 
-		# Initialize the return list
+		# initialize the return list
 		return_list = [
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
 		]
 
-		if self._moist:
-			# Compute fluxes for the water constituents
-			flux_sqv_x = get_upwind_flux_x(i, j, u, sqv)
-			flux_sqv_y = get_upwind_flux_y(i, j, v, sqv)
-			flux_sqc_x = get_upwind_flux_x(i, j, u, sqc)
-			flux_sqc_y = get_upwind_flux_y(i, j, v, sqc)
-			flux_sqr_x = get_upwind_flux_x(i, j, u, sqr)
-			flux_sqr_y = get_upwind_flux_y(i, j, v, sqr)
+		for tracer in self._tracers:
+			# retrieve the tracer
+			sq = tracer_kwargs['s' + tracer]
 
-			# Update the return list
-			return_list += [
-				flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y
-			]
+			# compute fluxes for the tracer
+			flux_sq_x = get_upwind_flux_x(i, j, u, sq)
+			flux_sq_y = get_upwind_flux_y(i, j, v, sq)
+
+			# update the return list
+			return_list += [flux_sq_x, flux_sq_y]
 
 		return return_list
 
@@ -130,21 +127,21 @@ class Centered(IsentropicHorizontalFlux):
 	extent = 1
 	order = 2
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+	def __init__(self, grid, tracers):
+		super().__init__(grid, tracers)
 
 	def __call__(
-		self, i, j, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
-		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		self, i, j, dt, s, u, v, mtg, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
 	):
 		"""
 		Note
 		----
-		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
-		are not actually used, yet they are retained as default arguments for
-		compliance with the class hierarchy interface.
+		``s_tnd``, ``su_tnd`` and ``sv_tnd`` are not actually used, yet they
+		are retained as default arguments for compliance with the class
+		hierarchy interface.
 		"""
-		# Compute fluxes for the isentropic density and the momenta
+		# compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_centered_flux_x(i, j, u, s)
 		flux_s_y  = get_centered_flux_y(i, j, v, s)
 		flux_su_x = get_centered_flux_x(i, j, u, su)
@@ -152,24 +149,21 @@ class Centered(IsentropicHorizontalFlux):
 		flux_sv_x = get_centered_flux_x(i, j, u, sv)
 		flux_sv_y = get_centered_flux_y(i, j, v, sv)
 
-		# Initialize the return list
+		# initialize the return list
 		return_list = [
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
 		]
 
-		if self._moist:
-			# Compute fluxes for the water constituents
-			flux_sqv_x = get_centered_flux_x(i, j, u, sqv)
-			flux_sqv_y = get_centered_flux_y(i, j, v, sqv)
-			flux_sqc_x = get_centered_flux_x(i, j, u, sqc)
-			flux_sqc_y = get_centered_flux_y(i, j, v, sqc)
-			flux_sqr_x = get_centered_flux_x(i, j, u, sqr)
-			flux_sqr_y = get_centered_flux_y(i, j, v, sqr)
+		for tracer in self._tracers:
+			# retrieve the tracer
+			sq = tracer_kwargs['s' + tracer]
 
-			# Update the return list
-			return_list += [
-				flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y
-			]
+			# compute fluxes for the tracer
+			flux_sq_x = get_centered_flux_x(i, j, u, sq)
+			flux_sq_y = get_centered_flux_y(i, j, v, sq)
+
+			# update the return list
+			return_list += [flux_sq_x, flux_sq_y]
 
 		return return_list
 
@@ -201,20 +195,20 @@ class MacCormack(IsentropicHorizontalFlux):
 	extent = 1
 	order = 2
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+	def __init__(self, grid, tracers):
+		super().__init__(grid, tracers)
 
 	def __call__(
-		self, i, j, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
-		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		self, i, j, dt, s, u, v, mtg, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
 	):
-		# Diagnose the velocity components at the mass points
+		# diagnose the velocity components at the mass points
 		u_unstg = gt.Equation()
 		u_unstg[i, j] = su[i, j] / s[i, j]
 		v_unstg = gt.Equation()
 		v_unstg[i, j] = sv[i, j] / s[i, j]
 
-		# Compute the predicted values for the isentropic density and the momenta
+		# compute the predicted values for the isentropic density and the momenta
 		s_prd = self._get_maccormack_horizontal_predicted_value_s(
 			i, j, dt, s, su, sv
 		)
@@ -225,26 +219,27 @@ class MacCormack(IsentropicHorizontalFlux):
 			i, j, dt, s, u_unstg, v_unstg, mtg, sv, sv_tnd
 		)
 
-		if self._moist:
-			# Compute the predicted values for the water constituents
-			sqv_prd = self._get_maccormack_horizontal_predicted_value_sq(
-				i, j, dt, s, u_unstg, v_unstg, sqv, qv_tnd
-			)
-			sqc_prd = self._get_maccormack_horizontal_predicted_value_sq(
-				i, j, dt, s, u_unstg, v_unstg, sqc, qc_tnd
-			)
-			sqr_prd = self._get_maccormack_horizontal_predicted_value_sq(
-				i, j, dt, s, u_unstg, v_unstg, sqr, qr_tnd
+		tracers_prd = {}
+		for tracer in self._tracers:
+			# retrieve the tracer and its tendencies
+			sq = tracer_kwargs['s' + tracer]
+			q_tnd = tracer_kwargs.get(tracer + '_tnd', None)
+
+			# compute the predicted value for the tracer
+			sq_prd = self._get_maccormack_horizontal_predicted_value_sq(
+				i, j, dt, s, u_unstg, v_unstg, sq, q_tnd
 			)
 
-		# Diagnose the predicted values for the velocity components
-		# at the mass points
+			# update the dictionary
+			tracers_prd['s' + tracer] = sq_prd
+
+		# diagnose the predicted values for the velocity components at the mass points
 		u_prd_unstg = gt.Equation()
 		u_prd_unstg[i, j] = su_prd[i, j] / s_prd[i, j]
 		v_prd_unstg = gt.Equation()
 		v_prd_unstg[i, j] = sv_prd[i, j] / s_prd[i, j]
 
-		# Compute the fluxes for the isentropic density and the momenta
+		# compute the fluxes for the isentropic density and the momenta
 		flux_s_x  = get_maccormack_flux_x_s(i, j, su, su_prd)
 		flux_s_y  = get_maccormack_flux_y_s(i, j, sv, sv_prd)
 		flux_su_x = get_maccormack_flux_x(i, j, u_unstg, su, u_prd_unstg, su_prd)
@@ -252,24 +247,22 @@ class MacCormack(IsentropicHorizontalFlux):
 		flux_sv_x = get_maccormack_flux_x(i, j, u_unstg, sv, u_prd_unstg, sv_prd)
 		flux_sv_y = get_maccormack_flux_y(i, j, v_unstg, sv, v_prd_unstg, sv_prd)
 
-		# Initialize the return list
+		# initialize the return list
 		return_list = [
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
 		]
 
-		if self._moist:
-			# Compute the fluxes for the water constituents
-			flux_sqv_x = get_maccormack_flux_x(i, j, u_unstg, sqv, u_prd_unstg, sqv_prd)
-			flux_sqv_y = get_maccormack_flux_y(i, j, v_unstg, sqv, v_prd_unstg, sqv_prd)
-			flux_sqc_x = get_maccormack_flux_x(i, j, u_unstg, sqc, u_prd_unstg, sqc_prd)
-			flux_sqc_y = get_maccormack_flux_y(i, j, v_unstg, sqc, v_prd_unstg, sqc_prd)
-			flux_sqr_x = get_maccormack_flux_x(i, j, u_unstg, sqr, u_prd_unstg, sqr_prd)
-			flux_sqr_y = get_maccormack_flux_y(i, j, v_unstg, sqr, v_prd_unstg, sqr_prd)
+		for tracer in self._tracers:
+			# retrieve the tracer and its predicted value
+			sq = tracer_kwargs['s' + tracer]
+			sq_prd = tracers_prd['s' + tracer]
 
-			# Update the return list
-			return_list += [
-				flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y
-			]
+			# compute the fluxes for the tracer
+			flux_sq_x = get_maccormack_flux_x(i, j, u_unstg, sq, u_prd_unstg, sq_prd)
+			flux_sq_y = get_maccormack_flux_y(i, j, v_unstg, sq, v_prd_unstg, sq_prd)
+
+			# update the return list
+			return_list += [flux_sq_x, flux_sq_y]
 
 		return return_list
 
@@ -404,21 +397,21 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
 	extent = 2
 	order = 3
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+	def __init__(self, grid, tracers):
+		super().__init__(grid, tracers)
 
 	def __call__(
-		self, i, j, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
-		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		self, i, j, dt, s, u, v, mtg, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
 	):
 		"""
 		Note
 		----
-		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
-		are not actually used, yet they are retained as default arguments for
-		compliance with the class hierarchy interface.
+		``s_tnd``, ``su_tnd`` and ``sv_tnd`` are not actually used, yet they
+		are retained as default arguments for compliance with the class
+		hierarchy interface.
 		"""
-		# Compute fluxes for the isentropic density and the momenta
+		# compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_third_order_upwind_flux_x(i, j, u, s)
 		flux_s_y  = get_third_order_upwind_flux_y(i, j, v, s)
 		flux_su_x = get_third_order_upwind_flux_x(i, j, u, su)
@@ -426,22 +419,21 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
 		flux_sv_x = get_third_order_upwind_flux_x(i, j, u, sv)
 		flux_sv_y = get_third_order_upwind_flux_y(i, j, v, sv)
 
-		# Initialize the return list
-		return_list = [flux_s_x, flux_s_y, flux_su_x, flux_su_y,
-					   flux_sv_x, flux_sv_y]
+		# initialize the return list
+		return_list = [
+			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
+		]
 
-		if self._moist:
-			# Compute fluxes for the water constituents
-			flux_sqv_x = get_third_order_upwind_flux_x(i, j, u, sqv)
-			flux_sqv_y = get_third_order_upwind_flux_y(i, j, v, sqv)
-			flux_sqc_x = get_third_order_upwind_flux_x(i, j, u, sqc)
-			flux_sqc_y = get_third_order_upwind_flux_y(i, j, v, sqc)
-			flux_sqr_x = get_third_order_upwind_flux_x(i, j, u, sqr)
-			flux_sqr_y = get_third_order_upwind_flux_y(i, j, v, sqr)
+		for tracer in self._tracers:
+			# retrieve the tracer
+			sq = tracer_kwargs['s' + tracer]
 
-			# Update the return list
-			return_list += [flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y,
-							flux_sqr_x, flux_sqr_y]
+			# compute fluxes for the tracer
+			flux_sq_x = get_third_order_upwind_flux_x(i, j, u, sq)
+			flux_sq_y = get_third_order_upwind_flux_y(i, j, v, sq)
+
+			# update the return list
+			return_list += [flux_sq_x, flux_sq_y]
 
 		return return_list
 
@@ -454,10 +446,10 @@ def get_third_order_upwind_flux_x(i, j, u, phi):
 	flux4 = get_fourth_order_centered_flux_x(i, j, u, phi)
 
 	flux[i, j] = flux4[i, j] - \
-					((u[i+1, j] > 0.) * u[i+1, j] -
-					 (u[i+1, j] < 0.) * u[i+1, j]) / 12. * \
-					(3. * (phi[i+1, j] - phi[  i, j]) -
-					 	  (phi[i+2, j] - phi[i-1, j]))
+		((u[i+1, j] > 0.) * u[i+1, j] -
+		 (u[i+1, j] < 0.) * u[i+1, j]) / 12. * \
+		(3. * (phi[i+1, j] - phi[  i, j]) -
+		 (phi[i+2, j] - phi[i-1, j]))
 
 	return flux
 
@@ -468,8 +460,8 @@ def get_fourth_order_centered_flux_x(i, j, u, phi):
 	flux = gt.Equation(name=flux_name)
 
 	flux[i, j] = u[i+1, j] / 12. * \
-					(7. * (phi[i+1, j] + phi[  i, j]) -
-					 	  (phi[i+2, j] + phi[i-1, j]))
+		(7. * (phi[i+1, j] + phi[  i, j]) -
+		 (phi[i+2, j] + phi[i-1, j]))
 
 	return flux
 
@@ -482,10 +474,10 @@ def get_third_order_upwind_flux_y(i, j, v, phi):
 	flux4 = get_fourth_order_centered_flux_y(i, j, v, phi)
 
 	flux[i, j] = flux4[i, j] - \
-					((v[i, j+1] > 0.) * v[i, j+1] -
-					 (v[i, j+1] < 0.) * v[i, j+1]) / 12. * \
-					(3. * (phi[i, j+1] - phi[i,   j]) -
-					 	  (phi[i, j+2] - phi[i, j-1]))
+		((v[i, j+1] > 0.) * v[i, j+1] -
+		 (v[i, j+1] < 0.) * v[i, j+1]) / 12. * \
+		(3. * (phi[i, j+1] - phi[i,   j]) -
+		 (phi[i, j+2] - phi[i, j-1]))
 
 	return flux
 
@@ -496,8 +488,8 @@ def get_fourth_order_centered_flux_y(i, j, v, phi):
 	flux = gt.Equation(name=flux_name)
 
 	flux[i, j] = v[i, j+1] / 12. * \
-					(7. * (phi[i, j+1] + phi[i, j]) -
-					 	  (phi[i, j+2] + phi[i, j-1]))
+		(7. * (phi[i, j+1] + phi[i, j]) -
+		 (phi[i, j+2] + phi[i, j-1]))
 
 	return flux
 
@@ -509,21 +501,21 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
 	extent = 3
 	order = 5
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+	def __init__(self, grid, tracers):
+		super().__init__(grid, tracers)
 
 	def __call__(
-		self, i, j, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
-		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		self, i, j, dt, s, u, v, mtg, su, sv,
+		s_tnd=None, su_tnd=None, sv_tnd=None, **tracer_kwargs
 	):
 		"""
 		Note
 		----
-		``s_tnd``, ``su_tnd``, ``sv_tnd``, ``qv_tnd``, ``qc_tnd``, and ``qr_tnd``
-		are not actually used, yet they are retained as default arguments for
-		compliance with the class hierarchy interface.
+		``s_tnd``, ``su_tnd`` and ``sv_tnd`` are not actually used, yet they
+		are retained as default arguments for compliance with the class
+		hierarchy interface.
 		"""
-		# Compute fluxes for the isentropic density and the momenta
+		# compute fluxes for the isentropic density and the momenta
 		flux_s_x  = get_fifth_order_upwind_flux_x(i, j, u, s)
 		flux_s_y  = get_fifth_order_upwind_flux_y(i, j, v, s)
 		flux_su_x = get_fifth_order_upwind_flux_x(i, j, u, su)
@@ -531,23 +523,21 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
 		flux_sv_x = get_fifth_order_upwind_flux_x(i, j, u, sv)
 		flux_sv_y = get_fifth_order_upwind_flux_y(i, j, v, sv)
 
-		# Initialize the return list
+		# initialize the return list
 		return_list = [
 			flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
 		]
 
-		if self._moist:
-			# Compute fluxes for the water constituents
-			flux_sqv_x = get_fifth_order_upwind_flux_x(i, j, u, sqv)
-			flux_sqv_y = get_fifth_order_upwind_flux_y(i, j, v, sqv)
-			flux_sqc_x = get_fifth_order_upwind_flux_x(i, j, u, sqc)
-			flux_sqc_y = get_fifth_order_upwind_flux_y(i, j, v, sqc)
-			flux_sqr_x = get_fifth_order_upwind_flux_x(i, j, u, sqr)
-			flux_sqr_y = get_fifth_order_upwind_flux_y(i, j, v, sqr)
+		for tracer in self._tracers:
+			# retrieve the tracer
+			sq = tracer_kwargs['s' + tracer]
 
-			# Update the return list
-			return_list += [flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y,
-							flux_sqr_x, flux_sqr_y]
+			# compute fluxes for the tracer
+			flux_sq_x = get_fifth_order_upwind_flux_x(i, j, u, sq)
+			flux_sq_y = get_fifth_order_upwind_flux_y(i, j, v, sq)
+
+			# update the return list
+			return_list += [flux_sq_x, flux_sq_y]
 
 		return return_list
 
@@ -560,11 +550,11 @@ def get_fifth_order_upwind_flux_x(i, j, u, phi):
 	flux6 = get_sixth_order_centered_flux_x(i, j, u, phi)
 
 	flux[i, j] = flux6[i, j] - \
-					((u[i+1, j] > 0.) * u[i+1, j] -
-					 (u[i+1, j] < 0.) * u[i+1, j]) / 60. * \
-					(10. * (phi[i+1, j] - phi[  i, j]) -
-					  5. * (phi[i+2, j] - phi[i-1, j]) +
-					 	   (phi[i+3, j] - phi[i-2, j]))
+		((u[i+1, j] > 0.) * u[i+1, j] -
+		 (u[i+1, j] < 0.) * u[i+1, j]) / 60. * \
+		(10. * (phi[i+1, j] - phi[  i, j]) -
+		 5. * (phi[i+2, j] - phi[i-1, j]) +
+		 (phi[i+3, j] - phi[i-2, j]))
 
 	return flux
 
@@ -575,9 +565,9 @@ def get_sixth_order_centered_flux_x(i, j, u, phi):
 	flux = gt.Equation(name=flux_name)
 
 	flux[i, j] = u[i+1, j] / 60. * \
-					(37. * (phi[i+1, j] + phi[  i, j]) -
-					  8. * (phi[i+2, j] + phi[i-1, j]) +
-					       (phi[i+3, j] + phi[i-2, j]))
+		(37. * (phi[i+1, j] + phi[  i, j]) -
+		 8. * (phi[i+2, j] + phi[i-1, j]) +
+		 (phi[i+3, j] + phi[i-2, j]))
 
 	return flux
 
@@ -590,11 +580,11 @@ def get_fifth_order_upwind_flux_y(i, j, v, phi):
 	flux6 = get_sixth_order_centered_flux_y(i, j, v, phi)
 
 	flux[i, j] = flux6[i, j] - \
-					((v[i, j+1] > 0.) * v[i, j+1] -
-					 (v[i, j+1] < 0.) * v[i, j+1]) / 60. * \
-					(10. * (phi[i, j+1] - phi[i,   j]) -
-					  5. * (phi[i, j+2] - phi[i, j-1]) +
-					 	   (phi[i, j+3] - phi[i, j-2]))
+		((v[i, j+1] > 0.) * v[i, j+1] -
+		 (v[i, j+1] < 0.) * v[i, j+1]) / 60. * \
+		(10. * (phi[i, j+1] - phi[i,   j]) -
+		 5. * (phi[i, j+2] - phi[i, j-1]) +
+		 (phi[i, j+3] - phi[i, j-2]))
 
 	return flux
 
@@ -605,8 +595,8 @@ def get_sixth_order_centered_flux_y(i, j, v, phi):
 	flux = gt.Equation(name=flux_name)
 
 	flux[i, j] = v[i, j+1] / 60. * \
-					(37. * (phi[i, j+1] + phi[i, j]) -
-					  8. * (phi[i, j+2] + phi[i, j-1]) +
-					       (phi[i, j+3] + phi[i, j-2]))
+		(37. * (phi[i, j+1] + phi[i, j]) -
+		 8. * (phi[i, j+2] + phi[i, j-1]) +
+		 (phi[i, j+3] + phi[i, j-2]))
 
 	return flux

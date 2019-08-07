@@ -28,7 +28,7 @@ import abc
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicBoussinesqMinimalHorizontalFlux
 
 try:

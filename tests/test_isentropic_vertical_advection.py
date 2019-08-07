@@ -34,14 +34,14 @@ from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_vertical_fluxes import \
+	from .test_ng_isentropic_minimal_vertical_fluxes import \
 		get_upwind_flux, get_centered_flux, \
 		get_third_order_upwind_flux, get_fifth_order_upwind_flux
 	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
 		compare_arrays
 except ModuleNotFoundError:
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_vertical_fluxes import \
+	from test_ng_isentropic_minimal_vertical_fluxes import \
 		get_upwind_flux, get_centered_flux, \
 		get_third_order_upwind_flux, get_fifth_order_upwind_flux
 	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \

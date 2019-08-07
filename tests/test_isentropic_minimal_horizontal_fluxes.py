@@ -26,16 +26,18 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalHorizontalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
+	IsentropicMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of
 
 
 class WrappingStencil:
@@ -363,18 +365,18 @@ def test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf.nb))
-	domain = data.draw(utils.st_domain(nb=nb), label="domain")
+	nb = 1  # nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
+	domain = data.draw(st_domain(nb=nb), label="domain")
 	grid = domain.numerical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	timestep = data.draw(utils.st_floats(min_value=0, max_value=3600))
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	timestep = data.draw(st_floats(min_value=0, max_value=3600))
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -395,18 +397,18 @@ def test_centered(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf.nb))
-	domain = data.draw(utils.st_domain(nb=nb), label="domain")
+	nb = 1  # nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
+	domain = data.draw(st_domain(nb=nb), label="domain")
 	grid = domain.numerical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	timestep = data.draw(utils.st_floats(min_value=0, max_value=3600))
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	timestep = data.draw(st_floats(min_value=0, max_value=3600))
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -432,18 +434,18 @@ def test_third_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 2  # nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf.nb))
-	domain = data.draw(utils.st_domain(nb=nb), label="domain")
+	nb = 2  # nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb))
+	domain = data.draw(st_domain(nb=nb), label="domain")
 	grid = domain.numerical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	timestep = data.draw(utils.st_floats(min_value=0, max_value=3600))
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	timestep = data.draw(st_floats(min_value=0, max_value=3600))
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -464,18 +466,18 @@ def test_fifth_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
-	domain = data.draw(utils.st_domain(nb=nb), label="domain")
+	nb = 3  # nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
+	domain = data.draw(st_domain(nb=nb), label="domain")
 	grid = domain.numerical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	timestep = data.draw(utils.st_floats(min_value=0, max_value=3600))
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	timestep = data.draw(st_floats(min_value=0, max_value=3600))
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed

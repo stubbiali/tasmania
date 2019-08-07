@@ -26,16 +26,18 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import \
+	IsentropicMinimalVerticalFlux
 from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import st_domain, st_floats, st_one_of
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import st_domain, st_floats, st_one_of
 
 
 class WrappingStencil:
@@ -277,16 +279,16 @@ def test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -307,16 +309,16 @@ def test_centered(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -337,17 +339,17 @@ def test_third_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	assume(grid.nz >= 5)
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -368,17 +370,17 @@ def test_fifth_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.physical_grid
 	assume(grid.nz >= 7)
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx+1, grid.ny+1, grid.nz+1),
-			elements=utils.st_floats(),
+			elements=st_floats(),
 			fill=hyp_st.nothing(),
 		)
 	)
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
