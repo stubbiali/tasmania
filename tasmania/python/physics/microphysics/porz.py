@@ -260,8 +260,11 @@ class PorzMicrophysics(TendencyComponent):
 
 		# calculate the number density of cloud droplets
 		qc, Ninf = self._in_qc, self._ninf
-		self._in_nc[...] = qc[...] * Ninf / \
-			((qc[...] + Ninf * self.m0) * np.tanh(qc[...] / (self.N0 * self.m0)))
+		zero = np.where(qc <= 0.0)
+		nonzero = np.where(qc > 0.0)
+		self._in_nc[zero] = 0.0
+		self._in_nc[nonzero] = qc[nonzero] * Ninf / \
+			((qc[nonzero] + Ninf * self.m0) * np.tanh(qc[nonzero] / (self.N0 * self.m0)))
 
 		if False:
 			# evaluate the stencil
@@ -295,8 +298,11 @@ class PorzMicrophysics(TendencyComponent):
 			 	(3.0 / (4.0 * np.pi * rhol))**(1.0 / 6.0)
 
 			# calculate the terminal velocity of water particles
-			vt = self.alpha * qr**self.beta * (self.mt / (qr + self.mt * nr))**self.beta * \
-				(self.rho_star / rho)**0.5
+			nonzero = np.where(qr > 0.0)
+			vt = np.zeros_like(qr, dtype=qr.dtype)
+			vt[nonzero] = self.alpha * qr[nonzero]**self.beta * \
+				(self.mt / (qr[nonzero] + self.mt * nr[nonzero]))**self.beta * \
+				(self.rho_star / rho[nonzero])**0.5
 
 			# calculate the saturation mixing ratio of water vapor
 			qvs = self.eps * ps / p
@@ -508,7 +514,17 @@ class PorzFallVelocity(DiagnosticComponent):
 		self._in_nr[...]  = state['number_density_of_precipitation_water'][...]
 
 		# call the stencil's compute function
-		self._stencil.compute()
+		if False:
+			self._stencil.compute()
+		else:
+			rho, qr, nr = self._in_rho, self._in_qr, self._in_nr
+			nonzero = np.where(qr > 0.0)
+			vt = np.zeros_like(qr, dtype=qr.dtype)
+			vt[nonzero] = self.alpha * qr[nonzero]**self.beta * \
+				(self.mt / (qr[nonzero] + self.mt * nr[nonzero]))*self.beta * \
+				(self.rho_star / rho[nonzero])**0.5
+			self._out_vq[...] = self.cq * vt[...]
+			self._out_vn[...] = self.cn * vt[...]
 
 		# collect the diagnostics
 		diagnostics = {

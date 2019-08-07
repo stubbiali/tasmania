@@ -27,9 +27,9 @@ This module contains:
 	ThirdOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux)
 	FifthOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux)
 """
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicBoussinesqMinimalVerticalFlux
-from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import \
+from tasmania.python.isentropic.dynamics.implementations.ng_minimal_vertical_fluxes import \
 	Upwind as CoreUpwind, get_upwind_flux, \
 	Centered as CoreCentered, get_centered_flux, \
 	ThirdOrderUpwind as CoreThirdOrderUpwind, get_third_order_upwind_flux, \

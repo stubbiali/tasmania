@@ -81,9 +81,9 @@ from tasmania.python.physics.microphysics.kessler import \
 	KesslerFallVelocity, KesslerMicrophysics, \
 	KesslerSaturationAdjustment, KesslerSedimentation
 from tasmania.python.physics.microphysics.porz import \
-	PorzFallVelocity, PorzMicrophysics
+	PorzFallVelocity, PorzMicrophysics, PorzSedimentation
 from tasmania.python.physics.microphysics.utils import \
-	Clipping, Precipitation
+	Clipping, Precipitation, Sedimentation
 from tasmania.python.physics.turbulence import Smagorinsky2d
 # plot
 from tasmania.python.plot.animation import Animation
@@ -181,13 +181,16 @@ __all__ = (
 	PhysicalTopography,
 	Plot,
 	PlotComposite,
+	PorzFallVelocity,
 	PorzMicrophysics,
+	PorzSedimentation,
 	Precipitation,
 	PrescribedSurfaceHeating,
 	Quiver,
 	Rectangle,
 	RMSD,
 	RRMSD,
+	Sedimentation,
 	SequentialTendencySplitting,
 	SequentialUpdateSplitting,
 	set_axes_properties,

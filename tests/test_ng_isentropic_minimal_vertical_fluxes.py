@@ -28,16 +28,24 @@ import pytest
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.vertical_fluxes import \
-	IsentropicMinimalVerticalFlux
-from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import \
+	NGIsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.implementations.ng_minimal_vertical_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .utils import st_domain, st_floats, st_one_of
+	from .utils import st_domain, st_floats, st_one_of, compare_arrays
 except ModuleNotFoundError:
 	from conf import backend as conf_backend  # nb as conf_nb
-	from utils import st_domain, st_floats, st_one_of
+	from utils import st_domain, st_floats, st_one_of, compare_arrays
+
+import sys
+python_version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
+if python_version <= '3.5':
+	import collections
+	Dict = collections.OrderedDict
+else:
+	Dict = dict
 
 
 class WrappingStencil:
@@ -46,14 +54,18 @@ class WrappingStencil:
 		self.nb = nb
 		self.backend = backend
 
-	def __call__(self, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+	def __call__(self, w, s, su, sv, sq0=None, sq1=None, sq2=None, sq3=None):
 		mi, mj, mk = s.shape
 
 		inputs = {'w': w, 's': s, 'su': su, 'sv': sv}
-		if sqv is not None:
-			inputs['sqv'] = sqv
-			inputs['sqc'] = sqc
-			inputs['sqr'] = sqr
+		if sq0 is not None:
+			inputs['sq0'] = sq0
+		if sq1 is not None:
+			inputs['sq1'] = sq1
+		if sq2 is not None:
+			inputs['sq2'] = sq2
+		if sq3 is not None:
+			inputs['sq3'] = sq3
 
 		self.flux_s  = np.zeros_like(s, dtype=s.dtype)
 		self.flux_su = np.zeros_like(s, dtype=s.dtype)
@@ -63,15 +75,18 @@ class WrappingStencil:
 			'flux_su_z': self.flux_su,
 			'flux_sv_z': self.flux_sv,
 		}
-		if sqv is not None:
-			self.flux_sqv = np.zeros_like(s, dtype=s.dtype)
-			self.flux_sqc = np.zeros_like(s, dtype=s.dtype)
-			self.flux_sqr = np.zeros_like(s, dtype=s.dtype)
-			outputs.update({
-				'flux_sqv_z': self.flux_sqv,
-				'flux_sqc_z': self.flux_sqc,
-				'flux_sqr_z': self.flux_sqr,
-			})
+		if sq0 is not None:
+			self.flux_sq0 = np.zeros_like(s, dtype=s.dtype)
+			outputs['flux_sq0_z'] = self.flux_sq0
+		if sq1 is not None:
+			self.flux_sq1 = np.zeros_like(s, dtype=s.dtype)
+			outputs['flux_sq1_z'] = self.flux_sq1
+		if sq2 is not None:
+			self.flux_sq2 = np.zeros_like(s, dtype=s.dtype)
+			outputs['flux_sq2_z'] = self.flux_sq2
+		if sq3 is not None:
+			self.flux_sq3 = np.zeros_like(s, dtype=s.dtype)
+			outputs['flux_sq3_z'] = self.flux_sq3
 
 		stencil = gt.NGStencil(
 			definitions_func=self.stencil_defs,
@@ -84,15 +99,9 @@ class WrappingStencil:
 
 		stencil.compute()
 
-	def stencil_defs(self, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+	def stencil_defs(self, w, s, su, sv, sq0=None, sq1=None, sq2=None, sq3=None):
 		k = gt.Index(axis=2)
-
-		fs = self.core(k, w, s, su, sv, sqv, sqc, sqr)
-
-		if len(fs) == 3:
-			return fs[0], fs[1], fs[2]
-		else:
-			return fs[0], fs[1], fs[2], fs[3], fs[4], fs[5]
+		return self.core(k, w, s, su, sv, sq0=sq0, sq1=sq1, sq2=sq2, sq3=sq3)
 
 
 def get_upwind_flux(w, phi):
@@ -162,7 +171,7 @@ flux_properties = {
 }
 
 
-def validation(flux_scheme, domain, field, backend):
+def validation(tracers, flux_scheme, domain, field, backend):
 	grid = domain.numerical_grid
 	flux_type = flux_properties[flux_scheme]['type']
 	nb = flux_type.extent
@@ -177,63 +186,50 @@ def validation(flux_scheme, domain, field, backend):
 	s_eq   = gt.Equation(name='s')
 	su_eq  = gt.Equation(name='su')
 	sv_eq  = gt.Equation(name='sv')
-	sqv_eq = gt.Equation(name='sqv')
-	sqc_eq = gt.Equation(name='sqc')
-	sqr_eq = gt.Equation(name='sqr')
+	sq0_eq = gt.Equation(name='sq0')
+	sq1_eq = gt.Equation(name='sq1')
+	sq2_eq = gt.Equation(name='sq2')
+	sq3_eq = gt.Equation(name='sq3')
 
-	#
-	# dry
-	#
-	fluxer_dry = IsentropicMinimalVerticalFlux.factory(flux_scheme, grid, False)
+	fluxer = NGIsentropicMinimalVerticalFlux.factory(flux_scheme, grid, tracers)
 
-	assert isinstance(fluxer_dry, flux_type)
+	assert isinstance(fluxer, flux_type)
 
-	out = fluxer_dry(k, w_eq, s_eq, su_eq, sv_eq)
-
-	assert len(out) == 3
-	assert all(isinstance(obj, gt.Equation) for obj in out)
-	assert out[0].get_name() == 'flux_s_z'
-	assert out[1].get_name() == 'flux_su_z'
-	assert out[2].get_name() == 'flux_sv_z'
-
-	#
-	# moist
-	#
-	fluxer_moist = IsentropicMinimalVerticalFlux.factory(flux_scheme, grid, True)
-
-	assert isinstance(fluxer_moist, flux_type)
-
-	out = fluxer_moist(
-		k, w_eq, s_eq, su_eq, sv_eq, sqv=sqv_eq, sqc=sqc_eq, sqr=sqr_eq
+	out = fluxer(
+		k, w_eq, s_eq, su_eq, sv_eq, sq0=sq0_eq, sq1=sq1_eq, sq2=sq2_eq, sq3=sq3_eq
 	)
 
-	assert len(out) == 6
+	assert len(out) == 3 + len(tracers)
 	assert all(isinstance(obj, gt.Equation) for obj in out)
 	assert out[0].get_name() == 'flux_s_z'
 	assert out[1].get_name() == 'flux_su_z'
 	assert out[2].get_name() == 'flux_sv_z'
-	assert out[3].get_name() == 'flux_sqv_z'
-	assert out[4].get_name() == 'flux_sqc_z'
-	assert out[5].get_name() == 'flux_sqr_z'
+	for idx, tracer in enumerate(tracers.keys()):
+		assert out[idx + 3].get_name() == \
+			'flux_s' + tracers[tracer]['stencil_symbol'] + '_z'
 
 	# ========================================
-	# test_numerics
+	# test numerics
 	# ========================================
 	w = field[1:, 1:, :]
 	s = field[:-1, :-1, :-1]
 	su = field[1:, :-1, :-1]
 	sv = field[:-1, :-1, :-1]
-	sqv = field[:-1, :-1, 1:]
-	sqc = field[1:, :-1, 1:]
-	sqr = field[:-1, :-1, 1:]
+	sq0 = field[:-1, :-1, 1:]
+	sq1 = field[1:, :-1, 1:]
+	sq2 = field[:-1, :-1, 1:]
+	sq3 = field[1:, 1:, 1:]
 
 	z = slice(nb, grid.nz-nb+1)
 
-	#
-	# dry
-	#
-	ws = WrappingStencil(fluxer_dry, nb, backend)
-	ws(w, s, su, sv)
+	ws = WrappingStencil(fluxer, nb, backend)
+	ws(
+		w, s, su, sv,
+		sq0=sq0 if 'tracer0' in tracers else None,
+		sq1=sq1 if 'tracer1' in tracers else None,
+		sq2=sq2 if 'tracer2' in tracers else None,
+		sq3=sq3 if 'tracer3' in tracers else None,
+	)
 
 	flux_s = get_fluxes(w, s)
 	assert np.allclose(ws.flux_s[:, :, z], flux_s[:, :, z], equal_nan=True)
@@ -244,26 +240,21 @@ def validation(flux_scheme, domain, field, backend):
 	flux_sv = get_fluxes(w, sv)
 	assert np.allclose(ws.flux_sv[:, :, z], flux_sv[:, :, z], equal_nan=True)
 
-	#
-	# moist
-	#
-	ws = WrappingStencil(fluxer_moist, nb, backend)
-	ws(w, s, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
+	if 'tracer0' in tracers:
+		flux_sq0 = get_fluxes(w, sq0)
+		compare_arrays(ws.flux_sq0[:, :, z], flux_sq0[:, :, z])
 
-	assert np.allclose(ws.flux_s[:, :, z], flux_s[:, :, z], equal_nan=True)
+	if 'tracer1' in tracers:
+		flux_sq1 = get_fluxes(w, sq1)
+		compare_arrays(ws.flux_sq1[:, :, z], flux_sq1[:, :, z])
 
-	assert np.allclose(ws.flux_su[:, :, z], flux_su[:, :, z], equal_nan=True)
+	if 'tracer2' in tracers:
+		flux_sq2 = get_fluxes(w, sq2)
+		compare_arrays(ws.flux_sq2[:, :, z], flux_sq2[:, :, z])
 
-	assert np.allclose(ws.flux_sv[:, :, z], flux_sv[:, :, z], equal_nan=True)
-
-	flux_sqv = get_fluxes(w, sqv)
-	assert np.allclose(ws.flux_sqv[:, :, z], flux_sqv[:, :, z], equal_nan=True)
-
-	flux_sqc = get_fluxes(w, sqc)
-	assert np.allclose(ws.flux_sqc[:, :, z], flux_sqc[:, :, z], equal_nan=True)
-
-	flux_sqr = get_fluxes(w, sqr)
-	assert np.allclose(ws.flux_sqr[:, :, z], flux_sqr[:, :, z], equal_nan=True)
+	if 'tracer3' in tracers:
+		flux_sq3 = get_fluxes(w, sq3)
+		compare_arrays(ws.flux_sq3[:, :, z], flux_sq3[:, :, z])
 
 
 @settings(
@@ -288,12 +279,26 @@ def test_upwind(data):
 			fill=hyp_st.nothing(),
 		)
 	)
+	q0_on = data.draw(hyp_st.booleans(), label="q0_on")
+	q1_on = data.draw(hyp_st.booleans(), label="q1_on")
+	q2_on = data.draw(hyp_st.booleans(), label="q2_on")
+	q3_on = data.draw(hyp_st.booleans(), label="q3_on")
 	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation('upwind', domain, field, backend)
+	tracers = Dict()
+	if q0_on:
+		tracers['tracer0'] = {'stencil_symbol': 'q0'}
+	if q1_on:
+		tracers['tracer1'] = {'stencil_symbol': 'q1'}
+	if q2_on:
+		tracers['tracer2'] = {'stencil_symbol': 'q2'}
+	if q3_on:
+		tracers['tracer3'] = {'stencil_symbol': 'q3'}
+
+	validation(tracers, 'upwind', domain, field, backend)
 
 
 @settings(
@@ -318,12 +323,26 @@ def test_centered(data):
 			fill=hyp_st.nothing(),
 		)
 	)
+	q0_on = data.draw(hyp_st.booleans(), label="q0_on")
+	q1_on = data.draw(hyp_st.booleans(), label="q1_on")
+	q2_on = data.draw(hyp_st.booleans(), label="q2_on")
+	q3_on = data.draw(hyp_st.booleans(), label="q3_on")
 	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation('centered', domain, field, backend)
+	tracers = Dict()
+	if q0_on:
+		tracers['tracer0'] = {'stencil_symbol': 'q0'}
+	if q1_on:
+		tracers['tracer1'] = {'stencil_symbol': 'q1'}
+	if q2_on:
+		tracers['tracer2'] = {'stencil_symbol': 'q2'}
+	if q3_on:
+		tracers['tracer3'] = {'stencil_symbol': 'q3'}
+
+	validation(tracers, 'centered', domain, field, backend)
 
 
 @settings(
@@ -349,12 +368,26 @@ def test_third_order_upwind(data):
 			fill=hyp_st.nothing(),
 		)
 	)
+	q0_on = data.draw(hyp_st.booleans(), label="q0_on")
+	q1_on = data.draw(hyp_st.booleans(), label="q1_on")
+	q2_on = data.draw(hyp_st.booleans(), label="q2_on")
+	q3_on = data.draw(hyp_st.booleans(), label="q3_on")
 	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation('third_order_upwind', domain, field, backend)
+	tracers = Dict()
+	if q0_on:
+		tracers['tracer0'] = {'stencil_symbol': 'q0'}
+	if q1_on:
+		tracers['tracer1'] = {'stencil_symbol': 'q1'}
+	if q2_on:
+		tracers['tracer2'] = {'stencil_symbol': 'q2'}
+	if q3_on:
+		tracers['tracer3'] = {'stencil_symbol': 'q3'}
+
+	validation(tracers, 'third_order_upwind', domain, field, backend)
 
 
 @settings(
@@ -380,12 +413,26 @@ def test_fifth_order_upwind(data):
 			fill=hyp_st.nothing(),
 		)
 	)
+	q0_on = data.draw(hyp_st.booleans(), label="q0_on")
+	q1_on = data.draw(hyp_st.booleans(), label="q1_on")
+	q2_on = data.draw(hyp_st.booleans(), label="q2_on")
+	q3_on = data.draw(hyp_st.booleans(), label="q3_on")
 	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation('fifth_order_upwind', domain, field, backend)
+	tracers = Dict()
+	if q0_on:
+		tracers['tracer0'] = {'stencil_symbol': 'q0'}
+	if q1_on:
+		tracers['tracer1'] = {'stencil_symbol': 'q1'}
+	if q2_on:
+		tracers['tracer2'] = {'stencil_symbol': 'q2'}
+	if q3_on:
+		tracers['tracer3'] = {'stencil_symbol': 'q3'}
+
+	validation(tracers, 'fifth_order_upwind', domain, field, backend)
 
 
 if __name__ == '__main__':

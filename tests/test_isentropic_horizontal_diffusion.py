@@ -26,21 +26,27 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.physics.horizontal_diffusion import \
 	IsentropicHorizontalDiffusion
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_dataarrays
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_dataarrays
 
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+
+__tracers = {
+	'tracer0': {'units': 'g g^-1'},
+	'tracer1': {'units': 'g g^-1'},
+	'tracer2': {'units': 'g kg^-1'},
+	'tracer3': {'units': 'kg^-1'}
+}
 
 
 @settings(
@@ -57,22 +63,27 @@ def test(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
+		st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
 	)
 
 	grid = domain.numerical_grid
 	dtype = grid.x.dtype
 
-	state = data.draw(utils.st_isentropic_state(grid, moist=True), label='state')
+	q_on = {
+		name: data.draw(hyp_st.booleans(), label=name+'_on')
+		for name in __tracers
+	}
+	tracers = {name: __tracers[name] for name in __tracers if q_on[name]}
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label='state')
 
-	diff_coeff = data.draw(utils.st_floats(min_value=0, max_value=1))
-	diff_coeff_max = data.draw(utils.st_floats(min_value=diff_coeff, max_value=1))
+	diff_coeff = data.draw(st_floats(min_value=0, max_value=1))
+	diff_coeff_max = data.draw(st_floats(min_value=diff_coeff, max_value=1))
 	diff_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
-	diff_moist_coeff = data.draw(utils.st_floats(min_value=0, max_value=1))
-	diff_moist_coeff_max = data.draw(utils.st_floats(min_value=diff_moist_coeff, max_value=1))
-	diff_moist_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
+	diff_tracer_coeff = data.draw(st_floats(min_value=0, max_value=1))
+	diff_tracer_coeff_max = data.draw(st_floats(min_value=diff_tracer_coeff, max_value=1))
+	diff_tracer_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -92,9 +103,9 @@ def test(data):
 			diff_type, (nx, ny, nz), dx, dy, diff_coeff, diff_coeff_max,
 			diff_damp_depth, nb, backend, dtype
 		)
-		hd_moist = HorizontalDiffusion.factory(
-			diff_type, (nx, ny, nz), dx, dy, diff_moist_coeff, diff_moist_coeff_max,
-			diff_moist_damp_depth, nb, backend, dtype
+		hd_tracer = HorizontalDiffusion.factory(
+			diff_type, (nx, ny, nz), dx, dy, diff_tracer_coeff, diff_tracer_coeff_max,
+			diff_tracer_damp_depth, nb, backend, dtype
 		)
 
 		val = {}
@@ -115,12 +126,12 @@ def test(data):
 			hd(field, field_val)
 			val[names[i]] = field_val
 
-		names = (mfwv, mfcw, mfpw)
-		units = ('g g^-1',) * 3
+		names = tuple(name for name in tracers)
+		units = tuple(tracers[name]['units'] for name in tracers)
 		for i in range(len(names)):
 			field = state[names[i]].to_units(units[i]).values
 			field_val = np.zeros_like(field, dtype=dtype)
-			hd_moist(field, field_val)
+			hd_tracer(field, field_val)
 			val[names[i]] = field_val
 
 		#
@@ -131,25 +142,25 @@ def test(data):
 			diffusion_coeff=DataArray(diff_coeff, attrs={'units': 's^-1'}),
 			diffusion_coeff_max=DataArray(diff_coeff_max, attrs={'units': 's^-1'}),
 			diffusion_damp_depth=diff_damp_depth,
-			backend=backend, dtype=dtype
+			tracers=tracers, backend=backend, dtype=dtype
 		)
 
 		tendencies, diagnostics = ihd(state)
 
-		names = (
+		names = [
 			'air_isentropic_density',
 			'x_momentum_isentropic',
 			'y_momentum_isentropic',
-		)
-		units = (
+		]
+		units = [
 			'kg m^-2 K^-1 s^-1',
 			'kg m^-1 K^-1 s^-2',
 			'kg m^-1 K^-1 s^-2',
-		)
+		]
 		for i in range(len(names)):
 			assert names[i] in tendencies
 			field_val = make_dataarray_3d(val[names[i]], grid, units[i], name=names[i])
-			utils.compare_dataarrays(tendencies[names[i]], field_val)
+			compare_dataarrays(tendencies[names[i]], field_val)
 
 		assert len(tendencies) == len(names)
 
@@ -163,35 +174,21 @@ def test(data):
 			diffusion_coeff=DataArray(diff_coeff, attrs={'units': 's^-1'}),
 			diffusion_coeff_max=DataArray(diff_coeff_max, attrs={'units': 's^-1'}),
 			diffusion_damp_depth=diff_damp_depth,
-			moist=True,
-			diffusion_moist_coeff=DataArray(diff_moist_coeff, attrs={'units': 's^-1'}),
-			diffusion_moist_coeff_max=DataArray(diff_moist_coeff_max, attrs={'units': 's^-1'}),
-			diffusion_moist_damp_depth=diff_moist_damp_depth,
+			tracers=tracers,
+			diffusion_tracer_coeff=DataArray(diff_tracer_coeff, attrs={'units': 's^-1'}),
+			diffusion_tracer_coeff_max=DataArray(diff_tracer_coeff_max, attrs={'units': 's^-1'}),
+			diffusion_tracer_damp_depth=diff_tracer_damp_depth,
 			backend=backend, dtype=dtype
 		)
 
 		tendencies, diagnostics = ihd(state)
 
-		names = (
-			'air_isentropic_density',
-			'x_momentum_isentropic',
-			'y_momentum_isentropic',
-			mfwv,
-			mfcw,
-			mfpw,
-		)
-		units = (
-			'kg m^-2 K^-1 s^-1',
-			'kg m^-1 K^-1 s^-2',
-			'kg m^-1 K^-1 s^-2',
-			'g g^-1 s^-1',
-			'g g^-1 s^-1',
-			'g g^-1 s^-1',
-		)
+		names += [name for name in tracers]
+		units += [tracers[name]['units'] + ' s^-1' for name in tracers]
 		for i in range(len(names)):
 			assert names[i] in tendencies
 			field_val = make_dataarray_3d(val[names[i]], grid, units[i], name=names[i])
-			utils.compare_dataarrays(tendencies[names[i]], field_val)
+			compare_dataarrays(tendencies[names[i]], field_val)
 
 		assert len(tendencies) == len(names)
 

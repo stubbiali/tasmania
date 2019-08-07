@@ -28,23 +28,40 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.physics.vertical_advection import \
 	IsentropicVerticalAdvection, PrescribedSurfaceHeating
 from tasmania.python.utils.data_utils import make_dataarray_3d
-from test_isentropic_minimal_vertical_fluxes import \
-	get_upwind_flux, get_centered_flux, \
-	get_third_order_upwind_flux, get_fifth_order_upwind_flux
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_ng_isentropic_minimal_vertical_fluxes import \
+		get_upwind_flux, get_centered_flux, \
+		get_third_order_upwind_flux, get_fifth_order_upwind_flux
+	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_arrays
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_ng_isentropic_minimal_vertical_fluxes import \
+		get_upwind_flux, get_centered_flux, \
+		get_third_order_upwind_flux, get_fifth_order_upwind_flux
+	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_arrays
+
+import sys
+python_version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
+if python_version <= '3.5':
+	import collections
+	Dict = collections.OrderedDict
+else:
+	Dict = dict
 
 
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+__tracers = {
+	'tracer0': {'units': 'g g^-1', 'stencil_symbol': 'q0'},
+	'tracer1': {'units': 'g g^-1'},
+	'tracer2': {'units': 'g kg^-1', 'stencil_symbol': 'q2'},
+	'tracer3': {'units': 'kg^-1', 'stencil_symbol': 'q3'},
+}
 
 
 def set_lower_layers_first_order(nb, dz, w, phi, out):
@@ -56,12 +73,12 @@ def set_lower_layers_first_order(nb, dz, w, phi, out):
 
 
 def set_lower_layers_second_order(nb, dz, w, phi, out):
-	wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
-	out[:, :, -nb:] = 0.5 / dz * (
-		- wm[:, :, -nb-2:-2] * phi[:, :, -nb-2:-2]
-		+ 4.0 * wm[:, :, -nb-1:-1] * phi[:, :, -nb-1:-1]
+	wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, 1:] + w[:, :, :-1])
+	out[:, :, -nb:] = 0.5 * (
 		- 3.0 * wm[:, :, -nb:] * phi[:, :, -nb:]
-	)
+		+ 4.0 * wm[:, :, -nb-1:-1] * phi[:, :, -nb-1:-1]
+		- 1.0 * wm[:, :, -nb-2:-2] * phi[:, :, -nb-2:-2]
+	) / dz
 
 
 flux_properties = {
@@ -88,7 +105,7 @@ flux_properties = {
 }
 
 
-def validation(domain, flux_scheme, backend, moist, toaptoil, state):
+def validation(domain, flux_scheme, backend, tracers, toaptoil, state):
 	grid = domain.numerical_grid
 	dz = grid.dz.to_units('K').values.item()
 	dtype = grid.z.dtype
@@ -98,7 +115,7 @@ def validation(domain, flux_scheme, backend, moist, toaptoil, state):
 	set_lower_layers = flux_properties[flux_scheme]['set_lower_layers']
 
 	fluxer = IsentropicVerticalAdvection(
-		domain, flux_scheme, moist,
+		domain, flux_scheme, tracers,
 		tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
 		backend=backend, dtype=dtype
 	)
@@ -110,18 +127,14 @@ def validation(domain, flux_scheme, backend, moist, toaptoil, state):
 		input_names.append('tendency_of_air_potential_temperature_on_interface_levels')
 	else:
 		input_names.append('tendency_of_air_potential_temperature')
-	if moist:
-		input_names.append(mfwv)
-		input_names.append(mfcw)
-		input_names.append(mfpw)
+	for tracer in tracers:
+		input_names.append(tracer)
 
 	output_names = [
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
-	if moist:
-		output_names.append(mfwv)
-		output_names.append(mfcw)
-		output_names.append(mfpw)
+	for tracer in tracers:
+		output_names.append(tracer)
 
 	for name in input_names:
 		assert name in fluxer.input_properties
@@ -146,13 +159,11 @@ def validation(domain, flux_scheme, backend, moist, toaptoil, state):
 	s  = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values[...]
 	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values[...]
 	sv = state['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values[...]
-	if moist:
-		qv = state[mfwv].to_units('g g^-1').values[...]
-		sqv = s * qv
-		qc = state[mfcw].to_units('g g^-1').values[...]
-		sqc = s * qc
-		qr = state[mfpw].to_units('g g^-1').values[...]
-		sqr = s * qr
+	q  = {
+		tracer: state[tracer].to_units(props['units']).values[...]
+		for tracer, props in tracers.items()
+	}
+	sq = {tracer: s * q[tracer] for tracer in tracers}
 
 	tendencies, diagnostics = fluxer(state)
 
@@ -164,41 +175,27 @@ def validation(domain, flux_scheme, backend, moist, toaptoil, state):
 	out[:, :, nb:-nb] = - (flux[:, :, up] - flux[:, :, down]) / dz
 	set_lower_layers(nb, dz, w, s, out)
 	assert 'air_isentropic_density' in tendencies
-	assert np.allclose(out, tendencies['air_isentropic_density'], equal_nan=True)
+	compare_arrays(out, tendencies['air_isentropic_density'])
 
 	flux = get_flux(w_hl, su)
 	out[:, :, nb:-nb] = - (flux[:, :, up] - flux[:, :, down]) / dz
 	set_lower_layers(nb, dz, w, su, out)
 	assert 'x_momentum_isentropic' in tendencies
-	assert np.allclose(out, tendencies['x_momentum_isentropic'], equal_nan=True)
+	compare_arrays(out, tendencies['x_momentum_isentropic'])
 
 	flux = get_flux(w_hl, sv)
 	out[:, :, nb:-nb] = - (flux[:, :, up] - flux[:, :, down]) / dz
 	set_lower_layers(nb, dz, w, sv, out)
 	assert 'y_momentum_isentropic' in tendencies
-	assert np.allclose(out, tendencies['y_momentum_isentropic'], equal_nan=True)
+	compare_arrays(out, tendencies['y_momentum_isentropic'])
 
-	if moist:
-		flux = get_flux(w_hl, sqv)
+	for tracer in tracers:
+		flux = get_flux(w_hl, sq[tracer])
 		out[:, :, nb:-nb] = - (flux[:, :, up] - flux[:, :, down]) / dz
-		set_lower_layers(nb, dz, w, sqv, out)
+		set_lower_layers(nb, dz, w, sq[tracer], out)
 		out /= s
-		assert mfwv in tendencies
-		assert np.allclose(out, tendencies[mfwv], equal_nan=True)
-
-		flux = get_flux(w_hl, sqc)
-		out[:, :, nb:-nb] = - (flux[:, :, up] - flux[:, :, down]) / dz
-		set_lower_layers(nb, dz, w, sqc, out)
-		out /= s
-		assert mfcw in tendencies
-		assert np.allclose(out, tendencies[mfcw], equal_nan=True)
-
-		flux = get_flux(w_hl, sqr)
-		out[:, :, nb:-nb] = - (flux[:, :, up] - flux[:, :, down]) / dz
-		set_lower_layers(nb, dz, w, sqr, out)
-		out /= s
-		assert mfpw in tendencies
-		assert np.allclose(out, tendencies[mfpw], equal_nan=True)
+		assert tracer in tendencies
+		compare_arrays(out, tendencies[tracer])
 
 	assert len(tendencies) == len(output_names)
 
@@ -218,14 +215,23 @@ def test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(3, 20)), label="domain")
-
+	domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	q_on = {
+		tracer: data.draw(hyp_st.booleans(), label=tracer+'_on')
+		for tracer in __tracers
+	}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label="state")
+
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -234,15 +240,15 @@ def test_upwind(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'upwind', backend, False, False, state)
-	validation(domain, 'upwind', backend, False, True , state)
-	validation(domain, 'upwind', backend, True , False, state)
-	validation(domain, 'upwind', backend, True , True , state)
+	validation(domain, 'upwind', backend, {}     , False, state)
+	validation(domain, 'upwind', backend, {}     , True , state)
+	validation(domain, 'upwind', backend, tracers, False, state)
+	validation(domain, 'upwind', backend, tracers, True , state)
 
 
 @settings(
@@ -258,14 +264,23 @@ def test_centered(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(3, 20)), label="domain")
-
+	domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	q_on = {
+		tracer: data.draw(hyp_st.booleans(), label=tracer+'_on')
+		for tracer in __tracers
+	}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label="state")
+
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -274,15 +289,15 @@ def test_centered(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'centered', backend, False, False, state)
-	validation(domain, 'centered', backend, False, True , state)
-	validation(domain, 'centered', backend, True , False, state)
-	validation(domain, 'centered', backend, True , True , state)
+	validation(domain, 'centered', backend, {}     , False, state)
+	validation(domain, 'centered', backend, {}     , True , state)
+	validation(domain, 'centered', backend, tracers, False, state)
+	validation(domain, 'centered', backend, tracers, True , state)
 
 
 @settings(
@@ -298,14 +313,23 @@ def test_third_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(5, 20)), label="domain")
-
+	domain = data.draw(st_domain(zaxis_length=(5, 20)), label="domain")
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	q_on = {
+		tracer: data.draw(hyp_st.booleans(), label=tracer+'_on')
+		for tracer in __tracers
+	}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label="state")
+
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -314,15 +338,15 @@ def test_third_order_upwind(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'third_order_upwind', backend, False, False, state)
-	validation(domain, 'third_order_upwind', backend, False, True , state)
-	validation(domain, 'third_order_upwind', backend, True , False, state)
-	validation(domain, 'third_order_upwind', backend, True , True , state)
+	validation(domain, 'third_order_upwind', backend, {}     , False, state)
+	validation(domain, 'third_order_upwind', backend, {}     , True , state)
+	validation(domain, 'third_order_upwind', backend, tracers, False, state)
+	validation(domain, 'third_order_upwind', backend, tracers, True , state)
 
 
 @settings(
@@ -338,14 +362,23 @@ def test_fifth_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(7, 20)), label="domain")
-
+	domain = data.draw(st_domain(zaxis_length=(7, 20)), label="domain")
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+
+	q_on = {
+		tracer: data.draw(hyp_st.booleans(), label=tracer+'_on')
+		for tracer in __tracers
+	}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label="state")
+
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -354,15 +387,15 @@ def test_fifth_order_upwind(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'fifth_order_upwind', backend, False, False, state)
-	validation(domain, 'fifth_order_upwind', backend, False, True , state)
-	validation(domain, 'fifth_order_upwind', backend, True , False, state)
-	validation(domain, 'fifth_order_upwind', backend, True , True , state)
+	validation(domain, 'fifth_order_upwind', backend, {}     , False, state)
+	validation(domain, 'fifth_order_upwind', backend, {}     , True , state)
+	validation(domain, 'fifth_order_upwind', backend, tracers, False, state)
+	validation(domain, 'fifth_order_upwind', backend, tracers, True , state)
 
 
 @settings(
@@ -378,7 +411,7 @@ def test_prescribed_surface_heating(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.numerical_grid
 
 	time = data.draw(
@@ -390,7 +423,7 @@ def test_prescribed_surface_heating(data):
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -404,15 +437,15 @@ def test_prescribed_surface_heating(data):
 			make_dataarray_3d(field, grid, 'm'),
 	}
 
-	f0d_sw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	f0d_fw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	f0n_sw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	f0n_fw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	w_sw = data.draw(utils.st_floats(min_value=0.1, max_value=100))
-	w_fw = data.draw(utils.st_floats(min_value=0.1, max_value=100))
-	ad = data.draw(utils.st_floats(min_value=0, max_value=100))
-	an = data.draw(utils.st_floats(min_value=0, max_value=100))
-	cl = data.draw(utils.st_floats(min_value=0, max_value=100))
+	f0d_sw = data.draw(st_floats(min_value=0, max_value=100))
+	f0d_fw = data.draw(st_floats(min_value=0, max_value=100))
+	f0n_sw = data.draw(st_floats(min_value=0, max_value=100))
+	f0n_fw = data.draw(st_floats(min_value=0, max_value=100))
+	w_sw = data.draw(st_floats(min_value=0.1, max_value=100))
+	w_fw = data.draw(st_floats(min_value=0.1, max_value=100))
+	ad = data.draw(st_floats(min_value=0, max_value=100))
+	an = data.draw(st_floats(min_value=0, max_value=100))
+	cl = data.draw(st_floats(min_value=0, max_value=100))
 	t0 = data.draw(
 		hyp_st.datetimes(
 			min_value=datetime(1992, 2, 20),
@@ -420,7 +453,7 @@ def test_prescribed_surface_heating(data):
 		)
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed

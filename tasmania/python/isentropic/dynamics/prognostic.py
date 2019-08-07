@@ -35,12 +35,6 @@ except ImportError:
 	datatype = np.float32
 
 
-# convenient aliases
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
-
-
 class IsentropicPrognostic:
 	"""
 	Abstract base class whose derived classes implement different
@@ -56,12 +50,12 @@ class IsentropicPrognostic:
 
 	def __init__(
 		self, horizontal_flux_class, horizontal_flux_scheme, grid, hb,
-		moist, backend, dtype=datatype
+		tracers, backend, dtype=datatype
 	):
 		"""
 		Parameters
 		----------
-		horizontal_flux_class : IsentropicHorizontalFlux, IsentropicMinimal
+		horizontal_flux_class : IsentropicHorizontalFlux, IsentropicMinimalHorizontalFlux
 			Either :class:`~tasmania.IsentropicHorizontalFlux`
 			or :class:`~tasmania.IsentropicMinimalHorizontalFlux`.
 		horizontal_flux_scheme : str
@@ -73,8 +67,8 @@ class IsentropicPrognostic:
 			The underlying grid.
 		hb : tasmania.HorizontalBoundary
 			The object handling the lateral boundary conditions.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+		tracers : ordered dict
+			TODO
 		backend : obj
 			TODO
 		dtype : `numpy.dtype`, optional
@@ -85,13 +79,13 @@ class IsentropicPrognostic:
 		self._hflux_scheme	= horizontal_flux_scheme
 		self._grid          = grid
 		self._hb            = hb
-		self._moist      	= moist
+		self._tracers      	= {} if tracers is None else tracers
 		self._backend		= backend
 		self._dtype			= dtype
 
 		# instantiate the class computing the numerical horizontal fluxes
 		self._hflux = horizontal_flux_class.factory(
-			self._hflux_scheme, grid, moist,
+			self._hflux_scheme, grid, tracers,
 		)
 		assert hb.nb >= self._hflux.extent, \
 			"The number of lateral boundary layers is {}, but should be " \
@@ -154,7 +148,7 @@ class IsentropicPrognostic:
 	@staticmethod
 	def factory(
 		time_integration_scheme, horizontal_flux_scheme, grid, hb,
-		moist=False, backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		tracers=None, backend=gt.mode.NUMPY, dtype=datatype, **kwargs
 	):
 		"""
 		Static method returning an instance of the derived class implementing
@@ -179,9 +173,8 @@ class IsentropicPrognostic:
 			The underlying grid.
 		hb : tasmania.HorizontalBoundary
 			The object handling the lateral boundary conditions.
-		moist : `bool`, optional
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
+		tracers : `dict`, optional
+			TODO
 		backend : obj
 			TODO
 		dtype : `numpy.dtype`, optional
@@ -195,7 +188,7 @@ class IsentropicPrognostic:
 		"""
 		from .implementations.prognostic import \
 			ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
-		args = (horizontal_flux_scheme,	grid, hb, moist, backend, dtype)
+		args = (horizontal_flux_scheme,	grid, hb, tracers, backend, dtype)
 
 		available = ('forward_euler_si', 'centered_si', 'rk3ws_si', 'sil3')
 
@@ -234,10 +227,10 @@ class IsentropicPrognostic:
 		self._mtg_now = np.zeros((  nx,   ny, nz), dtype=dtype)
 		self._su_now  = np.zeros((  nx,	  ny, nz), dtype=dtype)
 		self._sv_now  = np.zeros((  nx,	  ny, nz), dtype=dtype)
-		if self._moist:
-			self._sqv_now = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc_now = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr_now = np.zeros((nx, ny, nz), dtype=dtype)
+		self._sq_now = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 		# allocate the input Numpy arrays which will store the tendencies
 		# for the model variables
@@ -248,22 +241,21 @@ class IsentropicPrognostic:
 				self._su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 			if 'y_momentum_isentropic' in tendency_names:
 				self._sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			if mfwv in tendency_names:
-				self._qv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			if mfcw in tendency_names:
-				self._qc_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			if mfpw in tendency_names:
-				self._qr_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+
+			self._q_tnd = {
+				tracer: np.zeros((nx, ny, nz), dtype=dtype)
+				for tracer in self._tracers if tracer in tendency_names
+			}
 
 		# allocate the Numpy arrays which will store the output values for
 		# the model variables
 		self._s_new  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._su_new = np.zeros((nx, ny, nz), dtype=dtype)
 		self._sv_new = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._sqv_new = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc_new = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr_new = np.zeros((nx, ny, nz), dtype=dtype)
+		self._sq_new = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 	def _stencils_set_inputs(self, stage, timestep, state, tendencies):
 		"""
@@ -275,11 +267,13 @@ class IsentropicPrognostic:
 			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
 			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
 			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
-			qv_tnd_on = tendencies.get(mfwv, None) is not None
-			qc_tnd_on = tendencies.get(mfcw, None) is not None
-			qr_tnd_on = tendencies.get(mfpw, None) is not None
+			q_tnd_on = {
+				tracer: tendencies.get(tracer, None) is not None
+				for tracer in self._tracers
+			}
 		else:
-			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			s_tnd_on = su_tnd_on = sv_tnd_on = False
+			q_tnd_on = {tracer: False for tracer in self._tracers}
 
 		# update the local time step
 		self._dt.value = timestep.total_seconds()
@@ -291,19 +285,18 @@ class IsentropicPrognostic:
 		self._mtg_now[...] = state['montgomery_potential'][...]
 		self._su_now[...]  = state['x_momentum_isentropic'][...]
 		self._sv_now[...]  = state['y_momentum_isentropic'][...]
-		if self._moist:
-			self._sqv_now[...] = state['isentropic_density_of_water_vapor'][...]
-			self._sqc_now[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-			self._sqr_now[...] = state['isentropic_density_of_precipitation_water'][...]
+		for tracer in self._tracers:
+			# assume that the isentropic density of a tracer
+			# is referred to by prefixing the name of the tracer with 's_'
+			self._sq_now[tracer][...] = state['s_' + tracer][...]
+
+		# update the Numpy arrays which serve as inputs to the GT4Py stencils
 		if s_tnd_on:
 			self._s_tnd[...]  = tendencies['air_isentropic_density'][...]
 		if su_tnd_on:
 			self._su_tnd[...] = tendencies['x_momentum_isentropic'][...]
 		if sv_tnd_on:
 			self._sv_tnd[...] = tendencies['y_momentum_isentropic'][...]
-		if qv_tnd_on:
-			self._qv_tnd[...] = tendencies[mfwv][...]
-		if qc_tnd_on:
-			self._qc_tnd[...] = tendencies[mfcw][...]
-		if qr_tnd_on:
-			self._qr_tnd[...] = tendencies[mfpw][...]
+		for tracer in self._tracers:
+			if q_tnd_on[tracer]:
+				self._q_tnd[tracer][...] = tendencies[tracer][...]

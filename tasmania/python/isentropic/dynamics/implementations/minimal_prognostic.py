@@ -97,9 +97,9 @@ class Centered(IsentropicMinimalPrognostic):
 		}
 		if self._moist:
 			state_new.update({
-				'isentropic_density_of_water_vapor': self._out_sqv,
-				'isentropic_density_of_cloud_liquid_water': self._out_sqc,
-				'isentropic_density_of_precipitation_water': self._out_sqr,
+				's_' + mfwv: self._out_sqv,
+				's_' + mfcw: self._out_sqc,
+				's_' + mfpw: self._out_sqr,
 			})
 
 		# keep track of the current state for the next time step
@@ -205,9 +205,9 @@ class Centered(IsentropicMinimalPrognostic):
 			self._in_su_old[...] = state['x_momentum_isentropic']
 			self._in_sv_old[...] = state['y_momentum_isentropic']
 			if self._moist:
-				self._in_sqv_old[...] = state['isentropic_density_of_water_vapor']
-				self._in_sqc_old[...] =	state['isentropic_density_of_cloud_liquid_water']
-				self._in_sqr_old[...] = state['isentropic_density_of_precipitation_water']
+				self._in_sqv_old[...] = state['s_' + mfwv]
+				self._in_sqc_old[...] =	state['s_' + mfcw]
+				self._in_sqr_old[...] = state['s_' + mfpw]
 
 	def _stage_stencil_defs(
 		self, dt, in_s, in_u, in_v, in_su, in_sv,
@@ -386,9 +386,9 @@ class ForwardEuler(IsentropicMinimalPrognostic):
 		}
 		if self._moist:
 			state_new.update({
-				'isentropic_density_of_water_vapor': self._out_sqv,
-				'isentropic_density_of_cloud_liquid_water': self._out_sqc,
-				'isentropic_density_of_precipitation_water': self._out_sqr,
+				's_' + mfwv: self._out_sqv,
+				's_' + mfcw: self._out_sqc,
+				's_' + mfpw: self._out_sqr,
 			})
 
 		return state_new
@@ -635,9 +635,9 @@ class RK2(IsentropicMinimalPrognostic):
 		}
 		if self._moist:
 			state_new.update({
-				'isentropic_density_of_water_vapor': self._out_sqv,
-				'isentropic_density_of_cloud_liquid_water': self._out_sqc,
-				'isentropic_density_of_precipitation_water': self._out_sqr,
+				's_' + mfwv: self._out_sqv,
+				's_' + mfcw: self._out_sqc,
+				's_' + mfpw: self._out_sqr,
 			})
 
 		return state_new
@@ -748,9 +748,9 @@ class RK2(IsentropicMinimalPrognostic):
 			self._in_su[...] = state['x_momentum_isentropic'][...]
 			self._in_sv[...] = state['y_momentum_isentropic'][...]
 			if self._moist:
-				self._in_sqv[...] = state['isentropic_density_of_water_vapor']
-				self._in_sqc[...] = state['isentropic_density_of_cloud_liquid_water']
-				self._in_sqr[...] = state['isentropic_density_of_precipitation_water']
+				self._in_sqv[...] = state['s_' + mfwv]
+				self._in_sqc[...] = state['s_' + mfcw]
+				self._in_sqr[...] = state['s_' + mfpw]
 
 		# update the Numpy arrays which serve as inputs to the GT4Py stencils
 		self._in_s_int[...]  = state['air_isentropic_density'][...]
@@ -759,9 +759,9 @@ class RK2(IsentropicMinimalPrognostic):
 		self._in_su_int[...] = state['x_momentum_isentropic'][...]
 		self._in_sv_int[...] = state['y_momentum_isentropic'][...]
 		if self._moist:
-			self._in_sqv_int[...] = state['isentropic_density_of_water_vapor']
-			self._in_sqc_int[...] = state['isentropic_density_of_cloud_liquid_water']
-			self._in_sqr_int[...] = state['isentropic_density_of_precipitation_water']
+			self._in_sqv_int[...] = state['s_' + mfwv]
+			self._in_sqc_int[...] = state['s_' + mfcw]
+			self._in_sqr_int[...] = state['s_' + mfpw]
 
 		# extract the Numpy arrays representing the provided tendencies,
 		# and update the Numpy arrays which serve as inputs to the GT4Py stencils
@@ -1017,9 +1017,9 @@ class RK3(IsentropicMinimalPrognostic):
 			'y_momentum_isentropic': self._out_sv,
 		}
 		if self._moist:
-			state_new['isentropic_density_of_water_vapor'] = self._out_sqv
-			state_new['isentropic_density_of_cloud_liquid_water'] = self._out_sqc
-			state_new['isentropic_density_of_precipitation_water'] = self._out_sqr
+			state_new['s_' + mfwv] = self._out_sqv
+			state_new['s_' + mfcw] = self._out_sqc
+			state_new['s_' + mfpw] = self._out_sqr
 		if stage == 0:
 			state_new['time'] = state['time'] + self._alpha1*timestep
 		elif stage == 1:
@@ -1271,9 +1271,9 @@ class RK3(IsentropicMinimalPrognostic):
 			self._in_su[...] = state['x_momentum_isentropic'][...]
 			self._in_sv[...] = state['y_momentum_isentropic'][...]
 			if self._moist:
-				self._in_sqv[...] = state['isentropic_density_of_water_vapor'][...]
-				self._in_sqc[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-				self._in_sqr[...] = state['isentropic_density_of_precipitation_water'][...]
+				self._in_sqv[...] = state['s_' + mfwv][...]
+				self._in_sqc[...] = state['s_' + mfcw][...]
+				self._in_sqr[...] = state['s_' + mfpw][...]
 		else:
 			# update the Numpy arrays which serve as inputs to the GT4Py stencils
 			self._in_s_int[...]  = state['air_isentropic_density'][...]
@@ -1282,9 +1282,9 @@ class RK3(IsentropicMinimalPrognostic):
 			self._in_su_int[...] = state['x_momentum_isentropic'][...]
 			self._in_sv_int[...] = state['y_momentum_isentropic'][...]
 			if self._moist:
-				self._in_sqv_int[...] = state['isentropic_density_of_water_vapor'][...]
-				self._in_sqc_int[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-				self._in_sqr_int[...] = state['isentropic_density_of_precipitation_water'][...]
+				self._in_sqv_int[...] = state['s_' + mfwv][...]
+				self._in_sqc_int[...] = state['s_' + mfcw][...]
+				self._in_sqr_int[...] = state['s_' + mfpw][...]
 
 		# extract the Numpy arrays representing the provided tendencies,
 		# and update the Numpy arrays which serve as inputs to the GT4Py stencils

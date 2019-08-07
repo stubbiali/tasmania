@@ -182,9 +182,9 @@ def second_order_flux_validation(rho, h, qr, vt):
 
 	out = np.zeros_like(rho, dtype=rho.dtype)
 	out[:, :, 2:] = \
-		a[:, :, 2:] * (rho[:, :, 2:  ] * qr[:, :, 2:  ] * vt[:, :, 2:  ]) + \
-		b[:, :, 2:] * (rho[:, :, 1:-1] * qr[:, :, 1:-1] * vt[:, :, 1:-1]) + \
-		c[:, :, 2:] * (rho[:, :, :-2 ] * qr[:, :, :-2 ] * vt[:, :, :-2 ])
+		a[:, :, 2:] * rho[:, :, 2:  ] * qr[:, :, 2:  ] * vt[:, :, 2:  ] + \
+		b[:, :, 2:] * rho[:, :, 1:-1] * qr[:, :, 1:-1] * vt[:, :, 1:-1] + \
+		c[:, :, 2:] * rho[:, :, :-2 ] * qr[:, :, :-2 ] * vt[:, :, :-2 ]
 
 	return out
 
@@ -218,38 +218,18 @@ def test_sedimentation_flux(data):
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	dtype = grid.x.dtype
 
-	rho = data.draw(
+	field = data.draw(
 		st_arrays(
-			dtype, (grid.nx, grid.ny, grid.nz),
+			dtype, (grid.nx+1, grid.ny, grid.nz+1),
 			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
-		label="rho"
+		label="field"
 	)
-	h = data.draw(
-		st_arrays(
-			dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=st_floats(min_value=1, max_value=1e4),
-			fill=hyp_st.nothing(),
-		),
-		label="h"
-	)
-	qr = data.draw(
-		st_arrays(
-			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=st_floats(min_value=1, max_value=1e4),
-			fill=hyp_st.nothing(),
-		),
-		label="qr"
-	)
-	vt = data.draw(
-		st_arrays(
-			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=st_floats(min_value=1, max_value=1e4),
-			fill=hyp_st.nothing(),
-		),
-		label="vt"
-	)
+	rho = field[1:, :, :-1]
+	h = field[:-1, :, :]
+	qr = field[:-1, :, :-1]
+	vt = field[:-1, :, 1:]
 
 	flux_type = data.draw(
 		st_one_of(('first_order_upwind', 'second_order_upwind')),
@@ -329,7 +309,9 @@ def test_kessler_sedimentation(data):
 	diagnostics = rfv(state)
 	state.update(diagnostics)
 
-	tracer = {mfpw: {'units': 'g g^-1', 'velocity': 'raindrop_fall_velocity'}}
+	tracer = {
+		mfpw: {'units': 'g g^-1', 'sedimentation_velocity': 'raindrop_fall_velocity'}
+	}
 	sed = Sedimentation(
 		domain, grid_type, tracer, flux_scheme, maxcfl,
 		backend=gt.mode.NUMPY, dtype=dtype
@@ -431,8 +413,14 @@ def test_porz_sedimentation(data):
 	state.update(diagnostics)
 
 	tracers = {
-		mfpw: {'units': 'g g^-1', 'velocity': 'raindrop_fall_velocity'},
-		ndpw: {'units': 'kg^-1', 'velocity': 'number_density_of_raindrop_fall_velocity'}
+		mfpw: {
+			'units': 'g g^-1',
+			'sedimentation_velocity': 'raindrop_fall_velocity'
+		},
+		ndpw: {
+			'units': 'kg^-1',
+			'sedimentation_velocity': 'number_density_of_raindrop_fall_velocity'
+		}
 	}
 	sed = Sedimentation(
 		domain, grid_type, tracers, flux_scheme, maxcfl,
@@ -481,4 +469,5 @@ def test_porz_sedimentation(data):
 
 
 if __name__ == '__main__':
-	pytest.main([__file__])
+	#pytest.main([__file__])
+	test_sedimentation_flux()
