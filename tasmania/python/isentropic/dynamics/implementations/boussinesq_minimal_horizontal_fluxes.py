@@ -27,14 +27,14 @@ This module contains:
 	MacCormack(IsentropicBoussinesqMinimalHorizontalFlux)
 	FifthOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux)
 """
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicBoussinesqMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.implementations.horizontal_fluxes import \
 	get_centered_flux_x, get_centered_flux_y, \
 	get_fifth_order_upwind_flux_x, get_fifth_order_upwind_flux_y, \
 	get_third_order_upwind_flux_x, get_third_order_upwind_flux_y, \
 	get_upwind_flux_x, get_upwind_flux_y
-from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_fluxes import \
+from tasmania.python.isentropic.dynamics.implementations.ng_minimal_horizontal_fluxes import \
 	Upwind as CoreUpwind, Centered as CoreCentered, \
 	ThirdOrderUpwind as CoreThirdOrderUpwind, \
 	FifthOrderUpwind as CoreFifthOrderUpwind

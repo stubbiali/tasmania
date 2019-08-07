@@ -31,7 +31,7 @@ This module contains:
 	get_maccormack_flux
 """
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicVerticalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicVerticalFlux
 
 
 class Upwind(IsentropicVerticalFlux):

@@ -34,7 +34,7 @@ from tasmania.python.utils.data_utils import make_raw_state
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
+	from .test_ng_isentropic_minimal_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 	from .test_isentropic_minimal_prognostic import \

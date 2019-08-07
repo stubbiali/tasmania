@@ -30,8 +30,8 @@ from sympl import DataArray
 
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics
-from tasmania.python.isentropic.dynamics.fluxes import \
-	IsentropicMinimalHorizontalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
+	NGIsentropicMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.prognostic \
 	import IsentropicPrognostic
 from tasmania.python.isentropic.dynamics.implementations.prognostic \
@@ -40,27 +40,34 @@ from tasmania.python.utils.data_utils import make_raw_state
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
+	from .test_isentropic_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
-	from .test_isentropic_minimal_prognostic import \
-		forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
 		st_domain, st_floats, st_one_of, st_isentropic_state_f
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import \
+	from test_isentropic_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
-	from test_isentropic_minimal_prognostic import \
-		forward_euler_step
 	from utils import compare_arrays, compare_datetimes, \
 		st_domain, st_floats, st_one_of, st_isentropic_state_f
 
+import sys
+python_version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
+if python_version <= '3.5':
+	import collections
+	Dict = collections.OrderedDict
+else:
+	Dict = dict
 
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+
+__tracers = Dict(
+	tracer0={'stencil_symbol': 'q0'},
+	tracer1={'stencil_symbol': 'q1'},
+	tracer2={'stencil_symbol': 'q2'},
+	tracer3={'stencil_symbol': 'q3'},
+)
 
 
 @settings(
@@ -80,7 +87,6 @@ def test_factory(data):
 		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
 		label='domain'
 	)
-	moist = data.draw(hyp_st.booleans(), label='moist')
 	backend = data.draw(st_one_of(conf_backend), label='backend')
 	pt = DataArray(
 		data.draw(st_floats(min_value=0, max_value=100), label='pt'), attrs={'units': 'Pa'}
@@ -98,28 +104,39 @@ def test_factory(data):
 	dtype = grid.x.dtype
 
 	imp_euler_si = IsentropicPrognostic.factory(
-		'forward_euler_si', 'upwind', grid, hb, moist,
+		'forward_euler_si', 'upwind', grid, hb, __tracers,
 		backend=backend, dtype=dtype, pt=pt, eps=eps
 	)
 	assert isinstance(imp_euler_si, ForwardEulerSI)
-	assert isinstance(imp_euler_si._hflux, IsentropicMinimalHorizontalFlux)
+	assert isinstance(imp_euler_si._hflux, NGIsentropicMinimalHorizontalFlux)
 
 	imp_rk3ws_si = IsentropicPrognostic.factory(
-		'rk3ws_si', 'fifth_order_upwind', grid, hb, moist,
+		'rk3ws_si', 'fifth_order_upwind', grid, hb, __tracers,
 		backend=backend, dtype=dtype, pt=pt, eps=eps
 	)
 	assert isinstance(imp_rk3ws_si, RK3WSSI)
-	assert isinstance(imp_rk3ws_si._hflux, IsentropicMinimalHorizontalFlux)
+	assert isinstance(imp_rk3ws_si._hflux, NGIsentropicMinimalHorizontalFlux)
 
 	imp_sil3 = IsentropicPrognostic.factory(
-		'sil3', 'fifth_order_upwind', grid, hb, moist,
+		'sil3', 'fifth_order_upwind', grid, hb, __tracers,
 		backend=backend, dtype=dtype, pt=pt, a=a, b=b, c=c
 	)
 	assert isinstance(imp_sil3, SIL3)
-	assert isinstance(imp_sil3._hflux, IsentropicMinimalHorizontalFlux)
+	assert isinstance(imp_sil3._hflux, NGIsentropicMinimalHorizontalFlux)
 	assert np.isclose(imp_sil3._a.value, a)
 	assert np.isclose(imp_sil3._b.value, b)
 	assert np.isclose(imp_sil3._c.value, c)
+
+
+def forward_euler_step(
+	get_fluxes, mode, dx, dy, dt, u_tmp, v_tmp, phi, phi_tmp, phi_tnd, phi_out
+):
+	flux_x, flux_y = get_fluxes(u_tmp, v_tmp, phi_tmp)
+	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] - dt * (
+		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
+		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
+		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
+	)
 
 
 @settings(
@@ -143,22 +160,23 @@ def test_upwind_si(data):
 	hb = domain.horizontal_boundary
 	assume(hb.type != 'dirichlet')
 	grid = domain.numerical_grid
-	moist = data.draw(hyp_st.booleans(), label='moist')
-	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
+	q_on = {tracer: data.draw(hyp_st.booleans()) for tracer in __tracers}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label='state')
+
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label='s_tnd'):
 		tendencies['air_isentropic_density'] = state['air_isentropic_density']
 	if data.draw(hyp_st.booleans(), label='su_tnd'):
 		tendencies['x_momentum_isentropic'] = state['x_momentum_isentropic']
-	if data.draw(hyp_st.booleans(), label='sv_tn:'):
+	if data.draw(hyp_st.booleans(), label='sv_tnd'):
 		tendencies['y_momentum_isentropic'] = state['y_momentum_isentropic']
-	if moist:
-		if data.draw(hyp_st.booleans(), label='qv_tnd'):
-			tendencies[mfwv] = state[mfwv]
-		if data.draw(hyp_st.booleans(), label='qc_tnd'):
-			tendencies[mfcw] = state[mfcw]
-		if data.draw(hyp_st.booleans(), label='qr_tnd'):
-			tendencies[mfpw] = state[mfpw]
+	for tracer in tracers:
+		if data.draw(hyp_st.booleans(), label=tracer+'_tnd'):
+			tendencies[tracer] = state[tracer]
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
 	pt = state['air_pressure_on_interface_levels'][0, 0, 0]
@@ -179,30 +197,20 @@ def test_upwind_si(data):
 	dtype = grid.x.dtype
 
 	imp = IsentropicPrognostic.factory(
-		'forward_euler_si', 'upwind', grid, hb, moist,
+		'forward_euler_si', 'upwind', grid, hb, tracers,
 		backend=backend, dtype=dtype, pt=pt, eps=eps
 	)
 
 	raw_state = make_raw_state(state)
-	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfpw]
+	for tracer in tracers:
+		raw_state['s_' + tracer] = \
+			raw_state['air_isentropic_density'] * raw_state[tracer]
 
 	raw_tendencies = make_raw_state(tendencies)
-	if moist:
-		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
-				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
-		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
-				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
-		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
-				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
+	for tracer in tracers:
+		if tracer in raw_tendencies:
+			raw_tendencies['s_' + tracer] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[tracer]
 
 	raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
 
@@ -231,23 +239,19 @@ def test_upwind_si(data):
 		s_new[nb:-nb, nb:-nb], raw_state_new['air_isentropic_density'][nb:-nb, nb:-nb]
 	)
 
-	if moist:
-		# water species
-		names = [
-			'isentropic_density_of_water_vapor',
-			'isentropic_density_of_cloud_liquid_water',
-			'isentropic_density_of_precipitation_water',
-		]
-		sq_new = np.zeros((nx, ny, nz), dtype=dtype)
-		for name in names:
-			sq_now = raw_state[name]
-			sq_tnd = raw_tendencies.get(name, None)
-			forward_euler_step(
-				get_upwind_fluxes, 'xy', dx, dy, dt, u_now, v_now,
-				sq_now, sq_now, sq_tnd, sq_new
-			)
-			assert name in raw_state_new
-			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_new[name][nb:-nb, nb:-nb])
+	# tracers
+	sq_new = np.zeros((nx, ny, nz), dtype=dtype)
+	for tracer in tracers:
+		sq_now = raw_state['s_' + tracer]
+		sq_tnd = raw_tendencies.get('s_' + tracer, None)
+		forward_euler_step(
+			get_upwind_fluxes, 'xy', dx, dy, dt, u_now, v_now,
+			sq_now, sq_now, sq_tnd, sq_new
+		)
+		assert 's_' + tracer in raw_state_new
+		compare_arrays(
+			sq_new[nb:-nb, nb:-nb], raw_state_new['s_' + tracer][nb:-nb, nb:-nb]
+		)
 
 	# montgomery potential
 	ids = IsentropicDiagnostics(grid, backend, dtype)
@@ -314,22 +318,23 @@ def test_rk3ws_si(data):
 	hb = domain.horizontal_boundary
 	assume(hb.type != 'dirichlet')
 	grid = domain.numerical_grid
-	moist = data.draw(hyp_st.booleans(), label='moist')
-	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
+	q_on = {tracer: data.draw(hyp_st.booleans()) for tracer in __tracers}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label='state')
+
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label='s_tnd'):
 		tendencies['air_isentropic_density'] = state['air_isentropic_density']
 	if data.draw(hyp_st.booleans(), label='su_tnd'):
 		tendencies['x_momentum_isentropic'] = state['x_momentum_isentropic']
-	if data.draw(hyp_st.booleans(), label='sv_tn:'):
+	if data.draw(hyp_st.booleans(), label='sv_tnd'):
 		tendencies['y_momentum_isentropic'] = state['y_momentum_isentropic']
-	if moist:
-		if data.draw(hyp_st.booleans(), label='qv_tnd'):
-			tendencies[mfwv] = state[mfwv]
-		if data.draw(hyp_st.booleans(), label='qc_tnd'):
-			tendencies[mfcw] = state[mfcw]
-		if data.draw(hyp_st.booleans(), label='qr_tnd'):
-			tendencies[mfpw] = state[mfpw]
+	for tracer in tracers:
+		if data.draw(hyp_st.booleans(), label=tracer+'_tnd'):
+			tendencies[tracer] = state[tracer]
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
 	pt = state['air_pressure_on_interface_levels'][0, 0, 0]
@@ -350,30 +355,20 @@ def test_rk3ws_si(data):
 	dtype = grid.x.dtype
 
 	imp = IsentropicPrognostic.factory(
-		'rk3ws_si', 'fifth_order_upwind', grid, hb, moist,
+		'rk3ws_si', 'fifth_order_upwind', grid, hb, tracers,
 		backend=backend, dtype=dtype, pt=pt, eps=eps
 	)
 
 	raw_state = make_raw_state(state)
-	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfpw]
+	for tracer in tracers:
+		raw_state['s_' + tracer] = \
+			raw_state['air_isentropic_density'] * raw_state[tracer]
 
 	raw_tendencies = make_raw_state(tendencies)
-	if moist:
-		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
-				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
-		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
-				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
-		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
-				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
+	for tracer in tracers:
+		if tracer in tendencies:
+			raw_tendencies['s_' + tracer] = \
+				raw_state['air_isentropic_density'] * raw_tendencies[tracer]
 
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
 	dx = grid.dx.to_units('m').values.item()
@@ -381,11 +376,6 @@ def test_rk3ws_si(data):
 	u = raw_state['x_velocity_at_u_locations']
 	v = raw_state['y_velocity_at_v_locations']
 
-	names = [
-		'isentropic_density_of_water_vapor',
-		'isentropic_density_of_cloud_liquid_water',
-		'isentropic_density_of_precipitation_water'
-	]
 	sq_new = np.zeros((nx, ny, nz), dtype=dtype)
 
 	#
@@ -411,17 +401,18 @@ def test_rk3ws_si(data):
 	assert 'air_isentropic_density' in raw_state_1
 	compare_arrays(s1, raw_state_1['air_isentropic_density'])
 
-	if moist:
-		# water species
-		for name in names:
-			sq0 = raw_state[name]
-			sq_tnd = raw_tendencies.get(name, None)
-			forward_euler_step(
-				get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
-				sq0, sq0, sq_tnd, sq_new
-			)
-			assert name in raw_state_1
-			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_1[name][nb:-nb, nb:-nb])
+	# tracers
+	for tracer in tracers:
+		sq0 = raw_state['s_' + tracer]
+		sq_tnd = raw_tendencies.get('s_' + tracer, None)
+		forward_euler_step(
+			get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
+			sq0, sq0, sq_tnd, sq_new
+		)
+		assert 's_' + tracer in raw_state_1
+		compare_arrays(
+			sq_new[nb:-nb, nb:-nb], raw_state_1['s_' + tracer][nb:-nb, nb:-nb]
+		)
 
 	# montgomery potential
 	ids = IsentropicDiagnostics(grid, backend, dtype)
@@ -474,16 +465,10 @@ def test_rk3ws_si(data):
 	raw_state_1['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	raw_state_1_dc = deepcopy(raw_state_1)
 
-	if moist:
-		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
-				raw_state_1['air_isentropic_density'] * raw_tendencies[mfwv]
-		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
-				raw_state_1['air_isentropic_density'] * raw_tendencies[mfcw]
-		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
-				raw_state_1['air_isentropic_density'] * raw_tendencies[mfpw]
+	for tracer in tracers:
+		if tracer in tendencies:
+			raw_tendencies['s_' + tracer] = \
+				raw_state_1['air_isentropic_density'] * raw_tendencies[tracer]
 
 	dts = (0.5*timestep).total_seconds()
 
@@ -503,18 +488,19 @@ def test_rk3ws_si(data):
 	assert 'air_isentropic_density' in raw_state_2
 	compare_arrays(s2, raw_state_2['air_isentropic_density'])
 
-	if moist:
-		# water species
-		for name in names:
-			sq0 = raw_state[name]
-			sq1 = raw_state_1_dc[name]
-			sq_tnd = raw_tendencies.get(name, None)
-			forward_euler_step(
-				get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
-				sq0, sq1, sq_tnd, sq_new
-			)
-			assert name in raw_state_2
-			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_2[name][nb:-nb, nb:-nb])
+	# water species
+	for tracer in tracers:
+		sq0 = raw_state['s_' + tracer]
+		sq1 = raw_state_1_dc['s_' + tracer]
+		sq_tnd = raw_tendencies.get('s_' + tracer, None)
+		forward_euler_step(
+			get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
+			sq0, sq1, sq_tnd, sq_new
+		)
+		assert 's_' + tracer in raw_state_2
+		compare_arrays(
+			sq_new[nb:-nb, nb:-nb], raw_state_2['s_' + tracer][nb:-nb, nb:-nb]
+		)
 
 	# montgomery potential
 	mtg2 = np.zeros((nx, ny, nz), dtype=dtype)
@@ -562,16 +548,10 @@ def test_rk3ws_si(data):
 	raw_state_2['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	raw_state_2_dc = deepcopy(raw_state_2)
 
-	if moist:
-		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
-				raw_state_2['air_isentropic_density'] * raw_tendencies[mfwv]
-		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
-				raw_state_2['air_isentropic_density'] * raw_tendencies[mfcw]
-		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
-				raw_state_2['air_isentropic_density'] * raw_tendencies[mfpw]
+	for tracer in tracers:
+		if tracer in tendencies:
+			raw_tendencies['s_' + tracer] = \
+				raw_state_2['air_isentropic_density'] * raw_tendencies[tracer]
 
 	dts = timestep.total_seconds()
 
@@ -591,18 +571,19 @@ def test_rk3ws_si(data):
 	assert 'air_isentropic_density' in raw_state_3
 	compare_arrays(s3, raw_state_3['air_isentropic_density'])
 
-	if moist:
-		# water species
-		for name in names:
-			sq0 = raw_state[name]
-			sq2 = raw_state_2_dc[name]
-			sq_tnd = raw_tendencies.get(name, None)
-			forward_euler_step(
-				get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
-				sq0, sq2, sq_tnd, sq_new
-			)
-			assert name in raw_state_3
-			compare_arrays(sq_new[nb:-nb, nb:-nb], raw_state_3[name][nb:-nb, nb:-nb])
+	# water species
+	for tracer in tracers:
+		sq0 = raw_state['s_' + tracer]
+		sq2 = raw_state_2_dc['s_' + tracer]
+		sq_tnd = raw_tendencies.get('s_' + tracer, None)
+		forward_euler_step(
+			get_fifth_order_upwind_fluxes, 'xy', dx, dy, dts, u, v,
+			sq0, sq2, sq_tnd, sq_new
+		)
+		assert 's_' + tracer in raw_state_3
+		compare_arrays(
+			sq_new[nb:-nb, nb:-nb], raw_state_3['s_' + tracer][nb:-nb, nb:-nb]
+		)
 
 	# montgomery potential
 	mtg3 = np.zeros((nx, ny, nz), dtype=dtype)
@@ -665,22 +646,23 @@ def test_sil3(data):
 	hb = domain.horizontal_boundary
 	assume(hb.type != 'dirichlet')
 	grid = domain.numerical_grid
-	moist = data.draw(hyp_st.booleans(), label='moist')
-	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
+	q_on = {tracer: data.draw(hyp_st.booleans()) for tracer in __tracers}
+	tracers = Dict()
+	for tracer in __tracers:
+		if q_on[tracer]:
+			tracers[tracer] = __tracers[tracer]
+	state = data.draw(st_isentropic_state_f(grid, tracers=tracers), label='state')
+
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label='s_tnd'):
 		tendencies['air_isentropic_density'] = state['air_isentropic_density']
 	if data.draw(hyp_st.booleans(), label='su_tnd'):
 		tendencies['x_momentum_isentropic'] = state['x_momentum_isentropic']
-	if data.draw(hyp_st.booleans(), label='sv_tn:'):
+	if data.draw(hyp_st.booleans(), label='sv_tnd'):
 		tendencies['y_momentum_isentropic'] = state['y_momentum_isentropic']
-	if moist:
-		if data.draw(hyp_st.booleans(), label='qv_tnd'):
-			tendencies[mfwv] = state[mfwv]
-		if data.draw(hyp_st.booleans(), label='qc_tnd'):
-			tendencies[mfcw] = state[mfcw]
-		if data.draw(hyp_st.booleans(), label='qr_tnd'):
-			tendencies[mfpw] = state[mfpw]
+	for tracer in tracers:
+		if data.draw(hyp_st.booleans(), label=tracer+'_tnd'):
+			tendencies[tracer] = state[tracer]
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
 	pt = state['air_pressure_on_interface_levels'][0, 0, 0]
@@ -703,18 +685,14 @@ def test_sil3(data):
 	dtype = grid.x.dtype
 
 	imp = IsentropicPrognostic.factory(
-		'sil3', 'fifth_order_upwind', grid, hb, moist,
+		'sil3', 'fifth_order_upwind', grid, hb, tracers,
 		backend=backend, dtype=dtype, pt=pt, a=a, b=b, c=c
 	)
 
 	raw_state = make_raw_state(state)
-	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
-			raw_state['air_isentropic_density'] * raw_state[mfpw]
+	for tracer in tracers:
+		raw_state['s_' + tracer] = \
+			raw_state['air_isentropic_density'] * raw_state[tracer]
 
 	raw_tendencies = make_raw_state(tendencies)
 
@@ -750,45 +728,32 @@ def test_sil3(data):
 	assert 'air_isentropic_density' in raw_state_1
 	compare_arrays(s1, raw_state_1['air_isentropic_density'])
 
-	if moist:
-		# isentropic density of water vapor
-		sqv0 = raw_state['isentropic_density_of_water_vapor']
-		qv_tnd = raw_tendencies.get(mfwv, None)
-		flux_sqv_x_0, flux_sqv_y_0 = get_fifth_order_upwind_fluxes(u, v, sqv0)
-		sqv1 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqv1[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts / 3.0 * (
-			(flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			(flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			(s0[nb:-nb, nb:-nb] * qv_tnd[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
-		)
-		assert 'isentropic_density_of_water_vapor' in raw_state_1
-		compare_arrays(sqv1, raw_state_1['isentropic_density_of_water_vapor'])
+	sq0 = {}
+	sq1 = {}
+	sq2 = {}
+	flux_sq_x_0 = {}
+	flux_sq_y_0 = {}
+	flux_sq_x_1 = {}
+	flux_sq_y_1 = {}
+	q_tnd = {}
 
-		# isentropic density of cloud liquid water
-		sqc0 = raw_state['isentropic_density_of_cloud_liquid_water']
-		qc_tnd = raw_tendencies.get(mfcw, None)
-		flux_sqc_x_0, flux_sqc_y_0 = get_fifth_order_upwind_fluxes(u, v, sqc0)
-		sqc1 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqc1[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts / 3.0 * (
-			(flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			(flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			(s0[nb:-nb, nb:-nb] * qc_tnd[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
+	# tracers
+	for tracer in tracers:
+		sq0[tracer] = raw_state['s_' + tracer]
+		q_tnd[tracer] = raw_tendencies.get(tracer, None)
+		flux_sq_x_0[tracer], flux_sq_y_0[tracer] = \
+			get_fifth_order_upwind_fluxes(u, v, sq0[tracer])
+		sq1[tracer] = np.zeros((nx, ny, nz), dtype=dtype)
+		sq1[tracer][nb:-nb, nb:-nb] = sq0[tracer][nb:-nb, nb:-nb] - dts / 3.0 * (
+			(flux_sq_x_0[tracer][nb:-nb, nb:-nb] -
+			 flux_sq_x_0[tracer][nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sq_y_0[tracer][nb:-nb, nb:-nb] -
+			 flux_sq_y_0[tracer][nb:-nb, nb-1:-nb-1]) / dy -
+			(s0[nb:-nb, nb:-nb] * q_tnd[tracer][nb:-nb, nb:-nb]
+			 if q_tnd[tracer] is not None else 0.0)
 		)
-		assert 'isentropic_density_of_cloud_liquid_water' in raw_state_1
-		compare_arrays(sqc1, raw_state_1['isentropic_density_of_cloud_liquid_water'])
-
-		# isentropic density of precipitation water
-		sqr0 = raw_state['isentropic_density_of_precipitation_water']
-		qr_tnd = raw_tendencies.get(mfpw, None)
-		flux_sqr_x_0, flux_sqr_y_0 = get_fifth_order_upwind_fluxes(u, v, sqr0)
-		sqr1 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqr1[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts / 3.0 * (
-			(flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			(flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			(s0[nb:-nb, nb:-nb] * qr_tnd[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
-		)
-		assert 'isentropic_density_of_precipitation_water' in raw_state_1
-		compare_arrays(sqr1, raw_state_1['isentropic_density_of_precipitation_water'])
+		assert 's_' + tracer in raw_state_1
+		compare_arrays(sq1[tracer], raw_state_1['s_' + tracer])
 
 	# montgomery potential
 	ids = IsentropicDiagnostics(grid, backend, dtype)
@@ -864,48 +829,27 @@ def test_sil3(data):
 	assert 'air_isentropic_density' in raw_state_2
 	compare_arrays(s2, raw_state_2['air_isentropic_density'])
 
-	if moist:
-		# isentropic density of water vapor
-		flux_sqv_x_1, flux_sqv_y_1 = get_fifth_order_upwind_fluxes(u, v, sqv1)
-		sqv2 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqv2[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts * (
-			1.0 / 6.0 * (flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			1.0 / 6.0 * (flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			1.0 / 6.0 * ((s0 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0) +
-			0.5 * (flux_sqv_x_1[nb:-nb, nb:-nb] - flux_sqv_x_1[nb-1:-nb-1, nb:-nb]) / dx +
-			0.5 * (flux_sqv_y_1[nb:-nb, nb:-nb] - flux_sqv_y_1[nb:-nb, nb-1:-nb-1]) / dy -
-			0.5 * ((s1 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
+	# tracers
+	for tracer in tracers:
+		flux_sq_x_1[tracer], flux_sq_y_1[tracer] = \
+			get_fifth_order_upwind_fluxes(u, v, sq1[tracer])
+		sq2[tracer] = np.zeros((nx, ny, nz), dtype=dtype)
+		sq2[tracer][nb:-nb, nb:-nb] = sq0[tracer][nb:-nb, nb:-nb] - dts * (
+			1.0 / 6.0 * (flux_sq_x_0[tracer][nb:-nb, nb:-nb] -
+						 flux_sq_x_0[tracer][nb-1:-nb-1, nb:-nb]) / dx +
+			1.0 / 6.0 * (flux_sq_y_0[tracer][nb:-nb, nb:-nb] -
+						 flux_sq_y_0[tracer][nb:-nb, nb-1:-nb-1]) / dy -
+			1.0 / 6.0 * (s0[nb:-nb, nb:-nb] * q_tnd[tracer][nb:-nb, nb:-nb]
+						 if q_tnd[tracer] is not None else 0.0) +
+			0.5 * (flux_sq_x_1[tracer][nb:-nb, nb:-nb] -
+				   flux_sq_x_1[tracer][nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sq_y_1[tracer][nb:-nb, nb:-nb] -
+				   flux_sq_y_1[tracer][nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * (s1[nb:-nb, nb:-nb] * q_tnd[tracer][nb:-nb, nb:-nb]
+				   if q_tnd[tracer] is not None else 0.0)
 		)
-		assert 'isentropic_density_of_water_vapor' in raw_state_2
-		compare_arrays(sqv2, raw_state_2['isentropic_density_of_water_vapor'])
-
-		# isentropic density of cloud liquid water
-		flux_sqc_x_1, flux_sqc_y_1 = get_fifth_order_upwind_fluxes(u, v, sqc1)
-		sqc2 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqc2[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts * (
-			1.0 / 6.0 * (flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			1.0 / 6.0 * (flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			1.0 / 6.0 * ((s0 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0) +
-			0.5 * (flux_sqc_x_1[nb:-nb, nb:-nb] - flux_sqc_x_1[nb-1:-nb-1, nb:-nb]) / dx +
-			0.5 * (flux_sqc_y_1[nb:-nb, nb:-nb] - flux_sqc_y_1[nb:-nb, nb-1:-nb-1]) / dy -
-			0.5 * ((s1 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
-		)
-		assert 'isentropic_density_of_cloud_liquid_water' in raw_state_2
-		compare_arrays(sqc2, raw_state_2['isentropic_density_of_cloud_liquid_water'])
-
-		# isentropic density of precipitation water
-		flux_sqr_x_1, flux_sqr_y_1 = get_fifth_order_upwind_fluxes(u, v, sqr1)
-		sqr2 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqr2[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts * (
-			1.0 / 6.0 * (flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			1.0 / 6.0 * (flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			1.0 / 6.0 * ((s0 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0) +
-			0.5 * (flux_sqr_x_1[nb:-nb, nb:-nb] - flux_sqr_x_1[nb-1:-nb-1, nb:-nb]) / dx +
-			0.5 * (flux_sqr_y_1[nb:-nb, nb:-nb] - flux_sqr_y_1[nb:-nb, nb-1:-nb-1]) / dy -
-			0.5 * ((s1 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
-		)
-		assert 'isentropic_density_of_precipitation_water' in raw_state_2
-		compare_arrays(sqr2, raw_state_2['isentropic_density_of_precipitation_water'])
+		assert 's_' + tracer in raw_state_2
+		compare_arrays(sq2[tracer], raw_state_2['s_' + tracer])
 
 	# montgomery potential
 	mtg2 = mtg1
@@ -984,57 +928,31 @@ def test_sil3(data):
 	assert 'air_isentropic_density' in raw_state_3
 	compare_arrays(s3, raw_state_3['air_isentropic_density'])
 
-	if moist:
-		# isentropic density of water vapor
-		flux_sqv_x_2, flux_sqv_y_2 = get_fifth_order_upwind_fluxes(u, v, sqv2)
-		sqv3 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqv3[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts * (
-			0.5 * (flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			0.5 * (flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			0.5 * ((s0 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0) -
-			0.5 * (flux_sqv_x_1[nb:-nb, nb:-nb] - flux_sqv_x_1[nb-1:-nb-1, nb:-nb]) / dx -
-			0.5 * (flux_sqv_y_1[nb:-nb, nb:-nb] - flux_sqv_y_1[nb:-nb, nb-1:-nb-1]) / dy +
-			0.5 * ((s1 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0) +
-			(flux_sqv_x_2[nb:-nb, nb:-nb] - flux_sqv_x_2[nb-1:-nb-1, nb:-nb]) / dx +
-			(flux_sqv_y_2[nb:-nb, nb:-nb] - flux_sqv_y_2[nb:-nb, nb-1:-nb-1]) / dy -
-			((s2 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
+	# tracers
+	for tracer in tracers:
+		flux_sq_x_2, flux_sq_y_2 = \
+			get_fifth_order_upwind_fluxes(u, v, sq2[tracer])
+		sq3 = np.zeros((nx, ny, nz), dtype=dtype)
+		sq3[nb:-nb, nb:-nb] = sq0[tracer][nb:-nb, nb:-nb] - dts * (
+			0.5 * (flux_sq_x_0[tracer][nb:-nb, nb:-nb] -
+				   flux_sq_x_0[tracer][nb-1:-nb-1, nb:-nb]) / dx +
+			0.5 * (flux_sq_y_0[tracer][nb:-nb, nb:-nb] -
+				   flux_sq_y_0[tracer][nb:-nb, nb-1:-nb-1]) / dy -
+			0.5 * (s0[nb:-nb, nb:-nb] * q_tnd[tracer][nb:-nb, nb:-nb]
+				   if q_tnd[tracer] is not None else 0.0) -
+			0.5 * (flux_sq_x_1[tracer][nb:-nb, nb:-nb] -
+				   flux_sq_x_1[tracer][nb-1:-nb-1, nb:-nb]) / dx -
+			0.5 * (flux_sq_y_1[tracer][nb:-nb, nb:-nb] -
+				   flux_sq_y_1[tracer][nb:-nb, nb-1:-nb-1]) / dy +
+			0.5 * (s1[nb:-nb, nb:-nb] * q_tnd[tracer][nb:-nb, nb:-nb]
+				   if q_tnd[tracer] is not None else 0.0) +
+			(flux_sq_x_2[nb:-nb, nb:-nb] - flux_sq_x_2[nb-1:-nb-1, nb:-nb]) / dx +
+			(flux_sq_y_2[nb:-nb, nb:-nb] - flux_sq_y_2[nb:-nb, nb-1:-nb-1]) / dy -
+			(s2[nb:-nb, nb:-nb] * q_tnd[tracer][nb:-nb, nb:-nb]
+			 if q_tnd[tracer] is not None else 0.0)
 		)
-		assert 'isentropic_density_of_water_vapor' in raw_state_3
-		compare_arrays(sqv3, raw_state_3['isentropic_density_of_water_vapor'])
-
-		# isentropic density of cloud liquid water
-		flux_sqc_x_2, flux_sqc_y_2 = get_fifth_order_upwind_fluxes(u, v, sqc2)
-		sqc3 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqc3[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts * (
-			0.5 * (flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			0.5 * (flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			0.5 * ((s0 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0) -
-			0.5 * (flux_sqc_x_1[nb:-nb, nb:-nb] - flux_sqc_x_1[nb-1:-nb-1, nb:-nb]) / dx -
-			0.5 * (flux_sqc_y_1[nb:-nb, nb:-nb] - flux_sqc_y_1[nb:-nb, nb-1:-nb-1]) / dy +
-			0.5 * ((s1 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0) +
-			(flux_sqc_x_2[nb:-nb, nb:-nb] - flux_sqc_x_2[nb-1:-nb-1, nb:-nb]) / dx +
-			(flux_sqc_y_2[nb:-nb, nb:-nb] - flux_sqc_y_2[nb:-nb, nb-1:-nb-1]) / dy -
-			((s2 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
-		)
-		assert 'isentropic_density_of_cloud_liquid_water' in raw_state_3
-		compare_arrays(sqc3, raw_state_3['isentropic_density_of_cloud_liquid_water'])
-
-		# isentropic density of precipitation water
-		flux_sqr_x_2, flux_sqr_y_2 = get_fifth_order_upwind_fluxes(u, v, sqr2)
-		sqr3 = np.zeros((nx, ny, nz), dtype=dtype)
-		sqr3[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts * (
-			0.5 * (flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb-1:-nb-1, nb:-nb]) / dx +
-			0.5 * (flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb-1:-nb-1]) / dy -
-			0.5 * ((s0 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0) -
-			0.5 * (flux_sqr_x_1[nb:-nb, nb:-nb] - flux_sqr_x_1[nb-1:-nb-1, nb:-nb]) / dx -
-			0.5 * (flux_sqr_y_1[nb:-nb, nb:-nb] - flux_sqr_y_1[nb:-nb, nb-1:-nb-1]) / dy +
-			0.5 * ((s1 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0) +
-			(flux_sqr_x_2[nb:-nb, nb:-nb] - flux_sqr_x_2[nb-1:-nb-1, nb:-nb]) / dx +
-			(flux_sqr_y_2[nb:-nb, nb:-nb] - flux_sqr_y_2[nb:-nb, nb-1:-nb-1]) / dy -
-			((s2 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
-		)
-		assert 'isentropic_density_of_precipitation_water' in raw_state_3
-		compare_arrays(sqr3, raw_state_3['isentropic_density_of_precipitation_water'])
+		assert 's_' + tracer in raw_state_3
+		compare_arrays(sq3, raw_state_3['s_' + tracer])
 
 	# montgomery potential
 	mtg3 = np.zeros((nx, ny, nz), dtype=dtype)

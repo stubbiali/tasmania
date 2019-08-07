@@ -41,6 +41,7 @@ from tasmania.python.utils.utils import equal_to
 mfwv = 'mass_fraction_of_water_vapor_in_air'
 mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
+ndpw = 'number_density_of_precipitation_water'
 
 
 default_physical_constants = {
@@ -622,13 +623,16 @@ def st_field(draw, grid, properties_name, name, shape=None):
 
 
 @hyp_st.composite
-def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=False):
+def st_isentropic_state(
+	draw, grid, *, time=None, moist=False, tracers=None, precipitation=False
+):
 	"""
 	Strategy drawing a valid isentropic model state over `grid`.
 	"""
 	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
 	dz = grid.dz.to_units('K').values.item()
 	dtype = grid.grid_xy.x.dtype
+	tracers = {} if tracers is None else tracers
 
 	return_dict = {}
 
@@ -725,7 +729,7 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 		h, grid, 'm', name='height_on_interface_levels'
 	)
 
-	if moist:
+	if moist or len(tracers) > 0:
 		# air density
 		rho = s.to_units('kg m^-2 K^-1').values * \
 			(theta[:, :, :-1] - theta[:, :, 1:]) / (h[:, :, :-1] - h[:, :, 1:])
@@ -740,33 +744,29 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 			temp, grid, 'K', name='air_temperature'
 		)
 
+	if moist:
 		# mass fraction of water vapor
-		return_dict['mass_fraction_of_water_vapor_in_air'] = \
-			draw(
-				st_field(
-					grid, 'isentropic_state',
-					'mass_fraction_of_water_vapor_in_air', (nx, ny, nz)
-				)
-			)
+		return_dict[mfwv] = \
+			draw(st_field(grid, 'isentropic_state', mfwv, (nx, ny, nz)))
 
 		# mass fraction of cloud liquid water
-		return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
-			draw(
-				st_field(
-					grid, 'isentropic_state',
-					'mass_fraction_of_cloud_liquid_water_in_air', (nx, ny, nz)
-				)
-			)
+		return_dict[mfcw] = \
+			draw(st_field(grid, 'isentropic_state', mfcw, (nx, ny, nz)))
 
 		# mass fraction of precipitation water
-		return_dict['mass_fraction_of_precipitation_water_in_air'] = \
-			draw(
-				st_field(
-					grid, 'isentropic_state',
-					'mass_fraction_of_precipitation_water_in_air', (nx, ny, nz)
-				)
-			)
+		return_dict[mfpw] = \
+			draw(st_field(grid, 'isentropic_state', mfpw, (nx, ny, nz)))
 
+		# number density of precipitation water
+		return_dict[ndpw] = \
+			draw(st_field(grid, 'isentropic_state', ndpw, (nx, ny, nz)))
+
+	for tracer in tracers:
+		if tracer not in return_dict:
+			return_dict[tracer] = \
+				draw(st_field(grid, 'isentropic_state', tracer, (nx, ny, nz)))
+
+	if moist or len(tracers) > 0:
 		if precipitation:
 			# precipitation
 			return_dict['precipitation'] = \
@@ -788,11 +788,14 @@ def st_isentropic_state(draw, grid, *, time=None, moist=False, precipitation=Fal
 
 
 @hyp_st.composite
-def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=False):
+def st_isentropic_state_f(
+	draw, grid, *, time=None, moist=False, tracers=None, precipitation=False
+):
 	"""
 	Strategy drawing a valid isentropic model state over `grid`.
 	"""
 	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	tracers = {} if tracers is None else tracers
 
 	return_dict = {}
 
@@ -885,7 +888,7 @@ def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=F
 		h, grid, 'm', name='height_on_interface_levels'
 	)
 
-	if moist:
+	if moist or len(tracers) > 0:
 		# air density
 		rho = field[:-1, 1:, :-1]
 		rho[rho <= 0.0] = 1.0
@@ -900,6 +903,7 @@ def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=F
 			t, grid, 'K', name='air_temperature'
 		)
 
+	if moist:
 		# mass fraction of water vapor
 		q = field[:-1, :-1, 1:]
 		q[q <= 0.0] = 1.0
@@ -907,24 +911,31 @@ def st_isentropic_state_f(draw, grid, *, time=None, moist=False, precipitation=F
 		return_dict[mfwv] = taz.make_dataarray_3d(q, grid, units, name=mfwv)
 
 		# mass fraction of cloud liquid water
-		q = field[1:, :-1, 1:]
+		q = field[:-1, 1:, 1:]
 		q[q <= 0.0] = 1.0
 		units = draw(st_one_of(conf.isentropic_state[mfcw].keys()))
 		return_dict[mfcw] = taz.make_dataarray_3d(q, grid, units, name=mfcw)
 
 		# mass fraction of precipitation water
-		q = field[:-1, 1:, 1:]
+		q = field[1:, 1:, 1:]
 		q[q <= 0.0] = 1.0
 		units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
 		return_dict[mfpw] = taz.make_dataarray_3d(q, grid, units, name=mfpw)
 
 		# number density of precipitation water
-		name = 'number_density_of_precipitation_water'
-		n = field[1:, 1:, 1:]
-		n[n <= 0] = 0.0
-		units = draw(st_one_of(conf.isentropic_state[name].keys()))
-		return_dict[name] = taz.make_dataarray_3d(n, grid, units, name=name)
+		q = field[1:, :-1, 1:]
+		q[q <= 0.0] = 1.0
+		units = draw(st_one_of(conf.isentropic_state[ndpw].keys()))
+		return_dict[ndpw] = taz.make_dataarray_3d(q, grid, units, name=ndpw)
 
+	for tracer in tracers:
+		if tracer not in return_dict:
+			q = field[:-1, :-1, 1:]
+			q[q <= 0.0] = 1.0
+			units = draw(st_one_of(conf.isentropic_state[tracer].keys()))
+			return_dict[tracer] = taz.make_dataarray_3d(q, grid, units, name=mfwv)
+
+	if moist or len(tracers) > 0:
 		if precipitation:
 			# precipitation
 			pp = field[:-1, :-1, :1]
@@ -973,11 +984,14 @@ def st_isentropic_boussinesq_state_f(
 
 
 @hyp_st.composite
-def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=False):
+def st_isentropic_state_ff(
+	draw, grid, *, time=None, moist=False, tracers=None, precipitation=False
+):
 	"""
 	Strategy drawing a valid isentropic model state over `grid`.
 	"""
 	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	tracers = {} if tracers is None else tracers
 
 	return_dict = {}
 
@@ -1065,7 +1079,7 @@ def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=
 		h, grid, 'm', name='height_on_interface_levels'
 	)
 
-	if moist:
+	if moist or len(tracers) > 0:
 		# air density
 		rho = field[:-1, 1:, :-1]
 		return_dict['air_density'] = taz.make_dataarray_3d(
@@ -1078,6 +1092,7 @@ def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=
 			t, grid, 'K', name='air_temperature'
 		)
 
+	if moist:
 		# mass fraction of water vapor
 		q = field[:-1, :-1, 1:]
 		units = draw(st_one_of(conf.isentropic_state[mfwv].keys()))
@@ -1093,6 +1108,18 @@ def st_isentropic_state_ff(draw, grid, *, time=None, moist=False, precipitation=
 		units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
 		return_dict[mfpw] = taz.make_dataarray_3d(q, grid, units, name=mfpw)
 
+		# number density of precipitation water
+		q = field[:-1, 1:, 1:]
+		units = draw(st_one_of(conf.isentropic_state[ndpw].keys()))
+		return_dict[ndpw] = taz.make_dataarray_3d(q, grid, units, name=ndpw)
+
+	for tracer in tracers:
+		if tracer not in return_dict:
+			q = field[:-1, :-1, 1:]
+			units = draw(st_one_of(conf.isentropic_state[tracer].keys()))
+			return_dict[tracer] = taz.make_dataarray_3d(q, grid, units, name=tracer)
+
+	if moist:
 		if precipitation:
 			# precipitation
 			pp = field[:-1, :-1, :1]

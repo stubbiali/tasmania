@@ -120,6 +120,22 @@ isentropic_state = {
 	'accumulated_precipitation': {
 		'mm': (0, 100),
 	},
+	'tracer0': {
+		'g g^-1': (0, 5),
+		'g kg^-1': (0, 5000),
+	},
+	'tracer1': {
+		'g g^-1': (0, 5),
+		'g kg^-1': (0, 5000),
+	},
+	'tracer2': {
+		'g g^-1': (0, 5),
+		'g kg^-1': (0, 5000),
+	},
+	'tracer3': {
+		'g^-1': (0, 1e3),
+		'kg^-1': (0, 1e6),
+	},
 }
 
 # burgers model

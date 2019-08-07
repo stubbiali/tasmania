@@ -45,8 +45,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 	"""
 	def __init__(
 		self, domain, diffusion_type, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, moist=False, diffusion_moist_coeff=None,
-		diffusion_moist_coeff_max=None, diffusion_moist_damp_depth=None,
+		diffusion_damp_depth, tracers=None, diffusion_tracer_coeff=None,
+		diffusion_tracer_coeff_max=None, diffusion_tracer_damp_depth=None,
 		backend=gt.mode.NUMPY, dtype=np.float64, **kwargs
 	):
 		"""
@@ -66,18 +66,19 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 			in units compatible with [s^-1].
 		diffusion_damp_depth : int
 			Depth of the damping region.
-		moist : `bool`, optional
-			:obj:`True` if water species are included in the model and should
-			be diffused, :obj:`False` otherwise. Defaults to :obj:`False`.
-		diffusion_moist_coeff : `sympl.DataArray`, optional
+		tracers : `dict`, optional
+			Dictionary whose keys are strings denoting the tracers included in
+			the model, and whose values are	dictionaries specifying fundamental
+			properties ('units') for those tracers.
+		diffusion_tracer_coeff : `sympl.DataArray`, optional
 			1-item array representing the diffusion coefficient for the
-			water species; in units compatible with [s^-1].
-		diffusion_moist_coeff_max : `sympl.DataArray`, optional
+			tracers; in units compatible with [s^-1].
+		diffusion_tracer_coeff_max : `sympl.DataArray`, optional
 			1-item array representing the maximum value assumed by the
-			diffusion coefficient for the water species close to the upper boundary;
+			diffusion coefficient for the tracers close to the upper boundary;
 			in units compatible with [s^-1].
-		diffusion_damp_depth : int
-			Depth of the damping region for the water species.
+		diffusion_tracer_damp_depth : int
+			Depth of the damping region for the tracers.
 		backend : `obj`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
@@ -86,7 +87,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		**kwargs :
 			Keyword arguments to be directly forwarded to the parent constructor.
 		"""
-		self._moist = moist and diffusion_moist_coeff is not None
+		self._tracers = {} if tracers is None else tracers
+		self._moist = len(self._tracers) and diffusion_tracer_coeff is not None
 
 		super().__init__(domain, 'numerical', **kwargs)
 
@@ -105,27 +107,30 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		)
 
 		if self._moist:
-			diff_moist_coeff = diffusion_moist_coeff.to_units('s^-1').values.item()
-			diff_moist_coeff_max = diff_moist_coeff if diffusion_moist_coeff_max is None \
-				else diffusion_moist_coeff_max.to_units('s^-1').values.item()
-			diff_moist_damp_depth = 0 if diffusion_moist_damp_depth is None \
-				else diffusion_moist_damp_depth
+			diff_tracer_coeff = \
+				diffusion_tracer_coeff.to_units('s^-1').values.item()
+			diff_tracer_coeff_max = \
+				diff_tracer_coeff if diffusion_tracer_coeff_max is None \
+				else diffusion_tracer_coeff_max.to_units('s^-1').values.item()
+			diff_tracer_damp_depth = \
+				0 if diffusion_tracer_damp_depth is None \
+				else diffusion_tracer_damp_depth
 
-			self._core_moist = HorizontalDiffusion.factory(
+			self._core_tracer = HorizontalDiffusion.factory(
 				diffusion_type, (nx, ny, nz), dx, dy,
-				diff_moist_coeff, diff_moist_coeff_max, diff_moist_damp_depth,
+				diff_tracer_coeff, diff_tracer_coeff_max, diff_tracer_damp_depth,
 				nb, backend, dtype
 			)
 		else:
-			self._core_moist = None
+			self._core_tracer = None
 
 		self._s_tnd  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
 		self._sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._qv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qc_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qr_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+		self._q_tnd  = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 	@property
 	def input_properties(self):
@@ -138,9 +143,10 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		}
 
 		if self._moist:
-			return_dict[mfwv]  = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfclw] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfpw]  = {'dims': dims, 'units': 'g g^-1'}
+			return_dict.update({
+				tracer: {'dims': dims, 'units': props['units']}
+				for tracer, props in self._tracers.items()
+			})
 
 		return return_dict
 
@@ -155,9 +161,10 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		}
 
 		if self._moist:
-			return_dict[mfwv]  = {'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict[mfclw] = {'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict[mfpw]  = {'dims': dims, 'units': 'g g^-1 s^-1'}
+			return_dict.update({
+				tracer: {'dims': dims, 'units': props['units'] + ' s^-1'}
+				for tracer, props in self._tracers.items()
+			})
 
 		return return_dict
 
@@ -169,7 +176,6 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		self._core(state['air_isentropic_density'], self._s_tnd)
 		self._core(state['x_momentum_isentropic'],  self._su_tnd)
 		self._core(state['y_momentum_isentropic'],  self._sv_tnd)
-
 		return_dict = {
 			'air_isentropic_density': self._s_tnd,
 			'x_momentum_isentropic':  self._su_tnd,
@@ -177,11 +183,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		}
 
 		if self._moist:
-			self._core_moist(state[mfwv],  self._qv_tnd)
-			self._core_moist(state[mfclw], self._qc_tnd)
-			self._core_moist(state[mfpw],  self._qr_tnd)
-			return_dict[mfwv]  = self._qv_tnd
-			return_dict[mfclw] = self._qc_tnd
-			return_dict[mfpw]  = self._qr_tnd
+			for tracer in self._tracers:
+				self._core_tracer(state[tracer],  self._q_tnd[tracer])
+				return_dict[tracer]  = self._q_tnd[tracer]
 
 		return return_dict, {}

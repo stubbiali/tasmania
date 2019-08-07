@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	IsentropicMinimalDynamicalCore(DynamicalCore)
+	IsentropicMinimalDynamicalCore(IsentropicDynamicalCore)
 """
 import numpy as np
 
@@ -40,6 +40,14 @@ try:
 	from tasmania.conf import datatype
 except ImportError:
 	datatype = np.float32
+
+import sys
+python_version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
+if python_version <= '3.5':
+	import collections
+	Dict = collections.OrderedDict
+else:
+	Dict = dict
 
 
 # convenient shortcuts
@@ -211,20 +219,26 @@ class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
 		#
 		# parent constructor
 		#
+		tracers = Dict()
+		if moist:
+			tracers[mfwv] = {'units': 'g g^-1', 'stencil_symbol': 'qv'}
+			tracers[mfcw] = {'units': 'g g^-1', 'stencil_symbol': 'qc'}
+			tracers[mfpw] = {'units': 'g g^-1', 'stencil_symbol': 'qr'}
+
 		super().__init__(
 			domain, intermediate_tendencies, intermediate_diagnostics,
-			substeps, fast_tendencies, fast_diagnostics, moist=moist,
+			substeps, fast_tendencies, fast_diagnostics,
 			damp=damp, damp_at_every_stage=damp_at_every_stage, damp_type=damp_type,
 			damp_depth=damp_depth, damp_max=damp_max,
 			smooth=smooth, smooth_at_every_stage=smooth_at_every_stage,
 			smooth_type=smooth_type, smooth_coeff=smooth_coeff,
 			smooth_coeff_max=smooth_coeff_max, smooth_damp_depth=smooth_damp_depth,
-			smooth_moist=smooth_moist,
-			smooth_moist_at_every_stage=smooth_moist_at_every_stage,
-			smooth_moist_type=smooth_moist_type, smooth_moist_coeff=smooth_moist_coeff,
-			smooth_moist_coeff_max=smooth_moist_coeff_max,
-			smooth_moist_damp_depth=smooth_moist_damp_depth,
-			backend=backend, dtype=datatype
+			tracers=tracers, smooth_tracer=smooth_moist,
+			smooth_tracer_at_every_stage=smooth_moist_at_every_stage,
+			smooth_tracer_type=smooth_moist_type, smooth_tracer_coeff=smooth_moist_coeff,
+			smooth_tracer_coeff_max=smooth_moist_coeff_max,
+			smooth_tracer_damp_depth=smooth_moist_damp_depth,
+			backend=backend, dtype=dtype
 		)
 
 		#

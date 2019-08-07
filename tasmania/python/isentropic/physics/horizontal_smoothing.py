@@ -44,8 +44,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 	"""
 	def __init__(
 		self, domain, smooth_type, smooth_coeff, smooth_coeff_max, smooth_damp_depth,
-		moist=False, smooth_moist_coeff=None, smooth_moist_coeff_max=None,
-		smooth_moist_damp_depth=None, backend=gt.mode.NUMPY, dtype=np.float64,
+		tracers=None, smooth_tracer_coeff=None, smooth_tracer_coeff_max=None,
+		smooth_tracer_damp_depth=None, backend=gt.mode.NUMPY, dtype=np.float64,
 	):
 		"""
 		Parameters
@@ -62,15 +62,16 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 			upper boundary.
 		smooth_damp_depth : int
 			Depth of the damping region.
-		moist : `bool`, optional
-			:obj:`True` if water species are included in the model and should
-			be smoothed, :obj:`False` otherwise. Defaults to :obj:`False`.
-		smooth_moist_coeff : `float`, optional
+		tracers : `dict`, optional
+			Dictionary whose keys are strings denoting the tracers included in
+			the model, and whose values are	dictionaries specifying fundamental
+			properties ('units') for those tracers.
+		smooth_tracer_coeff : `float`, optional
 			The smoothing coefficient for the water species.
-		smooth_moist_coeff_max : `float`, optional
+		smooth_tracer_coeff_max : `float`, optional
 			The maximum value assumed by the smoothing coefficient for the water
 			species close to the upper boundary.
-		smooth_damp_depth : int
+		smooth_tracer_damp_depth : int
 			Depth of the damping region for the water species.
 		backend : `obj`, optional
 			TODO
@@ -78,7 +79,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
 		"""
-		self._moist = moist and smooth_moist_coeff is not None
+		self._tracers = {} if tracers is None else tracers
+		self._moist = len(self._tracers) and smooth_tracer_coeff is not None
 
 		super().__init__(domain, 'numerical')
 
@@ -91,25 +93,27 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 		)
 
 		if self._moist:
-			smooth_moist_coeff_max = smooth_moist_coeff if smooth_moist_coeff_max is None \
-				else smooth_moist_coeff_max
-			smooth_moist_damp_depth = 0 if smooth_moist_damp_depth is None \
-				else smooth_moist_damp_depth
+			smooth_tracer_coeff_max = \
+				smooth_tracer_coeff if smooth_tracer_coeff_max is None \
+				else smooth_tracer_coeff_max
+			smooth_tracer_damp_depth = \
+				0 if smooth_tracer_damp_depth is None \
+				else smooth_tracer_damp_depth
 
-			self._core_moist = HorizontalSmoothing.factory(
-				smooth_type, (nx, ny, nz), smooth_moist_coeff, smooth_moist_coeff_max,
-				smooth_moist_damp_depth, nb, backend, dtype
+			self._core_tracer = HorizontalSmoothing.factory(
+				smooth_type, (nx, ny, nz), smooth_tracer_coeff,
+				smooth_tracer_coeff_max, smooth_tracer_damp_depth,
+				nb, backend, dtype
 			)
 		else:
-			self._core_moist = None
+			self._core_tracer = None
 
 		self._s_out  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._su_out = np.zeros((nx, ny, nz), dtype=dtype)
 		self._sv_out = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._qv_out = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qc_out = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qr_out = np.zeros((nx, ny, nz), dtype=dtype)
+		self._q_out  = {
+			name: np.zeros((nx, ny, nz), dtype=dtype) for name in self._tracers
+		}
 
 	@property
 	def input_properties(self):
@@ -122,9 +126,10 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 		}
 
 		if self._moist:
-			return_dict[mfwv]  = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfclw] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfpw]  = {'dims': dims, 'units': 'g g^-1'}
+			return_dict.update({
+				name: {'dims': dims, 'units': props['units']}
+				for name, props in self._tracers.items()
+			})
 
 		return return_dict
 
@@ -133,22 +138,18 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 		return self.input_properties
 
 	def array_call(self, state):
-		#self._core(state['air_isentropic_density'], self._s_out)
-		self._core(state['x_momentum_isentropic'],  self._su_out)
-		self._core(state['y_momentum_isentropic'],  self._sv_out)
+		self._core(state['air_isentropic_density'], self._s_out)
+		self._core(state['x_momentum_isentropic'], self._su_out)
+		self._core(state['y_momentum_isentropic'], self._sv_out)
 		return_dict = {
-			#'air_isentropic_density': self._s_out,
-			'air_isentropic_density': state['air_isentropic_density'],
+			'air_isentropic_density': self._s_out,
 			'x_momentum_isentropic':  self._su_out,
 			'y_momentum_isentropic':  self._sv_out,
 		}
 
 		if self._moist:
-			self._core_moist(state[mfwv],  self._qv_out)
-			self._core_moist(state[mfclw], self._qc_out)
-			self._core_moist(state[mfpw],  self._qr_out)
-			return_dict[mfwv]  = self._qv_out
-			return_dict[mfclw] = self._qc_out
-			return_dict[mfpw]  = self._qr_out
+			for name in self._tracers:
+				self._core_tracer(state[name], self._q_out[name])
+				return_dict[name] = self._q_out[name]
 
 		return return_dict
