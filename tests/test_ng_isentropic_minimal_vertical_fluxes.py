@@ -27,15 +27,13 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import NGIsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import \
+	NGIsentropicMinimalVerticalFlux
 from tasmania.python.isentropic.dynamics.implementations.ng_minimal_vertical_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_vertical_fluxes import \
-		get_upwind_flux, get_centered_flux, \
-		get_third_order_upwind_flux, get_fifth_order_upwind_flux
 	from .utils import st_domain, st_floats, st_one_of, compare_arrays
 except ModuleNotFoundError:
 	from conf import backend as conf_backend  # nb as conf_nb
@@ -104,6 +102,65 @@ class WrappingStencil:
 	def stencil_defs(self, w, s, su, sv, sq0=None, sq1=None, sq2=None, sq3=None):
 		k = gt.Index(axis=2)
 		return self.core(k, w, s, su, sv, sq0=sq0, sq1=sq1, sq2=sq2, sq3=sq3)
+
+
+def get_upwind_flux(w, phi):
+	nx, ny, nz = phi.shape[0], phi.shape[1], phi.shape[2]
+
+	f = np.zeros_like(phi, dtype=phi.dtype)
+
+	for i in range(0, nx):
+		for j in range(0, ny):
+			for k in range(1, nz):
+				f[i, j, k] = w[i, j, k] * (phi[i, j, k] if w[i, j, k] > 0 else phi[i, j, k-1])
+
+	return f
+
+
+def get_centered_flux(w, phi):
+	f = np.zeros_like(phi, dtype=phi.dtype)
+
+	f[:, :, 1:] = w[:, :, 1:-1] * 0.5 * (phi[:, :, :-1] + phi[:, :, 1:])
+
+	return f
+
+
+def get_third_order_upwind_flux(w, phi):
+	f4 = np.zeros_like(phi, dtype=phi.dtype)
+
+	f4[:, :, 2:-1] = w[:, :, 2:-2] / 12.0 * (
+		7.0 * (phi[:, :, 1:-2] + phi[:, :, 2:-1]) -
+		(phi[:, :, :-3] + phi[:, :, 3:])
+	)
+
+	f = np.zeros_like(phi, dtype=phi.dtype)
+
+	f[:, :, 2:-1] = f4[:, :, 2:-1] - np.abs(w[:, :, 2:-2]) / 12.0 * (
+		3.0 * (phi[:, :, 1:-2] - phi[:, :, 2:-1]) -
+		(phi[:, :, :-3] - phi[:, :, 3:])
+	)
+
+	return f
+
+
+def get_fifth_order_upwind_flux(w, phi):
+	f6 = np.zeros_like(phi, dtype=phi.dtype)
+
+	f6[:, :, 3:-2] = w[:, :, 3:-3] / 60.0 * (
+		37.0 * (phi[:, :, 2:-3] + phi[:, :, 3:-2]) -
+		8.0 * (phi[:, :, 1:-4] + phi[:, :, 4:-1]) +
+		(phi[:, :, :-5] + phi[:, :, 5:])
+	)
+
+	f = np.zeros_like(phi, dtype=phi.dtype)
+
+	f[:, :, 3:-2] = f6[:, :, 3:-2] - np.abs(w[:, :, 3:-3]) / 60.0 * (
+		10.0 * (phi[:, :, 2:-3] - phi[:, :, 3:-2]) -
+		5.0 * (phi[:, :, 1:-4] - phi[:, :, 4:-1]) +
+		(phi[:, :, :-5] - phi[:, :, 5:])
+	)
+
+	return f
 
 
 flux_properties = {

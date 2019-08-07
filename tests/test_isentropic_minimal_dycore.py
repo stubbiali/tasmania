@@ -26,15 +26,11 @@ from hypothesis import \
 	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
-from sympl import DataArray
 
 from tasmania.python.dwarfs.diagnostics import \
 	HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.framework.base_components import DiagnosticComponent
-from tasmania.python.framework.composite import DiagnosticComponentComposite
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as RawIsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.minimal_dycore import IsentropicMinimalDynamicalCore
@@ -44,19 +40,15 @@ from tasmania.python.isentropic.physics.pressure_gradient import \
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
-		get_fifth_order_upwind_fluxes
-	from .test_isentropic_minimal_prognostic import \
-		forward_euler_step
+	from .test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from .test_isentropic_prognostic import forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
 		st_floats, st_one_of, st_domain, \
 		st_isentropic_state_f
 except ModuleNotFoundError:
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import \
-		get_fifth_order_upwind_fluxes
-	from test_isentropic_minimal_prognostic import \
-		forward_euler_step
+	from test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from test_isentropic_prognostic import forward_euler_step
 	from utils import compare_arrays, compare_datetimes, \
 		st_floats, st_one_of, st_domain, \
 		st_isentropic_state_f
@@ -651,7 +643,7 @@ def test2(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def _test3(data):
+def test3(data):
 	"""
 	- Slow tendencies: yes
 	- Intermediate tendencies: yes
@@ -730,7 +722,7 @@ def _test3(data):
 		hb.nb, backend, dtype
 	)
 
-	pg = IsentropicConservativePressureGradient(domain, 2, backend, dtype)
+	pg = IsentropicConservativePressureGradient(domain, 'second_order', backend, dtype)
 
 	dv = IsentropicDiagnostics(
 		domain, 'numerical', moist,
@@ -929,7 +921,7 @@ def _test3(data):
 	_smooth = smooth and smooth_at_every_stage
 	rk3ws_stage(
 		0, timestep, raw_state_now, raw_state_now, raw_state_ref, raw_tendencies, raw_state_0,
-		names, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs,
+		field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs,
 	)
 
 	rdv.get_diagnostic_variables(
@@ -971,7 +963,7 @@ def _test3(data):
 	_smooth = smooth and smooth_at_every_stage
 	rk3ws_stage(
 		1, timestep, raw_state_now, raw_state_0, raw_state_ref, raw_tendencies, raw_state_1,
-		names, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs,
+		field_properties, dx, dy, hb, moist, hv, wc, _damp, vd, _smooth, hs,
 	)
 
 	rdv.get_diagnostic_variables(
@@ -1011,7 +1003,7 @@ def _test3(data):
 
 	rk3ws_stage(
 		2, timestep, raw_state_now, raw_state_1, raw_state_ref, raw_tendencies, raw_state_2,
-		names, field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs,
+		field_properties, dx, dy, hb, moist, hv, wc, damp, vd, smooth, hs,
 	)
 
 	rdv.get_diagnostic_variables(
@@ -1038,57 +1030,6 @@ def _test3(data):
 			assert np.allclose(
 				state_new[name].values, raw_state_2[name], equal_nan=True
 			)
-
-
-class IdentityDiagnostic(DiagnosticComponent):
-	def __init__(self, grid, moist):
-		self._grid = grid
-		self._moist = moist
-		super().__init__()
-
-	@property
-	def input_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
-
-		return_dict = {
-			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-		}
-
-		if self._moist:
-			return_dict[mfwv] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfcw] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1'}
-
-		return return_dict
-
-	@property
-	def diagnostic_properties(self):
-		dims = (self._grid.x.dims[0], self._grid.y.dims[0], self._grid.z.dims[0])
-
-		return_dict = {
-			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-		}
-
-		if self._moist:
-			return_dict[mfwv] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfcw] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1'}
-
-		return return_dict
-
-	def array_call(self, state):
-		return {
-			'air_isentropic_density': state['air_isentropic_density'],
-			'x_momentum_isentropic': state['x_momentum_isentropic'],
-			'y_momentum_isentropic': state['y_momentum_isentropic'],
-			mfwv: state[mfwv],
-			mfcw: state[mfcw],
-			mfpw: state[mfpw],
-		}
 
 
 if __name__ == '__main__':

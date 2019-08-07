@@ -31,43 +31,40 @@ import numpy as np
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics
-from tasmania.python.isentropic.dynamics.fluxes import \
-	IsentropicHorizontalFlux, IsentropicMinimalHorizontalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
+	IsentropicHorizontalFlux, NGIsentropicMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-
-
-# convenient aliases
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 def step_forward_euler(
 	fluxer, i, j, dt, dx, dy, s_now, s_int, s_new,
 	u_int, v_int, mtg_int, su_int, sv_int,
-	sqv_now=None, sqv_int=None, sqv_new=None,
-	sqc_now=None, sqc_int=None, sqc_new=None,
-	sqr_now=None, sqr_int=None, sqr_new=None,
-	s_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+	sq_now=None, sq_int=None, sq_new=None, s_tnd=None, q_tnd=None
 ):
-	if isinstance(fluxer, IsentropicMinimalHorizontalFlux):
+	q_tnd = {} if q_tnd is None else q_tnd
+	q_tnd = {
+		tracer: tendency for tracer, tendency in q_tnd.items()
+		if tendency is not None
+	}
+
+	if isinstance(fluxer, NGIsentropicMinimalHorizontalFlux):
 		fluxes = fluxer(
 			i, j, dt, s_int, u_int, v_int, su_int, sv_int,
-			sqv=sqv_int, sqc=sqc_int, sqr=sqr_int,
-			s_tnd=s_tnd, qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd
+			s_tnd=s_tnd, **sq_int, **q_tnd
 		)
 	else:
 		fluxes = fluxer(
 			i, j, dt, s_int, u_int, v_int, mtg_int, su_int, sv_int,
-			sqv=sqv_int, sqc=sqc_int, sqr=sqr_int,
-			s_tnd=s_tnd, qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd
+			s_tnd=s_tnd, **sq_int, **q_tnd
 		)
 
 	flux_s_x, flux_s_y = fluxes[0], fluxes[1]
-	if sqv_now is not None:
-		flux_sqv_x, flux_sqv_y = fluxes[6], fluxes[7]
-		flux_sqc_x, flux_sqc_y = fluxes[8], fluxes[9]
-		flux_sqr_x, flux_sqr_y = fluxes[10], fluxes[11]
+	flux_sq_x = {
+		tracer: fluxes[6 + 2*idx] for idx, tracer in enumerate(sq_now.keys())
+	}
+	flux_sq_y = {
+		tracer: fluxes[6 + 2*idx + 1] for idx, tracer in enumerate(sq_now.keys())
+	}
 
 	s_new[i, j] = s_now[i, j] - dt * (
 		(flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
@@ -75,23 +72,11 @@ def step_forward_euler(
 		(s_tnd[i, j] if s_tnd is not None else 0.0)
 	)
 
-	if sqv_now is not None:
-		sqv_new[i, j] = sqv_now[i, j] - dt * (
-			(flux_sqv_x[i, j] - flux_sqv_x[i-1, j]) / dx +
-			(flux_sqv_y[i, j] - flux_sqv_y[i, j-1]) / dy -
-			(s_int[i, j] * qv_tnd[i, j] if qv_tnd is not None else 0.0)
-		)
-
-		sqc_new[i, j] = sqc_now[i, j] - dt * (
-			(flux_sqc_x[i, j] - flux_sqc_x[i-1, j]) / dx +
-			(flux_sqc_y[i, j] - flux_sqc_y[i, j-1]) / dy -
-			(s_int[i, j] * qc_tnd[i, j] if qc_tnd is not None else 0.0)
-		)
-
-		sqr_new[i, j] = sqr_now[i, j] - dt * (
-			(flux_sqr_x[i, j] - flux_sqr_x[i-1, j]) / dx +
-			(flux_sqr_y[i, j] - flux_sqr_y[i, j-1]) / dy -
-			(s_int[i, j] * qr_tnd[i, j] if qr_tnd is not None else 0.0)
+	for tracer in sq_now:
+		sq_new[tracer][i, j] = sq_now[tracer][i, j] - dt * (
+			(flux_sq_x[tracer][i, j] - flux_sq_x[tracer][i-1, j]) / dx +
+			(flux_sq_y[tracer][i, j] - flux_sq_y[tracer][i, j-1]) / dy -
+			(s_int[i, j] * q_tnd[tracer][i, j] if tracer in q_tnd else 0.0)
 		)
 
 
@@ -100,19 +85,17 @@ def step_forward_euler_momentum(
 	mtg_now, mtg_int, mtg_new, su_now, su_int, su_new, sv_now, sv_int, sv_new,
 	su_tnd=None, sv_tnd=None
 ):
-	sqv_int = gt.Equation()
-	sqc_int = gt.Equation()
-	sqr_int = gt.Equation()
+	sq = {'s' + tracer: gt.Equation() for tracer in fluxer._tracers}
 
-	if isinstance(fluxer, IsentropicMinimalHorizontalFlux):
+	if isinstance(fluxer, NGIsentropicMinimalHorizontalFlux):
 		fluxes = fluxer(
 			i, j, dt, s_int, u_int, v_int, su_int, sv_int,
-			sqv=sqv_int, sqc=sqc_int, sqr=sqr_int, su_tnd=su_tnd, sv_tnd=sv_tnd
+			su_tnd=su_tnd, sv_tnd=sv_tnd, **sq
 		)
 	else:
 		fluxes = fluxer(
 			i, j, dt, s_int, u_int, v_int, mtg_int, su_int, sv_int,
-			sqv=sqv_int, sqc=sqc_int, sqr=sqr_int, su_tnd=su_tnd, sv_tnd=sv_tnd
+			su_tnd=su_tnd, sv_tnd=sv_tnd, **sq
 		)
 
 	flux_su_x, flux_su_y = fluxes[2], fluxes[3]
@@ -137,12 +120,12 @@ def step_forward_euler_momentum(
 class ForwardEulerSI(IsentropicPrognostic):
 	""" The semi-implicit upwind scheme. """
 	def __init__(
-		self, horizontal_flux_scheme, grid, hb, moist, backend, dtype, **kwargs
+		self, horizontal_flux_scheme, grid, hb, tracers, backend, dtype, **kwargs
 	):
 		# call parent's constructor
 		super().__init__(
-			IsentropicMinimalHorizontalFlux, horizontal_flux_scheme,
-			grid, hb, moist, backend, dtype
+			NGIsentropicMinimalHorizontalFlux, horizontal_flux_scheme,
+			grid, hb, tracers, backend, dtype
 		)
 
 		# extract the upper boundary conditions on the pressure field and
@@ -203,12 +186,9 @@ class ForwardEulerSI(IsentropicPrognostic):
 			'x_momentum_isentropic': self._su_new,
 			'y_momentum_isentropic': self._sv_new
 		}
-		if self._moist:
-			out_state.update({
-				'isentropic_density_of_water_vapor': self._sqv_new,
-				'isentropic_density_of_cloud_liquid_water': self._sqc_new,
-				'isentropic_density_of_precipitation_water': self._sqr_new
-			})
+		out_state.update({
+			's_' + tracer: self._sq_new[tracer] for tracer in self._tracers
+		})
 
 		return out_state
 
@@ -224,13 +204,15 @@ class ForwardEulerSI(IsentropicPrognostic):
 	def _stencils_initialize(self, tendencies):
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		nb = self._hb.nb
+		tracer_symbols = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
 
 		s_tnd_on  = 'air_isentropic_density' in tendencies
 		su_tnd_on = 'x_momentum_isentropic' in tendencies
 		sv_tnd_on = 'y_momentum_isentropic' in tendencies
-		qv_tnd_on = mfwv in tendencies
-		qc_tnd_on = mfcw in tendencies
-		qr_tnd_on = mfpw in tendencies
+		q_tnd_on = {tracer: tracer in tendencies for tracer in self._tracers}
 
 		# allocate inputs and outputs
 		self._stencils_allocate(tendencies)
@@ -241,25 +223,23 @@ class ForwardEulerSI(IsentropicPrognostic):
 			's_now': self._s_now, 'u_now': self._u_now, 'v_now': self._v_now,
 			'su_now': self._su_now, 'sv_now': self._sv_now
 		}
+		inputs.update({
+			's' + tracer_symbols[tracer] + '_now': self._sq_now[tracer]
+			for tracer in self._tracers
+		})
 		if s_tnd_on:
 			inputs['s_tnd'] = self._s_tnd
+		inputs.update({
+			tracer_symbols[tracer] + '_tnd': self._q_tnd[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+
 		outputs = {'s_new': self._s_new}
-		if self._moist:
-			inputs.update({
-				'sqv_now': self._sqv_now, 'sqc_now': self._sqc_now,
-				'sqr_now': self._sqr_now
-			})
-			if qv_tnd_on:
-				inputs['qv_tnd'] = self._qv_tnd
-			if qc_tnd_on:
-				inputs['qc_tnd'] = self._qc_tnd
-			if qr_tnd_on:
-				inputs['qr_tnd'] = self._qr_tnd
-			outputs.update({
-				'sqv_new': self._sqv_new, 'sqc_new': self._sqc_new,
-				'sqr_new': self._sqr_new
-			})
-		# instantiate the stencil advancing
+		outputs.update({
+			's' + tracer_symbols[tracer] + '_new': self._sq_new[tracer]
+			for tracer in self._tracers
+		})
+
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
 			inputs=inputs,
@@ -293,9 +273,13 @@ class ForwardEulerSI(IsentropicPrognostic):
 
 	def _stencil_defs(
 		self, dt, dx, dy, s_now, u_now, v_now, su_now, sv_now,
-		sqv_now=None, sqc_now=None, sqr_now=None,
-		s_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		s_tnd=None, **tracer_kwargs
 	):
+		tracer_symbols = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
+
 		# horizontal indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
@@ -303,24 +287,35 @@ class ForwardEulerSI(IsentropicPrognostic):
 		# temporary and output fields
 		mtg_now = gt.Equation()
 		s_new = gt.Equation()
-		sqv_new = gt.Equation() if sqv_now is not None else None
-		sqc_new = gt.Equation() if sqv_now is not None else None
-		sqr_new = gt.Equation() if sqv_now is not None else None
+		sq_new = {
+			tracer: gt.Equation(name='s' + tracer_symbols[tracer] + '_new')
+			for tracer in self._tracers
+		}
+
+		# retrieve tracers
+		sq_now = {
+			tracer: tracer_kwargs['s' + tracer_symbols[tracer] + '_now']
+			for tracer in self._tracers
+		}
+		sq_int = {
+			's' + tracer_symbols[tracer]: sq_now[tracer]
+			for tracer in self._tracers
+		}
+		q_tnd = {
+			tracer: tracer_kwargs.get(tracer_symbols[tracer] + '_tnd', None)
+			for tracer in self._tracers
+		}
 
 		# calculations
 		step_forward_euler(
 			self._hflux, i, j, dt, dx, dy, s_now, s_now, s_new,
-			u_now, v_now, mtg_now, su_now, sv_now,
-			sqv_now=sqv_now, sqv_int=sqv_now, sqv_new=sqv_new,
-			sqc_now=sqc_now, sqc_int=sqc_now, sqc_new=sqc_new,
-			sqr_now=sqr_now, sqr_int=sqr_now, sqr_new=sqr_new,
-			s_tnd=s_tnd, qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd
+			u_now, v_now, mtg_now, su_now, sv_now, s_tnd=s_tnd,
+			sq_now=sq_now, sq_int=sq_int, sq_new=sq_new, q_tnd=q_tnd
 		)
 
-		if sqv_new is None:
-			return s_new
-		else:
-			return s_new, sqv_new, sqc_new, sqr_new
+		return_list = [s_new, ] + [sq_new[tracer] for tracer in self._tracers]
+
+		return return_list
 
 	def _stencil_momentum_defs(
 		self, eps, dt, dx, dy, s_now, s_new, u_now, v_now, mtg_now, mtg_new,
@@ -351,12 +346,12 @@ class CenteredSI(IsentropicPrognostic):
 class RK3WSSI(IsentropicPrognostic):
 	""" The semi-implicit three-stages Runge-Kutta scheme. """
 	def __init__(
-		self, horizontal_flux_scheme, grid, hb, moist, backend, dtype, **kwargs
+		self, horizontal_flux_scheme, grid, hb, tracers, backend, dtype, **kwargs
 	):
 		# call parent's constructor
 		super().__init__(
-			IsentropicMinimalHorizontalFlux, horizontal_flux_scheme,
-			grid, hb, moist, backend, dtype
+			NGIsentropicMinimalHorizontalFlux, horizontal_flux_scheme,
+			grid, hb, tracers, backend, dtype
 		)
 
 		# extract the upper boundary conditions on the pressure field and
@@ -423,12 +418,9 @@ class RK3WSSI(IsentropicPrognostic):
 			'x_momentum_isentropic': self._su_new,
 			'y_momentum_isentropic': self._sv_new
 		}
-		if self._moist:
-			out_state.update({
-				'isentropic_density_of_water_vapor': self._sqv_new,
-				'isentropic_density_of_cloud_liquid_water': self._sqc_new,
-				'isentropic_density_of_precipitation_water': self._sqr_new
-			})
+		out_state.update({
+			's_' + tracer: self._sq_new[tracer] for tracer in self._tracers
+		})
 
 		return out_state
 
@@ -443,24 +435,26 @@ class RK3WSSI(IsentropicPrognostic):
 
 		# allocate the arrays which will store the intermediate values
 		# of the model variables
-		self._s_int   = np.zeros((nx, ny, nz), dtype=dtype)
-		self._su_int  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._sv_int  = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._sqv_int = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc_int = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr_int = np.zeros((nx, ny, nz), dtype=dtype)
+		self._s_int  = np.zeros((nx, ny, nz), dtype=dtype)
+		self._su_int = np.zeros((nx, ny, nz), dtype=dtype)
+		self._sv_int = np.zeros((nx, ny, nz), dtype=dtype)
+		self._sq_int = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 	def _stencils_initialize(self, tendencies):
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		nb = self._hb.nb
+		tracer_symbols = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
 
 		s_tnd_on  = 'air_isentropic_density' in tendencies
 		su_tnd_on = 'x_momentum_isentropic' in tendencies
 		sv_tnd_on = 'y_momentum_isentropic' in tendencies
-		qv_tnd_on = mfwv in tendencies
-		qc_tnd_on = mfcw in tendencies
-		qr_tnd_on = mfpw in tendencies
+		q_tnd_on = {tracer: tracer in tendencies for tracer in self._tracers}
 
 		# allocate inputs and outputs
 		self._stencils_allocate(tendencies)
@@ -474,24 +468,25 @@ class RK3WSSI(IsentropicPrognostic):
 		}
 		if s_tnd_on:
 			inputs['s_tnd'] = self._s_tnd
+		inputs.update({
+			's' + tracer_symbols[tracer] + '_now': self._sq_now[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			's' + tracer_symbols[tracer] + '_int': self._sq_int[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			tracer_symbols[tracer] + '_tnd': self._q_tnd[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+
 		outputs = {'s_new': self._s_new}
-		if self._moist:
-			inputs.update({
-				'sqv_now': self._sqv_now, 'sqv_int': self._sqv_int,
-				'sqc_now': self._sqc_now, 'sqc_int': self._sqc_int,
-				'sqr_now': self._sqr_now, 'sqr_int': self._sqr_int,
-			})
-			if qv_tnd_on:
-				inputs['qv_tnd'] = self._qv_tnd
-			if qc_tnd_on:
-				inputs['qc_tnd'] = self._qc_tnd
-			if qr_tnd_on:
-				inputs['qr_tnd'] = self._qr_tnd
-			outputs.update({
-				'sqv_new': self._sqv_new, 'sqc_new': self._sqc_new,
-				'sqr_new': self._sqr_new
-			})
-		# instantiate the stencil advancing
+		outputs.update({
+			's' + tracer_symbols[tracer] + '_new': self._sq_new[tracer]
+			for tracer in self._tracers
+		})
+
 		self._stencil = gt.NGStencil(
 			definitions_func=self._stencil_defs,
 			inputs=inputs,
@@ -514,7 +509,9 @@ class RK3WSSI(IsentropicPrognostic):
 			inputs['su_tnd'] = self._su_tnd
 		if sv_tnd_on:
 			inputs['sv_tnd'] = self._sv_tnd
+
 		outputs = {'su_new': self._su_new, 'sv_new': self._sv_new}
+
 		self._stencil_momentum = gt.NGStencil(
 			definitions_func=self._stencil_momentum_defs,
 			inputs=inputs,
@@ -530,11 +527,10 @@ class RK3WSSI(IsentropicPrognostic):
 			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
 			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
 			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
-			qv_tnd_on = tendencies.get(mfwv, None) is not None
-			qc_tnd_on = tendencies.get(mfcw, None) is not None
-			qr_tnd_on = tendencies.get(mfpw, None) is not None
+			q_tnd_on  = {tracer: tracer in tendencies for tracer in self._tracers}
 		else:
-			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			s_tnd_on = su_tnd_on = sv_tnd_on = False
+			q_tnd_on = {tracer: False for tracer in self._tracers}
 
 		# update the local time step
 		if stage == 0:
@@ -550,22 +546,17 @@ class RK3WSSI(IsentropicPrognostic):
 		self._v_now[...]  = state['y_velocity_at_v_locations'][...]
 		self._su_int[...] = state['x_momentum_isentropic'][...]
 		self._sv_int[...] = state['y_momentum_isentropic'][...]
-		if self._moist:
-			self._sqv_int[...] = state['isentropic_density_of_water_vapor'][...]
-			self._sqc_int[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-			self._sqr_int[...] = state['isentropic_density_of_precipitation_water'][...]
+		for tracer in self._tracers:
+			self._sq_int[tracer][...] = state['s_' + tracer][...]
 		if s_tnd_on:
 			self._s_tnd[...]  = tendencies['air_isentropic_density'][...]
 		if su_tnd_on:
 			self._su_tnd[...] = tendencies['x_momentum_isentropic'][...]
 		if sv_tnd_on:
 			self._sv_tnd[...] = tendencies['y_momentum_isentropic'][...]
-		if qv_tnd_on:
-			self._qv_tnd[...] = tendencies[mfwv][...]
-		if qc_tnd_on:
-			self._qc_tnd[...] = tendencies[mfcw][...]
-		if qr_tnd_on:
-			self._qr_tnd[...] = tendencies[mfpw][...]
+		for tracer in self._tracers:
+			if q_tnd_on[tracer]:
+				self._q_tnd[tracer][...] = tendencies[tracer][...]
 
 		if stage == 0:
 			# update the Numpy arrays storing the current solution
@@ -573,16 +564,18 @@ class RK3WSSI(IsentropicPrognostic):
 			self._mtg_now[...] = state['montgomery_potential'][...]
 			self._su_now[...]  = state['x_momentum_isentropic'][...]
 			self._sv_now[...]  = state['y_momentum_isentropic'][...]
-			if self._moist:
-				self._sqv_now[...] = state['isentropic_density_of_water_vapor'][...]
-				self._sqc_now[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-				self._sqr_now[...] = state['isentropic_density_of_precipitation_water'][...]
+			for tracer in self._tracers:
+				self._sq_now[tracer][...] = state['s_' + tracer][...]
 
 	def _stencil_defs(
 		self, dt, dx, dy, s_now, s_int, u_int, v_int, su_int, sv_int,
-		sqv_now=None, sqv_int=None, sqc_now=None, sqc_int=None, sqr_now=None, sqr_int=None,
-		s_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
+		s_tnd=None, **tracer_kwargs
 	):
+		tracer_symbols = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
+
 		# horizontal indices
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
@@ -590,24 +583,36 @@ class RK3WSSI(IsentropicPrognostic):
 		# temporary and output fields
 		mtg_int = gt.Equation()
 		s_new = gt.Equation()
-		sqv_new = gt.Equation() if sqv_now is not None else None
-		sqc_new = gt.Equation() if sqv_now is not None else None
-		sqr_new = gt.Equation() if sqv_now is not None else None
+		sq_new = {
+			tracer: gt.Equation(name='s' + tracer_symbols[tracer] + '_new')
+			for tracer in self._tracers
+		}
+
+		# retrieve tracers
+		sq_now = {
+			tracer: tracer_kwargs['s' + tracer_symbols[tracer] + '_now']
+			for tracer in self._tracers
+		}
+		sq_int = {
+			's' + tracer_symbols[tracer]:
+				tracer_kwargs['s' + tracer_symbols[tracer] + '_int']
+			for tracer in self._tracers
+		}
+		q_tnd = {
+			tracer: tracer_kwargs.get(tracer_symbols[tracer] + '_tnd', None)
+			for tracer in self._tracers
+		}
 
 		# calculations
 		step_forward_euler(
 			self._hflux, i, j, dt, dx, dy, s_now, s_int, s_new,
-			u_int, v_int, mtg_int, su_int, sv_int,
-			sqv_now=sqv_now, sqv_int=sqv_int, sqv_new=sqv_new,
-			sqc_now=sqc_now, sqc_int=sqc_int, sqc_new=sqc_new,
-			sqr_now=sqr_now, sqr_int=sqr_int, sqr_new=sqr_new,
-			s_tnd=s_tnd, qv_tnd=qv_tnd, qc_tnd=qc_tnd, qr_tnd=qr_tnd
+			u_int, v_int, mtg_int, su_int, sv_int, s_tnd=s_tnd,
+			sq_now=sq_now, sq_int=sq_int, sq_new=sq_new, q_tnd=q_tnd
 		)
 
-		if sqv_new is None:
-			return s_new
-		else:
-			return s_new, sqv_new, sqc_new, sqr_new
+		return_list = [s_new, ] + [sq_new[tracer] for tracer in self._tracers]
+
+		return return_list
 
 	def _stencil_momentum_defs(
 		self, eps, dt, dx, dy, s_now, s_int, s_new, u_int, v_int, mtg_now, mtg_new,
@@ -635,12 +640,12 @@ class RK3WSSI(IsentropicPrognostic):
 class SIL3(IsentropicPrognostic):
 	""" The semi-implicit Lorenz three cycle scheme. """
 	def __init__(
-		self, horizontal_flux_scheme, grid, hb, moist, backend, dtype, **kwargs
+		self, horizontal_flux_scheme, grid, hb, tracers, backend, dtype, **kwargs
 	):
 		# call parent's constructor
 		super().__init__(
-			IsentropicMinimalHorizontalFlux, horizontal_flux_scheme,
-			grid, hb, moist, backend, dtype
+			NGIsentropicMinimalHorizontalFlux, horizontal_flux_scheme,
+			grid, hb, tracers, backend, dtype
 		)
 
 		# extract the upper boundary conditions on the pressure field and
@@ -737,26 +742,23 @@ class SIL3(IsentropicPrognostic):
 			out_state['air_isentropic_density'] = self._s1
 			out_state['x_momentum_isentropic'] = self._su1
 			out_state['y_momentum_isentropic'] = self._sv1
-			if self._moist:
-				out_state['isentropic_density_of_water_vapor'] = self._sqv1
-				out_state['isentropic_density_of_cloud_liquid_water'] = self._sqc1
-				out_state['isentropic_density_of_precipitation_water'] = self._sqr1
+			out_state.update({
+				's_' + tracer: self._sq1[tracer] for tracer in self._tracers
+			})
 		elif stage == 1:
 			out_state['air_isentropic_density'] = self._s2
 			out_state['x_momentum_isentropic'] = self._su2
 			out_state['y_momentum_isentropic'] = self._sv2
-			if self._moist:
-				out_state['isentropic_density_of_water_vapor'] = self._sqv2
-				out_state['isentropic_density_of_cloud_liquid_water'] = self._sqc2
-				out_state['isentropic_density_of_precipitation_water'] = self._sqr2
+			out_state.update({
+				's_' + tracer: self._sq2[tracer] for tracer in self._tracers
+			})
 		else:
 			out_state['air_isentropic_density'] = self._s_new
 			out_state['x_momentum_isentropic'] = self._su_new
 			out_state['y_momentum_isentropic'] = self._sv_new
-			if self._moist:
-				out_state['isentropic_density_of_water_vapor'] = self._sqv_new
-				out_state['isentropic_density_of_cloud_liquid_water'] = self._sqc_new
-				out_state['isentropic_density_of_precipitation_water'] = self._sqr_new
+			out_state.update({
+				's_' + tracer: self._sq_new[tracer] for tracer in self._tracers
+			})
 
 		return out_state
 
@@ -780,13 +782,14 @@ class SIL3(IsentropicPrognostic):
 		self._su2  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._sv1  = np.zeros((nx, ny, nz), dtype=dtype)
 		self._sv2  = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._sqv1 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqv2 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc1 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc2 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr1 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr2 = np.zeros((nx, ny, nz), dtype=dtype)
+		self._sq1  = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
+		self._sq2  = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._tracers
+		}
 
 		# allocate the arrays which will store the physical tendencies
 		if hasattr(self, '_s_tnd'):
@@ -798,26 +801,27 @@ class SIL3(IsentropicPrognostic):
 		if hasattr(self, '_sv_tnd'):
 			self._sv_tnd_1 = np.zeros((nx, ny, nz), dtype=dtype)
 			self._sv_tnd_2 = np.zeros((nx, ny, nz), dtype=dtype)
-		if hasattr(self, '_qv_tnd'):
-			self._qv_tnd_1 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qv_tnd_2 = np.zeros((nx, ny, nz), dtype=dtype)
-		if hasattr(self, '_qc_tnd'):
-			self._qc_tnd_1 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qc_tnd_2 = np.zeros((nx, ny, nz), dtype=dtype)
-		if hasattr(self, '_qr_tnd'):
-			self._qr_tnd_1 = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qr_tnd_2 = np.zeros((nx, ny, nz), dtype=dtype)
+		self._q_tnd_1 = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._q_tnd
+		}
+		self._q_tnd_2 = {
+			tracer: np.zeros((nx, ny, nz), dtype=dtype)
+			for tracer in self._q_tnd
+		}
 
 	def _stencils_initialize(self, tendencies):
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		nb = self._hb.nb
+		ts = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
 
 		s_tnd_on  = 'air_isentropic_density' in tendencies
 		su_tnd_on = 'x_momentum_isentropic' in tendencies
 		sv_tnd_on = 'y_momentum_isentropic' in tendencies
-		qv_tnd_on = mfwv in tendencies
-		qc_tnd_on = mfcw in tendencies
-		qr_tnd_on = mfpw in tendencies
+		q_tnd_on = {tracer: tracer in tendencies for tracer in self._tracers}
 
 		# allocate inputs and outputs
 		self._stencils_allocate(tendencies)
@@ -832,22 +836,21 @@ class SIL3(IsentropicPrognostic):
 		}
 		if s_tnd_on:
 			inputs['s_tnd_0'] = self._s_tnd
+		inputs.update({
+			's' + ts[tracer] + '0': self._sq_now[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			ts[tracer] + '_tnd_0': self._q_tnd[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+
 		outputs = {'s1': self._s1}
-		if self._moist:
-			inputs.update({
-				'sqv0': self._sqv_now,
-				'sqc0': self._sqc_now,
-				'sqr0': self._sqr_now,
-			})
-			if qv_tnd_on:
-				inputs['qv_tnd_0'] = self._qv_tnd
-			if qc_tnd_on:
-				inputs['qc_tnd_0'] = self._qc_tnd
-			if qr_tnd_on:
-				inputs['qr_tnd_0'] = self._qr_tnd
-			outputs.update({
-				'sqv1': self._sqv1, 'sqc1': self._sqc1, 'sqr1': self._sqr1
-			})
+		outputs.update({
+			's' + ts[tracer] + '1': self._sq1[tracer]
+			for tracer in self._tracers
+		})
+
 		self._stencil_first_stage_slow = gt.NGStencil(
 			definitions_func=self._stencil_first_stage_slow_defs,
 			inputs=inputs,
@@ -870,7 +873,9 @@ class SIL3(IsentropicPrognostic):
 			inputs['su_tnd_0'] = self._su_tnd
 		if sv_tnd_on:
 			inputs['sv_tnd_0'] = self._sv_tnd
+
 		outputs = {'su1': self._su1, 'sv1': self._sv1}
+
 		self._stencil_first_stage_fast = gt.NGStencil(
 			definitions_func=self._stencil_first_stage_fast_defs,
 			inputs=inputs,
@@ -891,25 +896,29 @@ class SIL3(IsentropicPrognostic):
 		if s_tnd_on:
 			inputs['s_tnd_0'] = self._s_tnd
 			inputs['s_tnd_1'] = self._s_tnd_1
+		inputs.update({
+			's' + ts[tracer] + '0': self._sq_now[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			's' + ts[tracer] + '1': self._sq1[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			ts[tracer] + '_tnd_0': self._q_tnd[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+		inputs.update({
+			ts[tracer] + '_tnd_1': self._q_tnd_1[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+
 		outputs = {'s2': self._s2}
-		if self._moist:
-			inputs.update({
-				'sqv0': self._sqv_now, 'sqv1': self._sqv1,
-				'sqc0': self._sqc_now, 'sqc1': self._sqc1,
-				'sqr0': self._sqr_now, 'sqr1': self._sqr1,
-			})
-			if qv_tnd_on:
-				inputs['qv_tnd_0'] = self._qv_tnd
-				inputs['qv_tnd_1'] = self._qv_tnd_1
-			if qc_tnd_on:
-				inputs['qc_tnd_0'] = self._qc_tnd
-				inputs['qc_tnd_1'] = self._qc_tnd_1
-			if qr_tnd_on:
-				inputs['qr_tnd_0'] = self._qr_tnd
-				inputs['qr_tnd_1'] = self._qr_tnd_1
-			outputs.update({
-				'sqv2': self._sqv2, 'sqc2': self._sqc2,	'sqr2': self._sqr2
-			})
+		outputs.update({
+			's' + ts[tracer] + '2': self._sq2[tracer]
+			for tracer in self._tracers
+		})
+
 		self._stencil_second_stage_slow = gt.NGStencil(
 			definitions_func=self._stencil_second_stage_slow_defs,
 			inputs=inputs,
@@ -956,28 +965,37 @@ class SIL3(IsentropicPrognostic):
 			inputs['s_tnd_0'] = self._s_tnd
 			inputs['s_tnd_1'] = self._s_tnd_1
 			inputs['s_tnd_2'] = self._s_tnd_2
+		inputs.update({
+			's' + ts[tracer] + '0': self._sq_now[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			's' + ts[tracer] + '1': self._sq1[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			's' + ts[tracer] + '2': self._sq2[tracer]
+			for tracer in self._tracers
+		})
+		inputs.update({
+			ts[tracer] + '_tnd_0': self._q_tnd[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+		inputs.update({
+			ts[tracer] + '_tnd_1': self._q_tnd_1[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+		inputs.update({
+			ts[tracer] + '_tnd_2': self._q_tnd_2[tracer]
+			for tracer in self._tracers if q_tnd_on[tracer]
+		})
+
 		outputs = {'s3': self._s_new}
-		if self._moist:
-			inputs.update({
-				'sqv0': self._sqv_now, 'sqv1': self._sqv1, 'sqv2': self._sqv2,
-				'sqc0': self._sqc_now, 'sqc1': self._sqc1, 'sqc2': self._sqc2,
-				'sqr0': self._sqr_now, 'sqr1': self._sqr1, 'sqr2': self._sqr2
-			})
-			if qv_tnd_on:
-				inputs['qv_tnd_0'] = self._qv_tnd
-				inputs['qv_tnd_1'] = self._qv_tnd_1
-				inputs['qv_tnd_2'] = self._qv_tnd_2
-			if qc_tnd_on:
-				inputs['qc_tnd_0'] = self._qc_tnd
-				inputs['qc_tnd_1'] = self._qc_tnd_1
-				inputs['qc_tnd_2'] = self._qc_tnd_2
-			if qr_tnd_on:
-				inputs['qr_tnd_0'] = self._qr_tnd
-				inputs['qr_tnd_1'] = self._qr_tnd_1
-				inputs['qr_tnd_2'] = self._qr_tnd_2
-			outputs.update({
-				'sqv3': self._sqv_new, 'sqc3': self._sqc_new, 'sqr3': self._sqr_new
-			})
+		outputs.update({
+			's' + ts[tracer] + '3': self._sq_new[tracer]
+			for tracer in self._tracers
+		})
+
 		self._stencil_third_stage_slow = gt.NGStencil(
 			definitions_func=self._stencil_third_stage_slow_defs,
 			inputs=inputs,
@@ -1023,11 +1041,10 @@ class SIL3(IsentropicPrognostic):
 			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
 			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
 			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
-			qv_tnd_on = tendencies.get(mfwv, None) is not None
-			qc_tnd_on = tendencies.get(mfcw, None) is not None
-			qr_tnd_on = tendencies.get(mfpw, None) is not None
+			q_tnd_on  = {tracer: tracer in tendencies for tracer in self._tracers}
 		else:
-			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+			s_tnd_on = su_tnd_on = sv_tnd_on = False
+			q_tnd_on = {tracer: False for tracer in self._tracers}
 
 		# update the local time step
 		self._dt.value = timestep.total_seconds()
@@ -1040,123 +1057,106 @@ class SIL3(IsentropicPrognostic):
 			self._mtg_now[...] = state['montgomery_potential'][...]
 			self._su_now[...]  = state['x_momentum_isentropic'][...]
 			self._sv_now[...]  = state['y_momentum_isentropic'][...]
-			if self._moist:
-				self._sqv_now[...] = state['isentropic_density_of_water_vapor'][...]
-				self._sqc_now[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-				self._sqr_now[...] = state['isentropic_density_of_precipitation_water'][...]
+			for tracer in self._tracers:
+				self._sq_now[tracer][...] = state['s_' + tracer][...]
 			if s_tnd_on:
 				self._s_tnd[...]  = tendencies['air_isentropic_density'][...]
 			if su_tnd_on:
 				self._su_tnd[...] = tendencies['x_momentum_isentropic'][...]
 			if sv_tnd_on:
 				self._sv_tnd[...] = tendencies['y_momentum_isentropic'][...]
-			if qv_tnd_on:
-				self._qv_tnd[...] = tendencies[mfwv][...]
-			if qc_tnd_on:
-				self._qc_tnd[...] = tendencies[mfcw][...]
-			if qr_tnd_on:
-				self._qr_tnd[...] = tendencies[mfpw][...]
+			for tracer in self._tracers:
+				if q_tnd_on[tracer]:
+					self._q_tnd[tracer][...] = tendencies[tracer][...]
 		elif stage == 1:
-			self._s1[...]   = state['air_isentropic_density'][...]
-			self._u1[...]   = state['x_velocity_at_u_locations'][...]
-			self._v1[...]   = state['y_velocity_at_v_locations'][...]
+			self._s1[...]  = state['air_isentropic_density'][...]
+			self._u1[...]  = state['x_velocity_at_u_locations'][...]
+			self._v1[...]  = state['y_velocity_at_v_locations'][...]
 			if 'montgomery_potential' in state:
 				self._mtg1[...] = state['montgomery_potential'][...]
-			self._su1[...]  = state['x_momentum_isentropic'][...]
-			self._sv1[...]  = state['y_momentum_isentropic'][...]
-			if self._moist:
-				self._sqv1[...] = state['isentropic_density_of_water_vapor'][...]
-				self._sqc1[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-				self._sqr1[...] = state['isentropic_density_of_precipitation_water'][...]
+			self._su1[...] = state['x_momentum_isentropic'][...]
+			self._sv1[...] = state['y_momentum_isentropic'][...]
+			for tracer in self._tracers:
+				self._sq1[tracer][...] = state['s_' + tracer][...]
 			if s_tnd_on:
 				self._s_tnd_1[...]  = tendencies['air_isentropic_density'][...]
 			if su_tnd_on:
 				self._su_tnd_1[...] = tendencies['x_momentum_isentropic'][...]
 			if sv_tnd_on:
 				self._sv_tnd_1[...] = tendencies['y_momentum_isentropic'][...]
-			if qv_tnd_on:
-				self._qv_tnd_1[...] = tendencies[mfwv][...]
-			if qc_tnd_on:
-				self._qc_tnd_1[...] = tendencies[mfcw][...]
-			if qr_tnd_on:
-				self._qr_tnd_1[...] = tendencies[mfpw][...]
+			for tracer in self._tracers:
+				if q_tnd_on[tracer]:
+					self._q_tnd_1[tracer][...] = tendencies[tracer][...]
 		else:
-			self._s2[...]   = state['air_isentropic_density'][...]
-			self._u2[...]   = state['x_velocity_at_u_locations'][...]
-			self._v2[...]   = state['y_velocity_at_v_locations'][...]
+			self._s2[...]  = state['air_isentropic_density'][...]
+			self._u2[...]  = state['x_velocity_at_u_locations'][...]
+			self._v2[...]  = state['y_velocity_at_v_locations'][...]
 			if 'montgomery_potential' in state:
 				self._mtg2[...] = state['montgomery_potential'][...]
-			self._su2[...]  = state['x_momentum_isentropic'][...]
-			self._sv2[...]  = state['y_momentum_isentropic'][...]
-			if self._moist:
-				self._sqv2[...] = state['isentropic_density_of_water_vapor'][...]
-				self._sqc2[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-				self._sqr2[...] = state['isentropic_density_of_precipitation_water'][...]
+			self._su2[...] = state['x_momentum_isentropic'][...]
+			self._sv2[...] = state['y_momentum_isentropic'][...]
+			for tracer in self._tracers:
+				self._sq2[tracer][...] = state['s_' + tracer][...]
 			if s_tnd_on:
 				self._s_tnd_2[...]  = tendencies['air_isentropic_density'][...]
 			if su_tnd_on:
 				self._su_tnd_2[...] = tendencies['x_momentum_isentropic'][...]
 			if sv_tnd_on:
 				self._sv_tnd_2[...] = tendencies['y_momentum_isentropic'][...]
-			if qv_tnd_on:
-				self._qv_tnd_2[...] = tendencies[mfwv][...]
-			if qc_tnd_on:
-				self._qc_tnd_2[...] = tendencies[mfcw][...]
-			if qr_tnd_on:
-				self._qr_tnd_2[...] = tendencies[mfpw][...]
+			for tracer in self._tracers:
+				if q_tnd_on[tracer]:
+					self._q_tnd_2[tracer][...] = tendencies[tracer][...]
 
 	def _stencil_first_stage_slow_defs(
-		self, dt, dx, dy, s0, u0, v0, su0, sv0, sqv0=None, sqc0=None, sqr0=None,
-		s_tnd_0=None, qv_tnd_0=None, qc_tnd_0=None, qr_tnd_0=None
+		self, dt, dx, dy, s0, u0, v0, su0, sv0, s_tnd_0=None, **tracer_kwargs
 	):
+		ts = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
+
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
+		sq0 = {
+			's' + ts[tracer]: tracer_kwargs['s' + ts[tracer] + '0']
+			for tracer in ts
+		}
+		q_tnd_0 = {
+			ts[tracer] + '_tnd': tracer_kwargs.get(ts[tracer] + '_tnd_0', None)
+			for tracer in ts
+		}
+
 		s1 = gt.Equation()
-		sqv1 = gt.Equation() if sqv0 is not None else None
-		sqc1 = gt.Equation() if sqv0 is not None else None
-		sqr1 = gt.Equation() if sqv0 is not None else None
+		sq1 = {
+			tracer: gt.Equation(name='s' + ts[tracer] + '1')
+			for tracer in ts
+		}
 
 		fluxes = self._hflux(
-			i, j, dt, s0, u0, v0, su0, sv0, sqv=sqv0, sqc=sqc0, sqr=sqr0,
-			s_tnd=s_tnd_0, qv_tnd=qv_tnd_0, qc_tnd=qc_tnd_0, qr_tnd=qr_tnd_0
+			i, j, dt, s0, u0, v0, su0, sv0, s_tnd=s_tnd_0,
+			**sq0, **q_tnd_0
 		)
 
 		flux_s_x, flux_s_y = fluxes[0], fluxes[1]
-		if sqv0 is not None:
-			flux_sqv_x, flux_sqv_y = fluxes[6], fluxes[7]
-			flux_sqc_x, flux_sqc_y = fluxes[8], fluxes[9]
-			flux_sqr_x, flux_sqr_y = fluxes[10], fluxes[11]
-
 		s1[i, j] = s0[i, j] - dt / 3.0 * (
 			(flux_s_x[i, j] - flux_s_x[i-1, j]) / dx +
 			(flux_s_y[i, j] - flux_s_y[i, j-1]) / dy -
 			(s_tnd_0[i, j] if s_tnd_0 is not None else 0.0)
 		)
 
-		if sqv0 is not None:
-			sqv1[i, j] = sqv0[i, j] - dt / 3.0 * (
-				(flux_sqv_x[i, j] - flux_sqv_x[i-1, j]) / dx +
-				(flux_sqv_y[i, j] - flux_sqv_y[i, j-1]) / dy -
-				(s0[i, j] * qv_tnd_0[i, j] if qv_tnd_0 is not None else 0.0)
+		for idx, tracer in enumerate(ts.keys()):
+			flux_sq_x, flux_sq_y = fluxes[6 + 2*idx], fluxes[6 + 2*idx + 1]
+			sq1[tracer][i, j] = sq0['s' + ts[tracer]][i, j] - dt / 3.0 * (
+				(flux_sq_x[i, j] - flux_sq_x[i-1, j]) / dx +
+				(flux_sq_y[i, j] - flux_sq_y[i, j-1]) / dy -
+				(s0[i, j] * q_tnd_0[ts[tracer] + '_tnd'][i, j]
+				 if q_tnd_0[ts[tracer] + '_tnd'] is not None else 0.0)
 			)
 
-			sqc1[i, j] = sqc0[i, j] - dt / 3.0 * (
-				(flux_sqc_x[i, j] - flux_sqc_x[i-1, j]) / dx +
-				(flux_sqc_y[i, j] - flux_sqc_y[i, j-1]) / dy -
-				(s0[i, j] * qc_tnd_0[i, j] if qc_tnd_0 is not None else 0.0)
-			)
+		return_list = [s1, ] + [sq1[tracer] for tracer in ts]
 
-			sqr1[i, j] = sqr0[i, j] - dt / 3.0 * (
-				(flux_sqr_x[i, j] - flux_sqr_x[i-1, j]) / dx +
-				(flux_sqr_y[i, j] - flux_sqr_y[i, j-1]) / dy -
-				(s0[i, j] * qr_tnd_0[i, j] if qr_tnd_0 is not None else 0.0)
-			)
-
-		if sqv0 is None:
-			return s1
-		else:
-			return s1, sqv1, sqc1, sqr1
+		return return_list
 
 	def _stencil_first_stage_fast_defs(
 		self, dt, dx, dy, s0, s1, u0, v0, mtg0, mtg1, su0, sv0,
@@ -1165,15 +1165,17 @@ class SIL3(IsentropicPrognostic):
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
-		sqv = gt.Equation()
-		sqc = gt.Equation()
-		sqr = gt.Equation()
+		sq = {
+			's' + self._tracers[tracer]['stencil_symbol']: gt.Equation()
+			for tracer in self._tracers
+		}
+
 		su1 = gt.Equation()
 		sv1 = gt.Equation()
 
 		fluxes = self._hflux(
-			i, j, dt, s0, u0, v0, su0, sv0, sqv=sqv, sqc=sqc, sqr=sqr,
-			su_tnd=su_tnd_0, sv_tnd=sv_tnd_0
+			i, j, dt, s0, u0, v0, su0, sv0,
+			su_tnd=su_tnd_0, sv_tnd=sv_tnd_0, **sq
 		)
 
 		flux_su_x, flux_su_y = fluxes[2], fluxes[3]
@@ -1198,37 +1200,50 @@ class SIL3(IsentropicPrognostic):
 
 	def _stencil_second_stage_slow_defs(
 		self, dt, dx, dy, s0, s1, u0, u1, v0, v1, su0, su1, sv0, sv1,
-		sqv0=None, sqv1=None, sqc0=None, sqc1=None, sqr0=None, sqr1=None,
-		s_tnd_0=None, s_tnd_1=None, qv_tnd_0=None, qv_tnd_1=None,
-		qc_tnd_0=None, qc_tnd_1=None, qr_tnd_0=None, qr_tnd_1=None
+		s_tnd_0=None, s_tnd_1=None, **tracer_kwargs
 	):
+		ts = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
+
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
+		sq0 = {
+			's' + ts[tracer]: tracer_kwargs['s' + ts[tracer] + '0']
+			for tracer in ts
+		}
+		sq1 = {
+			's' + ts[tracer]: tracer_kwargs['s' + ts[tracer] + '1']
+			for tracer in ts
+		}
+		q_tnd_0 = {
+			ts[tracer] + '_tnd': tracer_kwargs.get(ts[tracer] + '_tnd_0', None)
+			for tracer in ts
+		}
+		q_tnd_1 = {
+			ts[tracer] + '_tnd': tracer_kwargs.get(ts[tracer] + '_tnd_1', None)
+			for tracer in ts
+		}
+
 		s2 = gt.Equation()
-		sqv2 = gt.Equation() if sqv0 is not None else None
-		sqc2 = gt.Equation() if sqv0 is not None else None
-		sqr2 = gt.Equation() if sqv0 is not None else None
+		sq2 = {
+			tracer: gt.Equation(name='s' + ts[tracer] + '2')
+			for tracer in ts
+		}
 
 		fluxes0 = self._hflux(
-			i, j, dt, s0, u0, v0, su0, sv0, sqv=sqv0, sqc=sqc0, sqr=sqr0,
-			s_tnd=s_tnd_0, qv_tnd=qv_tnd_0, qc_tnd=qc_tnd_0, qr_tnd=qr_tnd_0
+			i, j, dt, s0, u0, v0, su0, sv0, s_tnd=s_tnd_0,
+			**sq0, **q_tnd_0
 		)
 		fluxes1 = self._hflux(
-			i, j, dt, s1, u1, v1, su1, sv1, sqv=sqv1, sqc=sqc1, sqr=sqr1,
-			s_tnd=s_tnd_1, qv_tnd=qv_tnd_1, qc_tnd=qc_tnd_1, qr_tnd=qr_tnd_1
+			i, j, dt, s1, u1, v1, su1, sv1, s_tnd=s_tnd_1,
+			**sq1, **q_tnd_1
 		)
 
 		flux_s_x_0, flux_s_y_0 = fluxes0[0], fluxes0[1]
 		flux_s_x_1, flux_s_y_1 = fluxes1[0], fluxes1[1]
-		if sqv0 is not None:
-			flux_sqv_x_0, flux_sqv_y_0 = fluxes0[6], fluxes0[7]
-			flux_sqv_x_1, flux_sqv_y_1 = fluxes1[6], fluxes1[7]
-			flux_sqc_x_0, flux_sqc_y_0 = fluxes0[8], fluxes0[9]
-			flux_sqc_x_1, flux_sqc_y_1 = fluxes1[8], fluxes1[9]
-			flux_sqr_x_0, flux_sqr_y_0 = fluxes0[10], fluxes0[11]
-			flux_sqr_x_1, flux_sqr_y_1 = fluxes1[10], fluxes1[11]
-
 		s2[i, j] = s0[i, j] - dt * (
 			1.0 / 6.0 * (
 				(flux_s_x_0[i, j] - flux_s_x_0[i-1, j]) / dx +
@@ -1241,47 +1256,26 @@ class SIL3(IsentropicPrognostic):
 			)
 		)
 
-		if sqv0 is not None:
-			sqv2[i, j] = sqv0[i, j] - dt * (
+		for idx, tracer in enumerate(ts.keys()):
+			flux_sq_x_0, flux_sq_y_0 = fluxes0[6 + 2*idx], fluxes0[6 + 2*idx + 1]
+			flux_sq_x_1, flux_sq_y_1 = fluxes1[6 + 2*idx], fluxes1[6 + 2*idx + 1]
+			sq2[tracer][i, j] = sq0['s' + ts[tracer]][i, j] - dt * (
 				1.0 / 6.0 * (
-					(flux_sqv_x_0[i, j] - flux_sqv_x_0[i-1, j]) / dx +
-					(flux_sqv_y_0[i, j] - flux_sqv_y_0[i, j-1]) / dy -
-					(s0[i, j] * qv_tnd_0[i, j] if qv_tnd_0 is not None else 0.0)
+					(flux_sq_x_0[i, j] - flux_sq_x_0[i-1, j]) / dx +
+					(flux_sq_y_0[i, j] - flux_sq_y_0[i, j-1]) / dy -
+					(s0[i, j] * q_tnd_0[ts[tracer] + '_tnd'][i, j]
+					 if q_tnd_0[ts[tracer] + '_tnd'] is not None else 0.0)
 				) + 0.5 * (
-					(flux_sqv_x_1[i, j] - flux_sqv_x_1[i-1, j]) / dx +
-					(flux_sqv_y_1[i, j] - flux_sqv_y_1[i, j-1]) / dy -
-					(s1[i, j] * qv_tnd_1[i, j] if qv_tnd_1 is not None else 0.0)
+					(flux_sq_x_1[i, j] - flux_sq_x_1[i-1, j]) / dx +
+					(flux_sq_y_1[i, j] - flux_sq_y_1[i, j-1]) / dy -
+					(s1[i, j] * q_tnd_1[ts[tracer] + '_tnd'][i, j]
+					 if q_tnd_1[ts[tracer] + '_tnd'] is not None else 0.0)
 				)
 			)
 
-			sqc2[i, j] = sqc0[i, j] - dt * (
-				1.0 / 6.0 * (
-					(flux_sqc_x_0[i, j] - flux_sqc_x_0[i-1, j]) / dx +
-					(flux_sqc_y_0[i, j] - flux_sqc_y_0[i, j-1]) / dy -
-					(s0[i, j] * qc_tnd_0[i, j] if qc_tnd_0 is not None else 0.0)
-				) + 0.5 * (
-					(flux_sqc_x_1[i, j] - flux_sqc_x_1[i-1, j]) / dx +
-					(flux_sqc_y_1[i, j] - flux_sqc_y_1[i, j-1]) / dy -
-					(s1[i, j] * qc_tnd_1[i, j] if qc_tnd_1 is not None else 0.0)
-				)
-			)
+		return_list = [s2, ] + [sq2[tracer] for tracer in self._tracers]
 
-			sqr2[i, j] = sqr0[i, j] - dt * (
-				1.0 / 6.0 * (
-					(flux_sqr_x_0[i, j] - flux_sqr_x_0[i-1, j]) / dx +
-					(flux_sqr_y_0[i, j] - flux_sqr_y_0[i, j-1]) / dy -
-					(s0[i, j] * qr_tnd_0[i, j] if qr_tnd_0 is not None else 0.0)
-				) + 0.5 * (
-					(flux_sqr_x_1[i, j] - flux_sqr_x_1[i-1, j]) / dx +
-					(flux_sqr_y_1[i, j] - flux_sqr_y_1[i, j-1]) / dy -
-					(s1[i, j] * qr_tnd_1[i, j] if qr_tnd_1 is not None else 0.0)
-				)
-			)
-
-		if sqv0 is None:
-			return s2
-		else:
-			return s2, sqv2, sqc2, sqr2
+		return return_list
 
 	def _stencil_second_stage_fast_defs(
 		self, dt, dx, dy, s0, s1, s2, u0, u1, v0, v1, mtg0, mtg2, su0, su1, sv0, sv1,
@@ -1290,19 +1284,19 @@ class SIL3(IsentropicPrognostic):
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
-		sqv = gt.Equation()
-		sqc = gt.Equation()
-		sqr = gt.Equation()
 		su2 = gt.Equation()
 		sv2 = gt.Equation()
 
+		sq = {
+			's' + self._tracers[tracer]['stencil_symbol']: gt.Equation()
+			for tracer in self._tracers
+		}
+
 		fluxes0 = self._hflux(
-			i, j, dt, s0, u0, v0, su0, sv0, sqv=sqv, sqc=sqc, sqr=sqr,
-			su_tnd=su_tnd_0, sv_tnd=sv_tnd_0
+			i, j, dt, s0, u0, v0, su0, sv0, su_tnd=su_tnd_0, sv_tnd=sv_tnd_0, **sq
 		)
 		fluxes1 = self._hflux(
-			i, j, dt, s1, u1, v1, su1, sv1, sqv=sqv, sqc=sqc, sqr=sqr,
-			su_tnd=su_tnd_1, sv_tnd=sv_tnd_1
+			i, j, dt, s1, u1, v1, su1, sv1, su_tnd=su_tnd_1, sv_tnd=sv_tnd_1, **sq
 		)
 
 		flux_su_x_0, flux_su_y_0 = fluxes0[2], fluxes0[3]
@@ -1342,48 +1336,62 @@ class SIL3(IsentropicPrognostic):
 		return su2, sv2
 
 	def _stencil_third_stage_slow_defs(
-		self, dt, dx, dy, s0, s1, s2, u0, u1, u2, v0, v1, v2, su0, su1, su2, sv0, sv1, sv2,
-		sqv0=None, sqv1=None, sqv2=None, sqc0=None, sqc1=None, sqc2=None,
-		sqr0=None, sqr1=None, sqr2=None, s_tnd_0=None, s_tnd_1=None, s_tnd_2=None,
-		qv_tnd_0=None, qv_tnd_1=None, qv_tnd_2=None,
-		qc_tnd_0=None, qc_tnd_1=None, qc_tnd_2=None,
-		qr_tnd_0=None, qr_tnd_1=None, qr_tnd_2=None
+		self, dt, dx, dy, s0, s1, s2, u0, u1, u2, v0, v1, v2,
+		su0, su1, su2, sv0, sv1, sv2,
+		s_tnd_0=None, s_tnd_1=None, s_tnd_2=None, **tracer_kwargs
 	):
+		ts = {
+			tracer: self._tracers[tracer]['stencil_symbol']
+			for tracer in self._tracers
+		}
+
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
+		sq0 = {
+			's' + ts[tracer]: tracer_kwargs['s' + ts[tracer] + '0']
+			for tracer in ts
+		}
+		sq1 = {
+			's' + ts[tracer]: tracer_kwargs['s' + ts[tracer] + '1']
+			for tracer in ts
+		}
+		sq2 = {
+			's' + ts[tracer]: tracer_kwargs['s' + ts[tracer] + '2']
+			for tracer in ts
+		}
+		q_tnd_0 = {
+			ts[tracer] + '_tnd': tracer_kwargs.get(ts[tracer] + '_tnd_0', None)
+			for tracer in ts
+		}
+		q_tnd_1 = {
+			ts[tracer] + '_tnd': tracer_kwargs.get(ts[tracer] + '_tnd_1', None)
+			for tracer in ts
+		}
+		q_tnd_2 = {
+			ts[tracer] + '_tnd': tracer_kwargs.get(ts[tracer] + '_tnd_2', None)
+			for tracer in ts
+		}
+
 		s3 = gt.Equation()
-		sqv3 = gt.Equation() if sqv0 is not None else None
-		sqc3 = gt.Equation() if sqv0 is not None else None
-		sqr3 = gt.Equation() if sqv0 is not None else None
+		sq3 = {
+			tracer: gt.Equation(name='s' + ts[tracer] + '3')
+			for tracer in self._tracers
+		}
 
 		fluxes0 = self._hflux(
-			i, j, dt, s0, u0, v0, su0, sv0, sqv=sqv0, sqc=sqc0, sqr=sqr0,
-			s_tnd=s_tnd_0, qv_tnd=qv_tnd_0, qc_tnd=qc_tnd_0, qr_tnd=qr_tnd_0
+			i, j, dt, s0, u0, v0, su0, sv0, s_tnd=s_tnd_0, **sq0, **q_tnd_0
 		)
 		fluxes1 = self._hflux(
-			i, j, dt, s1, u1, v1, su1, sv1, sqv=sqv1, sqc=sqc1, sqr=sqr1,
-			s_tnd=s_tnd_1, qv_tnd=qv_tnd_1, qc_tnd=qc_tnd_1, qr_tnd=qr_tnd_1
+			i, j, dt, s1, u1, v1, su1, sv1, s_tnd=s_tnd_1, **sq1, **q_tnd_1
 		)
 		fluxes2 = self._hflux(
-			i, j, dt, s2, u2, v2, su2, sv2, sqv=sqv2, sqc=sqc2, sqr=sqr2,
-			s_tnd=s_tnd_2, qv_tnd=qv_tnd_2, qc_tnd=qc_tnd_2, qr_tnd=qr_tnd_2
+			i, j, dt, s2, u2, v2, su2, sv2, s_tnd=s_tnd_2, **sq2, **q_tnd_2
 		)
 
 		flux_s_x_0, flux_s_y_0 = fluxes0[0], fluxes0[1]
 		flux_s_x_1, flux_s_y_1 = fluxes1[0], fluxes1[1]
 		flux_s_x_2, flux_s_y_2 = fluxes2[0], fluxes2[1]
-		if sqv0 is not None:
-			flux_sqv_x_0, flux_sqv_y_0 = fluxes0[6], fluxes0[7]
-			flux_sqv_x_1, flux_sqv_y_1 = fluxes1[6], fluxes1[7]
-			flux_sqv_x_2, flux_sqv_y_2 = fluxes2[6], fluxes2[7]
-			flux_sqc_x_0, flux_sqc_y_0 = fluxes0[8], fluxes0[9]
-			flux_sqc_x_1, flux_sqc_y_1 = fluxes1[8], fluxes1[9]
-			flux_sqc_x_2, flux_sqc_y_2 = fluxes2[8], fluxes2[9]
-			flux_sqr_x_0, flux_sqr_y_0 = fluxes0[10], fluxes0[11]
-			flux_sqr_x_1, flux_sqr_y_1 = fluxes1[10], fluxes1[11]
-			flux_sqr_x_2, flux_sqr_y_2 = fluxes2[10], fluxes2[11]
-
 		s3[i, j] = s0[i, j] - dt * (
 			0.5 * (
 				(flux_s_x_0[i, j] - flux_s_x_0[i-1, j]) / dx +
@@ -1400,59 +1408,32 @@ class SIL3(IsentropicPrognostic):
 			)
 		)
 
-		if sqv0 is not None:
-			sqv3[i, j] = sqv0[i, j] - dt * (
+		for idx, tracer in enumerate(ts.keys()):
+			flux_sq_x_0, flux_sq_y_0 = fluxes0[6 + 2*idx], fluxes0[6 + 2*idx + 1]
+			flux_sq_x_1, flux_sq_y_1 = fluxes1[6 + 2*idx], fluxes1[6 + 2*idx + 1]
+			flux_sq_x_2, flux_sq_y_2 = fluxes2[6 + 2*idx], fluxes2[6 + 2*idx + 1]
+			sq3[tracer][i, j] = sq0['s' + ts[tracer]][i, j] - dt * (
 				0.5 * (
-					(flux_sqv_x_0[i, j] - flux_sqv_x_0[i-1, j]) / dx +
-					(flux_sqv_y_0[i, j] - flux_sqv_y_0[i, j-1]) / dy -
-					(s0[i, j] * qv_tnd_0[i, j] if qv_tnd_0 is not None else 0.0)
+					(flux_sq_x_0[i, j] - flux_sq_x_0[i-1, j]) / dx +
+					(flux_sq_y_0[i, j] - flux_sq_y_0[i, j-1]) / dy -
+					(s0[i, j] * q_tnd_0[ts[tracer] + '_tnd'][i, j]
+					 if q_tnd_0[ts[tracer] + '_tnd'] is not None else 0.0)
 				) - 0.5 * (
-					(flux_sqv_x_1[i, j] - flux_sqv_x_1[i-1, j]) / dx +
-					(flux_sqv_y_1[i, j] - flux_sqv_y_1[i, j-1]) / dy -
-					(s1[i, j] * qv_tnd_1[i, j] if qv_tnd_1 is not None else 0.0)
+					(flux_sq_x_1[i, j] - flux_sq_x_1[i-1, j]) / dx +
+					(flux_sq_y_1[i, j] - flux_sq_y_1[i, j-1]) / dy -
+					(s1[i, j] * q_tnd_1[ts[tracer] + '_tnd'][i, j]
+					 if q_tnd_1[ts[tracer] + '_tnd'] is not None else 0.0)
 				) + (
-					(flux_sqv_x_2[i, j] - flux_sqv_x_2[i-1, j]) / dx +
-					(flux_sqv_y_2[i, j] - flux_sqv_y_2[i, j-1]) / dy -
-					(s2[i, j] * qv_tnd_2[i, j] if qv_tnd_2 is not None else 0.0)
+					(flux_sq_x_2[i, j] - flux_sq_x_2[i-1, j]) / dx +
+					(flux_sq_y_2[i, j] - flux_sq_y_2[i, j-1]) / dy -
+					(s2[i, j] * q_tnd_2[ts[tracer] + '_tnd'][i, j]
+					 if q_tnd_2[ts[tracer] + '_tnd'] is not None else 0.0)
 				)
 			)
 
-			sqc3[i, j] = sqc0[i, j] - dt * (
-				0.5 * (
-					(flux_sqc_x_0[i, j] - flux_sqc_x_0[i-1, j]) / dx +
-					(flux_sqc_y_0[i, j] - flux_sqc_y_0[i, j-1]) / dy -
-					(s0[i, j] * qc_tnd_0[i, j] if qc_tnd_0 is not None else 0.0)
-				) - 0.5 * (
-					(flux_sqc_x_1[i, j] - flux_sqc_x_1[i-1, j]) / dx +
-					(flux_sqc_y_1[i, j] - flux_sqc_y_1[i, j-1]) / dy -
-					(s1[i, j] * qc_tnd_1[i, j] if qc_tnd_1 is not None else 0.0)
-				) + (
-					(flux_sqc_x_2[i, j] - flux_sqc_x_2[i-1, j]) / dx +
-					(flux_sqc_y_2[i, j] - flux_sqc_y_2[i, j-1]) / dy -
-					(s2[i, j] * qc_tnd_2[i, j] if qc_tnd_2 is not None else 0.0)
-				)
-			)
+		return_list = [s3, ] + [sq3[tracer] for tracer in ts]
 
-			sqr3[i, j] = sqr0[i, j] - dt * (
-				0.5 * (
-					(flux_sqr_x_0[i, j] - flux_sqr_x_0[i-1, j]) / dx +
-					(flux_sqr_y_0[i, j] - flux_sqr_y_0[i, j-1]) / dy -
-					(s0[i, j] * qr_tnd_0[i, j] if qr_tnd_0 is not None else 0.0)
-				) - 0.5 * (
-					(flux_sqr_x_1[i, j] - flux_sqr_x_1[i-1, j]) / dx +
-					(flux_sqr_y_1[i, j] - flux_sqr_y_1[i, j-1]) / dy -
-					(s1[i, j] * qr_tnd_1[i, j] if qr_tnd_1 is not None else 0.0)
-				) + (
-					(flux_sqr_x_2[i, j] - flux_sqr_x_2[i-1, j]) / dx +
-					(flux_sqr_y_2[i, j] - flux_sqr_y_2[i, j-1]) / dy -
-					(s2[i, j] * qr_tnd_2[i, j] if qr_tnd_2 is not None else 0.0)
-				)
-			)
-
-		if sqv0 is None:
-			return s3
-		else:
-			return s3, sqv3, sqc3, sqr3
+		return return_list
 
 	def _stencil_third_stage_fast_defs(
 		self, dt, dx, dy, a, b, c, s0, s1, s2, s3, u0, u1, u2, v0, v1, v2,
@@ -1463,23 +1444,22 @@ class SIL3(IsentropicPrognostic):
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
-		sqv = gt.Equation()
-		sqc = gt.Equation()
-		sqr = gt.Equation()
 		su3 = gt.Equation()
 		sv3 = gt.Equation()
 
+		sq = {
+			's' + self._tracers[tracer]['stencil_symbol']: gt.Equation()
+			for tracer in self._tracers
+		}
+
 		fluxes0 = self._hflux(
-			i, j, dt, s0, u0, v0, su0, sv0, sqv=sqv, sqc=sqc, sqr=sqr,
-			su_tnd=su_tnd_0, sv_tnd=sv_tnd_0
+			i, j, dt, s0, u0, v0, su0, sv0, su_tnd=su_tnd_0, sv_tnd=sv_tnd_0, **sq
 		)
 		fluxes1 = self._hflux(
-			i, j, dt, s1, u1, v1, su1, sv1, sqv=sqv, sqc=sqc, sqr=sqr,
-			su_tnd=su_tnd_1, sv_tnd=sv_tnd_1
+			i, j, dt, s1, u1, v1, su1, sv1, su_tnd=su_tnd_1, sv_tnd=sv_tnd_1, **sq
 		)
 		fluxes2 = self._hflux(
-			i, j, dt, s2, u2, v2, su2, sv2, sqv=sqv, sqc=sqc, sqr=sqr,
-			su_tnd=su_tnd_2, sv_tnd=sv_tnd_2
+			i, j, dt, s2, u2, v2, su2, sv2, su_tnd=su_tnd_2, sv_tnd=sv_tnd_2, **sq
 		)
 
 		flux_su_x_0, flux_su_y_0 = fluxes0[2], fluxes0[3]

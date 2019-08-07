@@ -41,7 +41,7 @@ from tasmania.python.isentropic.physics.pressure_gradient import \
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from .test_ng_isentropic_minimal_horizontal_fluxes import get_fifth_order_upwind_fluxes
 	from .test_isentropic_minimal_prognostic import forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
 		st_domain, st_one_of, st_isentropic_boussinesque_state_f

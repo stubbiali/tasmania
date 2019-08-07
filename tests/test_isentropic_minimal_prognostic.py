@@ -27,20 +27,28 @@ from hypothesis import \
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.dynamics.minimal_prognostic \
 	import IsentropicMinimalPrognostic
 from tasmania.python.isentropic.dynamics.implementations.minimal_prognostic \
 	import Centered, ForwardEuler, RK2, RK3WS, RK3
 from tasmania.python.utils.data_utils import make_raw_state
-from test_isentropic_minimal_horizontal_fluxes import \
-	get_upwind_fluxes, get_centered_fluxes, \
-	get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_isentropic_horizontal_fluxes import \
+		get_upwind_fluxes, get_centered_fluxes, \
+		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+	from .test_isentropic_prognostic import forward_euler_step
+	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_datetimes
+except ModuleNotFoundError:
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_isentropic_horizontal_fluxes import \
+		get_upwind_fluxes, get_centered_fluxes, \
+		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
+	from test_isentropic_prognostic import forward_euler_step
+	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of, \
+		compare_datetimes
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -62,13 +70,13 @@ def test_factory(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
 		label="domain"
 	)
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
 	moist = data.draw(hyp_st.booleans(), label="moist")
 	substeps = data.draw(hyp_st.integers(min_value=0, max_value=12), label="substeps")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -105,21 +113,6 @@ def test_factory(data):
 	assert isinstance(imp_rk3, RK3)
 
 
-def compare_datetimes(td1, td2):
-	assert abs(td1 - td2).total_seconds() <= 1e-6
-
-
-def forward_euler_step(
-	get_fluxes, mode, dx, dy, dt, u_tmp, v_tmp, phi, phi_tmp, phi_tnd, phi_out
-):
-	flux_x, flux_y = get_fluxes(u_tmp, v_tmp, phi_tmp)
-	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] - dt * (
-		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
-		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
-		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
-	)
-
-
 @settings(
 	suppress_health_check=(
 		HealthCheck.too_slow,
@@ -133,9 +126,9 @@ def test_leapfrog(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf.nb))
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -144,7 +137,7 @@ def test_leapfrog(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_ff(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -161,8 +154,8 @@ def test_leapfrog(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -182,23 +175,23 @@ def test_leapfrog(data):
 
 	raw_state = make_raw_state(state)
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state['s_' + mfwv] = \
 			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state['s_' + mfcw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state['s_' + mfpw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
 	raw_tendencies = make_raw_state(tendencies)
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
@@ -216,9 +209,9 @@ def test_leapfrog(data):
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
 	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+		names.append('s_' + mfwv)
+		names.append('s_' + mfcw)
+		names.append('s_' + mfpw)
 
 	phi_out = np.zeros((grid.nx, grid.ny, grid.nz), dtype=grid.x.dtype)
 
@@ -247,9 +240,9 @@ def test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf.nb))
+	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -258,7 +251,7 @@ def test_upwind(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -275,8 +268,8 @@ def test_upwind(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -296,23 +289,23 @@ def test_upwind(data):
 
 	raw_state = make_raw_state(state)
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state['s_' + mfwv] = \
 			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state['s_' + mfcw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state['s_' + mfpw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
 	raw_tendencies = make_raw_state(tendencies)
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_new = imp.stage_call(0, timestep, raw_state, raw_tendencies)
@@ -330,9 +323,9 @@ def test_upwind(data):
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
 	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+		names.append('s_' + mfwv)
+		names.append('s_' + mfcw)
+		names.append('s_' + mfpw)
 
 	phi_out = np.zeros((grid.nx, grid.ny, grid.nz), dtype=grid.x.dtype)
 
@@ -361,9 +354,9 @@ def test_rk2(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf.nb))
+	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -372,7 +365,7 @@ def test_rk2(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -389,8 +382,8 @@ def test_rk2(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -410,23 +403,23 @@ def test_rk2(data):
 
 	raw_state = make_raw_state(state)
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state['s_' + mfwv] = \
 			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state['s_' + mfcw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state['s_' + mfpw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
 	raw_tendencies = make_raw_state(tendencies)
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	dx = grid.dx.to_units('m').values.item()
@@ -439,9 +432,9 @@ def test_rk2(data):
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
 	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+		names.append('s_' + mfwv)
+		names.append('s_' + mfcw)
+		names.append('s_' + mfpw)
 
 	phi_out = np.zeros((grid.nx, grid.ny, grid.nz), dtype=grid.x.dtype)
 
@@ -474,13 +467,13 @@ def test_rk2(data):
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
@@ -515,9 +508,9 @@ def test_rk3ws(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -526,7 +519,7 @@ def test_rk3ws(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -543,8 +536,8 @@ def test_rk3ws(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -564,23 +557,23 @@ def test_rk3ws(data):
 
 	raw_state = make_raw_state(state)
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state['s_' + mfwv] = \
 			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state['s_' + mfcw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state['s_' + mfpw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
 	raw_tendencies = make_raw_state(tendencies)
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	dx = grid.dx.to_units('m').values.item()
@@ -593,9 +586,9 @@ def test_rk3ws(data):
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
 	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+		names.append('s_' + mfwv)
+		names.append('s_' + mfcw)
+		names.append('s_' + mfpw)
 
 	phi_out = np.zeros((grid.nx, grid.ny, grid.nz), dtype=grid.x.dtype)
 
@@ -628,13 +621,13 @@ def test_rk3ws(data):
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
@@ -664,13 +657,13 @@ def test_rk3ws(data):
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_2['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_2['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_2['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_3 = imp.stage_call(2, timestep, raw_state_2, raw_tendencies)
@@ -746,9 +739,9 @@ def test_rk3(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -757,7 +750,7 @@ def test_rk3(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -774,8 +767,8 @@ def test_rk3(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -808,23 +801,23 @@ def test_rk3(data):
 
 	raw_state = make_raw_state(state)
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state['s_' + mfwv] = \
 			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state['s_' + mfcw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state['s_' + mfpw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
 	raw_tendencies = make_raw_state(tendencies)
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	dx = grid.dx.to_units('m').values.item()
@@ -837,9 +830,9 @@ def test_rk3(data):
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
 	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+		names.append('s_' + mfwv)
+		names.append('s_' + mfcw)
+		names.append('s_' + mfpw)
 
 	phi_out = np.zeros((grid.nx, grid.ny, grid.nz), dtype=grid.x.dtype)
 	phi_k0 = np.zeros((grid.nx, grid.ny, grid.nz), dtype=grid.x.dtype)
@@ -878,13 +871,13 @@ def test_rk3(data):
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_1['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_2 = imp.stage_call(1, timestep, raw_state_1, raw_tendencies)
@@ -915,13 +908,13 @@ def test_rk3(data):
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_2['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_2['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_2['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	raw_state_3 = imp.stage_call(2, timestep, raw_state_2, raw_tendencies)
@@ -961,9 +954,9 @@ def test_rk3ws_substepping(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf.nb))
+	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
+		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=nb),
 		label="domain"
 	)
 
@@ -972,7 +965,7 @@ def test_rk3ws_substepping(data):
 	dtype = grid.x.dtype
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=moist), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=moist), label="state")
 
 	tendencies = {}
 	if data.draw(hyp_st.booleans(), label="tnd_s"):
@@ -989,8 +982,8 @@ def test_rk3ws_substepping(data):
 		if data.draw(hyp_st.booleans(), label="tnd_qr"):
 			tendencies[mfpw] = state[mfpw]
 
-	mode = data.draw(utils.st_one_of(('x', 'y', 'xy')), label="mode")
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	mode = data.draw(st_one_of(('x', 'y', 'xy')), label="mode")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -1019,23 +1012,23 @@ def test_rk3ws_substepping(data):
 
 	raw_state = make_raw_state(state)
 	if moist:
-		raw_state['isentropic_density_of_water_vapor'] = \
+		raw_state['s_' + mfwv] = \
 			raw_state['air_isentropic_density'] * raw_state[mfwv]
-		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state['s_' + mfcw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfcw]
-		raw_state['isentropic_density_of_precipitation_water'] = \
+		raw_state['s_' + mfpw] = \
 			raw_state['air_isentropic_density'] * raw_state[mfpw]
 
 	raw_tendencies = make_raw_state(tendencies)
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	dx = grid.dx.to_units('m').values.item()
@@ -1048,9 +1041,9 @@ def test_rk3ws_substepping(data):
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
 	]
 	if moist:
-		names.append('isentropic_density_of_water_vapor')
-		names.append('isentropic_density_of_cloud_liquid_water')
-		names.append('isentropic_density_of_precipitation_water')
+		names.append('s_' + mfwv)
+		names.append('s_' + mfcw)
+		names.append('s_' + mfpw)
 
 	substep_names = [
 		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
@@ -1084,13 +1077,13 @@ def test_rk3ws_substepping(data):
 
 	if moist:
 		raw_state_0[mfwv] = \
-			raw_state_0['isentropic_density_of_water_vapor'] / \
+			raw_state_0['s_' + mfwv] / \
 			raw_state_0['air_isentropic_density']
 		raw_state_0[mfcw] = \
-			raw_state_0['isentropic_density_of_cloud_liquid_water'] / \
+			raw_state_0['s_' + mfcw] / \
 			raw_state_0['air_isentropic_density']
 		raw_state_0[mfpw] = \
-			raw_state_0['isentropic_density_of_precipitation_water'] / \
+			raw_state_0['s_' + mfpw] / \
 			raw_state_0['air_isentropic_density']
 
 	#
@@ -1140,22 +1133,22 @@ def test_rk3ws_substepping(data):
 	raw_state_01['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
 	raw_state_01['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	if moist:
-		raw_state_01['isentropic_density_of_water_vapor'] = \
+		raw_state_01['s_' + mfwv] = \
 			raw_state_01['air_isentropic_density'] * raw_state_01[mfwv]
-		raw_state_01['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state_01['s_' + mfcw] = \
 			raw_state_01['air_isentropic_density'] * raw_state_01[mfcw]
-		raw_state_01['isentropic_density_of_precipitation_water'] = \
+		raw_state_01['s_' + mfpw] = \
 			raw_state_01['air_isentropic_density'] * raw_state_01[mfpw]
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_01['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_01['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_01['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	#
@@ -1183,13 +1176,13 @@ def test_rk3ws_substepping(data):
 	raw_state_1['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	if moist:
 		raw_state_1[mfwv] = \
-			raw_state_1['isentropic_density_of_water_vapor'] / \
+			raw_state_1['s_' + mfwv] / \
 			raw_state_1['air_isentropic_density']
 		raw_state_1[mfcw] = \
-			raw_state_1['isentropic_density_of_cloud_liquid_water'] / \
+			raw_state_1['s_' + mfcw] / \
 			raw_state_1['air_isentropic_density']
 		raw_state_1[mfpw] = \
-			raw_state_1['isentropic_density_of_precipitation_water'] / \
+			raw_state_1['s_' + mfpw] / \
 			raw_state_1['air_isentropic_density']
 
 	#
@@ -1262,22 +1255,22 @@ def test_rk3ws_substepping(data):
 	raw_state_12['x_velocity_at_u_locations'] = raw_state['x_velocity_at_u_locations']
 	raw_state_12['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	if moist:
-		raw_state_12['isentropic_density_of_water_vapor'] = \
+		raw_state_12['s_' + mfwv] = \
 			raw_state_12['air_isentropic_density'] * raw_state_12[mfwv]
-		raw_state_12['isentropic_density_of_cloud_liquid_water'] = \
+		raw_state_12['s_' + mfcw] = \
 			raw_state_12['air_isentropic_density'] * raw_state_12[mfcw]
-		raw_state_12['isentropic_density_of_precipitation_water'] = \
+		raw_state_12['s_' + mfpw] = \
 			raw_state_12['air_isentropic_density'] * raw_state_12[mfpw]
 
 	if moist:
 		if mfwv in raw_tendencies:
-			raw_tendencies['isentropic_density_of_water_vapor'] = \
+			raw_tendencies['s_' + mfwv] = \
 				raw_state_12['air_isentropic_density'] * raw_tendencies[mfwv]
 		if mfcw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_cloud_liquid_water'] = \
+			raw_tendencies['s_' + mfcw] = \
 				raw_state_12['air_isentropic_density'] * raw_tendencies[mfcw]
 		if mfpw in raw_tendencies:
-			raw_tendencies['isentropic_density_of_precipitation_water'] = \
+			raw_tendencies['s_' + mfpw] = \
 				raw_state_12['air_isentropic_density'] * raw_tendencies[mfpw]
 
 	#
@@ -1305,13 +1298,13 @@ def test_rk3ws_substepping(data):
 	raw_state_2['y_velocity_at_v_locations'] = raw_state['y_velocity_at_v_locations']
 	if moist:
 		raw_state_2[mfwv] = \
-			raw_state_2['isentropic_density_of_water_vapor'] / \
+			raw_state_2['s_' + mfwv] / \
 			raw_state_2['air_isentropic_density']
 		raw_state_2[mfcw] = \
-			raw_state_2['isentropic_density_of_cloud_liquid_water'] / \
+			raw_state_2['s_' + mfcw] / \
 			raw_state_2['air_isentropic_density']
 		raw_state_2[mfpw] = \
-			raw_state_2['isentropic_density_of_precipitation_water'] / \
+			raw_state_2['s_' + mfpw] / \
 			raw_state_2['air_isentropic_density']
 
 	#

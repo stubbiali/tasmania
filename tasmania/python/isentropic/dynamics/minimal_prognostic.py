@@ -28,7 +28,7 @@ import abc
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicMinimalHorizontalFlux
 
 try:
@@ -412,9 +412,9 @@ class IsentropicMinimalPrognostic:
 		self._in_su[...] = state['x_momentum_isentropic'][...]
 		self._in_sv[...] = state['y_momentum_isentropic'][...]
 		if self._moist:
-			self._in_sqv[...] = state['isentropic_density_of_water_vapor'][...]
-			self._in_sqc[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-			self._in_sqr[...] = state['isentropic_density_of_precipitation_water'][...]
+			self._in_sqv[...] = state['s_' + mfwv][...]
+			self._in_sqc[...] = state['s_' + mfcw][...]
+			self._in_sqr[...] = state['s_' + mfpw][...]
 		if s_tnd_on:
 			self._in_s_tnd[...]  = tendencies['air_isentropic_density'][...]
 		if su_tnd_on:

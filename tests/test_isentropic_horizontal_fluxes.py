@@ -27,21 +27,15 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import NGIsentropicHorizontalFlux
-from tasmania.python.isentropic.dynamics.implementations.ng_horizontal_fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHorizontalFlux
+from tasmania.python.isentropic.dynamics.implementations.horizontal_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
-		get_upwind_fluxes, get_centered_fluxes, get_maccormack_fluxes, \
-		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 	from .utils import compare_arrays, st_domain, st_floats, st_one_of
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import \
-		get_upwind_fluxes, get_centered_fluxes, get_maccormack_fluxes, \
-		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 	from utils import compare_arrays, st_domain, st_floats, st_one_of
 
 import sys
@@ -158,6 +152,96 @@ class WrappingStencil:
 		)
 
 
+def get_upwind_fluxes(u, v, phi):
+	nx, ny, nz = phi.shape[0], phi.shape[1], phi.shape[2]
+
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	for i in range(0, nx-1):
+		for j in range(0, ny-1):
+			for k in range(0, nz):
+				fx[i, j, k] = u[i+1, j, k] * (phi[i, j, k] if u[i+1, j, k] > 0 else phi[i+1, j, k])
+				fy[i, j, k] = v[i, j+1, k] * (phi[i, j, k] if v[i, j+1, k] > 0 else phi[i, j+1, k])
+
+	return fx, fy
+
+
+def get_centered_fluxes(u, v, phi):
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	fx[:-1, :] = u[1:-1, :] * 0.5 * (phi[:-1, :] + phi[1:, :])
+	fy[:, :-1] = v[:, 1:-1] * 0.5 * (phi[:, :-1] + phi[:, 1:])
+
+	return fx, fy
+
+
+def get_maccormack_fluxes():
+	### TODO ###
+	pass
+
+
+def get_third_order_upwind_fluxes(u, v, phi):
+	f4x = np.zeros_like(phi, dtype=phi.dtype)
+	f4y = np.zeros_like(phi, dtype=phi.dtype)
+
+	f4x[1:-2, :] = u[2:-2, :] / 12.0 * (
+		7.0 * (phi[2:-1, :] + phi[1:-2, :]) -
+		(phi[3:, :] + phi[:-3, :])
+	)
+	f4y[:, 1:-2] = v[:, 2:-2] / 12.0 * (
+		7.0 * (phi[:, 2:-1] + phi[:, 1:-2]) -
+		(phi[:, 3:] + phi[:, :-3])
+	)
+
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	fx[1:-2, :] = f4x[1:-2, :] - np.abs(u[2:-2, :]) / 12.0 * (
+		3.0 * (phi[2:-1, :] - phi[1:-2, :]) -
+		(phi[3:, :] - phi[:-3, :])
+	)
+	fy[:, 1:-2] = f4y[:, 1:-2] - np.abs(v[:, 2:-2]) / 12.0 * (
+		3.0 * (phi[:, 2:-1] - phi[:, 1:-2]) -
+		(phi[:, 3:] - phi[:, :-3])
+	)
+
+	return fx, fy
+
+
+def get_fifth_order_upwind_fluxes(u, v, phi):
+	f6x = np.zeros_like(phi, dtype=phi.dtype)
+	f6y = np.zeros_like(phi, dtype=phi.dtype)
+
+	f6x[2:-3, :] = u[3:-3, :] / 60.0 * (
+		37.0 * (phi[3:-2, :] + phi[2:-3, :]) -
+		8.0 * (phi[4:-1, :] + phi[1:-4, :]) +
+		(phi[5:, :] + phi[:-5, :])
+	)
+	f6y[:, 2:-3] = v[:, 3:-3] / 60.0 * (
+		37.0 * (phi[:, 3:-2] + phi[:, 2:-3]) -
+		8.0 * (phi[:, 4:-1] + phi[:, 1:-4]) +
+		(phi[:, 5:] + phi[:, :-5])
+	)
+
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	fx[2:-3, :] = f6x[2:-3, :] - np.abs(u[3:-3, :]) / 60.0 * (
+		10.0 * (phi[3:-2, :] - phi[2:-3, :]) -
+		5.0 * (phi[4:-1, :] - phi[1:-4, :]) +
+		(phi[5:, :] - phi[:-5, :])
+	)
+	fy[:, 2:-3] = f6y[:, 2:-3] - np.abs(v[:, 3:-3]) / 60.0 * (
+		10.0 * (phi[:, 3:-2] - phi[:, 2:-3]) -
+		5.0 * (phi[:, 4:-1] - phi[:, 1:-4]) +
+		(phi[:, 5:] - phi[:, :-5])
+	)
+
+	return fx, fy
+
+
 def validation(tracers, flux_scheme, domain, field, timestep, backend):
 	grid = domain.numerical_grid
 	nb = domain.horizontal_boundary.nb
@@ -183,7 +267,7 @@ def validation(tracers, flux_scheme, domain, field, timestep, backend):
 	sq2_eq = gt.Equation(name='sq2')
 	sq3_eq = gt.Equation(name='sq3')
 
-	fluxer = NGIsentropicHorizontalFlux.factory(flux_scheme, grid, tracers)
+	fluxer = IsentropicHorizontalFlux.factory(flux_scheme, grid, tracers)
 
 	assert isinstance(fluxer, flux_type)
 

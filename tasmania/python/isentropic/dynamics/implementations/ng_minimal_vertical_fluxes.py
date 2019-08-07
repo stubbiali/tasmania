@@ -26,10 +26,15 @@ This module contains:
 	Centered(NGIsentropicMinimalVerticalFlux)
 	ThirdOrderUpwind(NGIsentropicMinimalVerticalFlux)
 	FifthOrderUpwind(NGIsentropicMinimalVerticalFlux)
+
+	get_upwind_flux
+	get_centered_flux
+	get_third_order_upwind_flux
+	get_fifth_order_upwind_flux
 """
-from tasmania.python.isentropic.dynamics.fluxes import NGIsentropicMinimalVerticalFlux
-from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import \
-	get_upwind_flux, get_centered_flux, get_third_order_upwind_flux, get_fifth_order_upwind_flux
+import gridtools as gt
+from tasmania.python.isentropic.dynamics.vertical_fluxes import \
+	NGIsentropicMinimalVerticalFlux
 
 
 class Upwind(NGIsentropicMinimalVerticalFlux):
@@ -61,6 +66,16 @@ class Upwind(NGIsentropicMinimalVerticalFlux):
 		return return_list
 
 
+def get_upwind_flux(k, w, phi):
+	phi_name = phi.get_name()
+	flux_name = 'flux_' + phi_name + '_z'
+	flux = gt.Equation(name=flux_name)
+
+	flux[k] = w[k] * ((w[k] > 0.) * phi[k] + (w[k] < 0.) * phi[k-1])
+
+	return flux
+
+
 class Centered(NGIsentropicMinimalVerticalFlux):
 	"""
 	Centered scheme.
@@ -88,6 +103,16 @@ class Centered(NGIsentropicMinimalVerticalFlux):
 			return_list.append(out_sq)
 
 		return return_list
+
+
+def get_centered_flux(k, w, phi):
+	phi_name = phi.get_name()
+	flux_name = 'flux_' + phi_name + '_z'
+	flux = gt.Equation(name=flux_name)
+
+	flux[k] = w[k] * 0.5 * (phi[k] + phi[k-1])
+
+	return flux
 
 
 class ThirdOrderUpwind(NGIsentropicMinimalVerticalFlux):
@@ -119,6 +144,24 @@ class ThirdOrderUpwind(NGIsentropicMinimalVerticalFlux):
 		return return_list
 
 
+def get_third_order_upwind_flux(k, w, phi):
+	phi_name = phi.get_name()
+	flux_name = 'flux_' + phi_name + '_z'
+	flux = gt.Equation(name=flux_name)
+
+	flux[k] = \
+		w[k] / 12.0 * (
+			7.0 * (phi[k-1] + phi[k]) -
+			1.0 * (phi[k-2] + phi[k+1])
+		) - \
+		(w[k] * (w[k] > 0.0) - w[k] * (w[k] < 0.0)) / 12.0 * (
+			3.0 * (phi[k-1] - phi[k]) -
+			1.0 * (phi[k-2] - phi[k+1])
+		)
+
+	return flux
+
+
 class FifthOrderUpwind(NGIsentropicMinimalVerticalFlux):
 	"""
 	Fifth-order upwind scheme.
@@ -146,3 +189,24 @@ class FifthOrderUpwind(NGIsentropicMinimalVerticalFlux):
 			return_list.append(out_sq)
 
 		return return_list
+
+
+def get_fifth_order_upwind_flux(k, w, phi):
+	phi_name = phi.get_name()
+	flux_name = 'flux_' + phi_name + '_z'
+	flux = gt.Equation(name=flux_name)
+
+	flux[k] = \
+		w[k] / 60.0 * (
+			37.0 * (phi[k-1] + phi[k]) -
+			8.0 * (phi[k-2] + phi[k+1]) +
+			1.0 * (phi[k-3] + phi[k+2])
+		) - \
+		(w[k] * (w[k] > 0.0) - w[k] * (w[k] < 0.0)) / 60.0 * (
+			10.0 * (phi[k-1] - phi[k]) -
+			5.0 * (phi[k-2] - phi[k+1]) +
+			1.0 * (phi[k-3] - phi[k+2])
+		)
+
+	return flux
+
