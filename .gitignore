@@ -1,24 +1,24 @@
-# Byte-compiled / optimized / DLL files
+# byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 
-# C extensions
+# c extensions
 *.so
 
-# Sphinx documentation
+# sphinx documentation
 docs/build/
 
-# IPython Notebook
+# ipython notebook
 .ipynb_checkpoints
 Interactive.ipynb
 
-# Temporary files
+# temporary files
 *.swp
 *.pyc
 
-# PyCharm
+# pycharm
 projectFilesBackup/
 .idea/
 
@@ -26,15 +26,20 @@ projectFilesBackup/
 result_images/
 .hypothesis/
 
-# Varia
+# packaging
 .eggs/
-todo.ods
+tasmania.egg-info/
+build/
 
-# Archives
+# archives
 *.tar
 
 # mac
 .DS_Store/
+
+# varia
+buffer/
+todo.ods
 
 # AUTOMATICALLY GENERATED TEXT
 # The text after this comment and up to the end of file
@@ -43,13 +48,15 @@ todo.ods
 # no modifications should be applied by non-expert users.
 
 # Files which exceed maximum size allowed by GitHub
-./docker/gridtools4py/.git/objects/pack/pack-3c0d8a4da6c5d0fbfa37e1f2676e474d39579ffc.pack
-./docker/tasmania_master.tar
 ./tests/baseline_datasets/isentropic_data.tar.xz
+./tests/baseline_datasets/validation.nc
 ./tests/baseline_datasets/isentropic_dry.nc
-./.git/objects/pack/pack-8fc8f5a45c796c9a1f60bb2747268ba0db639924.pack
-./.git/objects/a1/3e7ac3938421e973d3077c31e91cbff5e761d4
-./.git/objects/7f/44d8de7e007fa8f13b75a4ba46602579beaadc
-./data/isentropic_validation_1_cc.nc
+./.git/objects/pack/pack-bcbe959e4d1f985585d278f1054c699e1ff066cb.pack
+./.git/lfs/objects/1f/74/1f74f47b8311efbfe8eda3daf611828607ae150df07204278101df35852aa5a0
+./.git/lfs/objects/3a/51/3a51ff33ddda1bc76fbbdc859543cfa772dc306497df99a28cd64822994327ee
+./.git/lfs/objects/15/ad/15ada08e0747a274bfe9e3aba61f6c0c63ad2cb82cecd2555f8564dc9a263f43
+./.git/modules/docker/gridtools4py/objects/pack/pack-a19671cf737ff2134bbbc190edff079cc9ce0e03.pack
+./data/isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx41_ny41_nz60_dt40_nt270_gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_cc_val.nc
+./data/isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx41_ny41_nz60_dt40_nt270_gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_cc.nc
 
 # END OF AUTOMATICALLY GENERATED TEXT
