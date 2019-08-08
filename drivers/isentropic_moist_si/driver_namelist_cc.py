@@ -25,6 +25,14 @@ import os
 import tasmania as taz
 import time
 
+import sys
+python_version = '{}.{}'.format(sys.version_info.major, sys.version_info.minor)
+if python_version <= '3.5':
+	import collections
+	Dict = collections.OrderedDict
+else:
+	Dict = dict
+
 
 # ============================================================
 # The namelist
@@ -39,6 +47,38 @@ namelist = args.namelist.replace('/', '.')
 namelist = namelist[:-3] if namelist.endswith('.py') else namelist
 exec('import {} as namelist'.format(namelist))
 nl = locals()['namelist']
+
+# ============================================================
+# The tracers
+# ============================================================
+try:
+	microphysics_type = nl.microphysics_type
+except AttributeError:
+	microphysics_type = 'kessler'
+
+tracers = Dict()
+tracers['mass_fraction_of_water_vapor_in_air'] = {
+	'units': 'g g^-1', 'stencil_symbol': 'qv'
+}
+tracers['mass_fraction_of_cloud_liquid_water_in_air'] = {
+	'units': 'g g^-1', 'stencil_symbol': 'qc'
+}
+tracers['mass_fraction_of_precipitation_water_in_air'] = {
+	'units': 'g g^-1', 'stencil_symbol': 'qr',
+	'sedimentation_velocity': 'raindrop_fall_velocity'
+}
+
+precipitating_tracers = Dict()
+precipitating_tracers['mass_fraction_of_precipitation_water_in_air'] = \
+	tracers['mass_fraction_of_precipitation_water_in_air']
+
+if microphysics_type == 'porz':
+	tracers['number_density_of_precipitation_water'] = {
+		'units': 'kg^-1', 'stencil_symbol': 'nr',
+		'sedimentation_velocity': 'number_density_of_raindrop_fall_velocity'
+	}
+	precipitating_tracers['number_density_of_precipitation_water'] = \
+		tracers['number_density_of_precipitation_water']
 
 # ============================================================
 # The underlying domain
@@ -58,9 +98,9 @@ cgrid = domain.numerical_grid
 # The initial state
 # ============================================================
 state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
-	cgrid, nl.init_time, nl.x_velocity, nl.y_velocity,
-	nl.brunt_vaisala, moist=True, precipitation=nl.precipitation,
-	relative_humidity=nl.relative_humidity,	dtype=nl.dtype
+	cgrid, nl.init_time, nl.x_velocity, nl.y_velocity, nl.brunt_vaisala,
+	moist=True, tracers=tracers, precipitation=nl.precipitation,
+	relative_humidity=nl.relative_humidity, dtype=nl.dtype
 )
 domain.horizontal_boundary.reference_state = state
 
@@ -82,7 +122,10 @@ if nl.diff:
 	# component calculating tendencies due to numerical diffusion
 	diff = taz.IsentropicHorizontalDiffusion(
 		domain, nl.diff_type, nl.diff_coeff, nl.diff_coeff_max, nl.diff_damp_depth,
-		moist=False, backend=nl.backend, dtype=nl.dtype
+		tracers=tracers, diffusion_tracer_coeff=nl.diff_moist_coeff,
+		diffusion_tracer_coeff_max=nl.diff_moist_coeff_max,
+		diffusion_tracer_damp_depth=nl.diff_moist_damp_depth,
+		backend=nl.backend, dtype=nl.dtype
 	)
 	args.append(diff)
 
@@ -95,25 +138,36 @@ if nl.turbulence:
 	args.append(turb)
 
 # component calculating the microphysics
-ke = taz.Kessler(
-	domain, 'numerical', air_pressure_on_interface_levels=True,
-	tendency_of_air_potential_temperature_in_diagnostics=True,
-	rain_evaporation=nl.rain_evaporation,
-	autoconversion_threshold=nl.autoconversion_threshold,
-	autoconversion_rate=nl.autoconversion_rate,
-	collection_rate=nl.collection_rate,
-	backend=nl.backend, dtype=nl.dtype,
-)
+if microphysics_type == 'kessler':
+	mc = taz.KesslerMicrophysics(
+		domain, 'numerical', air_pressure_on_interface_levels=True,
+		tendency_of_air_potential_temperature_in_diagnostics=True,
+		rain_evaporation=nl.rain_evaporation,
+		autoconversion_threshold=nl.autoconversion_threshold,
+		autoconversion_rate=nl.autoconversion_rate,
+		collection_rate=nl.collection_rate,
+		backend=nl.backend, dtype=nl.dtype,
+	)
+elif microphysics_type == 'porz':
+	mc = taz.PorzMicrophysics(
+		domain, 'numerical', air_pressure_on_interface_levels=True,
+		tendency_of_air_potential_temperature_in_diagnostics=True,
+		rain_evaporation=nl.rain_evaporation,
+		backend=nl.backend, dtype=nl.dtype,
+	)
+else:
+	raise RuntimeError('Unknown microphysics scheme ''{}''.'.format(microphysics_type))
+
 if nl.update_frequency > 0:
 	from sympl import UpdateFrequencyWrapper
-	args.append(UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep))
+	args.append(UpdateFrequencyWrapper(mc, nl.update_frequency * nl.timestep))
 else:
-	args.append(ke)
+	args.append(mc)
 
 if nl.rain_evaporation:
 	# component integrating the vertical flux
 	vf = taz.IsentropicVerticalAdvection(
-		domain, flux_scheme=nl.vertical_flux_scheme, moist=True,
+		domain, flux_scheme=nl.vertical_flux_scheme, tracers=tracers,
 		tendency_of_air_potential_temperature_on_interface_levels=False,
 		backend=nl.backend, dtype=nl.dtype
 	)
@@ -121,12 +175,20 @@ if nl.rain_evaporation:
 
 if nl.precipitation:
 	# component estimating the raindrop fall velocity
-	rfv = taz.RaindropFallVelocity(domain, 'numerical', backend=nl.backend, dtype=nl.dtype)
-	args.append(rfv)
+	if microphysics_type == 'kessler':
+		fv = taz.KesslerFallVelocity(
+			domain, 'numerical', backend=nl.backend, dtype=nl.dtype
+		)
+	else:
+		fv = taz.PorzFallVelocity(
+			domain, 'numerical', backend=nl.backend, dtype=nl.dtype
+		)
+	args.append(fv)
 
 	# component integrating the sedimentation flux
 	sd = taz.Sedimentation(
-		domain, 'numerical', sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
+		domain, 'numerical', precipitating_tracers,
+		sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
 		backend=nl.backend, dtype=nl.dtype
 	)
 	args.append(sd)
@@ -137,21 +199,26 @@ inter_tends = taz.ConcurrentCoupling(*args, execution_policy='serial')
 # ============================================================
 # The intermediate diagnostics
 # ============================================================
+args = []
+
 # component retrieving the diagnostic variables
 pt = state['air_pressure_on_interface_levels'][0, 0, 0]
 dv = taz.IsentropicDiagnostics(
 	domain, grid_type='numerical', moist=True, pt=pt,
 	backend=nl.backend, dtype=nl.dtype
 )
+args.append(dv)
 
-# component performing the saturation adjustment
-sa = taz.SaturationAdjustmentKessler(
-	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
-	backend=nl.backend, dtype=nl.dtype
-)
+if microphysics_type == 'kessler':
+	# component performing the saturation adjustment
+	sa = taz.KesslerSaturationAdjustment(
+		domain, grid_type='numerical', air_pressure_on_interface_levels=True,
+		backend=nl.backend, dtype=nl.dtype
+	)
+	args.append(sa)
 
 # wrap the components in a DiagnosticComponentComposite object
-inter_diags = taz.DiagnosticComponentComposite(dv)  #, sa)
+inter_diags = taz.DiagnosticComponentComposite(*args)
 
 # ============================================================
 # The slow diagnostics
@@ -159,7 +226,8 @@ inter_diags = taz.DiagnosticComponentComposite(dv)  #, sa)
 args = []
 
 if nl.precipitation:
-	args.append(rfv)
+	# component calculating the raindrop fall velocity
+	args.append(fv)
  
 	# component calculating the accumulated precipitation
 	ap = taz.Precipitation(
@@ -171,7 +239,11 @@ if nl.smooth:
 	# component performing the horizontal smoothing
 	hs = taz.IsentropicHorizontalSmoothing(
 		domain, nl.smooth_type, nl.smooth_coeff, nl.smooth_coeff_max,
-		nl.smooth_damp_depth, backend=nl.backend, dtype=nl.dtype
+		nl.smooth_damp_depth, tracers=tracers,
+		smooth_tracer_coeff=nl.smooth_moist_coeff,
+		smooth_tracer_coeff_max=nl.smooth_moist_coeff_max,
+		smooth_tracer_damp_depth=nl.smooth_moist_damp_depth,
+		backend=nl.backend, dtype=nl.dtype
 	)
 	args.append(hs)
 
@@ -191,7 +263,7 @@ else:
 # The dynamical core
 # ============================================================
 dycore = taz.IsentropicDynamicalCore(
-	domain, moist=True,
+	domain, tracers=tracers,
 	# parameterizations
 	intermediate_tendencies=inter_tends, intermediate_diagnostics=inter_diags,
 	substeps=nl.substeps, fast_tendencies=None, fast_diagnostics=None,
@@ -203,7 +275,7 @@ dycore = taz.IsentropicDynamicalCore(
 	damp=nl.damp, damp_type=nl.damp_type, damp_depth=nl.damp_depth,
 	damp_max=nl.damp_max, damp_at_every_stage=nl.damp_at_every_stage,
 	# horizontal smoothing
-	smooth=False, smooth_moist=False,
+	smooth=False, smooth_tracer=False,
 	# backend settings
 	backend=nl.backend, dtype=nl.dtype
 )

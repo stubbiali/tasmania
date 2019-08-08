@@ -144,7 +144,6 @@ filename = \
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
-filename = None
 store_names = (
 	'accumulated_precipitation',
 	'air_isentropic_density',
@@ -154,9 +153,9 @@ store_names = (
 	'mass_fraction_of_precipitation_water_in_air',
 	'precipitation',
 	'x_momentum_isentropic',
-	'y_momentum_isentropic',
+	'y_momentum_isentropic'
 )
-save_frequency = -1
+save_frequency = 5
 print_dry_frequency = -1
-print_moist_frequency = 1
+print_moist_frequency = 5
 plot_frequency = -1

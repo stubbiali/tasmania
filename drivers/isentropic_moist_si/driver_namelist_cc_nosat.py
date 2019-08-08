@@ -39,7 +39,7 @@ else:
 # ============================================================
 parser = argparse.ArgumentParser()
 parser.add_argument(
-	'-n', metavar='NAMELIST', type=str, default='namelist_sus.py',
+	'-n', metavar='NAMELIST', type=str, default='namelist_cc.py',
 	help='The namelist file.', dest='namelist'
 )
 args = parser.parse_args()
@@ -47,20 +47,6 @@ namelist = args.namelist.replace('/', '.')
 namelist = namelist[:-3] if namelist.endswith('.py') else namelist
 exec('import {} as namelist'.format(namelist))
 nl = locals()['namelist']
-
-# ============================================================
-# The underlying domain
-# ============================================================
-domain = taz.Domain(
-	nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,
-	horizontal_boundary_type=nl.hb_type, nb=nl.nb,
-	horizontal_boundary_kwargs=nl.hb_kwargs,
-	topography_type=nl.topo_type,
-	topography_kwargs=nl.topo_kwargs,
-	dtype=nl.dtype
-)
-pgrid = domain.physical_grid
-cgrid = domain.numerical_grid
 
 # ============================================================
 # The tracers
@@ -95,49 +81,33 @@ if microphysics_type == 'porz':
 		tracers['number_density_of_precipitation_water']
 
 # ============================================================
+# The underlying domain
+# ============================================================
+domain = taz.Domain(
+	nl.domain_x, nl.nx, nl.domain_y, nl.ny, nl.domain_z, nl.nz,
+	horizontal_boundary_type=nl.hb_type, nb=nl.nb,
+	horizontal_boundary_kwargs=nl.hb_kwargs,
+	topography_type=nl.topo_type,
+	topography_kwargs=nl.topo_kwargs,
+	dtype=nl.dtype
+)
+pgrid = domain.physical_grid
+cgrid = domain.numerical_grid
+
+# ============================================================
 # The initial state
 # ============================================================
 state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
 	cgrid, nl.init_time, nl.x_velocity, nl.y_velocity, nl.brunt_vaisala,
 	moist=True, tracers=tracers, precipitation=nl.precipitation,
-	relative_humidity=nl.relative_humidity,	dtype=nl.dtype
+	relative_humidity=nl.relative_humidity, dtype=nl.dtype
 )
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The dynamics
-# ============================================================
-pt = state['air_pressure_on_interface_levels'][0, 0, 0]
-dycore = taz.IsentropicDynamicalCore(
-	domain, tracers=tracers,
-	# parameterizations
-	intermediate_tendencies=None, intermediate_diagnostics=None,
-	substeps=nl.substeps, fast_tendencies=None, fast_diagnostics=None,
-	# numerical scheme
-	time_integration_scheme=nl.time_integration_scheme,
-	horizontal_flux_scheme=nl.horizontal_flux_scheme,
-	time_integration_properties={'pt': pt, 'eps': nl.eps, 'a': nl.a, 'b': nl.b, 'c': nl.c},
-	# vertical damping
-	damp=nl.damp, damp_type=nl.damp_type, damp_depth=nl.damp_depth,
-	damp_max=nl.damp_max, damp_at_every_stage=nl.damp_at_every_stage,
-	# horizontal smoothing
-	smooth=False, smooth_tracer=False,
-	# backend settings
-	backend=nl.backend, dtype=nl.dtype
-)
-
-# ============================================================
-# The physics
+# The intermediate tendencies
 # ============================================================
 args = []
-ptis = nl.physics_time_integration_scheme
-
-# component retrieving the diagnostic variables
-dv = taz.IsentropicDiagnostics(
-	domain, grid_type='numerical', moist=True, pt=pt,
-	backend=nl.backend, dtype=nl.dtype
-)
-args.append({'component': dv})
 
 if nl.coriolis:
 	# component calculating the Coriolis acceleration
@@ -146,30 +116,18 @@ if nl.coriolis:
 		coriolis_parameter=nl.coriolis_parameter,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args.append({'component': cf, 'time_integrator': ptis, 'substeps': 1})
-
-if nl.smooth:
-	# component performing the horizontal smoothing
-	hs = taz.IsentropicHorizontalSmoothing(
-		domain, nl.smooth_type, nl.smooth_coeff, nl.smooth_coeff_max,
-		nl.smooth_damp_depth, tracers=tracers,
-		smooth_tracer_coeff=nl.smooth_moist_coeff,
-		smooth_tracer_coeff_max=nl.smooth_moist_coeff_max,
-		smooth_tracer_damp_depth=nl.smooth_moist_damp_depth,
-		backend=nl.backend, dtype=nl.dtype
-	)
-	args.append({'component': hs})
+	args.append(cf)
 
 if nl.diff:
 	# component calculating tendencies due to numerical diffusion
-	hd = taz.IsentropicHorizontalDiffusion(
+	diff = taz.IsentropicHorizontalDiffusion(
 		domain, nl.diff_type, nl.diff_coeff, nl.diff_coeff_max, nl.diff_damp_depth,
 		tracers=tracers, diffusion_tracer_coeff=nl.diff_moist_coeff,
 		diffusion_tracer_coeff_max=nl.diff_moist_coeff_max,
 		diffusion_tracer_damp_depth=nl.diff_moist_damp_depth,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args.append({'component': hd, 'time_integrator': ptis, 'substeps': 1})
+	args.append(diff)
 
 if nl.turbulence:
 	# component implementing the Smagorinsky turbulence model
@@ -177,18 +135,7 @@ if nl.turbulence:
 		domain, 'numerical', smagorinsky_constant=nl.smagorinsky_constant,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args.append({'component': turb, 'time_integrator': ptis, 'substeps': 1})
-
-if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
-	# component retrieving the velocity components
-	ivc = taz.IsentropicVelocityComponents(
-		domain, backend=nl.backend, dtype=nl.dtype
-	)
-	args.append({'component': ivc})
-
-# component clipping the negative values of the water species
-clp = taz.Clipping(domain, 'numerical', tracers)
-# args.append({'component': clp})
+	args.append(turb)
 
 # component calculating the microphysics
 if microphysics_type == 'kessler':
@@ -213,14 +160,9 @@ else:
 
 if nl.update_frequency > 0:
 	from sympl import UpdateFrequencyWrapper
-	args.append({
-		'component': UpdateFrequencyWrapper(mc, nl.update_frequency * nl.timestep),
-		'time_integrator': ptis, 'substeps': 1
-	})
+	args.append(UpdateFrequencyWrapper(mc, nl.update_frequency * nl.timestep))
 else:
-	args.append({
-		'component': mc, 'time_integrator': ptis, 'substeps': 1
-	})
+	args.append(mc)
 
 if nl.rain_evaporation:
 	# component integrating the vertical flux
@@ -229,7 +171,7 @@ if nl.rain_evaporation:
 		tendency_of_air_potential_temperature_on_interface_levels=False,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args.append({'component': vf, 'time_integrator': 'rk3ws', 'substeps': 1})
+	args.append(vf)
 
 if nl.precipitation:
 	# component estimating the raindrop fall velocity
@@ -241,32 +183,102 @@ if nl.precipitation:
 		fv = taz.PorzFallVelocity(
 			domain, 'numerical', backend=nl.backend, dtype=nl.dtype
 		)
+	args.append(fv)
 
 	# component integrating the sedimentation flux
 	sd = taz.Sedimentation(
-		domain, 'numerical', tracers=precipitating_tracers,
+		domain, 'numerical', precipitating_tracers,
 		sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
 		backend=nl.backend, dtype=nl.dtype
 	)
-	args.append({
-		'component': taz.ConcurrentCoupling(fv, sd),
-		'time_integrator': 'rk3ws', 'substeps': 1
-	})
+	args.append(sd)
 
+# wrap the components in a ConcurrentCoupling object
+inter_tends = taz.ConcurrentCoupling(*args, execution_policy='serial')
+
+# ============================================================
+# The intermediate diagnostics
+# ============================================================
+args = []
+
+# component retrieving the diagnostic variables
+pt = state['air_pressure_on_interface_levels'][0, 0, 0]
+dv = taz.IsentropicDiagnostics(
+	domain, grid_type='numerical', moist=True, pt=pt,
+	backend=nl.backend, dtype=nl.dtype
+)
+args.append(dv)
+
+# wrap the components in a DiagnosticComponentComposite object
+inter_diags = taz.DiagnosticComponentComposite(*args)
+
+# ============================================================
+# The slow diagnostics
+# ============================================================
+args = []
+
+if nl.precipitation:
+	# component calculating the raindrop fall velocity
+	args.append(fv)
+ 
 	# component calculating the accumulated precipitation
-	ap = taz.Precipitation(domain, 'numerical', backend=nl.backend, dtype=nl.dtype)
-	args.append({'component': fv})
-	args.append({'component': ap})
+	ap = taz.Precipitation(
+		domain, 'numerical', backend=nl.backend, dtype=nl.dtype
+	)
+	args.append(ap)
 
-# component performing the saturation adjustment
+if nl.smooth:
+	# component performing the horizontal smoothing
+	hs = taz.IsentropicHorizontalSmoothing(
+		domain, nl.smooth_type, nl.smooth_coeff, nl.smooth_coeff_max,
+		nl.smooth_damp_depth, tracers=tracers,
+		smooth_tracer_coeff=nl.smooth_moist_coeff,
+		smooth_tracer_coeff_max=nl.smooth_moist_coeff_max,
+		smooth_tracer_damp_depth=nl.smooth_moist_damp_depth,
+		backend=nl.backend, dtype=nl.dtype
+	)
+	args.append(hs)
+
+	# component calculating the velocity components
+	vc = taz.IsentropicVelocityComponents(
+		domain, backend=nl.backend, dtype=nl.dtype
+	)
+	args.append(vc)
+
+if len(args) > 0:
+	# wrap the components in a ConcurrentCoupling object
+	slow_diags = taz.ConcurrentCoupling(*args, execution_policy='serial')
+else:
+	slow_diags = None
+
+# ============================================================
+# The dynamical core
+# ============================================================
+dycore = taz.IsentropicDynamicalCore(
+	domain, tracers=tracers,
+	# parameterizations
+	intermediate_tendencies=inter_tends, intermediate_diagnostics=inter_diags,
+	substeps=nl.substeps, fast_tendencies=None, fast_diagnostics=None,
+	# numerical scheme
+	time_integration_scheme=nl.time_integration_scheme,
+	horizontal_flux_scheme=nl.horizontal_flux_scheme,
+	time_integration_properties={'pt': pt, 'eps': nl.eps, 'a': nl.a, 'b': nl.b, 'c': nl.c},
+	# vertical damping
+	damp=nl.damp, damp_type=nl.damp_type, damp_depth=nl.damp_depth,
+	damp_max=nl.damp_max, damp_at_every_stage=nl.damp_at_every_stage,
+	# horizontal smoothing
+	smooth=False, smooth_tracer=False,
+	# backend settings
+	backend=nl.backend, dtype=nl.dtype
+)
+
+# ============================================================
+# The saturation adjustment
+# ============================================================
 sa = taz.KesslerSaturationAdjustment(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 	backend=nl.backend, dtype=nl.dtype
 )
-args.append({'component': sa})
-
-# wrap the components in a SequentialUpdateSplitting object
-physics = taz.SequentialUpdateSplitting(*args)
 
 # ============================================================
 # A NetCDF monitor
@@ -360,21 +372,25 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# prevent supersaturation
+state.update(sa(state))
+
 for i in range(nt):
 	compute_time_start = time.time()
 
 	# update the (time-dependent) topography
 	dycore.update_topography((i + 1) * dt)
 
-	# compute the dynamics
+	# calculate the dynamics
 	state_new = dycore(state, {}, dt)
+
+	# update the state
 	taz.dict_update(state, state_new)
 
-	# ensure the state is still defined at the current time level
-	state['time'] = nl.init_time + i * dt
-
-	# compute the physics
-	physics(state, dt)
+	# calculate the slow physics
+	if slow_diags is not None:
+		_, diagnostics = slow_diags(state, dt)
+		state.update(diagnostics)
 
 	compute_time += time.time() - compute_time_start
 
@@ -452,3 +468,4 @@ wall_time = time.time() - wall_time_start
 # print logs
 print('Total wall time: {}.'.format(taz.get_time_string(wall_time)))
 print('Compute time: {}.'.format(taz.get_time_string(compute_time)))
+

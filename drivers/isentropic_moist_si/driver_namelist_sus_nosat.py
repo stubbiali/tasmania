@@ -258,15 +258,16 @@ if nl.precipitation:
 	args.append({'component': fv})
 	args.append({'component': ap})
 
-# component performing the saturation adjustment
+# wrap the components in a SequentialUpdateSplitting object
+physics = taz.SequentialUpdateSplitting(*args)
+
+# ============================================================
+# The saturation adjustment
+# ============================================================
 sa = taz.KesslerSaturationAdjustment(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 	backend=nl.backend, dtype=nl.dtype
 )
-args.append({'component': sa})
-
-# wrap the components in a SequentialUpdateSplitting object
-physics = taz.SequentialUpdateSplitting(*args)
 
 # ============================================================
 # A NetCDF monitor
@@ -359,6 +360,9 @@ nt = nl.niter
 
 wall_time_start = time.time()
 compute_time = 0.0
+
+# prevent supersaturation
+state.update(sa(state))
 
 for i in range(nt):
 	compute_time_start = time.time()
