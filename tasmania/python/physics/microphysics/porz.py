@@ -313,6 +313,7 @@ class PorzMicrophysics(TendencyComponent):
 			A2  = self.k2 * np.pi * (3.0 / (4.0 * np.pi * rhol))**(2.0 / 3.0) * \
 			 	vt * rho * qc * qr**(2.0 / 3.0) * nr**(1.0 / 3.0)
 			C   = d * rho * (qv - qvs) * nc**(2.0 / 3.0) * qc**(1.0 / 3.0)
+			C[np.where(qc <= 0.0) or np.where(nc <= 0.0)] = 0.0
 
 			if self._rain_evaporation:
 				# calculate the tendencies due to evaporation
