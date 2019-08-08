@@ -48,7 +48,7 @@ class Clipping(DiagnosticComponent):
 	Clipping negative values of water species.
 	"""
 
-	def __init__(self, domain, grid_type, water_species_names=None):
+	def __init__(self, domain, grid_type, tracers=None):
 		"""
 		Parameters
 		----------
@@ -60,10 +60,12 @@ class Clipping(DiagnosticComponent):
 				* 'physical';
 				* 'numerical'.
 
-		water_species_names : `tuple`, optional
-			The names of the water species to clip.
+		tracers : `dict`, optional
+			Dictionary whose keys are the names of the tracers to clip,
+			and whose values are dictionaries specifying fundamental
+			properties ('units') for those tracers.
 		"""
-		self._names = water_species_names
+		self._tracers = tracers
 		super().__init__(domain, grid_type)
 
 	@property
@@ -71,8 +73,8 @@ class Clipping(DiagnosticComponent):
 		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
 		return_dict = {}
-		for name in self._names:
-			return_dict[name] = {'dims': dims, 'units': 'g g^-1'}
+		for name, props in self._tracers.items():
+			return_dict[name] = {'dims': dims, 'units': props['units']}
 
 		return return_dict
 
@@ -81,15 +83,15 @@ class Clipping(DiagnosticComponent):
 		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
 		return_dict = {}
-		for name in self._names:
-			return_dict[name] = {'dims': dims, 'units': 'g g^-1'}
+		for name, props in self._tracers.items():
+			return_dict[name] = {'dims': dims, 'units': props['units']}
 
 		return return_dict
 
 	def array_call(self, state):
 		diagnostics = {}
 
-		for name in self._names:
+		for name in self._tracers:
 			q = state[name]
 			q[q < 0.0] = 0.0
 			diagnostics[name] = q
