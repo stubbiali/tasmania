@@ -61,12 +61,13 @@ brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
 relative_humidity = 1.3
 
 # time stepping
-time_integration_scheme = 'rk3ws_si'
-substeps                = 0
-eps 					= 0.5
-a 						= 0.375
-b 						= 0.375
-c 						= 0.25
+time_integration_scheme 		= 'rk3ws_si'
+substeps                		= 0
+eps 							= 0.5
+a 								= 0.375
+b 								= 0.375
+c 								= 0.25
+physics_time_integration_scheme = 'rk2'
 
 # advection
 horizontal_flux_scheme = 'fifth_order_upwind'
@@ -93,10 +94,10 @@ diff_moist_damp_depth = 0
 
 # horizontal smoothing
 smooth                		= False
-smooth_type           		= 'second_order'
-smooth_coeff          		= 1.0
+smooth_type           		= 'first_order'
+smooth_coeff          		= 0.1
 smooth_coeff_max      		= 1.0
-smooth_damp_depth     		= 0
+smooth_damp_depth     		= 15
 smooth_at_every_stage 		= False
 smooth_moist                = False
 smooth_moist_type           = 'second_order'
@@ -130,9 +131,9 @@ niter    = int(3*60*60 / timestep.total_seconds())
 
 # output
 filename = \
-	'../../data/isentropic_moist_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'{}_L{}_H{}_u{}_rh{}_thetas{}_{}mcfreq{}{}{}{}{}{}{}_cc.nc'.format(
-		time_integration_scheme, horizontal_flux_scheme,
+	'../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
+	'{}_L{}_H{}_u{}_rh{}_thetas{}_{}mcfreq{}{}{}{}{}{}{}_sts.nc'.format(
+		time_integration_scheme, horizontal_flux_scheme, physics_time_integration_scheme,
 		nx, ny, nz, int(timestep.total_seconds()), niter,
 		topo_type, int(topo_kwargs['width_x'].to_units('m').values.item()),
 		int(topo_kwargs['max_height'].to_units('m').values.item()),
@@ -144,7 +145,6 @@ filename = \
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
-filename = None
 store_names = (
 	'accumulated_precipitation',
 	'air_isentropic_density',
@@ -154,9 +154,10 @@ store_names = (
 	'mass_fraction_of_precipitation_water_in_air',
 	'precipitation',
 	'x_momentum_isentropic',
-	'y_momentum_isentropic',
+	'y_momentum_isentropic'
 )
-save_frequency = -1
+save_frequency = 5
 print_dry_frequency = -1
-print_moist_frequency = 1
+print_moist_frequency = 5
 plot_frequency = -1
+

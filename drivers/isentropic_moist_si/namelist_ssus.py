@@ -58,7 +58,7 @@ init_time  = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(15.0, attrs={'units': 'm s^-1'})
 y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
-relative_humidity = 0.9
+relative_humidity = 1.3
 
 # time stepping
 time_integration_scheme 		= 'rk3ws_si'
@@ -115,6 +115,7 @@ coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
+microphysics_type         = 'kessler'
 precipitation			  = True
 sedimentation    		  = True
 sedimentation_flux_scheme = 'second_order_upwind'
@@ -131,15 +132,16 @@ niter    = int(3*60*60 / timestep.total_seconds())
 # output
 filename = \
 	'../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'{}_L{}_H{}_u{}_rh{}_thetas{}_mcfreq{}{}{}{}{}{}{}_ssus.nc'.format(
-		time_integration_scheme, horizontal_flux_scheme,
-		physics_time_integration_scheme,
+	'{}_L{}_H{}_u{}_rh{}_thetas{}_{}mcfreq{}{}{}{}{}{}{}_ssus.nc'.format(
+		time_integration_scheme, horizontal_flux_scheme, physics_time_integration_scheme,
 		nx, ny, nz, int(timestep.total_seconds()), niter,
 		topo_type, int(topo_kwargs['width_x'].to_units('m').values.item()),
 		int(topo_kwargs['max_height'].to_units('m').values.item()),
 		int(x_velocity.to_units('m s^-1').values.item()),
 		int(relative_humidity * 100), int(domain_z.to_units('K').values[1]),
-		update_frequency, '_diff' if diff else '', '_smooth' if smooth else '',
+		update_frequency,
+		'' if microphysics_type == 'kessler' else '{}_'.format(microphysics_type),
+		'_diff' if diff else '', '_smooth' if smooth else '',
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)

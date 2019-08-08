@@ -39,7 +39,7 @@ else:
 # ============================================================
 parser = argparse.ArgumentParser()
 parser.add_argument(
-	'-n', metavar='NAMELIST', type=str, default='namelist_sus.py',
+	'-n', metavar='NAMELIST', type=str, default='namelist_ps.py',
 	help='The namelist file.', dest='namelist'
 )
 args = parser.parse_args()
@@ -133,11 +133,11 @@ args = []
 ptis = nl.physics_time_integration_scheme
 
 # component retrieving the diagnostic variables
-dv = taz.IsentropicDiagnostics(
+idv = taz.IsentropicDiagnostics(
 	domain, grid_type='numerical', moist=True, pt=pt,
 	backend=nl.backend, dtype=nl.dtype
 )
-args.append({'component': dv})
+args.append({'component': idv})
 
 if nl.coriolis:
 	# component calculating the Coriolis acceleration
@@ -186,10 +186,6 @@ if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
 	)
 	args.append({'component': ivc})
 
-# component clipping the negative values of the water species
-clp = taz.Clipping(domain, 'numerical', tracers)
-# args.append({'component': clp})
-
 # component calculating the microphysics
 if microphysics_type == 'kessler':
 	mc = taz.KesslerMicrophysics(
@@ -218,9 +214,7 @@ if nl.update_frequency > 0:
 		'time_integrator': ptis, 'substeps': 1
 	})
 else:
-	args.append({
-		'component': mc, 'time_integrator': ptis, 'substeps': 1
-	})
+	args.append({'component': mc, 'time_integrator': ptis, 'substeps': 1})
 
 if nl.rain_evaporation:
 	# component integrating the vertical flux
@@ -255,18 +249,24 @@ if nl.precipitation:
 
 	# component calculating the accumulated precipitation
 	ap = taz.Precipitation(domain, 'numerical', backend=nl.backend, dtype=nl.dtype)
-	args.append({'component': fv})
-	args.append({'component': ap})
+	args.append({'component': taz.ConcurrentCoupling(fv, ap)})
 
-# component performing the saturation adjustment
+# component clipping the negative values of the water species
+clp = taz.Clipping(domain, 'numerical', tracers)
+# args.append({'component': clp})
+
+# wrap the components in a ParallelSplitting object
+physics = taz.ParallelSplitting(
+	*args, execution_policy='serial', retrieve_diagnostics_from_provisional_state=True
+)
+
+# ============================================================
+# The saturation adjustment
+# ============================================================
 sa = taz.KesslerSaturationAdjustment(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 	backend=nl.backend, dtype=nl.dtype
 )
-args.append({'component': sa})
-
-# wrap the components in a SequentialUpdateSplitting object
-physics = taz.SequentialUpdateSplitting(*args)
 
 # ============================================================
 # A NetCDF monitor
@@ -360,21 +360,23 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# prevent supersaturation
+state.update(sa(state))
+
 for i in range(nt):
 	compute_time_start = time.time()
 
 	# update the (time-dependent) topography
 	dycore.update_topography((i + 1) * dt)
 
-	# compute the dynamics
-	state_new = dycore(state, {}, dt)
-	taz.dict_update(state, state_new)
+	# calculate the dynamics
+	state_prv = dycore(state, {}, dt)
 
-	# ensure the state is still defined at the current time level
-	state['time'] = nl.init_time + i * dt
+	# calculate the physics
+	physics(state, state_prv, dt)
 
-	# compute the physics
-	physics(state, dt)
+	# update the state
+	taz.dict_update(state, state_prv)
 
 	compute_time += time.time() - compute_time_start
 
@@ -400,9 +402,9 @@ for i in range(nt):
 		)
 
 	if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
-		qv_max = state['mass_fraction_of_water_vapor_in_air'].values[10:-10, 10:-10].max() * 1e3
-		qc_max = state['mass_fraction_of_cloud_liquid_water_in_air'].values[10:-10, 10:-10].max() * 1e3
-		qr_max = state['mass_fraction_of_precipitation_water_in_air'].values[10:-10, 10:-10].max() * 1e3
+		qv_max = state['mass_fraction_of_water_vapor_in_air'].values[10:-10, 10:-10, 30:].max() * 1e3
+		qc_max = state['mass_fraction_of_cloud_liquid_water_in_air'].values[10:-10, 10:-10, 30:].max() * 1e3
+		qr_max = state['mass_fraction_of_precipitation_water_in_air'].values[10:-10, 10:-10, 30:].max() * 1e3
 		if 'precipitation' in state:
 			prec_max = state['precipitation'].to_units('mm hr^-1').values[10:-10, 10:-10].max()
 			accprec_max = state['accumulated_precipitation'].to_units('mm').values[10:-10, 10:-10].max()
@@ -452,3 +454,4 @@ wall_time = time.time() - wall_time_start
 # print logs
 print('Total wall time: {}.'.format(taz.get_time_string(wall_time)))
 print('Compute time: {}.'.format(taz.get_time_string(compute_time)))
+

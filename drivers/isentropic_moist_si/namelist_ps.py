@@ -35,7 +35,7 @@ domain_x = DataArray([-176, 176], dims='x', attrs={'units': 'km'}).to_units('m')
 nx       = 41
 domain_y = DataArray([-176, 176], dims='y', attrs={'units': 'km'}).to_units('m')
 ny       = 41
-domain_z = DataArray([360, 300], dims='potential_temperature', attrs={'units': 'K'})
+domain_z = DataArray([340, 280], dims='potential_temperature', attrs={'units': 'K'})
 nz       = 60
 
 # horizontal boundary
@@ -58,7 +58,7 @@ init_time  = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(15.0, attrs={'units': 'm s^-1'})
 y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
-relative_humidity = 0.9
+relative_humidity = 1.3
 
 # time stepping
 time_integration_scheme 		= 'rk3ws_si'
@@ -111,14 +111,15 @@ turbulence 			 = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis           = True
+coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
+microphysics_type         = 'kessler'
 precipitation			  = True
 sedimentation    		  = True
 sedimentation_flux_scheme = 'second_order_upwind'
-rain_evaporation 		  = True
+rain_evaporation 		  = False
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
 collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
@@ -126,18 +127,20 @@ update_frequency          = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter    = int(4*60*60 / timestep.total_seconds())
+niter    = int(3*60*60 / timestep.total_seconds())
 
 # output
 filename = \
 	'../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ps_1.nc'.format(
+	'{}_L{}_H{}_u{}_rh{}_thetas{}_{}mcfreq{}{}{}{}{}{}{}_ps.nc'.format(
 		time_integration_scheme, horizontal_flux_scheme, physics_time_integration_scheme,
 		nx, ny, nz, int(timestep.total_seconds()), niter,
 		topo_type, int(topo_kwargs['width_x'].to_units('m').values.item()),
 		int(topo_kwargs['max_height'].to_units('m').values.item()),
 		int(x_velocity.to_units('m s^-1').values.item()),
-		int(relative_humidity * 100),
+		int(relative_humidity * 100), int(domain_z.to_units('K').values[1]),
+		update_frequency,
+		'' if microphysics_type == 'kessler' else '{}_'.format(microphysics_type),
 		'_diff' if diff else '', '_smooth' if smooth else '',
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
@@ -156,6 +159,5 @@ store_names = (
 )
 save_frequency = -1
 print_dry_frequency = -1
-print_moist_frequency = 5
+print_moist_frequency = 1
 plot_frequency = -1
-
