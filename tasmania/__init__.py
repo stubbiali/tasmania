@@ -91,7 +91,7 @@ from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot, PlotComposite
 from tasmania.python.plot.offline import Line
-from tasmania.python.plot.patches import Circle, Rectangle
+from tasmania.python.plot.patches import Annotation, Circle, Rectangle, Segment
 from tasmania.python.plot.plot_utils import \
 	get_figure_and_axes, set_axes_properties, set_figure_properties
 from tasmania.python.plot.profile import LineProfile
@@ -114,6 +114,7 @@ __version__ = '0.3.0'
 
 __all__ = (
 	Animation,
+	Annotation,
 	BurgersDynamicalCore,
 	BurgersHorizontalDiffusion,
 	CDF,
@@ -191,6 +192,7 @@ __all__ = (
 	RMSD,
 	RRMSD,
 	Sedimentation,
+	Segment,
 	SequentialTendencySplitting,
 	SequentialUpdateSplitting,
 	set_axes_properties,

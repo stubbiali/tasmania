@@ -33,6 +33,7 @@ This module contains:
 	make_quiver
 	make_rectangle
 	make_cdf
+	add_annotation
 """
 from matplotlib import rc, rcParams
 from matplotlib.colors import LinearSegmentedColormap
@@ -377,6 +378,7 @@ def set_axes_properties(ax, **kwargs):
 	title_center              = kwargs.get('title_center', '')
 	title_left                = kwargs.get('title_left', '')
 	title_right               = kwargs.get('title_right', '')
+	title_vertical_location   = kwargs.get('title_vertical_location', 1.0)
 	# x-axis
 	x_label                   = kwargs.get('x_label', '')
 	x_labelcolor              = kwargs.get('x_labelcolor', 'black')
@@ -422,8 +424,12 @@ def set_axes_properties(ax, **kwargs):
 	# grid
 	grid_on                   = kwargs.get('grid_on', False)
 	grid_properties           = kwargs.get('grid_properties', None)
+	# ax2 title
+	ax2_on					  = kwargs.get('ax2_on', False)
+	ax2_title_center          = kwargs.get('ax2_title_center', '')
+	ax2_title_left            = kwargs.get('ax2_title_left', '')
+	ax2_title_right           = kwargs.get('ax2_title_right', '')
 	# x2-axis
-	ax2_on					   = kwargs.get('ax2_on', False)
 	x2_label                   = kwargs.get('x2_label', '')
 	x2_labelcolor              = kwargs.get('x2_labelcolor', 'black')
 	x2_lim                     = kwargs.get('x2_lim', None)
@@ -451,11 +457,20 @@ def set_axes_properties(ax, **kwargs):
 
 	# plot titles
 	if ax.get_title(loc='center') == '':
-		ax.set_title(title_center, loc='center', fontsize=rcParams['font.size']-1)
+		ax.set_title(
+      		title_center, loc='center', fontsize=rcParams['font.size']-1, 
+        	y=title_vertical_location
+    	)
 	if ax.get_title(loc='left') == '':
-		ax.set_title(title_left, loc='left', fontsize=rcParams['font.size']-1)
+		ax.set_title(
+      		title_left, loc='left', fontsize=rcParams['font.size']-1, 
+        	y=title_vertical_location
+    	)
 	if ax.get_title(loc='right') == '':
-		ax.set_title(title_right, loc='right', fontsize=rcParams['font.size']-1)
+		ax.set_title(
+      		title_right, loc='right', fontsize=rcParams['font.size']-1, 
+        	y=title_vertical_location
+    	)
 
 	# axes labels
 	if ax.get_xlabel() == '':
@@ -682,6 +697,14 @@ def set_axes_properties(ax, **kwargs):
 			ax2.get_yaxis().set_tick_params(which='minor', width=0)
 		if not y2axis_visible:
 			ax2.get_yaxis().set_visible(False)
+
+		# plot titles
+		if ax2.get_title(loc='center') == '':
+			ax2.set_title(ax2_title_center, loc='center', fontsize=rcParams['font.size']-1)
+		if ax2.get_title(loc='left') == '':
+			ax2.set_title(ax2_title_left, loc='left', fontsize=rcParams['font.size']-1)
+		if ax2.get_title(loc='right') == '':
+			ax2.set_title(ax2_title_right, loc='right', fontsize=rcParams['font.size']-1)
 
 
 def reverse_colormap(cmap, name=None):
@@ -1471,3 +1494,21 @@ def make_cdf(data, ax, **kwargs):
 		make_lineplot(values, cdf, ax, **kwargs)
 	else:
 		make_lineplot(cdf, values, ax, **kwargs)
+
+
+def add_annotation(ax, **kwargs):
+	"""
+	Add a text annotation to a plot.
+	"""
+	# get keyword arguments
+	fontsize     		 = kwargs.get('fontsize', 16)
+	text   				 = kwargs.get('text', '')
+	location			 = kwargs.get('location', (0, 0))
+	horizontal_alignment = kwargs.get('horizontal_alignment', 'left')
+	vertical_alignment   = kwargs.get('vertical_alignment', 'center')
+ 
+	# add annotation
+	ax.annotate(
+    	text, location, horizontalalignment=horizontal_alignment,
+    	verticalalignment=vertical_alignment, fontsize=fontsize
+	)

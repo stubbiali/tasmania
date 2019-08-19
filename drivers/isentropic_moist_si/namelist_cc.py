@@ -138,9 +138,8 @@ filename = \
 		int(topo_kwargs['max_height'].to_units('m').values.item()),
 		int(x_velocity.to_units('m s^-1').values.item()),
 		int(relative_humidity * 100), int(domain_z.to_units('K').values[1]),
-		update_frequency,
 		'' if microphysics_type == 'kessler' else '{}_'.format(microphysics_type),
-		'_diff' if diff else '', '_smooth' if smooth else '',
+		update_frequency, '_diff' if diff else '', '_smooth' if smooth else '',
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
