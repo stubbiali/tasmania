@@ -32,9 +32,9 @@ dtype   = np.float64
 
 # computational domain
 domain_x = DataArray([-176, 176], dims='x', attrs={'units': 'km'}).to_units('m')
-nx       = 41
+nx       = 161
 domain_y = DataArray([-176, 176], dims='y', attrs={'units': 'km'}).to_units('m')
-ny       = 41
+ny       = 161
 domain_z = DataArray([340, 280], dims='potential_temperature', attrs={'units': 'K'})
 nz       = 60
 
@@ -58,15 +58,16 @@ init_time  = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(15.0, attrs={'units': 'm s^-1'})
 y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
 brunt_vaisala = DataArray(0.01, attrs={'units': 's^-1'})
-relative_humidity = 1.3
+relative_humidity = 0.9
 
 # time stepping
-time_integration_scheme = 'rk3ws_si'
-substeps                = 0
-eps 					= 0.5
-a 						= 0.375
-b 						= 0.375
-c 						= 0.25
+time_integration_scheme 		= 'rk3ws_si'
+substeps                		= 0
+eps 							= 0.5
+a 								= 0.375
+b 								= 0.375
+c 								= 0.25
+physics_time_integration_scheme = 'rk2'
 
 # advection
 horizontal_flux_scheme = 'fifth_order_upwind'
@@ -114,36 +115,34 @@ coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-microphysics_type         = 'kessler'
 precipitation			  = True
 sedimentation    		  = True
 sedimentation_flux_scheme = 'second_order_upwind'
-rain_evaporation 		  = False
+rain_evaporation 		  = True
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
 collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
 update_frequency 		  = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
+timestep = timedelta(seconds=5)
 niter    = int(3*60*60 / timestep.total_seconds())
 
 # output
 filename = \
-	'../../data/isentropic_moist_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'{}_L{}_H{}_u{}_rh{}_thetas{}_{}mcfreq{}{}{}{}{}{}{}_lcc.nc'.format(
+	'../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
+	'{}_L{}_H{}_u{}_rh{}_thetas{}_mcfreq{}{}{}{}{}{}{}_ssus.nc'.format(
 		time_integration_scheme, horizontal_flux_scheme,
+		physics_time_integration_scheme,
 		nx, ny, nz, int(timestep.total_seconds()), niter,
 		topo_type, int(topo_kwargs['width_x'].to_units('m').values.item()),
 		int(topo_kwargs['max_height'].to_units('m').values.item()),
 		int(x_velocity.to_units('m s^-1').values.item()),
 		int(relative_humidity * 100), int(domain_z.to_units('K').values[1]),
-		'' if microphysics_type == 'kessler' else '{}_'.format(microphysics_type),
 		update_frequency, '_diff' if diff else '', '_smooth' if smooth else '',
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
-filename = None
 store_names = (
 	'accumulated_precipitation',
 	'air_isentropic_density',
@@ -157,5 +156,5 @@ store_names = (
 )
 save_frequency = -1
 print_dry_frequency = -1
-print_moist_frequency = 1
+print_moist_frequency = -1
 plot_frequency = -1

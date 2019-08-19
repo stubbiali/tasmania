@@ -33,7 +33,7 @@ dx = np.array([1/10, 1/20, 1/40, 1/80])
 
 figure_properties = {
 	'fontsize': 16,
-	'figsize': (6, 6),
+	'figsize': (6, 6.5),
 	'tight_layout': True,
 	'tight_layout_rect': None, #(0.0, 0.0, 0.7, 1.0),
 }

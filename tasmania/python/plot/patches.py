@@ -22,11 +22,52 @@
 #
 """
 This module contains:
-	Rectangle(Drawer)
+	Annotation(Drawer)
 	Circle(Drawer)
+	Rectangle(Drawer)
+	Segment(Drawer)
 """
 from tasmania.python.plot.drawer import Drawer
-from tasmania.python.plot.plot_utils import make_circle, make_rectangle
+from tasmania.python.plot.plot_utils import \
+    add_annotation, make_circle, make_lineplot, make_rectangle
+
+
+class Annotation(Drawer):
+	"""
+	Add an annotation.
+	"""
+	def __init__(self, properties=None):
+		"""
+		Parameters
+		----------
+		properties : `dict`, optional
+			Dictionary whose keys are strings denoting plot-specific
+			properties, and whose values specify values for those properties.
+			See :func:`~tasmania.python.plot.plot_utils.add_annotation`.
+		"""
+		super().__init__(properties)
+
+	def __call__(self, state, fig, ax):
+		add_annotation(ax, **self.properties)
+
+
+class Circle(Drawer):
+	"""
+	Drawer plotting a circle.
+	"""
+	def __init__(self, properties=None):
+		"""
+		Parameters
+		----------
+		properties : `dict`, optional
+			Dictionary whose keys are strings denoting plot-specific
+			properties, and whose values specify values for those properties.
+			See :func:`~tasmania.python.plot.plot_utils.make_circle`.
+		"""
+		super().__init__(properties)
+
+	def __call__(self, state, fig, ax):
+		make_circle(ax, **self.properties)
 
 
 class Rectangle(Drawer):
@@ -48,20 +89,27 @@ class Rectangle(Drawer):
 		make_rectangle(ax, **self.properties)
 
 
-class Circle(Drawer):
+class Segment(Drawer):
 	"""
-	Drawer plotting a circle.
+	Drawer plotting a segment.
 	"""
-	def __init__(self, properties=None):
+	def __init__(self, x, y, properties=None):
 		"""
 		Parameters
 		----------
+		x : array
+			2-items :class:`numpy.array` storing the x-coordinates of the 
+			line end-points.
+		y : array
+			2-items :class:`numpy.array` storing the y-coordinates of the 
+			line end-points.
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			properties, and whose values specify values for those properties.
-			See :func:`~tasmania.python.plot.plot_utils.make_circle`.
+			See :func:`~tasmania.python.plot.plot_utils.make_lineplot`.
 		"""
+		self.x, self.y = x, y
 		super().__init__(properties)
 
 	def __call__(self, state, fig, ax):
-		make_circle(ax, **self.properties)
+		make_lineplot(self.x, self.y, ax, **self.properties)

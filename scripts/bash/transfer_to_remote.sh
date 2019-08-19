@@ -32,7 +32,7 @@ LOCAL_ROOT=../..
 # Code
 # ==================================================
 FILES_TO_COPY=()
-ALL_FILES=($(ls $LOCAL_ROOT))
+ALL_FILES=($(ls -a $LOCAL_ROOT))
 
 echo "About to transfer data from the local folder $LOCAL_ROOT to the remote folder $REMOTE:$REMOTE_ROOT."
 echo "Only the files newer than the version at the destination will be transfered."
