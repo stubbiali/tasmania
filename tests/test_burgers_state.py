@@ -26,12 +26,12 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
+
+try:
+	from .utils import st_floats, st_physical_grid
+except (ImportError, ModuleNotFoundError):
+	from utils import st_floats, st_physical_grid
 
 
 @settings(
@@ -47,8 +47,8 @@ def test_zhao_solution_factory(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(zaxis_length=(1, 1)))
-	eps = DataArray(data.draw(utils.st_floats()), attrs={'units': 'm^2 s^-1'})
+	grid = data.draw(st_physical_grid(zaxis_length=(1, 1)))
+	eps = DataArray(data.draw(st_floats()), attrs={'units': 'm^2 s^-1'})
 
 	el0 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx))
 	el1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx))
@@ -102,10 +102,10 @@ def test_zhao_state_factory(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(zaxis_length=(1, 1)))
+	grid = data.draw(st_physical_grid(zaxis_length=(1, 1)))
 
 	eps = DataArray(
-		data.draw(utils.st_floats(min_value=-1e10, max_value=1e10)),
+		data.draw(st_floats(min_value=-1e10, max_value=1e10)),
 		attrs={'units': 'm^2 s^-1'}
 	)
 
@@ -144,4 +144,3 @@ def test_zhao_state_factory(data):
 
 if __name__ == '__main__':
 	pytest.main([__file__])
-	#test_zhao_state_factory()

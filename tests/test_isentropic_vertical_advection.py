@@ -28,18 +28,22 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.physics.vertical_advection import \
 	IsentropicVerticalAdvection, PrescribedSurfaceHeating
 from tasmania.python.utils.data_utils import make_dataarray_3d
-from test_isentropic_minimal_vertical_fluxes import \
-	get_upwind_flux, get_centered_flux, \
-	get_third_order_upwind_flux, get_fifth_order_upwind_flux
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_isentropic_minimal_vertical_fluxes import \
+		get_upwind_flux, get_centered_flux, \
+		get_third_order_upwind_flux, get_fifth_order_upwind_flux
+	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_isentropic_minimal_vertical_fluxes import \
+		get_upwind_flux, get_centered_flux, \
+		get_third_order_upwind_flux, get_fifth_order_upwind_flux
+	from utils import st_domain, st_floats, st_isentropic_state_f, st_one_of
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -218,14 +222,14 @@ def test_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(3, 20)), label="domain")
+	domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
 
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -234,7 +238,7 @@ def test_upwind(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -258,14 +262,14 @@ def test_centered(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(3, 20)), label="domain")
+	domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
 
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -274,7 +278,7 @@ def test_centered(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -298,14 +302,14 @@ def test_third_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(5, 20)), label="domain")
+	domain = data.draw(st_domain(zaxis_length=(5, 20)), label="domain")
 
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -314,7 +318,7 @@ def test_third_order_upwind(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -338,14 +342,14 @@ def test_fifth_order_upwind(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(zaxis_length=(7, 20)), label="domain")
+	domain = data.draw(st_domain(zaxis_length=(7, 20)), label="domain")
 
 	grid = domain.numerical_grid
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=-1e4, max_value=1e4),
+			elements=st_floats(min_value=-1e4, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -354,7 +358,7 @@ def test_fifth_order_upwind(data):
 	state['tendency_of_air_potential_temperature_on_interface_levels'] = \
 		make_dataarray_3d(field, grid, 'K s^-1')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed
@@ -378,7 +382,7 @@ def test_prescribed_surface_heating(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+	domain = data.draw(st_domain(), label="domain")
 	grid = domain.numerical_grid
 
 	time = data.draw(
@@ -390,7 +394,7 @@ def test_prescribed_surface_heating(data):
 	field = data.draw(
 		st_arrays(
 			grid.x.dtype, (grid.nx, grid.ny, grid.nz+1),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		)
 	)
@@ -404,15 +408,15 @@ def test_prescribed_surface_heating(data):
 			make_dataarray_3d(field, grid, 'm'),
 	}
 
-	f0d_sw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	f0d_fw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	f0n_sw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	f0n_fw = data.draw(utils.st_floats(min_value=0, max_value=100))
-	w_sw = data.draw(utils.st_floats(min_value=0.1, max_value=100))
-	w_fw = data.draw(utils.st_floats(min_value=0.1, max_value=100))
-	ad = data.draw(utils.st_floats(min_value=0, max_value=100))
-	an = data.draw(utils.st_floats(min_value=0, max_value=100))
-	cl = data.draw(utils.st_floats(min_value=0, max_value=100))
+	f0d_sw = data.draw(st_floats(min_value=0, max_value=100))
+	f0d_fw = data.draw(st_floats(min_value=0, max_value=100))
+	f0n_sw = data.draw(st_floats(min_value=0, max_value=100))
+	f0n_fw = data.draw(st_floats(min_value=0, max_value=100))
+	w_sw = data.draw(st_floats(min_value=0.1, max_value=100))
+	w_fw = data.draw(st_floats(min_value=0.1, max_value=100))
+	ad = data.draw(st_floats(min_value=0, max_value=100))
+	an = data.draw(st_floats(min_value=0, max_value=100))
+	cl = data.draw(st_floats(min_value=0, max_value=100))
 	t0 = data.draw(
 		hyp_st.datetimes(
 			min_value=datetime(1992, 2, 20),
@@ -420,7 +424,7 @@ def test_prescribed_surface_heating(data):
 		)
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+	backend = data.draw(st_one_of(conf_backend), label="backend")
 
 	# ========================================
 	# test bed

@@ -30,7 +30,7 @@ from sympl import DataArray
 
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.prognostic \
 	import IsentropicPrognostic
@@ -40,20 +40,16 @@ from tasmania.python.utils.data_utils import make_raw_state
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
+	from .test_isentropic_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
-	from .test_isentropic_minimal_prognostic import \
-		forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
 		st_domain, st_floats, st_one_of, st_isentropic_state_f
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import \
+	from test_isentropic_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
-	from test_isentropic_minimal_prognostic import \
-		forward_euler_step
 	from utils import compare_arrays, compare_datetimes, \
 		st_domain, st_floats, st_one_of, st_isentropic_state_f
 
@@ -61,6 +57,17 @@ except ModuleNotFoundError:
 mfwv = 'mass_fraction_of_water_vapor_in_air'
 mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
+
+
+def forward_euler_step(
+	get_fluxes, mode, dx, dy, dt, u_tmp, v_tmp, phi, phi_tmp, phi_tnd, phi_out
+):
+	flux_x, flux_y = get_fluxes(u_tmp, v_tmp, phi_tmp)
+	phi_out[1:-1, 1:-1] = phi[1:-1, 1:-1] - dt * (
+		((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != 'y' else 0.0) +
+		((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != 'x' else 0.0) -
+		(phi_tnd[1:-1, 1:-1] if phi_tnd is not None else 0.0)
+	)
 
 
 @settings(

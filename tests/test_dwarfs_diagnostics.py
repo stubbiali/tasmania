@@ -26,13 +26,14 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import st_floats, st_one_of, st_physical_grid
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import st_floats, st_one_of, st_physical_grid
 
 
 @settings(
@@ -48,13 +49,13 @@ def test_horizontal_velocity_staggered(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(), label='grid')
+	grid = data.draw(st_physical_grid(), label='grid')
 	dtype = grid.x.dtype
 
 	r = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
@@ -62,7 +63,7 @@ def test_horizontal_velocity_staggered(data):
 	u = data.draw(
 		st_arrays(
 			dtype, (grid.nx+1, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=-1e3, max_value=1e3),
+			elements=st_floats(min_value=-1e3, max_value=1e3),
 			fill=hyp_st.nothing(),
 		),
 		label='u'
@@ -70,13 +71,13 @@ def test_horizontal_velocity_staggered(data):
 	v = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny+1, grid.nz),
-			elements=utils.st_floats(min_value=-1e3, max_value=1e3),
+			elements=st_floats(min_value=-1e3, max_value=1e3),
 			fill=hyp_st.nothing(),
 		),
 		label='v'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -120,13 +121,13 @@ def test_horizontal_velocity(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(), label='grid')
+	grid = data.draw(st_physical_grid(), label='grid')
 	dtype = grid.x.dtype
 
 	r = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
@@ -134,7 +135,7 @@ def test_horizontal_velocity(data):
 	u = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=-1e3, max_value=1e3),
+			elements=st_floats(min_value=-1e3, max_value=1e3),
 			fill=hyp_st.nothing(),
 		),
 		label='u'
@@ -142,13 +143,13 @@ def test_horizontal_velocity(data):
 	v = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=-1e3, max_value=1e3),
+			elements=st_floats(min_value=-1e3, max_value=1e3),
 			fill=hyp_st.nothing(),
 		),
 		label='v'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -187,13 +188,13 @@ def test_water_constituent(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	grid = data.draw(utils.st_physical_grid(), label='grid')
+	grid = data.draw(st_physical_grid(), label='grid')
 	dtype = grid.x.dtype
 
 	r = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=1, max_value=1e4),
+			elements=st_floats(min_value=1, max_value=1e4),
 			fill=hyp_st.nothing(),
 		),
 		label='r'
@@ -201,13 +202,13 @@ def test_water_constituent(data):
 	q = data.draw(
 		st_arrays(
 			dtype, (grid.nx, grid.ny, grid.nz),
-			elements=utils.st_floats(min_value=-1e3, max_value=1e3),
+			elements=st_floats(min_value=-1e3, max_value=1e3),
 			fill=hyp_st.nothing(),
 		),
 		label='u'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed

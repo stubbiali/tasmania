@@ -27,7 +27,7 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.vertical_fluxes import \
 	IsentropicBoussinesqMinimalVerticalFlux
 from tasmania.python.isentropic.dynamics.implementations.boussinesq_minimal_vertical_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind

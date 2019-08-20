@@ -25,16 +25,17 @@ from hypothesis import \
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 import gridtools as gt
 from tasmania.python.burgers.dynamics.advection import \
 	BurgersAdvection, _FirstOrder, _SecondOrder, _ThirdOrder, \
 	_FourthOrder, _FifthOrder
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import st_burgers_state, st_one_of, st_physical_grid
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import st_burgers_state, st_one_of, st_physical_grid
 
 
 class WrappingStencil:
@@ -103,15 +104,15 @@ def test_first_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*_FirstOrder.extent+1, 40),
 			yaxis_length=(2*_FirstOrder.extent+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
-	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	state = data.draw(st_burgers_state(grid), label='state')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
@@ -175,15 +176,15 @@ def test_second_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*_SecondOrder.extent+1, 40),
 			yaxis_length=(2*_SecondOrder.extent+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
-	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	state = data.draw(st_burgers_state(grid), label='state')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
@@ -263,15 +264,15 @@ def test_third_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*_ThirdOrder.extent+1, 40),
 			yaxis_length=(2*_ThirdOrder.extent+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
-	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	state = data.draw(st_burgers_state(grid), label='state')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
@@ -341,15 +342,15 @@ def test_fourth_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*_FourthOrder.extent+1, 40),
 			yaxis_length=(2*_FourthOrder.extent+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
-	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	state = data.draw(st_burgers_state(grid), label='state')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
@@ -433,15 +434,15 @@ def test_fifth_order(data):
 	# random data generation
 	# ========================================
 	grid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*_FifthOrder.extent+1, 40),
 			yaxis_length=(2*_FifthOrder.extent+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
-	state = data.draw(utils.st_burgers_state(grid), label='state')
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	state = data.draw(st_burgers_state(grid), label='state')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()

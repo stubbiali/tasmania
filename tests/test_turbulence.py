@@ -26,14 +26,15 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.physics.turbulence import Smagorinsky2d
 from tasmania.python.utils.data_utils import make_dataarray_3d
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import compare_dataarrays, st_domain, st_floats, st_one_of
 
 
 def smagorinsky2d_validation(dx, dy, cs, u, v):
@@ -74,8 +75,8 @@ def test_smagorinsky2d(data):
 	# ========================================
 	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf.nb)))
 
-	domain = data.draw(utils.st_domain(nb=nb), label='domain')
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label='grid_type')
+	domain = data.draw(st_domain(nb=nb), label='domain')
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label='grid_type')
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label='cs')
@@ -85,7 +86,7 @@ def test_smagorinsky2d(data):
 	field = data.draw(
 		st_arrays(
 			dtype, (nx+1, ny+1, nz),
-			elements=utils.st_floats(min_value=-1e3, max_value=1e3),
+			elements=st_floats(min_value=-1e3, max_value=1e3),
 			fill=hyp_st.nothing(),
 		),
 		label='field'
@@ -93,7 +94,7 @@ def test_smagorinsky2d(data):
 
 	time = data.draw(hyp_st.datetimes(), label='time')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	# ========================================
 	# test bed
@@ -118,13 +119,13 @@ def test_smagorinsky2d(data):
 	tendencies, diagnostics = smag(state)
 
 	assert 'x_velocity' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['x_velocity'][nb:-nb, nb:-nb],
 		make_dataarray_3d(u_tnd, grid, 'm s^-2')[nb:-nb, nb:-nb],
 		compare_coordinate_values=False
 	)
 	assert 'y_velocity' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['y_velocity'][nb:-nb, nb:-nb],
 		make_dataarray_3d(v_tnd, grid, 'm s^-2')[nb:-nb, nb:-nb],
 		compare_coordinate_values=False

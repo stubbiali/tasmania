@@ -36,13 +36,11 @@ from tasmania.python.utils.data_utils import make_dataarray_3d
 try:
 	from .conf import backend as conf_backend
 	from .utils import compare_datetimes, compare_arrays, compare_dataarrays, \
-		st_floats, st_one_of, st_domain, st_physical_grid, \
-		st_isentropic_state, st_isentropic_boussinesque_state_f
+		st_floats, st_one_of, st_domain, st_physical_grid, st_isentropic_state
 except ModuleNotFoundError:
 	from conf import backend as conf_backend
 	from utils import compare_datetimes, compare_arrays, compare_dataarrays, \
-		st_floats, st_one_of, st_domain, st_physical_grid, \
-		st_isentropic_state, st_isentropic_boussinesque_state_f
+		st_floats, st_one_of, st_domain, st_physical_grid, st_isentropic_state
 
 
 @settings(

@@ -27,20 +27,20 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicBoussinesqMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.implementations.boussinesq_minimal_horizontal_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
+	from .test_isentropic_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 	from .utils import compare_arrays, st_domain, st_floats, st_one_of
-except ModuleNotFoundError:
+except (ModuleNotFoundError, ImportError):
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import \
+	from test_isentropic_horizontal_fluxes import \
 		get_upwind_fluxes, get_centered_fluxes, \
 		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 	from utils import compare_arrays, st_domain, st_floats, st_one_of
