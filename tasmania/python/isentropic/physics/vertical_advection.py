@@ -30,7 +30,8 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import \
+	IsentropicMinimalVerticalFlux
 from tasmania.python.utils.data_utils import get_physical_constants
 
 try:
@@ -78,8 +79,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			:class:`~tasmania.TendencyComponent`.
 		"""
 		# keep track of input arguments
-		self._moist   = moist
-		self._stgz    = tendency_of_air_potential_temperature_on_interface_levels
+		self._moist = moist
+		self._stgz  = tendency_of_air_potential_temperature_on_interface_levels
 
 		# call parent's constructor
 		super().__init__(domain, 'numerical', **kwargs)

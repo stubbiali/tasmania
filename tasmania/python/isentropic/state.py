@@ -221,8 +221,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 		state[mfwv] = make_dataarray_3d(qv, grid, 'g g^-1', name=mfwv)
 
 		# initialize the mass fraction of cloud liquid water and precipitation water
-		qc = 0.0000 * np.ones((nx, ny, nz), dtype=dtype)
-		qc[:, :, -10:] = 0.0005
+		qc = np.zeros((nx, ny, nz), dtype=dtype)
 		state[mfcw] = make_dataarray_3d(qc, grid, 'g g^-1', name=mfcw)
 		qr = np.zeros((nx, ny, nz), dtype=dtype)
 		state[mfpw] = make_dataarray_3d(qr, grid, 'g g^-1', name=mfpw)

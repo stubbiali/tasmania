@@ -31,7 +31,7 @@ import numpy as np
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics
-from tasmania.python.isentropic.dynamics.fluxes import \
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
 	IsentropicHorizontalFlux, IsentropicMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
 

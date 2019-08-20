@@ -33,7 +33,7 @@ This module contains:
 	get_fifth_order_upwind_flux
 """
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import IsentropicMinimalVerticalFlux
 
 
 class Upwind(IsentropicMinimalVerticalFlux):

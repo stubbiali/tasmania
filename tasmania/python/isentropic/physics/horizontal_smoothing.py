@@ -31,9 +31,9 @@ from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.framework.base_components import DiagnosticComponent
 
 
-mfwv  = 'mass_fraction_of_water_vapor_in_air'
-mfclw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw  = 'mass_fraction_of_precipitation_water_in_air'
+mfwv = 'mass_fraction_of_water_vapor_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 class IsentropicHorizontalSmoothing(DiagnosticComponent):
@@ -123,7 +123,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 
 		if self._moist:
 			return_dict[mfwv]  = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfclw] = {'dims': dims, 'units': 'g g^-1'}
+			return_dict[mfcw] = {'dims': dims, 'units': 'g g^-1'}
 			return_dict[mfpw]  = {'dims': dims, 'units': 'g g^-1'}
 
 		return return_dict
@@ -133,22 +133,21 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 		return self.input_properties
 
 	def array_call(self, state):
-		#self._core(state['air_isentropic_density'], self._s_out)
+		self._core(state['air_isentropic_density'], self._s_out)
 		self._core(state['x_momentum_isentropic'],  self._su_out)
 		self._core(state['y_momentum_isentropic'],  self._sv_out)
 		return_dict = {
-			#'air_isentropic_density': self._s_out,
-			'air_isentropic_density': state['air_isentropic_density'],
+			'air_isentropic_density': self._s_out,
 			'x_momentum_isentropic':  self._su_out,
 			'y_momentum_isentropic':  self._sv_out,
 		}
 
 		if self._moist:
 			self._core_moist(state[mfwv],  self._qv_out)
-			self._core_moist(state[mfclw], self._qc_out)
+			self._core_moist(state[mfcw], self._qc_out)
 			self._core_moist(state[mfpw],  self._qr_out)
 			return_dict[mfwv]  = self._qv_out
-			return_dict[mfclw] = self._qc_out
+			return_dict[mfcw] = self._qc_out
 			return_dict[mfpw]  = self._qr_out
 
 		return return_dict

@@ -31,7 +31,7 @@ This module contains:
 	get_maccormack_flux
 """
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import IsentropicVerticalFlux
 
 
 class Upwind(IsentropicVerticalFlux):
@@ -49,14 +49,15 @@ class Upwind(IsentropicVerticalFlux):
 	order : int
 		Order of accuracy.
 	"""
-	def __init__(self, grid, moist_on):
-		super().__init__(grid, moist_on)
+	def __init__(self, grid, moist):
+		super().__init__(grid, moist)
 		self.nb = 1
 		self.order = 1
 
-	def __call__(self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
-				 sqv=None, sqv_prv=None, sqc=None,
-				 sqc_prv=None, sqr=None, sqr_prv=None):
+	def __call__(
+		self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
+		sqv=None, sqv_prv=None, sqc=None, sqc_prv=None, sqr=None, sqr_prv=None
+	):
 		# Interpolate the vertical velocity at the model half-levels
 		w_mid = gt.Equation()
 		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k-1])
@@ -69,7 +70,7 @@ class Upwind(IsentropicVerticalFlux):
 		# Initialize return list
 		return_list = [flux_s_z, flux_su_z, flux_sv_z]
 
-		if self._moist_on:
+		if self._moist:
 			# Compute flux for the water constituents
 			flux_sqv_z = get_upwind_flux(i, j, k, w_mid, sqv)
 			flux_sqc_z = get_upwind_flux(i, j, k, w_mid, sqc)
@@ -87,8 +88,8 @@ def get_upwind_flux(i, j, k, w_mid, phi):
 	flux = gt.Equation(name=flux_name)
 
 	flux[i, j, k] = w_mid[i, j, k] * \
-					((w_mid[i, j, k] > 0.) * phi[i, j, k-1] +
-					 (w_mid[i, j, k] < 0.) * phi[i, j,	 k])
+		((w_mid[i, j, k] > 0.) * phi[i, j, k-1] +
+		 (w_mid[i, j, k] < 0.) * phi[i, j,	 k])
 
 	return flux
 
@@ -108,14 +109,15 @@ class Centered(IsentropicVerticalFlux):
 	order : int
 		Order of accuracy.
 	"""
-	def __init__(self, grid, moist_on):
-		super().__init__(grid, moist_on)
+	def __init__(self, grid, moist):
+		super().__init__(grid, moist)
 		self.nb = 1
 		self.order = 2
 
-	def __call__(self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
-				 sqv=None, sqv_prv=None, sqc=None,
-				 sqc_prv=None, sqr=None, sqr_prv=None):
+	def __call__(
+		self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
+		sqv=None, sqv_prv=None, sqc=None, sqc_prv=None, sqr=None, sqr_prv=None
+	):
 		# Interpolate the vertical velocity at the model half-levels
 		w_mid = gt.Equation()
 		w_mid[i, j, k] = 0.5 * (w[i, j, k] + w[i, j, k-1])
@@ -128,7 +130,7 @@ class Centered(IsentropicVerticalFlux):
 		# Initialize return list
 		return_list = [flux_s_z, flux_su_z, flux_sv_z]
 
-		if self._moist_on:
+		if self._moist:
 			# Compute flux for the water constituents
 			flux_sqv_z = get_centered_flux(i, j, k, w_mid, sqv)
 			flux_sqc_z = get_centered_flux(i, j, k, w_mid, sqc)
@@ -165,14 +167,15 @@ class MacCormack(IsentropicVerticalFlux):
 	order : int
 		Order of accuracy.
 	"""
-	def __init__(self, grid, moist_on):
-		super().__init__(grid, moist_on)
+	def __init__(self, grid, moist):
+		super().__init__(grid, moist)
 		self.nb = 1
 		self.order = 2
 
-	def __call__(self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
-				 sqv=None, sqv_prv=None, sqc=None,
-				 sqc_prv=None, sqr=None, sqr_prv=None):
+	def __call__(
+		self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
+		sqv=None, sqv_prv=None, sqc=None, sqc_prv=None, sqr=None, sqr_prv=None
+	):
 		# Compute the predicted values for the isentropic density
 		# and the momenta
 		s_prd  = self._get_maccormack_vertical_predicted_value(
@@ -182,7 +185,7 @@ class MacCormack(IsentropicVerticalFlux):
 		sv_prd = self._get_maccormack_vertical_predicted_value(
 			i, j, k, dt, w, sv, sv_prv)
 
-		if self._moist_on:
+		if self._moist:
 			# Compute the predicted values for the water constituents
 			sqv_prd = self._get_maccormack_vertical_predicted_value(
 				i, j, k, dt, w, sqv, sqv_prv)
@@ -199,7 +202,7 @@ class MacCormack(IsentropicVerticalFlux):
 		# Initialize the return list
 		return_list = [flux_s_z, flux_su_z, flux_sv_z]
 
-		if self._moist_on:
+		if self._moist:
 			# Compute the flux for the water constituents
 			flux_sqv_z = get_maccormack_flux(i, j, k, w, sqv, sqv_prd)
 			flux_sqc_z = get_maccormack_flux(i, j, k, w, sqc, sqc_prd)

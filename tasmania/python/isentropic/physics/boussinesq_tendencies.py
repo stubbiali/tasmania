@@ -35,7 +35,6 @@ import numpy as np
 import gridtools as gt
 from sympl import DataArray
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils.data_utils import get_physical_constants
 
 try:
 	from tasmania.conf import datatype

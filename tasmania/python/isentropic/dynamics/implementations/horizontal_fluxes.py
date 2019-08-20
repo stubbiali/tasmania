@@ -38,7 +38,7 @@ This module contains:
 	get_sixth_order_centered_flux_{x, y}
 """
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.fluxes import IsentropicHorizontalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHorizontalFlux
 
 
 class Upwind(IsentropicHorizontalFlux):
