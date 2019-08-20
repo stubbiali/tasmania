@@ -27,14 +27,9 @@ This module contains:
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.dwarfs.diagnostics import \
-	HorizontalVelocity, WaterConstituent
-from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
 from tasmania.python.isentropic.dynamics.minimal_prognostic import \
 	IsentropicMinimalPrognostic
-from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
 	from tasmania.conf import datatype
@@ -224,7 +219,7 @@ class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
 			smooth_moist_type=smooth_moist_type, smooth_moist_coeff=smooth_moist_coeff,
 			smooth_moist_coeff_max=smooth_moist_coeff_max,
 			smooth_moist_damp_depth=smooth_moist_damp_depth,
-			backend=backend, dtype=datatype
+			backend=backend, dtype=dtype
 		)
 
 		#
