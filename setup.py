@@ -20,10 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from distutils.core import Extension
 import os
 import sys
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
 
 if sys.version_info.major < 3:
@@ -60,10 +59,10 @@ setup(
     keywords='framework coupling',
     url='https://github.com/eth-cscs/tasmania',
     license='',
-    #package_dir={'': 'tasmania'},
+    # package_dir={'': 'tasmania'},
     packages=find_packages(),
     install_requires=read_file('requirements.txt').split('\n'),
-    #package_data={'': ['tests/*', '*.pickle']},
+    # package_data={'': ['tests/*', '*.pickle']},
     setup_requires=['setuptools_scm', 'pytest-runner'],
     tests_require=['pytest'],
     ext_package='tasmania.cpp.parser',
@@ -85,5 +84,6 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ),
 )   

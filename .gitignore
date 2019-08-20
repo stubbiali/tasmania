@@ -1,39 +1,46 @@
-# Byte-compiled / optimized / DLL files
+# byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 
-# C extensions
+# c extensions
 *.so
 
-# Sphinx documentation
+# sphinx documentation
 docs/build/
 
-# IPython Notebook
+# ipython notebook
 .ipynb_checkpoints
 Interactive.ipynb
 
-# Temporary files
+# temporary files
 *.swp
 *.pyc
 
-# PyCharm
+# pycharm
 projectFilesBackup/
 .idea/
 
-# Baseline images for tests
+# tests
 result_images/
+.hypothesis/
 
-# Varia
+# packaging
 .eggs/
-todo.ods
+tasmania.egg-info/
+build/
 
-# Archives
+# archives
 *.tar
 
 # mac
 .DS_Store/
+
+# varia
+buffer/
+spike/
+todo.ods
 
 # AUTOMATICALLY GENERATED TEXT
 # The text after this comment and up to the end of file
