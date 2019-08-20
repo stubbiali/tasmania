@@ -26,42 +26,39 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion as HD
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import compare_arrays, st_domain, st_floats, st_one_of
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import compare_arrays, st_domain, st_floats, st_one_of
 
 
 def assert_xyz(phi_tnd, phi_tnd_assert, nb):
-	assert np.allclose(phi_tnd_assert[nb:-nb, nb:-nb, :], phi_tnd[nb:-nb, nb:-nb, :])
+	compare_arrays(phi_tnd_assert[nb:-nb, nb:-nb, :], phi_tnd[nb:-nb, nb:-nb, :])
 
 
 def assert_xz(phi_tnd, phi_tnd_assert, nb):
-	assert np.allclose(phi_tnd_assert[nb:-nb, :, :], phi_tnd[nb:-nb, :, :])
+	compare_arrays(phi_tnd_assert[nb:-nb, :, :], phi_tnd[nb:-nb, :, :])
 
 
 def assert_yz(phi_tnd, phi_tnd_assert, nb):
-	assert np.allclose(phi_tnd_assert[:, nb:-nb, :], phi_tnd[:, nb:-nb, :])
+	compare_arrays(phi_tnd_assert[:, nb:-nb, :], phi_tnd[:, nb:-nb, :])
 
 
 def second_order_laplacian_x(dx, phi):
 	out = np.zeros_like(phi, phi.dtype)
-
 	out[1:-1, :, :] = \
 		(phi[2:, :, :] - 2.0*phi[1:-1, :, :] + phi[:-2, :, :]) / (dx*dx)
-
 	return out
 
 
 def second_order_laplacian_y(dy, phi):
 	out = np.zeros_like(phi, phi.dtype)
-
 	out[:, 1:-1, :] = \
 		(phi[:, 2:, :] - 2.0*phi[:, 1:-1, :] + phi[:, :-2, :]) / (dy*dy)
-
 	return out
 
 
@@ -117,7 +114,7 @@ def test_second_order(data):
 	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 15),
 			yaxis_length=(1, 15),
 			zaxis_length=(1, 15),
@@ -137,7 +134,7 @@ def test_second_order(data):
 	pphi_rnd = data.draw(
 		st_arrays(
 			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='pphi_rnd'
@@ -145,7 +142,7 @@ def test_second_order(data):
 	cphi_rnd = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='cphi_rnd'
@@ -153,7 +150,7 @@ def test_second_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test
@@ -253,7 +250,7 @@ def test_fourth_order(data):
 	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 15),
 			yaxis_length=(1, 15),
 			zaxis_length=(1, 15),
@@ -273,7 +270,7 @@ def test_fourth_order(data):
 	pphi_rnd = data.draw(
 		st_arrays(
 			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='pphi_rnd'
@@ -281,7 +278,7 @@ def test_fourth_order(data):
 	cphi_rnd = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='cphi_rnd'
@@ -289,7 +286,7 @@ def test_fourth_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test

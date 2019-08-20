@@ -26,15 +26,18 @@ from hypothesis import \
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-from test_burgers_advection import \
-	first_order_advection, third_order_advection, fifth_order_advection
-
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_burgers_advection import \
+		first_order_advection, third_order_advection, fifth_order_advection
+	from .utils import st_burgers_state, st_domain, st_one_of, st_timedeltas
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_burgers_advection import \
+		first_order_advection, third_order_advection, fifth_order_advection
+	from utils import st_burgers_state, st_domain, st_one_of, st_timedeltas
 
 
 @settings(
@@ -49,7 +52,7 @@ def test_forward_euler(data):
 	nb = 1  # TODO: nb = taz_conf.nb
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(2*nb+1, 40),
 			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1),
@@ -63,19 +66,19 @@ def test_forward_euler(data):
 	grid = domain.numerical_grid
 
 	state = data.draw(
-		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
+		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='state'
 	)
 
 	timestep = data.draw(
-		utils.st_timedeltas(
+		st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.x.dtype
 
 	# ========================================
@@ -139,7 +142,7 @@ def test_rk2(data):
 	nb = 2  # TODO: nb = taz_conf.nb
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(2*nb+1, 40),
 			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1),
@@ -153,19 +156,19 @@ def test_rk2(data):
 	grid = domain.numerical_grid
 
 	state = data.draw(
-		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
+		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='state'
 	)
 
 	timestep = data.draw(
-		utils.st_timedeltas(
+		st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.x.dtype
 
 	# ========================================
@@ -244,7 +247,7 @@ def test_rk3ws(data):
 	nb = 3  # TODO: nb = taz_conf.nb
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(2*nb+1, 40),
 			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1),
@@ -258,19 +261,19 @@ def test_rk3ws(data):
 	grid = domain.numerical_grid
 
 	state = data.draw(
-		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
+		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='state'
 	)
 
 	timestep = data.draw(
-		utils.st_timedeltas(
+		st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.x.dtype
 
 	# ========================================

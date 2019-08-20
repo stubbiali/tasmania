@@ -27,19 +27,26 @@ from hypothesis import \
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-from test_burgers_advection import \
-	first_order_advection, third_order_advection, fifth_order_advection
-
 import tasmania.conf as taz_conf
 from tasmania.python.burgers.dynamics.stepper import \
 	BurgersStepper, _ForwardEuler, _RK2, _RK3WS
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.grids.grid import NumericalGrid
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_burgers_advection import \
+		first_order_advection, third_order_advection, fifth_order_advection
+	from .utils import st_burgers_state, st_burgers_tendency, st_domain, st_one_of, \
+		st_horizontal_boundary_type, st_horizontal_boundary_kwargs, \
+		st_physical_grid, st_timedeltas
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_burgers_advection import \
+		first_order_advection, third_order_advection, fifth_order_advection
+	from utils import st_burgers_state, st_burgers_tendency, st_domain, st_one_of, \
+		st_horizontal_boundary_type, st_horizontal_boundary_kwargs, \
+		st_physical_grid, st_timedeltas
 
 
 @settings(
@@ -52,7 +59,7 @@ def test_forward_euler(data):
 	# random data generation
 	# ========================================
 	pgrid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
@@ -61,35 +68,35 @@ def test_forward_euler(data):
 	)
 
 	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
-	hb_type = data.draw(utils.st_horizontal_boundary_type(), label='hb_type')
-	nb = 1  # TODO: nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny))
+	hb_type = data.draw(st_horizontal_boundary_type(), label='hb_type')
+	nb = 1  # TODO: nb = data.draw(st_horizontal_boundary_layers(nx, ny))
 	hb_kwargs = data.draw(
-		utils.st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
+		st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
 	)
 	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
 	grid = NumericalGrid(pgrid, hb)
 
 	state = data.draw(
-		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
+		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
 
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
-			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
+			st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
 
 	timestep = data.draw(
-		utils.st_timedeltas(
+		st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.grid_xy.x.dtype
 
 	# ========================================
@@ -150,7 +157,7 @@ def test_rk2(data):
 	# random data generation
 	# ========================================
 	pgrid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
@@ -159,35 +166,35 @@ def test_rk2(data):
 	)
 
 	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
-	hb_type = data.draw(utils.st_horizontal_boundary_type(), label='hb_type')
-	nb = 2  # TODO: nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny))
+	hb_type = data.draw(st_horizontal_boundary_type(), label='hb_type')
+	nb = 2  # TODO: nb = data.draw(st_horizontal_boundary_layers(nx, ny))
 	hb_kwargs = data.draw(
-		utils.st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
+		st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
 	)
 	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
 	grid = NumericalGrid(pgrid, hb)
 
 	state = data.draw(
-		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
+		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
 
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
-			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
+			st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
 
 	timestep = data.draw(
-		utils.st_timedeltas(
+		st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.grid_xy.x.dtype
 
 	# ========================================
@@ -276,7 +283,7 @@ def test_rk3ws(data):
 	# random data generation
 	# ========================================
 	pgrid = data.draw(
-		utils.st_physical_grid(
+		st_physical_grid(
 			xaxis_length=(2*taz_conf.nb+1, 40),
 			yaxis_length=(2*taz_conf.nb+1, 40),
 			zaxis_length=(1, 1)
@@ -285,35 +292,35 @@ def test_rk3ws(data):
 	)
 
 	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
-	hb_type = data.draw(utils.st_horizontal_boundary_type(), label='hb_type')
-	nb = 3  # TODO: nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny))
+	hb_type = data.draw(st_horizontal_boundary_type(), label='hb_type')
+	nb = 3  # TODO: nb = data.draw(st_horizontal_boundary_layers(nx, ny))
 	hb_kwargs = data.draw(
-		utils.st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
+		st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
 	)
 	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
 
 	grid = NumericalGrid(pgrid, hb)
 
 	state = data.draw(
-		utils.st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
+		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
 		label='in_state'
 	)
 
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
-			utils.st_burgers_tendency(grid, time=state['time']), label='tendency'
+			st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
 
 	timestep = data.draw(
-		utils.st_timedeltas(
+		st_timedeltas(
 			min_value=timedelta(seconds=0),
 			max_value=timedelta(seconds=120)
 		),
 		label='timestep'
 	)
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.grid_xy.x.dtype
 
 	# ========================================

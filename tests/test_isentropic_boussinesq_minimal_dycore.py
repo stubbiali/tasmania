@@ -34,23 +34,23 @@ from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as RawIsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.boussinesq_minimal_dycore import \
-	IsentropicBoussinesqueMinimalDynamicalCore
+	IsentropicBoussinesqMinimalDynamicalCore
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 from tasmania.python.isentropic.physics.pressure_gradient import \
 	IsentropicConservativePressureGradient
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import get_fifth_order_upwind_fluxes
-	from .test_isentropic_minimal_prognostic import forward_euler_step
+	from .test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from .test_isentropic_prognostic import forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
-		st_domain, st_one_of, st_isentropic_boussinesque_state_f
-except ModuleNotFoundError:
+		st_domain, st_one_of, st_isentropic_boussinesq_state_f
+except (ImportError, ModuleNotFoundError):
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import get_fifth_order_upwind_fluxes
-	from test_isentropic_minimal_prognostic import forward_euler_step
+	from test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from test_isentropic_prognostic import forward_euler_step
 	from utils import compare_arrays, compare_datetimes, \
-		st_domain, st_one_of, st_isentropic_boussinesque_state_f
+		st_domain, st_one_of, st_isentropic_boussinesq_state_f
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'
@@ -274,7 +274,7 @@ def test1(data):
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
 	state = data.draw(
-		st_isentropic_boussinesque_state_f(grid, moist=moist), label="state"
+		st_isentropic_boussinesq_state_f(grid, moist=moist), label="state"
 	)
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -314,7 +314,7 @@ def test1(data):
 		hb.nb, backend, dtype
 	)
 
-	dycore = IsentropicBoussinesqueMinimalDynamicalCore(
+	dycore = IsentropicBoussinesqMinimalDynamicalCore(
 		domain,
 		intermediate_tendencies=None,
 		intermediate_diagnostics=None,
@@ -459,7 +459,7 @@ def test2(data):
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
 	state = data.draw(
-		st_isentropic_boussinesque_state_f(grid, moist=moist), label="state"
+		st_isentropic_boussinesq_state_f(grid, moist=moist), label="state"
 	)
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -520,7 +520,7 @@ def test2(data):
 		hb.nb, backend, dtype
 	)
 
-	dycore = IsentropicBoussinesqueMinimalDynamicalCore(
+	dycore = IsentropicBoussinesqMinimalDynamicalCore(
 		domain,
 		intermediate_tendencies=None,
 		intermediate_diagnostics=None,
@@ -601,7 +601,7 @@ def test2(data):
 
 	for key in state:
 		if key == 'time':
-			compare_datetimes(['time'], state_dc['time'])
+			compare_datetimes(state['time'], state_dc['time'])
 		else:
 			compare_arrays(state[key], state_dc[key])
 
@@ -670,7 +670,7 @@ def test3(data):
 
 	moist = data.draw(hyp_st.booleans(), label="moist")
 	state = data.draw(
-		st_isentropic_boussinesque_state_f(grid, moist=moist), label="state"
+		st_isentropic_boussinesq_state_f(grid, moist=moist), label="state"
 	)
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -739,7 +739,7 @@ def test3(data):
 		backend, dtype,
 	)
 
-	dycore = IsentropicBoussinesqueMinimalDynamicalCore(
+	dycore = IsentropicBoussinesqMinimalDynamicalCore(
 		domain,
 		intermediate_tendencies=pg,
 		intermediate_diagnostics=dv,

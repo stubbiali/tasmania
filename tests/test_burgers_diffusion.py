@@ -25,14 +25,22 @@ from hypothesis import \
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-import test_horizontal_diffusion as thd
-
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_horizontal_diffusion import \
+		second_order_diffusion_xyz, second_order_diffusion_xz, second_order_diffusion_yz, \
+		fourth_order_diffusion_xyz, fourth_order_diffusion_xz, fourth_order_diffusion_yz, \
+		assert_xyz, assert_xz, assert_yz
+	from .utils import st_burgers_state, st_domain, st_floats, st_one_of
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_horizontal_diffusion import \
+		second_order_diffusion_xyz, second_order_diffusion_xz, second_order_diffusion_yz, \
+		fourth_order_diffusion_xyz, fourth_order_diffusion_xz, fourth_order_diffusion_yz, \
+		assert_xyz, assert_xz, assert_yz
+	from utils import st_burgers_state, st_domain, st_floats, st_one_of
 
 
 def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
@@ -41,14 +49,14 @@ def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
 	dy = grid.dy.to_units('m').values.item()
 
 	if nx < 3:
-		phi_tnd_assert = smooth_coeff * thd.second_order_diffusion_yz(dy, phi)
-		thd.assert_yz(phi_tnd, phi_tnd_assert, nb)
+		phi_tnd_assert = smooth_coeff * second_order_diffusion_yz(dy, phi)
+		assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif ny < 3:
-		phi_tnd_assert = smooth_coeff * thd.second_order_diffusion_xz(dx, phi)
-		thd.assert_xz(phi_tnd, phi_tnd_assert, nb)
+		phi_tnd_assert = smooth_coeff * second_order_diffusion_xz(dx, phi)
+		assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
-		phi_tnd_assert = smooth_coeff * thd.second_order_diffusion_xyz(dx, dy, phi)
-		thd.assert_xyz(phi_tnd, phi_tnd_assert, nb)
+		phi_tnd_assert = smooth_coeff * second_order_diffusion_xyz(dx, dy, phi)
+		assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -63,7 +71,7 @@ def test_second_order(data):
 	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 15),
 			yaxis_length=(1, 15),
 			zaxis_length=(1, 1),
@@ -80,12 +88,12 @@ def test_second_order(data):
 		(pgrid.nx >= 3 and pgrid.ny >= 3)
 	)
 
-	pstate = data.draw(utils.st_burgers_state(pgrid), label='pgrid')
-	cstate = data.draw(utils.st_burgers_state(cgrid), label='cgrid')
+	pstate = data.draw(st_burgers_state(pgrid), label='pgrid')
+	cstate = data.draw(st_burgers_state(cgrid), label='cgrid')
 
-	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1), label='smooth_coeff')
+	smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label='smooth_coeff')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	# ========================================
 	# test
@@ -155,14 +163,14 @@ def fourth_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
 	dy = grid.dy.to_units('m').values.item()
 
 	if nx < 5:
-		phi_tnd_assert = smooth_coeff * thd.fourth_order_diffusion_yz(dy, phi)
-		thd.assert_yz(phi_tnd, phi_tnd_assert, nb)
+		phi_tnd_assert = smooth_coeff * fourth_order_diffusion_yz(dy, phi)
+		assert_yz(phi_tnd, phi_tnd_assert, nb)
 	elif ny < 5:
-		phi_tnd_assert = smooth_coeff * thd.fourth_order_diffusion_xz(dx, phi)
-		thd.assert_xz(phi_tnd, phi_tnd_assert, nb)
+		phi_tnd_assert = smooth_coeff * fourth_order_diffusion_xz(dx, phi)
+		assert_xz(phi_tnd, phi_tnd_assert, nb)
 	else:
-		phi_tnd_assert = smooth_coeff * thd.fourth_order_diffusion_xyz(dx, dy, phi)
-		thd.assert_xyz(phi_tnd, phi_tnd_assert, nb)
+		phi_tnd_assert = smooth_coeff * fourth_order_diffusion_xyz(dx, dy, phi)
+		assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -177,7 +185,7 @@ def test_fourth_order(data):
 	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 15),
 			yaxis_length=(1, 15),
 			zaxis_length=(1, 1),
@@ -194,12 +202,12 @@ def test_fourth_order(data):
 		(pgrid.nx >= 5 and pgrid.ny >= 5)
 	)
 
-	pstate = data.draw(utils.st_burgers_state(pgrid), label='pgrid')
-	cstate = data.draw(utils.st_burgers_state(cgrid), label='cgrid')
+	pstate = data.draw(st_burgers_state(pgrid), label='pgrid')
+	cstate = data.draw(st_burgers_state(cgrid), label='cgrid')
 
-	smooth_coeff = data.draw(utils.st_floats(min_value=0, max_value=1), label='smooth_coeff')
+	smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label='smooth_coeff')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	# ========================================
 	# test

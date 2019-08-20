@@ -32,7 +32,17 @@ import utils
 
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.utils.data_utils import make_dataarray_3d
-from .test_turbulence import smagorinsky2d_validation
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .test_turbulence import smagorinsky2d_validation
+	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
+		st_isentropic_state_f
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from test_turbulence import smagorinsky2d_validation
+	from utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
+		st_isentropic_state_f
 
 
 @settings(
@@ -50,15 +60,15 @@ def test_smagorinsky(data):
 	# ========================================
 	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf.nb)))
 
-	domain = data.draw(utils.st_domain(nb=nb), label='domain')
-	grid_type = data.draw(utils.st_one_of(('physical', 'numerical')), label='grid_type')
+	domain = data.draw(st_domain(nb=nb), label='domain')
+	grid_type = data.draw(st_one_of(('physical', 'numerical')), label='grid_type')
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 
 	cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label='cs')
 
-	state = data.draw(utils.st_isentropic_state_f(grid, moist=False), label='state')
+	state = data.draw(st_isentropic_state_f(grid, moist=False), label='state')
 
-	backend = data.draw(utils.st_one_of(conf.backend), label='backend')
+	backend = data.draw(st_one_of(conf_backend), label='backend')
 
 	# ========================================
 	# test bed
@@ -82,13 +92,13 @@ def test_smagorinsky(data):
 	tendencies, diagnostics = smag(state)
 
 	assert 'x_momentum_isentropic' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['x_momentum_isentropic'][nb:-nb, nb:-nb],
 		make_dataarray_3d(s * u_tnd, grid, 'kg m^-1 K^-1 s^-2')[nb:-nb, nb:-nb],
 		compare_coordinate_values=False
 	)
 	assert 'y_momentum_isentropic' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['y_momentum_isentropic'][nb:-nb, nb:-nb],
 		make_dataarray_3d(s * v_tnd, grid, 'kg m^-1 K^-1 s^-2')[nb:-nb, nb:-nb],
 		compare_coordinate_values=False

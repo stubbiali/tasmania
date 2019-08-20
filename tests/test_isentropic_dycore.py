@@ -26,13 +26,11 @@ from hypothesis import \
 	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
-from sympl import DataArray
 
 from tasmania.python.dwarfs.diagnostics import \
 	HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as RawIsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
@@ -42,22 +40,17 @@ from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_minimal_horizontal_fluxes import \
-		get_fifth_order_upwind_fluxes
-	from .test_isentropic_minimal_prognostic import \
-		forward_euler_step
+	from .test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from .test_isentropic_prognostic import forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
 		st_floats, st_one_of, st_domain, \
 		st_isentropic_state_f
 except ModuleNotFoundError:
 	from conf import backend as conf_backend  # nb as conf_nb
-	from test_isentropic_minimal_horizontal_fluxes import \
-		get_fifth_order_upwind_fluxes
-	from test_isentropic_minimal_prognostic import \
-		forward_euler_step
+	from test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+	from test_isentropic_prognostic import forward_euler_step
 	from utils import compare_arrays, compare_datetimes, \
-		st_floats, st_one_of, st_domain, \
-		st_isentropic_state_f
+		st_floats, st_one_of, st_domain, st_isentropic_state_f
 
 
 mfwv = 'mass_fraction_of_water_vapor_in_air'

@@ -25,16 +25,19 @@ from hypothesis import \
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.isentropic.physics.pressure_gradient import \
 	IsentropicNonconservativePressureGradient, \
 	IsentropicConservativePressureGradient
 from tasmania.python.utils.data_utils import make_dataarray_3d
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import compare_dataarrays, \
+		st_domain, st_one_of, st_isentropic_state_f
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import compare_dataarrays, \
+		st_domain, st_one_of, st_isentropic_state_f
 
 
 def pressure_thickness_weighted_validation(dx, dy, eps, p, mtg):
@@ -95,15 +98,15 @@ def test_nonconservative(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
+		st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
 	)
 
 	grid = domain.numerical_grid
 	dtype = grid.x.dtype
 
-	state = data.draw(utils.st_isentropic_state(grid, moist=False), label='state')
+	state = data.draw(st_isentropic_state_f(grid, moist=False), label='state')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -200,13 +203,13 @@ def test_nonconservative(data):
 	v_tnd_val = make_dataarray_3d(v_tnd_val, grid, 'm s^-2')
 
 	assert 'x_velocity' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['x_velocity'][nb:-nb, nb:-nb], u_tnd_val[nb:-nb, nb:-nb],
 		compare_coordinate_values=False
 	)
 
 	assert 'y_velocity' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['y_velocity'][nb:-nb, nb:-nb], v_tnd_val[nb:-nb, nb:-nb],
 		compare_coordinate_values=False
 	)
@@ -230,15 +233,15 @@ def test_conservative(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
+		st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
 	)
 
 	grid = domain.numerical_grid
 	dtype = grid.x.dtype
 
-	state = data.draw(utils.st_isentropic_state(grid, moist=False), label='state')
+	state = data.draw(st_isentropic_state_f(grid, moist=False), label='state')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test bed
@@ -346,13 +349,13 @@ def test_conservative(data):
 	sv_tnd_val = make_dataarray_3d(s * v_tnd_val, grid, 'kg m^-1 K^-1 s^-2')
 
 	assert 'x_momentum_isentropic' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['x_momentum_isentropic'][nb:-nb, nb:-nb], su_tnd_val[nb:-nb, nb:-nb],
 		compare_coordinate_values=False
 	)
 
 	assert 'y_momentum_isentropic' in tendencies
-	utils.compare_dataarrays(
+	compare_dataarrays(
 		tendencies['y_momentum_isentropic'][nb:-nb, nb:-nb], sv_tnd_val[nb:-nb, nb:-nb],
 		compare_coordinate_values=False
 	)

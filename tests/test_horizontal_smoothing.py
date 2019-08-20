@@ -26,33 +26,34 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import compare_arrays, st_domain, st_floats, st_one_of
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import compare_arrays, st_domain, st_floats, st_one_of
 
 
 def assert_xyz(phi, phi_new, phi_new_assert, nb):
-	assert np.allclose(phi_new_assert[nb:-nb, nb:-nb, :], phi_new[nb:-nb, nb:-nb, :])
-	assert np.allclose(phi[:nb, :, :], phi_new[:nb, :, :])
-	assert np.allclose(phi[-nb:, :, :], phi_new[-nb:, :, :])
-	assert np.allclose(phi[nb:-nb, :nb, :], phi_new[nb:-nb, :nb, :])
-	assert np.allclose(phi[nb:-nb, -nb:, :], phi_new[nb:-nb, -nb:, :])
+	compare_arrays(phi_new_assert[nb:-nb, nb:-nb, :], phi_new[nb:-nb, nb:-nb, :])
+	compare_arrays(phi[:nb, :, :], phi_new[:nb, :, :])
+	compare_arrays(phi[-nb:, :, :], phi_new[-nb:, :, :])
+	compare_arrays(phi[nb:-nb, :nb, :], phi_new[nb:-nb, :nb, :])
+	compare_arrays(phi[nb:-nb, -nb:, :], phi_new[nb:-nb, -nb:, :])
 
 
 def assert_xz(phi, phi_new, phi_new_assert, nb):
-	assert np.allclose(phi_new_assert[nb:-nb, :, :], phi_new[nb:-nb, :, :])
-	assert np.allclose(phi[:nb, :, :], phi_new[:nb, :, :])
-	assert np.allclose(phi[-nb:, :, :], phi_new[-nb:, :, :])
+	compare_arrays(phi_new_assert[nb:-nb, :, :], phi_new[nb:-nb, :, :])
+	compare_arrays(phi[:nb, :, :], phi_new[:nb, :, :])
+	compare_arrays(phi[-nb:, :, :], phi_new[-nb:, :, :])
 
 
 def assert_yz(phi, phi_new, phi_new_assert, nb):
-	assert np.allclose(phi_new_assert[:, nb:-nb, :], phi_new[:, nb:-nb, :])
-	assert np.allclose(phi[:, :nb, :], phi_new[:, :nb, :])
-	assert np.allclose(phi[:, -nb:, :], phi_new[:, -nb:, :])
+	compare_arrays(phi_new_assert[:, nb:-nb, :], phi_new[:, nb:-nb, :])
+	compare_arrays(phi[:, :nb, :], phi_new[:, :nb, :])
+	compare_arrays(phi[:, -nb:, :], phi_new[:, -nb:, :])
 
 
 def first_order_smoothing_xyz(phi, g):
@@ -133,7 +134,7 @@ def test_first_order(data):
 	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 30),
 			yaxis_length=(1, 30),
 			zaxis_length=(1, 30),
@@ -153,7 +154,7 @@ def test_first_order(data):
 	pphi_rnd = data.draw(
 		st_arrays(
 			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='pphi_rnd'
@@ -161,7 +162,7 @@ def test_first_order(data):
 	cphi_rnd = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='cphi_rnd'
@@ -169,7 +170,7 @@ def test_first_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test
@@ -290,7 +291,7 @@ def test_second_order(data):
 	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 30),
 			yaxis_length=(1, 30),
 			zaxis_length=(1, 30),
@@ -310,7 +311,7 @@ def test_second_order(data):
 	pphi_rnd = data.draw(
 		st_arrays(
 			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='pphi_rnd'
@@ -318,7 +319,7 @@ def test_second_order(data):
 	cphi_rnd = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='cphi_rnd'
@@ -326,7 +327,7 @@ def test_second_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test
@@ -451,7 +452,7 @@ def test_third_order(data):
 	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, taz_conf.nb)))
 
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 30),
 			yaxis_length=(1, 30),
 			zaxis_length=(1, 30),
@@ -471,7 +472,7 @@ def test_third_order(data):
 	pphi_rnd = data.draw(
 		st_arrays(
 			pgrid.x.dtype, (pgrid.nx+1, pgrid.ny+1, pgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='pphi_rnd'
@@ -479,7 +480,7 @@ def test_third_order(data):
 	cphi_rnd = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='cphi_rnd'
@@ -487,7 +488,7 @@ def test_third_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test

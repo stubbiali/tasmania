@@ -28,15 +28,12 @@ import pytest
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
-	IsentropicMinimalHorizontalFlux
-from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_fluxes import \
+	IsentropicHorizontalFlux
+from tasmania.python.isentropic.dynamics.implementations.horizontal_fluxes import \
 	Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 
 try:
 	from .conf import backend as conf_backend  # nb as conf_nb
-	from .test_isentropic_horizontal_fluxes import \
-		get_upwind_fluxes, get_centered_fluxes, get_maccormack_fluxes, \
-		get_third_order_upwind_fluxes, get_fifth_order_upwind_fluxes
 	from .utils import st_domain, st_floats, st_one_of, compare_arrays
 except (ImportError, ModuleNotFoundError):
 	from conf import backend as conf_backend  # nb as conf_nb
@@ -50,7 +47,7 @@ class WrappingStencil:
 		self.backend = backend
 
 	def __call__(
-		self, dt, s, u, v, su, sv, sqv=None, sqc=None, sqr=None,
+		self, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
 		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
 	):
 		mi, mj, mk = s.shape
@@ -59,7 +56,7 @@ class WrappingStencil:
 		__dt.value = dt
 		global_inputs = {'dt': __dt}
 
-		inputs = {'s': s, 'u': u, 'v': v, 'su': su, 'sv': sv}
+		inputs = {'s': s, 'u': u, 'v': v, 'mtg': mtg, 'su': su, 'sv': sv}
 		if sqv is not None:
 			inputs['sqv'] = sqv
 			inputs['sqc'] = sqc
@@ -114,14 +111,14 @@ class WrappingStencil:
 		stencil.compute()
 
 	def stencil_defs(
-		self, dt, s, u, v, su, sv, sqv=None, sqc=None, sqr=None,
+		self, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
 		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
 	):
 		i = gt.Index(axis=0)
 		j = gt.Index(axis=1)
 
 		fs = self.core(
-			i, j, dt, s, u, v, su, sv, sqv, sqc, sqr,
+			i, j, dt, s, u, v, mtg, su, sv, sqv, sqc, sqr,
 			s_tnd, su_tnd, sv_tnd, qv_tnd, qc_tnd, qr_tnd
 		)
 
@@ -130,6 +127,96 @@ class WrappingStencil:
 		else:
 			return fs[0], fs[1], fs[2], fs[3], fs[4], fs[5], \
 				fs[6], fs[7], fs[8], fs[9], fs[10], fs[11]
+
+
+def get_upwind_fluxes(u, v, phi):
+	nx, ny, nz = phi.shape[0], phi.shape[1], phi.shape[2]
+
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	for i in range(0, nx-1):
+		for j in range(0, ny-1):
+			for k in range(0, nz):
+				fx[i, j, k] = u[i+1, j, k] * (phi[i, j, k] if u[i+1, j, k] > 0 else phi[i+1, j, k])
+				fy[i, j, k] = v[i, j+1, k] * (phi[i, j, k] if v[i, j+1, k] > 0 else phi[i, j+1, k])
+
+	return fx, fy
+
+
+def get_centered_fluxes(u, v, phi):
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	fx[:-1, :] = u[1:-1, :] * 0.5 * (phi[:-1, :] + phi[1:, :])
+	fy[:, :-1] = v[:, 1:-1] * 0.5 * (phi[:, :-1] + phi[:, 1:])
+
+	return fx, fy
+
+
+def get_maccormack_fluxes():
+	### TODO ###
+	pass
+
+
+def get_third_order_upwind_fluxes(u, v, phi):
+	f4x = np.zeros_like(phi, dtype=phi.dtype)
+	f4y = np.zeros_like(phi, dtype=phi.dtype)
+
+	f4x[1:-2, :] = u[2:-2, :] / 12.0 * (
+		7.0 * (phi[2:-1, :] + phi[1:-2, :]) -
+		(phi[3:, :] + phi[:-3, :])
+	)
+	f4y[:, 1:-2] = v[:, 2:-2] / 12.0 * (
+		7.0 * (phi[:, 2:-1] + phi[:, 1:-2]) -
+		(phi[:, 3:] + phi[:, :-3])
+	)
+
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	fx[1:-2, :] = f4x[1:-2, :] - np.abs(u[2:-2, :]) / 12.0 * (
+		3.0 * (phi[2:-1, :] - phi[1:-2, :]) -
+		(phi[3:, :] - phi[:-3, :])
+	)
+	fy[:, 1:-2] = f4y[:, 1:-2] - np.abs(v[:, 2:-2]) / 12.0 * (
+		3.0 * (phi[:, 2:-1] - phi[:, 1:-2]) -
+		(phi[:, 3:] - phi[:, :-3])
+	)
+
+	return fx, fy
+
+
+def get_fifth_order_upwind_fluxes(u, v, phi):
+	f6x = np.zeros_like(phi, dtype=phi.dtype)
+	f6y = np.zeros_like(phi, dtype=phi.dtype)
+
+	f6x[2:-3, :] = u[3:-3, :] / 60.0 * (
+		37.0 * (phi[3:-2, :] + phi[2:-3, :]) -
+		8.0 * (phi[4:-1, :] + phi[1:-4, :]) +
+		(phi[5:, :] + phi[:-5, :])
+	)
+	f6y[:, 2:-3] = v[:, 3:-3] / 60.0 * (
+		37.0 * (phi[:, 3:-2] + phi[:, 2:-3]) -
+		8.0 * (phi[:, 4:-1] + phi[:, 1:-4]) +
+		(phi[:, 5:] + phi[:, :-5])
+	)
+
+	fx = np.zeros_like(phi, dtype=phi.dtype)
+	fy = np.zeros_like(phi, dtype=phi.dtype)
+
+	fx[2:-3, :] = f6x[2:-3, :] - np.abs(u[3:-3, :]) / 60.0 * (
+		10.0 * (phi[3:-2, :] - phi[2:-3, :]) -
+		5.0 * (phi[4:-1, :] - phi[1:-4, :]) +
+		(phi[5:, :] - phi[:-5, :])
+	)
+	fy[:, 2:-3] = f6y[:, 2:-3] - np.abs(v[:, 3:-3]) / 60.0 * (
+		10.0 * (phi[:, 3:-2] - phi[:, 2:-3]) -
+		5.0 * (phi[:, 4:-1] - phi[:, 1:-4]) +
+		(phi[:, 5:] - phi[:, :-5])
+	)
+
+	return fx, fy
 
 
 flux_properties = {
@@ -157,6 +244,7 @@ def validation(flux_scheme, domain, field, timestep, backend):
 	s_eq   = gt.Equation(name='s')
 	u_eq   = gt.Equation(name='u')
 	v_eq   = gt.Equation(name='v')
+	mtg_eq = gt.Equation(name='mtg')
 	su_eq  = gt.Equation(name='su')
 	sv_eq  = gt.Equation(name='sv')
 	sqv_eq = gt.Equation(name='sqv')
@@ -166,11 +254,11 @@ def validation(flux_scheme, domain, field, timestep, backend):
 	#
 	# dry
 	#
-	fluxer_dry = IsentropicMinimalHorizontalFlux.factory(flux_scheme, grid, False)
+	fluxer_dry = IsentropicHorizontalFlux.factory(flux_scheme, grid, False)
 
 	assert isinstance(fluxer_dry, flux_type)
 
-	out = fluxer_dry(i, j, dt, s_eq, u_eq, v_eq, su_eq, sv_eq)
+	out = fluxer_dry(i, j, dt, s_eq, u_eq, v_eq, mtg_eq, su_eq, sv_eq)
 
 	assert len(out) == 6
 	assert all(isinstance(obj, gt.Equation) for obj in out)
@@ -184,12 +272,13 @@ def validation(flux_scheme, domain, field, timestep, backend):
 	#
 	# moist
 	#
-	fluxer_moist = IsentropicMinimalHorizontalFlux.factory(flux_scheme, grid, True)
+	fluxer_moist = IsentropicHorizontalFlux.factory(flux_scheme, grid, True)
 
 	assert isinstance(fluxer_moist, flux_type)
 
 	out = fluxer_moist(
-		i, j, dt, s_eq, u_eq, v_eq, su_eq, sv_eq, sqv=sqv_eq, sqc=sqc_eq, sqr=sqr_eq
+		i, j, dt, s_eq, u_eq, v_eq, mtg_eq, su_eq, sv_eq,
+		sqv=sqv_eq, sqc=sqc_eq, sqr=sqr_eq
 	)
 
 	assert len(out) == 12
@@ -213,6 +302,7 @@ def validation(flux_scheme, domain, field, timestep, backend):
 	s = field[:-1, :-1, :-1]
 	u = field[:, :-1, :-1]
 	v = field[:-1, :, :-1]
+	mtg = field[:-1, 1:, :-1]
 	su = field[1:, :-1, :-1]
 	sv = field[:-1, :-1, :-1]
 	sqv = field[:-1, :-1, 1:]
@@ -223,7 +313,7 @@ def validation(flux_scheme, domain, field, timestep, backend):
 	# dry
 	#
 	ws = WrappingStencil(fluxer_dry, nb, backend)
-	ws(timestep, s, u, v, su, sv)
+	ws(timestep, s, u, v, mtg, su, sv)
 
 	flux_s_x, flux_s_y = get_fluxes(u, v, s)
 	compare_arrays(ws.flux_s_x[nb-1:-nb, nb-1:-nb], flux_s_x[nb-1:-nb, nb-1:-nb])
@@ -241,7 +331,7 @@ def validation(flux_scheme, domain, field, timestep, backend):
 	# moist
 	#
 	ws = WrappingStencil(fluxer_moist, nb, backend)
-	ws(timestep, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
+	ws(timestep, s, u, v, mtg, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
 
 	compare_arrays(ws.flux_s_x[nb-1:-nb, nb-1:-nb], flux_s_x[nb-1:-nb, nb-1:-nb])
 	compare_arrays(ws.flux_s_y[nb-1:-nb, nb-1:-nb], flux_s_y[nb-1:-nb, nb-1:-nb])

@@ -27,13 +27,16 @@ import numpy as np
 from pandas import Timedelta
 import pytest
 
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
+
+try:
+	from .conf import backend as conf_backend  # nb as conf_nb
+	from .utils import compare_arrays, st_domain, st_floats, st_one_of, \
+		st_timedeltas
+except (ImportError, ModuleNotFoundError):
+	from conf import backend as conf_backend  # nb as conf_nb
+	from utils import compare_arrays, st_domain, st_floats, st_one_of, \
+		st_timedeltas
 
 
 def assert_rayleigh(
@@ -55,8 +58,8 @@ def assert_rayleigh(
 	vd(dt, __phi_now, __phi_new, __phi_ref, __phi_out)
 
 	phi_val = __phi_new - dt.total_seconds() * rmat * (__phi_now - __phi_ref)
-	assert np.allclose(__phi_out[:, :, :depth], phi_val[:, :, :depth])
-	assert np.allclose(__phi_out[:, :, depth:], __phi_new[:, :, depth:])
+	compare_arrays(__phi_out[:, :, :depth], phi_val[:, :, :depth])
+	compare_arrays(__phi_out[:, :, depth:], __phi_new[:, :, depth:])
 
 
 @settings(
@@ -73,7 +76,7 @@ def test_rayleigh(data):
 	# random data generation
 	# ========================================
 	domain = data.draw(
-		utils.st_domain(
+		st_domain(
 			xaxis_length=(1, 30),
 			yaxis_length=(1, 30),
 			zaxis_length=(1, 30),
@@ -86,7 +89,7 @@ def test_rayleigh(data):
 	phi_now = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='phi_now'
@@ -94,7 +97,7 @@ def test_rayleigh(data):
 	phi_new = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='phi_new'
@@ -102,20 +105,20 @@ def test_rayleigh(data):
 	phi_ref = data.draw(
 		st_arrays(
 			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=utils.st_floats(min_value=-1e10, max_value=1e10),
+			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
 		label='phi_ref'
 	)
 
 	dt = data.draw(
-		utils.st_timedeltas(min_value=Timedelta(seconds=0), max_value=Timedelta(hours=1)),
+		st_timedeltas(min_value=Timedelta(seconds=0), max_value=Timedelta(hours=1)),
 		label='dt'
 	)
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=cgrid.nz), label='depth')
 
-	backend = data.draw(utils.st_one_of(conf.backend))
+	backend = data.draw(st_one_of(conf_backend))
 
 	# ========================================
 	# test
