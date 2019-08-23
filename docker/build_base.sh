@@ -22,8 +22,8 @@
 #
 
 DOCKERFILE=dockerfile.base
-IMAGE_NAME=tasmania:base
-IMAGE_SAVE=tasmania_base.tar
+IMAGE_NAME=tasmania:base-ng
+IMAGE_SAVE=tasmania_base_ng.tar
 
 echo "About to remove the tar archive '$PWD/$IMAGE_SAVE' (if existing)."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key

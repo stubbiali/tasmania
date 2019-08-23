@@ -63,6 +63,18 @@ RUN wget -q "https://www.openssl.org/source/openssl-1.0.2q.tar.gz" && \
 	rm -rf openssl-1.0.2q
 ENV LD_LIBRARY_PATH /usr/local/ssl/lib
 
+# install XZ utils and lzma, both needed by pandas-0.25.0
+RUN apt-get install -y liblzma-dev
+RUN wget -q "http://tukaani.org/xz/xz-5.0.4.tar.gz" && \
+	tar xzvf xz-5.0.4.tar.gz && \
+	cd xz-5.0.4 && \
+	./configure --prefix=$HOME && \
+	make && \
+	make check && \
+	make install && \
+	cd .. && \
+	rm -rf xz-5.0.4*
+
 # install python3.4
 RUN wget -q 'https://www.python.org/ftp/python/3.4.9/Python-3.4.9.tar.xz'
 RUN tar xf Python-3.4.9.tar.xz

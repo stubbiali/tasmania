@@ -22,8 +22,8 @@
 #
 
 TASMANIA_ROOT=$(cd ..; pwd)
-GT4PY_BRANCH=merge_ubbiali
-IMAGE_NAME=tasmania:master
+GT4PY_BRANCH=new_irs
+IMAGE_NAME=tasmania:gt4py-v0.5.0
 CONTAINER_NAME=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)
 
 echo "About to pull the branch '$GT4PY_BRANCH' of the gridtools4py repository."

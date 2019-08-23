@@ -22,8 +22,8 @@
 #
 
 TASMANIA_ROOT=$(cd ..; pwd)
-GT4PY_BRANCH=merge_ubbiali
-IMAGE_NAME=tasmania:master
+GT4PY_BRANCH=tasmania_migration
+IMAGE_NAME=tasmania:master-ng
 CONTAINER_NAME=$(openssl rand -hex 6)
 IP=$(ifconfig en0 | grep 'inet ' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | head -1)
 
@@ -39,6 +39,7 @@ if [[ $key = "" ]]; then
 	fi
 
 	cd gridtools4py
+	git pull
 	git checkout $GT4PY_BRANCH
 	cd ..
 fi
