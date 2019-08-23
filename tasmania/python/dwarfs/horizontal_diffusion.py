@@ -33,6 +33,7 @@ import math
 import numpy as np
 
 import gridtools as gt
+from gridtools.storage import StorageDescriptor
 
 try:
 	from tasmania.conf import datatype
@@ -45,12 +46,13 @@ class HorizontalDiffusion:
 	Abstract base class whose derived classes calculates the
 	tendency due to horizontal diffusion.
 	"""
-	# Make the class abstract
+	# make the class abstract
 	__metaclass__ = abc.ABCMeta
 
 	def __init__(
 		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, dtype
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		"""
 		Parameters
@@ -69,75 +71,77 @@ class HorizontalDiffusion:
 			Depth of, i.e., number of vertical regions in the damping region.
 		nb : int
 			Number of boundary layers.
-		backend : obj
+		backend : str
+			TODO
+		backend_opts : dict
+			TODO
+		build_info : dict
 			TODO
 		dtype : numpy.dtype
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
+		exec_info : dict
+			TODO
+		halo : tuple
+			TODO
+		rebuild : bool
+			TODO
 		"""
-		# store input arguments
-		self._shape           = shape
-		self._dx              = dx
-		self._dy              = dy
-		self._diff_coeff      = diffusion_coeff
-		self._diff_coeff_max  = diffusion_coeff_max
-		self._diff_damp_depth = diffusion_damp_depth
-		self._nb              = nb
-		self._backend		  = backend
+		# store input arguments needed at run-time
+		self._shape = shape
+		self._nb = nb
+		self._dx = dx
+		self._dy = dy
+		self._exec_info = exec_info
 
 		# initialize the diffusion coefficient
-		self._gamma = self._diff_coeff
+		self._gamma = diffusion_coeff
 
 		# the diffusivity is monotonically increased towards the top of the model,
-		# so to mimic the effect of a short length wave absorber
-		n = self._diff_damp_depth
-		if n > 0:
+		# so to mimic the effect of a short-length wave absorber
+		n = diffusion_damp_depth
+		if True:  # if n > 0:
 			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
 			pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
-			self._gamma = self._diff_coeff * np.ones(shape, dtype=dtype)
-			self._gamma[:, :, :n] += (self._diff_coeff_max - self._diff_coeff) * pert
+			self._gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
+			self._gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
-		# initialize the pointer to the underlying stencil
-		# it will be properly re-directed the first time the call
-		# operator is invoked
-		self._stencil = None
+		# convert diffusivity to gt4py storage
+		halo = (0, 0, 0) if halo is None else halo
+		iteration_domain = tuple(shape[i] - 2*halo[i] for i in range(3))
+		self._gamma = gt.storage.from_array(
+			self._gamma,
+			gt.storage.StorageDescriptor(
+				dtype, iteration_domain=iteration_domain, halo=halo
+			),
+			backend
+		)
 
+		# initialize the underlying stencil
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+		)
+		self._stencil = decorator(self._stencil_defs)
+
+	@abc.abstractmethod
 	def __call__(self, phi, phi_tnd):
 		"""
 		Calculate the tendency.
 
 		Parameters
 		----------
-		phi : numpy.ndarray
+		phi : gridtools.storage.Storage
 			The 3-D prognostic field.
-		phi_tnd : numpy.ndarray
+		phi_tnd : gridtools.storage.Storage
 			Buffer where the calculated tendency will be written.
 		"""
-		# initialize the underlying GT4Py stencil
-		if self._stencil is None:
-			self._stencil_initialize(phi.dtype)
-
-		# Update the Numpy array representing the stencil's input field
-		self._in_phi[...] = phi[...]
-
-		# Run the stencil's compute function
-		self._stencil.compute()
-
-		# Write the output field into the provided array
-		phi_tnd[...] = self._tnd_phi[...]
-
-	@abc.abstractmethod
-	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the underlying GT4Py stencil.
-		As this method is marked as abstract, its implementation is
-		delegated to the derived classes.
-		"""
+		pass
 
 	@staticmethod
 	def factory(
 		diffusion_type, shape, dx, dy, diffusion_coeff,	diffusion_coeff_max,
-		diffusion_damp_depth, nb=None, backend=gt.mode.NUMPY, dtype=datatype
+		diffusion_damp_depth, nb=None, *, backend="numpy", backend_opts=None,
+		build_info=None, dtype=datatype, exec_info=None, halo=None, rebuild=False
 	):
 		"""
 		Parameters
@@ -163,45 +167,61 @@ class HorizontalDiffusion:
 		nb : `int`, optional
 			Number of boundary layers. If not specified, this is derived
 			from the extent of the underlying stencil.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 
 		Return
 		------
 		obj :
 			Instance of the appropriate derived class.
 		"""
-		arg_list = [
+		args = [
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info,
+			dtype, exec_info, halo, rebuild
 		]
 
 		if diffusion_type == 'second_order':
 			assert not(shape[0] < 3 and shape[1] < 3)
 
 			if shape[1] < 3:
-				return SecondOrder1DX(*arg_list)
+				return SecondOrder1DX(*args)
 			elif shape[0] < 3:
-				return SecondOrder1DY(*arg_list)
+				return SecondOrder1DY(*args)
 			else:
-				return SecondOrder(*arg_list)
+				return SecondOrder(*args)
 		elif diffusion_type == 'fourth_order':
 			assert not(shape[0] < 5 and shape[1] < 5)
 
 			if shape[1] < 5:
-				return FourthOrder1DX(*arg_list)
+				return FourthOrder1DX(*args)
 			elif shape[0] < 5:
-				return FourthOrder1DY(*arg_list)
+				return FourthOrder1DY(*args)
 			else:
-				return FourthOrder(*arg_list)
+				return FourthOrder(*args)
 		else:
 			raise ValueError(
 				"Supported diffusion operators are ''second_order'' "
 				"and ''fourth_order''."
 			)
+
+	@staticmethod
+	@abc.abstractmethod
+	def _stencil_defs(in_phi, in_gamma, out_phi, *, dx, dy):
+		pass
 
 
 class SecondOrder(HorizontalDiffusion):
@@ -217,61 +237,42 @@ class SecondOrder(HorizontalDiffusion):
 	one instance per field shape.
 	"""
 	def __init__(
-		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
-		diffusion_damp_depth=10, nb=1, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+			exec_info, halo, rebuild
 		)
 
-	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._shape
-		nb = self._nb
+	def __call__(self, phi, phi_tnd):
+		# shortcuts
+		dx, dy, nb = self._dx, self._dy, self._nb
+		nx, ny, nz = self._shape
 
-		# Allocate the Numpy arrays which will serve as stencil's
-		# inputs and outputs
-		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
-		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# set stencil's inputs
-		_inputs = {'in_phi': self._in_phi}
-		if self._diff_damp_depth > 0:
-			_inputs['gamma'] = self._gamma
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
-
-		# Instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs={'tnd_phi': self._tnd_phi},
-			domain=_domain,
-			mode=self._backend
+		# run the stencil
+		self._stencil(
+			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
+			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
+			exec_info=self._exec_info
 		)
 
-	def _stencil_defs(self, in_phi, gamma=None):
-		# Shortcuts
-		dx = self._dx
-		dy = self._dy
-
-		# Indices
-		i = gt.Index(axis=0)
-		j = gt.Index(axis=1)
-
-		# Temporary and output fields
-		tnd_phi = gt.Equation()
-
-		# Computations
-		tnd_phi[i, j] = (self._gamma if gamma is None else gamma[i, j]) * (
-			(in_phi[i-1, j] - 2.0*in_phi[i, j] + in_phi[i+1, j]) / (dx*dx) +
-			(in_phi[i, j-1] - 2.0*in_phi[i, j] + in_phi[i, j+1]) / (dy*dy)
+	@staticmethod
+	def _stencil_defs(
+		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		*,
+		dx: float,
+		dy: float
+	):
+		out_phi = in_gamma[0, 0, 0] * (
+			(in_phi[-1, 0, 0] - 2.0*in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx*dx) +
+			(in_phi[0, -1, 0] - 2.0*in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy*dy)
 		)
-
-		return tnd_phi
 
 
 class SecondOrder1DX(HorizontalDiffusion):
@@ -287,57 +288,40 @@ class SecondOrder1DX(HorizontalDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
-		diffusion_damp_depth=10, nb=1, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+			exec_info, halo, rebuild
 		)
 
-	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._shape
-		nb = self._nb
+	def __call__(self, phi, phi_tnd):
+		# shortcuts
+		dx, dy, nb = self._dx, self._dy, self._nb
+		nx, ny, nz = self._shape
 
-		# Allocate the Numpy arrays which will serve as stencil's
-		# inputs and outputs
-		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
-		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# set stencil's inputs
-		_inputs = {'in_phi': self._in_phi}
-		if self._diff_damp_depth > 0:
-			_inputs['gamma'] = self._gamma
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
-
-		# Instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs={'tnd_phi': self._tnd_phi},
-			domain=_domain,
-			mode=self._backend
+		# run the stencil
+		self._stencil(
+			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
+			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz),
+			exec_info=self._exec_info
 		)
 
-	def _stencil_defs(self, in_phi, gamma=None):
-		# Shortcuts
-		dx = self._dx
-
-		# Index
-		i = gt.Index(axis=0)
-
-		# Temporary and output fields
-		tnd_phi = gt.Equation()
-
-		# Computations
-		tnd_phi[i] = (self._gamma if gamma is None else gamma[i]) * \
-			(in_phi[i-1] - 2.0*in_phi[i] + in_phi[i+1]) / (dx*dx)
-
-		return tnd_phi
+	@staticmethod
+	def _stencil_defs(
+		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		*,
+		dx: float,
+		dy: float
+	):
+		out_phi = in_gamma[0, 0, 0] * \
+			(in_phi[-1, 0, 0] - 2.0*in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx*dx)
 
 
 class SecondOrder1DY(HorizontalDiffusion):
@@ -353,57 +337,40 @@ class SecondOrder1DY(HorizontalDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
-		diffusion_damp_depth=10, nb=1, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		nb = 1 if (nb is None or nb < 1) else nb
 		super().__init__(
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+			exec_info, halo, rebuild
 		)
 
-	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._shape
-		nb = self._nb
+	def __call__(self, phi, phi_tnd):
+		# shortcuts
+		dx, dy, nb = self._dx, self._dy, self._nb
+		nx, ny, nz = self._shape
 
-		# Allocate the Numpy arrays which will serve as stencil's
-		# inputs and outputs
-		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
-		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# set stencil's inputs
-		_inputs = {'in_phi': self._in_phi}
-		if self._diff_damp_depth > 0:
-			_inputs['gamma'] = self._gamma
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
-
-		# Instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs={'tnd_phi': self._tnd_phi},
-			domain=_domain,
-			mode=self._backend
+		# run the stencil
+		self._stencil(
+			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
+			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz),
+			exec_info=self._exec_info
 		)
 
-	def _stencil_defs(self, in_phi, gamma=None):
-		# Shortcuts
-		dy = self._dy
-
-		# Index
-		j = gt.Index(axis=1)
-
-		# Temporary and output fields
-		tnd_phi = gt.Equation()
-
-		# Computations
-		tnd_phi[j] = (self._gamma if gamma is None else gamma[j]) * \
-			(in_phi[j-1] - 2.0*in_phi[j] + in_phi[j+1]) / (dy*dy)
-
-		return tnd_phi
+	@staticmethod
+	def _stencil_defs(
+		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		*,
+		dx: float,
+		dy: float
+	):
+		out_phi = in_gamma[0, 0, 0] * \
+			(in_phi[0, -1, 0] - 2.0*in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy*dy)
 
 
 class FourthOrder(HorizontalDiffusion):
@@ -419,71 +386,52 @@ class FourthOrder(HorizontalDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
-		diffusion_damp_depth=10, nb=2, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+			exec_info, halo, rebuild
 		)
 
-	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._shape
-		nb = self._nb
+	def __call__(self, phi, phi_tnd):
+		# shortcuts
+		dx, dy, nb = self._dx, self._dy, self._nb
+		nx, ny, nz = self._shape
 
-		# Allocate the Numpy arrays which will serve as stencil's
-		# inputs and outputs
-		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
-		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# set stencil's inputs
-		_inputs = {'in_phi': self._in_phi}
-		if self._diff_damp_depth > 0:
-			_inputs['gamma'] = self._gamma
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((nb, nb, 0), (ni-nb-1, nj-nb-1, nk-1))
-
-		# Instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs={'tnd_phi': self._tnd_phi},
-			domain=_domain,
-			mode=self._backend
+		# run the stencil
+		self._stencil(
+			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
+			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
+			exec_info=self._exec_info
 		)
 
-	def _stencil_defs(self, in_phi, gamma=None):
-		# Shortcuts
-		dx = self._dx
-		dy = self._dy
-
-		# Indices
-		i = gt.Index(axis=0)
-		j = gt.Index(axis=1)
-
-		# Temporary and output fields
-		tnd_phi = gt.Equation()
-
-		# Computations
-		tnd_phi[i, j] = (self._gamma if gamma is None else gamma[i, j]) * \
+	@staticmethod
+	def _stencil_defs(
+		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		*,
+		dx: float,
+		dy: float
+	):
+		out_phi = in_gamma[0, 0, 0] * \
 			(
 				(
-					- in_phi[i-2, j] + 16.0*in_phi[i-1, j]
-					- 30.0*in_phi[i, j]
-					+ 16.0*in_phi[i+1, j] - in_phi[i+2, j]
+					- in_phi[-2, 0, 0] + 16.0 * in_phi[-1, 0, 0]
+					- 30.0 * in_phi[0, 0, 0]
+					+ 16.0 * in_phi[1, 0, 0] - in_phi[2, 0, 0]
 				) / (12.0 * dx * dx)
 				+
 				(
-					- in_phi[i, j-2] + 16.0*in_phi[i, j-1]
-					- 30.0*in_phi[i, j]
-					+ 16.0*in_phi[i, j+1] - in_phi[i, j+2]
+					- in_phi[0, -2, 0] + 16.0 * in_phi[0, -1, 0]
+					- 30.0 * in_phi[0, 0, 0]
+					+ 16.0 * in_phi[0, 1, 0] - in_phi[0, 2, 0]
 				) / (12.0 * dy * dy)
 			)
-
-		return tnd_phi
 
 
 class FourthOrder1DX(HorizontalDiffusion):
@@ -499,61 +447,44 @@ class FourthOrder1DX(HorizontalDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
-		diffusion_damp_depth=10, nb=2, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+			exec_info, halo, rebuild
 		)
 
-	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._shape
-		nb = self._nb
+	def __call__(self, phi, phi_tnd):
+		# shortcuts
+		dx, dy, nb = self._dx, self._dy, self._nb
+		nx, ny, nz = self._shape
 
-		# Allocate the Numpy arrays which will serve as stencil's
-		# inputs and outputs
-		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
-		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# set stencil's inputs
-		_inputs = {'in_phi': self._in_phi}
-		if self._diff_damp_depth > 0:
-			_inputs['gamma'] = self._gamma
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((nb, 0, 0), (ni-nb-1, nj-1, nk-1))
-
-		# Instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs={'tnd_phi': self._tnd_phi},
-			domain=_domain,
-			mode=self._backend
+		# run the stencil
+		self._stencil(
+			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
+			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz),
+			exec_info=self._exec_info
 		)
 
-	def _stencil_defs(self, in_phi, gamma=None):
-		# Shortcuts
-		dx = self._dx
-
-		# Index
-		i = gt.Index(axis=0)
-
-		# Temporary and output fields
-		tnd_phi = gt.Equation()
-
-		# Computations
-		tnd_phi[i] = (self._gamma if gamma is None else gamma[i]) * \
+	@staticmethod
+	def _stencil_defs(
+		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		*,
+		dx: float,
+		dy: float
+	):
+		out_phi = in_gamma[0, 0, 0] * \
 			(
-				- in_phi[i-2] + 16.0*in_phi[i-1]
-				- 30.0*in_phi[i]
-				+ 16.0*in_phi[i+1] - in_phi[i+2]
+				- in_phi[-2, 0, 0] + 16.0 * in_phi[-1, 0, 0]
+				- 30.0 * in_phi[0, 0, 0]
+				+ 16.0 * in_phi[1, 0, 0] - in_phi[2, 0, 0]
 			) / (12.0 * dx * dx)
-
-		return tnd_phi
 
 
 class FourthOrder1DY(HorizontalDiffusion):
@@ -569,58 +500,42 @@ class FourthOrder1DY(HorizontalDiffusion):
 	Hence, one should use (at least) one instance per field shape.
 	"""
 	def __init__(
-		self, shape, dx, dy, diffusion_coeff=1.0, diffusion_coeff_max=1.0,
-		diffusion_damp_depth=10, nb=2, backend=gt.mode.NUMPY, dtype=datatype
+		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
+		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+		exec_info, halo, rebuild
 	):
 		nb = 2 if (nb is None or nb < 2) else nb
 		super().__init__(
 			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, dtype
+			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
+			exec_info, halo, rebuild
 		)
 
-	def _stencil_initialize(self, dtype):
-		# Shortcuts
-		ni, nj, nk = self._shape
-		nb = self._nb
+	def __call__(self, phi, phi_tnd):
+		# shortcuts
+		dx, dy, nb = self._dx, self._dy, self._nb
+		nx, ny, nz = self._shape
 
-		# Allocate the Numpy arrays which will serve as stencil's
-		# inputs and outputs
-		self._in_phi = np.zeros((ni, nj, nk), dtype=dtype)
-		self._tnd_phi = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# set stencil's inputs
-		_inputs = {'in_phi': self._in_phi}
-		if self._diff_damp_depth > 0:
-			_inputs['gamma'] = self._gamma
-
-		# Set the computational domain
-		_domain = gt.domain.Rectangle((0, nb, 0), (ni-1, nj-nb-1, nk-1))
-
-		# Instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=_inputs,
-			outputs={'tnd_phi': self._tnd_phi},
-			domain=_domain,
-			mode=self._backend
+		# run the stencil
+		self._stencil(
+			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
+			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz),
+			exec_info=self._exec_info
 		)
 
-	def _stencil_defs(self, in_phi, gamma=None):
-		# Shortcuts
-		dy = self._dy
-
-		# Index
-		j = gt.Index(axis=1)
-
-		# Temporary and output fields
-		tnd_phi = gt.Equation()
-
-		# Computations
-		tnd_phi[j] = (self._gamma if gamma is None else gamma[j]) * \
+	@staticmethod
+	def _stencil_defs(
+		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		*,
+		dx: float,
+		dy: float
+	):
+		out_phi = in_gamma[0, 0, 0] * \
 			(
-				- in_phi[j-2] + 16.0*in_phi[j-1]
-				- 30.0*in_phi[j]
-				+ 16.0*in_phi[j+1] - in_phi[j+2]
+				- in_phi[0, -2, 0] + 16.0 * in_phi[0, -1, 0]
+				- 30.0 * in_phi[0, 0, 0]
+				+ 16.0 * in_phi[0, 1, 0] - in_phi[0, 2, 0]
 			) / (12.0 * dy * dy)
 
-		return tnd_phi
