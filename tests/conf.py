@@ -23,12 +23,11 @@
 from datetime import timedelta
 import numpy as np
 
-import gridtools as gt
-
 
 # backend settings
-backend = (gt.mode.NUMPY, )
+backend = ("numpy", )
 datatype = (np.float64, )  # TODO: datatype = (np.float32, no.float64)
+halo = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
 # x-axis
 axis_x = {
@@ -81,6 +80,7 @@ topography = {
 }
 
 # horizontal boundary
+nb = 4
 horizontal_boundary_types = (
 	'relaxed', 'periodic', 'dirichlet',  # 'identity'
 )

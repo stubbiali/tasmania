@@ -558,9 +558,9 @@ def st_domain(
 	hb_type = draw(st_horizontal_boundary_type())
 	nb = nb if nb is not None else draw(st_horizontal_boundary_layers(nx, ny))
 	if nx > 1:
-		assume(nb <= nx/2)
+		assume(nb < nx/2)
 	if ny > 1:
-		assume(nb <= ny/2)
+		assume(nb < ny/2)
 	hb_kwargs = draw(st_horizontal_boundary_kwargs(hb_type, nx, ny, nb))
 
 	topo_kwargs = draw(st_topography_kwargs(domain_x, domain_y))

@@ -28,6 +28,7 @@ import numpy as np
 from sympl import DataArray
 
 import gridtools as gt
+from gridtools.storage import StorageDescriptor
 from tasmania.python.utils.data_utils import get_physical_constants
 
 try:
@@ -54,18 +55,15 @@ class IsentropicDiagnostics:
 	}
 
 	def __init__(
-		self, grid, backend=gt.mode.NUMPY, dtype=datatype, physical_constants=None
+		self, grid, physical_constants=None, *,
+		backend="numpy", backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False
 	):
 		"""
 		Parameters
 		----------
 		grid : tasmania.Grid
 			The underlying grid.
-		backend : `obj`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` allocated and
-			used within this class.
 		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
@@ -82,31 +80,77 @@ class IsentropicDiagnostics:
 			:func:`tasmania.utils.data_utils.get_physical_constants` and
 			:obj:`tasmania.IsentropicDiagnostics._d_physical_constants`
 			for the default values.
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
+			TODO
+		dtype : `numpy.dtype`, optional
+			The data type for any :class:`numpy.ndarray` instantiated and
+			used within this class.
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		"""
-		# Store the input arguments
-		self._grid    = grid
+		# store the input arguments needed at run-time
+		self._grid = grid
 		self._backend = backend
-		self._dtype	  = dtype
+		self._dtype = dtype
+		self._exec_info = exec_info
+		self._halo = halo
 
-		# Set physical constants values
-		self._physical_constants = get_physical_constants(
-			self._d_physical_constants, physical_constants
-		)
+		# set the values of the physical constants
+		pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+		self._pcs = pcs
 
-		# Assign to each grid point on the interface levels
+		# assign to each grid point on the interface levels
 		# the corresponding z-quota; this is required to diagnose
 		# the geometrical height at the interface levels
-		theta_1d = grid.z_on_interface_levels.to_units('K').values[np.newaxis, np.newaxis, :]
-		self._theta = np.tile(theta_1d, (grid.nx, grid.ny, 1))
+		theta_1d = grid.z_on_interface_levels.to_units("K").values[np.newaxis, np.newaxis, :]
+		theta = np.tile(theta_1d, (grid.nx+1, grid.ny+1, 1))
 
-		# Initialize the pointers to the underlying GT4Py stencils
-		# These will be properly re-directed the first time the corresponding
-		# entry-point method is invoked
-		self._stencil_diagnosing_air_pressure = None
-		self._stencil_diagnosing_montgomery = None
-		self._stencil_diagnosing_height = None
-		self._stencil_diagnosing_air_density = None
-		self._stencil_diagnosing_air_temperature = None
+		# make theta a gt4py storage
+		halo = (0, 0, 0) if halo is None else halo
+		shape = (grid.nx+1, grid.ny+1, grid.nz+1)
+		iteration_domain = tuple(shape[i] - 2*halo[i] for i in range(3))
+		self._theta = gt.storage.from_array(
+			theta,
+			StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
+			backend=backend
+		)
+
+		# instantiate the underlying gt4py stencils
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info,
+			rebuild=rebuild, externals={
+				"pref": pcs["air_pressure_at_sea_level"],
+				"rd": pcs["gas_constant_of_dry_air"],
+				"g": pcs["gravitational_acceleration"],
+				"cp": pcs["specific_heat_of_dry_air_at_constant_pressure"]
+			}
+		)
+		self._stencil_diagnosing_air_pressure = decorator(
+			self._stencil_diagnosing_air_pressure_defs
+		)
+		self._stencil_diagnosing_exner = decorator(
+			self._stencil_diagnosing_exner_defs
+		)
+		self._stencil_diagnosing_montgomery = decorator(
+			self._stencil_diagnosing_montgomery_defs
+		)
+		self._stencil_diagnosing_height = decorator(
+			self._stencil_diagnosing_height_defs
+		)
+		self._stencil_diagnosing_air_density = decorator(
+			self._stencil_diagnosing_air_density_defs
+		)
+		self._stencil_diagnosing_air_temperature = decorator(
+			self._stencil_diagnosing_air_temperature_defs
+		)
 
 	def get_diagnostic_variables(self, s, pt, p, exn, mtg, h):
 		"""
@@ -117,65 +161,62 @@ class IsentropicDiagnostics:
 
 		Parameters
 		----------
-		s : numpy.ndarray
+		s : gridtools.storage.StorageDescriptor
 			The isentropic density, in units of [kg m^-2 K^-1].
 		pt : float
 			The upper boundary condition on the pressure distribution,
 			in units of [Pa].
-		p : numpy.ndarray
+		p : gridtools.storage.StorageDescriptor
 			The buffer for the pressure at the interface levels, in units of [Pa].
-		exn : numpy.ndarray
+		exn : gridtools.storage.StorageDescriptor
 			The buffer for the Exner function at the interface levels,
 			in units of [J K^-1 kg^-1].
-		mtg : numpy.ndarray
+		mtg : gridtools.storage.StorageDescriptor
 			The buffer for the Montgomery potential, in units of [J kg^-1].
-		h : numpy.ndarray
+		h : gridtools.storage.StorageDescriptor
 			The buffer for the geometric height of the interface levels, in units of [m].
 		"""
-		# Instantiate the underlying stencils
-		if self._stencil_diagnosing_air_pressure is None:
-			self._stencil_diagnosing_air_pressure_initialize()
-		if self._stencil_diagnosing_montgomery is None:
-			self._stencil_diagnosing_montgomery_initialize()
-		if self._stencil_diagnosing_height is None:
-			self._stencil_diagnosing_height_initialize()
+		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+		dz = self._grid.dz.to_units("K").values.item()
+		g = self._pcs["gravitational_acceleration"]
 
-		# Shortcuts
-		dz    = self._grid.dz.to_units('K').values.item()
-		cp    = self._physical_constants['specific_heat_of_dry_air_at_constant_pressure']
-		p_ref = self._physical_constants['air_pressure_at_sea_level']
-		rd    = self._physical_constants['gas_constant_of_dry_air']
-		g	  = self._physical_constants['gravitational_acceleration']
+		# apply the upper boundary condition on the pressure field
+		p[:, :, 0] = pt
 
-		# Update the attributes which serve as inputs to the GT4Py stencils
-		self._in_s[...] = s[...]
+		# retrieve pressure at all other locations
+		self._stencil_diagnosing_air_pressure(
+			in_s=s, inout_p=p, dz=dz,
+			origin={"_all_": (0, 0, 1)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
-		# Apply upper boundary condition on pressure
-		self._out_p[:, :, 0] = pt
+		# compute the Exner function
+		self._stencil_diagnosing_exner(
+			in_p=p, out_exn=exn,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz+1),
+			exec_info=self._exec_info
+		)
 
-		# Compute pressure at all other locations
-		self._stencil_diagnosing_air_pressure.compute()
-
-		# Compute the Exner function (not via a GT4Py stencils)
-		self._in_exn[...] = cp * (self._out_p[...] / p_ref) ** (rd / cp)
-
-		# Compute Montgomery potential at the lower main level
-		mtg_s = self._theta[:, :, -1] * self._in_exn[:, :, -1] \
+		# compute the Montgomery potential at the lower main level
+		mtg_s = self._theta[:, :, -1] * exn[:, :, -1] \
 			+ g * self._grid.topography.profile.to_units('m').values
-		self._out_mtg[:, :, -1] = mtg_s + 0.5 * dz * self._in_exn[:, :, -1]
+		mtg[:, :, -2] = mtg_s + 0.5 * dz * exn[:, :, -1]
 
-		# Compute Montgomery potential at all other locations
-		self._stencil_diagnosing_montgomery.compute()
+		# compute the Montgomery potential at all other locations
+		self._stencil_diagnosing_montgomery(
+			in_exn=exn, inout_mtg=mtg, dz=dz,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz-1),
+			exec_info=self._exec_info
+		)
 
-		# Compute geometrical height of the isentropes
-		self._out_h[:, :, -1] = self._grid.topography.profile.to_units('m').values[...]
-		self._stencil_diagnosing_height.compute()
-
-		# Write the output into the provided buffers
-		p[...]   = self._out_p[...]
-		exn[...] = self._in_exn[...]
-		mtg[...] = self._out_mtg[...]
-		h[...]   = self._out_h[...]
+		# compute the geometrical height of the isentropes
+		h[:, :, -1] = self._grid.topography.profile.to_units('m').values[...]
+		self._stencil_diagnosing_height(
+			in_theta=self._theta, in_p=p, in_exn=exn, inout_h=h,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
 	def get_montgomery_potential(self, s, pt, mtg):
 		"""
@@ -185,51 +226,66 @@ class IsentropicDiagnostics:
 
 		Parameters
 		----------
-		s : numpy.ndarray
+		s : gridtools.storage.StorageDescriptor
 			The isentropic density, in units of [kg m^-2 K^-1].
 		pt : float
 			The upper boundary condition on the pressure distribution,
 			in units of [Pa].
-		mtg : numpy.ndarray
+		mtg : gridtools.storage.StorageDescriptor
 			The buffer for the Montgomery potential, in units of [J kg^-1].
 		"""
-		# Instantiate the underlying stencils
-		if self._stencil_diagnosing_air_pressure is None:
-			self._stencil_diagnosing_air_pressure_initialize()
-		if self._stencil_diagnosing_montgomery is None:
-			self._stencil_diagnosing_montgomery_initialize()
-		if self._stencil_diagnosing_height is None:
-			self._stencil_diagnosing_height_initialize()
+		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+		dz = self._grid.dz.to_units("K").values.item()
+		g = self._pcs["gravitational_acceleration"]
+		backend, dtype = self._backend, self._dtype
+		halo = (0, 0, 0) if self._halo is None else self._halo
+		iteration_domain = (
+			nx + 1 - 2*halo[0], ny + 1 - 2*halo[1], nz + 1 - 2*halo[2]
+		)
 
-		# Shortcuts
-		dz    = self._grid.dz.to_units('K').values.item()
-		cp    = self._physical_constants['specific_heat_of_dry_air_at_constant_pressure']
-		p_ref = self._physical_constants['air_pressure_at_sea_level']
-		rd    = self._physical_constants['gas_constant_of_dry_air']
-		g	  = self._physical_constants['gravitational_acceleration']
+		if not hasattr(self, '_p'):
+			# allocate temporary storage storing the pressure field
+			self._p = gt.storage.zeros(
+				StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
+				backend=backend
+			)
 
-		# Update the attributes which serve as inputs to the GT4Py stencils
-		self._in_s[...] = s[...]
+		if not hasattr(self, '_exn'):
+			# allocate temporary storage storing the Exner function
+			self._exn = gt.storage.zeros(
+				StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
+				backend=backend
+			)
 
-		# Apply upper boundary condition on pressure
-		self._out_p[:, :, 0] = pt
+		# apply the upper boundary condition on the pressure field
+		self._p[:, :, 0] = pt
 
-		# Compute pressure at all other locations
-		self._stencil_diagnosing_air_pressure.compute()
+		# retrieve pressure at all other locations
+		self._stencil_diagnosing_air_pressure(
+			in_s=s, inout_p=self._p, dz=dz,
+			origin={"_all_": (0, 0, 1)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
-		# Compute the Exner function (not via a GT4Py stencils)
-		self._in_exn[...] = cp * (self._out_p[...] / p_ref) ** (rd / cp)
+		# compute the Exner function
+		self._stencil_diagnosing_exner(
+			in_p=self._p, out_exn=self._exn,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz+1),
+			exec_info=self._exec_info
+		)
 
-		# Compute Montgomery potential at the lower main level
-		mtg_s = self._theta[:, :, -1] * self._in_exn[:, :, -1] \
+		# compute the Montgomery potential at the lower main level
+		mtg_s = self._theta[:, :, -1] * self._exn[:, :, -1] \
 			+ g * self._grid.topography.profile.to_units('m').values
-		self._out_mtg[:, :, -1] = mtg_s + 0.5 * dz * self._in_exn[:, :, -1]
+		mtg[:, :, -2] = mtg_s + 0.5 * dz * self._exn[:, :, -1]
 
-		# Compute Montgomery potential at all other locations
-		self._stencil_diagnosing_montgomery.compute()
-
-		# Write the output into the provided buffer
-		mtg[...] = self._out_mtg[...]
+		# compute the Montgomery potential at all other locations
+		self._stencil_diagnosing_montgomery(
+			in_exn=self._exn, inout_mtg=mtg, dz=dz,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz-1),
+			exec_info=self._exec_info
+		)
 
 	def get_height(self, s, pt, h):
 		"""
@@ -239,43 +295,62 @@ class IsentropicDiagnostics:
 
 		Parameters
 		----------
-		s : numpy.ndarray
+		s : gridtools.storage.StorageDescriptor
 			The isentropic density, in units of [kg m^-2 K^-1].
 		pt : float
 			The upper boundary condition on the pressure distribution,
 			in units of [Pa].
-		h : numpy.ndarray
+		h : gridtools.storage.StorageDescriptor
 			The buffer for the geometric height of the interface levels, in units of [m].
 		"""
-		# Instantiate the underlying stencils
-		if self._stencil_diagnosing_air_pressure is None:
-			self._stencil_diagnosing_air_pressure_initialize()
-		if self._stencil_diagnosing_height is None:
-			self._stencil_diagnosing_height_initialize()
+		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+		dz = self._grid.dz.to_units("K").values.item()
+		g = self._pcs["gravitational_acceleration"]
+		backend, dtype = self._backend, self._dtype
+		halo = (0, 0, 0) if self._halo is None else self._halo
+		iteration_domain = (
+			nx + 1 - 2*halo[0], ny + 1 - 2*halo[1], nz + 1 - 2*halo[2]
+		)
 
-		# Get the values for the physical constants to use
-		cp    = self._physical_constants['specific_heat_of_dry_air_at_constant_pressure']
-		p_ref = self._physical_constants['air_pressure_at_sea_level']
-		rd    = self._physical_constants['gas_constant_of_dry_air']
+		if not hasattr(self, '_p'):
+			# allocate temporary storage storing the pressure field
+			self._p = gt.storage.zeros(
+				StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
+				backend=backend
+			)
 
-		# Update the attributes which serve as inputs to the GT4Py stencils
-		self._in_s[...] = s[...]
+		if not hasattr(self, '_exn'):
+			# allocate temporary storage storing the Exner function
+			self._exn = gt.storage.zeros(
+				StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
+				backend=backend
+			)
 
-		# Apply upper boundary condition on pressure
-		self._out_p[:, :, 0] = pt
+		# apply the upper boundary condition on the pressure field
+		self._p[:, :, 0] = pt
 
-		# Compute pressure at all other locations
-		self._stencil_diagnosing_air_pressure.compute()
+		# retrieve pressure at all other locations
+		self._stencil_diagnosing_air_pressure(
+			in_s=s, inout_p=self._p, dz=dz,
+			origin={"_all_": (0, 0, 1)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
-		# Compute the Exner function (not via a GT4Py stencils)
-		self._in_exn[...] = cp * (self._out_p[...] / p_ref) ** (rd / cp)
+		# compute the Exner function
+		self._stencil_diagnosing_exner(
+			in_p=self._p, out_exn=self._exn,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz+1),
+			exec_info=self._exec_info
+		)
 
-		# Compute geometrical height of the isentropes
-		self._out_h[:, :, -1] = self._grid.topography.profile.to_units('m').values[...]
-		self._stencil_diagnosing_height.compute()
-
-		# Write the output into the provided buffer
-		h[...] = self._out_h[...]
+		# compute the geometrical height of the isentropes
+		h[:, :, -1] = self._grid.topography.profile.to_units('m').values[...]
+		self._stencil_diagnosing_height(
+			in_theta=self._theta, in_p=self._p, in_exn=self._exn, inout_h=h,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
 	def get_air_density(self, s, h, rho):
 		"""
@@ -284,26 +359,22 @@ class IsentropicDiagnostics:
 
 		Parameters
 		----------
-		s : numpy.ndarray
+		s : gridtools.storage.StorageDescriptor
 			The isentropic density, in units of [kg m^-2 K^-1].
-		h : numpy.ndarray
+		h : gridtools.storage.StorageDescriptor
 			The geometric height of the interface levels, in units of [m].
-		rho : numpy.ndarray
+		rho : gridtools.storage.StorageDescriptor
 			The buffer for the air density, in units of [kg m^-3].
 		"""
-		# Instantiate the underlying stencil
-		if self._stencil_diagnosing_air_density is None:
-			self._stencil_diagnosing_air_density_initialize()
+		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
-		# Update the attributes which serve as inputs to the stencil
-		self._in_s[...] = s[...]
-		self._in_h[...] = h[...]
-
-		# Run the stencil's compute function
-		self._stencil_diagnosing_air_density.compute()
-
-		# Write the output into the provided buffer
-		rho[...] = self._out_rho[...]
+		# run the stencil
+		self._stencil_diagnosing_air_density(
+			in_theta=self._theta, in_s=s, in_h=h, out_rho=rho,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
 	def get_air_temperature(self, exn, temp):
 		"""
@@ -311,299 +382,73 @@ class IsentropicDiagnostics:
 
 		Parameters
 		----------
-		exn : numpy.ndarray
+		exn : gridtools.storage.StorageDescriptor
 			The Exner function at the interface levels, in units of [J K^-1 kg^-1].
-		temp : numpy.ndarray
+		temp : gridtools.storage.StorageDescriptor
 			The buffer for the temperature, in units of [K].
 		"""
-		# Instantiate the underlying stencil
-		if self._stencil_diagnosing_air_temperature is None:
-			self._stencil_diagnosing_air_temperature_initialize()
-
-		# Update the attributes which serve as inputs to the stencil
-		self._in_exn[...] = exn[...]
-
-		# Run the stencil's compute function
-		self._stencil_diagnosing_air_temperature.compute()
-
-		# Write the output into the provided buffer
-		temp[...] = self._out_temp[...]
-
-	def _stencil_diagnosing_air_pressure_initialize(self):
-		"""
-		Initialize the GT4Py stencil in charge of diagnosing the pressure.
-		"""
-		# Shortcuts
+		# shortcuts
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
-		# Allocate the Numpy arrays which will serve as stencil's inputs and outputs
-		if not hasattr(self, '_in_s'):
-			self._in_s = np.zeros((nx, ny, nz), dtype=self._dtype)
-		self._out_p = np.zeros((nx, ny, nz+1), dtype=self._dtype)
-		self._in_p = self._out_p
-
-		# Instantiate the stencil
-		self._stencil_diagnosing_air_pressure = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_air_pressure_defs,
-			inputs={'in_s': self._in_s, 'in_p': self._in_p},
-			outputs={'out_p': self._out_p},
-			domain=gt.domain.Rectangle((0, 0, 1), (nx-1, ny-1, nz)),
-			mode=self._backend,
-			vertical_direction=gt.vertical_direction.FORWARD
-		)
-
-	def _stencil_diagnosing_air_pressure_defs(self, in_s, in_p):
-		"""
-		GT4Py stencil diagnosing the pressure.
-
-		Parameters
-		----------
-		in_s : gridtools.Equation
-			The isentropic density, in units of [kg m^-2 K^-1].
-		in_p : gridtools.Equation
-			The pressure, in units of [Pa].
-
-		Returns
-		-------
-		gridtools.Equation :
-			The diagnosed pressure, in units of [Pa].
-		"""
-		# Index scanning the vertical axis
-		k = gt.Index(axis=2)
-
-		# Output field
-		out_p = gt.Equation()
-
-		# Shortcuts
-		dz = self._grid.dz.to_units('K').values.item()
-		g  = self._physical_constants['gravitational_acceleration']
-
-		# Computations
-		out_p[k] = in_p[k-1] + g * dz * in_s[k-1]
-
-		return out_p
-
-	def _stencil_diagnosing_montgomery_initialize(self):
-		"""
-		Initialize the GT4Py stencil in charge of diagnosing the Montgomery potential.
-		"""
-		# Shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-
-		# Allocate the Numpy arrays which will serve as stencil's inputs and outputs
-		if not hasattr(self, '_in_exn'):
-			self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
-		self._out_mtg = np.zeros((nx, ny, nz), dtype=self._dtype)
-		self._in_mtg = self._out_mtg
-
-		# Instantiate the stencil
-		self._stencil_diagnosing_montgomery = gt.NGStencil( 
-			definitions_func=self._stencil_diagnosing_montgomery_defs,
-			inputs={'in_exn': self._in_exn, 'in_mtg': self._in_mtg},
-			outputs={'out_mtg': self._out_mtg},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-2)),
-			mode=self._backend,
-			vertical_direction=gt.vertical_direction.BACKWARD
-		)
-
-	def _stencil_diagnosing_montgomery_defs(self, in_exn, in_mtg):
-		"""
-		GT4Py stencil diagnosing the Exner function.
-
-		Parameters
-		----------
-		in_exn : gridtools.Equation
-			The Exner function, in units of [J K^-1 kg^-1]
-		in_mtg : gridtools.Equation
-			The Montgomery potential, in units of [J kg^-1].
-
-		Return
-		-------
-		gridtools.Equation :
-			The diagnosed Montgomery potential, in units of [J kg^-1].
-		"""
-		# Index scanning the vertical axis
-		k = gt.Index(axis=2)
-
-		# Output field
-		out_mtg = gt.Equation()
-
-		# Shortcuts
-		dz = self._grid.dz.to_units('K').values.item()
-
-		# Computations
-		out_mtg[k] = in_mtg[k+1] + dz * in_exn[k+1]
-
-		return out_mtg
-
-	def _stencil_diagnosing_height_initialize(self):
-		"""
-		Initialize the GT4Py stencil in charge of diagnosing the geometric
-		height of the half-level isentropes.
-		"""
-		# Shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-
-		# Allocate the Numpy arrays which will serve as stencil's inputs and outputs
-		if not hasattr(self, '_in_exn'):
-			self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
-		self._out_h = np.zeros((nx, ny, nz+1), dtype=self._dtype)
-		self._in_h = self._out_h
-
-		# Instantiate the stencil
-		self._stencil_diagnosing_height = gt.NGStencil( 
-			definitions_func=self._stencil_diagnosing_height_defs,
-			inputs={
-				'in_theta': self._theta, 'in_exn': self._in_exn,
-				'in_p': self._out_p, 'in_h': self._in_h
-			},
-			outputs={'out_h': self._out_h},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend,
-			vertical_direction=gt.vertical_direction.BACKWARD
-		)
-
-	def _stencil_diagnosing_height_defs(self, in_theta, in_exn, in_p, in_h):
-		"""
-		GT4Py stencil diagnosing the geometric height of the isentropes.
-
-		Parameters
-		----------
-		in_theta : gridtools.Equation
-			The :math:`\\theta`-quota of the vertical half levels, in units of [K].
-		in_exn : gridtools.Equation
-			The Exner function, in units of [J K^-1 kg^-1].
-		in_p : gridtools.Equation
-			The pressure, in units of [Pa].
-		in_h : gridtools.Equation
-			The geometric height of the half levels, in units of [m].
-
-		Return
-		-------
-		gridtools.Equation :
-			The diagnosed geometric height of the half levels, in units of [m].
-		"""
-		# Index scanning the vertical axis
-		k = gt.Index(axis=2)
-
-		# Output field
-		out_h = gt.Equation()
-
-		# Get the values for the physical constants to use
-		cp = self._physical_constants['specific_heat_of_dry_air_at_constant_pressure']
-		rd = self._physical_constants['gas_constant_of_dry_air']
-		g  = self._physical_constants['gravitational_acceleration']
-
-		# Computations
-		out_h[k] = in_h[k+1] - \
-			rd * (in_theta[k] * in_exn[k] + in_theta[k+1] * in_exn[k+1]) * \
-			(in_p[k] - in_p[k+1]) / (cp * g * (in_p[k] + in_p[k+1]))
-
-		return out_h
-
-	def _stencil_diagnosing_air_density_initialize(self):
-		"""
-		Initialize the GT4Py stencil in charge of diagnosing the density.
-		"""
-		# Shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-
-		# Allocate the Numpy arrays which will serve as stencil's inputs
-		if not hasattr(self, '_in_s'):
-			self._in_s = np.zeros((nx, ny, nz), dtype=self._dtype)
-		self._in_h = np.zeros((nx, ny, nz+1), dtype=self._dtype)
-
-		# Allocate the Numpy array which will serve as stencil's output
-		self._out_rho = np.zeros((nx, ny, nz), dtype=self._dtype)
-
-		# Instantiate the stencil
-		self._stencil_diagnosing_air_density = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_air_density_defs,
-			inputs={'in_theta': self._theta, 'in_s': self._in_s, 'in_h': self._in_h},
-			outputs={'out_rho': self._out_rho},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend
+		# run the stencil
+		self._stencil_diagnosing_air_temperature(
+			in_theta=self._theta, in_exn=exn, out_temp=temp,
+			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
 		)
 
 	@staticmethod
-	def _stencil_diagnosing_air_density_defs(in_theta, in_s, in_h):
-		"""
-		GT4Py stencil diagnosing the density.
+	def _stencil_diagnosing_air_pressure_defs(
+		in_s: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		inout_p: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		*,
+		dz: float
+	):
+		with gt.region(iteration=gt.FORWARD, k_interval=None):
+			inout_p = inout_p[-1] + g * dz * in_s[-1]
 
-		Parameters
-		----------
-		in_theta : gridtools.Equation
-			The :math:`\\theta`-quota of the vertical half levels, in units of [K].
-		in_s : gridtools.Equation
-			The isentropic density, in units of [kg m^-2 K^-1].
-		in_h : gridtools.Equation
-			The geometric height at the half-levels, in units of [m].
+	@staticmethod
+	def _stencil_diagnosing_exner_defs(
+		in_p: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		out_exn: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True])
+	):
+		out_exn = cp * (in_p[0] / pref) ** (rd / cp)
 
-		Return
-		-------
-		gridtools.Equation :
-			The diagnosed density, in units of [kg m^-3].
-		"""
-		# Index scanning the vertical axis
-		k = gt.Index(axis=2)
+	@staticmethod
+	def _stencil_diagnosing_montgomery_defs(
+		in_exn: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		inout_mtg: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		*,
+		dz: float
+	):
+		with gt.region(iteration=gt.BACKWARD, k_interval=None):
+			inout_mtg = inout_mtg[1] + dz * in_exn[1]
 
-		# Output field
-		out_rho = gt.Equation()
+	@staticmethod
+	def _stencil_diagnosing_height_defs(
+		in_theta: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		in_p: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		in_exn: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		inout_h: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True])
+	):
+		with gt.region(iteration=gt.BACKWARD, k_interval=None):
+			inout_h = inout_h[1] - \
+				rd * (in_theta[0] * in_exn[0] + in_theta[1] * in_exn[1]) * \
+				(in_p[0] - in_p[1]) / (cp * g * (in_p[0] + in_p[1]))
 
-		# Computations
-		out_rho[k] = in_s[k] * (in_theta[k] - in_theta[k+1]) / (in_h[k] - in_h[k+1])
+	@staticmethod
+	def _stencil_diagnosing_air_density_defs(
+		in_theta: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		in_s: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		in_h: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		out_rho: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True])
+	):
+		out_rho = in_s[0] * (in_theta[0] - in_theta[1]) / (in_h[0] - in_h[1])
 
-		return out_rho
-
-	def _stencil_diagnosing_air_temperature_initialize(self):
-		"""
-		Initialize the GT4Py stencil in charge of diagnosing the temperature.
-		"""
-		# Shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-
-		# Allocate the Numpy arrays which will serve as stencil's inputs
-		if not hasattr(self, '_in_exn'):
-			self._in_exn = np.zeros((nx, ny, nz+1), dtype=self._dtype)
-
-		# Allocate the Numpy array which will serve as stencil's output
-		self._out_temp = np.zeros((nx, ny, nz), dtype=self._dtype)
-
-		# Instantiate the stencil
-		self._stencil_diagnosing_air_temperature = gt.NGStencil(
-			definitions_func=self._stencil_diagnosing_air_temperature_defs,
-			inputs={'in_theta': self._theta, 'in_exn': self._in_exn},
-			outputs={'out_temp': self._out_temp},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=self._backend
-		)
-
-	def _stencil_diagnosing_air_temperature_defs(self, in_theta, in_exn):
-		"""
-		GT4Py stencil diagnosing the temperature.
-
-		Parameters
-		----------
-		in_theta : gridtools.Equation
-			The :math:`\\theta`-quota of the vertical half levels, in units of [K].
-		in_exn : gridtools.Equation
-			The Exner function, in units of [J K^-1 kg^-1].
-
-		Return
-		-------
-		gridtools.Equation :
-			The diagnosed temperature, in units of [K].
-		"""
-		# Index scanning the vertical axis
-		k = gt.Index(axis=2)
-
-		# Output field
-		out_temp = gt.Equation()
-
-		# Shortcuts
-		cp = self._physical_constants['specific_heat_of_dry_air_at_constant_pressure']
-
-		# Computations
-		out_temp[k] = .5 * (in_theta[k] * in_exn[k] + in_theta[k+1] * in_exn[k+1]) / cp
-
-		return out_temp
+	@staticmethod
+	def _stencil_diagnosing_air_temperature_defs(
+		in_theta: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		in_exn: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
+		out_temp: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True])
+	):
+		out_temp = .5 * (in_theta[0] * in_exn[0] + in_theta[1] * in_exn[1]) / cp
