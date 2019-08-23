@@ -1,4 +1,4 @@
-FROM tasmania:base
+FROM tasmania:base-ng
 
 MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
 

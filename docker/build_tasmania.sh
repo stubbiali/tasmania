@@ -22,10 +22,10 @@
 #
 
 TASMANIA_ROOT=$(cd ..; pwd)
-GT4PY_BRANCH=merge_ubbiali
+GT4PY_BRANCH=new_irs
 DOCKERFILE=dockerfile.tasmania
-IMAGE_NAME=tasmania:master
-IMAGE_SAVE=tasmania_master.tar
+IMAGE_NAME=tasmania:master-ng
+IMAGE_SAVE=tasmania_master_ng.tar
 
 echo "About to clone the gridtools4py repository under '$PWD/gridtools4py', and check out the '$GT4PY_BRANCH' branch."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
@@ -33,7 +33,9 @@ echo ""
 
 if [[ $key = "" ]]; then
 	if [ ! -d "gridtools4py" ]; then
-		git clone https://github.com/eth-cscs/gridtools4py.git
+		cd ..
+		git submodule add https://github.com/eth-cscs/gridtools4py.git docker/gridtools4py
+		cd docker
 	fi
 
 	cd gridtools4py
