@@ -34,6 +34,7 @@ import numpy as np
 
 import gridtools as gt
 from gridtools.storage import StorageDescriptor
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -41,14 +42,11 @@ except ImportError:
 	from numpy import float32 as datatype
 
 
-class HorizontalDiffusion:
+class HorizontalDiffusion(abc.ABC):
 	"""
 	Abstract base class whose derived classes calculates the
 	tendency due to horizontal diffusion.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	def __init__(
 		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
 		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
@@ -94,28 +92,19 @@ class HorizontalDiffusion:
 		self._dy = dy
 		self._exec_info = exec_info
 
-		# initialize the diffusion coefficient
-		self._gamma = diffusion_coeff
+		# initialize the diffusivity
+		gamma = diffusion_coeff * np.ones((1, 1, shape[2]), dtype=dtype)
 
 		# the diffusivity is monotonically increased towards the top of the model,
 		# so to mimic the effect of a short-length wave absorber
 		n = diffusion_damp_depth
-		if True:  # if n > 0:
+		if n > 0:
 			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-			pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
-			self._gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
-			self._gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+			gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
 		# convert diffusivity to gt4py storage
-		halo = (0, 0, 0) if halo is None else halo
-		iteration_domain = tuple(shape[i] - 2*halo[i] for i in range(3))
-		self._gamma = gt.storage.from_array(
-			self._gamma,
-			gt.storage.StorageDescriptor(
-				dtype, iteration_domain=iteration_domain, halo=halo
-			),
-			backend
-		)
+		descriptor = get_storage_descriptor(shape, dtype, halo, mask=(True, True, True))  # mask=(False, False, True)
+		self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
 
 		# initialize the underlying stencil
 		decorator = gt.stencil(
@@ -263,7 +252,7 @@ class SecondOrder(HorizontalDiffusion):
 	@staticmethod
 	def _stencil_defs(
 		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
 		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
 		*,
 		dx: float,
@@ -314,7 +303,7 @@ class SecondOrder1DX(HorizontalDiffusion):
 	@staticmethod
 	def _stencil_defs(
 		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
 		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
 		*,
 		dx: float,
@@ -356,14 +345,14 @@ class SecondOrder1DY(HorizontalDiffusion):
 		# run the stencil
 		self._stencil(
 			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz),
-			exec_info=self._exec_info
+			origin={"in_phi": (0, nb, 0), "in_gamma": (0, nb, 0), "out_phi": (0, nb, 0)},
+			domain=(nx, ny-2*nb, nz), exec_info=self._exec_info
 		)
 
 	@staticmethod
 	def _stencil_defs(
 		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
+		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
 		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
 		*,
 		dx: float,

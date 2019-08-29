@@ -22,6 +22,7 @@
 #
 """
 This module contains:
+	get_storage_descriptor
 	get_physical_state
 	get_numerical_state
 	NetCDFMonitor
@@ -37,10 +38,21 @@ from pandas import Timedelta
 import sympl
 import xarray as xr
 
+import gridtools as gt
 from tasmania.python.burgers.state import ZhaoSolutionFactory
 from tasmania.python.grids.domain import Domain
 from tasmania.python.utils.data_utils import make_dataarray_3d
 from tasmania.python.utils.utils import convert_datetime64_to_datetime
+
+
+def get_storage_descriptor(storage_shape, dtype, halo=None, mask=(True, True, True)):
+	halo = (0, 0, 0) if halo is None else halo
+	halo = tuple(halo[i] if storage_shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(storage_shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(
+		dtype, mask=mask, halo=halo, iteration_domain=domain
+	)
+	return descriptor
 
 
 def get_physical_state(domain, cstate, store_names=None):

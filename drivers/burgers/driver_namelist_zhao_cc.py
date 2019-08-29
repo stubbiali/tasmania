@@ -26,7 +26,10 @@ from sympl import DataArray
 import tasmania as taz
 import time
 
-import namelist_zhao_cc as nl
+try:
+	from . import namelist_zhao_cc as nl
+except (ImportError, ModuleNotFoundError):
+	import namelist_zhao_cc as nl
 
 # ============================================================
 # The underlying domain
@@ -36,7 +39,7 @@ domain = taz.Domain(
 	DataArray([0, 1], dims='z', attrs={'units': '1'}), 1,
 	horizontal_boundary_type=nl.hb_type, nb=nl.nb,
 	horizontal_boundary_kwargs=nl.hb_kwargs,
-	topography_type='flat_terrain', dtype=nl.dtype
+	topography_type='flat_terrain', dtype=nl.gt_kwargs['dtype']
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -57,8 +60,7 @@ domain.horizontal_boundary.reference_state = state
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
-	domain, 'computational', nl.diffusion_type, nl.diffusion_coeff,
-	nl.backend, nl.dtype
+	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
 )
 
 # ============================================================
@@ -67,7 +69,7 @@ diff = taz.BurgersHorizontalDiffusion(
 dycore = taz.BurgersDynamicalCore(
 	domain, intermediate_tendencies=diff,
 	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme,	backend=nl.backend, dtype=nl.dtype
+	flux_scheme=nl.flux_scheme,	**nl.gt_kwargs
 )
 
 # ============================================================

@@ -106,12 +106,12 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 				* 'numerical' (default).
 
 		tendencies_in_diagnostics : `bool`, optional
-            A boolean indicating whether this object will put tendencies of
-            quantities in its diagnostic output.
-        name : `str`, optional
-            A label to be used for this object, for example as would be used for
-            Y in the name "X_tendency_from_Y". By default the class name in
-            lowercase is used.
+			A boolean indicating whether this object will put tendencies of
+			quantities in its diagnostic output.
+		name : `str`, optional
+			A label to be used for this object, for example as would be used for
+			Y in the name "X_tendency_from_Y". By default the class name in
+			lowercase is used.
 		"""
 		assert grid_type in allowed_grid_types, \
 			'grid_type is {}, but either ({}) was expected.'.format(
@@ -166,12 +166,12 @@ class Stepper(sympl.Stepper):
 				* 'numerical' (default).
 
 		tendencies_in_diagnostics : `bool`, optional
-            A boolean indicating whether this object will put tendencies of
-            quantities in its diagnostic output.
-        name : `str`, optional
-            A label to be used for this object, for example as would be used for
-            Y in the name "X_tendency_from_Y". By default the class name in
-            lowercase is used.
+			A boolean indicating whether this object will put tendencies of
+			quantities in its diagnostic output.
+		name : `str`, optional
+			A label to be used for this object, for example as would be used for
+			Y in the name "X_tendency_from_Y". By default the class name in
+			lowercase is used.
 		"""
 		assert grid_type in allowed_grid_types, \
 			'grid_type is {}, but either ({}) was expected.'.format(
@@ -226,12 +226,12 @@ class TendencyComponent(sympl.TendencyComponent):
 				* 'numerical' (default).
 
 		tendencies_in_diagnostics : `bool`, optional
-            A boolean indicating whether this object will put tendencies of
-            quantities in its diagnostic output.
-        name : `str`, optional
-            A label to be used for this object, for example as would be used for
-            Y in the name "X_tendency_from_Y". By default the class name in
-            lowercase is used.
+			A boolean indicating whether this object will put tendencies of
+			quantities in its diagnostic output.
+		name : `str`, optional
+			A label to be used for this object, for example as would be used for
+			Y in the name "X_tendency_from_Y". By default the class name in
+			lowercase is used.
 		"""
 		assert grid_type in allowed_grid_types, \
 			'grid_type is {}, but either ({}) was expected.'.format(

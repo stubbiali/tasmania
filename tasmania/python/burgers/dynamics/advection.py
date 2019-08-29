@@ -32,20 +32,16 @@ This module contains:
 """
 import abc
 
-import gridtools as gt
 
-
-class BurgersAdvection:
+class BurgersAdvection(abc.ABC):
 	"""
 	A discretizer for the 2-D Burgers advection flux.
 	"""
-	__metaclass__ = abc.ABCMeta
-
 	extent = None
 
 	@staticmethod
 	@abc.abstractmethod
-	def __call__(i, j, dx, dy, u, v):
+	def __call__(dx, dy, u, v):
 		pass
 
 	@staticmethod
@@ -70,26 +66,18 @@ class _FirstOrder(BurgersAdvection):
 	extent = 1
 
 	@staticmethod
-	def __call__(i, j, dx, dy, u, v):
-		abs_u = gt.Equation()
-		abs_v = gt.Equation()
+	def __call__(dx, dy, u, v):
+		abs_u = u[0, 0, 0] * (u[0, 0, 0] > 0.0) - u[0, 0, 0] * (u[0, 0, 0] < 0)
+		abs_v = v[0, 0, 0] * (v[0, 0, 0] > 0.0) - v[0, 0, 0] * (v[0, 0, 0] < 0)
 
-		abs_u[i, j] = u[i, j] * (u[i, j] >= 0.0) - u[i, j] * (u[i, j] < 0)
-		abs_v[i, j] = v[i, j] * (v[i, j] >= 0.0) - v[i, j] * (v[i, j] < 0)
-
-		adv_u_x = gt.Equation()
-		adv_u_y = gt.Equation()
-		adv_v_x = gt.Equation()
-		adv_v_y = gt.Equation()
-
-		adv_u_x[i, j] = u[i, j] / (2.0 * dx) * (u[i+1, j] - u[i-1, j]) - \
-			abs_u[i, j] / (2.0 * dx) * (u[i+1, j] - 2.0*u[i, j] + u[i-1, j])
-		adv_u_y[i, j] = v[i, j] / (2.0 * dy) * (u[i, j+1] - u[i, j-1]) - \
-			abs_v[i, j] / (2.0 * dy) * (u[i, j+1] - 2.0*u[i, j] + u[i, j-1])
-		adv_v_x[i, j] = u[i, j] / (2.0 * dx) * (v[i+1, j] - v[i-1, j]) - \
-			abs_u[i, j] / (2.0 * dx) * (v[i+1, j] - 2.0*v[i, j] + v[i-1, j])
-		adv_v_y[i, j] = v[i, j] / (2.0 * dy) * (v[i, j+1] - v[i, j-1]) - \
-			abs_v[i, j] / (2.0 * dy) * (v[i, j+1] - 2.0*v[i, j] + v[i, j-1])
+		adv_u_x = u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - u[-1, 0, 0]) - \
+			abs_u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - 2.0*u[0, 0, 0] + u[-1, 0, 0])
+		adv_u_y = v[0, 0, 0] / (2.0 * dy) * (u[0, +1, 0] - u[0, -1, 0]) - \
+			abs_v[0, 0, 0] / (2.0 * dy) * (u[0, +1, 0] - 2.0*u[0, 0, 0] + u[0, -1, 0])
+		adv_v_x = u[0, 0, 0] / (2.0 * dx) * (v[+1, 0, 0] - v[-1, 0, 0]) - \
+			abs_u[0, 0, 0] / (2.0 * dx) * (v[+1, 0, 0] - 2.0*v[0, 0, 0] + v[-1, 0, 0])
+		adv_v_y = v[0, 0, 0] / (2.0 * dy) * (v[0, +1, 0] - v[0, -1, 0]) - \
+			abs_v[0, 0, 0] / (2.0 * dy) * (v[0, +1, 0] - 2.0*v[0, 0, 0] + v[0, -1, 0])
 
 		return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
@@ -98,16 +86,11 @@ class _SecondOrder(BurgersAdvection):
 	extent = 1
 
 	@staticmethod
-	def __call__(i, j, dx, dy, u, v):
-		adv_u_x = gt.Equation()
-		adv_u_y = gt.Equation()
-		adv_v_x = gt.Equation()
-		adv_v_y = gt.Equation()
-
-		adv_u_x[i, j] = u[i, j] / (2.0 * dx) * (u[i+1, j] - u[i-1, j])
-		adv_u_y[i, j] = v[i, j] / (2.0 * dy) * (u[i, j+1] - u[i, j-1])
-		adv_v_x[i, j] = u[i, j] / (2.0 * dx) * (v[i+1, j] - v[i-1, j])
-		adv_v_y[i, j] = v[i, j] / (2.0 * dy) * (v[i, j+1] - v[i, j-1])
+	def __call__(dx, dy, u, v):
+		adv_u_x = u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - u[-1, 0, 0])
+		adv_u_y = v[0, 0, 0] / (2.0 * dy) * (u[0, +1, 0] - u[0, -1, 0])
+		adv_v_x = u[0, 0, 0] / (2.0 * dx) * (v[+1, 0, 0] - v[-1, 0, 0])
+		adv_v_y = v[0, 0, 0] / (2.0 * dy) * (v[0, +1, 0] - v[0, -1, 0])
 
 		return adv_u_x, adv_u_y, adv_v_x, adv_v_y
 
@@ -116,41 +99,33 @@ class _ThirdOrder(BurgersAdvection):
 	extent = 2
 
 	@staticmethod
-	def __call__(i, j, dx, dy, u, v):
-		abs_u = gt.Equation()
-		abs_v = gt.Equation()
+	def __call__(dx, dy, u, v):
+		abs_u = u[0, 0, 0] * (u[0, 0, 0] > 0.0) - u[0, 0, 0] * (u[0, 0, 0] < 0)
+		abs_v = v[0, 0, 0] * (v[0, 0, 0] > 0.0) - v[0, 0, 0] * (v[0, 0, 0] < 0)
 
-		abs_u[i, j] = u[i, j] * (u[i, j] >= 0.0) - u[i, j] * (u[i, j] < 0)
-		abs_v[i, j] = v[i, j] * (v[i, j] >= 0.0) - v[i, j] * (v[i, j] < 0)
-
-		adv_u_x = gt.Equation()
-		adv_u_y = gt.Equation()
-		adv_v_x = gt.Equation()
-		adv_v_y = gt.Equation()
-
-		adv_u_x[i, j] = u[i, j] / (12.0 * dx) * (
-				8.0 * (u[i+1, j] - u[i-1, j]) - (u[i+2, j] - u[i-2, j])
+		adv_u_x = u[0, 0, 0] / (12.0 * dx) * (
+				8.0 * (u[+1, 0, 0] - u[-1, 0, 0]) - (u[+2, 0, 0] - u[-2, 0, 0])
 			) \
-			+ abs_u[i, j] / (12.0 * dx) * (
-				u[i+2, j] - 4.0*u[i+1, j] + 6.0*u[i, j] - 4.0*u[i-1, j] + u[i-2, j]
+			+ abs_u[0, 0, 0] / (12.0 * dx) * (
+				u[+2, 0, 0] - 4.0*u[+1, 0, 0] + 6.0*u[0, 0, 0] - 4.0*u[-1, 0, 0] + u[-2, 0, 0]
 			)
-		adv_u_y[i, j] = v[i, j] / (12.0 * dy) * (
-				8.0 * (u[i, j+1] - u[i, j-1]) - (u[i, j+2] - u[i, j-2])
+		adv_u_y = v[0, 0, 0] / (12.0 * dy) * (
+				8.0 * (u[0, +1, 0] - u[0, -1, 0]) - (u[0, +2, 0] - u[0, -2, 0])
 			) \
-			+ abs_v[i, j] / (12.0 * dy) * (
-				u[i, j+2] - 4.0*u[i, j+1] + 6.0*u[i, j] - 4.0*u[i, j-1] + u[i, j-2]
+			+ abs_v[0, 0, 0] / (12.0 * dy) * (
+				u[0, +2, 0] - 4.0*u[0, +1, 0] + 6.0*u[0, 0, 0] - 4.0*u[0, -1, 0] + u[0, -2, 0]
 			)
-		adv_v_x[i, j] = u[i, j] / (12.0 * dx) * (
-				8.0 * (v[i+1, j] - v[i-1, j]) - (v[i+2, j] - v[i-2, j])
+		adv_v_x = u[0, 0, 0] / (12.0 * dx) * (
+				8.0 * (v[+1, 0, 0] - v[-1, 0, 0]) - (v[+2, 0, 0] - v[-2, 0, 0])
 			) \
-			+ abs_u[i, j] / (12.0 * dx) * (
-				v[i+2, j] - 4.0*v[i+1, j] + 6.0*v[i, j] - 4.0*v[i-1, j] + v[i-2, j]
+			+ abs_u[0, 0, 0] / (12.0 * dx) * (
+				v[+2, 0, 0] - 4.0*v[+1, 0, 0] + 6.0*v[0, 0, 0] - 4.0*v[-1, 0, 0] + v[-2, 0, 0]
 			)
-		adv_v_y[i, j] = v[i, j] / (12.0 * dy) * (
-				8.0 * (v[i, j+1] - v[i, j-1]) - (v[i, j+2] - v[i, j-2])
+		adv_v_y = v[0, 0, 0] / (12.0 * dy) * (
+				8.0 * (v[0, +1, 0] - v[0, -1, 0]) - (v[0, +2, 0] - v[0, -2, 0])
 			) \
-			+ abs_v[i, j] / (12.0 * dy) * (
-				v[i, j+2] - 4.0*v[i, j+1] + 6.0*v[i, j] - 4.0*v[i, j-1] + v[i, j-2]
+			+ abs_v[0, 0, 0] / (12.0 * dy) * (
+				v[0, +2, 0] - 4.0*v[0, +1, 0] + 6.0*v[0, 0, 0] - 4.0*v[0, -1, 0] + v[0, -2, 0]
 			)
 
 		return adv_u_x, adv_u_y, adv_v_x, adv_v_y
@@ -160,23 +135,18 @@ class _FourthOrder(BurgersAdvection):
 	extent = 2
 
 	@staticmethod
-	def __call__(i, j, dx, dy, u, v):
-		adv_u_x = gt.Equation()
-		adv_u_y = gt.Equation()
-		adv_v_x = gt.Equation()
-		adv_v_y = gt.Equation()
-
-		adv_u_x[i, j] = u[i, j] / (12.0 * dx) * (
-				8.0 * (u[i+1, j] - u[i-1, j]) - (u[i+2, j] - u[i-2, j])
+	def __call__(dx, dy, u, v):
+		adv_u_x = u[0, 0, 0] / (12.0 * dx) * (
+				8.0 * (u[+1, 0, 0] - u[-1, 0, 0]) - (u[+2, 0, 0] - u[-2, 0, 0])
 			)
-		adv_u_y[i, j] = v[i, j] / (12.0 * dy) * (
-				8.0 * (u[i, j+1] - u[i, j-1]) - (u[i, j+2] - u[i, j-2])
+		adv_u_y = v[0, 0, 0] / (12.0 * dy) * (
+				8.0 * (u[0, +1, 0] - u[0, -1, 0]) - (u[0, +2, 0] - u[0, -2, 0])
 			)
-		adv_v_x[i, j] = u[i, j] / (12.0 * dx) * (
-				8.0 * (v[i+1, j] - v[i-1, j]) - (v[i+2, j] - v[i-2, j])
+		adv_v_x = u[0, 0, 0] / (12.0 * dx) * (
+				8.0 * (v[+1, 0, 0] - v[-1, 0, 0]) - (v[+2, 0, 0] - v[-2, 0, 0])
 			)
-		adv_v_y[i, j] = v[i, j] / (12.0 * dy) * (
-				8.0 * (v[i, j+1] - v[i, j-1]) - (v[i, j+2] - v[i, j-2])
+		adv_v_y = v[0, 0, 0] / (12.0 * dy) * (
+				8.0 * (v[0, +1, 0] - v[0, -1, 0]) - (v[0, +2, 0] - v[0, -2, 0])
 			)
 
 		return adv_u_x, adv_u_y, adv_v_x, adv_v_y
@@ -186,61 +156,53 @@ class _FifthOrder(BurgersAdvection):
 	extent = 3
 
 	@staticmethod
-	def __call__(i, j, dx, dy, u, v):
-		abs_u = gt.Equation()
-		abs_v = gt.Equation()
+	def __call__(dx, dy, u, v):
+		abs_u = u[0, 0, 0] * (u[0, 0, 0] >= 0.0) - u[0, 0, 0] * (u[0, 0, 0] < 0)
+		abs_v = v[0, 0, 0] * (v[0, 0, 0] >= 0.0) - v[0, 0, 0] * (v[0, 0, 0] < 0)
 
-		abs_u[i, j] = u[i, j] * (u[i, j] >= 0.0) - u[i, j] * (u[i, j] < 0)
-		abs_v[i, j] = v[i, j] * (v[i, j] >= 0.0) - v[i, j] * (v[i, j] < 0)
-
-		adv_u_x = gt.Equation()
-		adv_u_y = gt.Equation()
-		adv_v_x = gt.Equation()
-		adv_v_y = gt.Equation()
-
-		adv_u_x[i, j] = u[i, j] / (60.0 * dx) * (
-				+ 45.0 * (u[i+1, j] - u[i-1, j])
-				- 9.0 * (u[i+2, j] - u[i-2, j])
-				+ (u[i+3, j] - u[i-3, j])
+		adv_u_x = u[0, 0, 0] / (60.0 * dx) * (
+				+ 45.0 * (u[+1, 0, 0] - u[-1, 0, 0])
+				- 9.0 * (u[+2, 0, 0] - u[-2, 0, 0])
+				+ (u[+3, 0, 0] - u[-3, 0, 0])
 			) \
-			- abs_u[i, j] / (60.0 * dx) * (
-				+ (u[i+3, j] + u[i-3, j])
-				- 6.0 * (u[i+2, j] + u[i-2, j])
-				+ 15.0 * (u[i+1, j] + u[i-1, j])
-				- 20.0 * u[i, j]
+			- abs_u[0, 0, 0] / (60.0 * dx) * (
+				+ (u[+3, 0, 0] + u[-3, 0, 0])
+				- 6.0 * (u[+2, 0, 0] + u[-2, 0, 0])
+				+ 15.0 * (u[+1, 0, 0] + u[-1, 0, 0])
+				- 20.0 * u[0, 0, 0]
 			)
-		adv_u_y[i, j] = v[i, j] / (60.0 * dy) * (
-				+ 45.0 * (u[i, j+1] - u[i, j-1])
-				- 9.0 * (u[i, j+2] - u[i, j-2])
-				+ (u[i, j+3] - u[i, j-3])
+		adv_u_y = v[0, 0, 0] / (60.0 * dy) * (
+				+ 45.0 * (u[0, +1, 0] - u[0, -1, 0])
+				- 9.0 * (u[0, +2, 0] - u[0, -2, 0])
+				+ (u[0, +3, 0] - u[0, -3, 0])
 			) \
-			- abs_v[i, j] / (60.0 * dy) * (
-				+ (u[i, j+3] + u[i, j-3])
-				- 6.0 * (u[i, j+2] + u[i, j-2])
-				+ 15.0 * (u[i, j+1] + u[i, j-1])
-				- 20.0 * u[i, j]
+			- abs_v[0, 0, 0] / (60.0 * dy) * (
+				+ (u[0, +3, 0] + u[0, -3, 0])
+				- 6.0 * (u[0, +2, 0] + u[0, -2, 0])
+				+ 15.0 * (u[0, +1, 0] + u[0, -1, 0])
+				- 20.0 * u[0, 0, 0]
 			)
-		adv_v_x[i, j] = u[i, j] / (60.0 * dx) * (
-				+ 45.0 * (v[i+1, j] - v[i-1, j])
-				- 9.0 * (v[i+2, j] - v[i-2, j])
-				+ (v[i+3, j] - v[i-3, j])
+		adv_v_x = u[0, 0, 0] / (60.0 * dx) * (
+				+ 45.0 * (v[+1, 0, 0] - v[-1, 0, 0])
+				- 9.0 * (v[+2, 0, 0] - v[-2, 0, 0])
+				+ (v[+3, 0, 0] - v[-3, 0, 0])
 			) \
-			- abs_u[i, j] / (60.0 * dx) * (
-				+ (v[i+3, j] + v[i-3, j])
-				- 6.0 * (v[i+2, j] + v[i-2, j])
-				+ 15.0 * (v[i+1, j] + v[i-1, j])
-				- 20.0 * v[i, j]
+			- abs_u[0, 0, 0] / (60.0 * dx) * (
+				+ (v[+3, 0, 0] + v[-3, 0, 0])
+				- 6.0 * (v[+2, 0, 0] + v[-2, 0, 0])
+				+ 15.0 * (v[+1, 0, 0] + v[-1, 0, 0])
+				- 20.0 * v[0, 0, 0]
 			)
-		adv_v_y[i, j] = v[i, j] / (60.0 * dy) * (
-				+ 45.0 * (v[i, j+1] - v[i, j-1])
-				- 9.0 * (v[i, j+2] - v[i, j-2])
-				+ (v[i, j+3] - v[i, j-3])
+		adv_v_y = v[0, 0, 0] / (60.0 * dy) * (
+				+ 45.0 * (v[0, +1, 0] - v[0, -1, 0])
+				- 9.0 * (v[0, +2, 0] - v[0, -2, 0])
+				+ (v[0, +3, 0] - v[0, -3, 0])
 			) \
-			- abs_v[i, j] / (60.0 * dy) * (
-				+ (v[i, j+3] + v[i, j-3])
-				- 6.0 * (v[i, j+2] + v[i, j-2])
-				+ 15.0 * (v[i, j+1] + v[i, j-1])
-				- 20.0 * v[i, j]
+			- abs_v[0, 0, 0] / (60.0 * dy) * (
+				+ (v[0, +3, 0] + v[0, -3, 0])
+				- 6.0 * (v[0, +2, 0] + v[0, -2, 0])
+				+ 15.0 * (v[0, +1, 0] + v[0, -1, 0])
+				- 20.0 * v[0, 0, 0]
 			)
 
 		return adv_u_x, adv_u_y, adv_v_x, adv_v_y
@@ -250,31 +212,26 @@ class _SixthOrder(BurgersAdvection):
 	extent = 3
 
 	@staticmethod
-	def __call__(i, j, dx, dy, u, v):
-		adv_u_x = gt.Equation()
-		adv_u_y = gt.Equation()
-		adv_v_x = gt.Equation()
-		adv_v_y = gt.Equation()
-
-		adv_u_x[i, j] = u[i, j] / (60.0 * dx) * (
-				+ 45.0 * (u[i+1, j] - u[i-1, j])
-				- 9.0 * (u[i+2, j] - u[i-2, j])
-				+ (u[i+3, j] - u[i-3, j])
+	def __call__(dx, dy, u, v):
+		adv_u_x = u[0, 0, 0] / (60.0 * dx) * (
+				+ 45.0 * (u[+1, 0, 0] - u[-1, 0, 0])
+				- 9.0 * (u[+2, 0, 0] - u[-2, 0, 0])
+				+ (u[+3, 0, 0] - u[-3, 0, 0])
 			)
-		adv_u_y[i, j] = v[i, j] / (60.0 * dy) * (
-				+ 45.0 * (u[i, j+1] - u[i, j-1])
-				- 9.0 * (u[i, j+2] - u[i, j-2])
-				+ (u[i, j+3] - u[i, j-3])
+		adv_u_y = v[0, 0, 0] / (60.0 * dy) * (
+				+ 45.0 * (u[0, +1, 0] - u[0, -1, 0])
+				- 9.0 * (u[0, +2, 0] - u[0, -2, 0])
+				+ (u[0, +3, 0] - u[0, -3, 0])
 			)
-		adv_v_x[i, j] = u[i, j] / (60.0 * dx) * (
-				+ 45.0 * (v[i+1, j] - v[i-1, j])
-				- 9.0 * (v[i+2, j] - v[i-2, j])
-				+ (v[i+3, j] - v[i-3, j])
+		adv_v_x = u[0, 0, 0] / (60.0 * dx) * (
+				+ 45.0 * (v[+1, 0, 0] - v[-1, 0, 0])
+				- 9.0 * (v[+2, 0, 0] - v[-2, 0, 0])
+				+ (v[+3, 0, 0] - v[-3, 0, 0])
 			)
-		adv_v_y[i, j] = v[i, j] / (60.0 * dy) * (
-				+ 45.0 * (v[i, j+1] - v[i, j-1])
-				- 9.0 * (v[i, j+2] - v[i, j-2])
-				+ (v[i, j+3] - v[i, j-3])
+		adv_v_y = v[0, 0, 0] / (60.0 * dy) * (
+				+ 45.0 * (v[0, +1, 0] - v[0, -1, 0])
+				- 9.0 * (v[0, +2, 0] - v[0, -2, 0])
+				+ (v[0, +3, 0] - v[0, -3, 0])
 			)
 
 		return adv_u_x, adv_u_y, adv_v_x, adv_v_y

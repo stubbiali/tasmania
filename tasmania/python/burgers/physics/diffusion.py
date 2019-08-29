@@ -29,6 +29,7 @@ import numpy as np
 import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -42,8 +43,9 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 	due to diffusion for the 2-D Burgers equations.
 	"""
 	def __init__(
-		self, domain, grid_type, diffusion_type, diffusion_coeff,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		self, domain, grid_type, diffusion_type, diffusion_coeff, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -62,11 +64,20 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 		diffusion_coeff : sympl.DataArray
 			1-item :class:`sympl.DataArray` representing the diffusion
 			coefficient. The units should be compatible with 'm^2 s^-1'.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		kwargs :
 			Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
 		"""
@@ -80,12 +91,17 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 			diffusion_type, (nx, ny, 1), dx, dy,
 			diffusion_coeff=diffusion_coeff.to_units('m^2 s^-1').values.item(),
 			diffusion_coeff_max=diffusion_coeff.to_units('m^2 s^-1').values.item(),
-			diffusion_damp_depth=0,  #nb = self.horizontal_boundary.nb
-			backend=backend, dtype=dtype
+			diffusion_damp_depth=0, nb=self.horizontal_boundary.nb,
+			backend=backend, backend_opts=backend_opts, build_info=build_info,
+			dtype=dtype, exec_info=exec_info, halo=halo, rebuild=rebuild
 		)
 
-		self._out_u = np.zeros((nx, ny, 1), dtype=dtype)
-		self._out_v = np.zeros((nx, ny, 1), dtype=dtype)
+		storage_shape = (nx, ny, 1)
+		descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
+		self._in_u = gt.storage.zeros(descriptor, backend=backend)
+		self._in_v = gt.storage.zeros(descriptor, backend=backend)
+		self._out_u_tnd = gt.storage.zeros(descriptor, backend=backend)
+		self._out_v_tnd = gt.storage.zeros(descriptor, backend=backend)
 
 	@property
 	def input_properties(self):
@@ -110,10 +126,16 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 		return {}
 
 	def array_call(self, state):
-		self._diffuser(state['x_velocity'], self._out_u)
-		self._diffuser(state['y_velocity'], self._out_v)
+		self._in_u.data[...] = state['x_velocity']
+		self._in_v.data[...] = state['y_velocity']
 
-		tendencies = {'x_velocity': self._out_u, 'y_velocity': self._out_v}
+		self._diffuser(self._in_u, self._out_u_tnd)
+		self._diffuser(self._in_v, self._out_v_tnd)
+
+		tendencies = {
+			'x_velocity': self._out_u_tnd.data,
+			'y_velocity': self._out_v_tnd.data
+		}
 		diagnostics = {}
 
 		return tendencies, diagnostics

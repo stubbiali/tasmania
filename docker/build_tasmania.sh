@@ -22,7 +22,7 @@
 #
 
 TASMANIA_ROOT=$(cd ..; pwd)
-GT4PY_BRANCH=new_irs
+GT4PY_BRANCH=tasmania_migration
 DOCKERFILE=dockerfile.tasmania
 IMAGE_NAME=tasmania:master-ng
 IMAGE_SAVE=tasmania_master_ng.tar
@@ -39,7 +39,9 @@ if [[ $key = "" ]]; then
 	fi
 
 	cd gridtools4py
+	git fetch
 	git checkout $GT4PY_BRANCH
+	git pull
 	cd ..
 fi
 

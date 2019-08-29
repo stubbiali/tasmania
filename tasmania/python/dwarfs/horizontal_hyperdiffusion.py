@@ -36,6 +36,7 @@ import numpy as np
 
 import gridtools as gt
 from gridtools.storage import StorageDescriptor
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -60,14 +61,11 @@ def stage_laplacian(dx, dy, phi):
 	return lap
 
 
-class HorizontalHyperDiffusion:
+class HorizontalHyperDiffusion(abc.ABC):
 	"""
 	Abstract base class whose derived classes calculates the
 	tendency due to horizontal hyper-diffusion.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	def __init__(
 		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
 		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
@@ -114,7 +112,7 @@ class HorizontalHyperDiffusion:
 		self._exec_info = exec_info
 
 		# initialize the diffusion coefficient
-		self._gamma = diffusion_coeff
+		gamma = diffusion_coeff
 
 		# the diffusivity is monotonically increased towards the top of the model,
 		# so to mimic the effect of a short-length wave absorber
@@ -122,17 +120,12 @@ class HorizontalHyperDiffusion:
 		if True:  # if n > 0:
 			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
 			pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
-			self._gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
-			self._gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+			gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
+			gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
 		# convert diffusivity to gt4py storage
-		halo = (0, 0, 0) if halo is None else halo
-		iteration_domain = tuple(shape[i] - 2*halo[i] for i in range(3))
-		self._gamma = gt.storage.from_array(
-			self._gamma,
-			StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
-			backend=backend
-		)
+		descriptor = get_storage_descriptor(shape, dtype, halo, mask=(True, True, True))  # mask=(False, False, True)
+		self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
 
 		# initialize the underlying stencil
 		decorator = gt.stencil(

@@ -29,6 +29,7 @@ import numpy as np
 import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -41,10 +42,13 @@ class IsentropicSmagorinsky(Smagorinsky2d):
 	Implementation of the Smagorinsky turbulence model for the
 	isentropic model. The conservative form of the governing
 	equations is used.
+	The class is instantiated over the *numerical* grid of the
+	underlying domain.
 	"""
 	def __init__(
-		self, domain, grid_type='numerical', smagorinsky_constant=0.18,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		self, domain, smagorinsky_constant=0.18, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -59,26 +63,43 @@ class IsentropicSmagorinsky(Smagorinsky2d):
 
 		smagorinsky_constant : `float`, optional
 			The Smagorinsky constant. Defaults to 0.18.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.python.physics.turbulence.Smagorinsky2d`.
 		"""
 		super().__init__(
-			domain, grid_type, smagorinsky_constant, backend, dtype, **kwargs
+			domain, smagorinsky_constant, backend=backend,
+			backend_opts=backend_opts, build_info=build_info, dtype=dtype,
+			exec_info=exec_info, halo=halo, rebuild=rebuild, **kwargs
 		)
 
 		self._hv = HorizontalVelocity(
-			self.grid, staggering=False, backend=backend, dtype=dtype
+			self.grid, staggering=False, backend=backend, backend_opts=backend_opts,
+			build_info=build_info, exec_info=exec_info, rebuild=True
 		)
 
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		self._out_su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+		storage_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
+		descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
+		self._in_s = gt.storage.zeros(descriptor, backend=backend)
+		self._in_su = gt.storage.zeros(descriptor, backend=backend)
+		self._in_sv = gt.storage.zeros(descriptor, backend=backend)
+		self._out_su_tnd = gt.storage.zeros(descriptor, backend=backend)
+		self._out_sv_tnd = gt.storage.zeros(descriptor, backend=backend)
 
 	@property
 	def input_properties(self):
@@ -102,21 +123,34 @@ class IsentropicSmagorinsky(Smagorinsky2d):
 		return {}
 
 	def array_call(self, state):
-		s = state['air_isentropic_density']
-		su = state['x_momentum_isentropic']
-		sv = state['y_momentum_isentropic']
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		nb = self._nb
+		dx = self.grid.dx.to_units('m').values.item()
+		dy = self.grid.dy.to_units('m').values.item()
 
-		self._hv.get_velocity_components(s, su, sv, self._in_u, self._in_v)
+		self._in_s.data[:nx, :ny, :nz]  = state['air_isentropic_density']
+		self._in_su.data[:nx, :ny, :nz] = state['x_momentum_isentropic']
+		self._in_sv.data[:nx, :ny, :nz] = state['y_momentum_isentropic']
 
-		self._stencil.compute()
+		self._hv.get_velocity_components(
+			self._in_s, self._in_su, self._in_sv, self._in_u, self._in_v
+		)
+
+		self._stencil(
+			in_u=self._in_u, in_v=self._in_v, out_u_tnd=self._out_u_tnd,
+			out_v_tnd=self._out_v_tnd, dx=dx, dy=dy, cs=self._cs,
+			origin={'_all_': (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
+			exec_info=self._exec_info
+		)
 
 		self._hv.get_momenta(
-			s, self._out_u_tnd, self._out_v_tnd, self._out_su_tnd, self._out_sv_tnd
+			self._in_s, self._out_u_tnd, self._out_v_tnd,
+			self._out_su_tnd, self._out_sv_tnd
 		)
 
 		tendencies = {
-			'x_momentum_isentropic': self._out_su_tnd,
-			'y_momentum_isentropic': self._out_sv_tnd
+			'x_momentum_isentropic': self._out_su_tnd.data[:nx, :ny, :nz],
+			'y_momentum_isentropic': self._out_sv_tnd.data[:nx, :ny, :nz]
 		}
 		diagnostics = {}
 

@@ -31,53 +31,45 @@ from tasmania.python.burgers.dynamics.advection import \
 	_FourthOrder, _FifthOrder
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
-	from .utils import st_burgers_state, st_one_of, st_physical_grid
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+	from .utils import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
-	from utils import st_burgers_state, st_one_of, st_physical_grid
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+	from utils import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
 
 
 class WrappingStencil:
-	def __init__(self, advection, backend):
-		self.call_func = advection.__call__
-		self.nb = advection.extent
-		self.backend = backend
-		self.stencil = None
+	def __init__(self, advection, nb, backend):
+		assert nb >= advection.extent
+		self.nb = nb
+		decorator = gt.stencil(
+			backend, rebuild=True, externals={'call_func': advection.__call__}
+		)
+		self.stencil = decorator(self.stencil_defs)
 
-	def __call__(self, dx, dy, u, v):
-		mi, mj, mk = u.shape
-
-		self.dx = gt.Global()
-		self.dy = gt.Global()
-		self.adv_u_x = np.zeros_like(u, dtype=u.dtype)
-		self.adv_u_y = np.zeros_like(u, dtype=u.dtype)
-		self.adv_v_x = np.zeros_like(u, dtype=u.dtype)
-		self.adv_v_y = np.zeros_like(u, dtype=u.dtype)
-
-		self.stencil = gt.NGStencil(
-			definitions_func=self.stencil_defs,
-			inputs={'u': u, 'v': v},
-			global_inputs={'dx': self.dx, 'dy': self.dy},
-			outputs={
-				'adv_u_x': self.adv_u_x, 'adv_u_y': self.adv_u_y,
-				'adv_v_x': self.adv_v_x, 'adv_v_y': self.adv_v_y
-			},
-			domain=gt.domain.Rectangle(
-				(self.nb, self.nb, 0), (mi-self.nb-1, mj-self.nb-1, mk-1)),
-			mode=self.backend,
+	def __call__(self, dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y):
+		mi, mj, mk = u.data.shape
+		nb = self.nb
+		self.stencil(
+			in_u=u, in_v=v, out_adv_u_x=adv_u_x, out_adv_u_y=adv_u_y,
+			out_adv_v_x=adv_v_x, out_adv_v_y=adv_v_y, dx=dx, dy=dy,
+			origin={"_all_": (nb, nb, 0)}, domain=(mi-2*nb, mj-2*nb, mk)
 		)
 
-		self.dx.value = dx
-		self.dy.value = dy
-
-		self.stencil.compute()
-
-	def stencil_defs(self, dx, dy, u, v):
-		i = gt.Index(axis=0)
-		j = gt.Index(axis=1)
-
-		return self.call_func(i, j, dx, dy, u, v)
+	@staticmethod
+	def stencil_defs(
+		in_u: gt.storage.f64_ijk_sd,
+		in_v: gt.storage.f64_ijk_sd,
+		out_adv_u_x: gt.storage.f64_ijk_sd,
+		out_adv_u_y: gt.storage.f64_ijk_sd,
+		out_adv_v_x: gt.storage.f64_ijk_sd,
+		out_adv_v_y: gt.storage.f64_ijk_sd,
+		*,
+		dx: float,
+		dy: float
+	):
+		out_adv_u_x, out_adv_u_y, out_adv_v_x, out_adv_v_y = \
+			call_func(dx=dx, dy=dy, u=in_u, v=in_v)
 
 
 def first_order_advection(dx, dy, u, v, phi):
@@ -103,59 +95,52 @@ def test_first_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label='nb')
 	grid = data.draw(
 		st_physical_grid(
-			xaxis_length=(2*_FirstOrder.extent+1, 40),
-			yaxis_length=(2*_FirstOrder.extent+1, 40),
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
 	state = data.draw(st_burgers_state(grid), label='state')
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
+	# ========================================
+	# test test
+	# ========================================
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
-	# ========================================
-	# test interface
-	# ========================================
-	i = gt.Index()
-	j = gt.Index()
+	dtype = u.dtype
+	grid_shape = u.shape
+	halo = tuple(halo[i] if grid_shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(grid_shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(dtype, halo=halo, iteration_domain=domain)
+	u_st = gt.storage.from_array(u, descriptor, backend=backend)
+	v_st = gt.storage.from_array(v, descriptor, backend=backend)
+	adv_u_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_u_y_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_y_st = gt.storage.empty(descriptor, backend=backend)
 
-	u_eq = gt.Equation()
-	v_eq = gt.Equation()
+	advection = BurgersAdvection.factory('first_order')
 
-	adv = BurgersAdvection.factory('first_order')
+	ws = WrappingStencil(advection, nb, backend)
 
-	assert isinstance(adv, BurgersAdvection)
-	assert isinstance(adv, _FirstOrder)
-
-	out = adv(i, j, dx, dy, u_eq, v_eq)
-
-	assert len(out) == 4
-	assert all(isinstance(obj, gt.Equation) for obj in out)
-	assert out[0].get_name() == 'adv_u_x'
-	assert out[1].get_name() == 'adv_u_y'
-	assert out[2].get_name() == 'adv_v_x'
-	assert out[3].get_name() == 'adv_v_y'
-
-	# ========================================
-	# test numerics
-	# ========================================
-	ws = WrappingStencil(adv, backend)
-
-	ws(dx, dy, u, v)
+	ws(dx, dy, u_st, v_st, adv_u_x_st, adv_u_y_st, adv_v_x_st, adv_v_y_st)
 
 	adv_u_x, adv_u_y = first_order_advection(dx, dy, u, v, u)
 	adv_v_x, adv_v_y = first_order_advection(dx, dy, u, v, v)
 
-	assert np.allclose(adv_u_x[1:-1, 1:-1, :], ws.adv_u_x[1:-1, 1:-1, :])
-	assert np.allclose(adv_u_y[1:-1, 1:-1, :], ws.adv_u_y[1:-1, 1:-1, :])
-	assert np.allclose(adv_v_x[1:-1, 1:-1, :], ws.adv_v_x[1:-1, 1:-1, :])
-	assert np.allclose(adv_v_y[1:-1, 1:-1, :], ws.adv_v_y[1:-1, 1:-1, :])
+	compare_arrays(adv_u_x_st.data[nb:-nb, nb:-nb], adv_u_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_u_y_st.data[nb:-nb, nb:-nb], adv_u_y[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_x_st.data[nb:-nb, nb:-nb], adv_v_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_y_st.data[nb:-nb, nb:-nb], adv_v_y[nb:-nb, nb:-nb])
 
 
 def second_order_advection(dx, dy, u, v, phi):
@@ -175,59 +160,52 @@ def test_second_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label='nb')
 	grid = data.draw(
 		st_physical_grid(
-			xaxis_length=(2*_SecondOrder.extent+1, 40),
-			yaxis_length=(2*_SecondOrder.extent+1, 40),
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
 	state = data.draw(st_burgers_state(grid), label='state')
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
+	# ========================================
+	# test test
+	# ========================================
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
-	# ========================================
-	# test interface
-	# ========================================
-	i = gt.Index()
-	j = gt.Index()
+	dtype = u.dtype
+	grid_shape = u.shape
+	halo = tuple(halo[i] if grid_shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(grid_shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(dtype, halo=halo, iteration_domain=domain)
+	u_st = gt.storage.from_array(u, descriptor, backend=backend)
+	v_st = gt.storage.from_array(v, descriptor, backend=backend)
+	adv_u_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_u_y_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_y_st = gt.storage.empty(descriptor, backend=backend)
 
-	u_eq = gt.Equation()
-	v_eq = gt.Equation()
+	advection = BurgersAdvection.factory('second_order')
 
-	adv = BurgersAdvection.factory('second_order')
+	ws = WrappingStencil(advection, nb, backend)
 
-	assert isinstance(adv, BurgersAdvection)
-	assert isinstance(adv, _SecondOrder)
-
-	out = adv(i, j, dx, dy, u_eq, v_eq)
-
-	assert len(out) == 4
-	assert all(isinstance(obj, gt.Equation) for obj in out)
-	assert out[0].get_name() == 'adv_u_x'
-	assert out[1].get_name() == 'adv_u_y'
-	assert out[2].get_name() == 'adv_v_x'
-	assert out[3].get_name() == 'adv_v_y'
-
-	# ========================================
-	# test numerics
-	# ========================================
-	ws = WrappingStencil(adv, backend)
-
-	ws(dx, dy, u, v)
+	ws(dx, dy, u_st, v_st, adv_u_x_st, adv_u_y_st, adv_v_x_st, adv_v_y_st)
 
 	adv_u_x, adv_u_y = second_order_advection(dx, dy, u, v, u)
 	adv_v_x, adv_v_y = second_order_advection(dx, dy, u, v, v)
 
-	assert np.allclose(adv_u_x[1:-1, 1:-1, :], ws.adv_u_x[1:-1, 1:-1, :])
-	assert np.allclose(adv_u_y[1:-1, 1:-1, :], ws.adv_u_y[1:-1, 1:-1, :])
-	assert np.allclose(adv_v_x[1:-1, 1:-1, :], ws.adv_v_x[1:-1, 1:-1, :])
-	assert np.allclose(adv_v_y[1:-1, 1:-1, :], ws.adv_v_y[1:-1, 1:-1, :])
+	compare_arrays(adv_u_x_st.data[nb:-nb, nb:-nb], adv_u_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_u_y_st.data[nb:-nb, nb:-nb], adv_u_y[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_x_st.data[nb:-nb, nb:-nb], adv_v_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_y_st.data[nb:-nb, nb:-nb], adv_v_y[nb:-nb, nb:-nb])
 
 
 def third_order_advection(dx, dy, u, v, phi):
@@ -263,59 +241,52 @@ def test_third_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
 	grid = data.draw(
 		st_physical_grid(
-			xaxis_length=(2*_ThirdOrder.extent+1, 40),
-			yaxis_length=(2*_ThirdOrder.extent+1, 40),
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
 	state = data.draw(st_burgers_state(grid), label='state')
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
+	# ========================================
+	# test test
+	# ========================================
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
-	# ========================================
-	# test interface
-	# ========================================
-	i = gt.Index()
-	j = gt.Index()
+	dtype = u.dtype
+	grid_shape = u.shape
+	halo = tuple(halo[i] if grid_shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(grid_shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(dtype, halo=halo, iteration_domain=domain)
+	u_st = gt.storage.from_array(u, descriptor, backend=backend)
+	v_st = gt.storage.from_array(v, descriptor, backend=backend)
+	adv_u_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_u_y_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_y_st = gt.storage.empty(descriptor, backend=backend)
 
-	u_eq = gt.Equation()
-	v_eq = gt.Equation()
+	advection = BurgersAdvection.factory('third_order')
 
-	adv = BurgersAdvection.factory('third_order')
+	ws = WrappingStencil(advection, nb, backend)
 
-	assert isinstance(adv, BurgersAdvection)
-	assert isinstance(adv, _ThirdOrder)
-
-	out = adv(i, j, dx, dy, u_eq, v_eq)
-
-	assert len(out) == 4
-	assert all(isinstance(obj, gt.Equation) for obj in out)
-	assert out[0].get_name() == 'adv_u_x'
-	assert out[1].get_name() == 'adv_u_y'
-	assert out[2].get_name() == 'adv_v_x'
-	assert out[3].get_name() == 'adv_v_y'
-
-	# ========================================
-	# test numerics
-	# ========================================
-	ws = WrappingStencil(adv, backend)
-
-	ws(dx, dy, u, v)
+	ws(dx, dy, u_st, v_st, adv_u_x_st, adv_u_y_st, adv_v_x_st, adv_v_y_st)
 
 	adv_u_x, adv_u_y = third_order_advection(dx, dy, u, v, u)
 	adv_v_x, adv_v_y = third_order_advection(dx, dy, u, v, v)
 
-	assert np.allclose(adv_u_x[2:-2, 2:-2, :], ws.adv_u_x[2:-2, 2:-2, :])
-	assert np.allclose(adv_u_y[2:-2, 2:-2, :], ws.adv_u_y[2:-2, 2:-2, :])
-	assert np.allclose(adv_v_x[2:-2, 2:-2, :], ws.adv_v_x[2:-2, 2:-2, :])
-	assert np.allclose(adv_v_y[2:-2, 2:-2, :], ws.adv_v_y[2:-2, 2:-2, :])
+	compare_arrays(adv_u_x_st.data[nb:-nb, nb:-nb], adv_u_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_u_y_st.data[nb:-nb, nb:-nb], adv_u_y[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_x_st.data[nb:-nb, nb:-nb], adv_v_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_y_st.data[nb:-nb, nb:-nb], adv_v_y[nb:-nb, nb:-nb])
 
 
 def fourth_order_advection(dx, dy, u, v, phi):
@@ -341,59 +312,52 @@ def test_fourth_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
 	grid = data.draw(
 		st_physical_grid(
-			xaxis_length=(2*_FourthOrder.extent+1, 40),
-			yaxis_length=(2*_FourthOrder.extent+1, 40),
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
 	state = data.draw(st_burgers_state(grid), label='state')
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
+	# ========================================
+	# test test
+	# ========================================
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
-	# ========================================
-	# test interface
-	# ========================================
-	i = gt.Index()
-	j = gt.Index()
+	dtype = u.dtype
+	grid_shape = u.shape
+	halo = tuple(halo[i] if grid_shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(grid_shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(dtype, halo=halo, iteration_domain=domain)
+	u_st = gt.storage.from_array(u, descriptor, backend=backend)
+	v_st = gt.storage.from_array(v, descriptor, backend=backend)
+	adv_u_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_u_y_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_y_st = gt.storage.empty(descriptor, backend=backend)
 
-	u_eq = gt.Equation()
-	v_eq = gt.Equation()
+	advection = BurgersAdvection.factory('fourth_order')
 
-	adv = BurgersAdvection.factory('fourth_order')
+	ws = WrappingStencil(advection, nb, backend)
 
-	assert isinstance(adv, BurgersAdvection)
-	assert isinstance(adv, _FourthOrder)
-
-	out = adv(i, j, dx, dy, u_eq, v_eq)
-
-	assert len(out) == 4
-	assert all(isinstance(obj, gt.Equation) for obj in out)
-	assert out[0].get_name() == 'adv_u_x'
-	assert out[1].get_name() == 'adv_u_y'
-	assert out[2].get_name() == 'adv_v_x'
-	assert out[3].get_name() == 'adv_v_y'
-
-	# ========================================
-	# test numerics
-	# ========================================
-	ws = WrappingStencil(adv, backend)
-
-	ws(dx, dy, u, v)
+	ws(dx, dy, u_st, v_st, adv_u_x_st, adv_u_y_st, adv_v_x_st, adv_v_y_st)
 
 	adv_u_x, adv_u_y = fourth_order_advection(dx, dy, u, v, u)
 	adv_v_x, adv_v_y = fourth_order_advection(dx, dy, u, v, v)
 
-	assert np.allclose(adv_u_x[2:-2, 2:-2, :], ws.adv_u_x[2:-2, 2:-2, :])
-	assert np.allclose(adv_u_y[2:-2, 2:-2, :], ws.adv_u_y[2:-2, 2:-2, :])
-	assert np.allclose(adv_v_x[2:-2, 2:-2, :], ws.adv_v_x[2:-2, 2:-2, :])
-	assert np.allclose(adv_v_y[2:-2, 2:-2, :], ws.adv_v_y[2:-2, 2:-2, :])
+	compare_arrays(adv_u_x_st.data[nb:-nb, nb:-nb], adv_u_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_u_y_st.data[nb:-nb, nb:-nb], adv_u_y[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_x_st.data[nb:-nb, nb:-nb], adv_v_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_y_st.data[nb:-nb, nb:-nb], adv_v_y[nb:-nb, nb:-nb])
 
 
 def fifth_order_advection(dx, dy, u, v, phi):
@@ -433,59 +397,52 @@ def test_fifth_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label='nb')
 	grid = data.draw(
 		st_physical_grid(
-			xaxis_length=(2*_FifthOrder.extent+1, 40),
-			yaxis_length=(2*_FifthOrder.extent+1, 40),
+			xaxis_length=(2*nb+1, 40),
+			yaxis_length=(2*nb+1, 40),
 			zaxis_length=(1, 1)
 		),
 		label='grid'
 	)
 	state = data.draw(st_burgers_state(grid), label='state')
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
+	# ========================================
+	# test test
+	# ========================================
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u = state['x_velocity'].to_units('m s^-1').values
 	v = state['y_velocity'].to_units('m s^-1').values
 
-	# ========================================
-	# test interface
-	# ========================================
-	i = gt.Index()
-	j = gt.Index()
+	dtype = u.dtype
+	grid_shape = u.shape
+	halo = tuple(halo[i] if grid_shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(grid_shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(dtype, halo=halo, iteration_domain=domain)
+	u_st = gt.storage.from_array(u, descriptor, backend=backend)
+	v_st = gt.storage.from_array(v, descriptor, backend=backend)
+	adv_u_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_u_y_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_x_st = gt.storage.empty(descriptor, backend=backend)
+	adv_v_y_st = gt.storage.empty(descriptor, backend=backend)
 
-	u_eq = gt.Equation()
-	v_eq = gt.Equation()
+	advection = BurgersAdvection.factory('fifth_order')
 
-	adv = BurgersAdvection.factory('fifth_order')
+	ws = WrappingStencil(advection, nb, backend)
 
-	assert isinstance(adv, BurgersAdvection)
-	assert isinstance(adv, _FifthOrder)
-
-	out = adv(i, j, dx, dy, u_eq, v_eq)
-
-	assert len(out) == 4
-	assert all(isinstance(obj, gt.Equation) for obj in out)
-	assert out[0].get_name() == 'adv_u_x'
-	assert out[1].get_name() == 'adv_u_y'
-	assert out[2].get_name() == 'adv_v_x'
-	assert out[3].get_name() == 'adv_v_y'
-
-	# ========================================
-	# test numerics
-	# ========================================
-	ws = WrappingStencil(adv, backend)
-
-	ws(dx, dy, u, v)
+	ws(dx, dy, u_st, v_st, adv_u_x_st, adv_u_y_st, adv_v_x_st, adv_v_y_st)
 
 	adv_u_x, adv_u_y = fifth_order_advection(dx, dy, u, v, u)
 	adv_v_x, adv_v_y = fifth_order_advection(dx, dy, u, v, v)
 
-	assert np.allclose(adv_u_x[3:-3, 3:-3, :], ws.adv_u_x[3:-3, 3:-3, :])
-	assert np.allclose(adv_u_y[3:-3, 3:-3, :], ws.adv_u_y[3:-3, 3:-3, :])
-	assert np.allclose(adv_v_x[3:-3, 3:-3, :], ws.adv_v_x[3:-3, 3:-3, :])
-	assert np.allclose(adv_v_y[3:-3, 3:-3, :], ws.adv_v_y[3:-3, 3:-3, :])
+	compare_arrays(adv_u_x_st.data[nb:-nb, nb:-nb], adv_u_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_u_y_st.data[nb:-nb, nb:-nb], adv_u_y[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_x_st.data[nb:-nb, nb:-nb], adv_v_x[nb:-nb, nb:-nb])
+	compare_arrays(adv_v_y_st.data[nb:-nb, nb:-nb], adv_v_y[nb:-nb, nb:-nb])
 
 
 if __name__ == '__main__':

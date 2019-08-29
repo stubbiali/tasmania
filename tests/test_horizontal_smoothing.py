@@ -26,13 +26,14 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .utils import compare_arrays, st_domain, st_floats, st_one_of
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from utils import compare_arrays, st_domain, st_floats, st_one_of
 
 
@@ -98,32 +99,55 @@ def first_order_smoothing_yz(phi, g):
 	return phi_smooth
 
 
-def first_order_validation(phi_rnd, ni, nj, nk, smooth_depth, nb, backend):
+def first_order_validation(
+	phi_rnd, ni, nj, nk, smooth_depth, nb, backend, halo
+):
 	phi = phi_rnd[:ni, :nj, :nk]
 	phi_new = np.zeros_like(phi)
 
+	halo_ = tuple(halo[i] if phi.shape[i] > 2*halo[i] else 0 for i in range(3))
+	iteration_domain = tuple(phi.shape[i] - 2*halo_[i] for i in range(3))
+
+	phi = gt.storage.from_array(
+		phi,
+		gt.storage.StorageDescriptor(
+			phi.dtype.type, iteration_domain=iteration_domain, halo=halo_
+		),
+		backend=backend,
+	)
+	phi_new = gt.storage.from_array(
+		phi_new,
+		gt.storage.StorageDescriptor(
+			phi_new.dtype.type, iteration_domain=iteration_domain, halo=halo_
+		),
+		backend=backend,
+	)
+
 	hs = HS.factory(
-		'first_order', (ni, nj, nk), 0.5, 1.0, smooth_depth,
-		nb, backend, dtype=phi.dtype
+		'first_order', (ni, nj, nk), 0.5, 1.0, smooth_depth, nb,
+		backend=backend, dtype=phi.dtype, halo=halo_, rebuild=True
 	)
 	hs(phi, phi_new)
 
-	gamma = hs._gamma if isinstance(hs._gamma, np.ndarray) else \
-		hs._gamma * np.ones_like(phi)
+	gamma = hs._gamma.data
 
 	if ni < 3:
-		phi_new_assert = first_order_smoothing_yz(phi, gamma)
-		assert_yz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = first_order_smoothing_yz(phi.data, gamma)
+		assert_yz(phi.data, phi_new.data, phi_new_assert, nb)
 	elif nj < 3:
-		phi_new_assert = first_order_smoothing_xz(phi, gamma)
-		assert_xz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = first_order_smoothing_xz(phi.data, gamma)
+		assert_xz(phi.data, phi_new.data, phi_new_assert, nb)
 	else:
-		phi_new_assert = first_order_smoothing_xyz(phi, gamma)
-		assert_xyz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = first_order_smoothing_xyz(phi.data, gamma)
+		assert_xyz(phi.data, phi_new.data, phi_new_assert, nb)
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+	suppress_health_check=(
+		HealthCheck.too_slow,
+		HealthCheck.data_too_large,
+		HealthCheck.filter_too_much
+	),
 	deadline=None
 )
 @given(hyp_st.data())
@@ -131,7 +155,7 @@ def test_first_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label='nb')
 
 	domain = data.draw(
 		st_domain(
@@ -145,11 +169,6 @@ def test_first_order(data):
 
 	pgrid = domain.physical_grid
 	cgrid = domain.numerical_grid
-	assume(
-		(pgrid.nx == 1 and pgrid.ny >= 3) or
-		(pgrid.nx >= 3 and pgrid.ny == 1) or
-		(pgrid.nx >= 3 and pgrid.ny >= 3)
-	)
 
 	pphi_rnd = data.draw(
 		st_arrays(
@@ -170,30 +189,21 @@ def test_first_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(st_one_of(conf_backend))
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
+
+	dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnx')
+	dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dny')
+	dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnz')
 
 	# ========================================
 	# test
 	# ========================================
 	nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-	first_order_validation(pphi_rnd, nx  , ny  , nz  , depth, nb, backend)
-	first_order_validation(pphi_rnd, nx+1, ny  , nz  , depth, nb, backend)
-	first_order_validation(pphi_rnd, nx  , ny+1, nz  , depth, nb, backend)
-	first_order_validation(pphi_rnd, nx  , ny  , nz+1, depth, nb, backend)
-	first_order_validation(pphi_rnd, nx+1, ny+1, nz  , depth, nb, backend)
-	first_order_validation(pphi_rnd, nx+1, ny  , nz+1, depth, nb, backend)
-	first_order_validation(pphi_rnd, nx  , ny+1, nz+1, depth, nb, backend)
-	first_order_validation(pphi_rnd, nx+1, ny+1, nz+1, depth, nb, backend)
+	first_order_validation(pphi_rnd, nx+dnx, ny+dny, nz+dnz, depth, nb, backend, halo)
 
 	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-	first_order_validation(cphi_rnd, nx  , ny  , nz  , depth, nb, backend)
-	first_order_validation(cphi_rnd, nx+1, ny  , nz  , depth, nb, backend)
-	first_order_validation(cphi_rnd, nx  , ny+1, nz  , depth, nb, backend)
-	first_order_validation(cphi_rnd, nx  , ny  , nz+1, depth, nb, backend)
-	first_order_validation(cphi_rnd, nx+1, ny+1, nz  , depth, nb, backend)
-	first_order_validation(cphi_rnd, nx+1, ny  , nz+1, depth, nb, backend)
-	first_order_validation(cphi_rnd, nx  , ny+1, nz+1, depth, nb, backend)
-	first_order_validation(cphi_rnd, nx+1, ny+1, nz+1, depth, nb, backend)
+	first_order_validation(cphi_rnd, nx+dnx, ny+dny, nz+dnz, depth, nb, backend, halo)
 
 
 def second_order_smoothing_xyz(phi, g):
@@ -251,28 +261,47 @@ def second_order_smoothing_yz(phi, g):
 	return phi_smooth
 
 
-def second_order_validation(phi_rnd, ni, nj, nk, smooth_depth, nb, backend):
+def second_order_validation(
+	phi_rnd, ni, nj, nk, smooth_depth, nb, backend, halo
+):
 	phi = phi_rnd[:ni, :nj, :nk]
 	phi_new = np.zeros_like(phi)
 
+	halo_ = tuple(halo[i] if phi.shape[i] > 2*halo[i] else 0 for i in range(3))
+	iteration_domain = tuple(phi.shape[i] - 2*halo_[i] for i in range(3))
+
+	phi = gt.storage.from_array(
+		phi,
+		gt.storage.StorageDescriptor(
+			phi.dtype.type, iteration_domain=iteration_domain, halo=halo_
+		),
+		backend=backend,
+	)
+	phi_new = gt.storage.from_array(
+		phi_new,
+		gt.storage.StorageDescriptor(
+			phi_new.dtype.type, iteration_domain=iteration_domain, halo=halo_
+		),
+		backend=backend,
+	)
+
 	hs = HS.factory(
-		'second_order', (ni, nj, nk), 0.5, 1.0, smooth_depth,
-		nb, backend, dtype=phi.dtype
+		'second_order', (ni, nj, nk), 0.5, 1.0, smooth_depth, nb,
+		backend=backend, dtype=phi.dtype, halo=halo_, rebuild=True
 	)
 	hs(phi, phi_new)
 
-	gamma = hs._gamma if isinstance(hs._gamma, np.ndarray) else \
-		hs._gamma * np.ones_like(phi)
+	gamma = hs._gamma.data
 
 	if ni < 5:
-		phi_new_assert = second_order_smoothing_yz(phi, gamma)
-		assert_yz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = second_order_smoothing_yz(phi.data, gamma)
+		assert_yz(phi.data, phi_new.data, phi_new_assert, nb)
 	elif nj < 5:
-		phi_new_assert = second_order_smoothing_xz(phi, gamma)
-		assert_xz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = second_order_smoothing_xz(phi.data, gamma)
+		assert_xz(phi.data, phi_new.data, phi_new_assert, nb)
 	else:
-		phi_new_assert = second_order_smoothing_xyz(phi, gamma)
-		assert_xyz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = second_order_smoothing_xyz(phi.data, gamma)
+		assert_xyz(phi.data, phi_new.data, phi_new_assert, nb)
 
 
 @settings(
@@ -288,7 +317,7 @@ def test_second_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
 
 	domain = data.draw(
 		st_domain(
@@ -302,11 +331,6 @@ def test_second_order(data):
 
 	pgrid = domain.physical_grid
 	cgrid = domain.numerical_grid
-	assume(
-		(pgrid.nx == 1 and pgrid.ny >= 5) or
-		(pgrid.nx >= 5 and pgrid.ny == 1) or
-		(pgrid.nx >= 5 and pgrid.ny >= 5)
-	)
 
 	pphi_rnd = data.draw(
 		st_arrays(
@@ -327,30 +351,21 @@ def test_second_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(st_one_of(conf_backend))
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
+
+	dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnx')
+	dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dny')
+	dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnz')
 
 	# ========================================
 	# test
 	# ========================================
 	nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-	second_order_validation(pphi_rnd, nx  , ny  , nz  , depth, nb, backend)
-	second_order_validation(pphi_rnd, nx+1, ny  , nz  , depth, nb, backend)
-	second_order_validation(pphi_rnd, nx  , ny+1, nz  , depth, nb, backend)
-	second_order_validation(pphi_rnd, nx  , ny  , nz+1, depth, nb, backend)
-	second_order_validation(pphi_rnd, nx+1, ny+1, nz  , depth, nb, backend)
-	second_order_validation(pphi_rnd, nx+1, ny  , nz+1, depth, nb, backend)
-	second_order_validation(pphi_rnd, nx  , ny+1, nz+1, depth, nb, backend)
-	second_order_validation(pphi_rnd, nx+1, ny+1, nz+1, depth, nb, backend)
+	second_order_validation(pphi_rnd, nx+dnx, ny+dny, nz+dnz, depth, nb, backend, halo)
 
 	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-	second_order_validation(cphi_rnd, nx  , ny  , nz  , depth, nb, backend)
-	second_order_validation(cphi_rnd, nx+1, ny  , nz  , depth, nb, backend)
-	second_order_validation(cphi_rnd, nx  , ny+1, nz  , depth, nb, backend)
-	second_order_validation(cphi_rnd, nx  , ny  , nz+1, depth, nb, backend)
-	second_order_validation(cphi_rnd, nx+1, ny+1, nz  , depth, nb, backend)
-	second_order_validation(cphi_rnd, nx+1, ny  , nz+1, depth, nb, backend)
-	second_order_validation(cphi_rnd, nx  , ny+1, nz+1, depth, nb, backend)
-	second_order_validation(cphi_rnd, nx+1, ny+1, nz+1, depth, nb, backend)
+	second_order_validation(cphi_rnd, nx+dnx, ny+dny, nz+dnz, depth, nb, backend, halo)
 
 
 def third_order_smoothing_xyz(phi, g):
@@ -412,28 +427,47 @@ def third_order_smoothing_yz(phi, g):
 	return phi_smooth
 
 
-def third_order_validation(phi_rnd, ni, nj, nk, smooth_depth, nb, backend):
+def third_order_validation(
+	phi_rnd, ni, nj, nk, smooth_depth, nb, backend, halo
+):
 	phi = phi_rnd[:ni, :nj, :nk]
 	phi_new = np.zeros_like(phi)
 
+	halo_ = tuple(halo[i] if phi.shape[i] > 2*halo[i] else 0 for i in range(3))
+	iteration_domain = tuple(phi.shape[i] - 2*halo_[i] for i in range(3))
+
+	phi = gt.storage.from_array(
+		phi,
+		gt.storage.StorageDescriptor(
+			phi.dtype.type, iteration_domain=iteration_domain, halo=halo_
+		),
+		backend=backend,
+	)
+	phi_new = gt.storage.from_array(
+		phi_new,
+		gt.storage.StorageDescriptor(
+			phi_new.dtype.type, iteration_domain=iteration_domain, halo=halo_
+		),
+		backend=backend,
+	)
+
 	hs = HS.factory(
-		'third_order', (ni, nj, nk), 0.5, 1.0, smooth_depth,
-		nb, backend, dtype=phi.dtype
+		'third_order', (ni, nj, nk), 0.5, 1.0, smooth_depth, nb,
+		backend=backend, dtype=phi.dtype, halo=halo_, rebuild=True
 	)
 	hs(phi, phi_new)
 
-	gamma = hs._gamma if isinstance(hs._gamma, np.ndarray) else \
-		hs._gamma * np.ones_like(phi)
+	gamma = hs._gamma.data
 
 	if ni < 7:
-		phi_new_assert = third_order_smoothing_yz(phi, gamma)
-		assert_yz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = third_order_smoothing_yz(phi.data, gamma)
+		assert_yz(phi.data, phi_new.data, phi_new_assert, nb)
 	elif nj < 7:
-		phi_new_assert = third_order_smoothing_xz(phi, gamma)
-		assert_xz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = third_order_smoothing_xz(phi.data, gamma)
+		assert_xz(phi.data, phi_new.data, phi_new_assert, nb)
 	else:
-		phi_new_assert = third_order_smoothing_xyz(phi, gamma)
-		assert_xyz(phi, phi_new, phi_new_assert, nb)
+		phi_new_assert = third_order_smoothing_xyz(phi.data, gamma)
+		assert_xyz(phi.data, phi_new.data, phi_new_assert, nb)
 
 
 @settings(
@@ -449,7 +483,7 @@ def test_third_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, taz_conf.nb)))
+	nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label='nb')
 
 	domain = data.draw(
 		st_domain(
@@ -463,11 +497,6 @@ def test_third_order(data):
 
 	pgrid = domain.physical_grid
 	cgrid = domain.numerical_grid
-	assume(
-		(pgrid.nx == 1 and pgrid.ny >= 7) or
-		(pgrid.nx >= 7 and pgrid.ny == 1) or
-		(pgrid.nx >= 7 and pgrid.ny >= 7)
-	)
 
 	pphi_rnd = data.draw(
 		st_arrays(
@@ -488,30 +517,21 @@ def test_third_order(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label='depth')
 
-	backend = data.draw(st_one_of(conf_backend))
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
+
+	dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnx')
+	dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dny')
+	dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnz')
 
 	# ========================================
 	# test
 	# ========================================
 	nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-	third_order_validation(pphi_rnd, nx  , ny  , nz  , depth, nb, backend)
-	third_order_validation(pphi_rnd, nx+1, ny  , nz  , depth, nb, backend)
-	third_order_validation(pphi_rnd, nx  , ny+1, nz  , depth, nb, backend)
-	third_order_validation(pphi_rnd, nx  , ny  , nz+1, depth, nb, backend)
-	third_order_validation(pphi_rnd, nx+1, ny+1, nz  , depth, nb, backend)
-	third_order_validation(pphi_rnd, nx+1, ny  , nz+1, depth, nb, backend)
-	third_order_validation(pphi_rnd, nx  , ny+1, nz+1, depth, nb, backend)
-	third_order_validation(pphi_rnd, nx+1, ny+1, nz+1, depth, nb, backend)
+	third_order_validation(pphi_rnd, nx+dnx, ny+dny, nz+dnz, depth, nb, backend, halo)
 
 	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-	third_order_validation(cphi_rnd, nx  , ny  , nz  , depth, nb, backend)
-	third_order_validation(cphi_rnd, nx+1, ny  , nz  , depth, nb, backend)
-	third_order_validation(cphi_rnd, nx  , ny+1, nz  , depth, nb, backend)
-	third_order_validation(cphi_rnd, nx  , ny  , nz+1, depth, nb, backend)
-	third_order_validation(cphi_rnd, nx+1, ny+1, nz  , depth, nb, backend)
-	third_order_validation(cphi_rnd, nx+1, ny  , nz+1, depth, nb, backend)
-	third_order_validation(cphi_rnd, nx  , ny+1, nz+1, depth, nb, backend)
-	third_order_validation(cphi_rnd, nx+1, ny+1, nz+1, depth, nb, backend)
+	third_order_validation(cphi_rnd, nx+dnx, ny+dny, nz+dnz, depth, nb, backend, halo)
 
 
 if __name__ == '__main__':

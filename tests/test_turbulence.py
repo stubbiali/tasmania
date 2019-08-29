@@ -30,10 +30,10 @@ from tasmania.python.physics.turbulence import Smagorinsky2d
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from utils import compare_dataarrays, st_domain, st_floats, st_one_of
 
 
@@ -73,11 +73,10 @@ def test_smagorinsky2d(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf.nb)))
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
 
 	domain = data.draw(st_domain(nb=nb), label='domain')
-	grid_type = data.draw(st_one_of(('physical', 'numerical')), label='grid_type')
-	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
+	grid = domain.numerical_grid
 
 	cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label='cs')
 
@@ -95,6 +94,7 @@ def test_smagorinsky2d(data):
 	time = data.draw(hyp_st.datetimes(), label='time')
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test bed
@@ -102,8 +102,8 @@ def test_smagorinsky2d(data):
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
 
-	u = field[:-1, :-1]
-	v = field[1:, 1:]
+	u = field[:-1, :-1, :]
+	v = field[1:, 1:, :]
 	state = {
 		'time': time,
 		'x_velocity': make_dataarray_3d(u, grid, 'm s^-1'),
@@ -113,21 +113,21 @@ def test_smagorinsky2d(data):
 	u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
 
 	smag = Smagorinsky2d(
-		domain, grid_type, smagorinsky_constant=cs, backend=backend, dtype=dtype
+		domain, smagorinsky_constant=cs, backend=backend, dtype=dtype, halo=halo
 	)
 
 	tendencies, diagnostics = smag(state)
 
 	assert 'x_velocity' in tendencies
 	compare_dataarrays(
-		tendencies['x_velocity'][nb:-nb, nb:-nb],
-		make_dataarray_3d(u_tnd, grid, 'm s^-2')[nb:-nb, nb:-nb],
+		tendencies['x_velocity'][nb:-nb, nb:-nb, :],
+		make_dataarray_3d(u_tnd, grid, 'm s^-2')[nb:-nb, nb:-nb, :],
 		compare_coordinate_values=False
 	)
 	assert 'y_velocity' in tendencies
 	compare_dataarrays(
-		tendencies['y_velocity'][nb:-nb, nb:-nb],
-		make_dataarray_3d(v_tnd, grid, 'm s^-2')[nb:-nb, nb:-nb],
+		tendencies['y_velocity'][nb:-nb, nb:-nb, :],
+		make_dataarray_3d(v_tnd, grid, 'm s^-2')[nb:-nb, nb:-nb, :],
 		compare_coordinate_values=False
 	)
 	assert len(tendencies) == 2
