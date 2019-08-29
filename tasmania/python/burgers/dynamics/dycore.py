@@ -24,7 +24,6 @@
 This module contains:
 	BurgersDynamicalCore(DynamicalCore)
 """
-import gridtools as gt
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
 
@@ -40,8 +39,9 @@ class BurgersDynamicalCore(DynamicalCore):
 	"""
 	def __init__(
 		self, domain, intermediate_tendencies=None,
-		time_integration_scheme='forward_euler', flux_scheme='upwind',
-		backend=gt.mode.NUMPY, dtype=datatype
+		time_integration_scheme='forward_euler', flux_scheme='upwind', *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=None
 	):
 		"""
 		Parameters
@@ -71,9 +71,18 @@ class BurgersDynamicalCore(DynamicalCore):
 			for all available options.
 		backend : `str`, optional
 			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
+			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		"""
 		super().__init__(
 			domain, grid_type='numerical', time_units='s',
@@ -87,7 +96,9 @@ class BurgersDynamicalCore(DynamicalCore):
 
 		self._stepper = BurgersStepper.factory(
 			time_integration_scheme, self.grid.grid_xy, self.horizontal_boundary.nb,
-			flux_scheme, backend, dtype
+			flux_scheme, backend=backend, backend_opts=backend_opts,
+			build_info=build_info, dtype=dtype, exec_info=exec_info,
+			halo=halo, rebuild=rebuild
 		)
 
 	@property

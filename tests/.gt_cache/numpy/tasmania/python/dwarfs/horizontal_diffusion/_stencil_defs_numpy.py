@@ -5,7 +5,7 @@ import numpy as np
 from numpy import dtype
 
 
-from gridtools import Boundary, FieldInfo, ParameterInfo, StencilObject
+from gridtools import Boundary, DomainInfo, FieldInfo, ParameterInfo, StencilObject
 
 
 class _stencil_defs_numpy(StencilObject):
@@ -13,6 +13,8 @@ class _stencil_defs_numpy(StencilObject):
     _gt_backend_ = "numpy"
 
     _gt_source_ = {}
+
+    _gt_domain_info_ = DomainInfo(parallel_axes=('I', 'J'), sequential_axis='K', ndims=3)
 
     _gt_field_info_ = {'in_phi': FieldInfo(boundary=Boundary(((2, 2), (2, 2), (0, 0))), dtype=dtype('float64')), 'in_gamma': FieldInfo(boundary=Boundary(
         ((0, 0), (0, 0), (0, 0))), dtype=dtype('float64')), 'out_phi': FieldInfo(boundary=Boundary(((0, 0), (0, 0), (0, 0))), dtype=dtype('float64'))}
@@ -35,6 +37,10 @@ class _stencil_defs_numpy(StencilObject):
     @property
     def source(self):
         return type(self)._gt_source_
+
+    @property
+    def domain_info(self):
+        return type(self)._gt_domain_info_
 
     @property
     def field_info(self) -> dict:

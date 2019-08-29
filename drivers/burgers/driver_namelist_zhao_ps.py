@@ -26,7 +26,10 @@ from sympl import DataArray
 import tasmania as taz
 import time
 
-import namelist_zhao_ps as nl
+try:
+	from . import namelist_zhao_ps as nl
+except (ImportError, ModuleNotFoundError):
+	import namelist_zhao_ps as nl
 
 # ============================================================
 # The underlying domain
@@ -36,7 +39,7 @@ domain = taz.Domain(
 	DataArray([0, 1], dims='z', attrs={'units': '1'}), 1,
 	horizontal_boundary_type=nl.hb_type, nb=nl.nb,
 	horizontal_boundary_kwargs=nl.hb_kwargs,
-	topography_type='flat_terrain', dtype=nl.dtype
+	topography_type='flat_terrain', dtype=nl.gt_kwargs['dtype']
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -58,7 +61,7 @@ domain.horizontal_boundary.reference_state = state
 dycore = taz.BurgersDynamicalCore(
 	domain, intermediate_tendencies=None,
 	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme,	backend=nl.backend, dtype=nl.dtype
+	flux_scheme=nl.flux_scheme,	**nl.gt_kwargs
 )
 
 # ============================================================
@@ -66,8 +69,7 @@ dycore = taz.BurgersDynamicalCore(
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
-	domain, 'computational', nl.diffusion_type, nl.diffusion_coeff,
-	nl.backend, nl.dtype
+	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
 )
 
 # Wrap the component in a ParallelSplitting object
@@ -83,9 +85,7 @@ if nl.filename is not None and nl.save_frequency > 0:
 	if os.path.exists(nl.filename):
 		os.remove(nl.filename)
 
-	netcdf_monitor = taz.NetCDFMonitor(
-		nl.filename, domain, 'physical', store_names=nl.store_names
-	)
+	netcdf_monitor = taz.NetCDFMonitor(nl.filename, domain, 'physical')
 	netcdf_monitor.store(state)
 
 # ============================================================
@@ -142,9 +142,9 @@ for i in range(nt):
 
 print('Simulation successfully completed. HOORAY!')
 
-#============================================================
+# ============================================================
 # Post-processing
-#============================================================
+# ============================================================
 # Dump the solution to file
 if nl.filename is not None and nl.save_frequency > 0:
 	netcdf_monitor.write()

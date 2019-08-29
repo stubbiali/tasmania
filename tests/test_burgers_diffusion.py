@@ -28,14 +28,14 @@ from sympl import DataArray
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .test_horizontal_diffusion import \
 		second_order_diffusion_xyz, second_order_diffusion_xz, second_order_diffusion_yz, \
 		fourth_order_diffusion_xyz, fourth_order_diffusion_xz, fourth_order_diffusion_yz, \
 		assert_xyz, assert_xz, assert_yz
 	from .utils import st_burgers_state, st_domain, st_floats, st_one_of
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from test_horizontal_diffusion import \
 		second_order_diffusion_xyz, second_order_diffusion_xz, second_order_diffusion_yz, \
 		fourth_order_diffusion_xyz, fourth_order_diffusion_xz, fourth_order_diffusion_yz, \
@@ -68,12 +68,12 @@ def test_second_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 1  # TODO: nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, taz_conf.nb)))
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label='nb')
 
 	domain = data.draw(
 		st_domain(
-			xaxis_length=(1, 15),
-			yaxis_length=(1, 15),
+			xaxis_length=(1, 40),
+			yaxis_length=(1, 40),
 			zaxis_length=(1, 1),
 			nb=nb
 		),
@@ -82,18 +82,14 @@ def test_second_order(data):
 
 	pgrid = domain.physical_grid
 	cgrid = domain.numerical_grid
-	assume(
-		(pgrid.nx == 1 and pgrid.ny >= 3) or
-		(pgrid.nx >= 3 and pgrid.ny == 1) or
-		(pgrid.nx >= 3 and pgrid.ny >= 3)
-	)
 
-	pstate = data.draw(st_burgers_state(pgrid), label='pgrid')
-	cstate = data.draw(st_burgers_state(cgrid), label='cgrid')
+	pstate = data.draw(st_burgers_state(pgrid), label='pstate')
+	cstate = data.draw(st_burgers_state(cgrid), label='cstate')
 
 	smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label='smooth_coeff')
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test
@@ -104,7 +100,7 @@ def test_second_order(data):
 	pbhd = BurgersHorizontalDiffusion(
 		domain, 'physical', 'second_order',
 		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
-		backend=backend, dtype=pgrid.x.dtype
+		backend=backend, dtype=pgrid.x.dtype, halo=halo, rebuild=True
 	)
 
 	tendencies, diagnostics = pbhd(pstate)
@@ -133,7 +129,7 @@ def test_second_order(data):
 	cbhd = BurgersHorizontalDiffusion(
 		domain, 'numerical', 'second_order',
 		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
-		backend=backend, dtype=cgrid.x.dtype
+		backend=backend, dtype=cgrid.x.dtype, halo=halo, rebuild=True
 	)
 
 	tendencies, diagnostics = cbhd(cstate)
@@ -182,12 +178,12 @@ def test_fourth_order(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	nb = 2  # TODO: nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, taz_conf.nb)))
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
 
 	domain = data.draw(
 		st_domain(
-			xaxis_length=(1, 15),
-			yaxis_length=(1, 15),
+			xaxis_length=(1, 40),
+			yaxis_length=(1, 40),
 			zaxis_length=(1, 1),
 			nb=nb
 		),
@@ -196,18 +192,14 @@ def test_fourth_order(data):
 
 	pgrid = domain.physical_grid
 	cgrid = domain.numerical_grid
-	assume(
-		(pgrid.nx == 1 and pgrid.ny >= 5) or
-		(pgrid.nx >= 5 and pgrid.ny == 1) or
-		(pgrid.nx >= 5 and pgrid.ny >= 5)
-	)
 
-	pstate = data.draw(st_burgers_state(pgrid), label='pgrid')
-	cstate = data.draw(st_burgers_state(cgrid), label='cgrid')
+	pstate = data.draw(st_burgers_state(pgrid), label='pstate')
+	cstate = data.draw(st_burgers_state(cgrid), label='cstate')
 
 	smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label='smooth_coeff')
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test
@@ -218,7 +210,7 @@ def test_fourth_order(data):
 	pbhd = BurgersHorizontalDiffusion(
 		domain, 'physical', 'fourth_order',
 		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
-		backend=backend, dtype=pgrid.x.dtype
+		backend=backend, dtype=pgrid.x.dtype, halo=halo, rebuild=True
 	)
 
 	tendencies, diagnostics = pbhd(pstate)
@@ -247,7 +239,7 @@ def test_fourth_order(data):
 	cbhd = BurgersHorizontalDiffusion(
 		domain, 'numerical', 'fourth_order',
 		DataArray(smooth_coeff, attrs={'units': 'm^2 s^-1'}),
-		backend=backend, dtype=cgrid.x.dtype
+		backend=backend, dtype=cgrid.x.dtype, halo=halo, rebuild=True
 	)
 
 	tendencies, diagnostics = cbhd(cstate)

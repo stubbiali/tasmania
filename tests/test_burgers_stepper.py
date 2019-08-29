@@ -23,30 +23,27 @@
 from copy import deepcopy
 from datetime import datetime, timedelta
 from hypothesis import \
-	given, HealthCheck, settings, strategies as hyp_st
+	given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
-import tasmania.conf as taz_conf
 from tasmania.python.burgers.dynamics.stepper import \
 	BurgersStepper, _ForwardEuler, _RK2, _RK3WS
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.grids.grid import NumericalGrid
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .test_burgers_advection import \
 		first_order_advection, third_order_advection, fifth_order_advection
-	from .utils import st_burgers_state, st_burgers_tendency, st_domain, st_one_of, \
-		st_horizontal_boundary_type, st_horizontal_boundary_kwargs, \
-		st_physical_grid, st_timedeltas
+	from .utils import compare_arrays, compare_datetimes, \
+		st_burgers_state, st_burgers_tendency, st_domain, st_one_of, st_timedeltas
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from test_burgers_advection import \
 		first_order_advection, third_order_advection, fifth_order_advection
-	from utils import st_burgers_state, st_burgers_tendency, st_domain, st_one_of, \
-		st_horizontal_boundary_type, st_horizontal_boundary_kwargs, \
-		st_physical_grid, st_timedeltas
+	from utils import compare_arrays, compare_datetimes, \
+		st_burgers_state, st_burgers_tendency, st_domain, st_one_of, st_timedeltas
 
 
 @settings(
@@ -58,36 +55,26 @@ def test_forward_euler(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	pgrid = data.draw(
-		st_physical_grid(
-			xaxis_length=(2*taz_conf.nb+1, 40),
-			yaxis_length=(2*taz_conf.nb+1, 40),
-			zaxis_length=(1, 1)
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label='nb')
+	domain = data.draw(
+		st_domain(
+			xaxis_length=(1, 40),
+			yaxis_length=(1, 40),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
-		label='grid'
+		label='domain'
 	)
-
-	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
-	hb_type = data.draw(st_horizontal_boundary_type(), label='hb_type')
-	nb = 1  # TODO: nb = data.draw(st_horizontal_boundary_layers(nx, ny))
-	hb_kwargs = data.draw(
-		st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
-	)
-	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
-
-	grid = NumericalGrid(pgrid, hb)
-
+	grid = domain.numerical_grid
 	state = data.draw(
 		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
-		label='in_state'
+		label='state'
 	)
-
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
 			st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
-
 	timestep = data.draw(
 		st_timedeltas(
 			min_value=timedelta(seconds=0),
@@ -95,15 +82,17 @@ def test_forward_euler(data):
 		),
 		label='timestep'
 	)
-
 	backend = data.draw(st_one_of(conf_backend), label='backend')
-	dtype = grid.grid_xy.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test
 	# ========================================
+	dtype = grid.grid_xy.x.dtype
+
 	bs = BurgersStepper.factory(
-		'forward_euler', grid.grid_xy, nb, 'first_order', backend, dtype
+		'forward_euler', grid.grid_xy, nb, 'first_order',
+		backend=backend, dtype=dtype, halo=halo, rebuild=True
 	)
 
 	assert isinstance(bs, _ForwardEuler)
@@ -124,7 +113,6 @@ def test_forward_euler(data):
 
 	out_state = bs(0, raw_state, raw_tendency, timestep)
 
-	nb = hb.nb
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u, v = raw_state['x_velocity'], raw_state['y_velocity']
@@ -143,8 +131,9 @@ def test_forward_euler(data):
 		out_u += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		out_v += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	assert np.allclose(out_u, out_state['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(out_v, out_state['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	compare_datetimes(out_state['time'], state['time'] + timestep)
+	compare_arrays(out_u, out_state['x_velocity'][nb:-nb, nb:-nb, :])
+	compare_arrays(out_v, out_state['y_velocity'][nb:-nb, nb:-nb, :])
 
 
 @settings(
@@ -152,40 +141,30 @@ def test_forward_euler(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_rk2(data):
+def _test_rk2(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	pgrid = data.draw(
-		st_physical_grid(
-			xaxis_length=(2*taz_conf.nb+1, 40),
-			yaxis_length=(2*taz_conf.nb+1, 40),
-			zaxis_length=(1, 1)
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
+	domain = data.draw(
+		st_domain(
+			xaxis_length=(1, 40),
+			yaxis_length=(1, 40),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
-		label='grid'
+		label='domain'
 	)
-
-	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
-	hb_type = data.draw(st_horizontal_boundary_type(), label='hb_type')
-	nb = 2  # TODO: nb = data.draw(st_horizontal_boundary_layers(nx, ny))
-	hb_kwargs = data.draw(
-		st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
-	)
-	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
-
-	grid = NumericalGrid(pgrid, hb)
-
+	grid = domain.numerical_grid
 	state = data.draw(
 		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
-		label='in_state'
+		label='state'
 	)
-
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
 			st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
-
 	timestep = data.draw(
 		st_timedeltas(
 			min_value=timedelta(seconds=0),
@@ -193,15 +172,17 @@ def test_rk2(data):
 		),
 		label='timestep'
 	)
-
 	backend = data.draw(st_one_of(conf_backend), label='backend')
-	dtype = grid.grid_xy.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test
 	# ========================================
+	dtype = grid.grid_xy.x.dtype
+
 	bs = BurgersStepper.factory(
-		'rk2', grid.grid_xy, nb, 'third_order', backend, dtype
+		'rk2', grid.grid_xy, nb, 'third_order',
+		backend=backend, dtype=dtype, halo=halo, rebuild=True
 	)
 
 	assert isinstance(bs, _RK2)
@@ -225,7 +206,6 @@ def test_rk2(data):
 	# ========================================
 	raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
 
-	nb = hb.nb
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u0, v0 = raw_state_0['x_velocity'], raw_state_0['y_velocity']
@@ -244,9 +224,9 @@ def test_rk2(data):
 		u1 += 0.5 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v1 += 0.5 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert raw_state_1['time'] == state['time'] + 0.5*timestep
-	assert np.allclose(u1, raw_state_1['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v1, raw_state_1['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	compare_datetimes(raw_state_1['time'], state['time'] + 0.5*timestep)
+	compare_arrays(u1, raw_state_1['x_velocity'][nb:-nb, nb:-nb, :])
+	compare_arrays(v1, raw_state_1['y_velocity'][nb:-nb, nb:-nb, :])
 
 	# ========================================
 	# stage 1
@@ -268,9 +248,9 @@ def test_rk2(data):
 		u2 += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v2 += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert raw_state_2['time'] == state['time'] + timestep
-	assert np.allclose(u2, raw_state_2['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v2, raw_state_2['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	compare_datetimes(raw_state_2['time'], state['time'] + timestep)
+	compare_arrays(u2, raw_state_2['x_velocity'][nb:-nb, nb:-nb, :])
+	compare_arrays(v2, raw_state_2['y_velocity'][nb:-nb, nb:-nb, :])
 
 
 @settings(
@@ -278,40 +258,30 @@ def test_rk2(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_rk3ws(data):
+def _test_rk3ws(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	pgrid = data.draw(
-		st_physical_grid(
-			xaxis_length=(2*taz_conf.nb+1, 40),
-			yaxis_length=(2*taz_conf.nb+1, 40),
-			zaxis_length=(1, 1)
+	nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label='nb')
+	domain = data.draw(
+		st_domain(
+			xaxis_length=(1, 40),
+			yaxis_length=(1, 40),
+			zaxis_length=(1, 1),
+			nb=nb
 		),
-		label='grid'
+		label='domain'
 	)
-
-	nx, ny = pgrid.grid_xy.nx, pgrid.grid_xy.ny
-	hb_type = data.draw(st_horizontal_boundary_type(), label='hb_type')
-	nb = 3  # TODO: nb = data.draw(st_horizontal_boundary_layers(nx, ny))
-	hb_kwargs = data.draw(
-		st_horizontal_boundary_kwargs(hb_type, nx, ny, nb), label='hb_kwargs'
-	)
-	hb = HorizontalBoundary.factory(hb_type, nx, ny, nb, **hb_kwargs)
-
-	grid = NumericalGrid(pgrid, hb)
-
+	grid = domain.numerical_grid
 	state = data.draw(
 		st_burgers_state(grid, time=datetime(year=1992, month=2, day=20)),
-		label='in_state'
+		label='state'
 	)
-
 	if_tendency = data.draw(hyp_st.booleans(), label='if_tendency')
 	tendency = {} if not if_tendency else \
 		data.draw(
 			st_burgers_tendency(grid, time=state['time']), label='tendency'
 		)
-
 	timestep = data.draw(
 		st_timedeltas(
 			min_value=timedelta(seconds=0),
@@ -319,15 +289,17 @@ def test_rk3ws(data):
 		),
 		label='timestep'
 	)
-
 	backend = data.draw(st_one_of(conf_backend), label='backend')
-	dtype = grid.grid_xy.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test
 	# ========================================
+	dtype = grid.grid_xy.x.dtype
+
 	bs = BurgersStepper.factory(
-		'rk3ws', grid.grid_xy, nb, 'fifth_order', backend, dtype
+		'rk3ws', grid.grid_xy, nb, 'fifth_order',
+		backend=backend, dtype=dtype, halo=halo, rebuild=True
 	)
 
 	assert isinstance(bs, _RK2)
@@ -352,7 +324,6 @@ def test_rk3ws(data):
 	# ========================================
 	raw_state_1 = bs(0, raw_state_0, raw_tendency, timestep)
 
-	nb = hb.nb
 	dx = grid.grid_xy.dx.to_units('m').values.item()
 	dy = grid.grid_xy.dy.to_units('m').values.item()
 	u0, v0 = raw_state_0['x_velocity'], raw_state_0['y_velocity']
@@ -371,9 +342,9 @@ def test_rk3ws(data):
 		u1 += 1.0/3.0 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v1 += 1.0/3.0 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert raw_state_1['time'] == state['time'] + 1.0/3.0*timestep
-	assert np.allclose(u1, raw_state_1['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v1, raw_state_1['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	compare_datetimes(raw_state_1['time'], state['time'] + 1.0/3.0*timestep)
+	compare_arrays(u1, raw_state_1['x_velocity'][nb:-nb, nb:-nb, :])
+	compare_arrays(v1, raw_state_1['y_velocity'][nb:-nb, nb:-nb, :])
 
 	# ========================================
 	# stage 1
@@ -395,12 +366,12 @@ def test_rk3ws(data):
 		u2 += 0.5 * timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v2 += 0.5 * timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert raw_state_2['time'] == state['time'] + timestep
-	assert np.allclose(u2, raw_state_2['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v2, raw_state_2['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	compare_datetimes(raw_state_2['time'], state['time'] + 0.5*timestep)
+	compare_arrays(u2, raw_state_2['x_velocity'][nb:-nb, nb:-nb, :])
+	compare_arrays(v2, raw_state_2['y_velocity'][nb:-nb, nb:-nb, :])
 
 	# ========================================
-	# stage 1
+	# stage 2
 	# ========================================
 	raw_state_2 = deepcopy(raw_state_2)
 	raw_state_3 = bs(2, raw_state_2, raw_tendency, timestep)
@@ -419,9 +390,9 @@ def test_rk3ws(data):
 		u3 += timestep.total_seconds() * tnd_u[nb:-nb, nb:-nb, :]
 		v3 += timestep.total_seconds() * tnd_v[nb:-nb, nb:-nb, :]
 
-	#assert raw_state_2['time'] == state['time'] + timestep
-	assert np.allclose(u3, raw_state_3['x_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
-	assert np.allclose(v3, raw_state_3['y_velocity'][nb:-nb, nb:-nb, :], atol=1e-6)
+	compare_datetimes(raw_state_3['time'], state['time'] + timestep)
+	compare_arrays(u3, raw_state_3['x_velocity'][nb:-nb, nb:-nb, :])
+	compare_arrays(v3, raw_state_3['y_velocity'][nb:-nb, nb:-nb, :])
 
 
 if __name__ == '__main__':

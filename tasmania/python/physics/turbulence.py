@@ -28,6 +28,7 @@ import numpy as np
 
 import gridtools as gt
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -39,6 +40,8 @@ class Smagorinsky2d(TendencyComponent):
 	"""
 	Implementation of the Smagorinsky turbulence model for a
 	two-dimensional flow.
+	The class is instantiated over the *numerical* grid of the
+	underlying domain.
 
 	References
 	----------
@@ -46,50 +49,58 @@ class Smagorinsky2d(TendencyComponent):
 		Freie Universität Berlin.
 	"""
 	def __init__(
-		self, domain, grid_type='numerical', smagorinsky_constant=0.18,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		self, domain, smagorinsky_constant=0.18, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
 		----------
 		domain : tasmania.Domain
 			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
-
-				* 'physical';
-				* 'numerical' (default).
-
 		smagorinsky_constant : `float`, optional
 			The Smagorinsky constant. Defaults to 0.18.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
 			The data type for any :class:`numpy.ndarray` instantiated and
 			used within this class.
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`tasmania.TendencyComponent`.
 		"""
-		super().__init__(domain, grid_type, **kwargs)
+		super().__init__(domain, 'numerical', **kwargs)
 
 		self._cs = smagorinsky_constant
+		self._exec_info = exec_info
 
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		nb = max(2, self.horizontal_boundary.nb)
+		assert self.horizontal_boundary.nb >= 2, \
+			'The number of boundary layers must be greater or equal than two.'
 
-		self._in_u = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_v = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_u_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_v_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+		self._nb = max(2, self.horizontal_boundary.nb)
 
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={'in_u': self._in_u, 'in_v': self._in_v},
-			outputs={'out_u_tnd': self._out_u_tnd, 'out_v_tnd': self._out_v_tnd},
-			domain=gt.domain.Rectangle((nb, nb, 0), (nx-nb-1, ny-nb-1, nz-1)),
-			mode=backend
+		storage_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
+		descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
+		self._in_u = gt.storage.zeros(descriptor, backend=backend)
+		self._in_v = gt.storage.zeros(descriptor, backend=backend)
+		self._out_u_tnd = gt.storage.zeros(descriptor, backend=backend)
+		self._out_v_tnd = gt.storage.zeros(descriptor, backend=backend)
+
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info,
+			rebuild=rebuild
 		)
+		self._stencil = decorator(self._stencil_defs)
 
 	@property
 	def input_properties(self):
@@ -112,53 +123,53 @@ class Smagorinsky2d(TendencyComponent):
 		return {}
 
 	def array_call(self, state):
-		self._in_u[...] = state['x_velocity']
-		self._in_v[...] = state['y_velocity']
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		nb = self._nb
+		dx = self.grid.dx.to_units('m').values.item()
+		dy = self.grid.dy.to_units('m').values.item()
 
-		self._stencil.compute()
+		self._in_u.data[...] = state['x_velocity'][...]
+		self._in_v.data[...] = state['y_velocity'][...]
 
-		tendencies = {'x_velocity': self._out_u_tnd, 'y_velocity': self._out_v_tnd}
+		self._stencil(
+			in_u=self._in_u, in_v=self._in_v, out_u_tnd=self._out_u_tnd,
+			out_v_tnd=self._out_v_tnd, dx=dx, dy=dy, cs=self._cs,
+			origin={'_all_': (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
+			exec_info=self._exec_info
+		)
+
+		tendencies = {
+			'x_velocity': self._out_u_tnd.data,
+			'y_velocity': self._out_v_tnd.data
+		}
 		diagnostics = {}
 
 		return tendencies, diagnostics
 
-	def _stencil_defs(self, in_u, in_v):
-		# shortcuts
-		dx = self.grid.dx.to_units('m').values.item()
-		dy = self.grid.dy.to_units('m').values.item()
-		cs = self._cs
-
-		# indices
-		i = gt.Index(axis=0)
-		j = gt.Index(axis=1)
-
-		# temporary fields
-		s00 = gt.Equation()
-		s01 = gt.Equation()
-		s11 = gt.Equation()
-		nu = gt.Equation()
-
-		# output fields
-		out_u_tnd = gt.Equation()
-		out_v_tnd = gt.Equation()
-
-		# computations
-		s00[i, j] = (in_u[i+1, j] - in_u[i-1, j]) / (2.0 * dx)
-		s01[i, j] = 0.5 * (
-			(in_u[i, j+1] - in_u[i, j-1]) / (2.0 * dy) +
-			(in_v[i+1, j] - in_v[i-1, j]) / (2.0 * dx)
+	@staticmethod
+	def _stencil_defs(
+		in_u: gt.storage.f64_ijk_sd,
+		in_v: gt.storage.f64_ijk_sd,
+		out_u_tnd: gt.storage.f64_ijk_sd,
+		out_v_tnd: gt.storage.f64_ijk_sd,
+		*,
+		dx: float,
+		dy: float,
+		cs: float
+	):
+		s00 = (in_u[+1, 0, 0] - in_u[-1, 0, 0]) / (2.0 * dx)
+		s01 = 0.5 * (
+			(in_u[0, +1, 0] - in_u[0, -1, 0]) / (2.0 * dy) +
+			(in_v[+1, 0, 0] - in_v[-1, 0, 0]) / (2.0 * dx)
 		)
-		s11[i, j] = (in_v[i, j+1] - in_v[i, j-1]) / (2.0 * dy)
-		nu[i, j] = cs**2 * dx * dy * \
-			(2.0 * (s00[i, j]**2 + 2.0 * s01[i, j]**2 + s11[i, j]**2))**0.5
-		out_u_tnd[i, j] = 2.0 * (
-			(nu[i+1, j] * s00[i+1, j] - nu[i-1, j] * s00[i-1, j]) / (2.0 * dx) +
-			(nu[i, j+1] * s01[i, j+1] - nu[i, j-1] * s01[i, j-1]) / (2.0 * dy)
+		s11 = (in_v[0, +1, 0] - in_v[0, -1, 0]) / (2.0 * dy)
+		nu = cs**2 * dx * dy * \
+			(2.0 * (s00[0, 0, 0]**2 + 2.0 * s01[0, 0, 0]**2 + s11[0, 0, 0]**2))**0.5
+		out_u_tnd = 2.0 * (
+			(nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0]) / (2.0 * dx) +
+			(nu[0, +1, 0] * s01[0, +1, 0] - nu[0, -1, 0] * s01[0, -1, 0]) / (2.0 * dy)
 		)
-		out_v_tnd[i, j] = 2.0 * (
-			(nu[i+1, j] * s01[i+1, j] - nu[i-1, j] * s01[i-1, j]) / (2.0 * dx) +
-			(nu[i, j+1] * s11[i, j+1] - nu[i, j-1] * s11[i, j-1]) / (2.0 * dy)
+		out_v_tnd = 2.0 * (
+			(nu[+1, 0, 0] * s01[+1, 0, 0] - nu[-1, 0, 0] * s01[-1, 0, 0]) / (2.0 * dx) +
+			(nu[0, +1, 0] * s11[0, +1, 0] - nu[0, -1, 0] * s11[0, -1, 0]) / (2.0 * dy)
 		)
-
-		return out_u_tnd, out_v_tnd
-

@@ -22,17 +22,12 @@
 #
 from datetime import datetime
 import pandas as pd
-import gridtools as gt
 import numpy as np
 from sympl import DataArray
 import tasmania as taz
 
 
 factor = 0
-
-# backend settings
-backend = gt.mode.NUMPY
-dtype   = np.float64
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -51,6 +46,17 @@ hb_type   = 'dirichlet'
 nb        = 3
 hb_kwargs = {'core': zsof}
 
+# gt4py settings
+gt_kwargs = {
+	'backend': 'numpy',
+	'backend_opts': None,
+	'build_info': None,
+	'dtype': np.float64,
+	'exec_info': None,
+	'halo': (nb, nb, 0),
+	'rebuild': False
+}
+
 # numerical scheme
 time_integration_scheme = 'rk3ws'
 flux_scheme  			= 'fifth_order'
@@ -63,12 +69,12 @@ niter    = 4**factor * 100
 
 # output
 filename = None
-#	\
-#	'../../data/burgers_{}_{}_{}_nx{}_ny{}_dt{}_nt{}_sus.nc'.format(
-#		time_integration_scheme, flux_scheme, physics_time_integration_scheme,
-#		nx, ny, int(timestep.total_seconds()), niter,
-#	)
+#   \
+#   '../../data/burgers_{}_{}_{}_nx{}_ny{}_dt{}_nt{}_sus.nc'.format(
+#       time_integration_scheme, flux_scheme, physics_time_integration_scheme,
+#       nx, ny, int(timestep.total_seconds()), niter,
+#   )
 save_frequency  = -1
-print_frequency = -1
+print_frequency = 1
 plot_frequency  = -1
 

@@ -5,7 +5,7 @@ import numpy as np
 from numpy import dtype
 
 
-from gridtools import Boundary, FieldInfo, ParameterInfo, StencilObject
+from gridtools import Boundary, DomainInfo, FieldInfo, ParameterInfo, StencilObject
 
 
 class _stencil_defs_numpy(StencilObject):
@@ -13,6 +13,8 @@ class _stencil_defs_numpy(StencilObject):
     _gt_backend_ = "numpy"
 
     _gt_source_ = {}
+
+    _gt_domain_info_ = DomainInfo(parallel_axes=('I', 'J'), sequential_axis='K', ndims=3)
 
     _gt_field_info_ = {'in_phi': FieldInfo(boundary=Boundary(((3, 3), (3, 3), (0, 0))), dtype=dtype('float64')), 'in_gamma': FieldInfo(boundary=Boundary(
         ((0, 0), (0, 0), (0, 0))), dtype=dtype('float64')), 'out_phi': FieldInfo(boundary=Boundary(((0, 0), (0, 0), (0, 0))), dtype=dtype('float64'))}
@@ -35,6 +37,10 @@ class _stencil_defs_numpy(StencilObject):
     @property
     def source(self):
         return type(self)._gt_source_
+
+    @property
+    def domain_info(self):
+        return type(self)._gt_domain_info_
 
     @property
     def field_info(self) -> dict:
@@ -86,102 +92,102 @@ class _stencil_defs_numpy(StencilObject):
         _splitters_ = [0, _domain_[2]]
 
         # Allocation of temporary fields
-        __gt_stage_laplacian_10_8_lap_y = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8_lap_y__O = (1, 1, 0)
+        __gt_stage_laplacian_9_8_lap = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8_lap__O = (2, 2, 0)
+        __gt_stage_laplacian_10_8_phi = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8_phi__O = (2, 2, 0)
+        __gt_stage_laplacian_9_8_dx = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8_dx__O = (2, 2, 0)
         __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_phi = np.empty(
             (_domain_[0] + 6, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_phi__O = (3, 2, 0)
-        __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_dx = np.empty(
-            (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_dx__O = (1, 1, 0)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_phi = np.empty(
-            (_domain_[0], _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_phi__O = (0, 1, 0)
-        lap2 = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        lap2__O = (0, 0, 0)
-        __gt_stage_laplacian_9_8_phi = np.empty((_domain_[0] + 6, _domain_[1] + 6, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8_phi__O = (3, 3, 0)
-        __gt_stage_laplacian_10_8_dx = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8_dx__O = (1, 1, 0)
-        lap1 = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        lap1__O = (1, 1, 0)
-        __gt_stage_laplacian_11_8_lap_x = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8_lap_x__O = (0, 0, 0)
-        __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_dx = np.empty(
-            (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_dx__O = (2, 2, 0)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_dy = np.empty(
-            (_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_dy__O = (0, 0, 0)
+        __gt_stage_laplacian_11_8_dy = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8_dy__O = (0, 0, 0)
+        __gt_stage_laplacian_11_8_phi = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8_phi__O = (1, 1, 0)
         __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_phi = np.empty(
             (_domain_[0] + 4, _domain_[1] + 6, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_phi__O = (2, 3, 0)
-        __gt_stage_laplacian_9_8_lap_x = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8_lap_x__O = (2, 2, 0)
-        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_lap = np.empty(
-            (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_lap__O = (1, 1, 0)
-        __gt_stage_laplacian_9_8_dy = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8_dy__O = (2, 2, 0)
+        __gt_stage_laplacian_11_8_lap_x = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8_lap_x__O = (0, 0, 0)
+        lap2 = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        lap2__O = (0, 0, 0)
+        __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_dx = np.empty(
+            (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_dx__O = (2, 2, 0)
+        __gt_stage_laplacian_9_8_phi = np.empty((_domain_[0] + 6, _domain_[1] + 6, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8_phi__O = (3, 3, 0)
+        __gt_stage_laplacian_11_8_lap = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8_lap__O = (0, 0, 0)
         __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_dx = np.empty(
             (_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_dx__O = (0, 0, 0)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_phi = np.empty(
-            (_domain_[0] + 2, _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_phi__O = (1, 0, 0)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_lap = np.empty(
-            (_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_lap__O = (0, 0, 0)
-        __gt_stage_laplacian_11_8_dx = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8_dx__O = (0, 0, 0)
-        __gt_stage_laplacian_11_8_lap_y = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8_lap_y__O = (0, 0, 0)
-        __gt_stage_laplacian_9_8_lap = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8_lap__O = (2, 2, 0)
-        __gt_stage_laplacian_10_8_lap = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8_lap__O = (1, 1, 0)
-        __gt_stage_laplacian_10_8_lap_x = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8_lap_x__O = (1, 1, 0)
         __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_lap = np.empty(
             (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_lap__O = (1, 1, 0)
-        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_dy = np.empty(
-            (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_dy__O = (2, 2, 0)
-        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_dy = np.empty(
-            (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_dy__O = (1, 1, 0)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_phi = np.empty(
+            (_domain_[0] + 2, _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_phi__O = (1, 0, 0)
+        __gt_stage_laplacian_9_8_lap_x = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8_lap_x__O = (2, 2, 0)
         __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_lap = np.empty(
             (_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_lap__O = (0, 0, 0)
-        __gt_stage_laplacian_11_8_phi = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8_phi__O = (1, 1, 0)
-        __gt_stage_laplacian_11_8_dy = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8_dy__O = (0, 0, 0)
-        __gt_stage_laplacian_10_8_phi = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8_phi__O = (2, 2, 0)
         __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_phi = np.empty(
             (_domain_[0] + 4, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_phi__O = (2, 1, 0)
+        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_lap = np.empty(
+            (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_lap__O = (2, 2, 0)
+        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_dy = np.empty(
+            (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_dy__O = (1, 1, 0)
+        __gt_stage_laplacian_10_8_lap = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8_lap__O = (1, 1, 0)
+        lap1 = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        lap1__O = (1, 1, 0)
+        __gt_stage_laplacian_10_8_dx = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8_dx__O = (1, 1, 0)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_dy = np.empty(
+            (_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_dy__O = (0, 0, 0)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_phi = np.empty(
+            (_domain_[0], _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_y_3_9_phi__O = (0, 1, 0)
         __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_lap = np.empty(
             (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_9_8___gt_stage_laplacian_x_2_9_lap__O = (2, 2, 0)
-        __gt_stage_laplacian_11_8_lap = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_11_8_lap__O = (0, 0, 0)
-        __gt_stage_laplacian_9_8_dx = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8_dx__O = (2, 2, 0)
+        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_lap = np.empty(
+            (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_lap__O = (1, 1, 0)
+        __gt_stage_laplacian_11_8_lap_y = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8_lap_y__O = (0, 0, 0)
+        __gt_stage_laplacian_11_8_dx = np.empty((_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8_dx__O = (0, 0, 0)
         __gt_stage_laplacian_9_8_lap_y = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_9_8_lap_y__O = (2, 2, 0)
         __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_phi = np.empty(
             (_domain_[0] + 2, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
         __gt_stage_laplacian_10_8___gt_stage_laplacian_y_3_9_phi__O = (1, 2, 0)
-        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_lap = np.empty(
-            (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_lap__O = (2, 2, 0)
-        __gt_stage_laplacian_10_8_dy = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
-        __gt_stage_laplacian_10_8_dy__O = (1, 1, 0)
+        __gt_stage_laplacian_9_8_dy = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8_dy__O = (2, 2, 0)
         lap0 = np.empty((_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
         lap0__O = (2, 2, 0)
+        __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_dx = np.empty(
+            (_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8___gt_stage_laplacian_x_2_9_dx__O = (1, 1, 0)
+        __gt_stage_laplacian_10_8_lap_x = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8_lap_x__O = (1, 1, 0)
+        __gt_stage_laplacian_10_8_lap_y = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8_lap_y__O = (1, 1, 0)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_lap = np.empty(
+            (_domain_[0], _domain_[1], _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_11_8___gt_stage_laplacian_x_2_9_lap__O = (0, 0, 0)
+        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_dy = np.empty(
+            (_domain_[0] + 4, _domain_[1] + 4, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_9_8___gt_stage_laplacian_y_3_9_dy__O = (2, 2, 0)
+        __gt_stage_laplacian_10_8_dy = np.empty((_domain_[0] + 2, _domain_[1] + 2, _domain_[2]), dtype=np.float64)
+        __gt_stage_laplacian_10_8_dy__O = (1, 1, 0)
 
         # Computations
         # stage__84:

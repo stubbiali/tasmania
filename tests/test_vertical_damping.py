@@ -27,39 +27,46 @@ import numpy as np
 from pandas import Timedelta
 import pytest
 
+import gridtools as gt
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo
 	from .utils import compare_arrays, st_domain, st_floats, st_one_of, \
 		st_timedeltas
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo
 	from utils import compare_arrays, st_domain, st_floats, st_one_of, \
 		st_timedeltas
 
 
 def assert_rayleigh(
-	ni, nj, nk, grid, depth, backend, dt, phi_now, phi_new, phi_ref, phi_out
+	grid, ni, nj, nk, depth, backend, halo,
+	dt, phi_now, phi_new, phi_ref, phi_out,
 ):
-	__phi_now = phi_now[:ni, :nj, :nk]
-	__phi_new = phi_new[:ni, :nj, :nk]
-	__phi_ref = phi_ref[:ni, :nj, :nk]
-	__phi_out = phi_out[:ni, :nj, :nk]
 	dtype = phi_now.dtype
+	shape = (ni, nj, nk)
+	halo = tuple(halo[i] if shape[i] > 2*halo[i] else 0 for i in range(3))
+	domain = tuple(shape[i] - 2*halo[i] for i in range(3))
+	descriptor = gt.storage.StorageDescriptor(dtype, halo=halo, iteration_domain=domain)
+	__phi_now = gt.storage.from_array(phi_now[:ni, :nj, :nk], descriptor, backend=backend)
+	__phi_new = gt.storage.from_array(phi_new[:ni, :nj, :nk], descriptor, backend=backend)
+	__phi_ref = gt.storage.from_array(phi_ref[:ni, :nj, :nk], descriptor, backend=backend)
+	__phi_out = gt.storage.from_array(phi_out[:ni, :nj, :nk], descriptor, backend=backend)
 
 	vd = VD.factory(
-		'rayleigh', (ni, nj, nk), grid, depth, 0.01,
-		time_units='s', backend=backend, dtype=dtype
+		'rayleigh', grid, (ni, nj, nk), depth, 0.01, time_units='s',
+		backend=backend, dtype=dtype, halo=halo, rebuild=True
 	)
 
-	rmat = vd._rmat
+	rmat = vd._rmat.data
 
 	vd(dt, __phi_now, __phi_new, __phi_ref, __phi_out)
 
-	phi_val = __phi_new - dt.total_seconds() * rmat * (__phi_now - __phi_ref)
-	compare_arrays(__phi_out[:, :, :depth], phi_val[:, :, :depth])
-	compare_arrays(__phi_out[:, :, depth:], __phi_new[:, :, depth:])
+	phi_val = phi_new[:ni, :nj, :nk] - dt.total_seconds() * rmat[:ni, :nj, :nk] * \
+		(phi_now[:ni, :nj, :nk] - phi_ref[:ni, :nj, :nk])
+	compare_arrays(__phi_out.data[:, :, :depth], phi_val[:, :, :depth])
+	compare_arrays(__phi_out.data[:, :, depth:], phi_new[:ni, :nj, depth:nk])
 
 
 @settings(
@@ -86,29 +93,13 @@ def test_rayleigh(data):
 
 	cgrid = domain.numerical_grid
 
-	phi_now = data.draw(
+	phi = data.draw(
 		st_arrays(
-			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
+			cgrid.x.dtype, (cgrid.nx+2, cgrid.ny+2, cgrid.nz+1),
 			elements=st_floats(min_value=-1e10, max_value=1e10),
 			fill=hyp_st.nothing(),
 		),
-		label='phi_now'
-	)
-	phi_new = data.draw(
-		st_arrays(
-			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=st_floats(min_value=-1e10, max_value=1e10),
-			fill=hyp_st.nothing(),
-		),
-		label='phi_new'
-	)
-	phi_ref = data.draw(
-		st_arrays(
-			cgrid.x.dtype, (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1),
-			elements=st_floats(min_value=-1e10, max_value=1e10),
-			fill=hyp_st.nothing(),
-		),
-		label='phi_ref'
+		label='phi'
 	)
 
 	dt = data.draw(
@@ -118,44 +109,27 @@ def test_rayleigh(data):
 
 	depth = data.draw(hyp_st.integers(min_value=0, max_value=cgrid.nz), label='depth')
 
-	backend = data.draw(st_one_of(conf_backend))
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	halo = data.draw(st_one_of(conf_halo), label='halo')
+
+	dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnx')
+	dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dny')
+	dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label='dnz')
 
 	# ========================================
 	# test
 	# ========================================
+	ni = cgrid.nx + dnx
+	nj = cgrid.ny + dny
+	nk = cgrid.nz + dnz
+
+	phi_now = phi[:ni, :nj, :nk]
+	phi_new = phi[1:ni+1, :nj, :nk]
+	phi_ref = phi[:ni, 1:nj+1, :nk]
 	phi_out = np.zeros_like(phi_now, dtype=phi_now.dtype)
-	nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
 
 	assert_rayleigh(
-		nx  , ny  , nz  , cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx+1, ny  , nz  , cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx  , ny+1, nz  , cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx  , ny  , nz+1, cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx+1, ny+1, nz  , cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx+1, ny  , nz+1, cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx  , ny+1, nz+1, cgrid, depth, backend,
-		dt, phi_now, phi_new, phi_ref, phi_out
-	)
-	assert_rayleigh(
-		nx+1, ny+1, nz+1, cgrid, depth, backend,
+		cgrid, ni, nj, nk, depth, backend, halo,
 		dt, phi_now, phi_new, phi_ref, phi_out
 	)
 

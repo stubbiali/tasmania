@@ -108,14 +108,16 @@ def second_order_validation(
 	)
 	hd(phi, phi_tnd)
 
+	gamma = hd._gamma.data  # np.tile(hd._gamma.data, (ni, nj, 1))
+
 	if ni < 3:
-		phi_tnd_assert = hd._gamma.data * second_order_diffusion_yz(dy, phi.data)
+		phi_tnd_assert = gamma * second_order_diffusion_yz(dy, phi.data)
 		assert_yz(phi_tnd.data, phi_tnd_assert, nb)
 	elif nj < 3:
-		phi_tnd_assert = hd._gamma.data * second_order_diffusion_xz(dx, phi.data)
+		phi_tnd_assert = gamma * second_order_diffusion_xz(dx, phi.data)
 		assert_xz(phi_tnd.data, phi_tnd_assert, nb)
 	else:
-		phi_tnd_assert = hd._gamma.data * second_order_diffusion_xyz(dx, dy, phi.data)
+		phi_tnd_assert = gamma * second_order_diffusion_xyz(dx, dy, phi.data)
 		assert_xyz(phi_tnd.data, phi_tnd_assert, nb)
 
 
