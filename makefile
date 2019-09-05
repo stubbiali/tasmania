@@ -38,16 +38,28 @@ TEST_DIR := $(ROOT_DIR)/tests
 HYPOTHESIS_DIR := $(TEST_DIR)/.hypothesis
 DOCKER_DIR := $(ROOT_DIR)/docker
 
-.PHONY: docker-build docker-run docs uml prepare-tests tests clean distclean
+.PHONY: docker-build-cpu docker-build-gpu docker-run-cpu docker-run-gpu docs uml prepare-tests tests clean distclean
 
-docker-build:
-	@cd $(DOCKER_DIR) && ./build_base.sh && echo "" && ./build_tasmania.sh
+docker-build-cpu:
+	@cd $(DOCKER_DIR) && ./build_cpu.sh
 
-docker-run:
+docker-build-gpu:
+	@cd $(DOCKER_DIR) && ./build_gpu.sh
+
+docker-run-cpu:
 	@if [[ "$(shell echo $$OSTYPE)" == "linux-gnu" ]]; then\
-		cd $(DOCKER_DIR) && ./run.sh;\
+		cd $(DOCKER_DIR) && ./run_cpu.sh;\
 	elif [[ "$(shell echo $$OSTYPE)" == "darwin"* ]]; then\
-		cd $(DOCKER_DIR) && ./run_mac.sh;\
+		cd $(DOCKER_DIR) && ./run_cpu_mac.sh;\
+	else\
+		echo "Unsupported host OS.";\
+	fi
+
+docker-run-gpu:
+	@if [[ "$(shell echo $$OSTYPE)" == "linux-gnu" ]]; then\
+		cd $(DOCKER_DIR) && ./run_gpu.sh;\
+	elif [[ "$(shell echo $$OSTYPE)" == "darwin"* ]]; then\
+		cd $(DOCKER_DIR) && ./run_gpu_mac.sh;\
 	else\
 		echo "Unsupported host OS.";\
 	fi
