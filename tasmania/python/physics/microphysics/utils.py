@@ -36,11 +36,17 @@ import gridtools as gt
 from tasmania.python.framework.base_components import \
 	DiagnosticComponent, ImplicitTendencyComponent
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
 except ImportError:
 	from numpy import float32 as datatype
+
+
+mfwv = 'mass_fraction_of_water_vapor_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 class Clipping(DiagnosticComponent):
@@ -107,9 +113,9 @@ class Precipitation(ImplicitTendencyComponent):
 	}
 
 	def __init__(
-		self, domain, grid_type='numerical', backend=gt.mode.NUMPY,
-		dtype=datatype,
-		physical_constants=None, **kwargs
+		self, domain, grid_type='numerical', physical_constants=None, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -122,11 +128,6 @@ class Precipitation(ImplicitTendencyComponent):
 				* 'physical';
 				* 'numerical' (default).
 
-		backend : `obj`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
 		physical_constants : `dict`, optional
 			Dictionary whose keys are strings indicating physical constants used
 			within this object, and whose values are :class:`sympl.DataArray`\s
@@ -134,37 +135,45 @@ class Precipitation(ImplicitTendencyComponent):
 
 				* 'density_of_liquid_water', in units compatible with [kg m^-3].
 
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
+			TODO
+		dtype : `numpy.dtype`, optional
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.ImplicitTendencyComponent`.
 		"""
+		self._exec_info = exec_info
+
 		super().__init__(domain, grid_type, **kwargs)
 
-		pcs = get_physical_constants(
-			self._d_physical_constants, physical_constants
-		)
-		self._rhow = gt.Global(pcs['density_of_liquid_water'])
+		pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+		self._pcs = pcs  # needed by unit test
 
 		nx, ny = self.grid.nx, self.grid.ny
-		self._dt = gt.Global()
-		self._in_rho = np.zeros((nx, ny, 1), dtype=dtype)
-		self._in_qr = np.zeros((nx, ny, 1), dtype=dtype)
-		self._in_vt = np.zeros((nx, ny, 1), dtype=dtype)
-		self._in_accprec = np.zeros((nx, ny, 1), dtype=dtype)
-		self._out_prec = np.zeros((nx, ny, 1), dtype=dtype)
-		self._out_accprec = np.zeros((nx, ny, 1), dtype=dtype)
+		descriptor = get_storage_descriptor((nx, ny, 1), dtype, halo=halo)
+		self._in_rho = gt.storage.zeros(descriptor, backend=backend)
+		self._in_qr = gt.storage.zeros(descriptor, backend=backend)
+		self._in_vt = gt.storage.zeros(descriptor, backend=backend)
+		self._in_accprec = gt.storage.zeros(descriptor, backend=backend)
+		self._out_prec = gt.storage.zeros(descriptor, backend=backend)
+		self._out_accprec = gt.storage.zeros(descriptor, backend=backend)
 
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={
-				'in_rho': self._in_rho, 'in_qr': self._in_qr,
-				'in_vt': self._in_vt, 'in_accprec': self._in_accprec
-			},
-			global_inputs={'rhow': self._rhow, 'dt': self._dt},
-			outputs={'out_prec': self._out_prec, 'out_accprec': self._out_accprec},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx - 1, ny - 1, 0)),
-			mode=backend
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info,
+			externals={'rhow': pcs['density_of_liquid_water']}, rebuild=rebuild
 		)
+		self._stencil = decorator(self._stencil_defs)
 
 	@property
 	def input_properties(self):
@@ -197,51 +206,58 @@ class Precipitation(ImplicitTendencyComponent):
 		}
 
 	def array_call(self, state, timestep):
-		self._dt.value = timestep.total_seconds()
-		self._in_rho[...] = state['air_density'][:, :, -1:]
-		self._in_qr[...] = \
-			state['mass_fraction_of_precipitation_water_in_air'][:, :, -1:]
-		self._in_vt[...] = state['raindrop_fall_velocity'][:, :, -1:]
-		self._in_accprec[...] = state['accumulated_precipitation'][...]
+		nx, ny = self.grid.nx, self.grid.ny
 
-		self._stencil.compute()
+		self._in_rho.data[...] = state['air_density'][:, :, -1:]
+		self._in_qr.data[...] = \
+			state['mass_fraction_of_precipitation_water_in_air'][:, :, -1:]
+		self._in_vt.data[...] = state['raindrop_fall_velocity'][:, :, -1:]
+		self._in_accprec.data[...] = state['accumulated_precipitation'][...]
+		dt = timestep.total_seconds()
+
+		self._stencil(
+			in_rho=self._in_rho, in_qr=self._in_qr, in_vt=self._in_vt,
+			in_accprec=self._in_accprec, out_prec=self._out_prec,
+			out_accprec=self._out_accprec, dt=dt,
+			origin={'_all_': (0, 0, 0)}, domain=(nx, ny, 1),
+			exec_info=self._exec_info
+		)
 
 		tendencies = {}
 		diagnostics = {
-			'precipitation': self._out_prec,
-			'accumulated_precipitation': self._out_accprec
+			'precipitation': self._out_prec.data,
+			'accumulated_precipitation': self._out_accprec.data
 		}
 
 		return tendencies, diagnostics
 
 	@staticmethod
-	def _stencil_defs(rhow, dt, in_rho, in_qr, in_vt, in_accprec):
-		i = gt.Index(axis=0)
-		j = gt.Index(axis=1)
+	def _stencil_defs(
+		in_rho: gt.storage.f64_sd,
+		in_qr: gt.storage.f64_sd,
+		in_vt: gt.storage.f64_sd,
+		in_accprec: gt.storage.f64_sd,
+		out_prec: gt.storage.f64_sd,
+		out_accprec: gt.storage.f64_sd,
+		*,
+		dt: float
+	):
+		out_prec = 3.6e6 * in_rho[0, 0, 0] * in_qr[0, 0, 0] * in_vt[0, 0, 0] / rhow
+		out_accprec = in_accprec[0, 0, 0] + dt * out_prec[0, 0, 0] / 3.6e3
 
-		out_prec = gt.Equation()
-		out_accprec = gt.Equation()
 
-		out_prec[i, j] = 3.6e6 * in_rho[i, j] * in_qr[i, j] * in_vt[i, j] / rhow
-		out_accprec[i, j] = in_accprec[i, j] + dt * out_prec[i, j] / 3.6e3
-
-		return out_prec, out_accprec
-
-
-class SedimentationFlux:
+class SedimentationFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes discretize the
 	vertical derivative of the sedimentation flux with different
 	orders of accuracy.
 	"""
-	__metaclass__ = abc.ABCMeta
-
 	# the vertical extent of the stencil
 	nb = None
 
 	@staticmethod
 	@abc.abstractmethod
-	def __call__(k, rho, h_on_interface_levels, q, vt, dfdz):
+	def __call__(rho, h, q, vt):
 		"""
 		Get the vertical derivative of the sedimentation flux.
 		As this method is marked as abstract, its implementation
@@ -249,17 +265,18 @@ class SedimentationFlux:
 
 		Parameters
 		----------
-		k : gridtools.Index
-			The index running along the vertical axis.
-		rho : gridtools.Equation
+		rho : gridtools.storage.Storage
 			The air density, in units of [kg m^-3].
-		h_on_interface_levels : gridtools.Equation
+		h : gridtools.storage.Storage
 			The geometric height of the model half-levels, in units of [m].
-		q : gridtools.Equation
+		q : gridtools.storage.Storage
 			The precipitating water species.
-		vt : gridtools.Equation
+		vt : gridtools.storage.Storage
 			The raindrop fall velocity, in units of [m s^-1].
-		dfdz : gridtools.Equation
+
+		Return
+		------
+		gridtools.storage.Storage :
 			The vertical derivative of the sedimentation flux.
 		"""
 
@@ -294,65 +311,49 @@ class SedimentationFlux:
 
 
 class _FirstOrderUpwind(SedimentationFlux):
-	"""
-	Implementation of the standard, first-order accurate upwind method
-	to discretize the vertical derivative of the sedimentation flux.
-	"""
+	""" The standard, first-order accurate upwind method. """
 	nb = 1
 
-	def __init__(self):
-		super().__init__()
-
 	@staticmethod
-	def __call__(k, rho, h_on_interface_levels, q, vt, dfdz):
+	def __call__(rho, h, q, vt):
 		# interpolate the geometric height at the model main levels
-		tmp_h = gt.Equation()
-		tmp_h[k] = 0.5 * (
-			h_on_interface_levels[k] + h_on_interface_levels[k + 1]
-		)
+		tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
 
 		# calculate the vertical derivative of the sedimentation flux
-		dfdz[k] = (rho[k - 1] * q[k - 1] * vt[k - 1] - rho[k] * q[k] * vt[k]) / \
-			(tmp_h[k - 1] - tmp_h[k])
+		dfdz = \
+			(rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1] -
+			 rho[0, 0,  0] * q[0, 0,  0] * vt[0, 0,  0]) / \
+			(tmp_h[0, 0, -1] - tmp_h[0, 0, 0])
+
+		return dfdz
 
 
 class _SecondOrderUpwind(SedimentationFlux):
-	"""
-	Implementation of the second-order accurate upwind method to discretize
-	the vertical derivative of the sedimentation flux.
-	"""
+	""" The second-order accurate upwind method. """
 	nb = 2
 
-	def __init__(self):
-		super().__init__()
-
 	@staticmethod
-	def __call__(k, rho, h_on_interface_levels, q, vt, dfdz):
-		# instantiate temporary and output fields
-		tmp_h = gt.Equation()
-		tmp_a = gt.Equation()
-		tmp_b = gt.Equation()
-		tmp_c = gt.Equation()
-
+	def __call__(rho, h, q, vt):
 		# interpolate the geometric height at the model main levels
-		tmp_h[k] = 0.5 * (
-			h_on_interface_levels[k] + h_on_interface_levels[k + 1])
+		tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
 
 		# evaluate the space-dependent coefficients occurring in the
 		# second-order, upwind finite difference approximation of the
 		# vertical derivative of the flux
-		tmp_a[k] = (2. * tmp_h[k] - tmp_h[k - 1] - tmp_h[k - 2]) / \
-			((tmp_h[k - 1] - tmp_h[k]) * (tmp_h[k - 2] - tmp_h[k]))
-		tmp_b[k] = (tmp_h[k - 2] - tmp_h[k]) / \
-			((tmp_h[k - 1] - tmp_h[k]) * (tmp_h[k - 2] - tmp_h[k - 1]))
-		tmp_c[k] = (tmp_h[k] - tmp_h[k - 1]) / \
-			((tmp_h[k - 2] - tmp_h[k]) * (tmp_h[k - 2] - tmp_h[k - 1]))
+		tmp_a = (2. * tmp_h[0, 0, 0] - tmp_h[0, 0, -1] - tmp_h[0, 0, -2]) / \
+			((tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, 0]))
+		tmp_b = (tmp_h[0, 0, -2] - tmp_h[0, 0, 0]) / \
+			((tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, -1]))
+		tmp_c = (tmp_h[0, 0, 0] - tmp_h[0, 0, -1]) / \
+			((tmp_h[0, 0, -2] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, -1]))
 
 		# calculate the vertical derivative of the sedimentation flux
-		dfdz[k] = \
-			tmp_a[k] * rho[k] * q[k] * vt[k] + \
-			tmp_b[k] * rho[k - 1] * q[k - 1] * vt[k - 1] + \
-			tmp_c[k] * rho[k - 2] * q[k - 2] * vt[k - 2]
+		dfdz = \
+			tmp_a[0, 0, 0] * rho[0, 0,  0] * q[0, 0,  0] * vt[0, 0,  0] + \
+			tmp_b[0, 0, 0] * rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1] + \
+			tmp_c[0, 0, 0] * rho[0, 0, -2] * q[0, 0, -2] * vt[0, 0, -2]
+
+		return dfdz
 
 
 class Sedimentation(ImplicitTendencyComponent):
@@ -364,7 +365,7 @@ class Sedimentation(ImplicitTendencyComponent):
 		self, domain, grid_type, tracers,
 		sedimentation_flux_scheme='first_order_upwind',
 		maximum_vertical_cfl=0.975,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		backend='numpy', dtype=datatype, **kwargs
 	):
 		"""
 		Parameters

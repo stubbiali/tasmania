@@ -30,118 +30,105 @@ This module contains:
 import abc
 
 
-class IsentropicHorizontalFlux:
+class IsentropicHorizontalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the horizontal numerical fluxes for the three-dimensional
 	isentropic dynamical core. The conservative form of the governing
 	equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
 	def __call__(
-		self, i, j, dt, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
+		dt, dx, dy, s, u, v, mtg, su, sv, sqv=None, sqc=None, sqr=None,
 		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
 	):
 		"""
-		This method returns the :class:`gridtools.Equation`\s representing
+		This method returns the :class:`gridtools.Storage`\s representing
 		the x- and y-fluxes for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		i : gridtools.Index
-			The index running along the first horizontal dimension.
-		j : gridtools.Index
-			The index running along the second horizontal dimension.
-		dt : gridtools.Global
+		dt : float
 			The time step, in seconds.
-		s : gridtools.Equation
+		dx : float
+			The grid spacing in the x-direction, in meters.
+		dy : float
+			The grid spacing in the y-direction, in meters.
+		s : gridtools.Storage
 			The isentropic density, in units of [kg m^-2 K^-1].
-		u : gridtools.Equation
+		u : gridtools.Storage
 			The x-staggered x-velocity, in units of [m s^-1].
-		v : gridtools.Equation
+		v : gridtools.Storage
 			The y-staggered y-velocity, in units of [m s^-1].
-		mtg : gridtools.Equation
+		mtg : gridtools.Storage
 			The Montgomery potential, in units of [m^2 s^-2].
-		su : gridtools.Equation
+		su : gridtools.Storage
 			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sv : gridtools.Equation
+		sv : gridtools.Storage
 			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sqv : `gridtools.Equation`, optional
+		sqv : `gridtools.Storage`, optional
 			The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-		sqc : `gridtools.Equation`, optional
+		sqc : `gridtools.Storage`, optional
 			The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-		sqr : `gridtools.Equation`, optional
+		sqr : `gridtools.Storage`, optional
 			The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-		s_tnd : `gridtools.Equation`, optional
+		s_tnd : `gridtools.Storage`, optional
 			The tendency of the isentropic density coming from physical parameterizations,
 			in units of [kg m^-2 K^-1 s^-1].
-		su_tnd : `gridtools.Equation`, optional
+		su_tnd : `gridtools.Storage`, optional
 			The tendency of the x-momentum coming from physical parameterizations,
 			in units of [kg m^-1 K^-1 s^-2].
-		sv_tnd : `gridtools.Equation`, optional
+		sv_tnd : `gridtools.Storage`, optional
 			The tendency of the y-momentum coming from physical parameterizations,
 			in units of [kg m^-1 K^-1 s^-2].
-		qv_tnd : `gridtools.Equation`, optional
+		qv_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of water vapor coming from physical
 			parameterizations, in units of [g g^-1 s^-1].
-		qc_tnd : `gridtools.Equation`, optional
+		qc_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of cloud liquid water coming from
 			physical parameterizations, in units of [g g^-1 s^-1].
-		qr_tnd : `gridtools.Equation`, optional
+		qr_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of precipitation water coming from
 			physical parameterizations, in units of [g g^-1 s^-1].
 
 		Returns
 		-------
-		flux_s_x : gridtools.Equation
+		flux_s_x : gridtools.Storage
 			The x-flux for the isentropic density.
-		flux_s_y : gridtools.Equation
+		flux_s_y : gridtools.Storage
 			The y-flux for the isentropic density.
-		flux_su_x : gridtools.Equation
+		flux_su_x : gridtools.Storage
 			The x-flux for the x-momentum.
-		flux_su_y : gridtools.Equation
+		flux_su_y : gridtools.Storage
 			The y-flux for the x-momentum.
-		flux_sv_x : gridtools.Equation
+		flux_sv_x : gridtools.Storage
 			The x-flux for the y-momentum.
-		flux_sv_y : gridtools.Equation
+		flux_sv_y : gridtools.Storage
 			The y-flux for the y-momentum.
-		flux_sqv_x : `gridtools.Equation`, optional
+		flux_sqv_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of water vapor.
-		flux_sqv_y : `gridtools.Equation`, optional
+		flux_sqv_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of water vapor.
-		flux_sqc_x : `gridtools.Equation`, optional
+		flux_sqc_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of cloud liquid water.
-		flux_sqc_y : `gridtools.Equation`, optional
+		flux_sqc_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of cloud liquid water.
-		flux_sqr_x : `gridtools.Equation`, optional
+		flux_sqr_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of precipitation water.
-		flux_sqr_y : `gridtools.Equation`, optional
+		flux_sqr_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -156,11 +143,6 @@ class IsentropicHorizontalFlux:
 				* 'maccormack', for the MacCormack scheme;
 				* 'third_order_upwind', for the third-order upwind scheme;
 				* 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
 		Return
 		------
@@ -179,107 +161,92 @@ class IsentropicHorizontalFlux:
 		from .implementations.horizontal_fluxes import \
 			Upwind, Centered, MacCormack, ThirdOrderUpwind, FifthOrderUpwind
 		if scheme == 'upwind':
-			return Upwind(grid, moist)
+			return Upwind()
 		elif scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 		elif scheme == 'maccormack':
-			return MacCormack(grid, moist)
+			return MacCormack()
 		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind(grid, moist)
+			return ThirdOrderUpwind()
 		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind(grid, moist)
+			return FifthOrderUpwind()
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
 
 
-class IsentropicNonconservativeHorizontalFlux:
+class IsentropicNonconservativeHorizontalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the numerical fluxes for the three-dimensional isentropic
 	dynamical core. The nonconservative form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
-	def __call__(self, i, j, k, dt, s, u, v, mtg, qv=None, qc=None, qr=None):
+	def __call__(dt, dx, dy, s, u, v, mtg, qv=None, qc=None, qr=None):
 		"""
-		Method returning the :class:`gridtools.Equation`\s representing the
+		Method returning the :class:`gridtools.Storage`\s representing the
 		x- and y-fluxes for all the prognostic model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		i : gridtools.Index
-			The index running along the first horizontal dimension.
-		j : gridtools.Index
-			The index running along the second horizontal dimension.
-		k : gridtools.Index
-			The index running along the vertical dimension.
-		dt : gridtools.Global
+		dt : float
 			The time step, in seconds.
-		s : gridtools.Equation
+		dx : float
+			The grid spacing in the x-direction, in meters.
+		dy : float
+			The grid spacing in the y-direction, in meters.
+		s : gridtools.Storage
 			The isentropic density, in units of [kg m^-2 K^-1].
-		u : gridtools.Equation
+		u : gridtools.Storage
 			The x-staggered x-velocity, in units of [m s^-1].
-		v : gridtools.Equation
+		v : gridtools.Storage
 			The y-staggered y-velocity, in units of [m s^-1].
-		mtg : gridtools.Equation
+		mtg : gridtools.Storage
 			The Montgomery potential, in units of [m^2 s^-2].
-		qv : `gridtools.Equation`, optional
+		qv : `gridtools.Storage`, optional
 			The mass fraction of water vapor, in units of [g g^-1].
-		qc : `gridtools.Equation`, optional
+		qc : `gridtools.Storage`, optional
 			The mass fraction of cloud liquid water, in units of [g g^-1].
-		qr : `gridtools.Equation`, optional
+		qr : `gridtools.Storage`, optional
 			The mass fraction of precipitation water, in units of [g g^-1].
 
 		Returns
 		-------
-		flux_s_x : gridtools.Equation
+		flux_s_x : gridtools.Storage
 			The x-flux for the isentropic density.
-		flux_s_y : gridtools.Equation
+		flux_s_y : gridtools.Storage
 			The y-flux for the isentropic density.
-		flux_u_x : gridtools.Equation
+		flux_u_x : gridtools.Storage
 			The x-flux for the x-velocity.
-		flux_u_y : gridtools.Equation
+		flux_u_y : gridtools.Storage
 			The y-flux for the x-velocity.
-		flux_v_x : gridtools.Equation
+		flux_v_x : gridtools.Storage
 			The x-flux for the y-velocity.
-		flux_v_y : gridtools.Equation
+		flux_v_y : gridtools.Storage
 			The y-flux for the y-velocity.
-		flux_qv_x : `gridtools.Equation`, optional
+		flux_qv_x : `gridtools.Storage`, optional
 			The x-flux for the mass fraction of water vapor.
-		flux_qv_y : `gridtools.Equation`, optional
+		flux_qv_y : `gridtools.Storage`, optional
 			The y-flux for the mass fraction of water vapor.
-		flux_qc_x : `gridtools.Equation`, optional
+		flux_qc_x : `gridtools.Storage`, optional
 			The x-flux for the mass fraction of cloud liquid water.
-		flux_qc_y : `gridtools.Equation`, optional
+		flux_qc_y : `gridtools.Storage`, optional
 			The y-flux for the mass fraction of cloud liquid water.
-		flux_qr_x : `gridtools.Equation`, optional
+		flux_qr_x : `gridtools.Storage`, optional
 			The x-flux for the mass fraction of precipitation water.
-		flux_qr_y : `gridtools.Equation`, optional
+		flux_qr_y : `gridtools.Storage`, optional
 			The y-flux for the mass fraction of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -291,11 +258,6 @@ class IsentropicNonconservativeHorizontalFlux:
 
 				* 'centered', for a second-order centered scheme.
 
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-
 		Return
 		------
 		obj :
@@ -305,119 +267,106 @@ class IsentropicNonconservativeHorizontalFlux:
 		from .implementations.nonconservative_horizontal_fluxes import \
 			Centered
 		if scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 
 
-class IsentropicMinimalHorizontalFlux:
+class IsentropicMinimalHorizontalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the horizontal numerical fluxes for the three-dimensional
 	isentropic and *minimal* dynamical core. The conservative form of the
 	governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
 	def __call__(
-		self, i, j, dt, s, u, v, su, sv, sqv=None, sqc=None, sqr=None,
+		dt, dx, dy, s, u, v, su, sv, sqv=None, sqc=None, sqr=None,
 		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
 	):
 		"""
-		This method returns the :class:`gridtools.Equation`\s representing
+		This method returns the :class:`gridtools.Storage`\s representing
 		the x- and y-fluxes for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		i : gridtools.Index
-			The index running along the first horizontal dimension.
-		j : gridtools.Index
-			The index running along the second horizontal dimension.
-		dt : gridtools.Global
+		dt : float
 			The time step, in seconds.
-		s : gridtools.Equation
+		dx : float
+			The grid spacing in the x-direction, in meters.
+		dy : float
+			The grid spacing in the y-direction, in meters.
+		s : gridtools.Storage
 			The isentropic density, in units of [kg m^-2 K^-1].
-		u : gridtools.Equation
+		u : gridtools.Storage
 			The x-staggered x-velocity, in units of [m s^-1].
-		v : gridtools.Equation
+		v : gridtools.Storage
 			The y-staggered y-velocity, in units of [m s^-1].
-		su : gridtools.Equation
+		su : gridtools.Storage
 			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sv : gridtools.Equation
+		sv : gridtools.Storage
 			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sqv : `gridtools.Equation`, optional
+		sqv : `gridtools.Storage`, optional
 			The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-		sqc : `gridtools.Equation`, optional
+		sqc : `gridtools.Storage`, optional
 			The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-		sqr : `gridtools.Equation`, optional
+		sqr : `gridtools.Storage`, optional
 			The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-		s_tnd : `gridtools.Equation`, optional
+		s_tnd : `gridtools.Storage`, optional
 			The tendency of the isentropic density coming from physical parameterizations,
 			in units of [kg m^-2 K^-1 s^-1].
-		su_tnd : `gridtools.Equation`, optional
+		su_tnd : `gridtools.Storage`, optional
 			The tendency of the x-momentum coming from physical parameterizations,
 			in units of [kg m^-1 K^-1 s^-2].
-		sv_tnd : `gridtools.Equation`, optional
+		sv_tnd : `gridtools.Storage`, optional
 			The tendency of the y-momentum coming from physical parameterizations,
 			in units of [kg m^-1 K^-1 s^-2].
-		qv_tnd : `gridtools.Equation`, optional
+		qv_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of water vapor coming from physical
 			parameterizations, in units of [g g^-1 s^-1].
-		qc_tnd : `gridtools.Equation`, optional
+		qc_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of cloud liquid water coming from
 			physical parameterizations, in units of [g g^-1 s^-1].
-		qr_tnd : `gridtools.Equation`, optional
+		qr_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of precipitation water coming from
 			physical parameterizations, in units of [g g^-1 s^-1].
 
 		Returns
 		-------
-		flux_s_x : gridtools.Equation
+		flux_s_x : gridtools.Storage
 			The x-flux for the isentropic density.
-		flux_s_y : gridtools.Equation
+		flux_s_y : gridtools.Storage
 			The y-flux for the isentropic density.
-		flux_su_x : gridtools.Equation
+		flux_su_x : gridtools.Storage
 			The x-flux for the x-momentum.
-		flux_su_y : gridtools.Equation
+		flux_su_y : gridtools.Storage
 			The y-flux for the x-momentum.
-		flux_sv_x : gridtools.Equation
+		flux_sv_x : gridtools.Storage
 			The x-flux for the y-momentum.
-		flux_sv_y : gridtools.Equation
+		flux_sv_y : gridtools.Storage
 			The y-flux for the y-momentum.
-		flux_sqv_x : `gridtools.Equation`, optional
+		flux_sqv_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of water vapor.
-		flux_sqv_y : `gridtools.Equation`, optional
+		flux_sqv_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of water vapor.
-		flux_sqc_x : `gridtools.Equation`, optional
+		flux_sqc_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of cloud liquid water.
-		flux_sqc_y : `gridtools.Equation`, optional
+		flux_sqc_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of cloud liquid water.
-		flux_sqr_x : `gridtools.Equation`, optional
+		flux_sqr_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of precipitation water.
-		flux_sqr_y : `gridtools.Equation`, optional
+		flux_sqr_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -432,11 +381,6 @@ class IsentropicMinimalHorizontalFlux:
 				* 'maccormack', for the MacCormack scheme;
 				* 'third_order_upwind', for the third-order upwind scheme;
 				* 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
 		Return
 		------
@@ -455,138 +399,125 @@ class IsentropicMinimalHorizontalFlux:
 		from .implementations.minimal_horizontal_fluxes import \
 			Upwind, Centered, MacCormack, ThirdOrderUpwind, FifthOrderUpwind
 		if scheme == 'upwind':
-			return Upwind(grid, moist)
+			return Upwind()
 		elif scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 		elif scheme == 'maccormack':
-			return MacCormack(grid, moist)
+			return MacCormack()
 		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind(grid, moist)
+			return ThirdOrderUpwind()
 		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind(grid, moist)
+			return FifthOrderUpwind()
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))
 
 
-class IsentropicBoussinesqMinimalHorizontalFlux:
+class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the horizontal numerical fluxes for the three-dimensional
 	isentropic, Boussinesq and *minimal* dynamical core. The conservative
 	form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
 	def __call__(
-		self, i, j, dt, s, u, v, su, sv, ddmtg, sqv=None, sqc=None, sqr=None,
+		dt, dx, dy, s, u, v, su, sv, ddmtg, sqv=None, sqc=None, sqr=None,
 		s_tnd=None, su_tnd=None, sv_tnd=None, qv_tnd=None, qc_tnd=None, qr_tnd=None
 	):
 		"""
-		This method returns the :class:`gridtools.Equation`\s representing
+		This method returns the :class:`gridtools.Storage`\s representing
 		the x- and y-fluxes for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		i : gridtools.Index
-			The index running along the first horizontal dimension.
-		j : gridtools.Index
-			The index running along the second horizontal dimension.
-		dt : gridtools.Global
+		dt : float
 			The time step, in seconds.
-		s : gridtools.Equation
+		dx : float
+			The grid spacing in the x-direction, in meters.
+		dy : float
+			The grid spacing in the y-direction, in meters.
+		s : gridtools.Storage
 			The isentropic density, in units of [kg m^-2 K^-1].
-		u : gridtools.Equation
+		u : gridtools.Storage
 			The x-staggered x-velocity, in units of [m s^-1].
-		v : gridtools.Equation
+		v : gridtools.Storage
 			The y-staggered y-velocity, in units of [m s^-1].
-		su : gridtools.Equation
+		su : gridtools.Storage
 			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sv : gridtools.Equation
+		sv : gridtools.Storage
 			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-		ddmtg : gridtools.Equation
+		ddmtg : gridtools.Storage
 			Second derivative with respect to the potential temperature
 			of the Montgomery potential, in units of [m^2 K^-2 s^-2].
-		sqv : `gridtools.Equation`, optional
+		sqv : `gridtools.Storage`, optional
 			The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-		sqc : `gridtools.Equation`, optional
+		sqc : `gridtools.Storage`, optional
 			The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-		sqr : `gridtools.Equation`, optional
+		sqr : `gridtools.Storage`, optional
 			The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-		s_tnd : `gridtools.Equation`, optional
+		s_tnd : `gridtools.Storage`, optional
 			The tendency of the isentropic density coming from physical parameterizations,
 			in units of [kg m^-2 K^-1 s^-1].
-		su_tnd : `gridtools.Equation`, optional
+		su_tnd : `gridtools.Storage`, optional
 			The tendency of the x-momentum coming from physical parameterizations,
 			in units of [kg m^-1 K^-1 s^-2].
-		sv_tnd : `gridtools.Equation`, optional
+		sv_tnd : `gridtools.Storage`, optional
 			The tendency of the y-momentum coming from physical parameterizations,
 			in units of [kg m^-1 K^-1 s^-2].
-		qv_tnd : `gridtools.Equation`, optional
+		qv_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of water vapor coming from physical
 			parameterizations, in units of [g g^-1 s^-1].
-		qc_tnd : `gridtools.Equation`, optional
+		qc_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of cloud liquid water coming from
 			physical parameterizations, in units of [g g^-1 s^-1].
-		qr_tnd : `gridtools.Equation`, optional
+		qr_tnd : `gridtools.Storage`, optional
 			The tendency of the mass fraction of precipitation water coming from
 			physical parameterizations, in units of [g g^-1 s^-1].
 
 		Returns
 		-------
-		flux_s_x : gridtools.Equation
+		flux_s_x : gridtools.Storage
 			The x-flux for the isentropic density.
-		flux_s_y : gridtools.Equation
+		flux_s_y : gridtools.Storage
 			The y-flux for the isentropic density.
-		flux_su_x : gridtools.Equation
+		flux_su_x : gridtools.Storage
 			The x-flux for the x-momentum.
-		flux_su_y : gridtools.Equation
+		flux_su_y : gridtools.Storage
 			The y-flux for the x-momentum.
-		flux_sv_x : gridtools.Equation
+		flux_sv_x : gridtools.Storage
 			The x-flux for the y-momentum.
-		flux_sv_y : gridtools.Equation
+		flux_sv_y : gridtools.Storage
 			The y-flux for the y-momentum.
-		flux_ddmtg_x : gridtools.Equation
+		flux_ddmtg_x : gridtools.Storage
 			The x-flux for the second derivative with respect to the 
 			potential temperature of the Montgomery potential.
-		flux_ddmtg_x : gridtools.Equation
+		flux_ddmtg_x : gridtools.Storage
 			The y-flux for the second derivative with respect to the 
 			potential temperature of the Montgomery potential.
-		flux_sqv_x : `gridtools.Equation`, optional
+		flux_sqv_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of water vapor.
-		flux_sqv_y : `gridtools.Equation`, optional
+		flux_sqv_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of water vapor.
-		flux_sqc_x : `gridtools.Equation`, optional
+		flux_sqc_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of cloud liquid water.
-		flux_sqc_y : `gridtools.Equation`, optional
+		flux_sqc_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of cloud liquid water.
-		flux_sqr_x : `gridtools.Equation`, optional
+		flux_sqr_x : `gridtools.Storage`, optional
 			The x-flux for the isentropic density of precipitation water.
-		flux_sqr_y : `gridtools.Equation`, optional
+		flux_sqr_y : `gridtools.Storage`, optional
 			The y-flux for the isentropic density of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -600,11 +531,6 @@ class IsentropicBoussinesqMinimalHorizontalFlux:
 				* 'centered', for a second-order centered scheme;
 				* 'third_order_upwind', for the third-order upwind scheme;
 				* 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
 		Return
 		------
@@ -623,12 +549,12 @@ class IsentropicBoussinesqMinimalHorizontalFlux:
 		from .implementations.boussinesq_minimal_horizontal_fluxes import \
 			Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 		if scheme == 'upwind':
-			return Upwind(grid, moist)
+			return Upwind()
 		elif scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind(grid, moist)
+			return ThirdOrderUpwind()
 		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind(grid, moist)
+			return FifthOrderUpwind()
 		else:
 			raise ValueError('Unsupported horizontal flux scheme ''{}'''.format(scheme))

@@ -28,7 +28,6 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
 from tasmania.python.physics.microphysics.porz import \
 	PorzMicrophysics, PorzFallVelocity, PorzSedimentation
 from tasmania.python.utils.data_utils import make_dataarray_3d
@@ -36,12 +35,12 @@ from tasmania.python.utils.meteo_utils import \
 	goff_gratch_formula, tetens_formula
 
 try:
-	from .conf import backend as conf_backend
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .test_microphysics_utils import porz_sedimentation_validation
 	from .utils import compare_arrays, compare_dataarrays, compare_datetimes, \
 		st_floats, st_one_of, st_domain, st_isentropic_state_f
 except ModuleNotFoundError:
-	from conf import backend as conf_backend
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from test_microphysics_utils import porz_sedimentation_validation
 	from utils import compare_arrays, compare_dataarrays, compare_datetimes, \
 		st_floats, st_one_of, st_domain, st_isentropic_state_f
@@ -127,7 +126,7 @@ def porz_microphysics_validation(
 	deadline=None
 )
 @given(hyp_st.data())
-def test_porz_microphysics(data):
+def _test_porz_microphysics(data):
 	# ========================================
 	# random data generation
 	# ========================================
@@ -298,6 +297,7 @@ def test_porz_fall_velocity(data):
 	state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
 	backend = data.draw(st_one_of(conf_backend), label="backend")
+	halo = data.draw(st_one_of(conf_halo), label="halo")
 
 	# ========================================
 	# test bed
@@ -307,7 +307,7 @@ def test_porz_fall_velocity(data):
 	#
 	# test properties
 	#
-	porz = PorzFallVelocity(domain, grid_type, backend=backend, dtype=dtype)
+	porz = PorzFallVelocity(domain, grid_type, backend=backend, dtype=dtype, halo=halo)
 
 	assert 'air_density' in porz.input_properties
 	assert mfpw in porz.input_properties
@@ -358,7 +358,7 @@ def test_porz_sedimentation(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(st_domain(), label="domain")
+	domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
 
 	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
@@ -390,7 +390,7 @@ def test_porz_sedimentation(data):
 
 	sed = PorzSedimentation(
 		domain, grid_type, flux_type, maxcfl,
-		backend=gt.mode.NUMPY, dtype=dtype
+		backend=backend, dtype=dtype, rebuild=True
 	)
 
 	#

@@ -36,11 +36,18 @@ from tasmania.python.physics.microphysics.utils import SedimentationFlux
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.meteo_utils import \
 	goff_gratch_formula, tetens_formula
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
 except ImportError:
 	from numpy import float32 as datatype
+
+
+mfwv = 'mass_fraction_of_water_vapor_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
+ndpw = 'number_density_of_precipitation_water'
 
 
 class PorzMicrophysics(TendencyComponent):
@@ -99,7 +106,7 @@ class PorzMicrophysics(TendencyComponent):
 		self, domain, grid_type='numerical', air_pressure_on_interface_levels=True,
 		tendency_of_air_potential_temperature_in_diagnostics=False,
 		rain_evaporation=True, activation_parameter=d_ninf,
-		saturation_water_vapor_formula='tetens', backend=gt.mode.NUMPY,
+		saturation_water_vapor_formula='tetens', backend='numpy',
 		dtype=datatype, physical_constants=None, **kwargs
 	):
 		"""
@@ -449,7 +456,10 @@ class PorzFallVelocity(DiagnosticComponent):
 	rho_star = 1.225
 
 	def __init__(
-		self, domain, grid_type='numerical', backend=gt.mode.NUMPY, dtype=datatype
+		self, domain, grid_type='numerical', *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False
+
 	):
 		"""
 		Parameters
@@ -462,16 +472,43 @@ class PorzFallVelocity(DiagnosticComponent):
 				* 'physical';
 				* 'numerical' (default).
 
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		"""
 		super().__init__(domain, grid_type)
 
-		# initialize the underlying GT4Py stencil
-		self._stencil_initialize(backend, dtype)
+		self._exec_info = exec_info
+
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
+		self._in_rho = gt.storage.zeros(descriptor, backend=backend)
+		self._in_qr = gt.storage.zeros(descriptor, backend=backend)
+		self._in_nr = gt.storage.zeros(descriptor, backend=backend)
+		self._out_vq = gt.storage.zeros(descriptor, backend=backend)
+		self._out_vn = gt.storage.zeros(descriptor, backend=backend)
+
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info,
+			rebuild=rebuild, module='porz_fall_velocity',
+			externals={
+				'alpha': self.__class__.alpha, 'beta': self.__class__.beta,
+				'cn': self.__class__.cn, 'cq': self.__class__.cq,
+				'mt': self.__class__.mt, 'rho_star': self.__class__.rho_star
+			}
+		)
+		self._stencil = decorator(self._stencil_defs)
 
 	@property
 	def input_properties(self):
@@ -502,62 +539,42 @@ class PorzFallVelocity(DiagnosticComponent):
 		return return_dict
 
 	def array_call(self, state):
-		# extract the needed model variables
-		self._in_rho[...] = state['air_density'][...]
-		self._in_qr[...]  = state['mass_fraction_of_precipitation_water_in_air'][...]
-		self._in_nr[...]  = state['number_density_of_precipitation_water'][...]
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-		# call the stencil's compute function
-		self._stencil.compute()
+		# extract the needed model variables
+		self._in_rho.data[...] = state['air_density'][...]
+		self._in_qr.data[...]  = state[mfpw][...]
+		self._in_nr.data[...]  = state[ndpw][...]
+
+		# run the stencil
+		self._stencil(
+			in_rho=self._in_rho, in_qr=self._in_qr, in_nr=self._in_nr,
+			out_vq=self._out_vq, out_vn=self._out_vn,
+			origin={'_all_': (0, 0, 0)}, domain=(nx, ny, nz),
+			exec_info=self._exec_info
+		)
 
 		# collect the diagnostics
 		diagnostics = {
-			'raindrop_fall_velocity': self._out_vq,
-			'number_density_of_raindrop_fall_velocity': self._out_vn
+			'raindrop_fall_velocity': self._out_vq.data,
+			'number_density_of_raindrop_fall_velocity': self._out_vn.data
 		}
 
 		return diagnostics
 
-	def _stencil_initialize(self, backend, dtype):
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-
-		# allocate the numpy arrays which will serve as stencil inputs
-		self._in_rho = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_qr  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_nr  = np.zeros((nx, ny, nz), dtype=dtype)
-
-		# allocate the numpy arrays which will serve as stencil outputs
-		self._out_vq = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_vn = np.zeros((nx, ny, nz), dtype=dtype)
-
-		# initialize the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={
-				'in_rho': self._in_rho, 'in_qr': self._in_qr, 'in_nr': self._in_nr
-			},
-			outputs={'out_vq': self._out_vq, 'out_vn': self._out_vn},
-			domain=gt.domain.Rectangle((0, 0, 0), (nx-1, ny-1, nz-1)),
-			mode=backend
-		)
-
-	def _stencil_defs(self, in_rho, in_qr, in_nr):
-		# declare the index scanning the vertical axis
-		k = gt.Index(axis=2)
-
-		# instantiate the temporary and output fields
-		vt = gt.Equation()
-		out_vq = gt.Equation()
-		out_vn = gt.Equation()
-
-		# perform computations
-		vt[k] = self.alpha * in_qr[k]**self.beta * \
-			(self.mt / (in_qr[k] + self.mt * in_nr[k]))**self.beta * \
-			(self.rho_star / in_rho[k])**0.5
-		out_vq[k] = self.cq * vt[k]
-		out_vn[k] = self.cn * vt[k]
-
-		return out_vq, out_vn
+	@staticmethod
+	def _stencil_defs(
+		in_rho: gt.storage.f64_sd,
+		in_qr: gt.storage.f64_sd,
+		in_nr: gt.storage.f64_sd,
+		out_vq: gt.storage.f64_sd,
+		out_vn: gt.storage.f64_sd
+	):
+		vt = alpha * in_qr[0, 0, 0]**beta * \
+			(mt / (in_qr[0, 0, 0] + mt * in_nr[0, 0, 0]))**beta * \
+			(rho_star / in_rho[0, 0, 0])**0.5
+		out_vq = cq * vt[0, 0, 0]
+		out_vn = cn * vt[0, 0, 0]
 
 
 class PorzSedimentation(ImplicitTendencyComponent):
@@ -568,8 +585,9 @@ class PorzSedimentation(ImplicitTendencyComponent):
 	def __init__(
 		self, domain, grid_type='numerical',
 		sedimentation_flux_scheme='first_order_upwind',
-		maximum_vertical_cfl=0.975,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		maximum_vertical_cfl=0.975, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -588,19 +606,48 @@ class PorzSedimentation(ImplicitTendencyComponent):
 			Defaults to 'first_order_upwind'.
 		maximum_vertical_cfl : `float`, optional
 			Maximum allowed vertical CFL number. Defaults to 0.975.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.ImplicitTendencyComponent`.
 		"""
 		super().__init__(domain, grid_type, **kwargs)
-		self._max_cfl = maximum_vertical_cfl
-		self._sflux = SedimentationFlux.factory(sedimentation_flux_scheme)
-		self._stencil_initialize(backend, dtype)
+
+		self._exec_info = exec_info
+
+		sflux = SedimentationFlux.factory(sedimentation_flux_scheme)
+		self._nb = sflux.nb
+
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		descriptor = get_storage_descriptor((nx, ny, nz+1), dtype, halo=halo)
+		self._in_rho = gt.storage.zeros(descriptor, backend=backend)
+		self._in_h = gt.storage.zeros(descriptor, backend=backend)
+		self._in_qr = gt.storage.zeros(descriptor, backend=backend)
+		self._in_nr = gt.storage.zeros(descriptor, backend=backend)
+		self._in_vq = gt.storage.zeros(descriptor, backend=backend)
+		self._in_vn = gt.storage.zeros(descriptor, backend=backend)
+		self._out_qr = gt.storage.zeros(descriptor, backend=backend)
+		self._out_nr = gt.storage.zeros(descriptor, backend=backend)
+
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info,
+			rebuild=rebuild, module='porz_sedimentation',
+			externals={'sflux': sflux.__call__, 'max_cfl': maximum_vertical_cfl}
+		)
+		self._stencil = decorator(self._stencil_defs)
 
 	@property
 	def input_properties(self):
@@ -640,87 +687,64 @@ class PorzSedimentation(ImplicitTendencyComponent):
 		return {}
 
 	def array_call(self, state, timestep):
-		self._stencil_set_inputs(state, timestep)
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		nb = self._nb
 
-		self._stencil.compute()
+		dt = timestep.total_seconds()
+		self._in_rho.data[:, :, :nz] = state['air_density']
+		self._in_h.data[...] = state['height_on_interface_levels']
+		self._in_qr.data[:, :, :nz] = state[mfpw]
+		self._in_nr.data[:, :, :nz] = state[ndpw]
+		self._in_vq.data[:, :, :nz] = state['raindrop_fall_velocity']
+		self._in_vn.data[:, :, :nz] = state['number_density_of_raindrop_fall_velocity']
 
-		dh = self._in_h[:, :, :-1] - self._in_h[:, :, 1:]
-		x = np.where(self._in_vq > self._max_cfl * dh / timestep.total_seconds())
-		if x[0].size > 0:
-			print('Number of gps violating vertical CFL for qr: {:4d}'.format(x[0].size))
-		x = np.where(self._in_vn > self._max_cfl * dh / timestep.total_seconds())
-		if x[0].size > 0:
-			print('Number of gps violating vertical CFL for nr: {:4d}'.format(x[0].size))
+		self._stencil(
+			in_rho=self._in_rho, in_h=self._in_h, in_qr=self._in_qr,
+			in_nr=self._in_nr, in_vq=self._in_vq, in_vn=self._in_vn,
+			out_qr=self._out_qr, out_nr=self._out_nr, dt=dt,
+			origin={'_all_': (0, 0, nb)}, domain=(nx, ny, nz-nb),
+			exec_info=self._exec_info
+		)
+
+		# dh = self._in_h[:, :, :-1] - self._in_h[:, :, 1:]
+		# x = np.where(self._in_vq > self._max_cfl * dh / timestep.total_seconds())
+		# if x[0].size > 0:
+		#   print('Number of gps violating vertical CFL for qr: {:4d}'.format(x[0].size))
+		# x = np.where(self._in_vn > self._max_cfl * dh / timestep.total_seconds())
+		# if x[0].size > 0:
+		#   print('Number of gps violating vertical CFL for nr: {:4d}'.format(x[0].size))
 
 		tendencies = {
-			'mass_fraction_of_precipitation_water_in_air': self._out_qr,
-			'number_density_of_precipitation_water': self._out_nr
+			mfpw: self._out_qr.data[:, :, :nz],
+			ndpw: self._out_nr.data[:, :, :nz]
 		}
 		diagnostics = {}
 
 		return tendencies, diagnostics
 
-	def _stencil_initialize(self, backend, dtype):
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+	@staticmethod
+	def _stencil_defs(
+		in_rho: gt.storage.f64_sd,
+		in_h: gt.storage.f64_sd,
+		in_qr: gt.storage.f64_sd,
+		in_nr: gt.storage.f64_sd,
+		in_vq: gt.storage.f64_sd,
+		in_vn: gt.storage.f64_sd,
+		out_qr: gt.storage.f64_sd,
+		out_nr: gt.storage.f64_sd,
+		*,
+		dt: float
+	):
+		# dh = in_h[0, 0, 0] - in_h[0, 0, 1]
+		# tmp_vq = \
+		# 	(in_vq[0, 0, 0] >  max_cfl * dh[0, 0, 0] / dt) * max_cfl * dh[0, 0, 0] / dt + \
+		# 	(in_vq[0, 0, 0] <= max_cfl * dh[0, 0, 0] / dt) * in_vq[0, 0, 0]
+		# tmp_vn =
+		# 	(in_vn[0, 0, 0] >  max_cfl * dh[0, 0, 0] / dt) * max_cfl * dh[0, 0, 0] / dt + \
+		# 	(in_vn[0, 0, 0] <= max_cfl * dh[0, 0, 0] / dt) * in_vn[0, 0, 0]
 
-		self._dt = gt.Global()
-		self._maxcfl = gt.Global(self._max_cfl)
+		dfdz_qr = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vq)
+		dfdz_nr = sflux(rho=in_rho, h=in_h, q=in_nr, vt=in_vn)
 
-		self._in_rho = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_h = np.zeros((nx, ny, nz + 1), dtype=dtype)
-		self._in_qr = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_nr = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_vq = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_vn = np.zeros((nx, ny, nz), dtype=dtype)
-
-		self._out_qr = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_nr = np.zeros((nx, ny, nz), dtype=dtype)
-
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={
-				'in_rho': self._in_rho, 'in_h': self._in_h,
-				'in_qr': self._in_qr, 'in_nr': self._in_nr,
-				'in_vq': self._in_vq, 'in_vn': self._in_vn
-			},
-			global_inputs={'dt': self._dt, 'max_cfl': self._maxcfl},
-			outputs={'out_qr': self._out_qr, 'out_nr': self._out_nr},
-			domain=gt.domain.Rectangle((0, 0, self._sflux.nb), (nx-1, ny-1, nz-1)),
-			mode=backend
-		)
-
-	def _stencil_set_inputs(self, state, timestep):
-		self._dt.value = timestep.total_seconds()
-		self._in_rho[...] = state['air_density'][...]
-		self._in_h[...] = state['height_on_interface_levels'][...]
-		self._in_qr[...] = state['mass_fraction_of_precipitation_water_in_air'][...]
-		self._in_nr[...] = state['number_density_of_precipitation_water'][...]
-		self._in_vq[...] = state['raindrop_fall_velocity'][...]
-		self._in_vn[...] = state['number_density_of_raindrop_fall_velocity'][...]
-
-	def _stencil_defs(self, dt, max_cfl, in_rho, in_h, in_qr, in_nr, in_vq, in_vn):
-		k = gt.Index(axis=2)
-
-		tmp_dh = gt.Equation()
-		tmp_vq = gt.Equation()
-		tmp_vn = gt.Equation()
-		tmp_dfdz_qr = gt.Equation()
-		tmp_dfdz_nr = gt.Equation()
-		out_qr = gt.Equation()
-		out_nr = gt.Equation()
-
-		tmp_dh[k] = in_h[k] - in_h[k+1]
-		tmp_vq[k] = in_vq[k]
-		# 	(in_vq[k] >  max_cfl * tmp_dh[k] / dt) * max_cfl * tmp_dh[k] / dt + \
-		# 	(in_vq[k] <= max_cfl * tmp_dh[k] / dt) * in_vq[k]
-		tmp_vn[k] = in_vn[k]
-		# 	(in_vn[k] >  max_cfl * tmp_dh[k] / dt) * max_cfl * tmp_dh[k] / dt + \
-		# 	(in_vn[k] <= max_cfl * tmp_dh[k] / dt) * in_vn[k]
-		self._sflux(k, in_rho, in_h, in_qr, tmp_vq, tmp_dfdz_qr)
-		self._sflux(k, in_rho, in_h, in_nr, tmp_vn, tmp_dfdz_nr)
-		out_qr[k] = tmp_dfdz_qr[k] / in_rho[k]
-		out_nr[k] = tmp_dfdz_nr[k] / in_rho[k]
-
-		return out_qr, out_nr
-
-
+		out_qr = dfdz_qr[0, 0, 0] / in_rho[0, 0, 0]
+		out_nr = dfdz_nr[0, 0, 0] / in_rho[0, 0, 0]

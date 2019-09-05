@@ -29,10 +29,16 @@ import numpy as np
 import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.utils.storage_utils import get_storage_descriptor
+
+try:
+	from tasmania.conf import datatype
+except ImportError:
+	datatype = np.float64
 
 
 mfwv  = 'mass_fraction_of_water_vapor_in_air'
-mfclw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw  = 'mass_fraction_of_precipitation_water_in_air'
 
 
@@ -46,8 +52,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 	def __init__(
 		self, domain, diffusion_type, diffusion_coeff, diffusion_coeff_max,
 		diffusion_damp_depth, moist=False, diffusion_moist_coeff=None,
-		diffusion_moist_coeff_max=None, diffusion_moist_damp_depth=None,
-		backend=gt.mode.NUMPY, dtype=np.float64, **kwargs
+		diffusion_moist_coeff_max=None, diffusion_moist_damp_depth=None, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -78,11 +85,20 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 			in units compatible with [s^-1].
 		diffusion_damp_depth : int
 			Depth of the damping region for the water species.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		**kwargs :
 			Keyword arguments to be directly forwarded to the parent constructor.
 		"""
@@ -100,8 +116,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
 		self._core = HorizontalDiffusion.factory(
 			diffusion_type, (nx, ny, nz), dx, dy,
-			diff_coeff, diff_coeff_max, diffusion_damp_depth,
-			nb, backend, dtype
+			diff_coeff, diff_coeff_max, diffusion_damp_depth, nb,
+			backend=backend, backend_opts=backend_opts, build_info=build_info,
+			dtype=dtype, exec_info=exec_info, halo=halo, rebuild=rebuild
 		)
 
 		if self._moist:
@@ -113,19 +130,27 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
 			self._core_moist = HorizontalDiffusion.factory(
 				diffusion_type, (nx, ny, nz), dx, dy,
-				diff_moist_coeff, diff_moist_coeff_max, diff_moist_damp_depth,
-				nb, backend, dtype
+				diff_moist_coeff, diff_moist_coeff_max, diff_moist_damp_depth, nb,
+				backend=backend, backend_opts=backend_opts, build_info=build_info,
+				dtype=dtype, exec_info=exec_info, halo=halo, rebuild=rebuild
 			)
 		else:
 			self._core_moist = None
 
-		self._s_tnd  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-		self._sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+		descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
+		self._in_s   = gt.storage.zeros(descriptor, backend=backend)
+		self._s_tnd  = gt.storage.zeros(descriptor, backend=backend)
+		self._in_su  = gt.storage.zeros(descriptor, backend=backend)
+		self._su_tnd = gt.storage.zeros(descriptor, backend=backend)
+		self._in_sv  = gt.storage.zeros(descriptor, backend=backend)
+		self._sv_tnd = gt.storage.zeros(descriptor, backend=backend)
 		if self._moist:
-			self._qv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qc_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qr_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+			self._in_qv  = gt.storage.zeros(descriptor, backend=backend)
+			self._qv_tnd = gt.storage.zeros(descriptor, backend=backend)
+			self._in_qc  = gt.storage.zeros(descriptor, backend=backend)
+			self._qc_tnd = gt.storage.zeros(descriptor, backend=backend)
+			self._in_qr  = gt.storage.zeros(descriptor, backend=backend)
+			self._qr_tnd = gt.storage.zeros(descriptor, backend=backend)
 
 	@property
 	def input_properties(self):
@@ -138,9 +163,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		}
 
 		if self._moist:
-			return_dict[mfwv]  = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfclw] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfpw]  = {'dims': dims, 'units': 'g g^-1'}
+			return_dict[mfwv] = {'dims': dims, 'units': 'g g^-1'}
+			return_dict[mfcw] = {'dims': dims, 'units': 'g g^-1'}
+			return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1'}
 
 		return return_dict
 
@@ -155,9 +180,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		}
 
 		if self._moist:
-			return_dict[mfwv]  = {'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict[mfclw] = {'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict[mfpw]  = {'dims': dims, 'units': 'g g^-1 s^-1'}
+			return_dict[mfwv] = {'dims': dims, 'units': 'g g^-1 s^-1'}
+			return_dict[mfcw] = {'dims': dims, 'units': 'g g^-1 s^-1'}
+			return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1 s^-1'}
 
 		return return_dict
 
@@ -166,22 +191,31 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 		return {}
 
 	def array_call(self, state):
-		self._core(state['air_isentropic_density'], self._s_tnd)
-		self._core(state['x_momentum_isentropic'],  self._su_tnd)
-		self._core(state['y_momentum_isentropic'],  self._sv_tnd)
+		self._in_s.data[...] = state['air_isentropic_density']
+		self._in_su.data[...] = state['x_momentum_isentropic']
+		self._in_sv.data[...] = state['y_momentum_isentropic']
+		if self._moist:
+			self._in_qv.data[...] = state[mfwv]
+			self._in_qc.data[...] = state[mfcw]
+			self._in_qr.data[...] = state[mfpw]
+
+		self._core(self._in_s,  self._s_tnd )
+		self._core(self._in_su, self._su_tnd)
+		self._core(self._in_sv, self._sv_tnd)
 
 		return_dict = {
-			'air_isentropic_density': self._s_tnd,
-			'x_momentum_isentropic':  self._su_tnd,
-			'y_momentum_isentropic':  self._sv_tnd,
+			'air_isentropic_density': self._s_tnd.data,
+			'x_momentum_isentropic':  self._su_tnd.data,
+			'y_momentum_isentropic':  self._sv_tnd.data,
 		}
 
 		if self._moist:
-			self._core_moist(state[mfwv],  self._qv_tnd)
-			self._core_moist(state[mfclw], self._qc_tnd)
-			self._core_moist(state[mfpw],  self._qr_tnd)
-			return_dict[mfwv]  = self._qv_tnd
-			return_dict[mfclw] = self._qc_tnd
-			return_dict[mfpw]  = self._qr_tnd
+			self._core_moist(self._in_qv, self._qv_tnd)
+			self._core_moist(self._in_qc, self._qc_tnd)
+			self._core_moist(self._in_qr, self._qr_tnd)
+
+			return_dict[mfwv] = self._qv_tnd.data
+			return_dict[mfcw] = self._qc_tnd.data
+			return_dict[mfpw] = self._qr_tnd.data
 
 		return return_dict, {}

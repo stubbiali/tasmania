@@ -29,7 +29,7 @@ from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstitu
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-# from tasmania.python.dwarfs.vertical_damping import VerticalDamping
+from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 # framework
 from tasmania.python.framework.base_components import \
 	DiagnosticComponent, ImplicitTendencyComponent, Stepper, TendencyComponent
@@ -56,35 +56,35 @@ from tasmania.python.grids.topography import \
 # 	IsentropicBoussinesqMinimalDynamicalCore
 # from tasmania.python.isentropic.dynamics.minimal_dycore import \
 # 	IsentropicMinimalDynamicalCore
-# from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
+from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
 # from tasmania.python.isentropic.physics.boussinesq_tendencies import \
 # 	IsentropicBoussinesqTendency
-# from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
-# from tasmania.python.isentropic.physics.diagnostics import \
-# 	IsentropicDiagnostics, IsentropicVelocityComponents
-# from tasmania.python.isentropic.physics.horizontal_diffusion import \
-# 	IsentropicHorizontalDiffusion
-# from tasmania.python.isentropic.physics.horizontal_smoothing import \
-# 	IsentropicHorizontalSmoothing
+from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
+from tasmania.python.isentropic.physics.diagnostics import \
+	IsentropicDiagnostics, IsentropicVelocityComponents
+from tasmania.python.isentropic.physics.horizontal_diffusion import \
+	IsentropicHorizontalDiffusion
+from tasmania.python.isentropic.physics.horizontal_smoothing import \
+	IsentropicHorizontalSmoothing
 # from tasmania.python.isentropic.physics.pressure_gradient import \
 # 	IsentropicNonconservativePressureGradient, IsentropicConservativePressureGradient
-# from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
-# from tasmania.python.isentropic.physics.vertical_advection import \
-# 	IsentropicVerticalAdvection, PrescribedSurfaceHeating
-# from tasmania.python.isentropic.state import \
-# 	get_isentropic_state_from_brunt_vaisala_frequency, \
-# 	get_isentropic_state_from_temperature
+from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
+from tasmania.python.isentropic.physics.vertical_advection import \
+	IsentropicVerticalAdvection, PrescribedSurfaceHeating
+from tasmania.python.isentropic.state import \
+	get_isentropic_state_from_brunt_vaisala_frequency, \
+	get_isentropic_state_from_temperature
 # from tasmania.python.isentropic.state_boussinesq import \
 # 	get_isentropic_boussinesq_state_from_brunt_vaisala_frequency
 # physics
-# from tasmania.python.physics.microphysics.kessler import \
-# 	KesslerFallVelocity, KesslerMicrophysics, \
-# 	KesslerSaturationAdjustment, KesslerSedimentation
-# from tasmania.python.physics.microphysics.porz import \
-# 	PorzFallVelocity, PorzMicrophysics
-# from tasmania.python.physics.microphysics.utils import \
-# 	Clipping, Precipitation
-# from tasmania.python.physics.turbulence import Smagorinsky2d
+from tasmania.python.physics.microphysics.kessler import \
+	KesslerFallVelocity, KesslerMicrophysics, \
+	KesslerSaturationAdjustment, KesslerSedimentation
+from tasmania.python.physics.microphysics.porz import \
+	PorzFallVelocity, PorzMicrophysics
+from tasmania.python.physics.microphysics.utils import \
+	Clipping, Precipitation
+from tasmania.python.physics.turbulence import Smagorinsky2d
 # plot
 from tasmania.python.plot.animation import Animation
 from tasmania.python.plot.contour import Contour
@@ -118,7 +118,7 @@ __all__ = (
 	BurgersHorizontalDiffusion,
 	CDF,
 	Circle,
-# 	Clipping,
+	Clipping,
 	ConcurrentCoupling,
 	ConstantNotFoundError,
 	Contour,
@@ -133,9 +133,9 @@ __all__ = (
 	DynamicalCore,
 	get_figure_and_axes,
 #	get_isentropic_boussinesq_state_from_brunt_vaisala_frequency,
-# 	get_isentropic_state_from_brunt_vaisala_frequency,
-# 	get_isentropic_state_from_temperature,
-# 	get_isothermal_isentropic_analytical_solution,
+	get_isentropic_state_from_brunt_vaisala_frequency,
+	get_isentropic_state_from_temperature,
+	get_isothermal_isentropic_analytical_solution,
 	get_time_string,
 	Grid,
 	HorizontalBoundary,
@@ -148,21 +148,21 @@ __all__ = (
 	ImplicitTendencyComponent,
 # 	IsentropicBoussinesqMinimalDynamicalCore,
 # 	IsentropicBoussinesqTendency,
-# 	IsentropicConservativeCoriolis,
+	IsentropicConservativeCoriolis,
 # 	IsentropicConservativePressureGradient,
-# 	IsentropicDiagnostics,
-# 	IsentropicDynamicalCore,
-# 	IsentropicHorizontalDiffusion,
-# 	IsentropicHorizontalSmoothing,
+	IsentropicDiagnostics,
+	IsentropicDynamicalCore,
+	IsentropicHorizontalDiffusion,
+	IsentropicHorizontalSmoothing,
 # 	IsentropicMinimalDynamicalCore,
 # 	IsentropicNonconservativePressureGradient,
-# 	IsentropicSmagorinsky,
-# 	IsentropicVelocityComponents,
-# 	IsentropicVerticalAdvection,
-# 	KesslerFallVelocity,
-# 	KesslerMicrophysics,
-# 	KesslerSaturationAdjustment,
-# 	KesslerSedimentation,
+	IsentropicSmagorinsky,
+	IsentropicVelocityComponents,
+	IsentropicVerticalAdvection,
+	KesslerFallVelocity,
+	KesslerMicrophysics,
+	KesslerSaturationAdjustment,
+	KesslerSedimentation,
 	Line,
 	LineProfile,
 	load_netcdf_dataset,
@@ -181,9 +181,9 @@ __all__ = (
 	PhysicalTopography,
 	Plot,
 	PlotComposite,
-# 	PorzMicrophysics,
-# 	Precipitation,
-# 	PrescribedSurfaceHeating,
+	PorzMicrophysics,
+	Precipitation,
+	PrescribedSurfaceHeating,
 	Quiver,
 	Rectangle,
 	RMSD,
@@ -192,14 +192,14 @@ __all__ = (
 	SequentialUpdateSplitting,
 	set_axes_properties,
 	set_figure_properties,
-# 	Smagorinsky2d,
+	Smagorinsky2d,
 	Stepper,
 	TendencyComponent,
 	TimeInconsistencyError,
 	TimeSeries,
 	Topography,
-# 	VerticalDamping,
-# 	WaterConstituent,
+	VerticalDamping,
+	WaterConstituent,
 	ZhaoSolutionFactory,
 	ZhaoStateFactory,
 )

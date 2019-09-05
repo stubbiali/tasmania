@@ -33,13 +33,13 @@ from tasmania.python.isentropic.physics.vertical_advection import \
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .test_isentropic_minimal_vertical_fluxes import \
 		get_upwind_flux, get_centered_flux, \
 		get_third_order_upwind_flux, get_fifth_order_upwind_flux
 	from .utils import st_domain, st_floats, st_isentropic_state_f, st_one_of
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from test_isentropic_minimal_vertical_fluxes import \
 		get_upwind_flux, get_centered_flux, \
 		get_third_order_upwind_flux, get_fifth_order_upwind_flux
@@ -92,7 +92,7 @@ flux_properties = {
 }
 
 
-def validation(domain, flux_scheme, backend, moist, toaptoil, state):
+def validation(domain, flux_scheme, moist, toaptoil, backend, halo, rebuild, state):
 	grid = domain.numerical_grid
 	dz = grid.dz.to_units('K').values.item()
 	dtype = grid.z.dtype
@@ -104,11 +104,13 @@ def validation(domain, flux_scheme, backend, moist, toaptoil, state):
 	fluxer = IsentropicVerticalAdvection(
 		domain, flux_scheme, moist,
 		tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
-		backend=backend, dtype=dtype
+		backend=backend, dtype=dtype, halo=halo, rebuild=rebuild
 	)
 
 	input_names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density',
+		'x_momentum_isentropic',
+		'y_momentum_isentropic'
 	]
 	if toaptoil:
 		input_names.append('tendency_of_air_potential_temperature_on_interface_levels')
@@ -120,7 +122,9 @@ def validation(domain, flux_scheme, backend, moist, toaptoil, state):
 		input_names.append(mfpw)
 
 	output_names = [
-		'air_isentropic_density', 'x_momentum_isentropic', 'y_momentum_isentropic'
+		'air_isentropic_density',
+		'x_momentum_isentropic',
+		'y_momentum_isentropic'
 	]
 	if moist:
 		output_names.append(mfwv)
@@ -239,14 +243,15 @@ def test_upwind(data):
 		make_dataarray_3d(field, grid, 'K s^-1')
 
 	backend = data.draw(st_one_of(conf_backend), label="backend")
+	halo = data.draw(st_one_of(conf_halo), label="halo")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'upwind', backend, False, False, state)
-	validation(domain, 'upwind', backend, False, True , state)
-	validation(domain, 'upwind', backend, True , False, state)
-	validation(domain, 'upwind', backend, True , True , state)
+	validation(domain, 'upwind', False, False, backend, halo, True, state)
+	validation(domain, 'upwind', False, True , backend, halo, True, state)
+	validation(domain, 'upwind', True , False, backend, halo, True, state)
+	validation(domain, 'upwind', True , True , backend, halo, True, state)
 
 
 @settings(
@@ -279,14 +284,15 @@ def test_centered(data):
 		make_dataarray_3d(field, grid, 'K s^-1')
 
 	backend = data.draw(st_one_of(conf_backend), label="backend")
+	halo = data.draw(st_one_of(conf_halo), label="halo")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'centered', backend, False, False, state)
-	validation(domain, 'centered', backend, False, True , state)
-	validation(domain, 'centered', backend, True , False, state)
-	validation(domain, 'centered', backend, True , True , state)
+	validation(domain, 'centered', False, False, backend, halo, True, state)
+	validation(domain, 'centered', False, True , backend, halo, True, state)
+	validation(domain, 'centered', True , False, backend, halo, True, state)
+	validation(domain, 'centered', True , True , backend, halo, True, state)
 
 
 @settings(
@@ -319,14 +325,15 @@ def test_third_order_upwind(data):
 		make_dataarray_3d(field, grid, 'K s^-1')
 
 	backend = data.draw(st_one_of(conf_backend), label="backend")
+	halo = data.draw(st_one_of(conf_halo), label="halo")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'third_order_upwind', backend, False, False, state)
-	validation(domain, 'third_order_upwind', backend, False, True , state)
-	validation(domain, 'third_order_upwind', backend, True , False, state)
-	validation(domain, 'third_order_upwind', backend, True , True , state)
+	validation(domain, 'third_order_upwind', False, False, backend, halo, True, state)
+	validation(domain, 'third_order_upwind', False, True , backend, halo, True, state)
+	validation(domain, 'third_order_upwind', True , False, backend, halo, True, state)
+	validation(domain, 'third_order_upwind', True , True , backend, halo, True, state)
 
 
 @settings(
@@ -359,14 +366,15 @@ def test_fifth_order_upwind(data):
 		make_dataarray_3d(field, grid, 'K s^-1')
 
 	backend = data.draw(st_one_of(conf_backend), label="backend")
+	halo = data.draw(st_one_of(conf_halo), label="halo")
 
 	# ========================================
 	# test bed
 	# ========================================
-	validation(domain, 'fifth_order_upwind', backend, False, False, state)
-	validation(domain, 'fifth_order_upwind', backend, False, True , state)
-	validation(domain, 'fifth_order_upwind', backend, True , False, state)
-	validation(domain, 'fifth_order_upwind', backend, True , True , state)
+	validation(domain, 'fifth_order_upwind', False, False, backend, halo, True, state)
+	validation(domain, 'fifth_order_upwind', False, True , backend, halo, True, state)
+	validation(domain, 'fifth_order_upwind', True , False, backend, halo, True, state)
+	validation(domain, 'fifth_order_upwind', True , True , backend, halo, True, state)
 
 
 @settings(
@@ -378,7 +386,7 @@ def test_fifth_order_upwind(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test_prescribed_surface_heating(data):
+def _test_prescribed_surface_heating(data):
 	# ========================================
 	# random data generation
 	# ========================================

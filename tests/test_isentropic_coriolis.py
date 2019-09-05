@@ -30,10 +30,10 @@ from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCo
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from utils import compare_dataarrays, st_domain, st_floats, st_one_of
 
 
@@ -50,7 +50,8 @@ def test_conservative(data):
 	# ========================================
 	# random data generation
 	# ========================================
-	domain = data.draw(st_domain(), label="domain")
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+	domain = data.draw(st_domain(nb=nb), label="domain")
 	grid_type = data.draw(st_one_of(('physical', 'numerical')), label="grid_type")
 	grid = domain.physical_grid if grid_type == 'physical' else domain.numerical_grid
 	f = data.draw(st_floats(min_value=0, max_value=1), label="f")
@@ -69,11 +70,12 @@ def test_conservative(data):
 		st_one_of(('kg m^-1 K^-1 s^-1', 'g km^-1 K^-1 hr^-1')), label="sv_units"
 	)
 	backend = data.draw((st_one_of(conf_backend)), label="backend")
+	halo = data.draw((st_one_of(conf_halo)), label="halo")
 
 	# ========================================
 	# test bed
 	# ========================================
-	nb = domain.horizontal_boundary.nb if grid_type == 'numerical' else 0
+	nb = nb if grid_type == 'numerical' else 0
 	x, y = slice(nb, grid.nx-nb), slice(nb, grid.ny-nb)
 	coriolis_parameter = DataArray(f, attrs={'units': 'rad s^-1'})
 	state = {
@@ -85,7 +87,8 @@ def test_conservative(data):
 	}
 
 	icc = IsentropicConservativeCoriolis(
-		domain, grid_type, coriolis_parameter, backend, grid.x.dtype
+		domain, grid_type, coriolis_parameter,
+		backend=backend, dtype=grid.x.dtype, halo=halo
 	)
 
 	assert 'x_momentum_isentropic' in icc.input_properties

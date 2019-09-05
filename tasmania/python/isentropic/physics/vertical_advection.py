@@ -33,11 +33,17 @@ from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.isentropic.dynamics.vertical_fluxes import \
 	IsentropicMinimalVerticalFlux
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
 except ImportError:
 	datatype = np.float32
+
+
+mfwv = 'mass_fraction_of_water_vapor_in_air'
+mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
+mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
 class IsentropicVerticalAdvection(TendencyComponent):
@@ -50,8 +56,9 @@ class IsentropicVerticalAdvection(TendencyComponent):
 	"""
 	def __init__(
 		self, domain, flux_scheme='upwind', moist=False,
-		tendency_of_air_potential_temperature_on_interface_levels=False,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		tendency_of_air_potential_temperature_on_interface_levels=False, *,
+		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -69,27 +76,67 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			:obj:`True` if the input tendency of air potential temperature
 			is defined at the interface levels, :obj:`False` otherwise.
 			Defaults to :obj:`False`.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 		**kwargs :
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.TendencyComponent`.
 		"""
-		# keep track of input arguments
+		# keep track of the input arguments needed at run-time
 		self._moist = moist
-		self._stgz  = tendency_of_air_potential_temperature_on_interface_levels
+		self._stgz = tendency_of_air_potential_temperature_on_interface_levels
+		self._exec_info = exec_info
 
 		# call parent's constructor
 		super().__init__(domain, 'numerical', **kwargs)
 
 		# instantiate the object calculating the flux
-		self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme, self.grid, moist)
+		self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme)
 
-		# initialize the underlying GT4Py stencil
-		self._stencil_initialize(backend, dtype)
+		# allocate the gt4py storages collecting the stencil inputs
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		descriptor = get_storage_descriptor((nx, ny, nz+1), dtype, halo=halo)
+		self._in_w  = gt.storage.zeros(descriptor, backend=backend)
+		self._in_s  = gt.storage.zeros(descriptor, backend=backend)
+		self._in_su = gt.storage.zeros(descriptor, backend=backend)
+		self._in_sv = gt.storage.zeros(descriptor, backend=backend)
+		if moist:
+			self._in_qv = gt.storage.zeros(descriptor, backend=backend)
+			self._in_qc = gt.storage.zeros(descriptor, backend=backend)
+			self._in_qr = gt.storage.zeros(descriptor, backend=backend)
+
+		# allocate the gt4py storages collecting the stencil outputs
+		self._out_s  = gt.storage.zeros(descriptor, backend=backend)
+		self._out_su = gt.storage.zeros(descriptor, backend=backend)
+		self._out_sv = gt.storage.zeros(descriptor, backend=backend)
+		if moist:
+			self._out_qv = gt.storage.zeros(descriptor, backend=backend)
+			self._out_qc = gt.storage.zeros(descriptor, backend=backend)
+			self._out_qr = gt.storage.zeros(descriptor, backend=backend)
+
+		# instantiate the underlying stencil object
+		externals = self._vflux.externals.copy()
+		externals.update({
+			'moist': moist, 'vflux': self._vflux.__call__,
+			'vstaggering': self._stgz
+		})
+		decorator = gt.stencil(
+			backend, backend_opts=backend_opts, build_info=build_info,
+			externals=externals, min_signature=True, rebuild=rebuild
+		)
+		self._stencil = decorator(self._stencil_defs)
 
 	@property
 	def input_properties(self):
@@ -147,220 +194,190 @@ class IsentropicVerticalAdvection(TendencyComponent):
 		return {}
 
 	def array_call(self, state):
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		dz = self.grid.dz.to_units('K').values.item()
+		nb = self._vflux.extent
+
 		# set the stencil's inputs
 		self._stencil_set_inputs(state)
 
+		# set the stencil's arguments
+		stencil_args = {
+			'dz': dz,
+			'in_w': self._in_w,
+			'in_s': self._in_s,
+			'out_s': self._out_s,
+			'in_su': self._in_su,
+			'out_su': self._out_su,
+			'in_sv': self._in_sv,
+			'out_sv': self._out_sv,
+		}
+		if self._moist:
+			stencil_args.update({
+				'in_qv': self._in_qv,
+				'out_qv': self._out_qv,
+				'in_qc': self._in_qc,
+				'out_qc': self._out_qc,
+				'in_qr': self._in_qr,
+				'out_qr': self._out_qr,
+			})
+
 		# run the stencil
-		self._stencil.compute()
+		self._stencil(
+			**stencil_args, origin={'_all_': (0, 0, nb)}, domain=(nx, ny, nz-2*nb),
+			exec_info=self._exec_info
+		)
 
 		# set lower layers
 		self._set_lower_layers()
 
 		# collect the output arrays in a dictionary
 		tendencies = {
-			'air_isentropic_density': self._out_s,
-			'x_momentum_isentropic': self._out_su,
-			'y_momentum_isentropic': self._out_sv,
+			'air_isentropic_density': self._out_s.data[:, :, :nz],
+			'x_momentum_isentropic': self._out_su.data[:, :, :nz],
+			'y_momentum_isentropic': self._out_sv.data[:, :, :nz],
 		}
 		if self._moist:
-			tendencies['mass_fraction_of_water_vapor_in_air'] = self._out_qv
-			tendencies['mass_fraction_of_cloud_liquid_water_in_air'] = self._out_qc
-			tendencies['mass_fraction_of_precipitation_water_in_air'] = self._out_qr
+			tendencies[mfwv] = self._out_qv.data[:, :, :nz]
+			tendencies[mfcw] = self._out_qc.data[:, :, :nz]
+			tendencies[mfpw] = self._out_qr.data[:, :, :nz]
 
 		return tendencies, {}
 
-	def _stencil_initialize(self, backend, dtype):
-		# shortcuts
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		mk = nz + 1 if self._stgz else nz
-		nb = self._vflux.extent
-
-		# allocate arrays serving as stencil's inputs
-		self._in_w  = np.zeros((nx, ny, mk), dtype=dtype)
-		self._in_s  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_su = np.zeros((nx, ny, nz), dtype=dtype)
-		self._in_sv = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._in_qv = np.zeros((nx, ny, nz), dtype=dtype)
-			self._in_qc = np.zeros((nx, ny, nz), dtype=dtype)
-			self._in_qr = np.zeros((nx, ny, nz), dtype=dtype)
-
-		# allocate arrays serving as stencil's outputs
-		self._out_s  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_su = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_sv = np.zeros((nx, ny, nz), dtype=dtype)
-		if self._moist:
-			self._out_qv = np.zeros((nx, ny, nz), dtype=dtype)
-			self._out_qc = np.zeros((nx, ny, nz), dtype=dtype)
-			self._out_qr = np.zeros((nx, ny, nz), dtype=dtype)
-
-		# set stencil's inputs
-		inputs = {
-			'in_w': self._in_w, 'in_s': self._in_s,
-			'in_su': self._in_su, 'in_sv': self._in_sv,
-		}
-		if self._moist:
-			inputs['in_qv'] = self._in_qv
-			inputs['in_qc'] = self._in_qc
-			inputs['in_qr'] = self._in_qr
-
-		# set stencil's outputs
-		outputs = {
-			'out_s': self._out_s, 'out_su': self._out_su, 'out_sv': self._out_sv,
-		}
-		if self._moist:
-			outputs['out_qv'] = self._out_qv
-			outputs['out_qc'] = self._out_qc
-			outputs['out_qr'] = self._out_qr
-
-		# instantiate the stencil
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs=inputs,
-			outputs=outputs,
-			domain=gt.domain.Rectangle((0, 0, nb), (nx-1, ny-1, nz-nb-1)),
-			mode=backend
-		)
-
 	def _stencil_set_inputs(self, state):
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+
 		if self._stgz:
-			self._in_w[...] = \
+			self._in_w.data[...] = \
 				state['tendency_of_air_potential_temperature_on_interface_levels'][...]
 		else:
-			self._in_w[...] = state['tendency_of_air_potential_temperature'][...]
+			self._in_w.data[:, :, :nz] = state['tendency_of_air_potential_temperature'][...]
 
-		self._in_s[...]  = state['air_isentropic_density'][...]
-		self._in_su[...] = state['x_momentum_isentropic'][...]
-		self._in_sv[...] = state['y_momentum_isentropic'][...]
+		self._in_s.data[:, :, :nz]  = state['air_isentropic_density'][...]
+		self._in_su.data[:, :, :nz] = state['x_momentum_isentropic'][...]
+		self._in_sv.data[:, :, :nz] = state['y_momentum_isentropic'][...]
 
 		if self._moist:
-			self._in_qv[...] = state['mass_fraction_of_water_vapor_in_air'][...]
-			self._in_qc[...] = state['mass_fraction_of_cloud_liquid_water_in_air'][...]
-			self._in_qr[...] = state['mass_fraction_of_precipitation_water_in_air'][...]
+			self._in_qv.data[:, :, :nz] = state[mfwv][...]
+			self._in_qc.data[:, :, :nz] = state[mfcw][...]
+			self._in_qr.data[:, :, :nz] = state[mfpw][...]
 
+	@staticmethod
 	def _stencil_defs(
-		self, in_w, in_s, in_su, in_sv, in_qv=None, in_qc=None, in_qr=None
+		in_w: gt.storage.f64_sd,
+		in_s: gt.storage.f64_sd,
+		in_su: gt.storage.f64_sd,
+		in_sv: gt.storage.f64_sd,
+		in_qv: gt.storage.f64_sd,
+		in_qc: gt.storage.f64_sd,
+		in_qr: gt.storage.f64_sd,
+		out_s: gt.storage.f64_sd,
+		out_su: gt.storage.f64_sd,
+		out_sv: gt.storage.f64_sd,
+		out_qv: gt.storage.f64_sd,
+		out_qc: gt.storage.f64_sd,
+		out_qr: gt.storage.f64_sd,
+		*,
+		dz: float
 	):
-		# shortcuts
-		dz = self._grid.dz.to_units('K').values.item()
-
-		# vertical index
-		k = gt.Index(axis=2)
-
-		# output fields
-		out_s  = gt.Equation()
-		out_su = gt.Equation()
-		out_sv = gt.Equation()
-		if self._moist:
-			in_sqv = gt.Equation()
-			in_sqc = gt.Equation()
-			in_sqr = gt.Equation()
-			out_qv = gt.Equation()
-			out_qc = gt.Equation()
-			out_qr = gt.Equation()
-
-		# vertical velocity at the interface levels
-		if self._stgz:
-			w = in_w
+		if vstaggering:
+			w = in_w[0, 0, 0]
 		else:
-			w = gt.Equation()
-			w[k] = 0.5 * (in_w[k] + in_w[k-1])
+			w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
-		# vertical fluxes
-		if not self._moist:
-			flux_s, flux_su, flux_sv = self._vflux(k, w, in_s, in_su, in_sv)
+		if not moist:
+			flux_s, flux_su, flux_sv = \
+				vflux(dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv)
 		else:
-			in_sqv[k] = in_s[k] * in_qv[k]
-			in_sqc[k] = in_s[k] * in_qc[k]
-			in_sqr[k] = in_s[k] * in_qr[k]
+			sqv = in_s[0, 0, 0] * in_qv[0, 0, 0]
+			sqc = in_s[0, 0, 0] * in_qc[0, 0, 0]
+			sqr = in_s[0, 0, 0] * in_qr[0, 0, 0]
 			flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = \
-				self._vflux(k, w, in_s, in_su, in_sv, in_sqv, in_sqc, in_sqr)
+				vflux(
+					dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv,
+					sqv=sqv, sqc=sqc, sqr=sqr
+				)
 
-		# vertical advection
-		out_s[k]  = (flux_s[k+1]  - flux_s[k] ) / dz
-		out_su[k] = (flux_su[k+1] - flux_su[k]) / dz
-		out_sv[k] = (flux_sv[k+1] - flux_sv[k]) / dz
-		if self._moist:
-			out_qv[k] = (flux_sqv[k+1] - flux_sqv[k]) / (in_s[k] * dz)
-			out_qc[k] = (flux_sqc[k+1] - flux_sqc[k]) / (in_s[k] * dz)
-			out_qr[k] = (flux_sqr[k+1] - flux_sqr[k]) / (in_s[k] * dz)
-
-		if not self._moist:
-			return out_s, out_su, out_sv
-		else:
-			return out_s, out_su, out_sv, out_qv, out_qc, out_qr
+		out_s  = (flux_s[0, 0, 1]  - flux_s[0, 0, 0] ) / dz
+		out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
+		out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
+		if moist:
+			out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
+			out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
+			out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
 
 	def _set_lower_layers(self):
-		dz = self._grid.dz.to_units('K').values.item()
+		nz = self.grid.nz
+		dz = self.grid.dz.to_units('K').values.item()
 		nb, order = self._vflux.extent, self._vflux.order
 
-		w = self._in_w if not self._stgz \
-			else 0.5 * (self._in_w[:, :, -nb-2:] + self._in_w[:, :, -nb-3:-1])
+		w = self._in_w.data[:, :, :nz] if not self._stgz \
+			else 0.5 * (self._in_w.data[:, :, -nb-2:] + self._in_w.data[:, :, -nb-3:-1])
 
-		s  = self._in_s
-		su = self._in_su
-		sv = self._in_sv
+		s  = self._in_s.data[:, :, :nz]
+		su = self._in_su.data[:, :, :nz]
+		sv = self._in_sv.data[:, :, :nz]
 		if self._moist:
-			qv = self._in_qv
-			qc = self._in_qc
-			qr = self._in_qr
+			qv = self._in_qv.data[:, :, :nz]
+			qc = self._in_qc.data[:, :, :nz]
+			qr = self._in_qr.data[:, :, :nz]
 
 		if order == 1:
-			self._out_s[:, :, -nb:] = (
+			self._out_s.data[:, :, nz-nb:nz] = (
 				w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] -
 				w[:, :, -nb:    ] * s[:, :, -nb:    ]
 			) / dz
-			self._out_su[:, :, -nb:] = (
+			self._out_su.data[:, :, nz-nb:nz] = (
 				w[:, :, -nb-1:-1] * su[:, :, -nb-1:-1] -
 				w[:, :, -nb:    ] * su[:, :, -nb:    ]
 			) / dz
-			self._out_sv[:, :, -nb:] = (
+			self._out_sv.data[:, :, nz-nb:nz] = (
 				w[:, :, -nb-1:-1] * sv[:, :, -nb-1:-1] -
 				w[:, :, -nb:    ] * sv[:, :, -nb:    ]
 			) / dz
 
 			if self._moist:
-				self._out_qv[:, :, -nb:] = (
+				self._out_qv.data[:, :, nz-nb:nz] = (
 					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qv[:, :, -nb-1:-1] -
 					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qv[:, :, -nb:    ]
 				) / (dz * s[:, :, -nb:])
-				self._out_qc[:, :, -nb:] = (
+				self._out_qc.data[:, :, nz-nb:nz] = (
 					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qc[:, :, -nb-1:-1] -
 					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qc[:, :, -nb:    ]
 				) / (dz * s[:, :, -nb:])
-				self._out_qr[:, :, -nb:] = (
+				self._out_qr.data[:, :, nz-nb:nz] = (
 					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qr[:, :, -nb-1:-1] -
 					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qr[:, :, -nb:    ]
 				) / (dz * s[:, :, -nb:])
 		else:
-			self._out_s[:, :, -nb:] = 0.5 * (
+			self._out_s.data[:, :, nz-nb:nz] = 0.5 * (
 				- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ]
 				+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1]
 				- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2]
 			) / dz
-			self._out_su[:, :, -nb:] = 0.5 * (
+			self._out_su.data[:, :, nz-nb:nz] = 0.5 * (
 				- 3.0 * w[:, :, -nb:    ] * su[:, :, -nb:    ]
 				+ 4.0 * w[:, :, -nb-1:-1] * su[:, :, -nb-1:-1]
 				- 1.0 * w[:, :, -nb-2:-2] * su[:, :, -nb-2:-2]
 			) / dz
-			self._out_sv[:, :, -nb:] = 0.5 * (
+			self._out_sv.data[:, :, nz-nb:nz] = 0.5 * (
 				- 3.0 * w[:, :, -nb:    ] * sv[:, :, -nb:    ]
 				+ 4.0 * w[:, :, -nb-1:-1] * sv[:, :, -nb-1:-1]
 				- 1.0 * w[:, :, -nb-2:-2] * sv[:, :, -nb-2:-2]
 			) / dz
 
 			if self._moist:
-				self._out_qv[:, :, -nb:] = 0.5 * (
+				self._out_qv.data[:, :, nz-nb:nz] = 0.5 * (
 					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qv[:, :, -nb:    ]
 					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qv[:, :, -nb-1:-1]
 					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qv[:, :, -nb-2:-2]
 				) / (dz * s[:, :, -nb:])
-				self._out_qc[:, :, -nb:] = 0.5 * (
+				self._out_qc.data[:, :, nz-nb:nz] = 0.5 * (
 					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qc[:, :, -nb:    ]
 					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qc[:, :, -nb-1:-1]
 					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qc[:, :, -nb-2:-2]
 				) / (dz * s[:, :, -nb:])
-				self._out_qr[:, :, -nb:] = 0.5 * (
+				self._out_qr.data[:, :, nz-nb:nz] = 0.5 * (
 					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qr[:, :, -nb:    ]
 					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qr[:, :, -nb-1:-1]
 					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qr[:, :, -nb-2:-2]
@@ -413,7 +430,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
 		attenuation_coefficient_at_day=None,
 		attenuation_coefficient_at_night=None,
 		characteristic_length=None, starting_time=None,
-		backend=gt.mode.NUMPY, physical_constants=None, **kwargs):
+		backend='numpy', physical_constants=None, **kwargs):
 		"""
 		Parameters
 		----------

@@ -34,6 +34,7 @@ from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
 from tasmania.python.utils.data_utils import make_dataarray_3d
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -66,7 +67,8 @@ class IsentropicDynamicalCore(DynamicalCore):
 		smooth_coeff=.03, smooth_coeff_max=.24, smooth_damp_depth=10,
 		smooth_moist=False, smooth_moist_at_every_stage=True, smooth_moist_type='first_order',
 		smooth_moist_coeff=.03, smooth_moist_coeff_max=.24, smooth_moist_damp_depth=10,
-		backend=gt.mode.NUMPY, dtype=datatype
+		*, backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Parameters
@@ -191,11 +193,22 @@ class IsentropicDynamicalCore(DynamicalCore):
 		smooth_moist_damp_depth : `int`, optional
 			Number of vertical layers in the smoothing damping region for the
 			water constituents. Defaults to 10.
-		backend : `obj`, optional
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` allocated and
-			used within this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
+		**kwargs :
+			TODO
 		"""
 		#
 		# input parameters
@@ -207,7 +220,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 		self._smooth_at_every_stage		   	= smooth_at_every_stage
 		self._smooth_moist			   		= smooth_moist
 		self._smooth_moist_at_every_stage  	= smooth_moist_at_every_stage
-		self._dtype						   	= dtype
 
 		#
 		# parent constructor
@@ -222,10 +234,13 @@ class IsentropicDynamicalCore(DynamicalCore):
 		#
 		# prognostic
 		#
-		kwargs = {} if time_integration_properties is None else time_integration_properties
+		kwargs = {} if time_integration_properties is None else \
+			time_integration_properties
 		self._prognostic = IsentropicPrognostic.factory(
 			time_integration_scheme, horizontal_flux_scheme, self.grid,
-			self.horizontal_boundary, moist, backend, dtype, **kwargs
+			self.horizontal_boundary, moist, backend=backend,
+			backend_opts=backend_opts, build_info=build_info, dtype=dtype,
+			exec_info=exec_info, halo=halo, rebuild=rebuild, **kwargs
 		)
 
 		#
@@ -234,8 +249,10 @@ class IsentropicDynamicalCore(DynamicalCore):
 		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 		if damp:
 			self._damper = VerticalDamping.factory(
-				damp_type, (nx, ny, nz), self.grid,	damp_depth, damp_max,
-				time_units='s', backend=backend, dtype=dtype
+				damp_type, self.grid, (nx+1, ny+1, nz+1), damp_depth, damp_max,
+				time_units='s', backend=backend, backend_opts=backend_opts,
+				build_info=build_info, dtype=dtype, exec_info=exec_info,
+				halo=halo, rebuild=rebuild
 			)
 
 		#
@@ -243,23 +260,33 @@ class IsentropicDynamicalCore(DynamicalCore):
 		#
 		if smooth:
 			self._smoother = HorizontalSmoothing.factory(
-				smooth_type, (nx, ny, nz), smooth_coeff, smooth_coeff_max,
-				smooth_damp_depth, hb.nb, backend, dtype
+				smooth_type, (nx+1, ny+1, nz+1), smooth_coeff, smooth_coeff_max,
+				smooth_damp_depth, hb.nb, backend=backend,
+				backend_opts=backend_opts, build_info=build_info, dtype=dtype,
+				exec_info=exec_info, halo=halo, rebuild=rebuild
 			)
 			if moist and smooth_moist:
 				self._smoother_moist = HorizontalSmoothing.factory(
-					smooth_moist_type, (nx, ny, nz), smooth_moist_coeff,
-					smooth_moist_coeff_max, smooth_moist_damp_depth, hb.nb, backend, dtype
+					smooth_moist_type, (nx+1, ny+1, nz+1), smooth_moist_coeff,
+					smooth_moist_coeff_max, smooth_moist_damp_depth, hb.nb,
+					backend=backend, backend_opts=backend_opts, build_info=build_info,
+					dtype=dtype, exec_info=exec_info, halo=halo, rebuild=False
 				)
 
 		#
 		# diagnostics
 		#
 		self._velocity_components = HorizontalVelocity(
-			self.grid, staggering=True, backend=backend, dtype=dtype
+			self.grid, staggering=True, backend=backend,
+			backend_opts=backend_opts, build_info=build_info,
+			exec_info=exec_info, rebuild=rebuild
 		)
 		if moist:
-			self._water_constituent = WaterConstituent(self.grid, backend, dtype)
+			self._water_constituent = WaterConstituent(
+				self.grid, clipping=True, backend=backend,
+				backend_opts=backend_opts, build_info=build_info,
+				exec_info=exec_info, rebuild=rebuild
+			)
 
 		#
 		# the method implementing each stage
@@ -269,37 +296,57 @@ class IsentropicDynamicalCore(DynamicalCore):
 		#
 		# temporary and output arrays
 		#
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+		descriptor = get_storage_descriptor((nx+1, ny+1, nz+1), dtype, halo=halo)
+
+		self._s_new  = gt.storage.zeros(descriptor, backend=backend)
+		self._su_new = gt.storage.zeros(descriptor, backend=backend)
+		self._sv_new = gt.storage.zeros(descriptor, backend=backend)
+		if moist:
+			self._s_now = gt.storage.zeros(descriptor, backend=backend)
+			self._s_now_1 = gt.storage.zeros(descriptor, backend=backend)
+			self._qv_now = gt.storage.zeros(descriptor, backend=backend)
+			self._qc_now = gt.storage.zeros(descriptor, backend=backend)
+			self._qr_now = gt.storage.zeros(descriptor, backend=backend)
+			self._sqv_now = gt.storage.zeros(descriptor, backend=backend)
+			self._sqc_now = gt.storage.zeros(descriptor, backend=backend)
+			self._sqr_now = gt.storage.zeros(descriptor, backend=backend)
+			self._sqv_new = gt.storage.zeros(descriptor, backend=backend)
+			self._sqc_new = gt.storage.zeros(descriptor, backend=backend)
+			self._sqr_new = gt.storage.zeros(descriptor, backend=backend)
+			self._qv_new = gt.storage.zeros(descriptor, backend=backend)
+			self._qc_new = gt.storage.zeros(descriptor, backend=backend)
+			self._qr_new = gt.storage.zeros(descriptor, backend=backend)
 
 		if damp:
-			self._s_damped  = np.zeros((nx, ny, nz), dtype=dtype)
-			self._su_damped = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sv_damped = np.zeros((nx, ny, nz), dtype=dtype)
+			self._s_now     = gt.storage.zeros(descriptor, backend=backend)
+			self._s_ref     = gt.storage.zeros(descriptor, backend=backend)
+			self._s_damped  = gt.storage.zeros(descriptor, backend=backend)
+			self._su_now    = gt.storage.zeros(descriptor, backend=backend)
+			self._su_ref    = gt.storage.zeros(descriptor, backend=backend)
+			self._su_damped = gt.storage.zeros(descriptor, backend=backend)
+			self._sv_now    = gt.storage.zeros(descriptor, backend=backend)
+			self._sv_ref    = gt.storage.zeros(descriptor, backend=backend)
+			self._sv_damped = gt.storage.zeros(descriptor, backend=backend)
 			if moist:
-				self._qv_damped = np.zeros((nx, ny, nz), dtype=dtype)
-				self._qc_damped = np.zeros((nx, ny, nz), dtype=dtype)
-				self._qr_damped = np.zeros((nx, ny, nz), dtype=dtype)
+				self._qv_ref    = gt.storage.zeros(descriptor, backend=backend)
+				self._qv_damped = gt.storage.zeros(descriptor, backend=backend)
+				self._qc_ref    = gt.storage.zeros(descriptor, backend=backend)
+				self._qc_damped = gt.storage.zeros(descriptor, backend=backend)
+				self._qr_ref    = gt.storage.zeros(descriptor, backend=backend)
+				self._qr_damped = gt.storage.zeros(descriptor, backend=backend)
 
 		if smooth:
-			self._s_smoothed  = np.zeros((nx, ny, nz), dtype=dtype)
-			self._su_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sv_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
+			self._s_smoothed  = gt.storage.zeros(descriptor, backend=backend)
+			self._su_smoothed = gt.storage.zeros(descriptor, backend=backend)
+			self._sv_smoothed = gt.storage.zeros(descriptor, backend=backend)
 
 		if smooth_moist:
-			self._qv_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qc_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
-			self._qr_smoothed = np.zeros((nx, ny, nz), dtype=dtype)
+			self._qv_smoothed = gt.storage.zeros(descriptor, backend=backend)
+			self._qc_smoothed = gt.storage.zeros(descriptor, backend=backend)
+			self._qr_smoothed = gt.storage.zeros(descriptor, backend=backend)
 
-		self._u_out = np.zeros((nx+1, ny, nz), dtype=dtype)
-		self._v_out = np.zeros((nx, ny+1, nz), dtype=dtype)
-
-		self._sqv_now = np.zeros((nx, ny, nz), dtype=dtype)
-		self._sqc_now = np.zeros((nx, ny, nz), dtype=dtype)
-		self._sqr_now = np.zeros((nx, ny, nz), dtype=dtype)
-
-		self._qv_new = np.zeros((nx, ny, nz), dtype=dtype)
-		self._qc_new = np.zeros((nx, ny, nz), dtype=dtype)
-		self._qr_new = np.zeros((nx, ny, nz), dtype=dtype)
+		self._u_out = gt.storage.zeros(descriptor, backend=backend)
+		self._v_out = gt.storage.zeros(descriptor, backend=backend)
 
 	@property
 	def _input_properties(self):
@@ -517,10 +564,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 		return self._array_call(stage, raw_state, raw_tendencies, timestep)
 
 	def _array_call_dry(self, stage, raw_state, raw_tendencies, timestep):
-		"""
-		Perform a stage of the dry dynamical core.
-		"""
+		""" Perform a stage of the dry dynamical core. """
 		# shortcuts
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 		hb = self.horizontal_boundary
 		out_properties = self.output_properties
 
@@ -528,11 +574,11 @@ class IsentropicDynamicalCore(DynamicalCore):
 			# set the reference state
 			try:
 				ref_state = hb.reference_state
-				self._s_ref  = \
+				self._s_ref.data[:nx, :ny, :nz]  = \
 					ref_state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-				self._su_ref = \
+				self._su_ref.data[:nx, :ny, :nz] = \
 					ref_state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
-				self._sv_ref = \
+				self._sv_ref.data[:nx, :ny, :nz] = \
 					ref_state['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
 			except KeyError:
 				raise RuntimeError(
@@ -541,9 +587,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 				)
 
 			# save the current solution
-			self._s_now  = raw_state['air_isentropic_density']
-			self._su_now = raw_state['x_momentum_isentropic']
-			self._sv_now = raw_state['y_momentum_isentropic']
+			self._s_now.data[:nx, :ny, :nz]  = raw_state['air_isentropic_density']
+			self._su_now.data[:nx, :ny, :nz] = raw_state['x_momentum_isentropic']
+			self._sv_now.data[:nx, :ny, :nz] = raw_state['y_momentum_isentropic']
 
 		# perform the prognostic step
 		raw_state_new = self._prognostic.stage_call(
@@ -553,24 +599,24 @@ class IsentropicDynamicalCore(DynamicalCore):
 		# apply the lateral boundary conditions
 		hb.dmn_enforce_raw(raw_state_new, out_properties)
 
+		# extract the stepped prognostic model variables
+		self._s_new.data[:nx, :ny, :nz]  = raw_state_new['air_isentropic_density']
+		self._su_new.data[:nx, :ny, :nz] = raw_state_new['x_momentum_isentropic']
+		self._sv_new.data[:nx, :ny, :nz] = raw_state_new['y_momentum_isentropic']
+
 		damped = False
 		if self._damp and (self._damp_at_every_stage or stage == self.stages-1):
 			damped = True
 
-			# extract the stepped prognostic model variables
-			s_new  = raw_state_new['air_isentropic_density']
-			su_new = raw_state_new['x_momentum_isentropic']
-			sv_new = raw_state_new['y_momentum_isentropic']
-
 			# apply vertical damping
-			self._damper(timestep, self._s_now , s_new , self._s_ref , self._s_damped )
-			self._damper(timestep, self._su_now, su_new, self._su_ref, self._su_damped)
-			self._damper(timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped)
+			self._damper(timestep, self._s_now , self._s_new , self._s_ref , self._s_damped )
+			self._damper(timestep, self._su_now, self._su_new, self._su_ref, self._su_damped)
+			self._damper(timestep, self._sv_now, self._sv_new, self._sv_ref, self._sv_damped)
 
 		# properly set pointers to current solution
-		s_new  = self._s_damped if damped else raw_state_new['air_isentropic_density']
-		su_new = self._su_damped if damped else raw_state_new['x_momentum_isentropic']
-		sv_new = self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
+		s_new  = self._s_damped if damped else self._s_new
+		su_new = self._su_damped if damped else self._su_new
+		sv_new = self._sv_damped if damped else self._sv_new
 
 		smoothed = False
 		if self._smooth and (self._smooth_at_every_stage or stage == self.stages-1):
@@ -584,9 +630,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 			# apply horizontal boundary conditions
 			raw_state_smoothed = {
 				'time': raw_state_new['time'],
-				'air_isentropic_density': self._s_smoothed,
-				'x_momentum_isentropic': self._su_smoothed,
-				'y_momentum_isentropic': self._sv_smoothed,
+				'air_isentropic_density': self._s_smoothed.data[:nx, :ny, :nz],
+				'x_momentum_isentropic': self._su_smoothed.data[:nx, :ny, :nz],
+				'y_momentum_isentropic': self._sv_smoothed.data[:nx, :ny, :nz],
 			}
 			hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -600,12 +646,12 @@ class IsentropicDynamicalCore(DynamicalCore):
 			s_out, su_out, sv_out, self._u_out, self._v_out
 		)
 		hb.dmn_set_outermost_layers_x(
-			self._u_out, field_name='x_velocity_at_u_locations',
+			self._u_out.data[:nx+1, :ny, :nz], field_name='x_velocity_at_u_locations',
 			field_units=out_properties['x_velocity_at_u_locations']['units'],
 			time=raw_state_new['time']
 		)
 		hb.dmn_set_outermost_layers_y(
-			self._v_out, field_name='y_velocity_at_v_locations',
+			self._v_out.data[:nx, :ny+1, :nz], field_name='y_velocity_at_v_locations',
 			field_units=out_properties['y_velocity_at_v_locations']['units'],
 			time=raw_state_new['time']
 		)
@@ -613,20 +659,19 @@ class IsentropicDynamicalCore(DynamicalCore):
 		# instantiate the output state
 		raw_state_out = {
 			'time': raw_state_new['time'],
-			'air_isentropic_density': s_out,
-			'x_momentum_isentropic': su_out,
-			'x_velocity_at_u_locations': self._u_out,
-			'y_momentum_isentropic': sv_out,
-			'y_velocity_at_v_locations': self._v_out,
+			'air_isentropic_density': s_out.data[:nx, :ny, :nz],
+			'x_momentum_isentropic': su_out.data[:nx, :ny, :nz],
+			'x_velocity_at_u_locations': self._u_out.data[:nx+1, :ny, :nz],
+			'y_momentum_isentropic': sv_out.data[:nx, :ny, :nz],
+			'y_velocity_at_v_locations': self._v_out.data[:nx, :ny+1, :nz],
 		}
 
 		return raw_state_out
 
 	def _array_call_moist(self, stage, raw_state, raw_tendencies, timestep):
-		"""
-		Perform a stage of the moist dynamical core.
-		"""
+		"""	Perform a stage of the moist dynamical core. """
 		# shortcuts
+		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 		hb = self.horizontal_boundary
 		out_properties = self.output_properties
 
@@ -634,15 +679,18 @@ class IsentropicDynamicalCore(DynamicalCore):
 			# set the reference state
 			try:
 				ref_state = hb.reference_state
-				self._s_ref  = \
+				self._s_ref.data[:nx, :ny, :nz] = \
 					ref_state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-				self._su_ref = \
+				self._su_ref.data[:nx, :ny, :nz] = \
 					ref_state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
-				self._sv_ref = \
+				self._sv_ref.data[:nx, :ny, :nz] = \
 					ref_state['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
-				self._qv_ref = ref_state[mfwv].to_units('g g^-1').values
-				self._qc_ref = ref_state[mfcw].to_units('g g^-1').values
-				self._qr_ref = ref_state[mfpw].to_units('g g^-1').values
+				self._qv_ref.data[:nx, :ny, :nz] = \
+					ref_state[mfwv].to_units('g g^-1').values
+				self._qc_ref.data[:nx, :ny, :nz] = \
+					ref_state[mfcw].to_units('g g^-1').values
+				self._qr_ref.data[:nx, :ny, :nz] = \
+					ref_state[mfpw].to_units('g g^-1').values
 			except KeyError:
 				raise RuntimeError(
 					"Reference state not set in the object handling the horizontal "
@@ -650,74 +698,84 @@ class IsentropicDynamicalCore(DynamicalCore):
 				)
 
 			# save the current solution
-			self._s_now  = raw_state['air_isentropic_density']
-			self._su_now = raw_state['x_momentum_isentropic']
-			self._sv_now = raw_state['y_momentum_isentropic']
-			self._qv_now = raw_state[mfwv]
-			self._qc_now = raw_state[mfcw]
-			self._qr_now = raw_state[mfpw]
+			self._s_now.data[:nx, :ny, :nz] = raw_state['air_isentropic_density']
+			self._su_now.data[:nx, :ny, :nz] = raw_state['x_momentum_isentropic']
+			self._sv_now.data[:nx, :ny, :nz] = raw_state['y_momentum_isentropic']
+			# self._qv_now.data[:nx, :ny, :nz] = raw_state[mfwv]
+			# self._qc_now.data[:nx, :ny, :nz] = raw_state[mfcw]
+			# self._qr_now.data[:nx, :ny, :nz] = raw_state[mfpw]
+
+		self._s_now_1.data[:nx, :ny, :nz] = raw_state['air_isentropic_density']
+		self._qv_now.data[:nx, :ny, :nz] = raw_state[mfwv]
+		self._qc_now.data[:nx, :ny, :nz] = raw_state[mfcw]
+		self._qr_now.data[:nx, :ny, :nz] = raw_state[mfpw]
 
 		# diagnose the isentropic density of all water constituents
-		s_now  = raw_state['air_isentropic_density']
-		qv_now = raw_state[mfwv]
-		qc_now = raw_state[mfcw]
-		qr_now = raw_state[mfpw]
-		self._water_constituent.get_density_of_water_constituent(s_now, qv_now, self._sqv_now)
-		self._water_constituent.get_density_of_water_constituent(s_now, qc_now, self._sqc_now)
-		self._water_constituent.get_density_of_water_constituent(s_now, qr_now, self._sqr_now)
-		raw_state['isentropic_density_of_water_vapor']		   = self._sqv_now
-		raw_state['isentropic_density_of_cloud_liquid_water']  = self._sqc_now
-		raw_state['isentropic_density_of_precipitation_water'] = self._sqr_now
+		self._water_constituent.get_density_of_water_constituent(
+			self._s_now_1, self._qv_now, self._sqv_now
+		)
+		self._water_constituent.get_density_of_water_constituent(
+			self._s_now_1, self._qc_now, self._sqc_now
+		)
+		self._water_constituent.get_density_of_water_constituent(
+			self._s_now_1, self._qr_now, self._sqr_now
+		)
+		raw_state['isentropic_density_of_water_vapor'] = \
+			self._sqv_now.data[:nx, :ny, :nz]
+		raw_state['isentropic_density_of_cloud_liquid_water'] = \
+			self._sqc_now.data[:nx, :ny, :nz]
+		raw_state['isentropic_density_of_precipitation_water'] = \
+			self._sqr_now.data[:nx, :ny, :nz]
 
 		# perform the prognostic step
 		raw_state_new = self._prognostic.stage_call(
 			stage, timestep, raw_state, raw_tendencies
 		)
 
+		# extract the stepped prognostic model variables
+		self._s_new.data[:nx, :ny, :nz]   = raw_state_new['air_isentropic_density']
+		self._sqv_new.data[:nx, :ny, :nz] = raw_state_new['isentropic_density_of_water_vapor']
+		self._sqc_new.data[:nx, :ny, :nz] = raw_state_new['isentropic_density_of_cloud_liquid_water']
+		self._sqr_new.data[:nx, :ny, :nz] = raw_state_new['isentropic_density_of_precipitation_water']
+
 		# diagnose the mass fraction of all water constituents
 		self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_new['air_isentropic_density'],
-			raw_state_new['isentropic_density_of_water_vapor'],
-			self._qv_new, clipping=True
+			self._s_new, self._sqv_new,	self._qv_new
 		)
-		raw_state_new[mfwv] = self._qv_new
+		raw_state_new[mfwv] = self._qv_new.data[:nx, :ny, :nz]
 		self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_new['air_isentropic_density'],
-			raw_state_new['isentropic_density_of_cloud_liquid_water'],
-			self._qc_new, clipping=True
+			self._s_new, self._sqc_new,	self._qc_new
 		)
-		raw_state_new[mfcw] = self._qc_new
+		raw_state_new[mfcw] = self._qc_new.data[:nx, :ny, :nz]
 		self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-			raw_state_new['air_isentropic_density'],
-			raw_state_new['isentropic_density_of_precipitation_water'],
-			self._qr_new, clipping=True
+			self._s_new, self._sqr_new,	self._qr_new
 		)
-		raw_state_new[mfpw] = self._qr_new
+		raw_state_new[mfpw] = self._qr_new.data[:nx, :ny, :nz]
 
 		# apply the lateral boundary conditions
 		hb.dmn_enforce_raw(raw_state_new, out_properties)
+
+		# extract the stepped prognostic model variables
+		self._s_new.data[:nx, :ny, :nz]  = raw_state_new['air_isentropic_density']
+		self._su_new.data[:nx, :ny, :nz] = raw_state_new['x_momentum_isentropic']
+		self._sv_new.data[:nx, :ny, :nz] = raw_state_new['y_momentum_isentropic']
 
 		damped = False
 		if self._damp and (self._damp_at_every_stage or stage == self.stages-1):
 			damped = True
 
-			# extract the stepped prognostic model variables
-			s_new  = raw_state_new['air_isentropic_density']
-			su_new = raw_state_new['x_momentum_isentropic']
-			sv_new = raw_state_new['y_momentum_isentropic']
-
 			# apply vertical damping
-			self._damper(timestep, self._s_now , s_new       , self._s_ref , self._s_damped )
-			self._damper(timestep, self._su_now, su_new      , self._su_ref, self._su_damped)
-			self._damper(timestep, self._sv_now, sv_new      , self._sv_ref, self._sv_damped)
+			self._damper(timestep, self._s_now , self._s_new , self._s_ref , self._s_damped )
+			self._damper(timestep, self._su_now, self._su_new, self._su_ref, self._su_damped)
+			self._damper(timestep, self._sv_now, self._sv_new, self._sv_ref, self._sv_damped)
 			# self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
 			# self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
 			# self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
 
 		# properly set pointers to current solution
-		s_new  = self._s_damped if damped else raw_state_new['air_isentropic_density']
-		su_new = self._su_damped if damped else raw_state_new['x_momentum_isentropic']
-		sv_new = self._sv_damped if damped else raw_state_new['y_momentum_isentropic']
+		s_new  = self._s_damped if damped else self._s_new
+		su_new = self._su_damped if damped else self._su_new
+		sv_new = self._sv_damped if damped else self._sv_new
 		qv_new = self._qv_new  # self._qv_damped if damped else self._qv_new
 		qc_new = self._qc_new  # self._qc_damped if damped else self._qc_new
 		qr_new = self._qr_new  # self._qr_damped if damped else self._qr_new
@@ -734,9 +792,9 @@ class IsentropicDynamicalCore(DynamicalCore):
 			# apply horizontal boundary conditions
 			raw_state_smoothed = {
 				'time': raw_state_new['time'],
-				'air_isentropic_density': self._s_smoothed,
-				'x_momentum_isentropic': self._su_smoothed,
-				'y_momentum_isentropic': self._sv_smoothed,
+				'air_isentropic_density': self._s_smoothed.data[:nx, :ny, :nz],
+				'x_momentum_isentropic': self._su_smoothed.data[:nx, :ny, :nz],
+				'y_momentum_isentropic': self._sv_smoothed.data[:nx, :ny, :nz],
 			}
 			hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -750,16 +808,16 @@ class IsentropicDynamicalCore(DynamicalCore):
 			smoothed_moist = True
 
 			# apply horizontal smoothing
-			self._smoother(qv_new, self._qv_smoothed)
-			self._smoother(qc_new, self._qc_smoothed)
-			self._smoother(qr_new, self._qr_smoothed)
+			self._smoother_moist(qv_new, self._qv_smoothed)
+			self._smoother_moist(qc_new, self._qc_smoothed)
+			self._smoother_moist(qr_new, self._qr_smoothed)
 
 			# apply horizontal boundary conditions
 			raw_state_smoothed = {
 				'time': raw_state_new['time'],
-				mfwv: self._qv_smoothed,
-				mfcw: self._qc_smoothed,
-				mfpw: self._qr_smoothed,
+				mfwv: self._qv_smoothed.data[:nx, :ny, :nz],
+				mfcw: self._qc_smoothed.data[:nx, :ny, :nz],
+				mfpw: self._qr_smoothed.data[:nx, :ny, :nz],
 			}
 			hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -773,12 +831,12 @@ class IsentropicDynamicalCore(DynamicalCore):
 			s_out, su_out, sv_out, self._u_out, self._v_out
 		)
 		hb.dmn_set_outermost_layers_x(
-			self._u_out, field_name='x_velocity_at_u_locations',
+			self._u_out.data[:nx+1, :ny, :nz], field_name='x_velocity_at_u_locations',
 			field_units=out_properties['x_velocity_at_u_locations']['units'],
 			time=raw_state_new['time']
 		)
 		hb.dmn_set_outermost_layers_y(
-			self._v_out, field_name='y_velocity_at_v_locations',
+			self._v_out.data[:nx, :ny+1, :nz], field_name='y_velocity_at_v_locations',
 			field_units=out_properties['y_velocity_at_v_locations']['units'],
 			time=raw_state_new['time']
 		)
@@ -786,14 +844,14 @@ class IsentropicDynamicalCore(DynamicalCore):
 		# instantiate the output state
 		raw_state_out = {
 			'time': raw_state_new['time'],
-			'air_isentropic_density': s_out,
-			mfwv: qv_out,
-			mfcw: qc_out,
-			mfpw: qr_out,
-			'x_momentum_isentropic': su_out,
-			'x_velocity_at_u_locations': self._u_out,
-			'y_momentum_isentropic': sv_out,
-			'y_velocity_at_v_locations': self._v_out,
+			'air_isentropic_density': s_out.data[:nx, :ny, :nz],
+			mfwv: qv_out.data[:nx, :ny, :nz],
+			mfcw: qc_out.data[:nx, :ny, :nz],
+			mfpw: qr_out.data[:nx, :ny, :nz],
+			'x_momentum_isentropic': su_out.data[:nx, :ny, :nz],
+			'x_velocity_at_u_locations': self._u_out.data[:nx+1, :ny, :nz],
+			'y_momentum_isentropic': sv_out.data[:nx, :ny, :nz],
+			'y_velocity_at_v_locations': self._v_out.data[:nx, :ny+1, :nz],
 		}
 
 		return raw_state_out

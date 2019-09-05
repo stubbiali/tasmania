@@ -21,27 +21,33 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from datetime import datetime, timedelta
-import gridtools as gt
 import numpy as np
 from sympl import DataArray
 
-
-# backend settings
-backend = gt.mode.NUMPY
-dtype   = np.float64
 
 # computational domain
 domain_x = DataArray([-176, 176], dims='x', attrs={'units': 'km'}).to_units('m')
 nx       = 41
 domain_y = DataArray([-176, 176], dims='y', attrs={'units': 'km'}).to_units('m')
 ny       = 41
-domain_z = DataArray([360, 300], dims='potential_temperature', attrs={'units': 'K'})
+domain_z = DataArray([340, 280], dims='potential_temperature', attrs={'units': 'K'})
 nz       = 60
 
 # horizontal boundary
 hb_type = 'relaxed'
 nb = 3
 hb_kwargs = {'nr': 6}
+
+# gt4py settings
+gt_kwargs = {
+	'backend': 'numpy',
+	'backend_opts': None,
+	'build_info': None,
+	'dtype': np.float64,
+	'exec_info': None,
+	'halo': (nb, nb, 0),
+	'rebuild': True
+}
 
 # topography
 topo_type   = 'gaussian'
@@ -111,27 +117,27 @@ turbulence 			 = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis           = True
+coriolis           = False
 coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
 precipitation			  = True
 sedimentation    		  = True
-sedimentation_flux_scheme = 'first_order_upwind'
-rain_evaporation 		  = False
+sedimentation_flux_scheme = 'second_order_upwind'
+rain_evaporation 		  = True
 autoconversion_threshold  = DataArray(0.1, attrs={'units': 'g kg^-1'})
 autoconversion_rate		  = DataArray(0.001, attrs={'units': 's^-1'})
 collection_rate			  = DataArray(2.2, attrs={'units': 's^-1'})
 update_frequency 		  = 0
 
 # simulation length
-timestep = timedelta(seconds=48)
+timestep = timedelta(seconds=40)
 niter    = int(4*60*60 / timestep.total_seconds())
 
 # output
 filename = \
 	'../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_1.nc'.format(
+	'{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_1.nc'.format(
 		time_integration_scheme, horizontal_flux_scheme, physics_time_integration_scheme,
 		nx, ny, nz, int(timestep.total_seconds()), niter,
 		topo_type, int(topo_kwargs['width_x'].to_units('m').values.item()),
@@ -142,19 +148,27 @@ filename = \
 		'_turb' if turbulence else '', '_f' if coriolis else '',
 		'_sed' if sedimentation else '', '_evap' if rain_evaporation else ''
 	)
-filename = None
+filename = '../../data/isentropic_ssus_{}.nc'.format(gt_kwargs['backend'])
 store_names = (
 	'accumulated_precipitation',
+	'air_density',
 	'air_isentropic_density',
+	'air_pressure_on_interface_levels',
+	'air_temperature',
+	'exner_function_on_interface_levels',
 	'height_on_interface_levels',
 	'mass_fraction_of_water_vapor_in_air',
 	'mass_fraction_of_cloud_liquid_water_in_air',
 	'mass_fraction_of_precipitation_water_in_air',
+	'montgomery_potential',
 	'precipitation',
 	'x_momentum_isentropic',
-	'y_momentum_isentropic'
+	'x_velocity_at_u_locations',
+	'y_momentum_isentropic',
+	'y_velocity_at_v_locations'
 )
-save_frequency = -1
-print_dry_frequency = -1
+save_frequency = 5
+print_dry_frequency = 5
 print_moist_frequency = 5
 plot_frequency = -1
+

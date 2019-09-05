@@ -28,6 +28,7 @@ import abc
 import numpy as np
 
 import gridtools as gt
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -41,7 +42,7 @@ mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
-class IsentropicPrognostic:
+class IsentropicPrognostic(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different
 	schemes to carry out the prognostic steps of the three-dimensional
@@ -51,12 +52,9 @@ class IsentropicPrognostic:
 	the sedimentation motion are not included in the dynamics, but rather
 	parameterized. The conservative form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	def __init__(
-		self, horizontal_flux_class, horizontal_flux_scheme, grid, hb,
-		moist, backend, dtype=datatype
+		self, horizontal_flux_class, horizontal_flux_scheme, grid, hb, moist,
+		backend, backend_opts, build_info, dtype, exec_info, halo, rebuild
 	):
 		"""
 		Parameters
@@ -75,24 +73,37 @@ class IsentropicPrognostic:
 			The object handling the lateral boundary conditions.
 		moist : bool
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		backend : obj
+		backend : str
 			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+		backend_opts : dict
+			TODO
+		build_info : dict
+			TODO
+		dtype : numpy.dtype
+			TODO
+		exec_info : dict
+			TODO
+		halo : tuple
+			TODO
+		rebuild : bool
+			TODO
 		"""
-		# keep track of the input parameters
-		self._hflux_scheme	= horizontal_flux_scheme
+		# store input arguments needed at compile- and run-time
 		self._grid          = grid
 		self._hb            = hb
 		self._moist      	= moist
 		self._backend		= backend
-		self._dtype			= dtype
+		self._backend_opts  = backend_opts
+		self._build_info    = build_info
+		self._exec_info     = exec_info
+		self._rebuild       = rebuild
+
+		# get the storage descriptor
+		storage_shape = (grid.nx+1, grid.ny+1, grid.nz+1)
+		self._descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
 
 		# instantiate the class computing the numerical horizontal fluxes
-		self._hflux = horizontal_flux_class.factory(
-			self._hflux_scheme, grid, moist,
-		)
+		self._hflux = horizontal_flux_class.factory(horizontal_flux_scheme)
 		assert hb.nb >= self._hflux.extent, \
 			"The number of lateral boundary layers is {}, but should be " \
 			"greater or equal than {}.".format(hb.nb, self._hflux.extent)
@@ -106,11 +117,6 @@ class IsentropicPrognostic:
 			"dimension is {}, but should be greater or equal than {}.".format(
 				grid.ny, 2*hb.nb+1
 			)
-
-		dx = grid.dx.to_units('m').values.item()
-		self._dx = gt.Global(dx)
-		dy = grid.dy.to_units('m').values.item()
-		self._dy = gt.Global(dy)
 
 	@property
 	@abc.abstractmethod
@@ -153,8 +159,9 @@ class IsentropicPrognostic:
 
 	@staticmethod
 	def factory(
-		time_integration_scheme, horizontal_flux_scheme, grid, hb,
-		moist=False, backend=gt.mode.NUMPY, dtype=datatype, **kwargs
+		time_integration_scheme, horizontal_flux_scheme, grid, hb, moist=False,
+		*, backend="numpy", backend_opts=None, build_info=None, dtype=datatype,
+		exec_info=None, halo=None, rebuild=False, **kwargs
 	):
 		"""
 		Static method returning an instance of the derived class implementing
@@ -182,11 +189,20 @@ class IsentropicPrognostic:
 		moist : `bool`, optional
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 			Defaults to :obj:`False`.
-		backend : obj
+		backend : `str`, optional
+			TODO
+		backend_opts : `dict`, optional
+			TODO
+		build_info : `dict`, optional
 			TODO
 		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+			TODO
+		exec_info : `dict`, optional
+			TODO
+		halo : `tuple`, optional
+			TODO
+		rebuild : `bool`, optional
+			TODO
 
 		Return
 		------
@@ -195,7 +211,10 @@ class IsentropicPrognostic:
 		"""
 		from .implementations.prognostic import \
 			ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
-		args = (horizontal_flux_scheme,	grid, hb, moist, backend, dtype)
+		args = (
+			horizontal_flux_scheme,	grid, hb, moist, backend, backend_opts,
+			build_info, dtype, exec_info, halo, rebuild
+		)
 
 		available = ('forward_euler_si', 'centered_si', 'rk3ws_si', 'sil3')
 
@@ -215,62 +234,59 @@ class IsentropicPrognostic:
 
 	def _stencils_allocate(self, tendencies):
 		"""
-		Allocate the arrays and globals which serve as inputs and outputs to
-		the underlying GT4Py stencils.
+		Allocate the storages which serve as inputs and outputs to the 
+		underlying gt4py stencils.
 		"""
 		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		dtype = self._dtype
+		descriptor, backend = self._descriptor, self._backend
 		tendency_names = () if tendencies is None else tendencies.keys()
 
-		# instantiate a GT4Py Global representing the timestep
-		self._dt = gt.Global()
-
-		# allocate the Numpy arrays which will store the current values
+		# allocate the storages which will collect the current values
 		# for the model variables
-		self._s_now	  = np.zeros((  nx,	  ny, nz), dtype=dtype)
-		self._u_now	  = np.zeros((nx+1,	  ny, nz), dtype=dtype)
-		self._v_now	  = np.zeros((  nx, ny+1, nz), dtype=dtype)
-		self._mtg_now = np.zeros((  nx,   ny, nz), dtype=dtype)
-		self._su_now  = np.zeros((  nx,	  ny, nz), dtype=dtype)
-		self._sv_now  = np.zeros((  nx,	  ny, nz), dtype=dtype)
+		self._s_now	  = gt.storage.zeros(descriptor, backend=backend)
+		self._u_now	  = gt.storage.zeros(descriptor, backend=backend)
+		self._v_now	  = gt.storage.zeros(descriptor, backend=backend)
+		self._mtg_now = gt.storage.zeros(descriptor, backend=backend)
+		self._su_now  = gt.storage.zeros(descriptor, backend=backend)
+		self._sv_now  = gt.storage.zeros(descriptor, backend=backend)
 		if self._moist:
-			self._sqv_now = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc_now = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr_now = np.zeros((nx, ny, nz), dtype=dtype)
+			self._sqv_now = gt.storage.zeros(descriptor, backend=backend)
+			self._sqc_now = gt.storage.zeros(descriptor, backend=backend)
+			self._sqr_now = gt.storage.zeros(descriptor, backend=backend)
 
-		# allocate the input Numpy arrays which will store the tendencies
+		# allocate the storages which will collect the tendencies
 		# for the model variables
 		if tendency_names is not None:
 			if 'air_isentropic_density' in tendency_names:
-				self._s_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+				self._s_tnd = gt.storage.zeros(descriptor, backend=backend)
 			if 'x_momentum_isentropic' in tendency_names:
-				self._su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+				self._su_tnd = gt.storage.zeros(descriptor, backend=backend)
 			if 'y_momentum_isentropic' in tendency_names:
-				self._sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+				self._sv_tnd = gt.storage.zeros(descriptor, backend=backend)
 			if mfwv in tendency_names:
-				self._qv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+				self._qv_tnd = gt.storage.zeros(descriptor, backend=backend)
 			if mfcw in tendency_names:
-				self._qc_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+				self._qc_tnd = gt.storage.zeros(descriptor, backend=backend)
 			if mfpw in tendency_names:
-				self._qr_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+				self._qr_tnd = gt.storage.zeros(descriptor, backend=backend)
 
-		# allocate the Numpy arrays which will store the output values for
+		# allocate the storages which will collect the output values for
 		# the model variables
-		self._s_new  = np.zeros((nx, ny, nz), dtype=dtype)
-		self._su_new = np.zeros((nx, ny, nz), dtype=dtype)
-		self._sv_new = np.zeros((nx, ny, nz), dtype=dtype)
+		self._s_new  = gt.storage.zeros(descriptor, backend=backend)
+		self._su_new = gt.storage.zeros(descriptor, backend=backend)
+		self._sv_new = gt.storage.zeros(descriptor, backend=backend)
 		if self._moist:
-			self._sqv_new = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqc_new = np.zeros((nx, ny, nz), dtype=dtype)
-			self._sqr_new = np.zeros((nx, ny, nz), dtype=dtype)
+			self._sqv_new = gt.storage.zeros(descriptor, backend=backend)
+			self._sqc_new = gt.storage.zeros(descriptor, backend=backend)
+			self._sqr_new = gt.storage.zeros(descriptor, backend=backend)
 
-	def _stencils_set_inputs(self, stage, timestep, state, tendencies):
+	def _stencils_set_inputs(self, stage, state, tendencies):
 		"""
-		Update the attributes which serve as inputs to the GT4Py stencils
+		Update the attributes which serve as inputs to the gt4py stencils
 		which perform the stages.
 		"""
 		# shortcuts
+		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		if tendencies is not None:
 			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
 			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
@@ -281,29 +297,26 @@ class IsentropicPrognostic:
 		else:
 			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
-		# update the local time step
-		self._dt.value = timestep.total_seconds()
-
-		# update the Numpy arrays which serve as inputs to the GT4Py stencils
-		self._s_now[...]   = state['air_isentropic_density'][...]
-		self._u_now[...]   = state['x_velocity_at_u_locations'][...]
-		self._v_now[...]   = state['y_velocity_at_v_locations'][...]
-		self._mtg_now[...] = state['montgomery_potential'][...]
-		self._su_now[...]  = state['x_momentum_isentropic'][...]
-		self._sv_now[...]  = state['y_momentum_isentropic'][...]
+		# update the storages which serve as inputs to the gt4py stencils
+		self._s_now.data[:nx, :ny, :nz]   = state['air_isentropic_density'][...]
+		self._u_now.data[:nx+1, :ny, :nz] = state['x_velocity_at_u_locations'][...]
+		self._v_now.data[:nx, :ny+1, :nz] = state['y_velocity_at_v_locations'][...]
+		self._mtg_now.data[:nx, :ny, :nz] = state['montgomery_potential'][...]
+		self._su_now.data[:nx, :ny, :nz]  = state['x_momentum_isentropic'][...]
+		self._sv_now.data[:nx, :ny, :nz]  = state['y_momentum_isentropic'][...]
 		if self._moist:
-			self._sqv_now[...] = state['isentropic_density_of_water_vapor'][...]
-			self._sqc_now[...] = state['isentropic_density_of_cloud_liquid_water'][...]
-			self._sqr_now[...] = state['isentropic_density_of_precipitation_water'][...]
+			self._sqv_now.data[:nx, :ny, :nz] = state['isentropic_density_of_water_vapor'][...]
+			self._sqc_now.data[:nx, :ny, :nz] = state['isentropic_density_of_cloud_liquid_water'][...]
+			self._sqr_now.data[:nx, :ny, :nz] = state['isentropic_density_of_precipitation_water'][...]
 		if s_tnd_on:
-			self._s_tnd[...]  = tendencies['air_isentropic_density'][...]
+			self._s_tnd.data[:nx, :ny, :nz]  = tendencies['air_isentropic_density'][...]
 		if su_tnd_on:
-			self._su_tnd[...] = tendencies['x_momentum_isentropic'][...]
+			self._su_tnd.data[:nx, :ny, :nz] = tendencies['x_momentum_isentropic'][...]
 		if sv_tnd_on:
-			self._sv_tnd[...] = tendencies['y_momentum_isentropic'][...]
+			self._sv_tnd.data[:nx, :ny, :nz] = tendencies['y_momentum_isentropic'][...]
 		if qv_tnd_on:
-			self._qv_tnd[...] = tendencies[mfwv][...]
+			self._qv_tnd.data[:nx, :ny, :nz] = tendencies[mfwv][...]
 		if qc_tnd_on:
-			self._qc_tnd[...] = tendencies[mfcw][...]
+			self._qc_tnd.data[:nx, :ny, :nz] = tendencies[mfcw][...]
 		if qr_tnd_on:
-			self._qr_tnd[...] = tendencies[mfpw][...]
+			self._qr_tnd.data[:nx, :ny, :nz] = tendencies[mfpw][...]

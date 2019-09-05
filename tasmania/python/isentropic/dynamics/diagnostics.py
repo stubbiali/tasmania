@@ -30,6 +30,7 @@ from sympl import DataArray
 import gridtools as gt
 from gridtools.storage import StorageDescriptor
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
 	from tasmania.conf import datatype
@@ -112,23 +113,13 @@ class IsentropicDiagnostics:
 		theta = np.tile(theta_1d, (grid.nx+1, grid.ny+1, 1))
 
 		# make theta a gt4py storage
-		halo = (0, 0, 0) if halo is None else halo
 		shape = (grid.nx+1, grid.ny+1, grid.nz+1)
-		iteration_domain = tuple(shape[i] - 2*halo[i] for i in range(3))
-		self._theta = gt.storage.from_array(
-			theta,
-			StorageDescriptor(dtype, iteration_domain=iteration_domain, halo=halo),
-			backend=backend
-		)
+		descriptor = get_storage_descriptor(shape, dtype, halo=halo, mask=[True, True, True])
+		self._theta = gt.storage.from_array(theta, descriptor=descriptor, backend=backend)
 
 		# allocate a gt4py storage for the topography
-		self._topo = gt.storage.zeros(
-			StorageDescriptor(
-				dtype, mask=[True, True, True],  # mask=[True, True, False]
-				iteration_domain=iteration_domain, halo=halo
-			),
-			backend=backend
-		)
+		descriptor = get_storage_descriptor(shape, dtype, mask=[True, True, True])
+		self._topo = gt.storage.zeros(descriptor, backend=backend)
 
 		# instantiate the underlying gt4py stencils
 		decorator = gt.stencil(
