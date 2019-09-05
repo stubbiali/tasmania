@@ -1,0 +1,152 @@
+FROM nvidia/cuda:latest
+
+MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
+
+# environment variables
+ENV DEBIAN_FRONTEND noninteractive
+
+# install a miscellaneous of useful software
+RUN apt-get update
+RUN apt-get install -y build-essential		\
+					   ca-certificates		\
+					   cmake				\
+					   curl					\
+					   firefox				\
+					   libblas3				\
+					   libblas-dev			\
+					   libhdf5-dev			\
+					   liblapack3			\
+					   liblapack-dev		\
+					   libfreetype6-dev     \
+					   libnetcdf-dev		\
+					   libpng-dev			\
+					   locales				\
+					   g++					\
+					   gfortran				\
+					   git					\
+					   gnupg				\
+					   graphviz				\
+					   make					\
+					   pkg-config           \
+					   qt5-default			\
+					   sudo					\
+					   tzdata				\
+					   vim					\
+					   x11-apps				\
+					   wget					\
+					--no-install-recommends
+
+# create a sudoer non-root user called tasmania-user,
+# whose uid might be specified at building time
+ARG uid=1000
+RUN useradd -r -u $uid tasmania-user && \
+	echo "tasmania-user:tasmania-user" | chpasswd && adduser tasmania-user sudo
+
+# set the working directory to /home/tasmania-user
+WORKDIR /home/tasmania-user
+ENV 	HOME /home/tasmania-user
+RUN	chmod a+w /home/tasmania-user
+RUN	chown -R tasmania-user /home/tasmania-user
+
+# locale configuration
+RUN cp /usr/share/zoneinfo/Europe/Zurich /etc/localtime && \
+	dpkg-reconfigure locales
+
+# install FFmpeg
+RUN	apt-get update --fix-missing
+RUN	apt-get install -y ffmpeg
+
+# install chrome
+RUN echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb stable main' >> /etc/apt/sources.list
+RUN	wget https://dl.google.com/linux/linux_signing_key.pub
+RUN apt-get install -y gnupg
+RUN	apt-key add linux_signing_key.pub
+RUN	apt-get update
+RUN	apt-get install -y google-chrome-stable 
+
+# packages required to install python with SSL/TLS support
+RUN apt-get install -y zlib1g-dev \
+					   libbz2-dev \
+					   libsqlite3-dev \
+					   libffi-dev \
+					--no-install-recommends
+RUN wget -q "https://www.openssl.org/source/openssl-1.0.2q.tar.gz" && \
+	tar xvfz openssl-1.0.2q.tar.gz && \
+	cd openssl-1.0.2q && \
+	./config --shared && \
+	make && make install && \
+	cd .. && \
+	rm -rf openssl-1.0.2q
+ENV LD_LIBRARY_PATH /usr/local/ssl/lib
+
+# install XZ utils and lzma, both needed by pandas-0.25.0
+RUN apt-get install -y liblzma-dev
+RUN wget -q "http://tukaani.org/xz/xz-5.0.4.tar.gz" && \
+	tar xzvf xz-5.0.4.tar.gz && \
+	cd xz-5.0.4 && \
+	./configure --prefix=$HOME && \
+	make && \
+	make check && \
+	make install && \
+	cd .. && \
+	rm -rf xz-5.0.4*
+
+# install python3.4
+RUN wget -q 'https://www.python.org/ftp/python/3.4.9/Python-3.4.9.tar.xz'
+RUN tar xf Python-3.4.9.tar.xz
+RUN cd Python-3.4.9 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.4.9
+RUN	python3.4 -m pip install --upgrade pip
+
+# install python3.5
+RUN wget -q 'https://www.python.org/ftp/python/3.5.6/Python-3.5.6.tar.xz'
+RUN tar xf Python-3.5.6.tar.xz
+RUN cd Python-3.5.6 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.5.6
+RUN /usr/local/bin/pip3.5 install --upgrade pip
+
+# install python3.6
+RUN wget -q 'https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tar.xz'
+RUN tar xf Python-3.6.7.tar.xz
+RUN cd Python-3.6.7 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.6.7
+RUN /usr/local/bin/pip3.6 install --upgrade pip
+
+# install python3.7
+RUN wget -q 'https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz'
+RUN tar xf Python-3.7.2.tar.xz
+RUN cd Python-3.7.2 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.7.2
+RUN /usr/local/bin/pip3.7 install --upgrade pip
+
+# install git lfs
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+RUN	apt-get install -y git-lfs
+RUN	git lfs install
+
+# install Boost-1.58.0
+RUN wget -q -O boost_1_58_0.tar.gz 'http://downloads.sourceforge.net/project/boost/boost/1.58.0/boost_1_58_0.tar.gz?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.58.0%2F&ts=1446134333&use_mirror=kent'
+RUN	tar xvzf boost_1_58_0.tar.gz
+RUN	cd boost_1_58_0 && \
+	./bootstrap.sh --with-libraries=timer,system,chrono --exec-prefix=/usr/local && \
+	./b2 install && \
+	cd ..
+RUN	rm -rf boost_1_58_0 boost_1_58_0.tar.gz
+ENV BOOST_ROOT /usr/local                           					
+
+# set useful environmental variables
+ENV TERM xterm-256color
+ENV QT_X11_NO_MITSHM 1
+ENV PYTHONWARNINGS ignore:'numpy.dtype size changed':RuntimeWarning,ignore:'numpy.ufunc size changed':RuntimeWarning

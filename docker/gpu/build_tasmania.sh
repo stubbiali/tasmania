@@ -21,75 +21,75 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-TASMANIA_ROOT=$(cd ..; pwd)
+CALL_DIR=$HOME/Desktop/phd/tasmania-develop-gt4py-v0.5.0/docker
+TASMANIA_ROOT=$HOME/Desktop/phd/tasmania-develop-gt4py-v0.5.0
+EXTERNAL_DIR=$CALL_DIR/external
 GT4PY_BRANCH=tasmania_migration
-DOCKERFILE=dockerfile.tasmania
-IMAGE_NAME=tasmania:master-ng
-IMAGE_SAVE=tasmania_master_ng.tar
+DOCKERFILE=$CALL_DIR/gpu/dockerfiles/dockerfile.tasmania
+IMAGE_NAME=tasmania:gpu
+IMAGE_SAVE=$CALL_DIR/images/tasmania_gpu.tar
 
-echo "About to clone the gridtools4py repository under '$PWD/gridtools4py', and check out the '$GT4PY_BRANCH' branch."
+echo "About to clone the gridtools4py repository under '$EXTERNAL_DIR/gridtools4py', and check out the '$GT4PY_BRANCH' branch."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
 if [[ $key = "" ]]; then
-	if [ ! -d "gridtools4py" ]; then
-		cd ..
-		git submodule add https://github.com/eth-cscs/gridtools4py.git docker/gridtools4py
-		cd docker
+	if [[ ! -d "$EXTERNAL_DIR/gridtools4py" ]]; then
+		git submodule add https://github.com/eth-cscs/gridtools4py.git $EXTERNAL_DIR/gridtools4py
+		git submodule update --init --recursive
 	fi
 
-	cd gridtools4py
-	git fetch
+	git submodule update --init --recursive
+	cd $EXTERNAL_DIR/gridtools4py
 	git checkout $GT4PY_BRANCH
-	git pull
-	cd ..
+	cd $CALL_DIR
 fi
 
 echo ""
-echo "About to copy a minimal version of '$TASMANIA_ROOT' under '$PWD/tasmania'."
+echo "About to copy a minimal version of '$TASMANIA_ROOT' under '$CALL_DIR/tasmania'."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
 if [[ $key = "" ]]; then
-	if [ ! -d "tasmania" ]; then
+	if [[ ! -d "tasmania" ]]; then
 		mkdir tasmania
 	else
 		rm -rf tasmania/*
 	fi
 
-	cp -r ../makefile tasmania
-	cp -r ../notebooks tasmania
-	cp -r ../README.md tasmania
-	cp -r ../requirements.txt tasmania
-	cp -r ../setup.cfg tasmania
-	cp -r ../setup.py tasmania
-	cp -r ../tasmania tasmania
-	cp -r ../tests tasmania
+	cp -r $TASMANIA_ROOT/makefile tasmania
+	cp -r $TASMANIA_ROOT/notebooks tasmania
+	cp -r $TASMANIA_ROOT/README.md tasmania
+	cp -r $TASMANIA_ROOT/requirements.txt tasmania
+	cp -r $TASMANIA_ROOT/setup.cfg tasmania
+	cp -r $TASMANIA_ROOT/setup.py tasmania
+	cp -r $TASMANIA_ROOT/tasmania tasmania
+	cp -r $TASMANIA_ROOT/tests tasmania
 fi
 
 echo ""
-echo "About to remove the tar archive '$PWD/$IMAGE_SAVE' (if existing)."
+echo "About to remove the tar archive '$IMAGE_SAVE' (if existing)."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
 if [[ $key = "" ]]; then
-	if [ -f "$IMAGE_SAVE" ]; then
+	if [[ -f "$IMAGE_SAVE" ]]; then
 		rm -rf $IMAGE_SAVE
 	fi
 fi
 
 echo ""
-echo "About to build the image '$IMAGE_NAME' against the dockerfile '$PWD/dockerfiles/$DOCKERFILE'."
+echo "About to build the image '$IMAGE_NAME' against the dockerfile '$DOCKERFILE'."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
 if [[ $key = "" ]]; then
-	cd .. && make distclean && cd docker 
-	docker build --rm --build-arg uid=$(id -u) -f dockerfiles/$DOCKERFILE -t $IMAGE_NAME .
+	cd $TASMANIA_ROOT && make distclean && cd $CALL_DIR
+	docker build --rm --build-arg uid=$(id -u) -f $DOCKERFILE -t $IMAGE_NAME .
 fi
 
 echo ""
-echo "About to delete the folder '$PWD/tasmania'."
+echo "About to delete the folder '$CALL_DIR/tasmania'."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
@@ -98,7 +98,7 @@ if [[ $key = "" ]]; then
 fi
 
 echo ""
-echo "About to save the image '$IMAGE_NAME' to the tar archive '$PWD/$IMAGE_SAVE'."
+echo "About to save the image '$IMAGE_NAME' to the tar archive '$IMAGE_SAVE'."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
 echo ""
 
