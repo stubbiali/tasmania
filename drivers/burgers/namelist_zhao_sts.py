@@ -54,12 +54,13 @@ gt_kwargs = {
 	'dtype': np.float64,
 	'exec_info': None,
 	'halo': (nb, nb, 0),
-	'rebuild': True
+	'rebuild': False
 }
 
 # numerical scheme
 time_integration_scheme = 'rk3ws'
 flux_scheme  			= 'fifth_order'
+physics_time_integration_scheme = 'rk2'
 
 # simulation time
 cfl      = 1.0
@@ -67,7 +68,7 @@ timestep = pd.Timedelta(cfl/(nx-1)**2, unit='s')
 niter    = 4**factor * 100
 
 # output
-filename = '../../data/burgers_fcng_{}.nc'.format(gt_kwargs['backend'])
+filename = '../../data/burgers_sts_{}.nc'.format(gt_kwargs['backend'])
 #   \
 #   '../../data/burgers_{}_{}_{}_nx{}_ny{}_dt{}_nt{}_sus.nc'.format(
 #       time_integration_scheme, flux_scheme, physics_time_integration_scheme,
@@ -76,5 +77,4 @@ filename = '../../data/burgers_fcng_{}.nc'.format(gt_kwargs['backend'])
 save_frequency  = 1
 print_frequency = 1
 plot_frequency  = -1
-
 

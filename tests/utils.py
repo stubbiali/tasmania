@@ -33,8 +33,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import conf
 
+import gridtools as gt
 import tasmania as taz
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 from tasmania.python.utils.utils import equal_to
 
 
@@ -63,6 +65,8 @@ def compare_datetimes(td1, td2):
 
 
 def compare_arrays(field_a, field_b):
+	field_a[np.isinf(field_a)] = np.nan
+	field_b[np.isinf(field_b)] = np.nan
 	assert np.allclose(field_a, field_b, equal_nan=True)
 
 
@@ -1190,6 +1194,108 @@ def st_burgers_tendency(draw, grid, *, time=None):
 	# y-velocity
 	return_dict['y_velocity'] = draw(
 		st_field(grid, 'burgers_tendency', 'y_velocity', (nx, ny, nz))
+	)
+
+	return return_dict
+
+
+@hyp_st.composite
+def st_ng_field(
+	draw, grid, properties_name, name, shape=None,
+	backend='numpy', dtype=np.float64, halo=None
+):
+	"""
+	Strategy drawing a random field for the variable `field_name`.
+	"""
+	properties_dict = eval('conf.{}'.format(properties_name))
+	units = draw(st_one_of(properties_dict[name].keys()))
+
+	shape = shape if shape is not None else (grid.grid_xy.nx, grid.grid_xy.ny, grid.nz)
+	descriptor = get_storage_descriptor(shape, dtype, halo=halo)
+	storage = gt.storage.empty(descriptor, backend=backend)
+
+	storage.data[...] = draw(
+		st_raw_field(
+			dtype, shape,
+			properties_dict[name][units][0],
+			properties_dict[name][units][1]
+		)
+	)
+
+	da = taz.make_dataarray_3d(storage.data, grid, units, name=name)
+	da.attrs['gt_storage'] = storage
+
+	return da
+
+
+@hyp_st.composite
+def st_ng_burgers_state(
+	draw, grid, *, time=None, backend='numpy', dtype=np.float64, halo=None
+):
+	"""
+	Strategy drawing a valid Burgers model state over `grid`.
+	"""
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	assert nz == 1
+
+	return_dict = {}
+
+	# time
+	if time is None:
+		time = draw(hyp_st.datetimes())
+	return_dict['time'] = time
+
+	# x-velocity
+	return_dict['x_velocity'] = draw(
+		st_ng_field(
+			grid, 'burgers_state', 'x_velocity', (nx, ny, nz),
+			backend=backend, dtype=dtype, halo=halo
+		)
+	)
+
+	# y-velocity
+	return_dict['y_velocity'] = draw(
+		st_ng_field(
+			grid, 'burgers_state', 'y_velocity', (nx, ny, nz),
+			backend=backend, dtype=dtype, halo=halo
+		)
+	)
+
+	return return_dict
+
+
+@hyp_st.composite
+def st_ng_burgers_tendency(
+	draw, grid, *, time=None, backend='numpy', dtype=np.float64, halo=None
+):
+	"""
+	Strategy drawing a set of tendencies for the variables whose evolution is
+	governed by the Burgers equations.
+	"""
+	nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+	assert nz == 1
+
+	return_dict = {}
+
+	# time
+	if time is None:
+		time = draw(hyp_st.datetimes())
+	return_dict['time'] = time
+
+	# x-velocity
+	return_dict['x_velocity'] = draw(
+		st_ng_field(
+			grid, 'burgers_tendency', 'x_velocity', (nx, ny, nz),
+			backend=backend, dtype=dtype, halo=halo
+		)
+	)
+
+	# y-velocity
+	return_dict['y_velocity'] = draw(
+		st_ng_field(
+			grid, 'burgers_tendency', 'y_velocity', (nx, ny, nz),
+			backend=backend, dtype=dtype, halo=halo
+		)
 	)
 
 	return return_dict
