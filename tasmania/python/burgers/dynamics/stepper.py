@@ -256,12 +256,12 @@ class _ForwardEuler(BurgersStepper):
 		dx = self._grid_xy.dx.to_units('m').values.item()
 		dy = self._grid_xy.dy.to_units('m').values.item()
 
-		self._stencil_args['in_u'].data[...] = state['x_velocity'][...]
-		self._stencil_args['in_v'].data[...] = state['y_velocity'][...]
+		self._stencil_args['in_u'].data[...] = state['x_velocity']
+		self._stencil_args['in_v'].data[...] = state['y_velocity']
 		if 'in_u_tnd' in self._stencil_args and 'x_velocity' in tendencies:
-			self._stencil_args['in_u_tnd'].data[...] = tendencies['x_velocity'][...]
+			self._stencil_args['in_u_tnd'].data[...] = tendencies['x_velocity']
 		if 'in_v_tnd' in self._stencil_args and 'y_velocity' in tendencies:
-			self._stencil_args['in_v_tnd'].data[...] = tendencies['y_velocity'][...]
+			self._stencil_args['in_v_tnd'].data[...] = tendencies['y_velocity']
 
 		self._stencil(
 			**self._stencil_args, dt=dt, dx=dx, dy=dy,
@@ -341,17 +341,17 @@ class _RK2(BurgersStepper):
 
 		if stage == 0:
 			dt = 0.5 * timestep.total_seconds()
-			self._stencil_args['in_u'].data[...] = state['x_velocity'][...]
-			self._stencil_args['in_v'].data[...] = state['y_velocity'][...]
+			self._stencil_args['in_u'].data[...] = state['x_velocity']
+			self._stencil_args['in_v'].data[...] = state['y_velocity']
 		else:
 			dt = timestep.total_seconds()
 
-		self._stencil_args['in_u_tmp'].data[...] = state['x_velocity'][...]
-		self._stencil_args['in_v_tmp'].data[...] = state['y_velocity'][...]
+		self._stencil_args['in_u_tmp'].data[...] = state['x_velocity']
+		self._stencil_args['in_v_tmp'].data[...] = state['y_velocity']
 		if 'in_u_tnd' in self._stencil_args and 'x_velocity' in tendencies:
-			self._stencil_args['in_u_tnd'].data[...] = tendencies['x_velocity'][...]
+			self._stencil_args['in_u_tnd'].data[...] = tendencies['x_velocity']
 		if 'in_v_tnd' in self._stencil_args and 'y_velocity' in tendencies:
-			self._stencil_args['in_v_tnd'].data[...] = tendencies['y_velocity'][...]
+			self._stencil_args['in_v_tnd'].data[...] = tendencies['y_velocity']
 
 		self._stencil(
 			**self._stencil_args, dt=dt, dx=dx, dy=dy,

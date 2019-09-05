@@ -27,9 +27,9 @@ import tasmania as taz
 import time
 
 try:
-	from . import namelist_zhao_cc as nl
+	from . import namelist_zhao_sts as nl
 except (ImportError, ModuleNotFoundError):
-	import namelist_zhao_cc as nl
+	import namelist_zhao_sts as nl
 
 # ============================================================
 # The underlying domain
@@ -56,21 +56,27 @@ state = zsf(nl.init_time, cgrid)
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The intermediate tendencies
+# The dynamical core
+# ============================================================
+dycore = taz.BurgersDynamicalCore(
+	domain, intermediate_tendencies=None,
+	time_integration_scheme=nl.time_integration_scheme,
+	flux_scheme=nl.flux_scheme,	**nl.gt_kwargs
+)
+
+# ============================================================
+# The physics
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
 	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
 )
 
-# ============================================================
-# The dynamical core
-# ============================================================
-dycore = taz.BurgersDynamicalCore(
-	domain, intermediate_tendencies=diff,
-	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme,	**nl.gt_kwargs
-)
+# Wrap the component in a SequentialTendencySplitting object
+physics = taz.SequentialTendencySplitting({
+	'component': diff, 'time_integrator': nl.physics_time_integration_scheme,
+	'enforce_horizontal_boundary': True, 'substeps': 1
+})
 
 # ============================================================
 # A NetCDF monitor
@@ -88,21 +94,27 @@ if nl.filename is not None and nl.save_frequency > 0:
 dt = nl.timestep
 nt = nl.niter
 
-# timer
 wall_time_start = time.time()
 compute_time = 0.0
 
 for i in range(nt):
 	compute_time_start = time.time()
 
-	# step the solution
-	taz.dict_update(state, dycore(state, {}, dt))
+	# Calculate the dynamics
+	state_tmp = dycore(state, {}, dt)
 
-	state['time'] = nl.init_time + (i+1)*dt
+	state['time'] = nl.init_time + i*dt
+
+	# Calculate the physics
+	physics(state, state_tmp, dt)
+
+	state.update(state_tmp)
+
+	#assert state['time'] == nl.init_time + (i+1)*dt
 
 	compute_time += time.time() - compute_time_start
 
-	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
+	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i == nt-1:
 		dx = pgrid.dx.to_units('m').values.item()
 		dy = pgrid.dy.to_units('m').values.item()
 
@@ -121,27 +133,27 @@ for i in range(nt):
 			.format(i+1, err_u, err_v)
 		)
 
-	# shortcuts
+	# Shortcuts
 	to_save = (nl.filename is not None) and \
 		(((nl.save_frequency > 0) and
 		 ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
 
 	if to_save:
-		# save the solution
+		# Save the solution
 		netcdf_monitor.store(state)
 
 print('Simulation successfully completed. HOORAY!')
 
-# ============================================================
+#============================================================
 # Post-processing
-# ============================================================
-# dump the solution to file
+#============================================================
+# Dump the solution to file
 if nl.filename is not None and nl.save_frequency > 0:
 	netcdf_monitor.write()
 
-# stop the timer
+# Stop chronometer
 wall_time = time.time() - wall_time_start
 
-# print logs
+# Print logs
 print('Total wall time: {}.'.format(taz.get_time_string(wall_time)))
 print('Compute time: {}.'.format(taz.get_time_string(compute_time)))

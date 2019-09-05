@@ -26,6 +26,11 @@ from sympl import DataArray
 import tasmania as taz
 import time
 
+from tasmania.python.burgers.ng_state import NGZhaoStateFactory
+from tasmania.python.burgers.dynamics.ng_dycore import NGBurgersDynamicalCore
+from tasmania.python.burgers.physics.ng_diffusion import NGBurgersHorizontalDiffusion
+from tasmania.python.utils.ng_dict_utils import copy
+
 try:
 	from . import namelist_zhao_cc as nl
 except (ImportError, ModuleNotFoundError):
@@ -48,8 +53,11 @@ cgrid = domain.numerical_grid
 # The initial state
 # ============================================================
 zsof = taz.ZhaoSolutionFactory(nl.init_time, nl.diffusion_coeff)
-zsf = taz.ZhaoStateFactory(nl.init_time, nl.diffusion_coeff)
-state = zsf(nl.init_time, cgrid)
+zsf = NGZhaoStateFactory(nl.init_time, nl.diffusion_coeff)
+state = zsf(
+	nl.init_time, cgrid, backend=nl.gt_kwargs['backend'],
+	dtype=nl.gt_kwargs['dtype'], halo=nl.gt_kwargs['halo']
+)
 
 # set the initial state as reference state for the handler of
 # the lateral boundary conditions
@@ -59,14 +67,14 @@ domain.horizontal_boundary.reference_state = state
 # The intermediate tendencies
 # ============================================================
 # component calculating the Laplacian of the velocity
-diff = taz.BurgersHorizontalDiffusion(
+diff = NGBurgersHorizontalDiffusion(
 	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
 )
 
 # ============================================================
 # The dynamical core
 # ============================================================
-dycore = taz.BurgersDynamicalCore(
+dycore = NGBurgersDynamicalCore(
 	domain, intermediate_tendencies=diff,
 	time_integration_scheme=nl.time_integration_scheme,
 	flux_scheme=nl.flux_scheme,	**nl.gt_kwargs
@@ -96,7 +104,7 @@ for i in range(nt):
 	compute_time_start = time.time()
 
 	# step the solution
-	taz.dict_update(state, dycore(state, {}, dt))
+	copy(state, dycore(state, {}, dt))
 
 	state['time'] = nl.init_time + (i+1)*dt
 
@@ -115,7 +123,7 @@ for i in range(nt):
 		err_u = np.linalg.norm(u - uex) * np.sqrt(dx*dy)
 		err_v = np.linalg.norm(v - vex) * np.sqrt(dx*dy)
 
-		# Print useful info
+		# print useful info
 		print(
 			'Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s'
 			.format(i+1, err_u, err_v)

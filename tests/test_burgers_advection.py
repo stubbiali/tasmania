@@ -446,4 +446,5 @@ def test_fifth_order(data):
 
 
 if __name__ == '__main__':
-	pytest.main([__file__])
+	# pytest.main([__file__])
+	test_first_order()
