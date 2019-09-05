@@ -43,7 +43,7 @@ mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
-class IsentropicMinimalPrognostic:
+class IsentropicMinimalPrognostic(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different
 	schemes to carry out the prognostic steps of the three-dimensional
@@ -53,12 +53,9 @@ class IsentropicMinimalPrognostic:
 	and the sedimentation motion are not included in the dynamics, but
 	rather parameterized. The conservative form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	def __init__(
-		self, horizontal_flux_scheme, mode, grid, hb, moist,
-		substeps, backend, dtype=datatype
+		self, horizontal_flux_scheme, mode, grid, hb, moist, substeps,
+		backend, backend_opts, build_info, dtype, exec_info, halo, rebuild
 	):
 		"""
 		Parameters
@@ -80,13 +77,22 @@ class IsentropicMinimalPrognostic:
 			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 		substeps : int
 			The number of substeps to perform.
-		backend : obj
+		backend : str
 			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+		backend_opts : dict
+			TODO
+		build_info : dict
+			TODO
+		dtype : numpy.dtype
+			TODO
+		exec_info : dict
+			TODO
+		halo : tuple
+			TODO
+		rebuild : bool
+			TODO
 		"""
-		# keep track of the input parameters
+		# store arguments needed at compile- and run-time
 		self._hflux_scheme	= horizontal_flux_scheme
 		self._mode			= mode if mode in ['x', 'y', 'xy'] else 'xy'
 		self._grid          = grid
@@ -94,7 +100,9 @@ class IsentropicMinimalPrognostic:
 		self._moist      	= moist
 		self._substeps		= substeps
 		self._backend		= backend
-		self._dtype			= dtype
+		self._backend_opts  = backend_opts
+		self._build_info    = build_info
+		self._exec_info     = exec_info
 
 		# instantiate the class computing the numerical horizontal fluxes
 		self._hflux = IsentropicMinimalHorizontalFlux.factory(

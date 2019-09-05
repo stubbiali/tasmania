@@ -184,7 +184,12 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 			else:
 				to_save = state
 
-		super().store(deepcopy(to_save))
+		to_save_cp = deepcopy(to_save)
+		for name in to_save_cp:
+			if name != 'time':
+				to_save_cp[name].attrs.pop('gt_storage', None)
+
+		super().store(to_save_cp)
 
 	def write(self):
 		"""
@@ -294,8 +299,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 				elif isinstance(value, ZhaoSolutionFactory):
 					# TODO: this actually does not work, because only primitive types
 					# TODO: can be stored in a netCDF dataset
-					var    = dataset.createVariable(hb_key, ZhaoSolutionFactory, ('functor_dim',))
-					var[:] = np.array([value], dtype='object')
+					# var    = dataset.createVariable(hb_key, ZhaoSolutionFactory, ('functor_dim',))
+					# var[:] = np.array([value], dtype='object')
+					pass
 
 				keys.append(hb_key)
 
@@ -384,7 +390,12 @@ def load_domain(dataset):
 
 	# z-axis
 	dims_z = dataset.data_vars['dim3_name'].values.item()
-	z_hl = dataset.coords[dims_z + '_on_interface_levels']
+	try:
+		z_hl = dataset.coords[dims_z + '_on_interface_levels']
+	except KeyError:
+		z_hl = sympl.DataArray(
+			np.array((0, 1)), dims=[dims_z], attrs={'units': '1'}
+		)
 	domain_z = sympl.DataArray(
 		[z_hl.values[0], z_hl.values[-1]],
 		dims=[dims_z], attrs={'units': z_hl.attrs['units']}
@@ -404,11 +415,14 @@ def load_domain(dataset):
 	keys = dataset.data_vars['horizontal_boundary_kwargs'].values[:]
 	hb_kwargs = {}
 	for hb_key in keys:
-		val = dataset.data_vars[hb_key]
-		key = hb_key[3:]
+		try:
+			val = dataset.data_vars[hb_key]
+			key = hb_key[3:]
 
-		if isinstance(val.values.item(), int):
-			hb_kwargs[key] = val.values.item()
+			if isinstance(val.values.item(), int):
+				hb_kwargs[key] = val.values.item()
+		except KeyError:
+			pass
 
 	# topography type
 	topo_type = dataset.data_vars['topography_type'].values.item()

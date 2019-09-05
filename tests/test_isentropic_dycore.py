@@ -23,30 +23,32 @@
 from copy import deepcopy
 from datetime import timedelta
 from hypothesis import \
-	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st, \
+	Verbosity
 import numpy as np
 import pytest
+from sympl import DataArray
 
 from tasmania.python.dwarfs.diagnostics import \
 	HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
+from tasmania.python.grids.domain import Domain
 from tasmania.python.isentropic.dynamics.diagnostics import \
 	IsentropicDiagnostics as RawIsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
-from tasmania.python.isentropic.physics.coriolis import \
-	IsentropicConservativeCoriolis
+# from tasmania.python.isentropic.physics.coriolis import \
+#	IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
 	from .test_isentropic_prognostic import forward_euler_step
 	from .utils import compare_arrays, compare_datetimes, \
-		st_floats, st_one_of, st_domain, \
-		st_isentropic_state_f
+		st_floats, st_one_of, st_domain, st_isentropic_state_f
 except ModuleNotFoundError:
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
 	from test_isentropic_prognostic import forward_euler_step
 	from utils import compare_arrays, compare_datetimes, \
@@ -58,29 +60,132 @@ mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
 mfpw = 'mass_fraction_of_precipitation_water_in_air'
 
 
+dummy_domain = Domain(
+	DataArray([0, 1], dims='x', attrs={'units': 'm'}), 10,
+	DataArray([0, 1], dims='y', attrs={'units': 'm'}), 10,
+	DataArray([0, 1], dims='z', attrs={'units': 'K'}), 10,
+)
+dummy_grid = dummy_domain.numerical_grid
+rid = RawIsentropicDiagnostics(dummy_grid)
+
+
+def get_density_of_water_constituent(s, q, sq, clipping=True):
+	sq[...] = s[...] * q[...]
+	if clipping:
+		sq[sq < 0.0] = 0.0
+
+
+def get_mass_fraction_of_water_constituent_in_air(s, sq, q, clipping=True):
+	q[...] = sq[...] / s[...]
+	if clipping:
+		q[q < 0.0] = 0.0
+
+
+def get_montgomery_potential(grid, s, pt, mtg):
+	nx, ny, nz = grid.nx, grid.ny, grid.nz
+	dz = grid.dz.to_units('K').values.item()
+	theta_s = grid.z_on_interface_levels.to_units('K').values[-1]
+	topo = grid.topography.profile.to_units('m').values
+	dtype = s.dtype
+
+	pref = rid._pcs["air_pressure_at_sea_level"]
+	rd = rid._pcs["gas_constant_of_dry_air"]
+	g = rid._pcs["gravitational_acceleration"]
+	cp = rid._pcs["specific_heat_of_dry_air_at_constant_pressure"]
+
+	p = np.zeros((nx, ny, nz+1), dtype=dtype)
+	p[:, :, 0] = pt
+	for k in range(1, nz+1):
+		p[:, :, k] = p[:, :, k-1] + g * dz * s[:, :, k-1]
+
+	exn = cp * (p / pref) ** (rd / cp)
+
+	mtg_s = theta_s * exn[:, :, -1] + g * topo
+	mtg[:, :, -1] = mtg_s + 0.5 * dz * exn[:, :, -1]
+	for k in range(nz-2, -1, -1):
+		mtg[:, :, k] = mtg[:, :, k+1] + dz * exn[:, :, k+1]
+
+
+def get_velocity_components(s, su, sv, u, v):
+	u[1:-1, :] = (su[:-1, :] + su[1:, :]) / (s[:-1, :] + s[1:, :])
+	v[:, 1:-1] = (sv[:, :-1] + sv[:, 1:]) / (s[:, :-1] + s[:, 1:])
+
+
+def apply_rayleigh_damping(vd, dt, phi_now, phi_new, phi_ref, phi_out):
+	ni, nj, nk = phi_now.shape
+	rmat = vd._rmat.data[:ni, :nj, :nk]
+	phi_out[...] = phi_new - dt.total_seconds() * rmat * (phi_now - phi_ref)
+
+
+def apply_second_order_smoothing(hs, phi, phi_out):
+	ni, nj, nk = phi.shape
+
+	g = hs._gamma.data[:ni, :nj, :nk]
+
+	if ni < 5:
+		i, j, k = slice(0, ni), slice(2, nj-2), slice(0, nk)
+		jm1, jp1 = slice(1, nj-3), slice(3, nj-1)
+		jm2, jp2 = slice(0, nj-4), slice(4, nj)
+
+		phi_out[i, j, k] = (1 - 0.375 * g[i, j, k]) * phi[i, j, k] + \
+			0.0625 * g[i, j, k] * (
+				- phi[i, jm2, k] + 4.0 * phi[i, jm1, k]
+				- phi[i, jp2, k] + 4.0 * phi[i, jp1, k]
+			)
+	elif nj < 5:
+		i, j, k = slice(2, ni-2), slice(0, nj), slice(0, nk)
+		im1, ip1 = slice(1, ni-3), slice(3, ni-1)
+		im2, ip2 = slice(0, ni-4), slice(4, ni)
+
+		phi_out[i, j, k] = (1 - 0.375 * g[i, j, k]) * phi[i, j, k] + \
+			0.0625 * g[i, j, k] * (
+				- phi[im2, j, k] + 4.0 * phi[im1, j, k]
+				- phi[ip2, j, k] + 4.0 * phi[ip1, j, k]
+			)
+	else:
+		i, j, k = slice(2, ni-2), slice(2, nj-2), slice(0, nk)
+		im1, ip1 = slice(1, ni-3), slice(3, ni-1)
+		im2, ip2 = slice(0, ni-4), slice(4, ni)
+		jm1, jp1 = slice(1, nj-3), slice(3, nj-1)
+		jm2, jp2 = slice(0, nj-4), slice(4, nj)
+
+		phi_out[i, j, k] = (1 - 0.75 * g[i, j, k]) * phi[i, j, k] + \
+			0.0625 * g[i, j, k] * (
+				- phi[im2, j, k] + 4.0 * phi[im1, j, k]
+				- phi[ip2, j, k] + 4.0 * phi[ip1, j, k]
+				- phi[i, jm2, k] + 4.0 * phi[i, jm1, k]
+				- phi[i, jp2, k] + 4.0 * phi[i, jp1, k]
+			)
+
+
 def rk3wssi_stage(
-	stage, timestep, raw_state_now, raw_state_int, raw_state_ref, raw_tendencies,
-	raw_state_new, field_properties, dx, dy, hb, moist, hv, wc, damp, vd,
-	smooth, hs, diagnostics, eps
+	stage, timestep, grid, raw_state_now, raw_state_int, raw_state_ref, raw_tendencies,
+	raw_state_new, field_properties, hb, moist, damp, vd, smooth, hs, eps
 ):
+	dx = grid.dx.to_units('m').values.item()
+	dy = grid.dy.to_units('m').values.item()
+
 	u_int = raw_state_int['x_velocity_at_u_locations']
 	v_int = raw_state_int['y_velocity_at_v_locations']
 
 	if moist:
-		wc.get_density_of_water_constituent(
+		get_density_of_water_constituent(
 			raw_state_int['air_isentropic_density'],
 			raw_state_int[mfwv],
-			raw_state_int['isentropic_density_of_water_vapor']
+			raw_state_int['isentropic_density_of_water_vapor'],
+			clipping=True
 		)
-		wc.get_density_of_water_constituent(
+		get_density_of_water_constituent(
 			raw_state_int['air_isentropic_density'],
 			raw_state_int[mfcw],
-			raw_state_int['isentropic_density_of_cloud_liquid_water']
+			raw_state_int['isentropic_density_of_cloud_liquid_water'],
+			clipping=True
 		)
-		wc.get_density_of_water_constituent(
+		get_density_of_water_constituent(
 			raw_state_int['air_isentropic_density'],
 			raw_state_int[mfpw],
-			raw_state_int['isentropic_density_of_precipitation_water']
+			raw_state_int['isentropic_density_of_precipitation_water'],
+			clipping=True
 		)
 
 		if mfwv in raw_tendencies:
@@ -138,7 +243,7 @@ def rk3wssi_stage(
 	# montgomery potential
 	pt = raw_state_now['air_pressure_on_interface_levels'][0, 0, 0]
 	mtg_new = raw_state_new['montgomery_potential']
-	diagnostics.get_montgomery_potential(s_new, pt, mtg_new)
+	get_montgomery_potential(grid, s_new, pt, mtg_new)
 
 	# x-momentum
 	nb = hb.nb
@@ -175,17 +280,17 @@ def rk3wssi_stage(
 	)
 
 	if moist:
-		wc.get_mass_fraction_of_water_constituent_in_air(
+		get_mass_fraction_of_water_constituent_in_air(
 			raw_state_new['air_isentropic_density'],
 			raw_state_new['isentropic_density_of_water_vapor'],
 			raw_state_new[mfwv], clipping=True
 		)
-		wc.get_mass_fraction_of_water_constituent_in_air(
+		get_mass_fraction_of_water_constituent_in_air(
 			raw_state_new['air_isentropic_density'],
 			raw_state_new['isentropic_density_of_cloud_liquid_water'],
 			raw_state_new[mfcw], clipping=True
 		)
-		wc.get_mass_fraction_of_water_constituent_in_air(
+		get_mass_fraction_of_water_constituent_in_air(
 			raw_state_new['air_isentropic_density'],
 			raw_state_new['isentropic_density_of_precipitation_water'],
 			raw_state_new[mfpw], clipping=True
@@ -204,20 +309,20 @@ def rk3wssi_stage(
 			phi_new = raw_state_new[name]
 			phi_ref = raw_state_ref[name]
 			phi_out = raw_state_new[name]
-			vd(timestep, phi_now, phi_new, phi_ref, phi_out)
+			apply_rayleigh_damping(vd, timestep, phi_now, phi_new, phi_ref, phi_out)
 
 	if smooth:
 		for name in field_properties:
 			phi = raw_state_new[name]
 			phi_out = raw_state_new[name]
-			hs(phi, phi_out)
+			apply_second_order_smoothing(hs, phi, phi_out)
 			hb.dmn_enforce_field(
 				phi_out, field_name=name,
 				field_units=field_properties[name]['units'],
 				time=raw_state_new['time']
 			)
 
-	hv.get_velocity_components(
+	get_velocity_components(
 		raw_state_new['air_isentropic_density'],
 		raw_state_new['x_momentum_isentropic'],
 		raw_state_new['y_momentum_isentropic'],
@@ -237,13 +342,11 @@ def rk3wssi_stage(
 
 
 def rk3ws_step(
-	domain, moist, timestep, raw_state_0, raw_tendencies, hv, wc,
-	damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs,
-	diagnostics, eps
+	domain, moist, timestep, raw_state_0, raw_tendencies,
+	damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs, eps
 ):
 	grid, hb = domain.numerical_grid, domain.horizontal_boundary
 	nx, ny, nz, nb = grid.nx, grid.ny, grid.nz, hb.nb
-	dx, dy = grid.dx.to_units('m').values.item(), grid.dy.to_units('m').values.item()
 	dtype = grid.x.dtype
 
 	if moist:
@@ -280,23 +383,20 @@ def rk3ws_step(
 	_damp = damp and damp_at_every_stage
 	_smooth = smooth and smooth_at_every_stage
 	rk3wssi_stage(
-		0, timestep, raw_state_0, raw_state_0, raw_state_ref, raw_tendencies,
-		raw_state_1, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd,
-		_smooth, hs, diagnostics, eps
+		0, timestep, grid, raw_state_0, raw_state_0, raw_state_ref, raw_tendencies,
+		raw_state_1, field_properties, hb, moist, _damp, vd, _smooth, hs, eps
 	)
 
 	# stage 1
 	rk3wssi_stage(
-		1, timestep, raw_state_0, raw_state_1, raw_state_ref, raw_tendencies,
-		raw_state_2, field_properties, dx, dy, hb, moist, hv, wc, _damp, vd,
-		_smooth, hs, diagnostics, eps
+		1, timestep, grid, raw_state_0, raw_state_1, raw_state_ref, raw_tendencies,
+		raw_state_2, field_properties, hb, moist, _damp, vd, _smooth, hs, eps
 	)
 
 	# stage 2
 	rk3wssi_stage(
-		2, timestep, raw_state_0, raw_state_2, raw_state_ref, raw_tendencies,
-		raw_state_3, field_properties, dx, dy, hb, moist, hv, wc, damp, vd,
-		smooth, hs, diagnostics, eps
+		2, timestep, grid, raw_state_0, raw_state_2, raw_state_ref, raw_tendencies,
+		raw_state_3, field_properties, hb, moist, damp, vd,	smooth, hs, eps
 	)
 
 	return raw_state_3
@@ -321,15 +421,21 @@ def test1(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label='nb')
 	domain = data.draw(
-		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
+		st_domain(
+			xaxis_length=(1, 20),
+			yaxis_length=(1, 20),
+			zaxis_length=(2, 10),
+			nb=nb
+		),
 		label='domain'
 	)
 	grid = domain.numerical_grid
 	hb = domain.horizontal_boundary
 	assume(hb.type != 'dirichlet')
 
-	moist = data.draw(hyp_st.booleans(), label='moist')
+	moist = True  # data.draw(hyp_st.booleans(), label='moist')
 	state = data.draw(st_isentropic_state_f(grid, moist=moist), label='state')
 	timestep = data.draw(
 		hyp_st.timedeltas(
@@ -340,20 +446,21 @@ def test1(data):
 
 	eps = data.draw(st_floats(min_value=0, max_value=1), label='eps')
 
-	damp = data.draw(hyp_st.booleans(), label='damp')
+	damp = False
 	damp_depth = data.draw(
 		hyp_st.integers(min_value=0, max_value=grid.nz), label='damp_depth'
 	)
-	damp_at_every_stage = data.draw(hyp_st.booleans(), label='damp_at_every_stage')
+	damp_at_every_stage = False  # data.draw(hyp_st.booleans(), label='damp_at_every_stage')
 
-	smooth = data.draw(hyp_st.booleans(), label='smooth')
+	smooth = False  # data.draw(hyp_st.booleans(), label='smooth')
 	smooth_damp_depth = data.draw(
 		hyp_st.integers(min_value=0, max_value=grid.nz), label='smooth_damp_depth'
 	)
-	smooth_at_every_stage = data.draw(hyp_st.booleans(), label='smooth_at_every_stage')
+	smooth_at_every_stage = False  # data.draw(hyp_st.booleans(), label='smooth_at_every_stage')
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test bed
@@ -361,16 +468,14 @@ def test1(data):
 	domain.horizontal_boundary.reference_state = state
 
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	hv = HorizontalVelocity(grid, True, backend, dtype)
-	wc = WaterConstituent(grid, backend, dtype)
 	vd = VerticalDamping.factory(
-		'rayleigh', (nx, ny, nz), grid, damp_depth, 0.0002, 's', backend, dtype
+		'rayleigh', grid, (nx+1, ny+1, nz+1), damp_depth, 0.0002, 's',
+		backend=backend, dtype=dtype, halo=halo
 	)
 	hs = HorizontalSmoothing.factory(
-		'second_order', (nx, ny, nz), .03, .24, smooth_damp_depth,
-		hb.nb, backend, dtype
+		'second_order', (nx+1, ny+1, nz+1), .03, .24, smooth_damp_depth,
+		hb.nb, backend=backend, dtype=dtype, halo=halo
 	)
-	diagnostics = RawIsentropicDiagnostics(grid, backend, dtype)
 
 	dycore = IsentropicDynamicalCore(
 		domain,
@@ -402,7 +507,9 @@ def test1(data):
 		smooth_moist_damp_depth=smooth_damp_depth,
 		smooth_moist_at_every_stage=smooth_at_every_stage,
 		backend=backend,
-		dtype=dtype
+		dtype=dtype,
+		halo=halo,
+		rebuild=True
 	)
 
 	#
@@ -457,7 +564,7 @@ def test1(data):
 		if key == 'time':
 			compare_datetimes(state['time'], state_dc['time'])
 		else:
-			compare_arrays(state[key], state_dc[key])
+			compare_arrays(state[key].values, state_dc[key].values)
 
 	assert 'time' in state_new
 	compare_datetimes(state_new['time'], state['time'] + timestep)
@@ -482,9 +589,8 @@ def test1(data):
 		state['air_pressure_on_interface_levels'].to_units('Pa').values
 
 	raw_state_new_val = rk3ws_step(
-		domain, moist, timestep, raw_state_now, {}, hv, wc,
-		damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs,
-		diagnostics, eps
+		domain, moist, timestep, raw_state_now, {},
+		damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs, eps
 	)
 
 	for name in state_new:
@@ -501,7 +607,7 @@ def test1(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test2(data):
+def _test2(data):
 	"""
 	- Slow tendencies: yes
 	- Intermediate tendencies: no
@@ -511,8 +617,14 @@ def test2(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=1, max_value=max(3, conf_nb)), label='nb')
 	domain = data.draw(
-		st_domain(xaxis_length=(7, 30), yaxis_length=(7, 30), nb=3),
+		st_domain(
+			xaxis_length=(1, 30),
+			yaxis_length=(1, 30),
+			zaxis_length=(2, 20),
+			nb=nb
+		),
 		label='domain'
 	)
 	grid = domain.numerical_grid
@@ -565,6 +677,7 @@ def test2(data):
 
 	backend = data.draw(st_one_of(conf_backend), label='backend')
 	dtype = grid.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test bed
@@ -572,16 +685,14 @@ def test2(data):
 	domain.horizontal_boundary.reference_state = state
 
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	hv = HorizontalVelocity(grid, True, backend, dtype)
-	wc = WaterConstituent(grid, backend, dtype)
 	vd = VerticalDamping.factory(
-		'rayleigh', (nx, ny, nz), grid, damp_depth, 0.0002, 's', backend, dtype
+		'rayleigh', grid, (nx, ny, nz), damp_depth, 0.0002, 's',
+		backend=backend, dtype=dtype, halo=halo
 	)
 	hs = HorizontalSmoothing.factory(
 		'second_order', (nx, ny, nz), .03, .24, smooth_damp_depth,
-		hb.nb, backend, dtype
+		hb.nb, backend=backend, dtype=dtype, halo=halo
 	)
-	diagnostics = RawIsentropicDiagnostics(grid, backend, dtype)
 
 	dycore = IsentropicDynamicalCore(
 		domain,
@@ -613,7 +724,8 @@ def test2(data):
 		smooth_moist_damp_depth=smooth_damp_depth,
 		smooth_moist_at_every_stage=smooth_at_every_stage,
 		backend=backend,
-		dtype=dtype
+		dtype=dtype,
+		halo=halo
 	)
 
 	#
@@ -668,7 +780,7 @@ def test2(data):
 		if key == 'time':
 			compare_datetimes(state['time'], state_dc['time'])
 		else:
-			compare_arrays(state[key], state_dc[key])
+			compare_arrays(state[key].values, state_dc[key].values)
 
 	assert 'time' in state_new
 	compare_datetimes(state_new['time'], state['time'] + timestep)
@@ -698,9 +810,8 @@ def test2(data):
 			raw_tendencies[name] = tendencies[name].to_units(props['units']).values
 
 	raw_state_new_val = rk3ws_step(
-		domain, moist, timestep, raw_state_now, raw_tendencies, hv, wc,
-		damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs,
-		diagnostics, eps
+		domain, moist, timestep, raw_state_now, raw_tendencies,
+		damp, damp_at_every_stage, vd, smooth, smooth_at_every_stage, hs, eps
 	)
 
 	for name in state_new:
@@ -717,7 +828,7 @@ def test2(data):
 	deadline=None
 )
 @given(hyp_st.data())
-def test3(data):
+def _test3(data):
 	"""
 	- Slow tendencies: yes
 	- Intermediate tendencies: yes
@@ -1062,4 +1173,5 @@ def test3(data):
 
 
 if __name__ == '__main__':
-	pytest.main([__file__])
+	# pytest.main([__file__])
+	test1()

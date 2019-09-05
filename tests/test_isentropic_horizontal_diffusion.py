@@ -20,23 +20,26 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import \
 	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
 from sympl import DataArray
 
+import gridtools as gt
 from tasmania.python.isentropic.physics.horizontal_diffusion import \
 	IsentropicHorizontalDiffusion
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.utils.data_utils import make_dataarray_3d
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
 		st_isentropic_state_f
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
 		st_isentropic_state_f
 
@@ -59,13 +62,17 @@ def test(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
 	domain = data.draw(
-		st_domain(xaxis_length=(5, 40), yaxis_length=(5, 40)), label='domain'
+		st_domain(
+			xaxis_length=(1, 30),
+			yaxis_length=(1, 30),
+			zaxis_length=(2, 20),
+			nb=nb
+		),
+		label='domain'
 	)
-
 	grid = domain.numerical_grid
-	dtype = grid.x.dtype
-
 	state = data.draw(st_isentropic_state_f(grid, moist=True), label='state')
 
 	diff_coeff = data.draw(st_floats(min_value=0, max_value=1))
@@ -75,7 +82,9 @@ def test(data):
 	diff_moist_coeff_max = data.draw(st_floats(min_value=diff_moist_coeff, max_value=1))
 	diff_moist_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
 
-	backend = data.draw(st_one_of(conf_backend))
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	dtype = grid.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test bed
@@ -83,9 +92,12 @@ def test(data):
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
 	dx = grid.dx.to_units('m').values.item()
 	dy = grid.dy.to_units('m').values.item()
-	nb = domain.horizontal_boundary.nb
 
 	diff_types = ('second_order', 'fourth_order')
+
+	descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
+	in_st = gt.storage.zeros(descriptor, backend=backend)
+	out_st = gt.storage.zeros(descriptor, backend=backend)
 
 	for diff_type in diff_types:
 		#
@@ -93,11 +105,13 @@ def test(data):
 		#
 		hd = HorizontalDiffusion.factory(
 			diff_type, (nx, ny, nz), dx, dy, diff_coeff, diff_coeff_max,
-			diff_damp_depth, nb, backend, dtype
+			diff_damp_depth, nb, backend=backend, dtype=dtype, halo=halo,
+			rebuild=True
 		)
 		hd_moist = HorizontalDiffusion.factory(
 			diff_type, (nx, ny, nz), dx, dy, diff_moist_coeff, diff_moist_coeff_max,
-			diff_moist_damp_depth, nb, backend, dtype
+			diff_moist_damp_depth, nb, backend=backend, dtype=dtype, halo=halo,
+			rebuild=False
 		)
 
 		val = {}
@@ -113,18 +127,16 @@ def test(data):
 			'kg m^-1 K^-1 s^-1',
 		)
 		for i in range(len(names)):
-			field = state[names[i]].to_units(units[i]).values
-			field_val = np.zeros_like(field, dtype=dtype)
-			hd(field, field_val)
-			val[names[i]] = field_val
+			in_st.data[...] = state[names[i]].to_units(units[i]).values
+			hd(in_st, out_st)
+			val[names[i]] = deepcopy(out_st.data)
 
 		names = (mfwv, mfcw, mfpw)
 		units = ('g g^-1',) * 3
 		for i in range(len(names)):
-			field = state[names[i]].to_units(units[i]).values
-			field_val = np.zeros_like(field, dtype=dtype)
-			hd_moist(field, field_val)
-			val[names[i]] = field_val
+			in_st.data[...] = state[names[i]].to_units(units[i]).values
+			hd_moist(in_st, out_st)
+			val[names[i]] = deepcopy(out_st.data)
 
 		#
 		# dry
@@ -134,7 +146,7 @@ def test(data):
 			diffusion_coeff=DataArray(diff_coeff, attrs={'units': 's^-1'}),
 			diffusion_coeff_max=DataArray(diff_coeff_max, attrs={'units': 's^-1'}),
 			diffusion_damp_depth=diff_damp_depth,
-			backend=backend, dtype=dtype
+			backend=backend, dtype=dtype, halo=halo
 		)
 
 		tendencies, diagnostics = ihd(state)
@@ -170,7 +182,7 @@ def test(data):
 			diffusion_moist_coeff=DataArray(diff_moist_coeff, attrs={'units': 's^-1'}),
 			diffusion_moist_coeff_max=DataArray(diff_moist_coeff_max, attrs={'units': 's^-1'}),
 			diffusion_moist_damp_depth=diff_moist_damp_depth,
-			backend=backend, dtype=dtype
+			backend=backend, dtype=dtype, halo=halo
 		)
 
 		tendencies, diagnostics = ihd(state)
@@ -202,4 +214,5 @@ def test(data):
 
 
 if __name__ == '__main__':
-	pytest.main([__file__])
+	# pytest.main([__file__])
+	test()

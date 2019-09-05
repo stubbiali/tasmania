@@ -30,108 +30,90 @@ This module contains:
 import abc
 
 
-class IsentropicVerticalFlux:
+class IsentropicVerticalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
 	dynamical core. The conservative form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
 	def __call__(
-		self, i, j, k, dt, w, s, s_prv, su, su_prv, sv, sv_prv,
-		sqv=None, sqv_prv=None, sqc=None,
-		sqc_prv=None, sqr=None, sqr_prv=None
+		dt, dz, w, s, s_prv, su, su_prv, sv, sv_prv,
+		sqv=None, sqv_prv=None, sqc=None, sqc_prv=None, sqr=None, sqr_prv=None
 	):
 		"""
-		This method returns the :class:`gridtools.Equation`\s representing
+		This method returns the :class:`gridtools.storage.Storage`\s representing
 		the vertical fluxes for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		i : gridtools.Index
-			The index running along the first horizontal dimension.
-		j : gridtools.Index
-			The index running along the second horizontal dimension.
-		k : gridtools.Index
-			The index running along the vertical dimension.
-		dt : gridtools.Global
+		dt : float
 			The time step, in seconds.
-		w : gridtools.Equation
+		dz : float
+			The grid spacing in the vertical direction, in units of [K].
+		w : gridtools.storage.Storage
 			The vertical velocity, i.e., the change over time in potential temperature,
 			in units of [K s^-1].
-		s : gridtools.Equation
+		s : gridtools.storage.Storage
 			The current isentropic density, in units of [kg m^-2 K^-1].
-		s_prv : gridtools.Equation
+		s_prv : gridtools.storage.Storage
 			The provisional isentropic density, i.e., the isentropic density stepped
 			disregarding the vertical advection, in units of [kg m^-2 K^-1].
-		su : gridtools.Equation
+		su : gridtools.storage.Storage
 			The current x-momentum, in units of [kg m^-1 K^-1 s^-1].
-		su_prv : gridtools.Equation
+		su_prv : gridtools.storage.Storage
 			The provisional x-momentum, i.e., the isentropic density stepped
 			disregarding the vertical advection, in units of [kg m^-1 K^-1 s^-1].
-		sv : gridtools.Equation
+		sv : gridtools.storage.Storage
 			The current y-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sv_prv : gridtools.Equation
+		sv_prv : gridtools.storage.Storage
 			The provisional y-momentum, i.e., the isentropic density stepped
 			disregarding the vertical advection, in units of [kg m^-1 K^-1 s^-1].
-		sqv : `gridtools.Equation`, optional
+		sqv : `gridtools.storage.Storage`, optional
 			The current isentropic density of water vapor, in units of [kg m^-2 K^-1].
-		sqv_prv : `gridtools.Equation`, optional
+		sqv_prv : `gridtools.storage.Storage`, optional
 			The provisional isentropic density of water vapor, i.e., the isentropic
 			density of water vapor stepped disregarding the vertical advection,
 			in units of [kg m^-2 K^-1].
-		sqc : `gridtools.Equation`, optional
+		sqc : `gridtools.storage.Storage`, optional
 			The current isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-		sqc_prv : `gridtools.Equation`, optional
+		sqc_prv : `gridtools.storage.Storage`, optional
 			The provisional isentropic density of cloud liquid water, i.e., the isentropic
 			density of water vapor stepped disregarding the vertical advection,
 			in units of [kg m^-2 K^-1].
-		sqr : `gridtools.Equation`, optional
+		sqr : `gridtools.storage.Storage`, optional
 			The current isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-		sqr_prv : `gridtools.Equation`, optional
+		sqr_prv : `gridtools.storage.Storage`, optional
 			The provisional isentropic density of precipitation water, i.e., the isentropic
 			density of water vapor stepped disregarding the vertical advection,
 			in units of [kg m^-2 K^-1].
 
 		Returns
 		-------
-		flux_s_z : gridtools.Equation
+		flux_s_z : gridtools.storage.Storage
 			The vertical flux for the isentropic density.
-		flux_su_z : gridtools.Equation
+		flux_su_z : gridtools.storage.Storage
 			The vertical flux for the x-momentum.
-		flux_sv_z : gridtools.Equation
+		flux_sv_z : gridtools.storage.Storage
 			The vertical flux for the y-momentum.
-		flux_sqv_z : `gridtools.Equation`, optional
+		flux_sqv_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of water vapor.
-		flux_sqc_z : `gridtools.Equation`, optional
+		flux_sqc_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of cloud liquid water.
-		flux_sqr_z : `gridtools.Equation`, optional
+		flux_sqr_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -145,11 +127,6 @@ class IsentropicVerticalFlux:
 				* 'centered', for a second-order centered scheme;
 				* 'maccormack', for the MacCormack scheme.
 
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-
 		Return
 		------
 		obj :
@@ -159,114 +136,97 @@ class IsentropicVerticalFlux:
 		from .implementations.vertical_fluxes import \
 			Upwind, Centered, MacCormack
 		if scheme == 'upwind':
-			return Upwind(grid, moist)
+			return Upwind()
 		elif scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 		else:
-			return MacCormack(grid, moist)
+			return MacCormack()
 
 
-class IsentropicNonconservativeVerticalFlux:
+class IsentropicNonconservativeVerticalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
 	dynamical core. The nonconservative form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
 	def __call__(
-		self, i, j, k, dt, w, s, s_prv, u, u_prv, v, v_prv,
+		dt, dz, w, s, s_prv, u, u_prv, v, v_prv,
 		qv=None, qv_prv=None, qc=None, qc_prv=None, qr=None, qr_prv=None
 	):
 		"""
-		Method returning the :class:`gridtools.Equation`\s representing
+		Method returning the :class:`gridtools.storage.Storage`\s representing
 		the vertical flux for all the prognostic model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		i : gridtools.Index
-			The index running along the first horizontal dimension.
-		j : gridtools.Index
-			The index running along the second horizontal dimension.
-		k : gridtools.Index
-			The index running along the vertical dimension.
-		dt : gridtools.Global
+		dt : float
 			The time step, in seconds.
-		w : gridtools.Equation
+		dz : float
+			The grid spacing in the vertical direction, in units of [K].
+		w : gridtools.storage.Storage
 			The vertical velocity, i.e., the change over time in potential temperature,
 			in units of [K s^-1].
-		s : gridtools.Equation
+		s : gridtools.storage.Storage
 			The current isentropic density, in units of [kg m^-2 K^-1].
-		s_prv : gridtools.Equation
+		s_prv : gridtools.storage.Storage
 			The provisional isentropic density, i.e., the isentropic density stepped
 			disregarding the vertical advection, in units of [kg m^-2 K^-1].
-		u : gridtools.Equation
+		u : gridtools.storage.Storage
 			The current x-velocity, in units of [m s^-1].
-		u_prv : gridtools.Equation
+		u_prv : gridtools.storage.Storage
 			The provisional x-velocity, i.e., the isentropic density stepped
 			disregarding the vertical advection, in units of [m s^-1].
-		v : gridtools.Equation
+		v : gridtools.storage.Storage
 			The current y-velocity, in units of [m s^-1].
-		v_prv : gridtools.Equation
+		v_prv : gridtools.storage.Storage
 			The provisional y-velocity, i.e., the isentropic density stepped
 			disregarding the vertical advection, in units of [m s^-1].
-		qv : `gridtools.Equation`, optional
+		qv : `gridtools.storage.Storage`, optional
 			The current mass fraction of water vapor, in units of [g g^-1].
-		qv_prv : `gridtools.Equation`, optional
+		qv_prv : `gridtools.storage.Storage`, optional
 			The provisional mass fraction of water vapor, i.e., the isentropic
 			density of water vapor stepped disregarding the vertical advection,
 			in units of [g g^-1].
-		qc : `gridtools.Equation`, optional
+		qc : `gridtools.storage.Storage`, optional
 			The current mass fraction of cloud liquid water, in units of [g g^-1].
-		qc_prv : `gridtools.Equation`, optional
+		qc_prv : `gridtools.storage.Storage`, optional
 			The provisional mass fraction of cloud liquid water, i.e., the isentropic
 			density of water vapor stepped disregarding the vertical advection,
 			in units of [g g^-1].
-		qr : `gridtools.Equation`, optional
+		qr : `gridtools.storage.Storage`, optional
 			The current mass fraction of precipitation water, in units of [g g^-1].
-		qr_prv : `gridtools.Equation`, optional
+		qr_prv : `gridtools.storage.Storage`, optional
 			The provisional mass fraction of precipitation water, i.e., the isentropic
 			density of water vapor stepped disregarding the vertical advection,
 			in units of [g g^-1].
 
 		Returns
 		-------
-		flux_s_z : gridtools.Equation
+		flux_s_z : gridtools.storage.Storage
 			The vertical flux for the isentropic density.
-		flux_u_z : gridtools.Equation
+		flux_u_z : gridtools.storage.Storage
 			The vertical flux for the x-velocity.
-		flux_v_z : gridtools.Equation
+		flux_v_z : gridtools.storage.Storage
 			The vertical flux for the y-velocity.
-		flux_qv_z : `gridtools.Equation`, optional
+		flux_qv_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the mass fraction of water vapor.
-		flux_qc_z : `gridtools.Equation`, optional
+		flux_qc_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the mass fraction of cloud liquid water.
-		flux_qr_z : `gridtools.Equation`, optional
+		flux_qr_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the mass fraction of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -278,11 +238,6 @@ class IsentropicNonconservativeVerticalFlux:
 
 				* 'centered', for a second-order centered scheme.
 
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-
 		Return
 		------
 		obj :
@@ -292,81 +247,70 @@ class IsentropicNonconservativeVerticalFlux:
 		from .implementations.nonconservative_vertical_fluxes import \
 			Centered
 		if scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 
 
-class IsentropicMinimalVerticalFlux:
+class IsentropicMinimalVerticalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional
 	isentropic and *minimal* dynamical core. The conservative form of the
 	governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
-	def __call__(self, k, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+	def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
 		"""
-		This method returns the :class:`gridtools.Equation`\s representing
+		This method returns the :class:`gridtools.storage.Storage`\s representing
 		the vertical flux for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		k : gridtools.Index
-			The index running along the vertical dimension.
-		w : gridtools.Equation
+		dt : float
+			The time step, in seconds.
+		dz : float
+			The grid spacing in the vertical direction, in units of [K].
+		w : gridtools.storage.Storage
 			The vertical velocity, i.e., the change over time in potential temperature,
 			defined at the vertical interface levels, in units of [K s^-1].
-		s : gridtools.Equation
+		s : gridtools.storage.Storage
 			The isentropic density, in units of [kg m^-2 K^-1].
-		su : gridtools.Equation
+		su : gridtools.storage.Storage
 			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sv : gridtools.Equation
+		sv : gridtools.storage.Storage
 			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sqv : `gridtools.Equation`, optional
+		sqv : `gridtools.storage.Storage`, optional
 			The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-		sqc : `gridtools.Equation`, optional
+		sqc : `gridtools.storage.Storage`, optional
 			The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-		sqr : `gridtools.Equation`, optional
+		sqr : `gridtools.storage.Storage`, optional
 			The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
 
 		Returns
 		-------
-		flux_s_z : gridtools.Equation
+		flux_s_z : gridtools.storage.Storage
 			The vertical flux for the isentropic density.
-		flux_su_z : gridtools.Equation
+		flux_su_z : gridtools.storage.Storage
 			The vertical flux for the x-momentum.
-		flux_sv_z : gridtools.Equation
+		flux_sv_z : gridtools.storage.Storage
 			The vertical flux for the y-momentum.
-		flux_sqv_z : `gridtools.Equation`, optional
+		flux_sqv_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of water vapor.
-		flux_sqc_z : `gridtools.Equation`, optional
+		flux_sqc_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of cloud liquid water.
-		flux_sqr_z : `gridtools.Equation`, optional
+		flux_sqr_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -380,11 +324,6 @@ class IsentropicMinimalVerticalFlux:
 				* 'centered', for a second-order centered scheme;
 				* 'third_order_upwind', for the third-order upwind scheme;
 				* 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
 		Return
 		------
@@ -403,95 +342,84 @@ class IsentropicMinimalVerticalFlux:
 		from .implementations.minimal_vertical_fluxes import \
 			Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 		if scheme == 'upwind':
-			return Upwind(grid, moist)
+			return Upwind()
 		elif scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind(grid, moist)
+			return ThirdOrderUpwind()
 		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind(grid, moist)
+			return FifthOrderUpwind()
 		else:
 			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))
 
 
-class IsentropicBoussinesqMinimalVerticalFlux:
+class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
 	"""
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional
 	isentropic, Boussinesq and *minimal* dynamical core. The conservative
 	form of the governing equations is used.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
-
 	# class attributes
 	extent = None
 	order = None
+	externals = None
 
-	def __init__(self, grid, moist):
-		"""
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		"""
-		self._grid = grid
-		self._moist = moist
-
+	@staticmethod
 	@abc.abstractmethod
-	def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+	def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
 		"""
-		This method returns the :class:`gridtools.Equation`\s representing
+		This method returns the :class:`gridtools.storage.Storage`\s representing
 		the vertical flux for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
 		to the derived classes.
 
 		Parameters
 		----------
-		k : gridtools.Index
-			The index running along the vertical dimension.
-		w : gridtools.Equation
+		dt : float
+			The time step, in seconds.
+		dz : float
+			The grid spacing in the vertical direction, in units of [K].
+		w : gridtools.storage.Storage
 			The vertical velocity, i.e., the change over time in potential temperature,
 			defined at the vertical interface levels, in units of [K s^-1].
-		s : gridtools.Equation
+		s : gridtools.storage.Storage
 			The isentropic density, in units of [kg m^-2 K^-1].
-		su : gridtools.Equation
+		su : gridtools.storage.Storage
 			The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-		sv : gridtools.Equation
+		sv : gridtools.storage.Storage
 			The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-		ddmtg : gridtools.Equation
+		ddmtg : gridtools.storage.Storage
 			Second derivative with respect to the potential temperature
 			of the Montgomery potential, in units of [m^2 K^-2 s^-2].
-		sqv : `gridtools.Equation`, optional
+		sqv : `gridtools.storage.Storage`, optional
 			The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-		sqc : `gridtools.Equation`, optional
+		sqc : `gridtools.storage.Storage`, optional
 			The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-		sqr : `gridtools.Equation`, optional
+		sqr : `gridtools.storage.Storage`, optional
 			The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
 
 		Returns
 		-------
-		flux_s_z : gridtools.Equation
+		flux_s_z : gridtools.storage.Storage
 			The vertical flux for the isentropic density.
-		flux_su_z : gridtools.Equation
+		flux_su_z : gridtools.storage.Storage
 			The vertical flux for the x-momentum.
-		flux_sv_z : gridtools.Equation
+		flux_sv_z : gridtools.storage.Storage
 			The vertical flux for the y-momentum.
-		flux_ddmtg_z : gridtools.Equation
+		flux_ddmtg_z : gridtools.storage.Storage
 			The vertical flux for the second derivative with respect to
 			the potential temperature of the Montgomery potential.
-		flux_sqv_z : `gridtools.Equation`, optional
+		flux_sqv_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of water vapor.
-		flux_sqc_z : `gridtools.Equation`, optional
+		flux_sqc_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of cloud liquid water.
-		flux_sqr_z : `gridtools.Equation`, optional
+		flux_sqr_z : `gridtools.storage.Storage`, optional
 			The vertical flux for the isentropic density of precipitation water.
 		"""
 
 	@staticmethod
-	def factory(scheme, grid, moist):
+	def factory(scheme):
 		"""
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
@@ -505,11 +433,6 @@ class IsentropicBoussinesqMinimalVerticalFlux:
 				* 'centered', for a second-order centered scheme;
 				* 'third_order_upwind', for the third-order upwind scheme;
 				* 'fifth_order_upwind', for the fifth-order upwind scheme.
-
-		grid : tasmania.Grid
-			The underlying grid.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
 
 		Return
 		------
@@ -528,12 +451,12 @@ class IsentropicBoussinesqMinimalVerticalFlux:
 		from .implementations.boussinesq_minimal_vertical_fluxes import \
 			Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
 		if scheme == 'upwind':
-			return Upwind(grid, moist)
+			return Upwind()
 		elif scheme == 'centered':
-			return Centered(grid, moist)
+			return Centered()
 		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind(grid, moist)
+			return ThirdOrderUpwind()
 		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind(grid, moist)
+			return FifthOrderUpwind()
 		else:
 			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))

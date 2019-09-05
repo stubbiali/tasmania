@@ -49,7 +49,7 @@ domain = taz.Domain(
 	horizontal_boundary_kwargs=nl.hb_kwargs,
 	topography_type=nl.topo_type,
 	topography_kwargs=nl.topo_kwargs,
-	dtype=nl.dtype
+	dtype=nl.gt_kwargs['dtype']
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -60,7 +60,7 @@ cgrid = domain.numerical_grid
 state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
 	cgrid, nl.init_time, nl.x_velocity, nl.y_velocity,
 	nl.brunt_vaisala, moist=True, precipitation=nl.precipitation,
-	relative_humidity=nl.relative_humidity, dtype=nl.dtype
+	relative_humidity=nl.relative_humidity, dtype=nl.gt_kwargs['dtype']
 )
 domain.horizontal_boundary.reference_state = state
 
@@ -73,36 +73,33 @@ if nl.coriolis:
 	# component calculating the Coriolis acceleration
 	cf = taz.IsentropicConservativeCoriolis(
 		domain, grid_type='numerical',
-		coriolis_parameter=nl.coriolis_parameter,
-		backend=nl.backend, dtype=nl.dtype
+		coriolis_parameter=nl.coriolis_parameter, **nl.gt_kwargs
 	)
 	args.append(cf)
 
 if nl.diff:
 	# component calculating tendencies due to numerical diffusion
 	diff = taz.IsentropicHorizontalDiffusion(
-		domain, nl.diff_type, nl.diff_coeff, nl.diff_coeff_max, nl.diff_damp_depth,
-		moist=False, backend=nl.backend, dtype=nl.dtype
+		domain, nl.diff_type, nl.diff_coeff, nl.diff_coeff_max,
+		nl.diff_damp_depth, moist=False, **nl.gt_kwargs
 	)
 	args.append(diff)
 
 if nl.turbulence:
 	# component implementing the Smagorinsky turbulence model
 	turb = taz.IsentropicSmagorinsky(
-		domain, 'numerical', smagorinsky_constant=nl.smagorinsky_constant,
-		backend=nl.backend, dtype=nl.dtype
+		domain, smagorinsky_constant=nl.smagorinsky_constant, **nl.gt_kwargs
 	)
 	args.append(turb)
 
 # component calculating the microphysics
-ke = taz.Kessler(
+ke = taz.KesslerMicrophysics(
 	domain, 'numerical', air_pressure_on_interface_levels=True,
 	tendency_of_air_potential_temperature_in_diagnostics=True,
 	rain_evaporation=nl.rain_evaporation,
 	autoconversion_threshold=nl.autoconversion_threshold,
 	autoconversion_rate=nl.autoconversion_rate,
-	collection_rate=nl.collection_rate,
-	backend=nl.backend, dtype=nl.dtype,
+	collection_rate=nl.collection_rate, **nl.gt_kwargs
 )
 if nl.update_frequency > 0:
 	from sympl import UpdateFrequencyWrapper
@@ -115,19 +112,19 @@ if nl.rain_evaporation:
 	vf = taz.IsentropicVerticalAdvection(
 		domain, flux_scheme=nl.vertical_flux_scheme, moist=True,
 		tendency_of_air_potential_temperature_on_interface_levels=False,
-		backend=nl.backend, dtype=nl.dtype
+		**nl.gt_kwargs
 	)
 	args.append(vf)
 
 if nl.precipitation and nl.sedimentation:
 	# component estimating the raindrop fall velocity
-	rfv = taz.RaindropFallVelocity(domain, 'numerical', backend=nl.backend, dtype=nl.dtype)
+	rfv = taz.KesslerFallVelocity(domain, 'numerical', **nl.gt_kwargs)
 	args.append(rfv)
 
 	# component integrating the sedimentation flux
-	sd = taz.Sedimentation(
+	sd = taz.KesslerSedimentation(
 		domain, 'numerical', sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
-		backend=nl.backend, dtype=nl.dtype
+		**nl.gt_kwargs
 	)
 	args.append(sd)
 
@@ -142,37 +139,32 @@ args = []
 # component retrieving the diagnostic variables
 pt = state['air_pressure_on_interface_levels'][0, 0, 0]
 idv = taz.IsentropicDiagnostics(
-	domain, grid_type='numerical', moist=True, pt=pt,
-	backend=nl.backend, dtype=nl.dtype
+	domain, grid_type='numerical', moist=True, pt=pt, **nl.gt_kwargs
 )
 args.append(idv)
 
 # component performing the saturation adjustment
-sa = taz.SaturationAdjustmentKessler(
+sa = taz.KesslerSaturationAdjustment(
 	domain, grid_type='numerical', air_pressure_on_interface_levels=True,
-	backend=nl.backend, dtype=nl.dtype
+	**nl.gt_kwargs
 )
 args.append(sa)
 
 if nl.precipitation and nl.sedimentation:
 	# component calculating the accumulated precipitation
-	ap = taz.Precipitation(
-		domain, 'numerical', backend=nl.backend, dtype=nl.dtype
-	)
+	ap = taz.Precipitation(domain, 'numerical', **nl.gt_kwargs)
 	args.append(ap)
 
 if nl.smooth:
 	# component performing the horizontal smoothing
 	hs = taz.IsentropicHorizontalSmoothing(
 		domain, nl.smooth_type, nl.smooth_coeff, nl.smooth_coeff_max,
-		nl.smooth_damp_depth, backend=nl.backend, dtype=nl.dtype
+		nl.smooth_damp_depth, **nl.gt_kwargs
 	)
 	args.append(hs)
 
 	# component calculating the velocity components
-	vc = taz.IsentropicVelocityComponents(
-		domain, backend=nl.backend, dtype=nl.dtype
-	)
+	vc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
 	args.append(vc)
 
 # wrap the components in a ConcurrentCoupling object
@@ -195,8 +187,8 @@ dycore = taz.IsentropicDynamicalCore(
 	damp_max=nl.damp_max, damp_at_every_stage=nl.damp_at_every_stage,
 	# horizontal smoothing
 	smooth=False, smooth_moist=False,
-	# backend settings
-	backend=nl.backend, dtype=nl.dtype
+	# gt4py settings
+	**nl.gt_kwargs
 )
 
 # ============================================================

@@ -20,22 +20,25 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import \
 	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.isentropic.physics.horizontal_smoothing import \
 	IsentropicHorizontalSmoothing
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.utils.data_utils import make_dataarray_3d
+from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from .conf import backend as conf_backend  # nb as conf_nb
+	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
 		st_isentropic_state_f
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend  # nb as conf_nb
+	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
 	from utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
 		st_isentropic_state_f
 
@@ -58,13 +61,17 @@ def test(data):
 	# ========================================
 	# random data generation
 	# ========================================
+	nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label='nb')
 	domain = data.draw(
-		st_domain(xaxis_length=(7, 40), yaxis_length=(7, 40)), label='domain'
+		st_domain(
+			xaxis_length=(1, 30),
+			yaxis_length=(1, 30),
+			zaxis_length=(2, 20),
+			nb=nb
+		),
+		label='domain'
 	)
-
 	grid = domain.numerical_grid
-	dtype = grid.x.dtype
-
 	state = data.draw(st_isentropic_state_f(grid, moist=True), label='state')
 
 	smooth_coeff = data.draw(st_floats(min_value=0, max_value=1))
@@ -74,15 +81,20 @@ def test(data):
 	smooth_moist_coeff_max = data.draw(st_floats(min_value=smooth_moist_coeff, max_value=1))
 	smooth_moist_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
 
-	backend = data.draw(st_one_of(conf_backend))
+	backend = data.draw(st_one_of(conf_backend), label='backend')
+	dtype = grid.x.dtype
+	halo = data.draw(st_one_of(conf_halo), label='halo')
 
 	# ========================================
 	# test bed
 	# ========================================
 	nx, ny, nz = grid.nx, grid.ny, grid.nz
-	nb = domain.horizontal_boundary.nb
 
 	smooth_types = ('first_order', 'second_order', 'third_order')
+
+	descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
+	in_st = gt.storage.zeros(descriptor, backend=backend)
+	out_st = gt.storage.zeros(descriptor, backend=backend)
 
 	for smooth_type in smooth_types:
 		#
@@ -90,11 +102,13 @@ def test(data):
 		#
 		hs = HorizontalSmoothing.factory(
 			smooth_type, (nx, ny, nz), smooth_coeff, smooth_coeff_max,
-			smooth_damp_depth, nb, backend, dtype
+			smooth_damp_depth, nb, backend=backend, dtype=dtype, halo=halo,
+			rebuild=True
 		)
 		hs_moist = HorizontalSmoothing.factory(
 			smooth_type, (nx, ny, nz), smooth_moist_coeff, smooth_moist_coeff_max,
-			smooth_moist_damp_depth, nb, backend, dtype
+			smooth_moist_damp_depth, nb, backend=backend, dtype=dtype, halo=halo,
+			rebuild=False
 		)
 
 		val = {}
@@ -110,18 +124,16 @@ def test(data):
 			'kg m^-1 K^-1 s^-1',
 		)
 		for i in range(len(names)):
-			field = state[names[i]].to_units(units[i]).values
-			field_val = np.zeros_like(field, dtype=dtype)
-			hs(field, field_val)
-			val[names[i]] = field_val
+			in_st.data[...] = state[names[i]].to_units(units[i]).values
+			hs(in_st, out_st)
+			val[names[i]] = deepcopy(out_st.data)
 
 		names = (mfwv, mfcw, mfpw)
 		units = ('g g^-1',) * 3
 		for i in range(len(names)):
-			field = state[names[i]].to_units(units[i]).values
-			field_val = np.zeros_like(field, dtype=dtype)
-			hs_moist(field, field_val)
-			val[names[i]] = field_val
+			in_st.data[...] = state[names[i]].to_units(units[i]).values
+			hs_moist(in_st, out_st)
+			val[names[i]] = deepcopy(out_st.data)
 
 		#
 		# dry
@@ -130,7 +142,7 @@ def test(data):
 			domain, smooth_type,
 			smooth_coeff=smooth_coeff, smooth_coeff_max=smooth_coeff_max,
 			smooth_damp_depth=smooth_damp_depth,
-			backend=backend, dtype=dtype
+			backend=backend, dtype=dtype, halo=halo
 		)
 
 		diagnostics = ihs(state)
@@ -162,7 +174,7 @@ def test(data):
 			moist=True,
 			smooth_moist_coeff=smooth_moist_coeff, smooth_moist_coeff_max=smooth_moist_coeff_max,
 			smooth_moist_damp_depth=smooth_moist_damp_depth,
-			backend=backend, dtype=dtype
+			backend=backend, dtype=dtype, halo=halo
 		)
 
 		diagnostics = ihs(state)
