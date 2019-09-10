@@ -27,19 +27,25 @@ import tasmania as taz
 import time
 
 try:
-	from . import namelist_zhao_cc as nl
+    from . import namelist_zhao_lfc as nl
 except (ImportError, ModuleNotFoundError):
-	import namelist_zhao_cc as nl
+    import namelist_zhao_lfc as nl
 
 # ============================================================
 # The underlying domain
 # ============================================================
 domain = taz.Domain(
-	nl.domain_x, nl.nx, nl.domain_y, nl.ny,
-	DataArray([0, 1], dims='z', attrs={'units': '1'}), 1,
-	horizontal_boundary_type=nl.hb_type, nb=nl.nb,
-	horizontal_boundary_kwargs=nl.hb_kwargs,
-	topography_type='flat_terrain', dtype=nl.gt_kwargs['dtype']
+    nl.domain_x,
+    nl.nx,
+    nl.domain_y,
+    nl.ny,
+    DataArray([0, 1], dims="z", attrs={"units": "1"}),
+    1,
+    horizontal_boundary_type=nl.hb_type,
+    nb=nl.nb,
+    horizontal_boundary_kwargs=nl.hb_kwargs,
+    topography_type="flat_terrain",
+    dtype=nl.gt_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
@@ -48,7 +54,13 @@ cgrid = domain.numerical_grid
 # The initial state
 # ============================================================
 zsof = taz.ZhaoSolutionFactory(nl.init_time, nl.diffusion_coeff)
-zsf = taz.ZhaoStateFactory(nl.init_time, nl.diffusion_coeff)
+zsf = taz.ZhaoStateFactory(
+    nl.init_time,
+    nl.diffusion_coeff,
+    backend=nl.gt_kwargs["backend"],
+    dtype=nl.gt_kwargs["dtype"],
+    halo=nl.gt_kwargs["halo"],
+)
 state = zsf(nl.init_time, cgrid)
 
 # set the initial state as reference state for the handler of
@@ -56,31 +68,33 @@ state = zsf(nl.init_time, cgrid)
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The intermediate tendencies
+# The slow tendencies
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
-	domain, 'numerical', nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
+    domain, "numerical", nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
 )
 
 # ============================================================
 # The dynamical core
 # ============================================================
 dycore = taz.BurgersDynamicalCore(
-	domain, intermediate_tendencies=diff,
-	time_integration_scheme=nl.time_integration_scheme,
-	flux_scheme=nl.flux_scheme,	**nl.gt_kwargs
+    domain,
+    intermediate_tendencies=None,
+    time_integration_scheme=nl.time_integration_scheme,
+    flux_scheme=nl.flux_scheme,
+    **nl.gt_kwargs
 )
 
 # ============================================================
 # A NetCDF monitor
 # ============================================================
 if nl.filename is not None and nl.save_frequency > 0:
-	if os.path.exists(nl.filename):
-		os.remove(nl.filename)
+    if os.path.exists(nl.filename):
+        os.remove(nl.filename)
 
-	netcdf_monitor = taz.NetCDFMonitor(nl.filename, domain, 'physical')
-	netcdf_monitor.store(state)
+    netcdf_monitor = taz.NetCDFMonitor(nl.filename, domain, "physical")
+    netcdf_monitor.store(state)
 
 # ============================================================
 # Time-marching
@@ -93,55 +107,58 @@ wall_time_start = time.time()
 compute_time = 0.0
 
 for i in range(nt):
-	compute_time_start = time.time()
+    compute_time_start = time.time()
 
-	# step the solution
-	taz.dict_update(state, dycore(state, {}, dt))
+    tendencies, _ = diff(state)
 
-	state['time'] = nl.init_time + (i+1)*dt
+    # step the solution
+    taz.dict_copy(state, dycore(state, tendencies, dt))
 
-	compute_time += time.time() - compute_time_start
+    state["time"] = nl.init_time + (i + 1) * dt
 
-	if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
-		dx = pgrid.dx.to_units('m').values.item()
-		dy = pgrid.dy.to_units('m').values.item()
+    compute_time += time.time() - compute_time_start
 
-		u = state['x_velocity'].to_units('m s^-1').values[3:-3, 3:-3, :]
-		v = state['y_velocity'].to_units('m s^-1').values[3:-3, 3:-3, :]
+    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i == nt - 1:
+        dx = pgrid.dx.to_units("m").values.item()
+        dy = pgrid.dy.to_units("m").values.item()
 
-		uex = zsof(state['time'], cgrid, field_name='x_velocity')[3:-3, 3:-3, :]
-		vex = zsof(state['time'], cgrid, field_name='y_velocity')[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
-		err_u = np.linalg.norm(u - uex) * np.sqrt(dx*dy)
-		err_v = np.linalg.norm(v - vex) * np.sqrt(dx*dy)
+        uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
+        vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
 
-		# Print useful info
-		print(
-			'Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s'
-			.format(i+1, err_u, err_v)
-		)
+        err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
+        err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
 
-	# shortcuts
-	to_save = (nl.filename is not None) and \
-		(((nl.save_frequency > 0) and
-		 ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
+        # Print useful info
+        print(
+            "Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s".format(
+                i + 1, err_u, err_v
+            )
+        )
 
-	if to_save:
-		# save the solution
-		netcdf_monitor.store(state)
+    # Shortcuts
+    to_save = (nl.filename is not None) and (
+        ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt
+    )
 
-print('Simulation successfully completed. HOORAY!')
+    if to_save:
+        # Save the solution
+        netcdf_monitor.store(state)
+
+print("Simulation successfully completed. HOORAY!")
 
 # ============================================================
 # Post-processing
 # ============================================================
-# dump the solution to file
+# Dump the solution to file
 if nl.filename is not None and nl.save_frequency > 0:
-	netcdf_monitor.write()
+    netcdf_monitor.write()
 
-# stop the timer
+# Stop chronometer
 wall_time = time.time() - wall_time_start
 
-# print logs
-print('Total wall time: {}.'.format(taz.get_time_string(wall_time)))
-print('Compute time: {}.'.format(taz.get_time_string(compute_time)))
+# Print logs
+print("Total wall time: {}.".format(taz.get_time_string(wall_time)))
+print("Compute time: {}.".format(taz.get_time_string(compute_time)))

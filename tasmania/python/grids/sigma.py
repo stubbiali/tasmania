@@ -31,27 +31,30 @@ import sympl
 
 from tasmania.python.grids.grid import Grid
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.utils import \
-	equal_to as eq, smaller_than as lt, smaller_or_equal_than as le
+from tasmania.python.utils.utils import (
+    equal_to as eq,
+    smaller_than as lt,
+    smaller_or_equal_than as le,
+)
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 # Default values for the physical constants used in the module
 _d_physical_constants = {
-	'air_pressure_at_sea_level': sympl.DataArray(1e5, attrs={'units': 'Pa'}),
-	'air_temperature_at_sea_level': sympl.DataArray(288.15, attrs={'units': 'K'}),
-	'beta': sympl.DataArray(42.0, attrs={'units': 'K Pa^-1'}),
-	'gas_constant_of_dry_air': sympl.DataArray(287.05, attrs={'units': 'J K^-1 kg^-1'}),
-	'gravitational_acceleration': sympl.DataArray(9.80665, attrs={'units': 'm s^-2'}),
+    "air_pressure_at_sea_level": sympl.DataArray(1e5, attrs={"units": "Pa"}),
+    "air_temperature_at_sea_level": sympl.DataArray(288.15, attrs={"units": "K"}),
+    "beta": sympl.DataArray(42.0, attrs={"units": "K Pa^-1"}),
+    "gas_constant_of_dry_air": sympl.DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+    "gravitational_acceleration": sympl.DataArray(9.80665, attrs={"units": "m s^-2"}),
 }
 
 
 class Sigma3d(Grid):
-	"""
+    """
 	This class inherits :class:`~tasmania.grids.grid_xyz.GridXYZ` to represent
 	a rectangular and regular computational grid embedded in a three-dimensional
 	terrain-following reference system, whose coordinates are:
@@ -84,10 +87,23 @@ class Sigma3d(Grid):
 		3-D :class:`sympl.DataArray` representing the reference pressure
 		at the half levels (in [m]).
 	"""
-	def __init__(self, domain_x, nx, domain_y, ny, domain_z, nz, z_interface=None,
-				 topo_type='flat_terrain', topo_time=timedelta(), topo_kwargs=None,
-				 physical_constants=None, dtype=datatype):
-		"""
+
+    def __init__(
+        self,
+        domain_x,
+        nx,
+        domain_y,
+        ny,
+        domain_z,
+        nz,
+        z_interface=None,
+        topo_type="flat_terrain",
+        topo_time=timedelta(),
+        topo_kwargs=None,
+        physical_constants=None,
+        dtype=datatype,
+    ):
+        """
 		Constructor.
 
 		Parameters
@@ -158,46 +174,67 @@ class Sigma3d(Grid):
 		ValueError :
 			If :obj:`z_interface` is outside the domain.
 		"""
-		# Ensure the vertical axis is dimensionless
-		domain_z_conv = sympl.DataArray(domain_z.to_units('1').values,
-								  		dims='atmosphere_hybrid_sigma_pressure_coordinate',
-								  		attrs={'units': '1'})
+        # Ensure the vertical axis is dimensionless
+        domain_z_conv = sympl.DataArray(
+            domain_z.to_units("1").values,
+            dims="atmosphere_hybrid_sigma_pressure_coordinate",
+            attrs={"units": "1"},
+        )
 
-		# Preliminary checks
-		if not (lt(domain_z_conv.values[0], domain_z_conv.values[1])
-				and le(0., domain_z_conv.values[0])
-				and eq(domain_z_conv.values[1], 1.)):
-			raise ValueError('Pressure-based vertical coordinate should be positive, '
-							 'equal to 1 at the surface, and decreasing with height.')
+        # Preliminary checks
+        if not (
+            lt(domain_z_conv.values[0], domain_z_conv.values[1])
+            and le(0.0, domain_z_conv.values[0])
+            and eq(domain_z_conv.values[1], 1.0)
+        ):
+            raise ValueError(
+                "Pressure-based vertical coordinate should be positive, "
+                "equal to 1 at the surface, and decreasing with height."
+            )
 
-		# Call parent's constructor
-		super().__init__(domain_x, nx, domain_y, ny, domain_z_conv, nz,
-						 z_interface=z_interface,
-						 topo_type=topo_type, topo_time=topo_time,
-						 topo_kwargs=topo_kwargs, dtype=dtype)
+        # Call parent's constructor
+        super().__init__(
+            domain_x,
+            nx,
+            domain_y,
+            ny,
+            domain_z_conv,
+            nz,
+            z_interface=z_interface,
+            topo_type=topo_type,
+            topo_time=topo_time,
+            topo_kwargs=topo_kwargs,
+            dtype=dtype,
+        )
 
-		# Keep track of the physical constants to use
-		self._physical_constants = get_physical_constants(_d_physical_constants,
-														  physical_constants)
+        # Keep track of the physical constants to use
+        self._physical_constants = get_physical_constants(
+            _d_physical_constants, physical_constants
+        )
 
-		# Shortcuts
-		T_sl = self._physical_constants['air_temperature_at_sea_level']
-		beta = self._physical_constants['beta']
-		Rd   = self._physical_constants['gas_constant_of_dry_air']
-		g    = self._physical_constants['gravitational_acceleration']
+        # Shortcuts
+        T_sl = self._physical_constants["air_temperature_at_sea_level"]
+        beta = self._physical_constants["beta"]
+        Rd = self._physical_constants["gas_constant_of_dry_air"]
+        g = self._physical_constants["gravitational_acceleration"]
 
-		# Interface height
-		z_interface_v = self.z_interface.values.item()
-		height_interface_v = Rd / g * np.log(1 / z_interface_v) * \
-							 (T_sl - 0.5 * beta * np.log(1 / z_interface_v))
-		self.height_interface = sympl.DataArray(height_interface_v,
-												attrs=self.z_interface.attrs)
+        # Interface height
+        z_interface_v = self.z_interface.values.item()
+        height_interface_v = (
+            Rd
+            / g
+            * np.log(1 / z_interface_v)
+            * (T_sl - 0.5 * beta * np.log(1 / z_interface_v))
+        )
+        self.height_interface = sympl.DataArray(
+            height_interface_v, attrs=self.z_interface.attrs
+        )
 
-		# Compute geometric height and reference pressure
-		self._update_metric_terms()
+        # Compute geometric height and reference pressure
+        self._update_metric_terms()
 
-	def update_topography(self, time):
-		"""
+    def update_topography(self, time):
+        """
 		Update the (time-dependent) topography, then re-compute the metric terms.
 
 		Parameters
@@ -205,76 +242,85 @@ class Sigma3d(Grid):
 		time : timedelta
 			:class:`datetime.timedelta` representing the elapsed simulation time.
 		"""
-		super().update_topography(time)
-		self._update_metric_terms()
+        super().update_topography(time)
+        self._update_metric_terms()
 
-	def _update_metric_terms(self):
-		"""
+    def _update_metric_terms(self):
+        """
 		Compute the metric terms, i.e., the geometric height and the
 		reference pressure, at both half and main levels. In doing this,
 		a logarithmic vertical profile of reference pressure is assumed.
 		This method should be called every time the topography is updated or changed.
 		"""
-		# Shortcuts
-		p_sl = self._physical_constants['air_pressure_at_sea_level']
-		T_sl = self._physical_constants['air_temperature_at_sea_level']
-		beta = self._physical_constants['beta']
-		Rd   = self._physical_constants['gas_constant_of_dry_air']
-		g    = self._physical_constants['gravitational_acceleration']
-		hs = np.repeat(self.topography_height[:, :, np.newaxis], self.nz+1, axis=2)
-		zv = np.reshape(self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
-						(1, 1, self.nz+1))
-		zt = zv[0, 0]
-		zf = self.z_interface.values.item()
+        # Shortcuts
+        p_sl = self._physical_constants["air_pressure_at_sea_level"]
+        T_sl = self._physical_constants["air_temperature_at_sea_level"]
+        beta = self._physical_constants["beta"]
+        Rd = self._physical_constants["gas_constant_of_dry_air"]
+        g = self._physical_constants["gravitational_acceleration"]
+        hs = np.repeat(self.topography_height[:, :, np.newaxis], self.nz + 1, axis=2)
+        zv = np.reshape(
+            self.z_on_interface_levels.values[:, np.newaxis, np.newaxis],
+            (1, 1, self.nz + 1),
+        )
+        zt = zv[0, 0]
+        zf = self.z_interface.values.item()
 
-		# Reference pressure at the terrain surface
-		if eq(beta, 0.):
-			p0_s = p_sl * np.exp(- g * hs / (Rd * T_sl))
-		else:
-			p0_s = p_sl * np.exp(- T_sl / beta *
-				   (1. - np.sqrt(1. - 2.*beta*g*hs / (Rd*T_sl*T_sl))))
+        # Reference pressure at the terrain surface
+        if eq(beta, 0.0):
+            p0_s = p_sl * np.exp(-g * hs / (Rd * T_sl))
+        else:
+            p0_s = p_sl * np.exp(
+                -T_sl
+                / beta
+                * (1.0 - np.sqrt(1.0 - 2.0 * beta * g * hs / (Rd * T_sl * T_sl)))
+            )
 
-		# Reference pressure at the half levels
-		a = p_sl * zv * (np.logical_and(le(zt, zv), le(zv, zf))) + \
-			p_sl * zf * (1. - zv) / (1. - zf) * (np.logical_and(lt(zf, zv), le(zv, 1.)))
-		a = np.tile(a, (self.nx, self.ny, 1))
-		b = (zv - zf) / (1. - zf) * (np.logical_and(lt(zf, zv), le(zv, 1.)))
-		b = np.tile(b, (self.nx, self.ny, 1))
-		p0_hl = a + b * p0_s
-		self.reference_pressure_on_interface_levels = \
-			sympl.DataArray(p0_hl,
-							coords=[self.x.values, self.y.values,
-									self.z_on_interface_levels.values],
-							dims=[self.x.dims[0], self.y.dims[0],
-								  self.z_on_interface_levels.dims[0]],
-							name='reference_pressure_on_interface_levels',
-							attrs={'units': 'Pa'})
+        # Reference pressure at the half levels
+        a = p_sl * zv * (np.logical_and(le(zt, zv), le(zv, zf))) + p_sl * zf * (
+            1.0 - zv
+        ) / (1.0 - zf) * (np.logical_and(lt(zf, zv), le(zv, 1.0)))
+        a = np.tile(a, (self.nx, self.ny, 1))
+        b = (zv - zf) / (1.0 - zf) * (np.logical_and(lt(zf, zv), le(zv, 1.0)))
+        b = np.tile(b, (self.nx, self.ny, 1))
+        p0_hl = a + b * p0_s
+        self.reference_pressure_on_interface_levels = sympl.DataArray(
+            p0_hl,
+            coords=[self.x.values, self.y.values, self.z_on_interface_levels.values],
+            dims=[self.x.dims[0], self.y.dims[0], self.z_on_interface_levels.dims[0]],
+            name="reference_pressure_on_interface_levels",
+            attrs={"units": "Pa"},
+        )
 
-		# Geometric height at the half levels
-		if eq(beta, 0.):
-			z_hl = Rd * T_sl / g * np.log(p_sl / p0_hl)
-		else:
-			z_hl = Rd / g * np.log(p_sl / p0_hl) * \
-				   (T_sl - 0.5 * beta * np.log(p_sl / p0_hl))
-		self.height_on_interface_levels = \
-			sympl.DataArray(z_hl,
-							coords=[self.x.values, self.y.values,
-									self.z_on_interface_levels.values],
-							dims=[self.x.dims[0], self.y.dims[0],
-								  self.z_on_interface_levels.dims[0]],
-							name='height_on_interface_levels',
-							attrs={'units': 'm'})
+        # Geometric height at the half levels
+        if eq(beta, 0.0):
+            z_hl = Rd * T_sl / g * np.log(p_sl / p0_hl)
+        else:
+            z_hl = (
+                Rd / g * np.log(p_sl / p0_hl) * (T_sl - 0.5 * beta * np.log(p_sl / p0_hl))
+            )
+        self.height_on_interface_levels = sympl.DataArray(
+            z_hl,
+            coords=[self.x.values, self.y.values, self.z_on_interface_levels.values],
+            dims=[self.x.dims[0], self.y.dims[0], self.z_on_interface_levels.dims[0]],
+            name="height_on_interface_levels",
+            attrs={"units": "m"},
+        )
 
-		# Reference pressure at the main levels
-		self.reference_pressure = \
-			sympl.DataArray(0.5 * (p0_hl[:, :, :-1] + p0_hl[:, :, 1:]),
-							coords=[self.x.values, self.y.values, self.z.values],
-							dims=[self.x.dims[0], self.y.dims[0], self.z.dims[0]],
-							name='reference_pressure', attrs={'units': 'Pa'})
+        # Reference pressure at the main levels
+        self.reference_pressure = sympl.DataArray(
+            0.5 * (p0_hl[:, :, :-1] + p0_hl[:, :, 1:]),
+            coords=[self.x.values, self.y.values, self.z.values],
+            dims=[self.x.dims[0], self.y.dims[0], self.z.dims[0]],
+            name="reference_pressure",
+            attrs={"units": "Pa"},
+        )
 
-		# Geometric height at the main levels
-		self.height = \
-			sympl.DataArray(0.5 * (z_hl[:, :, :-1] + z_hl[:, :, 1:]),
-							coords=[self.x.values, self.y.values, self.z.values],
-							dims=[self.x.dims[0], self.y.dims[0], self.z.dims[0]],
-							name='height', attrs={'units': 'm'})
+        # Geometric height at the main levels
+        self.height = sympl.DataArray(
+            0.5 * (z_hl[:, :, :-1] + z_hl[:, :, 1:]),
+            coords=[self.x.values, self.y.values, self.z.values],
+            dims=[self.x.dims[0], self.y.dims[0], self.z.dims[0]],
+            name="height",
+            attrs={"units": "m"},
+        )

@@ -39,39 +39,52 @@ from gridtools.storage import StorageDescriptor
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	from numpy import float32 as datatype
+    from numpy import float32 as datatype
 
 
 def stage_laplacian_x(dx, phi):
-	lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx*dx)
-	return lap
+    lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
+    return lap
 
 
 def stage_laplacian_y(dy, phi):
-	lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy*dy)
-	return lap
+    lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
+    return lap
 
 
 def stage_laplacian(dx, dy, phi):
-	lap_x = stage_laplacian_x(dx=dx, phi=phi)
-	lap_y = stage_laplacian_y(dy=dy, phi=phi)
-	lap = lap_x[0, 0, 0] + lap_y[0, 0, 0]
-	return lap
+    lap_x = stage_laplacian_x(dx=dx, phi=phi)
+    lap_y = stage_laplacian_y(dy=dy, phi=phi)
+    lap = lap_x[0, 0, 0] + lap_y[0, 0, 0]
+    return lap
 
 
 class HorizontalHyperDiffusion(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes calculates the
 	tendency due to horizontal hyper-diffusion.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		"""
+
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        """
 		Parameters
 		----------
 		shape : tuple
@@ -104,43 +117,48 @@ class HorizontalHyperDiffusion(abc.ABC):
 		rebuild : bool
 			TODO
 		"""
-		# store input arguments needed at run-time
-		self._shape = shape
-		self._nb = nb
-		self._dx = dx
-		self._dy = dy
-		self._exec_info = exec_info
+        # store input arguments needed at run-time
+        self._shape = shape
+        self._nb = nb
+        self._dx = dx
+        self._dy = dy
+        self._exec_info = exec_info
 
-		# initialize the diffusion coefficient
-		gamma = diffusion_coeff
+        # initialize the diffusion coefficient
+        gamma = diffusion_coeff
 
-		# the diffusivity is monotonically increased towards the top of the model,
-		# so to mimic the effect of a short-length wave absorber
-		n = diffusion_damp_depth
-		if True:  # if n > 0:
-			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-			pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
-			gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
-			gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+        # the diffusivity is monotonically increased towards the top of the model,
+        # so to mimic the effect of a short-length wave absorber
+        n = diffusion_damp_depth
+        if True:  # if n > 0:
+            pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
+            pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
+            gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
+            gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
-		# convert diffusivity to gt4py storage
-		descriptor = get_storage_descriptor(shape, dtype, halo, mask=(True, True, True))  # mask=(False, False, True)
-		self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
+        # convert diffusivity to gt4py storage
+        descriptor = get_storage_descriptor(
+            shape, dtype, halo, mask=(True, True, True)
+        )  # mask=(False, False, True)
+        self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
 
-		# initialize the underlying stencil
-		decorator = gt.stencil(
-			backend, backend_opts=backend_opts, build_info=build_info,
-			rebuild=rebuild, externals={
-				"stage_laplacian": stage_laplacian,
-				"stage_laplacian_x": stage_laplacian_x,
-				"stage_laplacian_y": stage_laplacian_y
-			}
-		)
-		self._stencil = decorator(self._stencil_defs)
+        # initialize the underlying stencil
+        decorator = gt.stencil(
+            backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            rebuild=rebuild,
+            externals={
+                "stage_laplacian": stage_laplacian,
+                "stage_laplacian_x": stage_laplacian_x,
+                "stage_laplacian_y": stage_laplacian_y,
+            },
+        )
+        self._stencil = decorator(self._stencil_defs)
 
-	@abc.abstractmethod
-	def __call__(self, phi, phi_tnd):
-		"""
+    @abc.abstractmethod
+    def __call__(self, phi, phi_tnd):
+        """
 		Calculate the tendency.
 
 		Parameters
@@ -150,15 +168,28 @@ class HorizontalHyperDiffusion(abc.ABC):
 		phi_tnd : gridtools.storage.Storage
 			Buffer where the calculated tendency will be written.
 		"""
-		pass
+        pass
 
-	@staticmethod
-	def factory(
-		diffusion_type, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb=None, *, backend="numpy", backend_opts=None,
-		build_info=None, dtype=datatype, exec_info=None, halo=None, rebuild=False
-	):
-		"""
+    @staticmethod
+    def factory(
+        diffusion_type,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False
+    ):
+        """
 		Static method returning an instance of the derived class
 		calculating the tendency due to horizontal hyper-diffusion of type
 		:data:`diffusion_type`.
@@ -208,60 +239,77 @@ class HorizontalHyperDiffusion(abc.ABC):
 		obj :
 			Instance of the appropriate derived class.
 		"""
-		args = [
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		]
+        args = [
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        ]
 
-		if diffusion_type == 'first_order':
-			assert not(shape[0] < 3 and shape[1] < 3)
+        if diffusion_type == "first_order":
+            assert not (shape[0] < 3 and shape[1] < 3)
 
-			if shape[1] < 3:
-				return FirstOrder1DX(*args)
-			elif shape[0] < 3:
-				return FirstOrder1DY(*args)
-			else:
-				return FirstOrder(*args)
-		elif diffusion_type == 'second_order':
-			assert not(shape[0] < 5 and shape[1] < 5)
+            if shape[1] < 3:
+                return FirstOrder1DX(*args)
+            elif shape[0] < 3:
+                return FirstOrder1DY(*args)
+            else:
+                return FirstOrder(*args)
+        elif diffusion_type == "second_order":
+            assert not (shape[0] < 5 and shape[1] < 5)
 
-			if shape[1] < 5:
-				return SecondOrder1DX(*args)
-			elif shape[0] < 5:
-				return SecondOrder1DY(*args)
-			else:
-				return SecondOrder(*args)
-		elif diffusion_type == 'third_order':
-			assert not(shape[0] < 7 and shape[1] < 7)
+            if shape[1] < 5:
+                return SecondOrder1DX(*args)
+            elif shape[0] < 5:
+                return SecondOrder1DY(*args)
+            else:
+                return SecondOrder(*args)
+        elif diffusion_type == "third_order":
+            assert not (shape[0] < 7 and shape[1] < 7)
 
-			if shape[1] < 7:
-				return ThirdOrder1DX(*args)
-			elif shape[0] < 7:
-				return ThirdOrder1DY(*args)
-			else:
-				return ThirdOrder(*args)
-		else:
-			raise ValueError(
-				"Supported diffusion operators are ''first_order'', "
-				"''second_order'', and ''third_order''."
-			)
+            if shape[1] < 7:
+                return ThirdOrder1DX(*args)
+            elif shape[0] < 7:
+                return ThirdOrder1DY(*args)
+            else:
+                return ThirdOrder(*args)
+        else:
+            raise ValueError(
+                "Supported diffusion operators are ''first_order'', "
+                "''second_order'', and ''third_order''."
+            )
 
-	@staticmethod
-	@abc.abstractmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		pass
+    @staticmethod
+    @abc.abstractmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        pass
 
 
 class FirstOrder(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to first-order horizontal hyper-diffusion for any
 	three-dimensional field	with at least three elements in each direction.
@@ -272,44 +320,79 @@ class FirstOrder(HorizontalHyperDiffusion):
 	match those specified at instantiation time. Hence, one should use (at least)
 	one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 1 if (nb is None or nb < 1) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 1 if (nb is None or nb < 1) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-		out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+        out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
 
 
 class FirstOrder1DX(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to first-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the second dimension.
@@ -320,44 +403,79 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 1 if (nb is None or nb < 1) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 1 if (nb is None or nb < 1) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap = stage_laplacian_x(dx=dx, phi=in_phi)
-		out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, 0, 0)},
+            domain=(nx - 2 * nb, ny, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap = stage_laplacian_x(dx=dx, phi=in_phi)
+        out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
 
 
 class FirstOrder1DY(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to first-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the first dimension.
@@ -368,44 +486,79 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 1 if (nb is None or nb < 1) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 1 if (nb is None or nb < 1) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap = stage_laplacian_y(dy=dy, phi=in_phi)
-		out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (0, nb, 0)},
+            domain=(nx, ny - 2 * nb, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap = stage_laplacian_y(dy=dy, phi=in_phi)
+        out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
 
 
 class SecondOrder(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to second-order horizontal hyper-diffusion for any
 	three-dimensional field	with at least three elements in each direction.
@@ -416,45 +569,80 @@ class SecondOrder(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 2 if (nb is None or nb < 2) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 2 if (nb is None or nb < 2) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-		lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
-		out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+        lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
+        out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
 
 
 class SecondOrder1DX(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to second-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the second dimension.
@@ -465,45 +653,80 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 2 if (nb is None or nb < 2) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 2 if (nb is None or nb < 2) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
-		lap1 = stage_laplacian_x(dx=dx, phi=lap0)
-		out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, 0, 0)},
+            domain=(nx - 2 * nb, ny, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
+        lap1 = stage_laplacian_x(dx=dx, phi=lap0)
+        out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
 
 
 class SecondOrder1DY(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to second-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the first dimension.
@@ -514,45 +737,80 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 2 if (nb is None or nb < 2) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 2 if (nb is None or nb < 2) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
-		lap1 = stage_laplacian_y(dy=dy, phi=lap0)
-		out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (0, nb, 0)},
+            domain=(nx, ny - 2 * nb, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
+        lap1 = stage_laplacian_y(dy=dy, phi=lap0)
+        out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
 
 
 class ThirdOrder(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to third-order horizontal hyper-diffusion for any
 	three-dimensional field	with at least three elements in each direction.
@@ -563,46 +821,81 @@ class ThirdOrder(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 3 if (nb is None or nb < 3) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 3 if (nb is None or nb < 3) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-		lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
-		lap2 = stage_laplacian(dx=dx, dy=dy, phi=lap1)
-		out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+        lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
+        lap2 = stage_laplacian(dx=dx, dy=dy, phi=lap1)
+        out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
 
 
 class ThirdOrder1DX(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to third-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the second dimension.
@@ -613,46 +906,81 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 3 if (nb is None or nb < 3) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 3 if (nb is None or nb < 3) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
-		lap1 = stage_laplacian_x(dx=dx, phi=lap0)
-		lap2 = stage_laplacian_x(dx=dx, phi=lap1)
-		out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, 0, 0)},
+            domain=(nx - 2 * nb, ny, nz),
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
+        lap1 = stage_laplacian_x(dx=dx, phi=lap0)
+        lap2 = stage_laplacian_x(dx=dx, phi=lap1)
+        out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
 
 
 class ThirdOrder1DY(HorizontalHyperDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
 	to calculate the tendency due to third-order horizontal hyper-diffusion for any
 	three-dimensional field	with only one element along the first dimension.
@@ -663,40 +991,74 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 3 if (nb is None or nb < 3) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 3 if (nb is None or nb < 3) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz)
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
-		lap1 = stage_laplacian_y(dy=dy, phi=lap0)
-		lap2 = stage_laplacian_y(dy=dy, phi=lap1)
-		out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (0, nb, 0)},
+            domain=(nx, ny - 2 * nb, nz),
+        )
 
+    @staticmethod
+    def _stencil_defs(
+        in_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        in_gamma: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        out_phi: StorageDescriptor(
+            np.float64, grid_group="domain", mask=[True, True, True]
+        ),
+        *,
+        dx: float,
+        dy: float
+    ):
+        lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
+        lap1 = stage_laplacian_y(dy=dy, phi=lap0)
+        lap2 = stage_laplacian_y(dy=dy, phi=lap1)
+        out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]

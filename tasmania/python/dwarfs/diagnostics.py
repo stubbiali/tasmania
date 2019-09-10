@@ -30,22 +30,30 @@ import numpy as np
 import gridtools as gt
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 class HorizontalVelocity:
-	"""
+    """
 	This class diagnoses the horizontal momenta (respectively, velocity
 	components) with the help of the air density and the horizontal
 	velocity components (resp., momenta).
 	"""
-	def __init__(
-		self, grid, staggering=True, *, backend="numpy", backend_opts=None,
-		build_info=None, exec_info=None, rebuild=False
-	):
-		"""
+
+    def __init__(
+        self,
+        grid,
+        staggering=True,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        rebuild=False
+    ):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -65,28 +73,31 @@ class HorizontalVelocity:
 		rebuild : `bool`, optional
 			TODO
 		"""
-		# store input arguments needed at run-time
-		self._grid = grid
-		self._staggering = staggering
-		self._exec_info = exec_info
+        # store input arguments needed at run-time
+        self._grid = grid
+        self._staggering = staggering
+        self._exec_info = exec_info
 
-		# initialize the underlying stencils
-		decorator = gt.stencil(
-			backend, backend_opts=backend_opts, build_info=build_info,
-			externals={"staggering": staggering}, rebuild=rebuild
-		)
-		self._stencil_diagnosing_momenta = decorator(
-			self._stencil_diagnosing_momenta_defs
-		)
-		self._stencil_diagnosing_velocity_x = decorator(
-			self._stencil_diagnosing_velocity_x_defs
-		)
-		self._stencil_diagnosing_velocity_y = decorator(
-			self._stencil_diagnosing_velocity_y_defs
-		)
+        # initialize the underlying stencils
+        decorator = gt.stencil(
+            backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            externals={"staggering": staggering},
+            rebuild=rebuild,
+        )
+        self._stencil_diagnosing_momenta = decorator(
+            self._stencil_diagnosing_momenta_defs
+        )
+        self._stencil_diagnosing_velocity_x = decorator(
+            self._stencil_diagnosing_velocity_x_defs
+        )
+        self._stencil_diagnosing_velocity_y = decorator(
+            self._stencil_diagnosing_velocity_y_defs
+        )
 
-	def get_momenta(self, d, u, v, du, dv):
-		"""
+    def get_momenta(self, d, u, v, du, dv):
+        """
 		Diagnose the horizontal momenta.
 
 		Parameters
@@ -102,18 +113,23 @@ class HorizontalVelocity:
 		dv : gridtools.storage.Storage
 			The buffer where the y-momentum will be written.
 		"""
-		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        # shortcuts
+        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
-		# run the stencil
-		self._stencil_diagnosing_momenta(
-			in_d=d, in_u=u, in_v=v, out_du=du, out_dv=dv,
-			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
-			exec_info=self._exec_info
-		)
+        # run the stencil
+        self._stencil_diagnosing_momenta(
+            in_d=d,
+            in_u=u,
+            in_v=v,
+            out_du=du,
+            out_dv=dv,
+            origin={"_all_": (0, 0, 0)},
+            domain=(nx, ny, nz),
+            exec_info=self._exec_info,
+        )
 
-	def get_velocity_components(self, d, du, dv, u, v):
-		"""
+    def get_velocity_components(self, d, du, dv, u, v):
+        """
 		Diagnose the horizontal velocity components.
 
 		Parameters
@@ -134,71 +150,81 @@ class HorizontalVelocity:
 		If staggering is enabled, the first and last rows (respectively, columns)
 		of the x-velocity (resp., y-velocity) are not set.
 		"""
-		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		dn = int(self._staggering)
+        # shortcuts
+        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        dn = int(self._staggering)
 
-		# run the stencils
-		self._stencil_diagnosing_velocity_x(
-			in_d=d, in_du=du, out_u=u,
-			origin={"_all_": (dn, 0, 0)}, domain=(nx-dn, ny, nz),
-			exec_info=self._exec_info
-		)
-		self._stencil_diagnosing_velocity_y(
-			in_d=d, in_dv=dv, out_v=v,
-			origin={"_all_": (0, dn, 0)}, domain=(nx, ny-dn, nz),
-			exec_info=self._exec_info
-		)
+        # run the stencils
+        self._stencil_diagnosing_velocity_x(
+            in_d=d,
+            in_du=du,
+            out_u=u,
+            origin={"_all_": (dn, 0, 0)},
+            domain=(nx - dn, ny, nz),
+            exec_info=self._exec_info,
+        )
+        self._stencil_diagnosing_velocity_y(
+            in_d=d,
+            in_dv=dv,
+            out_v=v,
+            origin={"_all_": (0, dn, 0)},
+            domain=(nx, ny - dn, nz),
+            exec_info=self._exec_info,
+        )
 
-	@staticmethod
-	def _stencil_diagnosing_momenta_defs(
-		in_d: gt.storage.f64_sd,
-		in_u: gt.storage.f64_sd,
-		in_v: gt.storage.f64_sd,
-		out_du: gt.storage.f64_sd,
-		out_dv: gt.storage.f64_sd
-	):
-		if staggering:
-			out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
-			out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
-		else:
-			out_du = in_d[0, 0, 0] * in_u[0, 0, 0]
-			out_dv = in_d[0, 0, 0] * in_v[0, 0, 0]
+    @staticmethod
+    def _stencil_diagnosing_momenta_defs(
+        in_d: gt.storage.f64_sd,
+        in_u: gt.storage.f64_sd,
+        in_v: gt.storage.f64_sd,
+        out_du: gt.storage.f64_sd,
+        out_dv: gt.storage.f64_sd,
+    ):
+        if staggering:
+            out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
+            out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
+        else:
+            out_du = in_d[0, 0, 0] * in_u[0, 0, 0]
+            out_dv = in_d[0, 0, 0] * in_v[0, 0, 0]
 
-	@staticmethod
-	def _stencil_diagnosing_velocity_x_defs(
-		in_d: gt.storage.f64_sd,
-		in_du: gt.storage.f64_sd,
-		out_u: gt.storage.f64_sd,
-	):
-		if staggering:
-			out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (in_d[-1, 0, 0] + in_d[0, 0, 0])
-		else:
-			out_u = in_du[0, 0, 0] / in_d[0, 0, 0]
+    @staticmethod
+    def _stencil_diagnosing_velocity_x_defs(
+        in_d: gt.storage.f64_sd, in_du: gt.storage.f64_sd, out_u: gt.storage.f64_sd
+    ):
+        if staggering:
+            out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (in_d[-1, 0, 0] + in_d[0, 0, 0])
+        else:
+            out_u = in_du[0, 0, 0] / in_d[0, 0, 0]
 
-	@staticmethod
-	def _stencil_diagnosing_velocity_y_defs(
-		in_d: gt.storage.f64_sd,
-		in_dv: gt.storage.f64_sd,
-		out_v: gt.storage.f64_sd,
-	):
-		if staggering:
-			out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (in_d[0, -1, 0] + in_d[0, 0, 0])
-		else:
-			out_v = in_dv[0, 0, 0] / in_d[0, 0, 0]
+    @staticmethod
+    def _stencil_diagnosing_velocity_y_defs(
+        in_d: gt.storage.f64_sd, in_dv: gt.storage.f64_sd, out_v: gt.storage.f64_sd
+    ):
+        if staggering:
+            out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (in_d[0, -1, 0] + in_d[0, 0, 0])
+        else:
+            out_v = in_dv[0, 0, 0] / in_d[0, 0, 0]
 
 
 class WaterConstituent:
-	"""
+    """
 	This class diagnoses the density (respectively, mass fraction) of any water
 	constituent with the help of the air density and the mass fraction (resp.,
 	the density) of that water constituent.
 	"""
-	def __init__(
-		self, grid, clipping=False, *, backend="numpy", backend_opts=None,
-		build_info=None, exec_info=None, rebuild=False
-	):
-		"""
+
+    def __init__(
+        self,
+        grid,
+        clipping=False,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        rebuild=False
+    ):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -217,24 +243,27 @@ class WaterConstituent:
 		rebuild : `bool`, optional
 			TODO
 		"""
-		# store input arguments needed at run-time
-		self._grid = grid
-		self._exec_info = exec_info
+        # store input arguments needed at run-time
+        self._grid = grid
+        self._exec_info = exec_info
 
-		# initialize the underlying stencils
-		decorator = gt.stencil(
-			backend, backend_opts=backend_opts, build_info=build_info,
-			externals={"clipping": clipping}, rebuild=rebuild
-		)
-		self._stencil_diagnosing_density = decorator(
-			self._stencil_diagnosing_density_defs
-		)
-		self._stencil_diagnosing_mass_fraction = decorator(
-			self._stencil_diagnosing_mass_fraction_defs
-		)
+        # initialize the underlying stencils
+        decorator = gt.stencil(
+            backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            externals={"clipping": clipping},
+            rebuild=rebuild,
+        )
+        self._stencil_diagnosing_density = decorator(
+            self._stencil_diagnosing_density_defs
+        )
+        self._stencil_diagnosing_mass_fraction = decorator(
+            self._stencil_diagnosing_mass_fraction_defs
+        )
 
-	def get_density_of_water_constituent(self, d, q, dq):
-		"""
+    def get_density_of_water_constituent(self, d, q, dq):
+        """
 		Diagnose the density of a water constituent.
 
 		Parameters
@@ -247,18 +276,21 @@ class WaterConstituent:
 			Buffer which will store the output density of the water constituent,
 			in the same units of the input air density.
 		"""
-		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        # shortcuts
+        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
-		# run the stencil
-		self._stencil_diagnosing_density(
-			in_d=d, in_q=q, out_dq=dq,
-			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
-			exec_info=self._exec_info
-		)
+        # run the stencil
+        self._stencil_diagnosing_density(
+            in_d=d,
+            in_q=q,
+            out_dq=dq,
+            origin={"_all_": (0, 0, 0)},
+            domain=(nx, ny, nz),
+            exec_info=self._exec_info,
+        )
 
-	def get_mass_fraction_of_water_constituent_in_air(self, d, dq, q):
-		"""
+    def get_mass_fraction_of_water_constituent_in_air(self, d, dq, q):
+        """
 		Diagnose the mass fraction of a water constituent.
 
 		Parameters
@@ -272,37 +304,35 @@ class WaterConstituent:
 			Buffer which will store the output mass fraction of the water constituent,
 			in the same units of the input air density.
 		"""
-		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        # shortcuts
+        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
-		# run the stencil
-		self._stencil_diagnosing_mass_fraction(
-			in_d=d, in_dq=dq, out_q=q,
-			origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz),
-			exec_info=self._exec_info
-		)
+        # run the stencil
+        self._stencil_diagnosing_mass_fraction(
+            in_d=d,
+            in_dq=dq,
+            out_q=q,
+            origin={"_all_": (0, 0, 0)},
+            domain=(nx, ny, nz),
+            exec_info=self._exec_info,
+        )
 
-	@staticmethod
-	def _stencil_diagnosing_density_defs(
-		in_d: gt.storage.f64_sd,
-		in_q: gt.storage.f64_sd,
-		out_dq: gt.storage.f64_sd
-	):
-		if clipping:
-			tmp_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
-			out_dq = (tmp_dq[0, 0, 0] > 0.0) * tmp_dq[0, 0, 0]
-		else:
-			out_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
+    @staticmethod
+    def _stencil_diagnosing_density_defs(
+        in_d: gt.storage.f64_sd, in_q: gt.storage.f64_sd, out_dq: gt.storage.f64_sd
+    ):
+        if clipping:
+            tmp_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
+            out_dq = (tmp_dq[0, 0, 0] > 0.0) * tmp_dq[0, 0, 0]
+        else:
+            out_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
 
-	@staticmethod
-	def _stencil_diagnosing_mass_fraction_defs(
-		in_d: gt.storage.f64_sd,
-		in_dq: gt.storage.f64_sd,
-		out_q: gt.storage.f64_sd
-	):
-		if clipping:
-			tmp_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
-			out_q = (tmp_q[0, 0, 0] > 0.0) * tmp_q[0, 0, 0]
-		else:
-			out_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
-
+    @staticmethod
+    def _stencil_diagnosing_mass_fraction_defs(
+        in_d: gt.storage.f64_sd, in_dq: gt.storage.f64_sd, out_q: gt.storage.f64_sd
+    ):
+        if clipping:
+            tmp_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
+            out_q = (tmp_q[0, 0, 0] > 0.0) * tmp_q[0, 0, 0]
+        else:
+            out_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
