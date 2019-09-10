@@ -30,21 +30,21 @@ import math
 import numpy as np
 import sympl
 
-from tasmania.python.grids.topography import \
-	PhysicalTopography, NumericalTopography
-from tasmania.python.grids.horizontal_grid import \
-	PhysicalHorizontalGrid, NumericalHorizontalGrid
-from tasmania.python.utils.utils import \
-	smaller_than as lt, smaller_or_equal_than as le
+from tasmania.python.grids.topography import PhysicalTopography, NumericalTopography
+from tasmania.python.grids.horizontal_grid import (
+    PhysicalHorizontalGrid,
+    NumericalHorizontalGrid,
+)
+from tasmania.python.utils.utils import smaller_than as lt, smaller_or_equal_than as le
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 class Grid:
-	"""
+    """
 	This class represents a rectangular, regular and prismatic
 	three-dimensional grid embedded in a reference system whose
 	coordinates are
@@ -71,10 +71,9 @@ class Grid:
 	For the sake of compliancy with the `COSMO model <http://cosmo-model.org>`_,
 	the vertical grid points are ordered from the top of the domain to the surface.
 	"""
-	def __init__(
-		self, grid_xy, z, z_on_interface_levels, z_interface, topography
-	):
-		""" 
+
+    def __init__(self, grid_xy, z, z_on_interface_levels, z_interface, topography):
+        """ 
 		Parameters
 		----------
 		grid_xy : tasmania.HorizontalGrid
@@ -91,159 +90,159 @@ class Grid:
 		topography : tasmania.Topography
 			The underlying topography.
 		"""
-		self._grid_xy = grid_xy
-		self._z       = z
-		self._zhl     = z_on_interface_levels
-		self._zi      = z_interface
-		self._topo    = topography
+        self._grid_xy = grid_xy
+        self._z = z
+        self._zhl = z_on_interface_levels
+        self._zi = z_interface
+        self._topo = topography
 
-		self._nz = z.values.shape[0]
-		dz_v = math.fabs(self._zhl.values[0] - self._zhl.values[-1]) / self._nz
-		dz_v = 1.0 if dz_v == 0.0 else dz_v
-		self._dz = sympl.DataArray(dz_v, name='dz', attrs={'units': z.attrs['units']})
+        self._nz = z.values.shape[0]
+        dz_v = math.fabs(self._zhl.values[0] - self._zhl.values[-1]) / self._nz
+        dz_v = 1.0 if dz_v == 0.0 else dz_v
+        self._dz = sympl.DataArray(dz_v, name="dz", attrs={"units": z.attrs["units"]})
 
-	@property
-	def grid_xy(self):
-		"""
+    @property
+    def grid_xy(self):
+        """
 		Return
 		------
 		tasmania.PhysicalHorizontalGrid :
 			The underlying physical horizontal grid.
 		"""
-		return self._grid_xy
+        return self._grid_xy
 
-	@property
-	def x(self):
-		"""
+    @property
+    def x(self):
+        """
 		Returns
 		-------
 		sympl.DataArray :
 			1-D :class:`sympl.DataArray` collecting the mass grid points
 			along the first horizontal dimension.
 		"""
-		return self._grid_xy.x
+        return self._grid_xy.x
 
-	@property
-	def x_at_u_locations(self):
-		"""
+    @property
+    def x_at_u_locations(self):
+        """
 		Returns
 		-------
 		sympl.DataArray :
 			1-D :class:`sympl.DataArray` collecting the staggered grid points
 			along the first horizontal dimension.
 		"""
-		return self._grid_xy.x_at_u_locations
+        return self._grid_xy.x_at_u_locations
 
-	@property
-	def nx(self):
-		"""
+    @property
+    def nx(self):
+        """
 		Returns
 		-------
 		int :
 			Number of mass grid points featured by the grid along
 			the first horizontal dimension.
 		"""
-		return self._grid_xy.nx
+        return self._grid_xy.nx
 
-	@property
-	def dx(self):
-		"""
+    @property
+    def dx(self):
+        """
 		Returns
 		-------
 		sympl.DataArray :
 			1-item :class:`sympl.DataArray` representing the grid spacing
 			along the first horizontal dimension.
 		"""
-		return self._grid_xy.dx
+        return self._grid_xy.dx
 
-	@property
-	def y(self):
-		"""
+    @property
+    def y(self):
+        """
 		Returns
 		-------
 		sympl.DataArray :
 			1-D :class:`sympl.DataArray` collecting the mass grid points
 			along the second horizontal dimension.
 		"""
-		return self._grid_xy.y
+        return self._grid_xy.y
 
-	@property
-	def y_at_v_locations(self):
-		"""
+    @property
+    def y_at_v_locations(self):
+        """
 		Returns
 		-------
 		sympl.DataArray :
 			1-D :class:`sympl.DataArray` collecting the staggered grid points
 			along the second horizontal dimension.
 		"""
-		return self._grid_xy.y_at_v_locations
+        return self._grid_xy.y_at_v_locations
 
-	@property
-	def ny(self):
-		"""
+    @property
+    def ny(self):
+        """
 		Returns
 		-------
 		int :
 			Number of mass grid points featured by the grid along
 			the second horizontal dimension.
 		"""
-		return self._grid_xy.ny
+        return self._grid_xy.ny
 
-	@property
-	def dy(self):
-		"""
+    @property
+    def dy(self):
+        """
 		Returns
 		-------
 		sympl.DataArray :
 			1-item :class:`sympl.DataArray` representing the grid spacing
 			along the second horizontal dimension.
 		"""
-		return self._grid_xy.dy
+        return self._grid_xy.dy
 
-	@property
-	def z(self):
-		"""
+    @property
+    def z(self):
+        """
 		Return
 		------
 		sympl.DataArray :
 			The vertical coordinates of the main levels
 		"""
-		return self._z
+        return self._z
 
-	@property
-	def z_on_interface_levels(self):
-		"""
+    @property
+    def z_on_interface_levels(self):
+        """
 		Return
 		------
 		sympl.DataArray :
 			The vertical coordinates of the interface levels
 		"""
-		return self._zhl
+        return self._zhl
 
-	@property
-	def nz(self):
-		"""
+    @property
+    def nz(self):
+        """
 		Return
 		------
 		int :
 			Number of vertical main levels.
 		"""
-		return self._nz
+        return self._nz
 
-	@property
-	def dz(self):
-		"""
+    @property
+    def dz(self):
+        """
 		Return
 		------
 		sympl.DataArray :
 			1-item :class:`sympl.DataArray` representing the vertical
 			grid spacing.
 		"""
-		return self._dz
+        return self._dz
 
-	@property
-	def z_interface(self):
-		"""
+    @property
+    def z_interface(self):
+        """
 		Return
 		------
 		sympl.DataArray :
@@ -251,20 +250,20 @@ class Grid:
 			altitude where the terrain-following coordinate surfaces
 			flat black to horizontal lines.
 		"""
-		return self._zi
+        return self._zi
 
-	@property
-	def topography(self):
-		"""
+    @property
+    def topography(self):
+        """
 		Return
 		------
 		tasmania.PhysicalTopography :
 			The topography defined over the underlying physical grid.
 		"""
-		return self._topo
+        return self._topo
 
-	def update_topography(self, time):
-		"""
+    def update_topography(self, time):
+        """
 		Update the underlying (time-dependent) topography.
 
 		Parameters
@@ -272,19 +271,29 @@ class Grid:
 		time : datetime.timedelta
 			The elapsed simulation time.
 		"""
-		self._topo.update(time)
+        self._topo.update(time)
 
 
 class PhysicalGrid(Grid):
-	"""
+    """
 	This class represents a rectangular, regular and prismatic
 	three-dimensional *physical* grid.
 	"""
-	def __init__(
-		self, domain_x, nx, domain_y, ny, domain_z, nz, z_interface=None,
-		topography_type="flat_terrain", topography_kwargs=None, dtype=datatype
-	):
-		"""
+
+    def __init__(
+        self,
+        domain_x,
+        nx,
+        domain_y,
+        ny,
+        domain_z,
+        nz,
+        z_interface=None,
+        topography_type="flat_terrain",
+        topography_kwargs=None,
+        dtype=datatype,
+    ):
+        """
 		Parameters
 		----------
 		domain_x : sympl.DataArray
@@ -328,71 +337,74 @@ class PhysicalGrid(Grid):
 		ValueError :
 			If :obj:`interface` lays outside the domain.
 		"""
-		# xy-grid
-		grid_xy = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)
+        # xy-grid
+        grid_xy = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)
 
-		# extract z-axis properties
-		values_z = domain_z.values
-		dims_z   = domain_z.dims
-		dims_zhl = domain_z.dims[0] + '_on_interface_levels'
-		units_z  = domain_z.attrs['units']
+        # extract z-axis properties
+        values_z = domain_z.values
+        dims_z = domain_z.dims
+        dims_zhl = domain_z.dims[0] + "_on_interface_levels"
+        units_z = domain_z.attrs["units"]
 
-		# z-coordinates of the half-levels
-		zhl_v = np.linspace(values_z[0], values_z[1], nz+1, dtype=dtype)
-		zhl = sympl.DataArray(
-			zhl_v, coords=[zhl_v], dims=dims_zhl, name='z_on_interface_levels',
-			attrs={'units': units_z}
-		)
+        # z-coordinates of the half-levels
+        zhl_v = np.linspace(values_z[0], values_z[1], nz + 1, dtype=dtype)
+        zhl = sympl.DataArray(
+            zhl_v,
+            coords=[zhl_v],
+            dims=dims_zhl,
+            name="z_on_interface_levels",
+            attrs={"units": units_z},
+        )
 
-		# z-coordinates of the main-levels
-		z_v = 0.5 * (zhl_v[:-1] + zhl_v[1:])
-		z = sympl.DataArray(
-			z_v, coords=[z_v], dims=dims_z, name='z', attrs={'units': units_z}
-		)
+        # z-coordinates of the main-levels
+        z_v = 0.5 * (zhl_v[:-1] + zhl_v[1:])
+        z = sympl.DataArray(
+            z_v, coords=[z_v], dims=dims_z, name="z", attrs={"units": units_z}
+        )
 
-		# z-interface
-		if z_interface is None:
-			zi = sympl.DataArray(values_z[0], attrs={'units': units_z})
-		else:
-			zi = z_interface.to_units(units_z)
+        # z-interface
+        if z_interface is None:
+            zi = sympl.DataArray(values_z[0], attrs={"units": units_z})
+        else:
+            zi = z_interface.to_units(units_z)
 
-		# checks
-		zi_v = zi.values.item()
-		if lt(values_z[0], values_z[1]):
-			if not (le(values_z[0], zi_v) and le(zi_v, values_z[1])):
-				raise ValueError(
-					"z_interface should be in the range ({}, {}).".format(
-						values_z[0], values_z[1]
-					)
-				)
-		else:
-			if not (le(values_z[1], zi_v) and le(zi_v, values_z[0])):
-				raise ValueError(
-					"z_interface should be in the range ({}, {}).".format(
-						values_z[1], values_z[0]
-					)
-				)
+        # checks
+        zi_v = zi.values.item()
+        if lt(values_z[0], values_z[1]):
+            if not (le(values_z[0], zi_v) and le(zi_v, values_z[1])):
+                raise ValueError(
+                    "z_interface should be in the range ({}, {}).".format(
+                        values_z[0], values_z[1]
+                    )
+                )
+        else:
+            if not (le(values_z[1], zi_v) and le(zi_v, values_z[0])):
+                raise ValueError(
+                    "z_interface should be in the range ({}, {}).".format(
+                        values_z[1], values_z[0]
+                    )
+                )
 
-		# underlying topography
-		kwargs = \
-			{} if (
-				topography_kwargs is None or
-				not isinstance(topography_kwargs, dict)
-			) \
-			else topography_kwargs
-		topo = PhysicalTopography(grid_xy, topography_type, **kwargs)
+        # underlying topography
+        kwargs = (
+            {}
+            if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
+            else topography_kwargs
+        )
+        topo = PhysicalTopography(grid_xy, topography_type, **kwargs)
 
-		# call parent's constructor
-		super().__init__(grid_xy, z, zhl, zi, topo)
+        # call parent's constructor
+        super().__init__(grid_xy, z, zhl, zi, topo)
 
 
 class NumericalGrid(Grid):
-	"""
+    """
 	This class represents a rectangular, regular and prismatic
 	three-dimensional *numerical* grid.
 	"""
-	def __init__(self, phys_grid, boundary):
-		"""
+
+    def __init__(self, phys_grid, boundary):
+        """
 		Parameters
 		----------
 		phys_grid : tasmania.PhysicalGrid
@@ -400,18 +412,18 @@ class NumericalGrid(Grid):
 		boundary : tasmania.HorizontalBoundary
 			The object handling the lateral boundary conditions.
 		"""
-		# the horizontal grid
-		phys_grid_xy = phys_grid.grid_xy
-		grid_xy = NumericalHorizontalGrid(phys_grid_xy, boundary)
+        # the horizontal grid
+        phys_grid_xy = phys_grid.grid_xy
+        grid_xy = NumericalHorizontalGrid(phys_grid_xy, boundary)
 
-		# the vertical discretization
-		z = phys_grid.z
-		zhl = phys_grid.z_on_interface_levels
-		zi = phys_grid.z_interface
+        # the vertical discretization
+        z = phys_grid.z
+        zhl = phys_grid.z_on_interface_levels
+        zi = phys_grid.z_interface
 
-		# the underlying topography
-		phys_topo = phys_grid.topography
-		topo = NumericalTopography(grid_xy, phys_topo, boundary)
+        # the underlying topography
+        phys_topo = phys_grid.topography
+        topo = NumericalTopography(grid_xy, phys_topo, boundary)
 
-		# call parent's constructor
-		super().__init__(grid_xy, z, zhl, zi, topo)
+        # call parent's constructor
+        super().__init__(grid_xy, z, zhl, zi, topo)

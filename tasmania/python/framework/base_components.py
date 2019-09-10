@@ -31,18 +31,19 @@ import abc
 import sympl
 
 
-allowed_grid_types = ('physical', 'numerical')
+allowed_grid_types = ("physical", "numerical")
 
 
 class DiagnosticComponent(sympl.DiagnosticComponent):
-	"""
+    """
 	Customized version of :class:`sympl.DiagnosticComponent` which keeps track
 	of the grid over which the component is instantiated.
 	"""
-	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, domain, grid_type='numerical'):
-		"""
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, domain, grid_type="numerical"):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -53,48 +54,50 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
 				* 'physical';
 				* 'numerical' (default).
 		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__()
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__()
 
-	@property
-	def grid(self):
-		"""
+    @property
+    def grid(self):
+        """
 		Returns
 		-------
 		tasmania.Grid :
 			The underlying grid.
 		"""
-		return self._grid
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
+    @property
+    def horizontal_boundary(self):
+        """
 		Returns
 		-------
 		tasmania.HorizontalBoundary :
 			The object handling the lateral boundary conditions.
 		"""
-		return self._hb
+        return self._hb
 
 
 class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
-	"""
+    """
 	Customized version of :class:`sympl.ImplicitTendencyComponent` which keeps track
 	of the grid over which the component is instantiated.
 	"""
-	__metaclass__ = abc.ABCMeta
 
-	def __init__(
-		self, domain, grid_type='numerical',
-		tendencies_in_diagnostics=False, name=None
-	):
-		"""
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(
+        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -113,48 +116,50 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 			Y in the name "X_tendency_from_Y". By default the class name in
 			lowercase is used.
 		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__(tendencies_in_diagnostics, name)
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__(tendencies_in_diagnostics, name)
 
-	@property
-	def grid(self):
-		"""
+    @property
+    def grid(self):
+        """
 		Returns
 		-------
 		tasmania.Grid :
 			The underlying grid.
 		"""
-		return self._grid
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
+    @property
+    def horizontal_boundary(self):
+        """
 		Returns
 		-------
 		tasmania.HorizontalBoundary :
 			The object handling the lateral boundary conditions.
 		"""
-		return self._hb
+        return self._hb
 
 
 class Stepper(sympl.Stepper):
-	"""
+    """
 	Customized version of :class:`sympl.Stepper` which keeps track
 	of the grid over which the component is instantiated.
 	"""
-	__metaclass__ = abc.ABCMeta
 
-	def __init__(
-		self, domain, grid_type='numerical',
-		tendencies_in_diagnostics=False, name=None
-	):
-		"""
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(
+        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -173,48 +178,50 @@ class Stepper(sympl.Stepper):
 			Y in the name "X_tendency_from_Y". By default the class name in
 			lowercase is used.
 		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__(tendencies_in_diagnostics, name)
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__(tendencies_in_diagnostics, name)
 
-	@property
-	def grid(self):
-		"""
+    @property
+    def grid(self):
+        """
 		Returns
 		-------
 		tasmania.Grid :
 			The underlying grid.
 		"""
-		return self._grid
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
+    @property
+    def horizontal_boundary(self):
+        """
 		Returns
 		-------
 		tasmania.HorizontalBoundary :
 			The object handling the lateral boundary conditions.
 		"""
-		return self._hb
+        return self._hb
 
 
 class TendencyComponent(sympl.TendencyComponent):
-	"""
+    """
 	Customized version of :class:`sympl.TendencyComponent` which keeps track
 	of the grid over which the component is instantiated.
 	"""
-	__metaclass__ = abc.ABCMeta
 
-	def __init__(
-		self, domain, grid_type='numerical',
-		tendencies_in_diagnostics=False, name=None
-	):
-		"""
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(
+        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -233,31 +240,33 @@ class TendencyComponent(sympl.TendencyComponent):
 			Y in the name "X_tendency_from_Y". By default the class name in
 			lowercase is used.
 		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__(tendencies_in_diagnostics, name)
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__(tendencies_in_diagnostics, name)
 
-	@property
-	def grid(self):
-		"""
+    @property
+    def grid(self):
+        """
 		Returns
 		-------
 		tasmania.Grid :
 			The underlying grid.
 		"""
-		return self._grid
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
+    @property
+    def horizontal_boundary(self):
+        """
 		Returns
 		-------
 		tasmania.HorizontalBoundary :
 			The object handling the lateral boundary conditions.
 		"""
-		return self._hb
+        return self._hb

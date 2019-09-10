@@ -26,13 +26,12 @@ This module contains:
 """
 from sympl import DiagnosticComponent, combine_component_properties
 
-from tasmania.python.utils.framework_utils import \
-	get_input_properties
+from tasmania.python.utils.framework_utils import get_input_properties
 from tasmania.python.utils.utils import assert_sequence
 
 
 class DiagnosticComponentComposite:
-	"""
+    """
 	Callable class wrapping and chaining a set of :class:`sympl.DiagnosticComponent`\s.
 
 	Attributes
@@ -53,8 +52,9 @@ class DiagnosticComponentComposite:
 		returns, and whose values are dictionaries specifying fundamental
 		properties (dims, units) for those variables.
 	"""
-	def __init__(self, *args, execution_policy='serial'):
-		"""
+
+    def __init__(self, *args, execution_policy="serial"):
+        """
 		Parameters
 		----------
 		*args :
@@ -73,21 +73,22 @@ class DiagnosticComponentComposite:
 					to the current state before returning.
 
 		"""
-		assert_sequence(args, reftype=DiagnosticComponent)
-		self._components_list = args
+        assert_sequence(args, reftype=DiagnosticComponent)
+        self._components_list = args
 
-		self.input_properties = get_input_properties(
-			self._components_list, consider_diagnostics=execution_policy == 'serial'
-		)
-		self.diagnostic_properties = combine_component_properties(
-			self._components_list, 'diagnostic_properties'
-		)
+        self.input_properties = get_input_properties(
+            self._components_list, consider_diagnostics=execution_policy == "serial"
+        )
+        self.diagnostic_properties = combine_component_properties(
+            self._components_list, "diagnostic_properties"
+        )
 
-		self._call = self._call_serial if execution_policy == 'serial' \
-			else self._call_asparallel
+        self._call = (
+            self._call_serial if execution_policy == "serial" else self._call_asparallel
+        )
 
-	def __call__(self, state):
-		"""
+    def __call__(self, state):
+        """
 		Retrieve diagnostics from the input state by sequentially calling
 		the wrapped :class:`sympl.DiagnosticComponent`\s, and incrementally
 		update the input state with those diagnostics.
@@ -106,26 +107,26 @@ class DiagnosticComponentComposite:
 			and whose values are :class:`sympl.DataArray`\s storing data for
 			those variables.
 		"""
-		return self._call(state)
+        return self._call(state)
 
-	def _call_serial(self, state):
-		return_dict = {}
+    def _call_serial(self, state):
+        return_dict = {}
 
-		tmp_state = {}
-		tmp_state.update(state)
+        tmp_state = {}
+        tmp_state.update(state)
 
-		for component in self._components_list:
-			diagnostics = component(tmp_state)
-			tmp_state.update(diagnostics)
-			return_dict.update(diagnostics)
+        for component in self._components_list:
+            diagnostics = component(tmp_state)
+            tmp_state.update(diagnostics)
+            return_dict.update(diagnostics)
 
-		return return_dict
+        return return_dict
 
-	def _call_asparallel(self, state):
-		return_dict = {}
+    def _call_asparallel(self, state):
+        return_dict = {}
 
-		for component in self._components_list:
-			diagnostics = component(state)
-			return_dict.update(diagnostics)
+        for component in self._components_list:
+            diagnostics = component(state)
+            return_dict.update(diagnostics)
 
-		return return_dict
+        return return_dict
