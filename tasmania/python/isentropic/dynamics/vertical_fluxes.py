@@ -31,23 +31,37 @@ import abc
 
 
 class IsentropicVerticalFlux(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
 	dynamical core. The conservative form of the governing equations is used.
 	"""
-	# class attributes
-	extent = None
-	order = None
-	externals = None
 
-	@staticmethod
-	@abc.abstractmethod
-	def __call__(
-		dt, dz, w, s, s_prv, su, su_prv, sv, sv_prv,
-		sqv=None, sqv_prv=None, sqc=None, sqc_prv=None, sqr=None, sqr_prv=None
-	):
-		"""
+    # class attributes
+    extent = None
+    order = None
+    externals = None
+
+    @staticmethod
+    @abc.abstractmethod
+    def __call__(
+        dt,
+        dz,
+        w,
+        s,
+        s_prv,
+        su,
+        su_prv,
+        sv,
+        sv_prv,
+        sqv=None,
+        sqv_prv=None,
+        sqc=None,
+        sqc_prv=None,
+        sqr=None,
+        sqr_prv=None,
+    ):
+        """
 		This method returns the :class:`gridtools.storage.Storage`\s representing
 		the vertical fluxes for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
@@ -112,9 +126,9 @@ class IsentropicVerticalFlux(abc.ABC):
 			The vertical flux for the isentropic density of precipitation water.
 		"""
 
-	@staticmethod
-	def factory(scheme):
-		"""
+    @staticmethod
+    def factory(scheme):
+        """
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
 
@@ -133,34 +147,48 @@ class IsentropicVerticalFlux(abc.ABC):
 			Instance of the derived class implementing the scheme
 			specified by :data:`scheme`.
 		"""
-		from .implementations.vertical_fluxes import \
-			Upwind, Centered, MacCormack
-		if scheme == 'upwind':
-			return Upwind()
-		elif scheme == 'centered':
-			return Centered()
-		else:
-			return MacCormack()
+        from .implementations.vertical_fluxes import Upwind, Centered, MacCormack
+
+        if scheme == "upwind":
+            return Upwind()
+        elif scheme == "centered":
+            return Centered()
+        else:
+            return MacCormack()
 
 
 class IsentropicNonconservativeVerticalFlux(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional isentropic
 	dynamical core. The nonconservative form of the governing equations is used.
 	"""
-	# class attributes
-	extent = None
-	order = None
-	externals = None
 
-	@staticmethod
-	@abc.abstractmethod
-	def __call__(
-		dt, dz, w, s, s_prv, u, u_prv, v, v_prv,
-		qv=None, qv_prv=None, qc=None, qc_prv=None, qr=None, qr_prv=None
-	):
-		"""
+    # class attributes
+    extent = None
+    order = None
+    externals = None
+
+    @staticmethod
+    @abc.abstractmethod
+    def __call__(
+        dt,
+        dz,
+        w,
+        s,
+        s_prv,
+        u,
+        u_prv,
+        v,
+        v_prv,
+        qv=None,
+        qv_prv=None,
+        qc=None,
+        qc_prv=None,
+        qr=None,
+        qr_prv=None,
+    ):
+        """
 		Method returning the :class:`gridtools.storage.Storage`\s representing
 		the vertical flux for all the prognostic model variables.
 		As this method is marked as abstract, its implementation is delegated
@@ -225,9 +253,9 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
 			The vertical flux for the mass fraction of precipitation water.
 		"""
 
-	@staticmethod
-	def factory(scheme):
-		"""
+    @staticmethod
+    def factory(scheme):
+        """
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
 
@@ -244,28 +272,29 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
 			Instance of the derived class implementing the scheme
 			specified by :data:`scheme`.
 		"""
-		from .implementations.nonconservative_vertical_fluxes import \
-			Centered
-		if scheme == 'centered':
-			return Centered()
+        from .implementations.nonconservative_vertical_fluxes import Centered
+
+        if scheme == "centered":
+            return Centered()
 
 
 class IsentropicMinimalVerticalFlux(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional
 	isentropic and *minimal* dynamical core. The conservative form of the
 	governing equations is used.
 	"""
-	# class attributes
-	extent = None
-	order = None
-	externals = None
 
-	@staticmethod
-	@abc.abstractmethod
-	def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-		"""
+    # class attributes
+    extent = None
+    order = None
+    externals = None
+
+    @staticmethod
+    @abc.abstractmethod
+    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        """
 		This method returns the :class:`gridtools.storage.Storage`\s representing
 		the vertical flux for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
@@ -309,9 +338,9 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
 			The vertical flux for the isentropic density of precipitation water.
 		"""
 
-	@staticmethod
-	def factory(scheme):
-		"""
+    @staticmethod
+    def factory(scheme):
+        """
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
 
@@ -339,36 +368,42 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
 		Zeman, C. (2016). An isentropic mountain flow model with iterative \
 			synchronous flux correction. *Master thesis, ETH Zurich*.
 		"""
-		from .implementations.minimal_vertical_fluxes import \
-			Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
-		if scheme == 'upwind':
-			return Upwind()
-		elif scheme == 'centered':
-			return Centered()
-		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind()
-		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind()
-		else:
-			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))
+        from .implementations.minimal_vertical_fluxes import (
+            Upwind,
+            Centered,
+            ThirdOrderUpwind,
+            FifthOrderUpwind,
+        )
+
+        if scheme == "upwind":
+            return Upwind()
+        elif scheme == "centered":
+            return Centered()
+        elif scheme == "third_order_upwind":
+            return ThirdOrderUpwind()
+        elif scheme == "fifth_order_upwind":
+            return FifthOrderUpwind()
+        else:
+            raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))
 
 
 class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes implement different schemes
 	to compute the vertical numerical fluxes for the three-dimensional
 	isentropic, Boussinesq and *minimal* dynamical core. The conservative
 	form of the governing equations is used.
 	"""
-	# class attributes
-	extent = None
-	order = None
-	externals = None
 
-	@staticmethod
-	@abc.abstractmethod
-	def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-		"""
+    # class attributes
+    extent = None
+    order = None
+    externals = None
+
+    @staticmethod
+    @abc.abstractmethod
+    def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+        """
 		This method returns the :class:`gridtools.storage.Storage`\s representing
 		the vertical flux for all the conservative model variables.
 		As this method is marked as abstract, its implementation is delegated
@@ -418,9 +453,9 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
 			The vertical flux for the isentropic density of precipitation water.
 		"""
 
-	@staticmethod
-	def factory(scheme):
-		"""
+    @staticmethod
+    def factory(scheme):
+        """
 		Static method which returns an instance of the derived class
 		implementing the numerical scheme specified by :data:`scheme`.
 
@@ -448,15 +483,20 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
 		Zeman, C. (2016). An isentropic mountain flow model with iterative \
 			synchronous flux correction. *Master thesis, ETH Zurich*.
 		"""
-		from .implementations.boussinesq_minimal_vertical_fluxes import \
-			Upwind, Centered, ThirdOrderUpwind, FifthOrderUpwind
-		if scheme == 'upwind':
-			return Upwind()
-		elif scheme == 'centered':
-			return Centered()
-		elif scheme == 'third_order_upwind':
-			return ThirdOrderUpwind()
-		elif scheme == 'fifth_order_upwind':
-			return FifthOrderUpwind()
-		else:
-			raise ValueError('Unsupported vertical flux scheme ''{}'''.format(scheme))
+        from .implementations.boussinesq_minimal_vertical_fluxes import (
+            Upwind,
+            Centered,
+            ThirdOrderUpwind,
+            FifthOrderUpwind,
+        )
+
+        if scheme == "upwind":
+            return Upwind()
+        elif scheme == "centered":
+            return Centered()
+        elif scheme == "third_order_upwind":
+            return ThirdOrderUpwind()
+        elif scheme == "fifth_order_upwind":
+            return FifthOrderUpwind()
+        else:
+            raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))

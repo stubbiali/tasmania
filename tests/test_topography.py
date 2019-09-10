@@ -21,167 +21,174 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from copy import deepcopy
-from hypothesis import \
-	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+from hypothesis import (
+    assume,
+    given,
+    HealthCheck,
+    reproduce_failure,
+    settings,
+    strategies as hyp_st,
+)
 import numpy as np
 from pandas import Timedelta
 import pytest
 
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import utils
 
 from tasmania.python.grids.horizontal_grid import NumericalHorizontalGrid
-from tasmania.python.grids.topography import \
-	Topography, PhysicalTopography, NumericalTopography
+from tasmania.python.grids.topography import (
+    Topography,
+    PhysicalTopography,
+    NumericalTopography,
+)
 
 
 @given(hyp_st.data())
 def test_topography(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
+    # ========================================
+    # random data generation
+    # ========================================
+    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
 
-	steady_profile = data.draw(
-		utils.st_horizontal_field(pgrid, 0, 3000, 'm', 'sprof'), label='sprof'
-	)
+    steady_profile = data.draw(
+        utils.st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
+    )
 
-	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
+    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
-	# ========================================
-	# test bed
-	# ========================================
-	topo_type = kwargs.pop('type')
-	topo = Topography(topo_type, steady_profile, **kwargs)
+    # ========================================
+    # test bed
+    # ========================================
+    topo_type = kwargs.pop("type")
+    topo = Topography(topo_type, steady_profile, **kwargs)
 
-	assert topo.type == topo_type
-	utils.compare_dataarrays(steady_profile, topo.steady_profile)
+    assert topo.type == topo_type
+    utils.compare_dataarrays(steady_profile, topo.steady_profile)
 
-	topo_time = kwargs.get('time', Timedelta(seconds=0.0))
+    topo_time = kwargs.get("time", Timedelta(seconds=0.0))
 
-	if topo_time.total_seconds() == 0.0:
-		kwargs['time'] = topo_time
-		assert kwargs == topo.kwargs
-		utils.compare_dataarrays(steady_profile, topo.profile)
-	else:
-		profile = deepcopy(steady_profile)
-		profile.values[...] = 0.0
-		utils.compare_dataarrays(profile, topo.profile)
+    if topo_time.total_seconds() == 0.0:
+        kwargs["time"] = topo_time
+        assert kwargs == topo.kwargs
+        utils.compare_dataarrays(steady_profile, topo.profile)
+    else:
+        profile = deepcopy(steady_profile)
+        profile.values[...] = 0.0
+        utils.compare_dataarrays(profile, topo.profile)
 
 
 @given(hyp_st.data())
 def test_update_topography(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
+    # ========================================
+    # random data generation
+    # ========================================
+    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
 
-	steady_profile = data.draw(
-		utils.st_horizontal_field(pgrid, 0, 3000, 'm', 'sprof'), label='sprof'
-	)
+    steady_profile = data.draw(
+        utils.st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
+    )
 
-	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
+    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
-	fact1 = data.draw(utils.st_floats(min_value=1e-6, max_value=1.0), label='fact1')
-	fact2 = data.draw(utils.st_floats(min_value=fact1, max_value=1.0), label='fact2')
+    fact1 = data.draw(utils.st_floats(min_value=1e-6, max_value=1.0), label="fact1")
+    fact2 = data.draw(utils.st_floats(min_value=fact1, max_value=1.0), label="fact2")
 
-	# ========================================
-	# test bed
-	# ========================================
-	topo_type = kwargs.pop('type')
-	topo = Topography(topo_type, steady_profile, **kwargs)
+    # ========================================
+    # test bed
+    # ========================================
+    topo_type = kwargs.pop("type")
+    topo = Topography(topo_type, steady_profile, **kwargs)
 
-	topo_time = kwargs.get('time', Timedelta(seconds=0.0))
+    topo_time = kwargs.get("time", Timedelta(seconds=0.0))
 
-	if topo_time.total_seconds() == 0.0:
-		utils.compare_dataarrays(steady_profile, topo.profile)
-	else:
-		profile = deepcopy(steady_profile)
-		profile.values[...] = 0.0
-		utils.compare_dataarrays(profile, topo.profile)
+    if topo_time.total_seconds() == 0.0:
+        utils.compare_dataarrays(steady_profile, topo.profile)
+    else:
+        profile = deepcopy(steady_profile)
+        profile.values[...] = 0.0
+        utils.compare_dataarrays(profile, topo.profile)
 
-		time1 = fact1 * topo_time
-		topo.update(time1)
-		profile.values[...] = time1 / topo_time * steady_profile.values[...]
-		utils.compare_dataarrays(profile, topo.profile)
-		utils.compare_dataarrays(steady_profile, topo.steady_profile)
+        time1 = fact1 * topo_time
+        topo.update(time1)
+        profile.values[...] = time1 / topo_time * steady_profile.values[...]
+        utils.compare_dataarrays(profile, topo.profile)
+        utils.compare_dataarrays(steady_profile, topo.steady_profile)
 
-		time2 = fact2 * topo_time
-		topo.update(time2)
-		profile.values[...] = time2 / topo_time * steady_profile.values[...]
-		utils.compare_dataarrays(profile, topo.profile)
-		utils.compare_dataarrays(steady_profile, topo.steady_profile)
+        time2 = fact2 * topo_time
+        topo.update(time2)
+        profile.values[...] = time2 / topo_time * steady_profile.values[...]
+        utils.compare_dataarrays(profile, topo.profile)
+        utils.compare_dataarrays(steady_profile, topo.steady_profile)
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(hyp_st.data())
 def test_physical_topography(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
-	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
+    # ========================================
+    # random data generation
+    # ========================================
+    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
+    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
-	# ========================================
-	# test bed
-	# ========================================
-	topo_type = kwargs.pop('type')
-	topo = PhysicalTopography(pgrid, topo_type, **kwargs)
+    # ========================================
+    # test bed
+    # ========================================
+    topo_type = kwargs.pop("type")
+    topo = PhysicalTopography(pgrid, topo_type, **kwargs)
 
-	assert topo.type == topo_type
+    assert topo.type == topo_type
 
-	topo_time = kwargs.get('time', Timedelta(seconds=0.0))
+    topo_time = kwargs.get("time", Timedelta(seconds=0.0))
 
-	if topo_time.total_seconds() == 0.0:
-		utils.compare_dataarrays(topo.steady_profile, topo.profile)
-	else:
-		profile = deepcopy(topo.steady_profile)
-		profile.values[...] = 0.0
-		utils.compare_dataarrays(profile, topo.profile)
+    if topo_time.total_seconds() == 0.0:
+        utils.compare_dataarrays(topo.steady_profile, topo.profile)
+    else:
+        profile = deepcopy(topo.steady_profile)
+        profile.values[...] = 0.0
+        utils.compare_dataarrays(profile, topo.profile)
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(hyp_st.data())
 def test_numerical_topography(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	pgrid = data.draw(utils.st_physical_horizontal_grid(), label='pgrid')
-	hb = data.draw(utils.st_horizontal_boundary(pgrid.nx, pgrid.ny), label='hb')
-	cgrid = NumericalHorizontalGrid(pgrid, hb)
-	kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label='kwargs')
+    # ========================================
+    # random data generation
+    # ========================================
+    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
+    hb = data.draw(utils.st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
+    cgrid = NumericalHorizontalGrid(pgrid, hb)
+    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
-	# ========================================
-	# test bed
-	# ========================================
-	topo_type = kwargs.pop('type')
-	ptopo = PhysicalTopography(pgrid, topo_type, **kwargs)
-	ctopo = NumericalTopography(cgrid, ptopo, hb)
+    # ========================================
+    # test bed
+    # ========================================
+    topo_type = kwargs.pop("type")
+    ptopo = PhysicalTopography(pgrid, topo_type, **kwargs)
+    ctopo = NumericalTopography(cgrid, ptopo, hb)
 
-	assert ctopo.type == topo_type
+    assert ctopo.type == topo_type
 
-	assert np.allclose(
-		ctopo.profile.values,
-		hb.get_numerical_field(ptopo.profile.values)
-	)
-	assert np.allclose(
-		ctopo.steady_profile.values,
-		hb.get_numerical_field(ptopo.steady_profile.values)
-	)
+    assert np.allclose(ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values))
+    assert np.allclose(
+        ctopo.steady_profile.values, hb.get_numerical_field(ptopo.steady_profile.values)
+    )
 
-	from tasmania.python.grids._horizontal_boundary import Relaxed
-	if isinstance(hb, Relaxed):
-		assert id(ptopo.profile.values) == id(ctopo.profile.values)
-		assert id(ptopo.steady_profile.values) == id(ctopo.steady_profile.values)
+    from tasmania.python.grids._horizontal_boundary import Relaxed
+
+    if isinstance(hb, Relaxed):
+        assert id(ptopo.profile.values) == id(ctopo.profile.values)
+        assert id(ptopo.steady_profile.values) == id(ctopo.steady_profile.values)
 
 
-if __name__ == '__main__':
-	pytest.main([__file__])
+if __name__ == "__main__":
+    pytest.main([__file__])

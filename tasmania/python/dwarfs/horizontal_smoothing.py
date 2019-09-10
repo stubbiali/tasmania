@@ -22,20 +22,20 @@
 #
 """
 This module contains:
-	HorizontalSmoothing
-	FirstOrder(HorizontalSmoothing)
-	FirstOrder{1DX, 1DY}(HorizontalSmoothing)
-	SecondOrder(HorizontalSmoothing)
-	SecondOrder{1DX, 1DY}(HorizontalSmoothing)
-	ThirdOrder(HorizontalSmoothing)
-	ThirdOrder{1DX, 1DY}(HorizontalSmoothing)
+    HorizontalSmoothing
+    FirstOrder(HorizontalSmoothing)
+    FirstOrder{1DX, 1DY}(HorizontalSmoothing)
+    SecondOrder(HorizontalSmoothing)
+    SecondOrder{1DX, 1DY}(HorizontalSmoothing)
+    ThirdOrder(HorizontalSmoothing)
+    ThirdOrder{1DX, 1DY}(HorizontalSmoothing)
 """
 import abc
 import math
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -45,9 +45,9 @@ except ImportError:
 
 class HorizontalSmoothing(abc.ABC):
     """
-	Abstract base class whose derived classes apply horizontal
-	numerical smoothing to a generic (prognostic) field.
-	"""
+    Abstract base class whose derived classes apply horizontal
+    numerical smoothing to a generic (prognostic) field.
+    """
 
     def __init__(
         self,
@@ -65,34 +65,34 @@ class HorizontalSmoothing(abc.ABC):
         rebuild,
     ):
         """
-		Parameters
-		----------
-		shape : tuple
-			Shape of the 3-D arrays which should be filtered.
-		smooth_coeff : float
-			Value for the smoothing coefficient far from the top boundary.
-		smooth_coeff_max : float
-			Maximum value for the smoothing coefficient.
-		smooth_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
-		nb : int
-			Number of boundary layers.
-		backend : str
-			TODO
-		backend_opts : dict
-			TODO
-		build_info : dict
-			TODO
-		dtype : numpy.dtype
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		exec_info : dict
-			TODO
-		halo : tuple
-			TODO
-		rebuild : bool
-			TODO
-		"""
+        Parameters
+        ----------
+        shape : tuple
+            Shape of the 3-D arrays which should be filtered.
+        smooth_coeff : float
+            Value for the smoothing coefficient far from the top boundary.
+        smooth_coeff_max : float
+            Maximum value for the smoothing coefficient.
+        smooth_damp_depth : int
+            Depth of, i.e., number of vertical regions in the damping region.
+        nb : int
+            Number of boundary layers.
+        backend : str
+            TODO
+        backend_opts : dict
+            TODO
+        build_info : dict
+            TODO
+        dtype : numpy.dtype
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : dict
+            TODO
+        halo : tuple
+            TODO
+        rebuild : bool
+            TODO
+        """
         # store input arguments needed at run-time
         self._shape = shape
         self._nb = nb
@@ -109,10 +109,8 @@ class HorizontalSmoothing(abc.ABC):
             gamma[:, :, :n] += (smooth_coeff_max - smooth_coeff) * pert
 
         # convert diffusivity to gt4py storage
-        descriptor = get_storage_descriptor(
-            shape, dtype, halo, mask=(True, True, True)
-        )  # mask=(False, False, True)
-        self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
+        self._gamma = zeros(shape, backend, dtype, halo=halo, mask=(True, True, True))
+        self._gamma[...] = gamma
 
         # initialize the underlying stencil
         decorator = gt.stencil(
@@ -123,17 +121,17 @@ class HorizontalSmoothing(abc.ABC):
     @abc.abstractmethod
     def __call__(self, phi, phi_out):
         """
-		Apply horizontal smoothing to a prognostic field.
-		As this method is marked as abstract, its implementation is
-		delegated to the derived classes.
+        Apply horizontal smoothing to a prognostic field.
+        As this method is marked as abstract, its implementation is
+        delegated to the derived classes.
 
-		Parameters
-		----------
-		phi : gridtools.storage.Storage
-			The 3-D field to filter.
-		phi_out : array_like
-			The 3-D buffer into which the filtered field is written.
-		"""
+        Parameters
+        ----------
+        phi : gridtools.storage.Storage
+            The 3-D field to filter.
+        phi_out : array_like
+            The 3-D buffer into which the filtered field is written.
+        """
         pass
 
     @staticmethod
@@ -154,49 +152,49 @@ class HorizontalSmoothing(abc.ABC):
         rebuild=False
     ):
         """
-		Static method returning an instance of the derived class
-		implementing the smoothing technique specified by :data:`smooth_type`.
+        Static method returning an instance of the derived class
+        implementing the smoothing technique specified by :data:`smooth_type`.
 
-		Parameters
-		----------
-		smooth_type : string
-			String specifying the smoothing technique to implement. Either:
+        Parameters
+        ----------
+        smooth_type : string
+            String specifying the smoothing technique to implement. Either:
 
-			* 'first_order', for first-order numerical smoothing;
-			* 'second_order', for second-order numerical smoothing;
-			* 'third_order', for third-order numerical smoothing.
+            * 'first_order', for first-order numerical smoothing;
+            * 'second_order', for second-order numerical smoothing;
+            * 'third_order', for third-order numerical smoothing.
 
-		shape : tuple
-			Shape of the 3-D arrays which should be filtered.
-		smooth_coeff : float
-			Value for the smoothing coefficient far from the top boundary.
-		smooth_coeff_max : float
-			Maximum value for the smoothing coefficient.
-		smooth_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
-		nb : `int`, optional
-			Number of boundary layers.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
+        shape : tuple
+            Shape of the 3-D arrays which should be filtered.
+        smooth_coeff : float
+            Value for the smoothing coefficient far from the top boundary.
+        smooth_coeff_max : float
+            Maximum value for the smoothing coefficient.
+        smooth_damp_depth : int
+            Depth of, i.e., number of vertical regions in the damping region.
+        nb : `int`, optional
+            Number of boundary layers.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
 
-		Return
-		------
-		obj :
-			Instance of the suitable derived class.
-		"""
+        Return
+        ------
+        obj :
+            Instance of the suitable derived class.
+        """
         args = [
             shape,
             smooth_coeff,
@@ -248,25 +246,25 @@ class HorizontalSmoothing(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         pass
 
 
 class FirstOrder(HorizontalSmoothing):
     """
-	This class inherits :class:`~tasmania.HorizontalSmoothing`
-	to apply a first-order horizontal digital filter to three-dimensional fields
-	with at least three elements along each dimension.
+    This class inherits :class:`~tasmania.HorizontalSmoothing`
+    to apply a first-order horizontal digital filter to three-dimensional fields
+    with at least three elements along each dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose dimensions
-	match those specified at instantiation time. Hence, one should use (at least)
-	one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose dimensions
+    match those specified at instantiation time. Hence, one should use (at least)
+    one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -316,16 +314,16 @@ class FirstOrder(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:nb, :] = phi.data[:nb, :]
-        phi_out.data[-nb:, :] = phi.data[-nb:, :]
-        phi_out.data[nb:-nb, :nb] = phi.data[nb:-nb, :nb]
-        phi_out.data[nb:-nb, -nb:] = phi.data[nb:-nb, -nb:]
+        phi_out[:nb, :] = phi[:nb, :]
+        phi_out[-nb:, :] = phi[-nb:, :]
+        phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
+        phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
             0, 0, 0
@@ -334,16 +332,16 @@ class FirstOrder(HorizontalSmoothing):
 
 class FirstOrder1DX(HorizontalSmoothing):
     """
-	This class inherits	:class:`~tasmania.HorizontalSmoothing`
-	to apply a first-order horizontal digital filter to three-dimensional fields
-	with only one element along the second dimension.
+    This class inherits	:class:`~tasmania.HorizontalSmoothing`
+    to apply a first-order horizontal digital filter to three-dimensional fields
+    with only one element along the second dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -393,14 +391,14 @@ class FirstOrder1DX(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:nb, :] = phi.data[:nb, :]
-        phi_out.data[-nb:, :] = phi.data[-nb:, :]
+        phi_out[:nb, :] = phi[:nb, :]
+        phi_out[-nb:, :] = phi[-nb:, :]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
             0, 0, 0
@@ -409,16 +407,16 @@ class FirstOrder1DX(HorizontalSmoothing):
 
 class FirstOrder1DY(HorizontalSmoothing):
     """
-	This class inherits :class:`~tasmania.HorizontalSmoothing`
-	to apply a first-order horizontal digital filter to three-dimensional fields
-	with only one element along the first direction.
+    This class inherits :class:`~tasmania.HorizontalSmoothing`
+    to apply a first-order horizontal digital filter to three-dimensional fields
+    with only one element along the first direction.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -468,14 +466,14 @@ class FirstOrder1DY(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:, :nb] = phi.data[:, :nb]
-        phi_out.data[:, -nb:] = phi.data[:, -nb:]
+        phi_out[:, :nb] = phi[:, :nb]
+        phi_out[:, -nb:] = phi[:, -nb:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
             0, 0, 0
@@ -484,16 +482,16 @@ class FirstOrder1DY(HorizontalSmoothing):
 
 class SecondOrder(HorizontalSmoothing):
     """
-	This class inherits	:class:`~tasmania.HorizontalSmoothing`
-	to apply a second-order horizontal digital filter to three-dimensional fields
-	with at least three elements along each dimension.
+    This class inherits	:class:`~tasmania.HorizontalSmoothing`
+    to apply a second-order horizontal digital filter to three-dimensional fields
+    with at least three elements along each dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -543,16 +541,16 @@ class SecondOrder(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:nb, :] = phi.data[:nb, :]
-        phi_out.data[-nb:, :] = phi.data[-nb:, :]
-        phi_out.data[nb:-nb, :nb] = phi.data[nb:-nb, :nb]
-        phi_out.data[nb:-nb, -nb:] = phi.data[nb:-nb, -nb:]
+        phi_out[:nb, :] = phi[:nb, :]
+        phi_out[-nb:, :] = phi[-nb:, :]
+        phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
+        phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.75 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
             0, 0, 0
@@ -570,16 +568,16 @@ class SecondOrder(HorizontalSmoothing):
 
 class SecondOrder1DX(HorizontalSmoothing):
     """
-	This class inherits	:class:`~tasmania.HorizontalSmoothing`
-	to apply a second-order horizontal digital filter to three-dimensional fields
-	with only one element along the second dimension.
+    This class inherits	:class:`~tasmania.HorizontalSmoothing`
+    to apply a second-order horizontal digital filter to three-dimensional fields
+    with only one element along the second dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -629,14 +627,14 @@ class SecondOrder1DX(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:nb, :] = phi.data[:nb, :]
-        phi_out.data[-nb:, :] = phi.data[-nb:, :]
+        phi_out[:nb, :] = phi[:nb, :]
+        phi_out[-nb:, :] = phi[-nb:, :]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
             0, 0, 0
@@ -650,16 +648,16 @@ class SecondOrder1DX(HorizontalSmoothing):
 
 class SecondOrder1DY(HorizontalSmoothing):
     """
-	This class inherits	:class:`~tasmania.HorizontalSmoothing`
-	to apply a second-order horizontal digital filter to three-dimensional fields
-	with only one element along the first dimension.
+    This class inherits	:class:`~tasmania.HorizontalSmoothing`
+    to apply a second-order horizontal digital filter to three-dimensional fields
+    with only one element along the first dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -709,14 +707,14 @@ class SecondOrder1DY(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:, :nb] = phi.data[:, :nb]
-        phi_out.data[:, -nb:] = phi.data[:, -nb:]
+        phi_out[:, :nb] = phi[:, :nb]
+        phi_out[:, -nb:] = phi[:, -nb:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
             0, 0, 0
@@ -730,16 +728,16 @@ class SecondOrder1DY(HorizontalSmoothing):
 
 class ThirdOrder(HorizontalSmoothing):
     """
-	This class inherits :class:`~tasmania.HorizontalSmoothing`
-	to apply a third-order horizontal digital filter to three-dimensional fields
-	with at least three elements along each dimension.
+    This class inherits :class:`~tasmania.HorizontalSmoothing`
+    to apply a third-order horizontal digital filter to three-dimensional fields
+    with at least three elements along each dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -789,16 +787,16 @@ class ThirdOrder(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:nb, :] = phi.data[:nb, :]
-        phi_out.data[-nb:, :] = phi.data[-nb:, :]
-        phi_out.data[nb:-nb, :nb] = phi.data[nb:-nb, :nb]
-        phi_out.data[nb:-nb, -nb:] = phi.data[nb:-nb, -nb:]
+        phi_out[:nb, :] = phi[:nb, :]
+        phi_out[-nb:, :] = phi[-nb:, :]
+        phi_out[nb:-nb, :nb] = phi[nb:-nb, :nb]
+        phi_out[nb:-nb, -nb:] = phi[nb:-nb, -nb:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.625 * in_gamma[0, 0, 0]) * in_phi[
             0, 0, 0
@@ -820,16 +818,16 @@ class ThirdOrder(HorizontalSmoothing):
 
 class ThirdOrder1DX(HorizontalSmoothing):
     """
-	This class inherits :class:`~tasmania.HorizontalSmoothing`
-	to apply a third-order horizontal digital filter to three-dimensional fields
-	with only one element along the second dimension.
+    This class inherits :class:`~tasmania.HorizontalSmoothing`
+    to apply a third-order horizontal digital filter to three-dimensional fields
+    with only one element along the second dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -879,14 +877,14 @@ class ThirdOrder1DX(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:nb, :] = phi.data[:nb, :]
-        phi_out.data[-nb:, :] = phi.data[-nb:, :]
+        phi_out[:nb, :] = phi[:nb, :]
+        phi_out[-nb:, :] = phi[-nb:, :]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
             0, 0, 0
@@ -902,16 +900,16 @@ class ThirdOrder1DX(HorizontalSmoothing):
 
 class ThirdOrder1DY(HorizontalSmoothing):
     """
-	This class inherits	:class:`~tasmania.HorizontalSmoothing`
-	to apply a third-order horizontal digital filter to three-dimensional fields
-	with only one element along the first dimension.
+    This class inherits	:class:`~tasmania.HorizontalSmoothing`
+    to apply a third-order horizontal digital filter to three-dimensional fields
+    with only one element along the first dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -961,14 +959,14 @@ class ThirdOrder1DY(HorizontalSmoothing):
 
         # set the outermost lateral layers of the output field,
         # not affected by the stencil
-        phi_out.data[:, :nb] = phi.data[:, :nb]
-        phi_out.data[:, -nb:] = phi.data[:, -nb:]
+        phi_out[:, :nb] = phi[:, :nb]
+        phi_out[:, -nb:] = phi[:, -nb:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_ijk_sd,
+        in_phi: gt.storage.f64_sd,
         in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_ijk_sd,
+        out_phi: gt.storage.f64_sd,
     ):
         out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
             0, 0, 0

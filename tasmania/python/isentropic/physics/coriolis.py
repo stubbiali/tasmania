@@ -31,21 +31,32 @@ from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 class IsentropicConservativeCoriolis(TendencyComponent):
-	"""
+    """
 	Calculate the Coriolis forcing term for the isentropic velocity momenta.
 	"""
-	def __init__(
-		self, domain, grid_type='numerical', coriolis_parameter=None, *,
-		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
-		exec_info=None, halo=None, rebuild=False, **kwargs
-	):
-		"""
+
+    def __init__(
+        self,
+        domain,
+        grid_type="numerical",
+        coriolis_parameter=None,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -77,86 +88,92 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.TendencyComponent`.
 		"""
-		super().__init__(domain, grid_type, **kwargs)
+        super().__init__(domain, grid_type, **kwargs)
 
-		self._nb = self.horizontal_boundary.nb if grid_type == 'numerical' else 0
-		self._exec_info = exec_info
+        self._nb = self.horizontal_boundary.nb if grid_type == "numerical" else 0
+        self._exec_info = exec_info
 
-		self._f = coriolis_parameter.to_units('rad s^-1').values.item() \
-			if coriolis_parameter is not None else 1e-4
+        self._f = (
+            coriolis_parameter.to_units("rad s^-1").values.item()
+            if coriolis_parameter is not None
+            else 1e-4
+        )
 
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
-		self._in_su = gt.storage.zeros(descriptor, backend=backend)
-		self._in_sv = gt.storage.zeros(descriptor, backend=backend)
-		self._tnd_su = gt.storage.zeros(descriptor, backend=backend)
-		self._tnd_sv = gt.storage.zeros(descriptor, backend=backend)
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
+        self._in_su = gt.storage.zeros(descriptor, backend=backend)
+        self._in_sv = gt.storage.zeros(descriptor, backend=backend)
+        self._tnd_su = gt.storage.zeros(descriptor, backend=backend)
+        self._tnd_sv = gt.storage.zeros(descriptor, backend=backend)
 
-		decorator = gt.stencil(
-			backend, backend_opts=backend_opts, build_info=build_info,
-			rebuild=rebuild
-		)
-		self._stencil = decorator(self._stencil_defs)
+        decorator = gt.stencil(
+            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        )
+        self._stencil = decorator(self._stencil_defs)
 
-	@property
-	def input_properties(self):
-		g = self.grid
-		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+    @property
+    def input_properties(self):
+        g = self.grid
+        dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
-		return_dict = {
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-		}
+        return_dict = {
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+        }
 
-		return return_dict
+        return return_dict
 
-	@property
-	def tendency_properties(self):
-		g = self.grid
-		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+    @property
+    def tendency_properties(self):
+        g = self.grid
+        dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
-		return_dict = {
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
-		}
+        return_dict = {
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+        }
 
-		return return_dict
+        return return_dict
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-	def array_call(self, state):
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		nb = self._nb
+    def array_call(self, state):
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        nb = self._nb
 
-		self._in_su.data[...] = state['x_momentum_isentropic'][...]
-		self._in_sv.data[...] = state['y_momentum_isentropic'][...]
+        self._in_su.data[...] = state["x_momentum_isentropic"][...]
+        self._in_sv.data[...] = state["y_momentum_isentropic"][...]
 
-		self._stencil(
-			in_su=self._in_su, in_sv=self._in_sv,
-			tnd_su=self._tnd_su, tnd_sv=self._tnd_sv, f=self._f,
-			origin={'_all_': (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
-			exec_info=self._exec_info
-		)
+        self._stencil(
+            in_su=self._in_su,
+            in_sv=self._in_sv,
+            tnd_su=self._tnd_su,
+            tnd_sv=self._tnd_sv,
+            f=self._f,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+            exec_info=self._exec_info,
+        )
 
-		tendencies = {
-			'x_momentum_isentropic': self._tnd_su.data,
-			'y_momentum_isentropic': self._tnd_sv.data,
-		}
+        tendencies = {
+            "x_momentum_isentropic": self._tnd_su.data,
+            "y_momentum_isentropic": self._tnd_sv.data,
+        }
 
-		diagnostics = {}
+        diagnostics = {}
 
-		return tendencies, diagnostics
+        return tendencies, diagnostics
 
-	@staticmethod
-	def _stencil_defs(
-		in_su: gt.storage.f64_sd,
-		in_sv: gt.storage.f64_sd,
-		tnd_su: gt.storage.f64_sd,
-		tnd_sv: gt.storage.f64_sd,
-		*,
-		f: float
-	):
-		tnd_su = f * in_sv[0, 0, 0]
-		tnd_sv = - f * in_su[0, 0, 0]
+    @staticmethod
+    def _stencil_defs(
+        in_su: gt.storage.f64_sd,
+        in_sv: gt.storage.f64_sd,
+        tnd_su: gt.storage.f64_sd,
+        tnd_sv: gt.storage.f64_sd,
+        *,
+        f: float
+    ):
+        tnd_su = f * in_sv[0, 0, 0]
+        tnd_sv = -f * in_su[0, 0, 0]

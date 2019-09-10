@@ -30,37 +30,49 @@ from sympl import DataArray
 
 import gridtools as gt
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.isentropic.dynamics.vertical_fluxes import \
-	IsentropicMinimalVerticalFlux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import (
+    IsentropicMinimalVerticalFlux,
+)
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+mfwv = "mass_fraction_of_water_vapor_in_air"
+mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
+mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class IsentropicVerticalAdvection(TendencyComponent):
-	"""
+    """
 	This class inherits :class:`tasmania.TendencyComponent` to calculate
 	the vertical derivative of the conservative vertical advection flux
 	in isentropic coordinates for any prognostic variable included in
 	the isentropic model. The class is always instantiated over the
 	numerical grid of the underlying domain.
 	"""
-	def __init__(
-		self, domain, flux_scheme='upwind', moist=False,
-		tendency_of_air_potential_temperature_on_interface_levels=False, *,
-		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
-		exec_info=None, halo=None, rebuild=False, **kwargs
-	):
-		"""
+
+    def __init__(
+        self,
+        domain,
+        flux_scheme="upwind",
+        moist=False,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -94,298 +106,371 @@ class IsentropicVerticalAdvection(TendencyComponent):
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`~tasmania.TendencyComponent`.
 		"""
-		# keep track of the input arguments needed at run-time
-		self._moist = moist
-		self._stgz = tendency_of_air_potential_temperature_on_interface_levels
-		self._exec_info = exec_info
+        # keep track of the input arguments needed at run-time
+        self._moist = moist
+        self._stgz = tendency_of_air_potential_temperature_on_interface_levels
+        self._exec_info = exec_info
 
-		# call parent's constructor
-		super().__init__(domain, 'numerical', **kwargs)
+        # call parent's constructor
+        super().__init__(domain, "numerical", **kwargs)
 
-		# instantiate the object calculating the flux
-		self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme)
+        # instantiate the object calculating the flux
+        self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme)
 
-		# allocate the gt4py storages collecting the stencil inputs
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		descriptor = get_storage_descriptor((nx, ny, nz+1), dtype, halo=halo)
-		self._in_w  = gt.storage.zeros(descriptor, backend=backend)
-		self._in_s  = gt.storage.zeros(descriptor, backend=backend)
-		self._in_su = gt.storage.zeros(descriptor, backend=backend)
-		self._in_sv = gt.storage.zeros(descriptor, backend=backend)
-		if moist:
-			self._in_qv = gt.storage.zeros(descriptor, backend=backend)
-			self._in_qc = gt.storage.zeros(descriptor, backend=backend)
-			self._in_qr = gt.storage.zeros(descriptor, backend=backend)
+        # allocate the gt4py storages collecting the stencil inputs
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        descriptor = get_storage_descriptor((nx, ny, nz + 1), dtype, halo=halo)
+        self._in_w = gt.storage.zeros(descriptor, backend=backend)
+        self._in_s = gt.storage.zeros(descriptor, backend=backend)
+        self._in_su = gt.storage.zeros(descriptor, backend=backend)
+        self._in_sv = gt.storage.zeros(descriptor, backend=backend)
+        if moist:
+            self._in_qv = gt.storage.zeros(descriptor, backend=backend)
+            self._in_qc = gt.storage.zeros(descriptor, backend=backend)
+            self._in_qr = gt.storage.zeros(descriptor, backend=backend)
 
-		# allocate the gt4py storages collecting the stencil outputs
-		self._out_s  = gt.storage.zeros(descriptor, backend=backend)
-		self._out_su = gt.storage.zeros(descriptor, backend=backend)
-		self._out_sv = gt.storage.zeros(descriptor, backend=backend)
-		if moist:
-			self._out_qv = gt.storage.zeros(descriptor, backend=backend)
-			self._out_qc = gt.storage.zeros(descriptor, backend=backend)
-			self._out_qr = gt.storage.zeros(descriptor, backend=backend)
+        # allocate the gt4py storages collecting the stencil outputs
+        self._out_s = gt.storage.zeros(descriptor, backend=backend)
+        self._out_su = gt.storage.zeros(descriptor, backend=backend)
+        self._out_sv = gt.storage.zeros(descriptor, backend=backend)
+        if moist:
+            self._out_qv = gt.storage.zeros(descriptor, backend=backend)
+            self._out_qc = gt.storage.zeros(descriptor, backend=backend)
+            self._out_qr = gt.storage.zeros(descriptor, backend=backend)
 
-		# instantiate the underlying stencil object
-		externals = self._vflux.externals.copy()
-		externals.update({
-			'moist': moist, 'vflux': self._vflux.__call__,
-			'vstaggering': self._stgz
-		})
-		decorator = gt.stencil(
-			backend, backend_opts=backend_opts, build_info=build_info,
-			externals=externals, min_signature=True, rebuild=rebuild
-		)
-		self._stencil = decorator(self._stencil_defs)
+        # instantiate the underlying stencil object
+        externals = self._vflux.externals.copy()
+        externals.update(
+            {"moist": moist, "vflux": self._vflux.__call__, "vstaggering": self._stgz}
+        )
+        decorator = gt.stencil(
+            backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            externals=externals,
+            min_signature=True,
+            rebuild=rebuild,
+        )
+        self._stencil = decorator(self._stencil_defs)
 
-	@property
-	def input_properties(self):
-		grid = self.grid
-		dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
+    @property
+    def input_properties(self):
+        grid = self.grid
+        dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
-		return_dict = {
-			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-		}
+        return_dict = {
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+        }
 
-		if self._stgz:
-			dims_stgz = (
-				grid.x.dims[0], grid.y.dims[0], grid.z_on_interface_levels.dims[0]
-			)
-			return_dict['tendency_of_air_potential_temperature_on_interface_levels'] = \
-				{'dims': dims_stgz, 'units': 'K s^-1'}
-		else:
-			return_dict['tendency_of_air_potential_temperature'] = \
-				{'dims': dims, 'units': 'K s^-1'}
+        if self._stgz:
+            dims_stgz = (
+                grid.x.dims[0],
+                grid.y.dims[0],
+                grid.z_on_interface_levels.dims[0],
+            )
+            return_dict["tendency_of_air_potential_temperature_on_interface_levels"] = {
+                "dims": dims_stgz,
+                "units": "K s^-1",
+            }
+        else:
+            return_dict["tendency_of_air_potential_temperature"] = {
+                "dims": dims,
+                "units": "K s^-1",
+            }
 
-		if self._moist:
-			return_dict['mass_fraction_of_water_vapor_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1'}
-			return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1'}
-			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1'}
+        if self._moist:
+            return_dict["mass_fraction_of_water_vapor_in_air"] = {
+                "dims": dims,
+                "units": "g g^-1",
+            }
+            return_dict["mass_fraction_of_cloud_liquid_water_in_air"] = {
+                "dims": dims,
+                "units": "g g^-1",
+            }
+            return_dict["mass_fraction_of_precipitation_water_in_air"] = {
+                "dims": dims,
+                "units": "g g^-1",
+            }
 
-		return return_dict
+        return return_dict
 
-	@property
-	def tendency_properties(self):
-		grid = self.grid
-		dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
+    @property
+    def tendency_properties(self):
+        grid = self.grid
+        dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
-		return_dict = {
-			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1 s^-1'},
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
-		}
-		if self._moist:
-			return_dict['mass_fraction_of_water_vapor_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['mass_fraction_of_cloud_liquid_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1 s^-1'}
-			return_dict['mass_fraction_of_precipitation_water_in_air'] = \
-				{'dims': dims, 'units': 'g g^-1 s^-1'}
+        return_dict = {
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+        }
+        if self._moist:
+            return_dict["mass_fraction_of_water_vapor_in_air"] = {
+                "dims": dims,
+                "units": "g g^-1 s^-1",
+            }
+            return_dict["mass_fraction_of_cloud_liquid_water_in_air"] = {
+                "dims": dims,
+                "units": "g g^-1 s^-1",
+            }
+            return_dict["mass_fraction_of_precipitation_water_in_air"] = {
+                "dims": dims,
+                "units": "g g^-1 s^-1",
+            }
 
-		return return_dict
+        return return_dict
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-	def array_call(self, state):
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		dz = self.grid.dz.to_units('K').values.item()
-		nb = self._vflux.extent
+    def array_call(self, state):
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        dz = self.grid.dz.to_units("K").values.item()
+        nb = self._vflux.extent
 
-		# set the stencil's inputs
-		self._stencil_set_inputs(state)
+        # set the stencil's inputs
+        self._stencil_set_inputs(state)
 
-		# set the stencil's arguments
-		stencil_args = {
-			'dz': dz,
-			'in_w': self._in_w,
-			'in_s': self._in_s,
-			'out_s': self._out_s,
-			'in_su': self._in_su,
-			'out_su': self._out_su,
-			'in_sv': self._in_sv,
-			'out_sv': self._out_sv,
-		}
-		if self._moist:
-			stencil_args.update({
-				'in_qv': self._in_qv,
-				'out_qv': self._out_qv,
-				'in_qc': self._in_qc,
-				'out_qc': self._out_qc,
-				'in_qr': self._in_qr,
-				'out_qr': self._out_qr,
-			})
+        # set the stencil's arguments
+        stencil_args = {
+            "dz": dz,
+            "in_w": self._in_w,
+            "in_s": self._in_s,
+            "out_s": self._out_s,
+            "in_su": self._in_su,
+            "out_su": self._out_su,
+            "in_sv": self._in_sv,
+            "out_sv": self._out_sv,
+        }
+        if self._moist:
+            stencil_args.update(
+                {
+                    "in_qv": self._in_qv,
+                    "out_qv": self._out_qv,
+                    "in_qc": self._in_qc,
+                    "out_qc": self._out_qc,
+                    "in_qr": self._in_qr,
+                    "out_qr": self._out_qr,
+                }
+            )
 
-		# run the stencil
-		self._stencil(
-			**stencil_args, origin={'_all_': (0, 0, nb)}, domain=(nx, ny, nz-2*nb),
-			exec_info=self._exec_info
-		)
+        # run the stencil
+        self._stencil(
+            **stencil_args,
+            origin={"_all_": (0, 0, nb)},
+            domain=(nx, ny, nz - 2 * nb),
+            exec_info=self._exec_info
+        )
 
-		# set lower layers
-		self._set_lower_layers()
+        # set lower layers
+        self._set_lower_layers()
 
-		# collect the output arrays in a dictionary
-		tendencies = {
-			'air_isentropic_density': self._out_s.data[:, :, :nz],
-			'x_momentum_isentropic': self._out_su.data[:, :, :nz],
-			'y_momentum_isentropic': self._out_sv.data[:, :, :nz],
-		}
-		if self._moist:
-			tendencies[mfwv] = self._out_qv.data[:, :, :nz]
-			tendencies[mfcw] = self._out_qc.data[:, :, :nz]
-			tendencies[mfpw] = self._out_qr.data[:, :, :nz]
+        # collect the output arrays in a dictionary
+        tendencies = {
+            "air_isentropic_density": self._out_s.data[:, :, :nz],
+            "x_momentum_isentropic": self._out_su.data[:, :, :nz],
+            "y_momentum_isentropic": self._out_sv.data[:, :, :nz],
+        }
+        if self._moist:
+            tendencies[mfwv] = self._out_qv.data[:, :, :nz]
+            tendencies[mfcw] = self._out_qc.data[:, :, :nz]
+            tendencies[mfpw] = self._out_qr.data[:, :, :nz]
 
-		return tendencies, {}
+        return tendencies, {}
 
-	def _stencil_set_inputs(self, state):
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+    def _stencil_set_inputs(self, state):
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-		if self._stgz:
-			self._in_w.data[...] = \
-				state['tendency_of_air_potential_temperature_on_interface_levels'][...]
-		else:
-			self._in_w.data[:, :, :nz] = state['tendency_of_air_potential_temperature'][...]
+        if self._stgz:
+            self._in_w.data[...] = state[
+                "tendency_of_air_potential_temperature_on_interface_levels"
+            ][...]
+        else:
+            self._in_w.data[:, :, :nz] = state["tendency_of_air_potential_temperature"][
+                ...
+            ]
 
-		self._in_s.data[:, :, :nz]  = state['air_isentropic_density'][...]
-		self._in_su.data[:, :, :nz] = state['x_momentum_isentropic'][...]
-		self._in_sv.data[:, :, :nz] = state['y_momentum_isentropic'][...]
+        self._in_s.data[:, :, :nz] = state["air_isentropic_density"][...]
+        self._in_su.data[:, :, :nz] = state["x_momentum_isentropic"][...]
+        self._in_sv.data[:, :, :nz] = state["y_momentum_isentropic"][...]
 
-		if self._moist:
-			self._in_qv.data[:, :, :nz] = state[mfwv][...]
-			self._in_qc.data[:, :, :nz] = state[mfcw][...]
-			self._in_qr.data[:, :, :nz] = state[mfpw][...]
+        if self._moist:
+            self._in_qv.data[:, :, :nz] = state[mfwv][...]
+            self._in_qc.data[:, :, :nz] = state[mfcw][...]
+            self._in_qr.data[:, :, :nz] = state[mfpw][...]
 
-	@staticmethod
-	def _stencil_defs(
-		in_w: gt.storage.f64_sd,
-		in_s: gt.storage.f64_sd,
-		in_su: gt.storage.f64_sd,
-		in_sv: gt.storage.f64_sd,
-		in_qv: gt.storage.f64_sd,
-		in_qc: gt.storage.f64_sd,
-		in_qr: gt.storage.f64_sd,
-		out_s: gt.storage.f64_sd,
-		out_su: gt.storage.f64_sd,
-		out_sv: gt.storage.f64_sd,
-		out_qv: gt.storage.f64_sd,
-		out_qc: gt.storage.f64_sd,
-		out_qr: gt.storage.f64_sd,
-		*,
-		dz: float
-	):
-		if vstaggering:
-			w = in_w[0, 0, 0]
-		else:
-			w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
+    @staticmethod
+    def _stencil_defs(
+        in_w: gt.storage.f64_sd,
+        in_s: gt.storage.f64_sd,
+        in_su: gt.storage.f64_sd,
+        in_sv: gt.storage.f64_sd,
+        in_qv: gt.storage.f64_sd,
+        in_qc: gt.storage.f64_sd,
+        in_qr: gt.storage.f64_sd,
+        out_s: gt.storage.f64_sd,
+        out_su: gt.storage.f64_sd,
+        out_sv: gt.storage.f64_sd,
+        out_qv: gt.storage.f64_sd,
+        out_qc: gt.storage.f64_sd,
+        out_qr: gt.storage.f64_sd,
+        *,
+        dz: float
+    ):
+        if vstaggering:
+            w = in_w[0, 0, 0]
+        else:
+            w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
-		if not moist:
-			flux_s, flux_su, flux_sv = \
-				vflux(dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv)
-		else:
-			sqv = in_s[0, 0, 0] * in_qv[0, 0, 0]
-			sqc = in_s[0, 0, 0] * in_qc[0, 0, 0]
-			sqr = in_s[0, 0, 0] * in_qr[0, 0, 0]
-			flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = \
-				vflux(
-					dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv,
-					sqv=sqv, sqc=sqc, sqr=sqr
-				)
+        if not moist:
+            flux_s, flux_su, flux_sv = vflux(
+                dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
+            )
+        else:
+            sqv = in_s[0, 0, 0] * in_qv[0, 0, 0]
+            sqc = in_s[0, 0, 0] * in_qc[0, 0, 0]
+            sqr = in_s[0, 0, 0] * in_qr[0, 0, 0]
+            flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = vflux(
+                dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv, sqv=sqv, sqc=sqc, sqr=sqr
+            )
 
-		out_s  = (flux_s[0, 0, 1]  - flux_s[0, 0, 0] ) / dz
-		out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
-		out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
-		if moist:
-			out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-			out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-			out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
+        out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
+        out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
+        out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
+        if moist:
+            out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
+            out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
+            out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
 
-	def _set_lower_layers(self):
-		nz = self.grid.nz
-		dz = self.grid.dz.to_units('K').values.item()
-		nb, order = self._vflux.extent, self._vflux.order
+    def _set_lower_layers(self):
+        nz = self.grid.nz
+        dz = self.grid.dz.to_units("K").values.item()
+        nb, order = self._vflux.extent, self._vflux.order
 
-		w = self._in_w.data[:, :, :nz] if not self._stgz \
-			else 0.5 * (self._in_w.data[:, :, -nb-2:] + self._in_w.data[:, :, -nb-3:-1])
+        w = (
+            self._in_w.data[:, :, :nz]
+            if not self._stgz
+            else 0.5
+            * (self._in_w.data[:, :, -nb - 2 :] + self._in_w.data[:, :, -nb - 3 : -1])
+        )
 
-		s  = self._in_s.data[:, :, :nz]
-		su = self._in_su.data[:, :, :nz]
-		sv = self._in_sv.data[:, :, :nz]
-		if self._moist:
-			qv = self._in_qv.data[:, :, :nz]
-			qc = self._in_qc.data[:, :, :nz]
-			qr = self._in_qr.data[:, :, :nz]
+        s = self._in_s.data[:, :, :nz]
+        su = self._in_su.data[:, :, :nz]
+        sv = self._in_sv.data[:, :, :nz]
+        if self._moist:
+            qv = self._in_qv.data[:, :, :nz]
+            qc = self._in_qc.data[:, :, :nz]
+            qr = self._in_qr.data[:, :, :nz]
 
-		if order == 1:
-			self._out_s.data[:, :, nz-nb:nz] = (
-				w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] -
-				w[:, :, -nb:    ] * s[:, :, -nb:    ]
-			) / dz
-			self._out_su.data[:, :, nz-nb:nz] = (
-				w[:, :, -nb-1:-1] * su[:, :, -nb-1:-1] -
-				w[:, :, -nb:    ] * su[:, :, -nb:    ]
-			) / dz
-			self._out_sv.data[:, :, nz-nb:nz] = (
-				w[:, :, -nb-1:-1] * sv[:, :, -nb-1:-1] -
-				w[:, :, -nb:    ] * sv[:, :, -nb:    ]
-			) / dz
+        if order == 1:
+            self._out_s.data[:, :, nz - nb : nz] = (
+                w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1]
+                - w[:, :, -nb:] * s[:, :, -nb:]
+            ) / dz
+            self._out_su.data[:, :, nz - nb : nz] = (
+                w[:, :, -nb - 1 : -1] * su[:, :, -nb - 1 : -1]
+                - w[:, :, -nb:] * su[:, :, -nb:]
+            ) / dz
+            self._out_sv.data[:, :, nz - nb : nz] = (
+                w[:, :, -nb - 1 : -1] * sv[:, :, -nb - 1 : -1]
+                - w[:, :, -nb:] * sv[:, :, -nb:]
+            ) / dz
 
-			if self._moist:
-				self._out_qv.data[:, :, nz-nb:nz] = (
-					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qv[:, :, -nb-1:-1] -
-					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qv[:, :, -nb:    ]
-				) / (dz * s[:, :, -nb:])
-				self._out_qc.data[:, :, nz-nb:nz] = (
-					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qc[:, :, -nb-1:-1] -
-					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qc[:, :, -nb:    ]
-				) / (dz * s[:, :, -nb:])
-				self._out_qr.data[:, :, nz-nb:nz] = (
-					w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qr[:, :, -nb-1:-1] -
-					w[:, :, -nb:    ] * s[:, :, -nb:    ] * qr[:, :, -nb:    ]
-				) / (dz * s[:, :, -nb:])
-		else:
-			self._out_s.data[:, :, nz-nb:nz] = 0.5 * (
-				- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ]
-				+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1]
-				- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2]
-			) / dz
-			self._out_su.data[:, :, nz-nb:nz] = 0.5 * (
-				- 3.0 * w[:, :, -nb:    ] * su[:, :, -nb:    ]
-				+ 4.0 * w[:, :, -nb-1:-1] * su[:, :, -nb-1:-1]
-				- 1.0 * w[:, :, -nb-2:-2] * su[:, :, -nb-2:-2]
-			) / dz
-			self._out_sv.data[:, :, nz-nb:nz] = 0.5 * (
-				- 3.0 * w[:, :, -nb:    ] * sv[:, :, -nb:    ]
-				+ 4.0 * w[:, :, -nb-1:-1] * sv[:, :, -nb-1:-1]
-				- 1.0 * w[:, :, -nb-2:-2] * sv[:, :, -nb-2:-2]
-			) / dz
+            if self._moist:
+                self._out_qv.data[:, :, nz - nb : nz] = (
+                    w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1] * qv[:, :, -nb - 1 : -1]
+                    - w[:, :, -nb:] * s[:, :, -nb:] * qv[:, :, -nb:]
+                ) / (dz * s[:, :, -nb:])
+                self._out_qc.data[:, :, nz - nb : nz] = (
+                    w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1] * qc[:, :, -nb - 1 : -1]
+                    - w[:, :, -nb:] * s[:, :, -nb:] * qc[:, :, -nb:]
+                ) / (dz * s[:, :, -nb:])
+                self._out_qr.data[:, :, nz - nb : nz] = (
+                    w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1] * qr[:, :, -nb - 1 : -1]
+                    - w[:, :, -nb:] * s[:, :, -nb:] * qr[:, :, -nb:]
+                ) / (dz * s[:, :, -nb:])
+        else:
+            self._out_s.data[:, :, nz - nb : nz] = (
+                0.5
+                * (
+                    -3.0 * w[:, :, -nb:] * s[:, :, -nb:]
+                    + 4.0 * w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1]
+                    - 1.0 * w[:, :, -nb - 2 : -2] * s[:, :, -nb - 2 : -2]
+                )
+                / dz
+            )
+            self._out_su.data[:, :, nz - nb : nz] = (
+                0.5
+                * (
+                    -3.0 * w[:, :, -nb:] * su[:, :, -nb:]
+                    + 4.0 * w[:, :, -nb - 1 : -1] * su[:, :, -nb - 1 : -1]
+                    - 1.0 * w[:, :, -nb - 2 : -2] * su[:, :, -nb - 2 : -2]
+                )
+                / dz
+            )
+            self._out_sv.data[:, :, nz - nb : nz] = (
+                0.5
+                * (
+                    -3.0 * w[:, :, -nb:] * sv[:, :, -nb:]
+                    + 4.0 * w[:, :, -nb - 1 : -1] * sv[:, :, -nb - 1 : -1]
+                    - 1.0 * w[:, :, -nb - 2 : -2] * sv[:, :, -nb - 2 : -2]
+                )
+                / dz
+            )
 
-			if self._moist:
-				self._out_qv.data[:, :, nz-nb:nz] = 0.5 * (
-					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qv[:, :, -nb:    ]
-					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qv[:, :, -nb-1:-1]
-					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qv[:, :, -nb-2:-2]
-				) / (dz * s[:, :, -nb:])
-				self._out_qc.data[:, :, nz-nb:nz] = 0.5 * (
-					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qc[:, :, -nb:    ]
-					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qc[:, :, -nb-1:-1]
-					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qc[:, :, -nb-2:-2]
-				) / (dz * s[:, :, -nb:])
-				self._out_qr.data[:, :, nz-nb:nz] = 0.5 * (
-					- 3.0 * w[:, :, -nb:    ] * s[:, :, -nb:    ] * qr[:, :, -nb:    ]
-					+ 4.0 * w[:, :, -nb-1:-1] * s[:, :, -nb-1:-1] * qr[:, :, -nb-1:-1]
-					- 1.0 * w[:, :, -nb-2:-2] * s[:, :, -nb-2:-2] * qr[:, :, -nb-2:-2]
-				) / (dz * s[:, :, -nb:])
+            if self._moist:
+                self._out_qv.data[:, :, nz - nb : nz] = (
+                    0.5
+                    * (
+                        -3.0 * w[:, :, -nb:] * s[:, :, -nb:] * qv[:, :, -nb:]
+                        + 4.0
+                        * w[:, :, -nb - 1 : -1]
+                        * s[:, :, -nb - 1 : -1]
+                        * qv[:, :, -nb - 1 : -1]
+                        - 1.0
+                        * w[:, :, -nb - 2 : -2]
+                        * s[:, :, -nb - 2 : -2]
+                        * qv[:, :, -nb - 2 : -2]
+                    )
+                    / (dz * s[:, :, -nb:])
+                )
+                self._out_qc.data[:, :, nz - nb : nz] = (
+                    0.5
+                    * (
+                        -3.0 * w[:, :, -nb:] * s[:, :, -nb:] * qc[:, :, -nb:]
+                        + 4.0
+                        * w[:, :, -nb - 1 : -1]
+                        * s[:, :, -nb - 1 : -1]
+                        * qc[:, :, -nb - 1 : -1]
+                        - 1.0
+                        * w[:, :, -nb - 2 : -2]
+                        * s[:, :, -nb - 2 : -2]
+                        * qc[:, :, -nb - 2 : -2]
+                    )
+                    / (dz * s[:, :, -nb:])
+                )
+                self._out_qr.data[:, :, nz - nb : nz] = (
+                    0.5
+                    * (
+                        -3.0 * w[:, :, -nb:] * s[:, :, -nb:] * qr[:, :, -nb:]
+                        + 4.0
+                        * w[:, :, -nb - 1 : -1]
+                        * s[:, :, -nb - 1 : -1]
+                        * qr[:, :, -nb - 1 : -1]
+                        - 1.0
+                        * w[:, :, -nb - 2 : -2]
+                        * s[:, :, -nb - 2 : -2]
+                        * qr[:, :, -nb - 2 : -2]
+                    )
+                    / (dz * s[:, :, -nb:])
+                )
 
 
 class PrescribedSurfaceHeating(TendencyComponent):
-	"""
+    """
 	Calculate the variation in air potential temperature as prescribed
 	in the reference paper, namely
 
@@ -411,27 +496,36 @@ class PrescribedSurfaceHeating(TendencyComponent):
 		Thermally forced low Froude number flow past three-dimensional obstacles. \
 		*Journal of Atmospheric Sciences*, *51*(1):117-133.
 	"""
-	# Default values for the physical constants used in the class
-	_d_physical_constants = {
-		'gas_constant_of_dry_air':
-			DataArray(287.0, attrs={'units': 'J K^-1 kg^-1'}),
-		'specific_heat_of_dry_air_at_constant_pressure':
-			DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
-	}
 
-	def __init__(
-		self, domain,
-		tendency_of_air_potential_temperature_in_diagnostics=False,
-		tendency_of_air_potential_temperature_on_interface_levels=False,
-		air_pressure_on_interface_levels=True,
-		amplitude_at_day_sw=None, amplitude_at_day_fw=None, 
-		amplitude_at_night_sw=None, amplitude_at_night_fw=None,
-		frequency_sw=None, frequency_fw=None,
-		attenuation_coefficient_at_day=None,
-		attenuation_coefficient_at_night=None,
-		characteristic_length=None, starting_time=None,
-		backend='numpy', physical_constants=None, **kwargs):
-		"""
+    # Default values for the physical constants used in the class
+    _d_physical_constants = {
+        "gas_constant_of_dry_air": DataArray(287.0, attrs={"units": "J K^-1 kg^-1"}),
+        "specific_heat_of_dry_air_at_constant_pressure": DataArray(
+            1004.0, attrs={"units": "J K^-1 kg^-1"}
+        ),
+    }
+
+    def __init__(
+        self,
+        domain,
+        tendency_of_air_potential_temperature_in_diagnostics=False,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        air_pressure_on_interface_levels=True,
+        amplitude_at_day_sw=None,
+        amplitude_at_day_fw=None,
+        amplitude_at_night_sw=None,
+        amplitude_at_night_fw=None,
+        frequency_sw=None,
+        frequency_fw=None,
+        attenuation_coefficient_at_day=None,
+        attenuation_coefficient_at_night=None,
+        characteristic_length=None,
+        starting_time=None,
+        backend="numpy",
+        physical_constants=None,
+        **kwargs
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -494,143 +588,193 @@ class PrescribedSurfaceHeating(TendencyComponent):
 			Additional keyword arguments to be directly forwarded to the parent
 			:class:`sympl.TendencyComponent`.
 		"""
-		self._tid = tendency_of_air_potential_temperature_in_diagnostics
-		self._apil = air_pressure_on_interface_levels
-		self._aptil = tendency_of_air_potential_temperature_on_interface_levels \
-			and air_pressure_on_interface_levels
-		self._backend = backend
+        self._tid = tendency_of_air_potential_temperature_in_diagnostics
+        self._apil = air_pressure_on_interface_levels
+        self._aptil = (
+            tendency_of_air_potential_temperature_on_interface_levels
+            and air_pressure_on_interface_levels
+        )
+        self._backend = backend
 
-		super().__init__(domain, 'numerical', **kwargs)
+        super().__init__(domain, "numerical", **kwargs)
 
-		self._f0d_sw = amplitude_at_day_sw.to_units('W m^-2').values.item() \
-			if amplitude_at_day_sw is not None else 800.0
-		self._f0d_fw = amplitude_at_day_fw.to_units('W m^-2').values.item() \
-			if amplitude_at_day_fw is not None else 400.0
-		self._f0n_sw = amplitude_at_night_sw.to_units('W m^-2').values.item() \
-			if amplitude_at_night_sw is not None else -75.0
-		self._f0n_fw = amplitude_at_night_fw.to_units('W m^-2').values.item() \
-			if amplitude_at_night_fw is not None else -37.5
-		self._w_sw = frequency_sw.to_units('hr^-1').values.item() \
-			if frequency_sw is not None else np.pi/12.0
-		self._w_fw = frequency_fw.to_units('hr^-1').values.item() \
-			if frequency_fw is not None else np.pi
-		self._ad = attenuation_coefficient_at_day.to_units('m^-1').values.item() \
-			if attenuation_coefficient_at_day is not None else 1.0/600.0
-		self._an = attenuation_coefficient_at_night.to_units('m^-1').values.item() \
-			if attenuation_coefficient_at_night is not None else 1.0/75.0
-		self._cl = characteristic_length.to_units('m').values.item() \
-			if characteristic_length is not None else 25000.0
-		self._t0 = starting_time
+        self._f0d_sw = (
+            amplitude_at_day_sw.to_units("W m^-2").values.item()
+            if amplitude_at_day_sw is not None
+            else 800.0
+        )
+        self._f0d_fw = (
+            amplitude_at_day_fw.to_units("W m^-2").values.item()
+            if amplitude_at_day_fw is not None
+            else 400.0
+        )
+        self._f0n_sw = (
+            amplitude_at_night_sw.to_units("W m^-2").values.item()
+            if amplitude_at_night_sw is not None
+            else -75.0
+        )
+        self._f0n_fw = (
+            amplitude_at_night_fw.to_units("W m^-2").values.item()
+            if amplitude_at_night_fw is not None
+            else -37.5
+        )
+        self._w_sw = (
+            frequency_sw.to_units("hr^-1").values.item()
+            if frequency_sw is not None
+            else np.pi / 12.0
+        )
+        self._w_fw = (
+            frequency_fw.to_units("hr^-1").values.item()
+            if frequency_fw is not None
+            else np.pi
+        )
+        self._ad = (
+            attenuation_coefficient_at_day.to_units("m^-1").values.item()
+            if attenuation_coefficient_at_day is not None
+            else 1.0 / 600.0
+        )
+        self._an = (
+            attenuation_coefficient_at_night.to_units("m^-1").values.item()
+            if attenuation_coefficient_at_night is not None
+            else 1.0 / 75.0
+        )
+        self._cl = (
+            characteristic_length.to_units("m").values.item()
+            if characteristic_length is not None
+            else 25000.0
+        )
+        self._t0 = starting_time
 
-		pcs = get_physical_constants(self._d_physical_constants, physical_constants)
-		self._rd = pcs['gas_constant_of_dry_air']
-		self._cp = pcs['specific_heat_of_dry_air_at_constant_pressure']
+        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        self._rd = pcs["gas_constant_of_dry_air"]
+        self._cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
-	@property
-	def input_properties(self):
-		g = self.grid
-		dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-		dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+    @property
+    def input_properties(self):
+        g = self.grid
+        dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+        dims_stgz = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
 
-		return_dict = {
-			'height_on_interface_levels': {'dims': dims_stgz, 'units': 'm'},
-		}
+        return_dict = {"height_on_interface_levels": {"dims": dims_stgz, "units": "m"}}
 
-		if self._apil:
-			return_dict['air_pressure_on_interface_levels'] = \
-				{'dims': dims_stgz, 'units': 'Pa'}
-		else:
-			return_dict['air_pressure'] = {'dims': dims, 'units': 'Pa'}
+        if self._apil:
+            return_dict["air_pressure_on_interface_levels"] = {
+                "dims": dims_stgz,
+                "units": "Pa",
+            }
+        else:
+            return_dict["air_pressure"] = {"dims": dims, "units": "Pa"}
 
-		return return_dict
+        return return_dict
 
-	@property
-	def tendency_properties(self):
-		g = self.grid
+    @property
+    def tendency_properties(self):
+        g = self.grid
 
-		return_dict = {}
+        return_dict = {}
 
-		if not self._tid:
-			if self._aptil:
-				dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
-				return_dict['air_potential_temperature_on_interface_levels'] = \
-					{'dims': dims, 'units': 'K s^-1'}
-			else:
-				dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-				return_dict['air_potential_temperature'] = \
-					{'dims': dims, 'units': 'K s^-1'}
+        if not self._tid:
+            if self._aptil:
+                dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+                return_dict["air_potential_temperature_on_interface_levels"] = {
+                    "dims": dims,
+                    "units": "K s^-1",
+                }
+            else:
+                dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+                return_dict["air_potential_temperature"] = {
+                    "dims": dims,
+                    "units": "K s^-1",
+                }
 
-		return return_dict
+        return return_dict
 
-	@property
-	def diagnostic_properties(self):
-		g = self.grid
+    @property
+    def diagnostic_properties(self):
+        g = self.grid
 
-		return_dict = {}
+        return_dict = {}
 
-		if self._tid:
-			if self._aptil:
-				dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
-				return_dict['tendency_of_air_potential_temperature_on_interface_levels'] = \
-					{'dims': dims, 'units': 'K s^-1'}
-			else:
-				dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
-				return_dict['tendency_of_air_potential_temperature'] = \
-					{'dims': dims, 'units': 'K s^-1'}
+        if self._tid:
+            if self._aptil:
+                dims = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
+                return_dict[
+                    "tendency_of_air_potential_temperature_on_interface_levels"
+                ] = {"dims": dims, "units": "K s^-1"}
+            else:
+                dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+                return_dict["tendency_of_air_potential_temperature"] = {
+                    "dims": dims,
+                    "units": "K s^-1",
+                }
 
-		return return_dict
+        return return_dict
 
-	def array_call(self, state):
-		g = self.grid
-		mi, mj = g.nx, g.ny
-		mk = g.nz + 1 if self._aptil else g.nz
+    def array_call(self, state):
+        g = self.grid
+        mi, mj = g.nx, g.ny
+        mk = g.nz + 1 if self._aptil else g.nz
 
-		t  = state['time']
-		dt = (t - self._t0).total_seconds() / 3600.0 if self._t0 is not None else t.hour
+        t = state["time"]
+        dt = (t - self._t0).total_seconds() / 3600.0 if self._t0 is not None else t.hour
 
-		if dt <= 0.0:
-			out = np.zeros((mi, mj, mk), dtype=state['height_on_interface_levels'].dtype)
-		else:
-			x = g.x.to_units('m').values[:, np.newaxis, np.newaxis]
-			y = g.y.to_units('m').values[np.newaxis, :, np.newaxis]
-			theta1d = g.z_on_interface_levels.to_units('K').values if self._aptil \
-				else g.z.to_units('K').values
-			theta = theta1d[np.newaxis, np.newaxis, :]
+        if dt <= 0.0:
+            out = np.zeros((mi, mj, mk), dtype=state["height_on_interface_levels"].dtype)
+        else:
+            x = g.x.to_units("m").values[:, np.newaxis, np.newaxis]
+            y = g.y.to_units("m").values[np.newaxis, :, np.newaxis]
+            theta1d = (
+                g.z_on_interface_levels.to_units("K").values
+                if self._aptil
+                else g.z.to_units("K").values
+            )
+            theta = theta1d[np.newaxis, np.newaxis, :]
 
-			pv = state['air_pressure_on_interface_levels'] if self._apil \
-				else state['air_pressure']
-			p  = pv if pv.shape[2] == mk else 0.5 * (pv[:, :, 1:] + pv[:, :, :-1])
-			zv = state['height_on_interface_levels']
-			z  = zv if self._aptil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
-			h  = zv[:, :, -1:]
+            pv = (
+                state["air_pressure_on_interface_levels"]
+                if self._apil
+                else state["air_pressure"]
+            )
+            p = pv if pv.shape[2] == mk else 0.5 * (pv[:, :, 1:] + pv[:, :, :-1])
+            zv = state["height_on_interface_levels"]
+            z = zv if self._aptil else 0.5 * (zv[:, :, 1:] + zv[:, :, :-1])
+            h = zv[:, :, -1:]
 
-			w_sw  = self._w_sw
-			w_fw  = self._w_fw
-			cl    = self._cl
+            w_sw = self._w_sw
+            w_fw = self._w_fw
+            cl = self._cl
 
-			t_in_seconds = t.hour*60*60 + t.minute*60 + t.second
-			t_sw  = (2*np.pi / w_sw) * 60 * 60
-			day   = int(t_in_seconds / t_sw) % 2 == 0
-			f0_sw = self._f0d_sw if day else self._f0n_sw
-			f0_fw = self._f0d_fw if day else self._f0n_fw	
-			a  	  = self._ad if day else self._an
+            t_in_seconds = t.hour * 60 * 60 + t.minute * 60 + t.second
+            t_sw = (2 * np.pi / w_sw) * 60 * 60
+            day = int(t_in_seconds / t_sw) % 2 == 0
+            f0_sw = self._f0d_sw if day else self._f0n_sw
+            f0_fw = self._f0d_fw if day else self._f0n_fw
+            a = self._ad if day else self._an
 
-			out = theta * self._rd * a / (p * self._cp) * np.exp(- a * (z - h)) * \
-				(f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt)) * \
-				(x**2 + y**2 < cl**2)
+            out = (
+                theta
+                * self._rd
+                * a
+                / (p * self._cp)
+                * np.exp(-a * (z - h))
+                * (f0_sw * np.sin(w_sw * dt) + f0_fw * np.sin(w_fw * dt))
+                * (x ** 2 + y ** 2 < cl ** 2)
+            )
 
-		tendencies = {}
-		if not self._tid:
-			if self._aptil:
-				tendencies['air_potential_temperature_on_interface_levels'] = out
-			else:
-				tendencies['air_potential_temperature'] = out
+        tendencies = {}
+        if not self._tid:
+            if self._aptil:
+                tendencies["air_potential_temperature_on_interface_levels"] = out
+            else:
+                tendencies["air_potential_temperature"] = out
 
-		diagnostics = {}
-		if self._tid:
-			if self._aptil:
-				diagnostics['tendency_of_air_potential_temperature_on_interface_levels'] = out
-			else:
-				diagnostics['tendency_of_air_potential_temperature'] = out
+        diagnostics = {}
+        if self._tid:
+            if self._aptil:
+                diagnostics[
+                    "tendency_of_air_potential_temperature_on_interface_levels"
+                ] = out
+            else:
+                diagnostics["tendency_of_air_potential_temperature"] = out
 
-		return tendencies, diagnostics
+        return tendencies, diagnostics

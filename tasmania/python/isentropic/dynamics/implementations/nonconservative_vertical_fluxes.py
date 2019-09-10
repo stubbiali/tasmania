@@ -25,25 +25,42 @@ This module contains:
 	Centered(IsentropicNonconservativeVerticalFlux)
 """
 import gridtools as gt
-from tasmania.python.isentropic.dynamics.horizontal_fluxes import \
-	IsentropicNonconservativeVerticalFlux
+from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
+    IsentropicNonconservativeVerticalFlux,
+)
 
 
 class Centered(IsentropicNonconservativeVerticalFlux):
-	"""
+    """
 	A centered scheme to compute the horizontal
 	numerical fluxes for the prognostic model variables.
 	The nonconservative form of the governing equations,
 	expressed using isentropic coordinates, is used.
 	"""
-	def __init__(self, grid, moist_on):
-		super().__init__(grid, moist_on)
-		self.nb = 1
-		self.order = 2
 
-	def __call__(
-		self, i, j, k, dt, w, s, s_prv, u, u_prv, v, v_prv,
-		qv=None, qv_prv=None, qc=None, qc_prv=None, qr=None, qr_prv=None
-	):
-		raise NotImplementedError()
+    def __init__(self, grid, moist_on):
+        super().__init__(grid, moist_on)
+        self.nb = 1
+        self.order = 2
 
+    def __call__(
+        self,
+        i,
+        j,
+        k,
+        dt,
+        w,
+        s,
+        s_prv,
+        u,
+        u_prv,
+        v,
+        v_prv,
+        qv=None,
+        qv_prv=None,
+        qc=None,
+        qc_prv=None,
+        qr=None,
+        qr_prv=None,
+    ):
+        raise NotImplementedError()

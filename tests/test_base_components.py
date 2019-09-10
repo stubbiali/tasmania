@@ -20,137 +20,147 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from hypothesis import \
-	assume, given, HealthCheck, settings, strategies as hyp_st, reproduce_failure
+from hypothesis import (
+    assume,
+    given,
+    HealthCheck,
+    settings,
+    strategies as hyp_st,
+    reproduce_failure,
+)
 import pytest
 
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import utils
 
-from tasmania.python.framework.base_components import \
-	DiagnosticComponent, ImplicitTendencyComponent, TendencyComponent
+from tasmania.python.framework.base_components import (
+    DiagnosticComponent,
+    ImplicitTendencyComponent,
+    TendencyComponent,
+)
 
 
 class FakeDiagnosticComponent(DiagnosticComponent):
-	def __init__(self, domain, grid_type, **kwargs):
-		super().__init__(domain, grid_type)
+    def __init__(self, domain, grid_type, **kwargs):
+        super().__init__(domain, grid_type)
 
-	@property
-	def input_properties(self):
-		return {}
+    @property
+    def input_properties(self):
+        return {}
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-	def array_call(self, state):
-		return {}
+    def array_call(self, state):
+        return {}
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(hyp_st.data())
 def test_diagnostic_component(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(utils.st_domain(), label="domain")
 
-	# ========================================
-	# test bed
-	# ========================================
-	obj = FakeDiagnosticComponent(domain, 'physical')
-	assert isinstance(obj, DiagnosticComponent)
+    # ========================================
+    # test bed
+    # ========================================
+    obj = FakeDiagnosticComponent(domain, "physical")
+    assert isinstance(obj, DiagnosticComponent)
 
-	obj = FakeDiagnosticComponent(domain, 'numerical')
-	assert isinstance(obj, DiagnosticComponent)
+    obj = FakeDiagnosticComponent(domain, "numerical")
+    assert isinstance(obj, DiagnosticComponent)
 
 
 class FakeImplicitTendencyComponent(ImplicitTendencyComponent):
-	def __init__(self, domain, grid_type, **kwargs):
-		super().__init__(domain, grid_type, **kwargs)
+    def __init__(self, domain, grid_type, **kwargs):
+        super().__init__(domain, grid_type, **kwargs)
 
-	@property
-	def input_properties(self):
-		return {}
+    @property
+    def input_properties(self):
+        return {}
 
-	@property
-	def tendency_properties(self):
-		return {}
+    @property
+    def tendency_properties(self):
+        return {}
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-	def array_call(self, state, timestep):
-		return {}, {}
+    def array_call(self, state, timestep):
+        return {}, {}
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(hyp_st.data())
 def test_implicit_tendency_component(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(utils.st_domain(), label="domain")
 
-	# ========================================
-	# test bed
-	# ========================================
-	obj = FakeImplicitTendencyComponent(domain, 'physical')
-	assert isinstance(obj, ImplicitTendencyComponent)
+    # ========================================
+    # test bed
+    # ========================================
+    obj = FakeImplicitTendencyComponent(domain, "physical")
+    assert isinstance(obj, ImplicitTendencyComponent)
 
-	obj = FakeImplicitTendencyComponent(domain, 'numerical')
-	assert isinstance(obj, ImplicitTendencyComponent)
+    obj = FakeImplicitTendencyComponent(domain, "numerical")
+    assert isinstance(obj, ImplicitTendencyComponent)
 
 
 class FakeTendencyComponent(TendencyComponent):
-	def __init__(self, domain, grid_type, **kwargs):
-		super().__init__(domain, grid_type, **kwargs)
+    def __init__(self, domain, grid_type, **kwargs):
+        super().__init__(domain, grid_type, **kwargs)
 
-	@property
-	def input_properties(self):
-		return {}
+    @property
+    def input_properties(self):
+        return {}
 
-	@property
-	def tendency_properties(self):
-		return {}
+    @property
+    def tendency_properties(self):
+        return {}
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-	def array_call(self, state):
-		return {}, {}
+    def array_call(self, state):
+        return {}, {}
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(hyp_st.data())
 def test_tendency_component(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(utils.st_domain(), label="domain")
 
-	# ========================================
-	# test bed
-	# ========================================
-	obj = FakeTendencyComponent(domain, 'physical')
-	assert isinstance(obj, TendencyComponent)
+    # ========================================
+    # test bed
+    # ========================================
+    obj = FakeTendencyComponent(domain, "physical")
+    assert isinstance(obj, TendencyComponent)
 
-	obj = FakeTendencyComponent(domain, 'numerical')
-	assert isinstance(obj, TendencyComponent)
+    obj = FakeTendencyComponent(domain, "numerical")
+    assert isinstance(obj, TendencyComponent)
 
 
-if __name__ == '__main__':
-	pytest.main([__file__])
+if __name__ == "__main__":
+    pytest.main([__file__])

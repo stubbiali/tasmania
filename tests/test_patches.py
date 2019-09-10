@@ -28,116 +28,112 @@ from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.patches import Circle, Rectangle
 
 
-baseline_dir = 'baseline_images/py{}{}/test_patches'.format(
+baseline_dir = "baseline_images/py{}{}/test_patches".format(
     sys.version_info.major, sys.version_info.minor
 )
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_circle():
-	# make sure the baseline directory does exist
-	if not os.path.exists(baseline_dir):
-		os.makedirs(baseline_dir)
+    # make sure the baseline directory does exist
+    if not os.path.exists(baseline_dir):
+        os.makedirs(baseline_dir)
 
-	# make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_circle_nompl.eps')
-	if os.path.exists(save_dest):
-		os.remove(save_dest)
+    # make sure the baseline image will exist at the end of this run
+    save_dest = os.path.join(baseline_dir, "test_circle_nompl.eps")
+    if os.path.exists(save_dest):
+        os.remove(save_dest)
 
-	# drawer properties
-	drawer_properties = {
-		'fontsize': 16,
-		'xy': (0.5, 0.5),
-		'radius': 0.25,
-		'linewidth': 3.5,
-		'edgecolor': 'green',
-		'facecolor': 'yellow',
-	}
+    # drawer properties
+    drawer_properties = {
+        "fontsize": 16,
+        "xy": (0.5, 0.5),
+        "radius": 0.25,
+        "linewidth": 3.5,
+        "edgecolor": "green",
+        "facecolor": "yellow",
+    }
 
-	# instantiate the drawer
-	drawer = Circle(properties=drawer_properties)
+    # instantiate the drawer
+    drawer = Circle(properties=drawer_properties)
 
-	# figure and axes properties
-	figure_properties = {
-		'fontsize': 16,
-		'figsize': (7, 7),
-		'tight_layout': True,
-	}
-	axes_properties = {
-		'fontsize': 16,
-		'x_label': 'x',
-		'x_lim': (0, 1),
-		'y_label': 'y',
-		'y_lim': (0, 1),
-	}
+    # figure and axes properties
+    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    axes_properties = {
+        "fontsize": 16,
+        "x_label": "x",
+        "x_lim": (0, 1),
+        "y_label": "y",
+        "y_lim": (0, 1),
+    }
 
-	# instantiate the monitor
-	monitor = Plot(
-		drawer, interactive=False, figure_properties=figure_properties,
-		axes_properties=axes_properties
-	)
+    # instantiate the monitor
+    monitor = Plot(
+        drawer,
+        interactive=False,
+        figure_properties=figure_properties,
+        axes_properties=axes_properties,
+    )
 
-	# plot
-	monitor.store({}, save_dest=save_dest)
+    # plot
+    monitor.store({}, save_dest=save_dest)
 
-	assert os.path.exists(save_dest)
+    assert os.path.exists(save_dest)
 
-	return monitor.figure
+    return monitor.figure
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
 def test_rectangle():
-	# make sure the baseline directory does exist
-	if not os.path.exists(baseline_dir):
-		os.makedirs(baseline_dir)
+    # make sure the baseline directory does exist
+    if not os.path.exists(baseline_dir):
+        os.makedirs(baseline_dir)
 
-	# make sure the baseline image will exist at the end of this run
-	save_dest = os.path.join(baseline_dir, 'test_rectangle_nompl.eps')
-	if os.path.exists(save_dest):
-		os.remove(save_dest)
+    # make sure the baseline image will exist at the end of this run
+    save_dest = os.path.join(baseline_dir, "test_rectangle_nompl.eps")
+    if os.path.exists(save_dest):
+        os.remove(save_dest)
 
-	# drawer properties
-	drawer_properties = {
-		'fontsize': 16,
-		'xy': (0.2, 0.45),
-		'width': 0.5,
-		'height': 0.1,
-		'angle': 45,
-		'linewidth': 2.5,
-		'edgecolor': 'black',
-		'facecolor': 'blue',
-	}
+    # drawer properties
+    drawer_properties = {
+        "fontsize": 16,
+        "xy": (0.2, 0.45),
+        "width": 0.5,
+        "height": 0.1,
+        "angle": 45,
+        "linewidth": 2.5,
+        "edgecolor": "black",
+        "facecolor": "blue",
+    }
 
-	# instantiate the drawer
-	drawer = Rectangle(properties=drawer_properties)
+    # instantiate the drawer
+    drawer = Rectangle(properties=drawer_properties)
 
-	# figure and axes properties
-	figure_properties = {
-		'fontsize': 16,
-		'figsize': (7, 7),
-		'tight_layout': True,
-	}
-	axes_properties = {
-		'fontsize': 16,
-		'x_label': 'x',
-		'x_lim': (0, 1),
-		'y_label': 'y',
-		'y_lim': (0, 1),
-	}
+    # figure and axes properties
+    figure_properties = {"fontsize": 16, "figsize": (7, 7), "tight_layout": True}
+    axes_properties = {
+        "fontsize": 16,
+        "x_label": "x",
+        "x_lim": (0, 1),
+        "y_label": "y",
+        "y_lim": (0, 1),
+    }
 
-	# instantiate the monitor
-	monitor = Plot(
-		drawer, interactive=False, figure_properties=figure_properties,
-		axes_properties=axes_properties
-	)
+    # instantiate the monitor
+    monitor = Plot(
+        drawer,
+        interactive=False,
+        figure_properties=figure_properties,
+        axes_properties=axes_properties,
+    )
 
-	# plot
-	monitor.store({}, save_dest=save_dest)
+    # plot
+    monitor.store({}, save_dest=save_dest)
 
-	assert os.path.exists(save_dest)
+    assert os.path.exists(save_dest)
 
-	return monitor.figure
+    return monitor.figure
 
 
-if __name__ == '__main__':
-	pytest.main([__file__])
+if __name__ == "__main__":
+    pytest.main([__file__])

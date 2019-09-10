@@ -59,7 +59,7 @@ class VerticalDamping(abc.ABC):
         exec_info,
         halo,
         rebuild,
-            storage_shape
+        storage_shape,
     ):
         """
         Parameters
@@ -100,18 +100,26 @@ class VerticalDamping(abc.ABC):
         self._damp_depth = damp_depth
         self._tunits = time_units
         self._exec_info = exec_info
-        storage_shape = (grid.nx, grid.ny, grid.nz) if storage_shape is None else storage_shape
-        assert grid.nz <= storage_shape[2] <= grid.nz+1
+        storage_shape = (
+            (grid.nx, grid.ny, grid.nz) if storage_shape is None else storage_shape
+        )
+        assert grid.nz <= storage_shape[2] <= grid.nz + 1
         self._shape = storage_shape
 
         # compute lower-bound of damping region
         lb = grid.z.values[damp_depth - 1]
 
         # compute the damping matrix
-        z = grid.z.values if storage_shape[2] == grid.nz else grid.z_on_interface_levels.values
+        z = (
+            grid.z.values
+            if storage_shape[2] == grid.nz
+            else grid.z_on_interface_levels.values
+        )
         za, zt = z[damp_depth - 1], z[-1]
         r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
-        self._rmat = zeros(storage_shape, backend, dtype, halo=halo, mask=(True, True, True))
+        self._rmat = zeros(
+            storage_shape, backend, dtype, halo=halo, mask=(True, True, True)
+        )
         self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
         # instantiate the underlying stencil
@@ -157,7 +165,7 @@ class VerticalDamping(abc.ABC):
         exec_info=None,
         halo=None,
         rebuild=False,
-            storage_shape=None
+        storage_shape=None
     ):
         """
         Static method which returns an instance of the derived class
@@ -213,7 +221,7 @@ class VerticalDamping(abc.ABC):
             exec_info,
             halo,
             rebuild,
-            storage_shape
+            storage_shape,
         ]
         if damp_type == "rayleigh":
             return Rayleigh(*args)
@@ -253,7 +261,7 @@ class Rayleigh(VerticalDamping):
         exec_info=None,
         halo=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
     ):
         super().__init__(
             grid,
