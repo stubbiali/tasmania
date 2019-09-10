@@ -55,7 +55,7 @@ class _stencil_defs_numpy(StencilObject):
         return type(self)._gt_constants_
 
     @property
-    def default_domain(self) -> dict:
+    def default_domain(self):
         return type(self)._gt_default_domain_
 
     @property

@@ -22,8 +22,8 @@
 #
 """
 This module contains:
-	HorizontalVelocity
-	WaterConstituent
+    HorizontalVelocity
+    WaterConstituent
 """
 import numpy as np
 
@@ -37,10 +37,10 @@ except ImportError:
 
 class HorizontalVelocity:
     """
-	This class diagnoses the horizontal momenta (respectively, velocity
-	components) with the help of the air density and the horizontal
-	velocity components (resp., momenta).
-	"""
+    This class diagnoses the horizontal momenta (respectively, velocity
+    components) with the help of the air density and the horizontal
+    velocity components (resp., momenta).
+    """
 
     def __init__(
         self,
@@ -54,25 +54,25 @@ class HorizontalVelocity:
         rebuild=False
     ):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		staggering : `bool`, optional
-			:obj:`True` if the velocity components should be computed
-			on the staggered grid, :obj:`False` to collocate the velocity
-			components in the mass points.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		exec_info : `dict`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
-		"""
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        staggering : `bool`, optional
+            :obj:`True` if the velocity components should be computed
+            on the staggered grid, :obj:`False` to collocate the velocity
+            components in the mass points.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        """
         # store input arguments needed at run-time
         self._grid = grid
         self._staggering = staggering
@@ -98,21 +98,21 @@ class HorizontalVelocity:
 
     def get_momenta(self, d, u, v, du, dv):
         """
-		Diagnose the horizontal momenta.
+        Diagnose the horizontal momenta.
 
-		Parameters
-		----------
-		d : gridtools.storage.Storage
-			The air density.
-		u : gridtools.storage.Storage
-			The x-velocity field.
-		v : gridtools.storage.Storage
-			The y-velocity field.
-		du : gridtools.storage.Storage
-			The buffer where the x-momentum will be written.
-		dv : gridtools.storage.Storage
-			The buffer where the y-momentum will be written.
-		"""
+        Parameters
+        ----------
+        d : gridtools.storage.Storage
+            The air density.
+        u : gridtools.storage.Storage
+            The x-velocity field.
+        v : gridtools.storage.Storage
+            The y-velocity field.
+        du : gridtools.storage.Storage
+            The buffer where the x-momentum will be written.
+        dv : gridtools.storage.Storage
+            The buffer where the y-momentum will be written.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
@@ -130,26 +130,26 @@ class HorizontalVelocity:
 
     def get_velocity_components(self, d, du, dv, u, v):
         """
-		Diagnose the horizontal velocity components.
+        Diagnose the horizontal velocity components.
 
-		Parameters
-		----------
-		d : gridtools.storage.Storage
-			The air density.
-		du : gridtools.storage.Storage
-			The x-momentum.
-		dv : gridtools.storage.Storage
-			The y-momentum.
-		u : gridtools.storage.Storage
-			The buffer where the x-velocity will be written.
-		v : gridtools.storage.Storage
-			The buffer where the y-velocity will be written.
+        Parameters
+        ----------
+        d : gridtools.storage.Storage
+            The air density.
+        du : gridtools.storage.Storage
+            The x-momentum.
+        dv : gridtools.storage.Storage
+            The y-momentum.
+        u : gridtools.storage.Storage
+            The buffer where the x-velocity will be written.
+        v : gridtools.storage.Storage
+            The buffer where the y-velocity will be written.
 
-		Note
-		----
-		If staggering is enabled, the first and last rows (respectively, columns)
-		of the x-velocity (resp., y-velocity) are not set.
-		"""
+        Note
+        ----
+        If staggering is enabled, the first and last rows (respectively, columns)
+        of the x-velocity (resp., y-velocity) are not set.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         dn = int(self._staggering)
@@ -208,10 +208,10 @@ class HorizontalVelocity:
 
 class WaterConstituent:
     """
-	This class diagnoses the density (respectively, mass fraction) of any water
-	constituent with the help of the air density and the mass fraction (resp.,
-	the density) of that water constituent.
-	"""
+    This class diagnoses the density (respectively, mass fraction) of any water
+    constituent with the help of the air density and the mass fraction (resp.,
+    the density) of that water constituent.
+    """
 
     def __init__(
         self,
@@ -225,24 +225,24 @@ class WaterConstituent:
         rebuild=False
     ):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		clipping : `bool`, optional
-			:obj:`True` to clip the negative values of the output fields,
-			:obj:`False` otherwise. Defaults to :obj:`False`.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		exec_info : `dict`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
-		"""
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        clipping : `bool`, optional
+            :obj:`True` to clip the negative values of the output fields,
+            :obj:`False` otherwise. Defaults to :obj:`False`.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        """
         # store input arguments needed at run-time
         self._grid = grid
         self._exec_info = exec_info
@@ -264,18 +264,18 @@ class WaterConstituent:
 
     def get_density_of_water_constituent(self, d, q, dq):
         """
-		Diagnose the density of a water constituent.
+        Diagnose the density of a water constituent.
 
-		Parameters
-		----------
-		d : gridtools.storage.Storage
-			The air density.
-		q : gridtools.storage.Storage
-			The mass fraction of the water constituent, in units of [g g^-1].
-		dq : gridtools.storage.Storage
-			Buffer which will store the output density of the water constituent,
-			in the same units of the input air density.
-		"""
+        Parameters
+        ----------
+        d : gridtools.storage.Storage
+            The air density.
+        q : gridtools.storage.Storage
+            The mass fraction of the water constituent, in units of [g g^-1].
+        dq : gridtools.storage.Storage
+            Buffer which will store the output density of the water constituent,
+            in the same units of the input air density.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 
@@ -291,19 +291,19 @@ class WaterConstituent:
 
     def get_mass_fraction_of_water_constituent_in_air(self, d, dq, q):
         """
-		Diagnose the mass fraction of a water constituent.
+        Diagnose the mass fraction of a water constituent.
 
-		Parameters
-		----------
-		d : gridtools.storage.Storage
-			The air density.
-		dq : gridtools.storage.Storage
-			The density of the water constituent, in the same units of the input
-			air density.
-		q : gridtools.storage.Storage
-			Buffer which will store the output mass fraction of the water constituent,
-			in the same units of the input air density.
-		"""
+        Parameters
+        ----------
+        d : gridtools.storage.Storage
+            The air density.
+        dq : gridtools.storage.Storage
+            The density of the water constituent, in the same units of the input
+            air density.
+        q : gridtools.storage.Storage
+            Buffer which will store the output mass fraction of the water constituent,
+            in the same units of the input air density.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 

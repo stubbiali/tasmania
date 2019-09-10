@@ -22,301 +22,292 @@
 #
 """
 This module contains:
-	IsentropicPrognostic
+    IsentropicPrognostic
 """
 import abc
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import zeros
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 # convenient aliases
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+mfwv = "mass_fraction_of_water_vapor_in_air"
+mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
+mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class IsentropicPrognostic(abc.ABC):
-	"""
-	Abstract base class whose derived classes implement different
-	schemes to carry out the prognostic steps of the three-dimensional
-	moist, isentropic dynamical core. The schemes might be *semi-implicit* -
-	they treat horizontal advection explicitly and the pressure gradient
-	implicitly. The vertical advection, the Coriolis acceleration and
-	the sedimentation motion are not included in the dynamics, but rather
-	parameterized. The conservative form of the governing equations is used.
-	"""
-	def __init__(
-		self, horizontal_flux_class, horizontal_flux_scheme, grid, hb, moist,
-		backend, backend_opts, build_info, dtype, exec_info, halo, rebuild
-	):
-		"""
-		Parameters
-		----------
-		horizontal_flux_class : IsentropicHorizontalFlux, IsentropicMinimal
-			Either :class:`~tasmania.IsentropicHorizontalFlux`
-			or :class:`~tasmania.IsentropicMinimalHorizontalFlux`.
-		horizontal_flux_scheme : str
-			The numerical horizontal flux scheme to implement.
-			See :class:`~tasmania.IsentropicHorizontalFlux` and
-			:class:`~tasmania.IsentropicMinimalHorizontalFlux`
-			for the complete list of the available options.
-		grid : tasmania.Grid
-			The underlying grid.
-		hb : tasmania.HorizontalBoundary
-			The object handling the lateral boundary conditions.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		backend : str
-			TODO
-		backend_opts : dict
-			TODO
-		build_info : dict
-			TODO
-		dtype : numpy.dtype
-			TODO
-		exec_info : dict
-			TODO
-		halo : tuple
-			TODO
-		rebuild : bool
-			TODO
-		"""
-		# store input arguments needed at compile- and run-time
-		self._grid          = grid
-		self._hb            = hb
-		self._moist      	= moist
-		self._backend		= backend
-		self._backend_opts  = backend_opts
-		self._build_info    = build_info
-		self._exec_info     = exec_info
-		self._rebuild       = rebuild
+    """
+    Abstract base class whose derived classes implement different
+    schemes to carry out the prognostic steps of the three-dimensional
+    moist, isentropic dynamical core. The schemes might be *semi-implicit* -
+    they treat horizontal advection explicitly and the pressure gradient
+    implicitly. The vertical advection, the Coriolis acceleration and
+    the sedimentation motion are not included in the dynamics, but rather
+    parameterized. The conservative form of the governing equations is used.
+    """
 
-		# get the storage descriptor
-		storage_shape = (grid.nx+1, grid.ny+1, grid.nz+1)
-		self._descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
+    def __init__(
+        self,
+        horizontal_flux_class,
+        horizontal_flux_scheme,
+        grid,
+        hb,
+        moist,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+        storage_shape,
+    ):
+        """
+        Parameters
+        ----------
+        horizontal_flux_class : IsentropicHorizontalFlux, IsentropicMinimal
+            Either :class:`~tasmania.IsentropicHorizontalFlux`
+            or :class:`~tasmania.IsentropicMinimalHorizontalFlux`.
+        horizontal_flux_scheme : str
+            The numerical horizontal flux scheme to implement.
+            See :class:`~tasmania.IsentropicHorizontalFlux` and
+            :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+            for the complete list of the available options.
+        grid : tasmania.Grid
+            The underlying grid.
+        hb : tasmania.HorizontalBoundary
+            The object handling the lateral boundary conditions.
+        moist : bool
+            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+        backend : str
+            TODO
+        backend_opts : dict
+            TODO
+        build_info : dict
+            TODO
+        dtype : numpy.dtype
+            TODO
+        exec_info : dict
+            TODO
+        halo : tuple
+            TODO
+        rebuild : bool
+            TODO
+        storage_shape : tuple
+            TODO
+        """
+        # store input arguments needed at compile- and run-time
+        self._grid = grid
+        self._hb = hb
+        self._moist = moist
+        self._backend = backend
+        self._backend_opts = backend_opts
+        self._build_info = build_info
+        self._dtype = dtype
+        self._exec_info = exec_info
+        self._halo = halo
+        self._rebuild = rebuild
 
-		# instantiate the class computing the numerical horizontal fluxes
-		self._hflux = horizontal_flux_class.factory(horizontal_flux_scheme)
-		assert hb.nb >= self._hflux.extent, \
-			"The number of lateral boundary layers is {}, but should be " \
-			"greater or equal than {}.".format(hb.nb, self._hflux.extent)
-		assert grid.nx >= 2*hb.nb+1, \
-			"The number of grid points along the first horizontal " \
-			"dimension is {}, but should be greater or equal than {}.".format(
-				grid.nx, 2*hb.nb+1
-			)
-		assert grid.ny >= 2*hb.nb+1, \
-			"The number of grid points along the second horizontal " \
-			"dimension is {}, but should be greater or equal than {}.".format(
-				grid.ny, 2*hb.nb+1
-			)
+        nx, ny, nz = grid.nx, grid.ny, grid.nz
+        storage_shape = (nx, ny, nz+1) if storage_shape is None else storage_shape
+        error_msg = "storage_shape must be larger or equal than {}.".format(
+            (nx, ny, nz+1)
+        )
+        assert storage_shape[0] >= nx, error_msg
+        assert storage_shape[1] >= ny, error_msg
+        assert storage_shape[2] >= nz + 1, error_msg
+        self._storage_shape = storage_shape
 
-	@property
-	@abc.abstractmethod
-	def stages(self):
-		"""
-		Return
-		------
-		int :
-			The number of stages performed by the time-integration scheme.
-		"""
+        # instantiate the class computing the numerical horizontal fluxes
+        self._hflux = horizontal_flux_class.factory(horizontal_flux_scheme)
+        assert hb.nb >= self._hflux.extent, (
+            "The number of lateral boundary layers is {}, but should be "
+            "greater or equal than {}.".format(hb.nb, self._hflux.extent)
+        )
+        assert grid.nx >= 2 * hb.nb + 1, (
+            "The number of grid points along the first horizontal "
+            "dimension is {}, but should be greater or equal than {}.".format(
+                grid.nx, 2 * hb.nb + 1
+            )
+        )
+        assert grid.ny >= 2 * hb.nb + 1, (
+            "The number of grid points along the second horizontal "
+            "dimension is {}, but should be greater or equal than {}.".format(
+                grid.ny, 2 * hb.nb + 1
+            )
+        )
 
-	@abc.abstractmethod
-	def stage_call(self, stage, timestep, state, tendencies=None):
-		"""
-		Perform a stage.
+        # allocate the gt storages collecting the output fields computed by
+        # the underlying stencils
+        self._stencils_allocate_outputs()
 
-		Parameters
-		----------
-		stage : int
-			The stage to perform.
-		timestep : timedelta
-			:class:`datetime.timedelta` representing the time step.
-		state : dict
-			Dictionary whose keys are strings indicating model variables,
-			and values are :class:`numpy.ndarray`\s representing the values
-			for those variables.
-		tendencies : dict
-			Dictionary whose keys are strings indicating model variables,
-			and values are :class:`numpy.ndarray`\s representing (slow and
-			intermediate) physical tendencies for those variables.
+        # initialize the pointers to the storages collecting the physics tendencies
+        self._s_tnd  = None
+        self._su_tnd = None
+        self._sv_tnd = None
+        self._qv_tnd = None
+        self._qc_tnd = None
+        self._qr_tnd = None
 
-		Return
-		------
-		dict :
-			Dictionary whose keys are strings indicating the conservative
-			prognostic model variables, and values are :class:`numpy.ndarray`\s
-			containing new values for those variables.
-		"""
-		pass
+    @property
+    @abc.abstractmethod
+    def stages(self):
+        """
+        Return
+        ------
+        int :
+            The number of stages performed by the time-integration scheme.
+        """
 
-	@staticmethod
-	def factory(
-		time_integration_scheme, horizontal_flux_scheme, grid, hb, moist=False,
-		*, backend="numpy", backend_opts=None, build_info=None, dtype=datatype,
-		exec_info=None, halo=None, rebuild=False, **kwargs
-	):
-		"""
-		Static method returning an instance of the derived class implementing
-		the time stepping scheme specified by ``time_scheme``.
+    @abc.abstractmethod
+    def stage_call(self, stage, timestep, state, tendencies=None):
+        """
+        Perform a stage.
 
-		Parameters
-		----------
-		time_integration_scheme : str
-			The time stepping method to implement. Available options are:
+        Parameters
+        ----------
+        stage : int
+            The stage to perform.
+        timestep : timedelta
+            :class:`datetime.timedelta` representing the time step.
+        state : dict
+            Dictionary whose keys are strings indicating model variables,
+            and values are :class:`numpy.ndarray`\s representing the values
+            for those variables.
+        tendencies : dict
+            Dictionary whose keys are strings indicating model variables,
+            and values are :class:`numpy.ndarray`\s representing (slow and
+            intermediate) physical tendencies for those variables.
 
-				* 'forward_euler_si', for the semi-implicit forward Euler scheme;
-				* 'centered_si', for the semi-implicit centered scheme;
-				* 'rk3ws_si', for the semi-implicit three-stages RK scheme;
-				* 'sil3', for the semi-implicit Lorenz three cycle scheme.
+        Return
+        ------
+        dict :
+            Dictionary whose keys are strings indicating the conservative
+            prognostic model variables, and values are :class:`numpy.ndarray`\s
+            containing new values for those variables.
+        """
+        pass
 
-		horizontal_flux_scheme : str
-			The numerical horizontal flux scheme to implement.
-			See :class:`~tasmania.IsentropicHorizontalFlux` and
-			:class:`~tasmania.IsentropicMinimalHorizontalFlux`
-			for the complete list of the available options.
-		grid : tasmania.Grid
-			The underlying grid.
-		hb : tasmania.HorizontalBoundary
-			The object handling the lateral boundary conditions.
-		moist : `bool`, optional
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			TODO
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
+    @staticmethod
+    def factory(
+        time_integration_scheme,
+        horizontal_flux_scheme,
+        grid,
+        hb,
+        moist=False,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+            storage_shape=None,
+        **kwargs
+    ):
+        """
+        Static method returning an instance of the derived class implementing
+        the time stepping scheme specified by ``time_scheme``.
 
-		Return
-		------
-		obj :
-			An instance of the derived class implementing ``time_integration_scheme``.
-		"""
-		from .implementations.prognostic import \
-			ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
-		args = (
-			horizontal_flux_scheme,	grid, hb, moist, backend, backend_opts,
-			build_info, dtype, exec_info, halo, rebuild
-		)
+        Parameters
+        ----------
+        time_integration_scheme : str
+            The time stepping method to implement. Available options are:
 
-		available = ('forward_euler_si', 'centered_si', 'rk3ws_si', 'sil3')
+                * 'forward_euler_si', for the semi-implicit forward Euler scheme;
+                * 'centered_si', for the semi-implicit centered scheme;
+                * 'rk3ws_si', for the semi-implicit three-stages RK scheme;
+                * 'sil3', for the semi-implicit Lorenz three cycle scheme.
 
-		if time_integration_scheme == 'forward_euler_si':
-			return ForwardEulerSI(*args, **kwargs)
-		elif time_integration_scheme == 'centered_si':
-			return CenteredSI(*args, **kwargs)
-		elif time_integration_scheme == 'rk3ws_si':
-			return RK3WSSI(*args, **kwargs)
-		elif time_integration_scheme == 'sil3':
-			return SIL3(*args, **kwargs)
-		else:
-			raise ValueError(
-				"Unknown time integration scheme {}. Available options are "
-				"{}.".format(time_integration_scheme, ','.join(available))
-			)
+        horizontal_flux_scheme : str
+            The numerical horizontal flux scheme to implement.
+            See :class:`~tasmania.IsentropicHorizontalFlux` and
+            :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+            for the complete list of the available options.
+        grid : tasmania.Grid
+            The underlying grid.
+        hb : tasmania.HorizontalBoundary
+            The object handling the lateral boundary conditions.
+        moist : `bool`, optional
+            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+            Defaults to :obj:`False`.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        storage_shape : `tuple`, optional
+            TODO
 
-	def _stencils_allocate(self, tendencies):
-		"""
-		Allocate the storages which serve as inputs and outputs to the 
-		underlying gt4py stencils.
-		"""
-		# shortcuts
-		descriptor, backend = self._descriptor, self._backend
-		tendency_names = () if tendencies is None else tendencies.keys()
+        Return
+        ------
+        obj :
+            An instance of the derived class implementing ``time_integration_scheme``.
+        """
+        from .implementations.prognostic import ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
 
-		# allocate the storages which will collect the current values
-		# for the model variables
-		self._s_now	  = gt.storage.zeros(descriptor, backend=backend)
-		self._u_now	  = gt.storage.zeros(descriptor, backend=backend)
-		self._v_now	  = gt.storage.zeros(descriptor, backend=backend)
-		self._mtg_now = gt.storage.zeros(descriptor, backend=backend)
-		self._su_now  = gt.storage.zeros(descriptor, backend=backend)
-		self._sv_now  = gt.storage.zeros(descriptor, backend=backend)
-		if self._moist:
-			self._sqv_now = gt.storage.zeros(descriptor, backend=backend)
-			self._sqc_now = gt.storage.zeros(descriptor, backend=backend)
-			self._sqr_now = gt.storage.zeros(descriptor, backend=backend)
+        args = (
+            horizontal_flux_scheme,
+            grid,
+            hb,
+            moist,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+            storage_shape
+        )
 
-		# allocate the storages which will collect the tendencies
-		# for the model variables
-		if tendency_names is not None:
-			if 'air_isentropic_density' in tendency_names:
-				self._s_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if 'x_momentum_isentropic' in tendency_names:
-				self._su_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if 'y_momentum_isentropic' in tendency_names:
-				self._sv_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if mfwv in tendency_names:
-				self._qv_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if mfcw in tendency_names:
-				self._qc_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if mfpw in tendency_names:
-				self._qr_tnd = gt.storage.zeros(descriptor, backend=backend)
+        available = ("forward_euler_si", "centered_si", "rk3ws_si", "sil3")
 
-		# allocate the storages which will collect the output values for
-		# the model variables
-		self._s_new  = gt.storage.zeros(descriptor, backend=backend)
-		self._su_new = gt.storage.zeros(descriptor, backend=backend)
-		self._sv_new = gt.storage.zeros(descriptor, backend=backend)
-		if self._moist:
-			self._sqv_new = gt.storage.zeros(descriptor, backend=backend)
-			self._sqc_new = gt.storage.zeros(descriptor, backend=backend)
-			self._sqr_new = gt.storage.zeros(descriptor, backend=backend)
+        if time_integration_scheme == "forward_euler_si":
+            return ForwardEulerSI(*args, **kwargs)
+        elif time_integration_scheme == "centered_si":
+            return CenteredSI(*args, **kwargs)
+        elif time_integration_scheme == "rk3ws_si":
+            return RK3WSSI(*args, **kwargs)
+        elif time_integration_scheme == "sil3":
+            return SIL3(*args, **kwargs)
+        else:
+            raise ValueError(
+                "Unknown time integration scheme {}. Available options are "
+                "{}.".format(time_integration_scheme, ",".join(available))
+            )
 
-	def _stencils_set_inputs(self, stage, state, tendencies):
-		"""
-		Update the attributes which serve as inputs to the gt4py stencils
-		which perform the stages.
-		"""
-		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		if tendencies is not None:
-			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
-			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
-			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
-			qv_tnd_on = tendencies.get(mfwv, None) is not None
-			qc_tnd_on = tendencies.get(mfcw, None) is not None
-			qr_tnd_on = tendencies.get(mfpw, None) is not None
-		else:
-			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+    def _stencils_allocate_outputs(self):
+        """
+        Allocate the storages which collect the output fields calculated
+        by the underlying gt4py stencils.
+        """
+        storage_shape = self._storage_shape
+        backend = self._backend
+        dtype = self._dtype
+        halo = self._halo
 
-		# update the storages which serve as inputs to the gt4py stencils
-		self._s_now.data[:nx, :ny, :nz]   = state['air_isentropic_density'][...]
-		self._u_now.data[:nx+1, :ny, :nz] = state['x_velocity_at_u_locations'][...]
-		self._v_now.data[:nx, :ny+1, :nz] = state['y_velocity_at_v_locations'][...]
-		self._mtg_now.data[:nx, :ny, :nz] = state['montgomery_potential'][...]
-		self._su_now.data[:nx, :ny, :nz]  = state['x_momentum_isentropic'][...]
-		self._sv_now.data[:nx, :ny, :nz]  = state['y_momentum_isentropic'][...]
-		if self._moist:
-			self._sqv_now.data[:nx, :ny, :nz] = state['isentropic_density_of_water_vapor'][...]
-			self._sqc_now.data[:nx, :ny, :nz] = state['isentropic_density_of_cloud_liquid_water'][...]
-			self._sqr_now.data[:nx, :ny, :nz] = state['isentropic_density_of_precipitation_water'][...]
-		if s_tnd_on:
-			self._s_tnd.data[:nx, :ny, :nz]  = tendencies['air_isentropic_density'][...]
-		if su_tnd_on:
-			self._su_tnd.data[:nx, :ny, :nz] = tendencies['x_momentum_isentropic'][...]
-		if sv_tnd_on:
-			self._sv_tnd.data[:nx, :ny, :nz] = tendencies['y_momentum_isentropic'][...]
-		if qv_tnd_on:
-			self._qv_tnd.data[:nx, :ny, :nz] = tendencies[mfwv][...]
-		if qc_tnd_on:
-			self._qc_tnd.data[:nx, :ny, :nz] = tendencies[mfcw][...]
-		if qr_tnd_on:
-			self._qr_tnd.data[:nx, :ny, :nz] = tendencies[mfpw][...]
+        self._s_new = zeros(storage_shape, backend, dtype, halo=halo)
+        self._su_new = zeros(storage_shape, backend, dtype, halo=halo)
+        self._sv_new = zeros(storage_shape, backend, dtype, halo=halo)
+        if self._moist:
+            self._sqv_new = zeros(storage_shape, backend, dtype, halo=halo)
+            self._sqc_new = zeros(storage_shape, backend, dtype, halo=halo)
+            self._sqr_new = zeros(storage_shape, backend, dtype, halo=halo)
