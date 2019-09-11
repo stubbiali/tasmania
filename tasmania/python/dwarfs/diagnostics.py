@@ -85,6 +85,7 @@ class HorizontalVelocity:
             build_info=build_info,
             externals={"staggering": staggering},
             rebuild=rebuild,
+            module="staggered" if staggering else "collocated"
         )
         self._stencil_diagnosing_momenta = decorator(
             self._stencil_diagnosing_momenta_defs

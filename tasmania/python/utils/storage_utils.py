@@ -29,6 +29,7 @@ This module contains:
     get_physical_state
     get_numerical_state
     get_storage_descriptor
+    get_storage_shape
     zeros
     ones
 """
@@ -415,6 +416,26 @@ def get_storage_descriptor(storage_shape, dtype, halo=None, mask=(True, True, Tr
         dtype=dtype, mask=mask, halo=halo, iteration_domain=domain
     )
     return descriptor
+
+
+def get_storage_shape(in_shape, min_shape, max_shape=None):
+    out_shape = min_shape if in_shape is None else in_shape
+
+    if max_shape is None:
+        error_msg = "storage shape must be larger or equal than {}.".format(min_shape)
+        assert all(
+            tuple(out_shape[i] >= min_shape[i] for i in range(len(min_shape)))
+        ), error_msg
+    else:
+        error_msg = "storage shape must be between {} and {}".format(min_shape, max_shape)
+        assert all(
+            tuple(
+                min_shape[i] <= out_shape[i] <= max_shape[i]
+                for i in range(len(min_shape))
+            )
+        ), error_msg
+
+    return out_shape
 
 
 def zeros(storage_shape, backend, dtype, halo=None, mask=None):

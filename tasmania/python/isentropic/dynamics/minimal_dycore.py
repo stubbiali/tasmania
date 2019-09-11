@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	IsentropicMinimalDynamicalCore(DynamicalCore)
+    IsentropicMinimalDynamicalCore(DynamicalCore)
 """
 import numpy as np
 
@@ -46,13 +46,13 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
     """
-	The three-dimensional (moist) isentropic minimal dynamical core.
-	Here, *minimal* refers to the fact that only the horizontal advection
-	is included in the so-called *dynamics*. Any other large-scale process
-	(e.g., vertical advection, pressure gradient, Coriolis acceleration) might
-	be included in the model only via parameterizations.
-	The conservative form of the governing equations is used.
-	"""
+    The three-dimensional (moist) isentropic minimal dynamical core.
+    Here, *minimal* refers to the fact that only the horizontal advection
+    is included in the so-called *dynamics*. Any other large-scale process
+    (e.g., vertical advection, pressure gradient, Coriolis acceleration) might
+    be included in the model only via parameterizations.
+    The conservative form of the governing equations is used.
+    """
 
     def __init__(
         self,
@@ -86,130 +86,130 @@ class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
         dtype=datatype,
     ):
         """
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		intermediate_tendencies : `obj`, optional
-			An instance of either
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        intermediate_tendencies : `obj`, optional
+            An instance of either
 
-				* :class:`sympl.TendencyComponent`,
-				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`,
-				* :class:`sympl.ImplicitTendencyComponentComposite`, or
-				* :class:`tasmania.ConcurrentCoupling`
+                * :class:`sympl.TendencyComponent`,
+                * :class:`sympl.TendencyComponentComposite`,
+                * :class:`sympl.ImplicitTendencyComponent`,
+                * :class:`sympl.ImplicitTendencyComponentComposite`, or
+                * :class:`tasmania.ConcurrentCoupling`
 
-			calculating the intermediate physical tendencies.
-			Here, *intermediate* refers to the fact that these physical
-			packages are called *before* each stage of the dynamical core
-			to calculate the physical tendencies.
-		intermediate_diagnostics : `obj`, optional
-			An instance of either
+            calculating the intermediate physical tendencies.
+            Here, *intermediate* refers to the fact that these physical
+            packages are called *before* each stage of the dynamical core
+            to calculate the physical tendencies.
+        intermediate_diagnostics : `obj`, optional
+            An instance of either
 
-				* :class:`sympl.DiagnosticComponent`,
-				* :class:`sympl.DiagnosticComponentComposite`, or
-				* :class:`tasmania.DiagnosticComponentComposite`
+                * :class:`sympl.DiagnosticComponent`,
+                * :class:`sympl.DiagnosticComponentComposite`, or
+                * :class:`tasmania.DiagnosticComponentComposite`
 
-			retrieving diagnostics at the end of each stage, once the
-			sub-timestepping routine is over.
-		substeps : `int`, optional
-			Number of sub-steps to perform. Defaults to 0, meaning that no
-			sub-stepping technique is implemented.
-		fast_tendencies : `obj`, optional
-			An instance of either
+            retrieving diagnostics at the end of each stage, once the
+            sub-timestepping routine is over.
+        substeps : `int`, optional
+            Number of sub-steps to perform. Defaults to 0, meaning that no
+            sub-stepping technique is implemented.
+        fast_tendencies : `obj`, optional
+            An instance of either
 
-				* :class:`sympl.TendencyComponent`,
-				* :class:`sympl.TendencyComponentComposite`,
-				* :class:`sympl.ImplicitTendencyComponent`,
-				* :class:`sympl.ImplicitTendencyComponentComposite`, or
-				* :class:`tasmania.ConcurrentCoupling`
+                * :class:`sympl.TendencyComponent`,
+                * :class:`sympl.TendencyComponentComposite`,
+                * :class:`sympl.ImplicitTendencyComponent`,
+                * :class:`sympl.ImplicitTendencyComponentComposite`, or
+                * :class:`tasmania.ConcurrentCoupling`
 
-			calculating the fast physical tendencies.
-			Here, *fast* refers to the fact that these physical packages are
-			called *before* each sub-step of any stage of the dynamical core
-			to calculate the physical tendencies.
-			This parameter is ignored if `substeps` argument is not positive.
-		fast_diagnostics : `obj`, optional
-			An instance of either
+            calculating the fast physical tendencies.
+            Here, *fast* refers to the fact that these physical packages are
+            called *before* each sub-step of any stage of the dynamical core
+            to calculate the physical tendencies.
+            This parameter is ignored if `substeps` argument is not positive.
+        fast_diagnostics : `obj`, optional
+            An instance of either
 
-				* :class:`sympl.DiagnosticComponent`,
-				* :class:`sympl.DiagnosticComponentComposite`, or
-				* :class:`tasmania.DiagnosticComponentComposite`
+                * :class:`sympl.DiagnosticComponent`,
+                * :class:`sympl.DiagnosticComponentComposite`, or
+                * :class:`tasmania.DiagnosticComponentComposite`
 
-			retrieving diagnostics at the end of each sub-step of any stage
-			of the dynamical core.
-			This parameter is ignored if `substeps` argument is not positive.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
-		time_integration_scheme : str
-			String specifying the time stepping method to implement. 
-			See :class:`tasmania.IsentropicMinimalPrognostic`
-			for all available options. Defaults to 'forward_euler'.
-		horizontal_flux_scheme : str
-			String specifying the numerical horizontal flux to use. 
-			See :class:`tasmania.HorizontalIsentropicMinimalFlux`
-			for all available options. Defaults to 'upwind'.
-		damp : `bool`, optional
-			:obj:`True` to enable vertical damping, :obj:`False` otherwise.
-			Defaults to :obj:`True`.
-		damp_at_every_stage : `bool`, optional
-			:obj:`True` to carry out the damping at each stage of the multi-stage
-			time-integrator, :obj:`False` to carry out the damping only at the end
-			of each timestep. Defaults to :obj:`True`.
-		damp_type : `str`, optional
-			String specifying the vertical damping scheme to implement.
-			See :class:`tasmania.VerticalDamping` for all available options.
-			Defaults to 'rayleigh'.
-		damp_depth : `int`, optional
-			Number of vertical layers in the damping region. Defaults to 15.
-		damp_max : `float`, optional
-			Maximum value for the damping coefficient. Defaults to 0.0002.
-		smooth : `bool`, optional
-			:obj:`True` to enable horizontal numerical smoothing, :obj:`False` otherwise.
-			Defaults to :obj:`True`.
-		smooth_at_every_stage : `bool`, optional
-			:obj:`True` to apply numerical smoothing at each stage of the time-
-			integrator, :obj:`False` to apply numerical smoothing only at the end
-			of each timestep. Defaults to :obj:`True`.
-		smooth_type: `str`, optional
-			String specifying the smoothing technique to implement.
-			See :class:`tasmania.HorizontalSmoothing` for all available options.
-			Defaults to 'first_order'.
-		smooth_coeff : `float`, optional
-			Smoothing coefficient. Defaults to 0.03.
-		smooth_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient. 
-			See :class:`tasmania.HorizontalSmoothing` for further details.
-			Defaults to 0.24.
-		smooth_damp_depth : `int`, optional
-			Number of vertical layers in the smoothing damping region. Defaults to 10.
-		smooth_moist : `bool`, optional
-			:obj:`True` to enable horizontal numerical smoothing on the water constituents,
-			:obj:`False` otherwise. Defaults to :obj:`True`.
-		smooth_moist_at_every_stage : `bool`, optional
-			:obj:`True` to apply numerical smoothing on the water constituents
-			at each stage of the time-integrator, :obj:`False` to apply numerical
-			smoothing only at the end of each timestep. Defaults to :obj:`True`.
-		smooth_moist_type: `str`, optional
-			String specifying the smoothing technique to apply on the water constituents.
-			See :class:`tasmania.HorizontalSmoothing` for all available options.
-			Defaults to 'first-order'. 
-		smooth_moist_coeff : `float`, optional
-			Smoothing coefficient for the water constituents. Defaults to 0.03.
-		smooth_moist_coeff_max : `float`, optional
-			Maximum value for the smoothing coefficient for the water constituents.
-			See :class:`tasmania.HorizontalSmoothing` for further details. 
-			Defaults to 0.24. 
-		smooth_moist_damp_depth : `int`, optional
-			Number of vertical layers in the smoothing damping region for the
-			water constituents. Defaults to 10.
-		backend : `obj`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` allocated and
-			used within this class.
-		"""
+            retrieving diagnostics at the end of each sub-step of any stage
+            of the dynamical core.
+            This parameter is ignored if `substeps` argument is not positive.
+        moist : bool
+            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+            Defaults to :obj:`False`.
+        time_integration_scheme : str
+            String specifying the time stepping method to implement.
+            See :class:`tasmania.IsentropicMinimalPrognostic`
+            for all available options. Defaults to 'forward_euler'.
+        horizontal_flux_scheme : str
+            String specifying the numerical horizontal flux to use.
+            See :class:`tasmania.HorizontalIsentropicMinimalFlux`
+            for all available options. Defaults to 'upwind'.
+        damp : `bool`, optional
+            :obj:`True` to enable vertical damping, :obj:`False` otherwise.
+            Defaults to :obj:`True`.
+        damp_at_every_stage : `bool`, optional
+            :obj:`True` to carry out the damping at each stage of the multi-stage
+            time-integrator, :obj:`False` to carry out the damping only at the end
+            of each timestep. Defaults to :obj:`True`.
+        damp_type : `str`, optional
+            String specifying the vertical damping scheme to implement.
+            See :class:`tasmania.VerticalDamping` for all available options.
+            Defaults to 'rayleigh'.
+        damp_depth : `int`, optional
+            Number of vertical layers in the damping region. Defaults to 15.
+        damp_max : `float`, optional
+            Maximum value for the damping coefficient. Defaults to 0.0002.
+        smooth : `bool`, optional
+            :obj:`True` to enable horizontal numerical smoothing, :obj:`False` otherwise.
+            Defaults to :obj:`True`.
+        smooth_at_every_stage : `bool`, optional
+            :obj:`True` to apply numerical smoothing at each stage of the time-
+            integrator, :obj:`False` to apply numerical smoothing only at the end
+            of each timestep. Defaults to :obj:`True`.
+        smooth_type: `str`, optional
+            String specifying the smoothing technique to implement.
+            See :class:`tasmania.HorizontalSmoothing` for all available options.
+            Defaults to 'first_order'.
+        smooth_coeff : `float`, optional
+            Smoothing coefficient. Defaults to 0.03.
+        smooth_coeff_max : `float`, optional
+            Maximum value for the smoothing coefficient.
+            See :class:`tasmania.HorizontalSmoothing` for further details.
+            Defaults to 0.24.
+        smooth_damp_depth : `int`, optional
+            Number of vertical layers in the smoothing damping region. Defaults to 10.
+        smooth_moist : `bool`, optional
+            :obj:`True` to enable horizontal numerical smoothing on the water constituents,
+            :obj:`False` otherwise. Defaults to :obj:`True`.
+        smooth_moist_at_every_stage : `bool`, optional
+            :obj:`True` to apply numerical smoothing on the water constituents
+            at each stage of the time-integrator, :obj:`False` to apply numerical
+            smoothing only at the end of each timestep. Defaults to :obj:`True`.
+        smooth_moist_type: `str`, optional
+            String specifying the smoothing technique to apply on the water constituents.
+            See :class:`tasmania.HorizontalSmoothing` for all available options.
+            Defaults to 'first-order'.
+        smooth_moist_coeff : `float`, optional
+            Smoothing coefficient for the water constituents. Defaults to 0.03.
+        smooth_moist_coeff_max : `float`, optional
+            Maximum value for the smoothing coefficient for the water constituents.
+            See :class:`tasmania.HorizontalSmoothing` for further details.
+            Defaults to 0.24.
+        smooth_moist_damp_depth : `int`, optional
+            Number of vertical layers in the smoothing damping region for the
+            water constituents. Defaults to 10.
+        backend : `obj`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` allocated and
+            used within this class.
+        """
         #
         # input parameters
         #

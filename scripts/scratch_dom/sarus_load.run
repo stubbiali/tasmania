@@ -11,15 +11,15 @@
 # ==================================================
 # User inputs
 # ==================================================
-IMAGE_PATH=tasmania-develop/docker/tasmania_master.tar  # the path to the image to load
+IMAGE_PATH=/project/s299/subbiali/tasmania-develop-gt4py-v0.5.0/docker/images/tasmania_gpu.tar  # the path to the image to load
 IMAGE_NAME=tasmania
-IMAGE_TAG=develop
+IMAGE_TAG=gpu
 
 # ==================================================
 # Code
 # ==================================================
 module load daint-mc
-module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5
+module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc7-daint
 
-srun sarus load --temp-dir=.sarus $IMAGE_PATH $IMAGE_NAME:$IMAGE_TAG
+srun --unbuffered sarus load $IMAGE_PATH $IMAGE_NAME:$IMAGE_TAG
 

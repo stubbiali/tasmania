@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	Centered(IsentropicNonconservativeHorizontalFlux)
+    Centered(IsentropicNonconservativeHorizontalFlux)
 """
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
@@ -32,18 +32,18 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
 
 class Centered(IsentropicNonconservativeHorizontalFlux):
     """
-	A centered scheme to compute the horizontal
-	numerical fluxes for the prognostic model variables.
-	The nonconservative form of the governing equations,
-	expressed using isentropic coordinates, is used.
+    A centered scheme to compute the horizontal
+    numerical fluxes for the prognostic model variables.
+    The nonconservative form of the governing equations,
+    expressed using isentropic coordinates, is used.
 
-	Attributes
-	----------
-	nb : int
-		Number of boundary layers.
-	order : int
-		Order of accuracy.
-	"""
+    Attributes
+    ----------
+    nb : int
+        Number of boundary layers.
+    order : int
+        Order of accuracy.
+    """
 
     def __init__(self, grid, moist_on):
         super().__init__(grid, moist_on)

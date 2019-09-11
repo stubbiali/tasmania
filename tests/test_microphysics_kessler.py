@@ -41,6 +41,7 @@ from tasmania.python.physics.microphysics.kessler import (
 )
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
@@ -156,7 +157,7 @@ def kessler_validation_bis(
     deadline=None,
 )
 @given(hyp_st.data())
-def _test_kessler_microphysics(data):
+def test_kessler_microphysics(data):
     # ========================================
     # random data generation
     # ========================================
@@ -164,7 +165,16 @@ def _test_kessler_microphysics(data):
 
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    halo = data.draw(st_one_of(conf_halo), label="halo")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+    state = data.draw(
+        st_isentropic_state_f(
+            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+        ),
+        label="state",
+    )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
     toaptid = data.draw(hyp_st.booleans(), label="toaptid")
@@ -175,26 +185,35 @@ def _test_kessler_microphysics(data):
     k1 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k1")
     k2 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k2")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-
     # ========================================
     # test bed
     # ========================================
+    dtype = grid.x.dtype
+
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
+        p_unstg = zeros(storage_shape, backend, dtype, halo=halo)
+        p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
-            0.5 * (p[:, :, :-1] + p[:, :, 1:]), grid, "Pa", name="air_pressure"
+            p_unstg,
+            grid,
+            "Pa",
+            name="air_pressure",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
+
         exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
+        exn_unstg = zeros(storage_shape, backend, dtype, halo=halo)
+        exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
-            0.5 * (exn[:, :, :-1] + exn[:, :, 1:]),
+            exn_unstg,
             grid,
             "J kg^-1 K^-1",
             name="exner_function",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
-
-    dtype = grid.x.dtype
 
     rd = 287.0
     rv = 461.5
@@ -218,6 +237,7 @@ def _test_kessler_microphysics(data):
         dtype=dtype,
         halo=halo,
         rebuild=True,
+        storage_shape=storage_shape,
     )
 
     assert "air_density" in kessler.input_properties
@@ -271,21 +291,25 @@ def _test_kessler_microphysics(data):
         assert name in diagnostics
     assert len(diagnostics) == len(diagnostic_names)
 
-    rho = state["air_density"].to_units("kg m^-3").values
+    rho = state["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz]
     p = (
-        state["air_pressure_on_interface_levels"].to_units("Pa").values
+        state["air_pressure_on_interface_levels"]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1]
         if apoif
-        else state["air_pressure"].to_units("Pa").values
+        else state["air_pressure"].to_units("Pa").values[:nx, :ny, :nz]
     )
-    t = state["air_temperature"].to_units("K").values
+    t = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
     exn = (
-        state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
+        state["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
         if apoif
-        else state["exner_function"].to_units("J kg^-1 K^-1").values
+        else state["exner_function"].to_units("J kg^-1 K^-1").values[:nx, :ny, :nz]
     )
-    qv = state[mfwv].to_units("g g^-1").values
-    qc = state[mfcw].to_units("g g^-1").values
-    qr = state[mfpw].to_units("g g^-1").values
+    qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+    qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
+    qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
 
     # assert kessler._a == a
     # assert kessler._k1 == k1
@@ -302,30 +326,30 @@ def _test_kessler_microphysics(data):
 
     compare_dataarrays(
         get_dataarray_3d(tnd_qc, grid, "g g^-1 s^-1"),
-        tendencies[mfcw],
+        tendencies[mfcw][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
     compare_dataarrays(
         get_dataarray_3d(tnd_qr, grid, "g g^-1 s^-1"),
-        tendencies[mfpw],
+        tendencies[mfpw][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
     if mfwv in tendency_names:
         compare_dataarrays(
             get_dataarray_3d(tnd_qv, grid, "g g^-1 s^-1"),
-            tendencies[mfwv],
+            tendencies[mfwv][:nx, :ny, :nz],
             compare_coordinate_values=False,
         )
     if "air_potential_temperature" in tendency_names:
         compare_dataarrays(
             get_dataarray_3d(tnd_theta, grid, "K s^-1"),
-            tendencies["air_potential_temperature"],
+            tendencies["air_potential_temperature"][:nx, :ny, :nz],
             compare_coordinate_values=False,
         )
     if "tendency_of_air_potential_temperature" in diagnostic_names:
         compare_dataarrays(
             get_dataarray_3d(tnd_theta, grid, "K s^-1"),
-            diagnostics["tendency_of_air_potential_temperature"],
+            diagnostics["tendency_of_air_potential_temperature"][:nx, :ny, :nz],
             compare_coordinate_values=False,
         )
 
@@ -347,7 +371,7 @@ def kessler_saturation_adjustment_validation(p, t, qv, qc, beta, lhvw, cp):
     deadline=None,
 )
 @given(hyp_st.data())
-def _test_kessler_saturation_adjustment(data):
+def test_kessler_saturation_adjustment(data):
     # ========================================
     # random data generation
     # ========================================
@@ -355,22 +379,36 @@ def _test_kessler_saturation_adjustment(data):
 
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    halo = data.draw(st_one_of(conf_halo), label="halo")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+    state = data.draw(
+        st_isentropic_state_f(
+            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+        ),
+        label="state",
+    )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
 
     # ========================================
     # test bed
     # ========================================
+    dtype = grid.x.dtype
+
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
+        p_unstg = zeros(storage_shape, backend, dtype, halo=halo)
+        p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
-            0.5 * (p[:, :, :-1] + p[:, :, 1:]), grid, "Pa", name="air_pressure"
+            p_unstg,
+            grid,
+            "Pa",
+            name="air_pressure",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
-
-    dtype = grid.x.dtype
 
     rd = 287.0
     rv = 461.5
@@ -388,6 +426,7 @@ def _test_kessler_saturation_adjustment(data):
         backend=backend,
         dtype=dtype,
         rebuild=True,
+        storage_shape=storage_shape,
     )
 
     assert "air_temperature" in sak.input_properties
@@ -413,13 +452,15 @@ def _test_kessler_saturation_adjustment(data):
     assert len(diagnostics) == 2
 
     p = (
-        state["air_pressure_on_interface_levels"].to_units("Pa").values
+        state["air_pressure_on_interface_levels"]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1]
         if apoif
-        else state["air_pressure"].to_units("Pa").values
+        else state["air_pressure"].to_units("Pa").values[:nx, :ny, :nz]
     )
-    t = state["air_temperature"].to_units("K").values
-    qv = state[mfwv].to_units("g g^-1").values
-    qc = state[mfcw].to_units("g g^-1").values
+    t = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
+    qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+    qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
 
     out_qv, out_qc = kessler_saturation_adjustment_validation(
         p, t, qv, qc, beta, lhvw, cp
@@ -427,12 +468,12 @@ def _test_kessler_saturation_adjustment(data):
 
     compare_dataarrays(
         get_dataarray_3d(out_qv, grid, "g g^-1"),
-        diagnostics[mfwv],
+        diagnostics[mfwv][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
     compare_dataarrays(
         get_dataarray_3d(out_qc, grid, "g g^-1"),
-        diagnostics[mfcw],
+        diagnostics[mfcw][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
 
@@ -450,7 +491,7 @@ def kessler_fall_velocity_validation(rho, qr):
     deadline=None,
 )
 @given(hyp_st.data())
-def _test_kessler_fall_velocity(data):
+def test_kessler_fall_velocity(data):
     # ========================================
     # random data generation
     # ========================================
@@ -458,10 +499,16 @@ def _test_kessler_fall_velocity(data):
 
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
-
     backend = data.draw(st_one_of(conf_backend), label="backend")
     halo = data.draw(st_one_of(conf_halo), label="halo")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+    state = data.draw(
+        st_isentropic_state_f(
+            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+        ),
+        label="state",
+    )
 
     # ========================================
     # test bed
@@ -472,7 +519,13 @@ def _test_kessler_fall_velocity(data):
     # test properties
     #
     rfv = KesslerFallVelocity(
-        domain, grid_type, backend=backend, dtype=dtype, halo=halo, rebuild=False
+        domain,
+        grid_type,
+        backend=backend,
+        dtype=dtype,
+        halo=halo,
+        rebuild=False,
+        storage_shape=storage_shape,
     )
 
     assert "air_density" in rfv.input_properties
@@ -490,14 +543,14 @@ def _test_kessler_fall_velocity(data):
     assert "raindrop_fall_velocity" in diagnostics
     assert len(diagnostics) == 1
 
-    rho = state["air_density"].to_units("kg m^-3").values
-    qr = state[mfpw].to_units("g g^-1").values
+    rho = state["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz]
+    qr = state[mfpw].to_units("g g^-1").values[:nx, :ny, :nz]
 
     vt = kessler_fall_velocity_validation(rho, qr)
 
     compare_dataarrays(
         get_dataarray_3d(vt, grid, "m s^-1"),
-        diagnostics["raindrop_fall_velocity"],
+        diagnostics["raindrop_fall_velocity"][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
 
@@ -519,7 +572,16 @@ def test_kessler_sedimentation(data):
 
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    halo = data.draw(st_one_of(conf_halo), label="halo")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+    state = data.draw(
+        st_isentropic_state_f(
+            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+        ),
+        label="state",
+    )
 
     flux_type = data.draw(
         st_one_of(("first_order_upwind", "second_order_upwind")), label="flux_type"
@@ -533,15 +595,12 @@ def test_kessler_sedimentation(data):
         label="timestep",
     )
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-
     # ========================================
     # test bed
     # ========================================
     dtype = grid.x.dtype
 
-    rfv = KesslerFallVelocity(domain, grid_type, backend=backend, dtype=dtype, halo=halo)
+    rfv = KesslerFallVelocity(domain, grid_type, backend=backend, dtype=dtype, halo=halo, storage_shape=storage_shape)
     diagnostics = rfv(state)
     state.update(diagnostics)
 
@@ -554,6 +613,7 @@ def test_kessler_sedimentation(data):
         dtype=dtype,
         halo=halo,
         rebuild=True,
+        storage_shape=storage_shape
     )
 
     #
@@ -576,10 +636,10 @@ def test_kessler_sedimentation(data):
     tendencies, diagnostics = sed(state, timestep)
 
     assert mfpw in tendencies
-    raw_mfpw_val = kessler_sedimentation_validation(state, timestep, flux_type, maxcfl)
+    raw_mfpw_val = kessler_sedimentation_validation(nx, ny, nz, state, timestep, flux_type, maxcfl)
     compare_dataarrays(
         get_dataarray_3d(raw_mfpw_val, grid, "g g^-1 s^-1"),
-        tendencies[mfpw],
+        tendencies[mfpw][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
     assert len(tendencies) == 1

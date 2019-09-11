@@ -24,6 +24,8 @@ import json
 import numpy as np
 from sympl import DataArray
 import tasmania as taz
+import tasmania.python.utils.storage_utils
+
 try:
 	from .base_loader import BaseLoader
 	from .mounter import DatasetMounter
@@ -62,7 +64,7 @@ class DifferenceLoader(BaseLoader):
 		diff = \
 			state1[self._fname].to_units(self._funits).values - \
 			state2[self._fname].to_units(self._funits).values
-		state1['diff_of_' + self._fname] = taz.make_dataarray_3d(
+		state1['diff_of_' + self._fname] = tasmania.python.utils.storage_utils.get_dataarray_3d(
 			diff, self.get_grid(), self._funits
 		)
 
@@ -80,36 +82,36 @@ class VelocityDifferenceLoader(DifferenceLoader):
 		try:
 			u = state1['x_momentum'].to_units('kg m^-2 s^-1').values / \
 				state1['air_density'].to_units('kg m^-3').values
-			state1['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state1['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state1['y_momentum'].to_units('kg m^-2 s^-1').values / \
 				state1['air_density'].to_units('kg m^-3').values
-			state1['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state1['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 
 			u = state2['x_momentum'].to_units('kg m^-2 s^-1').values / \
 				state2['air_density'].to_units('kg m^-3').values
-			state2['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state2['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state2['y_momentum'].to_units('kg m^-2 s^-1').values / \
 				state2['air_density'].to_units('kg m^-3').values
-			state2['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state2['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 		except KeyError:
 			u = state1['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state1['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state1['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state1['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state1['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state1['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state1['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state1['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 
 			u = state2['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state2['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state2['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state2['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state2['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state2['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state2['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state2['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 
 		diff = \
 			state1[self._fname].to_units(self._funits).values - \
 			state2[self._fname].to_units(self._funits).values
-		state1['diff_of_' + self._fname] = taz.make_dataarray_3d(
+		state1['diff_of_' + self._fname] = tasmania.python.utils.storage_utils.get_dataarray_3d(
 			diff, self.get_grid(), self._funits
 		)
 
@@ -152,7 +154,7 @@ class RelativeDifferenceLoader(BaseLoader):
 		diff = (field1 - field2) / field2
 		diff[np.where(np.isnan(diff))] = 0.0
 		diff[np.where(np.isinf(diff))] = 0.0
-		state1['rdiff_of_' + self._fname] = taz.make_dataarray_3d(
+		state1['rdiff_of_' + self._fname] = tasmania.python.utils.storage_utils.get_dataarray_3d(
 			diff, self.get_grid(), '1'
 		)
 
@@ -230,31 +232,31 @@ class RMSDVelocityLoader(RMSDLoader):
 		try:
 			u = state1['x_momentum'].to_units('kg m^-2 s^-1').values / \
 				state1['air_density'].to_units('kg m^-3').values
-			state1['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state1['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state1['y_momentum'].to_units('kg m^-2 s^-1').values / \
 				state1['air_density'].to_units('kg m^-3').values
-			state1['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state1['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 
 			u = state2['x_momentum'].to_units('kg m^-2 s^-1').values / \
 				state2['air_density'].to_units('kg m^-3').values
-			state2['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state2['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state2['y_momentum'].to_units('kg m^-2 s^-1').values / \
 				state2['air_density'].to_units('kg m^-3').values
-			state2['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state2['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 		except KeyError:
 			u = state1['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state1['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state1['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state1['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state1['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state1['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state1['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state1['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 
 			u = state2['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state2['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state2['x_velocity'] = taz.make_dataarray_3d(u, self.get_grid(), 'm s^-1')
+			state2['x_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(u, self.get_grid(), 'm s^-1')
 			v = state2['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values / \
 				state2['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-			state2['y_velocity'] = taz.make_dataarray_3d(v, self.get_grid(), 'm s^-1')
+			state2['y_velocity'] = tasmania.python.utils.storage_utils.get_dataarray_3d(v, self.get_grid(), 'm s^-1')
 
 		field1 = state1[fname].to_units(funits).values[x1, y1, z1]
 		field2 = state2[fname].to_units(funits).values[x2, y2, z2]

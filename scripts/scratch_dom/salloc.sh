@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#!/bin/bash
 #
 # Tasmania
 #
@@ -20,10 +20,5 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-## @package gt4ess
-#  Cython setup file.
 
-from distutils.core import setup
-from Cython.Build import cythonize
-
-setup(name="parser1d", ext_modules=cythonize("parser_1d.pyx"))
+srun --pty --x11 --account=s299 --constraint=gpu --partition=normal --time=03:00:00 bash

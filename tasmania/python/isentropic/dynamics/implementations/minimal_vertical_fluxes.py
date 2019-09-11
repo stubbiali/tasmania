@@ -22,15 +22,15 @@
 #
 """
 This module contains:
-	Upwind(IsentropicMinimalVerticalFlux)
-	Centered(IsentropicMinimalVerticalFlux)
-	ThirdOrderUpwind(IsentropicMinimalVerticalFlux)
-	FifthOrderUpwind(IsentropicMinimalVerticalFlux)
+    Upwind(IsentropicMinimalVerticalFlux)
+    Centered(IsentropicMinimalVerticalFlux)
+    ThirdOrderUpwind(IsentropicMinimalVerticalFlux)
+    FifthOrderUpwind(IsentropicMinimalVerticalFlux)
 
-	get_upwind_flux
-	get_centered_flux
-	get_third_order_upwind_flux
-	get_fifth_order_upwind_flux
+    get_upwind_flux
+    get_centered_flux
+    get_third_order_upwind_flux
+    get_fifth_order_upwind_flux
 """
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,

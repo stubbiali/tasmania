@@ -22,20 +22,20 @@
 #
 """
 This module contains:
-	Upwind(IsentropicHorizontalFlux)
-	Centered(IsentropicHorizontalFlux)
-	MacCormack(IsentropicHorizontalFlux)
-	ThirdOrderUpwind(IsentropicHorizontalFlux)
-	FifthOrderUpwind(IsentropicHorizontalFlux)
+    Upwind(IsentropicHorizontalFlux)
+    Centered(IsentropicHorizontalFlux)
+    MacCormack(IsentropicHorizontalFlux)
+    ThirdOrderUpwind(IsentropicHorizontalFlux)
+    FifthOrderUpwind(IsentropicHorizontalFlux)
 
-	get_upwind_flux_{x, y}
-	get_centered_flux_{x, y}
-	get_maccormack_flux_{x, y}
-	get_maccormack_flux_{x, y}_s
-	get_third_order_upwind_flux_{x, y}
-	get_fourth_order_centered_flux_{x, y}
-	get_fifth_order_upwind_flux_{x, y}
-	get_sixth_order_centered_flux_{x, y}
+    get_upwind_flux_{x, y}
+    get_centered_flux_{x, y}
+    get_maccormack_flux_{x, y}
+    get_maccormack_flux_{x, y}_s
+    get_third_order_upwind_flux_{x, y}
+    get_fourth_order_centered_flux_{x, y}
+    get_fifth_order_upwind_flux_{x, y}
+    get_sixth_order_centered_flux_{x, y}
 """
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHorizontalFlux
 

@@ -26,7 +26,6 @@ This module contains:
 """
 import numpy as np
 
-import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import zeros

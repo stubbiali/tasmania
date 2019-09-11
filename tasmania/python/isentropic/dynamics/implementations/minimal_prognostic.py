@@ -22,11 +22,11 @@
 #
 """
 This module contains:
-	Centered(IsentropicMinimalPrognostic)
-	ForwardEuler(IsentropicMinimalPrognostic)
-	RK2(IsentropicMinimalPrognostic)
-	RK3WS(RK2)
-	RK3(IsentropicMinimalPrognostic)
+    Centered(IsentropicMinimalPrognostic)
+    ForwardEuler(IsentropicMinimalPrognostic)
+    RK2(IsentropicMinimalPrognostic)
+    RK3WS(RK2)
+    RK3(IsentropicMinimalPrognostic)
 """
 import numpy as np
 import warnings
@@ -50,10 +50,10 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 class Centered(IsentropicMinimalPrognostic):
     """
-	Implementation of a centered time-integration scheme which
-	takes over the prognostic part of the three-dimensional, moist,
-	*minimal*, isentropic dynamical core.
-	"""
+    Implementation of a centered time-integration scheme which
+    takes over the prognostic part of the three-dimensional, moist,
+    *minimal*, isentropic dynamical core.
+    """
 
     def __init__(
         self,
@@ -398,10 +398,10 @@ class Centered(IsentropicMinimalPrognostic):
 
 class ForwardEuler(IsentropicMinimalPrognostic):
     """
-	Implementation of the forward Euler time-integration scheme which
-	takes over the prognostic part of the three-dimensional, moist,
-	*minimal*, isentropic dynamical core.
-	"""
+    Implementation of the forward Euler time-integration scheme which
+    takes over the prognostic part of the three-dimensional, moist,
+    *minimal*, isentropic dynamical core.
+    """
 
     def __init__(
         self,
@@ -679,10 +679,10 @@ class ForwardEuler(IsentropicMinimalPrognostic):
 
 class RK2(IsentropicMinimalPrognostic):
     """
-	Implementation of the two-stages, second-order Runge-Kutta scheme
-	which takes over the prognostic part of the three-dimensional, moist,
-	*minimal*, isentropic dynamical core.
-	"""
+    Implementation of the two-stages, second-order Runge-Kutta scheme
+    which takes over the prognostic part of the three-dimensional, moist,
+    *minimal*, isentropic dynamical core.
+    """
 
     def __init__(
         self,
@@ -1051,10 +1051,10 @@ class RK2(IsentropicMinimalPrognostic):
 
 class RK3WS(RK2):
     """
-	Implementation of the three-stages, second-order Runge-Kutta scheme
-	which takes over the prognostic part of the three-dimensional, moist,
-	*minimal*, isentropic dynamical core.
-	"""
+    Implementation of the three-stages, second-order Runge-Kutta scheme
+    which takes over the prognostic part of the three-dimensional, moist,
+    *minimal*, isentropic dynamical core.
+    """
 
     def __init__(
         self,
@@ -1109,10 +1109,10 @@ class RK3WS(RK2):
 
 class RK3(IsentropicMinimalPrognostic):
     """
-	Implementation of the three-stages, third-order Runge-Kutta scheme
-	which takes over the prognostic part of the three-dimensional, moist,
-	*minimal*, isentropic dynamical core.
-	"""
+    Implementation of the three-stages, third-order Runge-Kutta scheme
+    which takes over the prognostic part of the three-dimensional, moist,
+    *minimal*, isentropic dynamical core.
+    """
 
     def __init__(
         self,
@@ -1428,9 +1428,9 @@ class RK3(IsentropicMinimalPrognostic):
 
     def _stage_stencils_allocate_temporaries(self):
         """
-		Allocate the Numpy arrays which store temporary fields to be shared
-		among the different GT4Py stencils.
-		"""
+        Allocate the Numpy arrays which store temporary fields to be shared
+        among the different GT4Py stencils.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         dtype = self._dtype

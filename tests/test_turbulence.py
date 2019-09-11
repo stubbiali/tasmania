@@ -28,7 +28,6 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 import pytest
 
@@ -37,10 +36,10 @@ from tasmania import get_dataarray_3d
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .utils import compare_dataarrays, st_domain, st_floats, st_one_of
+    from .utils import compare_dataarrays, st_domain, st_floats, st_one_of, st_raw_field
 except (ImportError, ModuleNotFoundError):
     from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from utils import compare_dataarrays, st_domain, st_floats, st_one_of
+    from utils import compare_dataarrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
 def smagorinsky2d_validation(dx, dy, cs, u, v):
@@ -80,28 +79,30 @@ def test_smagorinsky2d(data):
     # random data generation
     # ========================================
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
-
     domain = data.draw(st_domain(nb=nb), label="domain")
     grid = domain.numerical_grid
 
-    cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
-
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    field = data.draw(
-        st_arrays(
-            dtype,
-            (nx + 1, ny + 1, nz),
-            elements=st_floats(min_value=-1e3, max_value=1e3),
-            fill=hyp_st.nothing(),
-        ),
-        label="field",
+    halo = data.draw(st_one_of(conf_halo), label="halo")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
+
+    u = data.draw(
+        st_raw_field(storage_shape, -1e3, 1e3, backend=backend, dtype=dtype, halo=halo),
+        label="u",
+    )
+    v = data.draw(
+        st_raw_field(storage_shape, -1e3, 1e3, backend=backend, dtype=dtype, halo=halo),
+        label="v",
     )
 
-    time = data.draw(hyp_st.datetimes(), label="time")
+    cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    time = data.draw(hyp_st.datetimes(), label="time")
 
     # ========================================
     # test bed
@@ -109,32 +110,43 @@ def test_smagorinsky2d(data):
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
 
-    u = field[:-1, :-1, :]
-    v = field[1:, 1:, :]
     state = {
         "time": time,
-        "x_velocity": get_dataarray_3d(u, grid, "m s^-1"),
-        "y_velocity": get_dataarray_3d(v, grid, "m s^-1"),
+        "x_velocity": get_dataarray_3d(
+            u, grid, "m s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
+        ),
+        "y_velocity": get_dataarray_3d(
+            v, grid, "m s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
+        ),
     }
 
     u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
 
     smag = Smagorinsky2d(
-        domain, smagorinsky_constant=cs, backend=backend, dtype=dtype, halo=halo
+        domain,
+        smagorinsky_constant=cs,
+        backend=backend,
+        dtype=dtype,
+        halo=halo,
+        storage_shape=storage_shape,
     )
 
     tendencies, diagnostics = smag(state)
 
     assert "x_velocity" in tendencies
     compare_dataarrays(
-        tendencies["x_velocity"][nb:-nb, nb:-nb, :],
-        get_dataarray_3d(u_tnd, grid, "m s^-2")[nb:-nb, nb:-nb, :],
+        tendencies["x_velocity"][nb : nx - nb, nb : ny - nb, :nz],
+        get_dataarray_3d(
+            u_tnd, grid, "m s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
+        )[nb : nx - nb, nb : ny - nb, :nz],
         compare_coordinate_values=False,
     )
     assert "y_velocity" in tendencies
     compare_dataarrays(
-        tendencies["y_velocity"][nb:-nb, nb:-nb, :],
-        get_dataarray_3d(v_tnd, grid, "m s^-2")[nb:-nb, nb:-nb, :],
+        tendencies["y_velocity"][nb : nx - nb, nb : ny - nb, :nz],
+        get_dataarray_3d(
+            v_tnd, grid, "m s^-2", grid_shape=(nx, ny, nz), set_coordinates=False
+        )[nb : nx - nb, nb : ny - nb, :nz],
         compare_coordinate_values=False,
     )
     assert len(tendencies) == 2

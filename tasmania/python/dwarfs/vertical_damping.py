@@ -111,11 +111,12 @@ class VerticalDamping(abc.ABC):
 
         # compute the damping matrix
         z = (
-            grid.z.values
-            if storage_shape[2] == grid.nz
-            else grid.z_on_interface_levels.values
+             np.concatenate((grid.z.values, np.array([0, ])), axis=0)
+             if storage_shape[2] == grid.nz + 1
+             else grid.z.values
         )
-        za, zt = z[damp_depth - 1], z[-1]
+        zt = grid.z_on_interface_levels.values[0]
+        za = z[damp_depth - 1]
         r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
         self._rmat = zeros(
             storage_shape, backend, dtype, halo=halo, mask=(True, True, True)

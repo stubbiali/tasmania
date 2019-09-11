@@ -309,7 +309,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         #
         # vertical damping
         #
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         if damp:
             self._damper = VerticalDamping.factory(
                 damp_type,
@@ -401,6 +400,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._sqv_now = allocate()
             self._sqc_now = allocate()
             self._sqr_now = allocate()
+            self._sqv_int = allocate()
+            self._sqc_int = allocate()
+            self._sqr_int = allocate()
             self._qv_new = allocate()
             self._qc_new = allocate()
             self._qr_new = allocate()
@@ -412,13 +414,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._su_damped = allocate()
             self._sv_ref = allocate()
             self._sv_damped = allocate()
-            if moist:
-                self._qv_ref = allocate()
-                self._qv_damped = allocate()
-                self._qc_ref = allocate()
-                self._qc_damped = allocate()
-                self._qr_ref = allocate()
-                self._qr_damped = allocate()
+            # if moist:
+            #     self._qv_ref = allocate()
+            #     self._qv_damped = allocate()
+            #     self._qc_ref = allocate()
+            #     self._qc_damped = allocate()
+            #     self._qr_ref = allocate()
+            #     self._qr_damped = allocate()
 
         if smooth:
             self._s_smoothed = allocate()
@@ -571,19 +573,42 @@ class IsentropicDynamicalCore(DynamicalCore):
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
+        g_shape = (g.nx, g.ny, g.nz)
+        g_shape_stg_x = (g.nx + 1, g.ny, g.nz)
+        g_shape_stg_y = (g.nx, g.ny + 1, g.nz)
 
         return_dict = {
-            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
-            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "x_velocity_at_u_locations": {"dims": dims_stg_x, "units": "m s^-1"},
-            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
-            "y_velocity_at_v_locations": {"dims": dims_stg_y, "units": "m s^-1"},
+            "air_isentropic_density": {
+                "dims": dims,
+                "units": "kg m^-2 K^-1",
+                "grid_shape": g_shape,
+            },
+            "x_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+                "grid_shape": g_shape,
+            },
+            "x_velocity_at_u_locations": {
+                "dims": dims_stg_x,
+                "units": "m s^-1",
+                "grid_shape": g_shape_stg_x,
+            },
+            "y_momentum_isentropic": {
+                "dims": dims,
+                "units": "kg m^-1 K^-1 s^-1",
+                "grid_shape": g_shape,
+            },
+            "y_velocity_at_v_locations": {
+                "dims": dims_stg_y,
+                "units": "m s^-1",
+                "grid_shape": g_shape_stg_y,
+            },
         }
 
         if self._moist:
-            return_dict[mfwv] = {"dims": dims, "units": "g g^-1"}
-            return_dict[mfcw] = {"dims": dims, "units": "g g^-1"}
-            return_dict[mfpw] = {"dims": dims, "units": "g g^-1"}
+            return_dict[mfwv] = {"dims": dims, "units": "g g^-1", "grid_shape": g_shape}
+            return_dict[mfcw] = {"dims": dims, "units": "g g^-1", "grid_shape": g_shape}
+            return_dict[mfpw] = {"dims": dims, "units": "g g^-1", "grid_shape": g_shape}
 
         return return_dict
 
@@ -591,6 +616,7 @@ class IsentropicDynamicalCore(DynamicalCore):
     def _substep_output_properties(self):
         if not hasattr(self, "__substep_output_properties"):
             dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+            g_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
 
             self.__substep_output_properties = {}
 
@@ -598,18 +624,21 @@ class IsentropicDynamicalCore(DynamicalCore):
                 self.__substep_output_properties["air_isentropic_density"] = {
                     "dims": dims,
                     "units": "kg m^-2 K^-1",
+                    "grid_shape": g_shape,
                 }
 
             if "x_momentum_isentropic" in self._substep_input_properties:
                 self.__substep_output_properties["x_momentum_isentropic"] = {
                     "dims": dims,
                     "units": "kg m^-1 K^-1 s^-1",
+                    "grid_shape": g_shape,
                 }
 
             if "y_momentum_isentropic" in self._substep_input_properties:
                 self.__substep_output_properties["y_momentum_isentropic"] = {
                     "dims": dims,
                     "units": "kg m^-1 K^-1 s^-1",
+                    "grid_shape": g_shape,
                 }
 
             if self._moist:
@@ -617,25 +646,30 @@ class IsentropicDynamicalCore(DynamicalCore):
                     self.__substep_output_properties[mfwv] = {
                         "dims": dims,
                         "units": "g g^-1",
+                        "grid_shape": g_shape,
                     }
 
                 if mfcw in self._substep_input_properties:
                     self.__substep_output_properties[mfcw] = {
                         "dims": dims,
                         "units": "g g^-1",
+                        "grid_shape": g_shape,
                     }
 
                 if mfpw in self._substep_input_properties:
                     self.__substep_output_properties[mfpw] = {
                         "dims": dims,
                         "units": "g g^-1",
+                        "grid_shape": g_shape,
                     }
 
                 if "precipitation" in self._substep_input_properties:
-                    dims2d = (self.grid.x.dims[0], self.grid.y.dims[0])
+                    dims2d = (self.grid.x.dims[0], self.grid.y.dims[0], 1)
+                    g_shape_2d = (self.grid.nx, self.grid.ny, 1)
                     self.__substep_output_properties["accumulated_precipitation"] = {
                         "dims": dims2d,
                         "units": "mm",
+                        "grid_shape": g_shape_2d,
                     }
 
         return self.__substep_output_properties
@@ -708,15 +742,15 @@ class IsentropicDynamicalCore(DynamicalCore):
             # set the reference state
             try:
                 ref_state = hb.reference_state
-                self._s_ref[:nx, :ny, :nz] = (
+                self._s_ref[...] = (
                     ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
                 )
-                self._su_ref[:nx, :ny, :nz] = (
+                self._su_ref[...] = (
                     ref_state["x_momentum_isentropic"]
                     .to_units("kg m^-1 K^-1 s^-1")
                     .values
                 )
-                self._sv_ref[:nx, :ny, :nz] = (
+                self._sv_ref[...] = (
                     ref_state["y_momentum_isentropic"]
                     .to_units("kg m^-1 K^-1 s^-1")
                     .values
@@ -828,28 +862,29 @@ class IsentropicDynamicalCore(DynamicalCore):
             # set the reference state
             try:
                 ref_state = hb.reference_state
-                self._s_ref.data[:nx, :ny, :nz] = (
+                self._s_ref[...] = (
                     ref_state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
                 )
-                self._su_ref.data[:nx, :ny, :nz] = (
+                self._su_ref[...] = (
                     ref_state["x_momentum_isentropic"]
                     .to_units("kg m^-1 K^-1 s^-1")
                     .values
                 )
-                self._sv_ref.data[:nx, :ny, :nz] = (
+                self._sv_ref[...] = (
                     ref_state["y_momentum_isentropic"]
                     .to_units("kg m^-1 K^-1 s^-1")
                     .values
                 )
-                self._qv_ref.data[:nx, :ny, :nz] = (
-                    ref_state[mfwv].to_units("g g^-1").values
-                )
-                self._qc_ref.data[:nx, :ny, :nz] = (
-                    ref_state[mfcw].to_units("g g^-1").values
-                )
-                self._qr_ref.data[:nx, :ny, :nz] = (
-                    ref_state[mfpw].to_units("g g^-1").values
-                )
+
+                # self._qv_ref[...] = (
+                #     ref_state[mfwv].to_units("g g^-1").values
+                # )
+                # self._qc_ref[...] = (
+                #     ref_state[mfcw].to_units("g g^-1").values
+                # )
+                # self._qr_ref[...] = (
+                #     ref_state[mfpw].to_units("g g^-1").values
+                # )
             except KeyError:
                 raise RuntimeError(
                     "Reference state not set in the object handling the horizontal "
@@ -857,35 +892,28 @@ class IsentropicDynamicalCore(DynamicalCore):
                 )
 
             # save the current solution
-            self._s_now.data[:nx, :ny, :nz] = raw_state["air_isentropic_density"]
-            self._su_now.data[:nx, :ny, :nz] = raw_state["x_momentum_isentropic"]
-            self._sv_now.data[:nx, :ny, :nz] = raw_state["y_momentum_isentropic"]
+            self._s_now = raw_state["air_isentropic_density"]
+            self._su_now = raw_state["x_momentum_isentropic"]
+            self._sv_now = raw_state["y_momentum_isentropic"]
             # self._qv_now.data[:nx, :ny, :nz] = raw_state[mfwv]
             # self._qc_now.data[:nx, :ny, :nz] = raw_state[mfcw]
             # self._qr_now.data[:nx, :ny, :nz] = raw_state[mfpw]
 
-        self._s_now_1.data[:nx, :ny, :nz] = raw_state["air_isentropic_density"]
-        self._qv_now.data[:nx, :ny, :nz] = raw_state[mfwv]
-        self._qc_now.data[:nx, :ny, :nz] = raw_state[mfcw]
-        self._qr_now.data[:nx, :ny, :nz] = raw_state[mfpw]
+        s_now = raw_state["air_isentropic_density"]
+        qv_now = raw_state[mfwv]
+        qc_now = raw_state[mfcw]
+        qr_now = raw_state[mfpw]
 
         # diagnose the isentropic density of all water constituents
-        self._water_constituent.get_density_of_water_constituent(
-            self._s_now_1, self._qv_now, self._sqv_now
-        )
-        self._water_constituent.get_density_of_water_constituent(
-            self._s_now_1, self._qc_now, self._sqc_now
-        )
-        self._water_constituent.get_density_of_water_constituent(
-            self._s_now_1, self._qr_now, self._sqr_now
-        )
-        raw_state["isentropic_density_of_water_vapor"] = self._sqv_now.data[:nx, :ny, :nz]
-        raw_state["isentropic_density_of_cloud_liquid_water"] = self._sqc_now.data[
-            :nx, :ny, :nz
-        ]
-        raw_state["isentropic_density_of_precipitation_water"] = self._sqr_now.data[
-            :nx, :ny, :nz
-        ]
+        sqv = self._sqv_now if stage == 0 else self._sqv_int
+        sqc = self._sqc_now if stage == 0 else self._sqc_int
+        sqr = self._sqr_now if stage == 0 else self._sqr_int
+        self._water_constituent.get_density_of_water_constituent(s_now, qv_now, sqv)
+        self._water_constituent.get_density_of_water_constituent(s_now, qc_now, sqc)
+        self._water_constituent.get_density_of_water_constituent(s_now, qr_now, sqr)
+        raw_state["isentropic_density_of_water_vapor"] = sqv
+        raw_state["isentropic_density_of_cloud_liquid_water"] = sqc
+        raw_state["isentropic_density_of_precipitation_water"] = sqr
 
         # perform the prognostic step
         raw_state_new = self._prognostic.stage_call(
@@ -893,59 +921,52 @@ class IsentropicDynamicalCore(DynamicalCore):
         )
 
         # extract the stepped prognostic model variables
-        self._s_new.data[:nx, :ny, :nz] = raw_state_new["air_isentropic_density"]
-        self._sqv_new.data[:nx, :ny, :nz] = raw_state_new[
-            "isentropic_density_of_water_vapor"
-        ]
-        self._sqc_new.data[:nx, :ny, :nz] = raw_state_new[
-            "isentropic_density_of_cloud_liquid_water"
-        ]
-        self._sqr_new.data[:nx, :ny, :nz] = raw_state_new[
-            "isentropic_density_of_precipitation_water"
-        ]
+        s_new = raw_state_new["air_isentropic_density"]
+        su_new = raw_state_new["x_momentum_isentropic"]
+        sv_new = raw_state_new["y_momentum_isentropic"]
+        sqv_new = raw_state_new["isentropic_density_of_water_vapor"]
+        sqc_new = raw_state_new["isentropic_density_of_cloud_liquid_water"]
+        sqr_new = raw_state_new["isentropic_density_of_precipitation_water"]
 
         # diagnose the mass fraction of all water constituents
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-            self._s_new, self._sqv_new, self._qv_new
+            s_new, sqv_new, self._qv_new
         )
-        raw_state_new[mfwv] = self._qv_new.data[:nx, :ny, :nz]
+        raw_state_new[mfwv] = self._qv_new
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-            self._s_new, self._sqc_new, self._qc_new
+            s_new, sqc_new, self._qc_new
         )
-        raw_state_new[mfcw] = self._qc_new.data[:nx, :ny, :nz]
+        raw_state_new[mfcw] = self._qc_new
         self._water_constituent.get_mass_fraction_of_water_constituent_in_air(
-            self._s_new, self._sqr_new, self._qr_new
+            s_new, sqr_new, self._qr_new
         )
-        raw_state_new[mfpw] = self._qr_new.data[:nx, :ny, :nz]
+        raw_state_new[mfpw] = self._qr_new
+
+        # restrict the state onto the numerical grid
+        raw_state_new_min = {"time": raw_state_new["time"]}
+        for key in raw_state_new:
+            if key != "time":
+                raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
 
         # apply the lateral boundary conditions
-        hb.dmn_enforce_raw(raw_state_new, out_properties)
-
-        # extract the stepped prognostic model variables
-        self._s_new.data[:nx, :ny, :nz] = raw_state_new["air_isentropic_density"]
-        self._su_new.data[:nx, :ny, :nz] = raw_state_new["x_momentum_isentropic"]
-        self._sv_new.data[:nx, :ny, :nz] = raw_state_new["y_momentum_isentropic"]
+        hb.dmn_enforce_raw(raw_state_new_min, out_properties)
 
         damped = False
         if self._damp and (self._damp_at_every_stage or stage == self.stages - 1):
             damped = True
 
             # apply vertical damping
-            self._damper(timestep, self._s_now, self._s_new, self._s_ref, self._s_damped)
-            self._damper(
-                timestep, self._su_now, self._su_new, self._su_ref, self._su_damped
-            )
-            self._damper(
-                timestep, self._sv_now, self._sv_new, self._sv_ref, self._sv_damped
-            )
+            self._damper(timestep, self._s_now, s_new, self._s_ref, self._s_damped)
+            self._damper(timestep, self._su_now, su_new, self._su_ref, self._su_damped)
+            self._damper(timestep, self._sv_now, sv_new, self._sv_ref, self._sv_damped)
             # self._damper(timestep, self._qv_now, self._qv_new, self._qv_ref, self._qv_damped)
             # self._damper(timestep, self._qc_now, self._qc_new, self._qc_ref, self._qc_damped)
             # self._damper(timestep, self._qr_now, self._qr_new, self._qr_ref, self._qr_damped)
 
         # properly set pointers to current solution
-        s_new = self._s_damped if damped else self._s_new
-        su_new = self._su_damped if damped else self._su_new
-        sv_new = self._sv_damped if damped else self._sv_new
+        s_new = self._s_damped if damped else s_new
+        su_new = self._su_damped if damped else su_new
+        sv_new = self._sv_damped if damped else sv_new
         qv_new = self._qv_new  # self._qv_damped if damped else self._qv_new
         qc_new = self._qc_new  # self._qc_damped if damped else self._qc_new
         qr_new = self._qr_new  # self._qr_damped if damped else self._qr_new
@@ -962,9 +983,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed.data[:nx, :ny, :nz],
-                "x_momentum_isentropic": self._su_smoothed.data[:nx, :ny, :nz],
-                "y_momentum_isentropic": self._sv_smoothed.data[:nx, :ny, :nz],
+                "air_isentropic_density": self._s_smoothed[:nx, :ny, :nz],
+                "x_momentum_isentropic": self._su_smoothed[:nx, :ny, :nz],
+                "y_momentum_isentropic": self._sv_smoothed[:nx, :ny, :nz],
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -987,9 +1008,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                mfwv: self._qv_smoothed.data[:nx, :ny, :nz],
-                mfcw: self._qc_smoothed.data[:nx, :ny, :nz],
-                mfpw: self._qr_smoothed.data[:nx, :ny, :nz],
+                mfwv: self._qv_smoothed[:nx, :ny, :nz],
+                mfcw: self._qc_smoothed[:nx, :ny, :nz],
+                mfpw: self._qr_smoothed[:nx, :ny, :nz],
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -1003,13 +1024,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             s_out, su_out, sv_out, self._u_out, self._v_out
         )
         hb.dmn_set_outermost_layers_x(
-            self._u_out.data[: nx + 1, :ny, :nz],
+            self._u_out[: nx + 1, :ny, :nz],
             field_name="x_velocity_at_u_locations",
             field_units=out_properties["x_velocity_at_u_locations"]["units"],
             time=raw_state_new["time"],
         )
         hb.dmn_set_outermost_layers_y(
-            self._v_out.data[:nx, : ny + 1, :nz],
+            self._v_out[:nx, : ny + 1, :nz],
             field_name="y_velocity_at_v_locations",
             field_units=out_properties["y_velocity_at_v_locations"]["units"],
             time=raw_state_new["time"],
@@ -1018,14 +1039,14 @@ class IsentropicDynamicalCore(DynamicalCore):
         # instantiate the output state
         raw_state_out = {
             "time": raw_state_new["time"],
-            "air_isentropic_density": s_out.data[:nx, :ny, :nz],
-            mfwv: qv_out.data[:nx, :ny, :nz],
-            mfcw: qc_out.data[:nx, :ny, :nz],
-            mfpw: qr_out.data[:nx, :ny, :nz],
-            "x_momentum_isentropic": su_out.data[:nx, :ny, :nz],
-            "x_velocity_at_u_locations": self._u_out.data[: nx + 1, :ny, :nz],
-            "y_momentum_isentropic": sv_out.data[:nx, :ny, :nz],
-            "y_velocity_at_v_locations": self._v_out.data[:nx, : ny + 1, :nz],
+            "air_isentropic_density": s_out,
+            mfwv: qv_out,
+            mfcw: qc_out,
+            mfpw: qr_out,
+            "x_momentum_isentropic": su_out,
+            "x_velocity_at_u_locations": self._u_out,
+            "y_momentum_isentropic": sv_out,
+            "y_velocity_at_v_locations": self._v_out,
         }
 
         return raw_state_out

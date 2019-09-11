@@ -45,46 +45,46 @@ from tasmania.python.plot.utils import smaller_than as lt, equal_to as eq
 
 
 text_locations = {
-	'upper right'  : 1,
-	'upper left'   : 2,
-	'lower left'   : 3,
-	'lower right'  : 4,
-	'right'        : 5,
-	'center left'  : 6,
-	'center right' : 7,
-	'lower center' : 8,
-	'upper center' : 9,
-	'center'       : 10,
+    "upper right": 1,
+    "upper left": 2,
+    "lower left": 3,
+    "lower right": 4,
+    "right": 5,
+    "center left": 6,
+    "center right": 7,
+    "lower center": 8,
+    "upper center": 9,
+    "center": 10,
 }
 
 
 linestyle_dict = {
-	'-': 'solid',
-	'--': 'dashed',
-	':': 'dotted',
-	'-.': 'dashdot',
-	'solid': 'solid',
-	'dashed': 'dashed',
-	'dotted': 'dotted',
-    'dashdot': 'dashdot', 
-    'loosely dotted': (0, (1, 10)),
-    'dotted': (0, (1, 1)),
-    'densely dotted': (0, (1, 1)),
-    'loosely dashed': (0, (5, 10)),
-    'densely dashed': (0, (5, 1)),
-    'loosely dashdotted': (0, (3, 10, 1, 10)),
-    'dashdotted': (0, (3, 5, 1, 5)),
-    'densely dashdotted': (0, (3, 1, 1, 1)),
-    'dashdotdotted': (0, (3, 5, 1, 5, 1, 5)),
-    'loosely dashdotdotted': (0, (3, 10, 1, 10, 1, 10)),
-    'densely dashdotdotted': (0, (3, 1, 1, 1, 1, 1))
+    "-": "solid",
+    "--": "dashed",
+    ":": "dotted",
+    "-.": "dashdot",
+    "solid": "solid",
+    "dashed": "dashed",
+    "dotted": "dotted",
+    "dashdot": "dashdot",
+    "loosely dotted": (0, (1, 10)),
+    "dotted": (0, (1, 1)),
+    "densely dotted": (0, (1, 1)),
+    "loosely dashed": (0, (5, 10)),
+    "densely dashed": (0, (5, 1)),
+    "loosely dashdotted": (0, (3, 10, 1, 10)),
+    "dashdotted": (0, (3, 5, 1, 5)),
+    "densely dashdotted": (0, (3, 1, 1, 1)),
+    "dashdotdotted": (0, (3, 5, 1, 5, 1, 5)),
+    "loosely dashdotdotted": (0, (3, 10, 1, 10, 1, 10)),
+    "densely dashdotdotted": (0, (3, 1, 1, 1, 1, 1)),
 }
 
 
 def get_figure_and_axes(
-	fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
+    fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
 ):
-	"""
+    """
 	Get a :class:`matplotlib.figure.Figure` object and a :class:`matplotlib.axes.Axes`
 	object, with the latter embedded in the former. The returned values are determined 
 	as follows:
@@ -148,78 +148,82 @@ def get_figure_and_axes(
 	out_ax : matplotlib.axes.Axes
         The axes.
 	"""
-	figsize    = kwargs.get('figsize', (7, 7))
-	fontsize   = kwargs.get('fontsize', 12)
-	projection = kwargs.get('projection', None)
+    figsize = kwargs.get("figsize", (7, 7))
+    fontsize = kwargs.get("fontsize", 12)
+    projection = kwargs.get("projection", None)
 
-	rcParams['font.size'] = fontsize
+    rcParams["font.size"] = fontsize
 
-	if (fig is not None) and (ax is not None):
-		try:
-			if ax not in fig.get_axes():
-				import warnings
-				warnings.warn(
-					"Input axes do not belong to the input figure, "
-					"so the figure which the axes belong to is considered.",
-					RuntimeWarning
-				)
+    if (fig is not None) and (ax is not None):
+        try:
+            if ax not in fig.get_axes():
+                import warnings
 
-				out_fig, out_ax = ax.get_figure(), ax
-			else:
-				out_fig, out_ax = fig, ax
-		except AttributeError:
-			import warnings
-			warnings.warn(
-				"Input argument ''fig'' does not seem to be a matplotlib.figure.Figure, "
-				"so the figure the axes belong to are considered.",
-				RuntimeWarning
-			)
+                warnings.warn(
+                    "Input axes do not belong to the input figure, "
+                    "so the figure which the axes belong to is considered.",
+                    RuntimeWarning,
+                )
 
-			out_fig, out_ax = ax.get_figure(), ax
+                out_fig, out_ax = ax.get_figure(), ax
+            else:
+                out_fig, out_ax = fig, ax
+        except AttributeError:
+            import warnings
 
-	if (fig is not None) and (ax is None):
-		try:
-			out_fig = fig
-			out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
-		except AttributeError:
-			import warnings
-			warnings.warn(
-				"Input argument ''fig'' does not seem to be a matplotlib.figure.Figure, "
-				"hence a proper matplotlib.figure.Figure object is created.",
-				RuntimeWarning
-			)
+            warnings.warn(
+                "Input argument ''fig'' does not seem to be a matplotlib.figure.Figure, "
+                "so the figure the axes belong to are considered.",
+                RuntimeWarning,
+            )
 
-			out_fig = plt.figure(figsize=figsize)
-			out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+            out_fig, out_ax = ax.get_figure(), ax
 
-	if (fig is None) and (ax is not None):
-		out_fig, out_ax = ax.get_figure(), ax
+    if (fig is not None) and (ax is None):
+        try:
+            out_fig = fig
+            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+        except AttributeError:
+            import warnings
 
-	if (fig is None) and (ax is None):
-		if default_fig is None:
-			out_fig = plt.figure(figsize=figsize)
-			out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
-		else:
-			try:
-				out_fig = default_fig
-				out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
-			except AttributeError:
-				import warnings
-				warnings.warn(
-					"Input argument ''default_fig'' does not seem to be a "
-					"matplotlib.figure.Figure, hence a proper matplotlib.figure.Figure " 
-					"object is created.",
-					RuntimeWarning
-				)
+            warnings.warn(
+                "Input argument ''fig'' does not seem to be a matplotlib.figure.Figure, "
+                "hence a proper matplotlib.figure.Figure object is created.",
+                RuntimeWarning,
+            )
 
-				out_fig = plt.figure(figsize=figsize)
-				out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+            out_fig = plt.figure(figsize=figsize)
+            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 
-	return out_fig, out_ax
+    if (fig is None) and (ax is not None):
+        out_fig, out_ax = ax.get_figure(), ax
+
+    if (fig is None) and (ax is None):
+        if default_fig is None:
+            out_fig = plt.figure(figsize=figsize)
+            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+        else:
+            try:
+                out_fig = default_fig
+                out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+            except AttributeError:
+                import warnings
+
+                warnings.warn(
+                    "Input argument ''default_fig'' does not seem to be a "
+                    "matplotlib.figure.Figure, hence a proper matplotlib.figure.Figure "
+                    "object is created.",
+                    RuntimeWarning,
+                )
+
+                out_fig = plt.figure(figsize=figsize)
+                out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
+
+    return out_fig, out_ax
 
 
 def set_figure_properties(fig, **kwargs):
-	"""
+    """
 	Ease the configuration of a :class:`matplotlib.figure.Figure`.
 
 	Parameters
@@ -242,22 +246,22 @@ def set_figure_properties(fig, **kwargs):
 	suptitle : str
 		The figure title. Defaults to an empty string.
 	"""
-	fontsize     	  = kwargs.get('fontsize', 12)
-	tight_layout 	  = kwargs.get('tight_layout', True)
-	tight_layout_rect = kwargs.get('tight_layout_rect', (0, 0, 1, 1))
-	suptitle     	  = kwargs.get('suptitle', '')
+    fontsize = kwargs.get("fontsize", 12)
+    tight_layout = kwargs.get("tight_layout", True)
+    tight_layout_rect = kwargs.get("tight_layout_rect", (0, 0, 1, 1))
+    suptitle = kwargs.get("suptitle", "")
 
-	rcParams['font.size'] = fontsize
+    rcParams["font.size"] = fontsize
 
-	if tight_layout:
-		fig.tight_layout(rect=tight_layout_rect)
+    if tight_layout:
+        fig.tight_layout(rect=tight_layout_rect)
 
-	if suptitle is not None and suptitle != '':
-		fig.suptitle(suptitle, fontsize=fontsize+1)
+    if suptitle is not None and suptitle != "":
+        fig.suptitle(suptitle, fontsize=fontsize + 1)
 
 
 def set_axes_properties(ax, **kwargs):
-	"""
+    """
 	Ease the configuration of a :class:`matplotlib.axes.Axes` object.
 
 	Parameters
@@ -372,320 +376,341 @@ def set_axes_properties(ax, **kwargs):
 	grid_properties : dict
 		Keyword arguments specifying various settings of the plot grid.
 	"""
-	fontsize                  = kwargs.get('fontsize', 12)
-	# title
-	title_center              = kwargs.get('title_center', '')
-	title_left                = kwargs.get('title_left', '')
-	title_right               = kwargs.get('title_right', '')
-	# x-axis
-	x_label                   = kwargs.get('x_label', '')
-	x_labelcolor              = kwargs.get('x_labelcolor', 'black')
-	x_lim                     = kwargs.get('x_lim', None)
-	invert_xaxis              = kwargs.get('invert_xaxis', False)
-	x_scale                   = kwargs.get('x_scale', 'linear')
-	x_ticks                   = kwargs.get('x_ticks', None)
-	x_ticklabels              = kwargs.get('x_ticklabels', None)
-	x_ticklabelcolor          = kwargs.get('x_ticklabelcolor', 'black')
-	xaxis_minor_ticks_visible = kwargs.get('xaxis_minor_ticks_visible', False)
-	xaxis_visible             = kwargs.get('xaxis_visible', True)
-	# y-axis
-	y_label                   = kwargs.get('y_label', '')
-	y_labelcolor              = kwargs.get('y_labelcolor', 'black')
-	y_lim                     = kwargs.get('y_lim', None)
-	invert_yaxis              = kwargs.get('invert_yaxis', False)
-	y_scale                   = kwargs.get('y_scale', 'linear')
-	y_ticks                   = kwargs.get('y_ticks', None)
-	y_ticklabels              = kwargs.get('y_ticklabels', None)
-	y_ticklabelcolor          = kwargs.get('y_ticklabelcolor', 'black')
-	yaxis_minor_ticks_visible = kwargs.get('yaxis_minor_ticks_visible', False)
-	yaxis_visible             = kwargs.get('yaxis_visible', True)
-	# z-axis
-	z_label                   = kwargs.get('z_label', '')
-	z_labelcolor              = kwargs.get('z_labelcolor', 'black')
-	z_lim                     = kwargs.get('z_lim', None)
-	invert_zaxis              = kwargs.get('invert_zaxis', False)
-	z_scale                   = kwargs.get('z_scale', 'linear')
-	z_ticks                   = kwargs.get('z_ticks', None)
-	z_ticklabels              = kwargs.get('z_ticklabels', None)
-	z_ticklabelcolor          = kwargs.get('z_ticklabelcolor', 'black')
-	zaxis_minor_ticks_visible = kwargs.get('zaxis_minor_ticks_visible', False)
-	zaxis_visible             = kwargs.get('zaxis_visible', True)
-	# legend
-	legend_on                 = kwargs.get('legend_on', False)
-	legend_loc                = kwargs.get('legend_loc', 'best')
-	legend_bbox_to_anchor     = kwargs.get('legend_bbox_to_anchor', None)
-	legend_framealpha         = kwargs.get('legend_framealpha', 0.5)
-	legend_ncol				  = kwargs.get('legend_ncol', 1)
-	# textbox
-	text                      = kwargs.get('text', None)
-	text_loc                  = kwargs.get('text_loc', '')
-	# grid
-	grid_on                   = kwargs.get('grid_on', False)
-	grid_properties           = kwargs.get('grid_properties', None)
-	# x2-axis
-	ax2_on					   = kwargs.get('ax2_on', False)
-	x2_label                   = kwargs.get('x2_label', '')
-	x2_labelcolor              = kwargs.get('x2_labelcolor', 'black')
-	x2_lim                     = kwargs.get('x2_lim', None)
-	invert_x2axis              = kwargs.get('invert_x2axis', False)
-	x2_scale                   = kwargs.get('x2_scale', None)
-	x2_ticks                   = kwargs.get('x2_ticks', None)
-	x2_ticklabels              = kwargs.get('x2_ticklabels', None)
-	x2_ticklabelcolor          = kwargs.get('x2_ticklabelcolor', 'black')
-	x2axis_minor_ticks_visible = kwargs.get('x2axis_minor_ticks_visible', False)
-	x2axis_visible             = kwargs.get('x2axis_visible', True)
-	# y2-axis
-	y2_label                   = kwargs.get('y2_label', '')
-	y2_labelcolor              = kwargs.get('y2_labelcolor', 'black')
-	y2_lim                     = kwargs.get('y2_lim', None)
-	invert_y2axis              = kwargs.get('invert_y2axis', False)
-	y2_scale                   = kwargs.get('y2_scale', None)
-	y2_ticks                   = kwargs.get('y2_ticks', None)
-	y2_ticklabels              = kwargs.get('y2_ticklabels', None)
-	y2_ticklabelcolor          = kwargs.get('y2_ticklabelcolor', 'black')
-	y2axis_minor_ticks_visible = kwargs.get('y2axis_minor_ticks_visible', False)
-	y2axis_visible             = kwargs.get('y2axis_visible', True)
+    fontsize = kwargs.get("fontsize", 12)
+    # title
+    title_center = kwargs.get("title_center", "")
+    title_left = kwargs.get("title_left", "")
+    title_right = kwargs.get("title_right", "")
+    # x-axis
+    x_label = kwargs.get("x_label", "")
+    x_labelcolor = kwargs.get("x_labelcolor", "black")
+    x_lim = kwargs.get("x_lim", None)
+    invert_xaxis = kwargs.get("invert_xaxis", False)
+    x_scale = kwargs.get("x_scale", "linear")
+    x_ticks = kwargs.get("x_ticks", None)
+    x_ticklabels = kwargs.get("x_ticklabels", None)
+    x_ticklabelcolor = kwargs.get("x_ticklabelcolor", "black")
+    xaxis_minor_ticks_visible = kwargs.get("xaxis_minor_ticks_visible", False)
+    xaxis_visible = kwargs.get("xaxis_visible", True)
+    # y-axis
+    y_label = kwargs.get("y_label", "")
+    y_labelcolor = kwargs.get("y_labelcolor", "black")
+    y_lim = kwargs.get("y_lim", None)
+    invert_yaxis = kwargs.get("invert_yaxis", False)
+    y_scale = kwargs.get("y_scale", "linear")
+    y_ticks = kwargs.get("y_ticks", None)
+    y_ticklabels = kwargs.get("y_ticklabels", None)
+    y_ticklabelcolor = kwargs.get("y_ticklabelcolor", "black")
+    yaxis_minor_ticks_visible = kwargs.get("yaxis_minor_ticks_visible", False)
+    yaxis_visible = kwargs.get("yaxis_visible", True)
+    # z-axis
+    z_label = kwargs.get("z_label", "")
+    z_labelcolor = kwargs.get("z_labelcolor", "black")
+    z_lim = kwargs.get("z_lim", None)
+    invert_zaxis = kwargs.get("invert_zaxis", False)
+    z_scale = kwargs.get("z_scale", "linear")
+    z_ticks = kwargs.get("z_ticks", None)
+    z_ticklabels = kwargs.get("z_ticklabels", None)
+    z_ticklabelcolor = kwargs.get("z_ticklabelcolor", "black")
+    zaxis_minor_ticks_visible = kwargs.get("zaxis_minor_ticks_visible", False)
+    zaxis_visible = kwargs.get("zaxis_visible", True)
+    # legend
+    legend_on = kwargs.get("legend_on", False)
+    legend_loc = kwargs.get("legend_loc", "best")
+    legend_bbox_to_anchor = kwargs.get("legend_bbox_to_anchor", None)
+    legend_framealpha = kwargs.get("legend_framealpha", 0.5)
+    legend_ncol = kwargs.get("legend_ncol", 1)
+    # textbox
+    text = kwargs.get("text", None)
+    text_loc = kwargs.get("text_loc", "")
+    # grid
+    grid_on = kwargs.get("grid_on", False)
+    grid_properties = kwargs.get("grid_properties", None)
+    # x2-axis
+    ax2_on = kwargs.get("ax2_on", False)
+    x2_label = kwargs.get("x2_label", "")
+    x2_labelcolor = kwargs.get("x2_labelcolor", "black")
+    x2_lim = kwargs.get("x2_lim", None)
+    invert_x2axis = kwargs.get("invert_x2axis", False)
+    x2_scale = kwargs.get("x2_scale", None)
+    x2_ticks = kwargs.get("x2_ticks", None)
+    x2_ticklabels = kwargs.get("x2_ticklabels", None)
+    x2_ticklabelcolor = kwargs.get("x2_ticklabelcolor", "black")
+    x2axis_minor_ticks_visible = kwargs.get("x2axis_minor_ticks_visible", False)
+    x2axis_visible = kwargs.get("x2axis_visible", True)
+    # y2-axis
+    y2_label = kwargs.get("y2_label", "")
+    y2_labelcolor = kwargs.get("y2_labelcolor", "black")
+    y2_lim = kwargs.get("y2_lim", None)
+    invert_y2axis = kwargs.get("invert_y2axis", False)
+    y2_scale = kwargs.get("y2_scale", None)
+    y2_ticks = kwargs.get("y2_ticks", None)
+    y2_ticklabels = kwargs.get("y2_ticklabels", None)
+    y2_ticklabelcolor = kwargs.get("y2_ticklabelcolor", "black")
+    y2axis_minor_ticks_visible = kwargs.get("y2axis_minor_ticks_visible", False)
+    y2axis_visible = kwargs.get("y2axis_visible", True)
 
-	rcParams['font.size'] = fontsize
-	#rcParams['text.usetex'] = True
+    rcParams["font.size"] = fontsize
+    # rcParams['text.usetex'] = True
 
-	# plot titles
-	if ax.get_title(loc='center') == '':
-		ax.set_title(title_center, loc='center', fontsize=rcParams['font.size']-1)
-	if ax.get_title(loc='left') == '':
-		ax.set_title(title_left, loc='left', fontsize=rcParams['font.size']-1)
-	if ax.get_title(loc='right') == '':
-		ax.set_title(title_right, loc='right', fontsize=rcParams['font.size']-1)
+    # plot titles
+    if ax.get_title(loc="center") == "":
+        ax.set_title(title_center, loc="center", fontsize=rcParams["font.size"] - 1)
+    if ax.get_title(loc="left") == "":
+        ax.set_title(title_left, loc="left", fontsize=rcParams["font.size"] - 1)
+    if ax.get_title(loc="right") == "":
+        ax.set_title(title_right, loc="right", fontsize=rcParams["font.size"] - 1)
 
-	# axes labels
-	if ax.get_xlabel() == '':
-		ax.set(xlabel=x_label)
-	if ax.get_ylabel() == '':
-		ax.set(ylabel=y_label)
-	try:
-		if ax.get_zlabel() == '':
-			ax.set(zlabel=z_label)
-	except AttributeError:
-		if z_label != '':
-			import warnings
-			warnings.warn(
-				"The plot is not three-dimensional, therefore the "
-				"argument ''z_label'' is disregarded.", RuntimeWarning
-			)
-		else:
-			pass
+    # axes labels
+    if ax.get_xlabel() == "":
+        ax.set(xlabel=x_label)
+    if ax.get_ylabel() == "":
+        ax.set(ylabel=y_label)
+    try:
+        if ax.get_zlabel() == "":
+            ax.set(zlabel=z_label)
+    except AttributeError:
+        if z_label != "":
+            import warnings
 
-	# axes labelcolors
-	if ax.get_xlabel() != '' and x_labelcolor != '':
-		ax.xaxis.label.set_color(x_labelcolor)
-	if ax.get_ylabel() != '' and y_labelcolor != '':
-		ax.yaxis.label.set_color(y_labelcolor)
-	try:
-		if ax.get_zlabel() != '' and z_labelcolor != '':
-			ax.zaxis.label.set_color(z_labelcolor)
-	except AttributeError:
-		if z_labelcolor != '':
-			import warnings
-			warnings.warn(
-				"The plot is not three-dimensional, therefore the "
-				"argument ''z_labelcolor'' is disregarded.", RuntimeWarning
-			)
-		else:
-			pass
+            warnings.warn(
+                "The plot is not three-dimensional, therefore the "
+                "argument ''z_label'' is disregarded.",
+                RuntimeWarning,
+            )
+        else:
+            pass
 
-	# axes limits
-	if x_lim is not None:
-		ax.set_xlim(x_lim)
-	if y_lim is not None:
-		ax.set_ylim(y_lim)
-	try:
-		if z_lim is not None:
-			ax.set_zlim(z_lim)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''z_lim'' is disregarded.", RuntimeWarning
-		)
+    # axes labelcolors
+    if ax.get_xlabel() != "" and x_labelcolor != "":
+        ax.xaxis.label.set_color(x_labelcolor)
+    if ax.get_ylabel() != "" and y_labelcolor != "":
+        ax.yaxis.label.set_color(y_labelcolor)
+    try:
+        if ax.get_zlabel() != "" and z_labelcolor != "":
+            ax.zaxis.label.set_color(z_labelcolor)
+    except AttributeError:
+        if z_labelcolor != "":
+            import warnings
 
-	# invert the axes
-	if invert_xaxis:
-		ax.invert_xaxis()
-	if invert_yaxis:
-		ax.invert_yaxis()
-	try:
-		if invert_zaxis:
-			ax.invert_zaxis()
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''invert_zaxis'' is disregarded.", RuntimeWarning
-		)
+            warnings.warn(
+                "The plot is not three-dimensional, therefore the "
+                "argument ''z_labelcolor'' is disregarded.",
+                RuntimeWarning,
+            )
+        else:
+            pass
 
-	# axes scale
-	if x_scale is not None:
-		ax.set_xscale(x_scale)
-	if y_scale is not None:
-		ax.set_yscale(y_scale)
-	try:
-		if z_scale is not None:
-			ax.set_zscale(z_scale)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''z_scale'' is disregarded.", RuntimeWarning
-		)
+    # axes limits
+    if x_lim is not None:
+        ax.set_xlim(x_lim)
+    if y_lim is not None:
+        ax.set_ylim(y_lim)
+    try:
+        if z_lim is not None:
+            ax.set_zlim(z_lim)
+    except AttributeError:
+        import warnings
 
-	# axes ticks
-	if x_ticks is not None:
-		ax.get_xaxis().set_ticks(x_ticks)
-	if y_ticks is not None:
-		ax.get_yaxis().set_ticks(y_ticks)
-	try:
-		if z_ticks is not None:
-			ax.get_zaxis().set_ticks(z_ticks)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''z_ticks'' is disregarded.", RuntimeWarning
-		)
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''z_lim'' is disregarded.",
+            RuntimeWarning,
+        )
 
-	# axes tick labels
-	if x_ticklabels is not None:
-		ax.get_xaxis().set_ticklabels(x_ticklabels)
-	if y_ticklabels is not None:
-		ax.get_yaxis().set_ticklabels(y_ticklabels)
-	try:
-		if z_ticklabels is not None:
-			ax.get_zaxis().set_ticklabels(z_ticklabels)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''z_ticklabels'' is disregarded.", RuntimeWarning
-		)
+    # invert the axes
+    if invert_xaxis:
+        ax.invert_xaxis()
+    if invert_yaxis:
+        ax.invert_yaxis()
+    try:
+        if invert_zaxis:
+            ax.invert_zaxis()
+    except AttributeError:
+        import warnings
 
-	# axes tick labels color
-	if x_ticklabelcolor != '':
-		ax.tick_params(axis='x', colors=x_ticklabelcolor)
-	if y_ticklabelcolor != '':
-		ax.tick_params(axis='y', colors=y_ticklabelcolor)
-	try:
-		if z_ticklabelcolor != '':
-			ax.tick_params(axis='z', colors=z_ticklabelcolor)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''z_ticklabelcolor'' is disregarded.", RuntimeWarning
-		)
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''invert_zaxis'' is disregarded.",
+            RuntimeWarning,
+        )
 
-	# unlabelled axes ticks
-	if not xaxis_minor_ticks_visible:
-		ax.get_xaxis().set_tick_params(which='minor', size=0)
-		ax.get_xaxis().set_tick_params(which='minor', width=0)
-	if not yaxis_minor_ticks_visible:
-		ax.get_yaxis().set_tick_params(which='minor', size=0)
-		ax.get_yaxis().set_tick_params(which='minor', width=0)
-	try:
-		if not zaxis_minor_ticks_visible:
-			ax.get_zaxis().set_tick_params(which='minor', size=0)
-			ax.get_zaxis().set_tick_params(which='minor', width=0)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''zaxis_minor_ticks_visible'' is disregarded.",
-			RuntimeWarning
-		)
+    # axes scale
+    if x_scale is not None:
+        ax.set_xscale(x_scale)
+    if y_scale is not None:
+        ax.set_yscale(y_scale)
+    try:
+        if z_scale is not None:
+            ax.set_zscale(z_scale)
+    except AttributeError:
+        import warnings
 
-	# axes visibility
-	if not xaxis_visible:
-		ax.get_xaxis().set_visible(False)
-	if not yaxis_visible:
-		ax.get_yaxis().set_visible(False)
-	try:
-		if not zaxis_visible:
-			ax.get_zaxis().set_visible(False)
-	except AttributeError:
-		import warnings
-		warnings.warn(
-			"The plot is not three-dimensional, therefore the "
-			"argument ''zaxis_visible'' is disregarded.", RuntimeWarning
-		)
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''z_scale'' is disregarded.",
+            RuntimeWarning,
+        )
 
-	# legend
-	if legend_on:
-		if legend_bbox_to_anchor is None:
-			ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
-		else:
-			ax.legend(
-				loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol,
-				bbox_to_anchor=legend_bbox_to_anchor
-			)
+    # axes ticks
+    if x_ticks is not None:
+        ax.get_xaxis().set_ticks(x_ticks)
+    if y_ticks is not None:
+        ax.get_yaxis().set_ticks(y_ticks)
+    try:
+        if z_ticks is not None:
+            ax.get_zaxis().set_ticks(z_ticks)
+    except AttributeError:
+        import warnings
 
-	# text box
-	if text is not None:
-		ax.add_artist(AnchoredText(text, loc=text_locations[text_loc]))
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''z_ticks'' is disregarded.",
+            RuntimeWarning,
+        )
 
-	# plot grid
-	if grid_on:
-		gps = grid_properties if grid_properties is not None else {}
-		ax.grid(True, **gps)
+    # axes tick labels
+    if x_ticklabels is not None:
+        ax.get_xaxis().set_ticklabels(x_ticklabels)
+    if y_ticklabels is not None:
+        ax.get_yaxis().set_ticklabels(y_ticklabels)
+    try:
+        if z_ticklabels is not None:
+            ax.get_zaxis().set_ticklabels(z_ticklabels)
+    except AttributeError:
+        import warnings
 
-	if ax2_on:
-		ax2 = ax.twiny()
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''z_ticklabels'' is disregarded.",
+            RuntimeWarning,
+        )
 
-		# x2-axis
-		if x2_label != '':
-			ax2.set_xlabel(x2_label)
-		if ax2.get_xlabel() != '' and x2_labelcolor != '':
-			ax2.xaxis.label.set_color(x2_labelcolor)
-		ax2.set_xlim(x2_lim if x2_lim is not None else ax.get_xlim())
-		if invert_x2axis:
-			ax2.invert_xaxis()
-		if x2_scale is not None:
-			ax2.set_xscale(x2_scale)
-		if x2_ticks is not None:
-			ax2.set_xticks(x2_ticks)
-		if x2_ticklabels is not None:
-			ax2.set_xticklabels(x2_ticklabels)
-		if x2_ticklabelcolor != '':
-			ax2.tick_params(axis='x', colors=x2_ticklabelcolor)
-		if x2axis_minor_ticks_visible:
-			ax2.get_xaxis().set_tick_params(which='minor', size=0)
-			ax2.get_xaxis().set_tick_params(which='minor', width=0)
-		if not x2axis_visible:
-			ax2.get_xaxis().set_visible(False)
+    # axes tick labels color
+    if x_ticklabelcolor != "":
+        ax.tick_params(axis="x", colors=x_ticklabelcolor)
+    if y_ticklabelcolor != "":
+        ax.tick_params(axis="y", colors=y_ticklabelcolor)
+    try:
+        if z_ticklabelcolor != "":
+            ax.tick_params(axis="z", colors=z_ticklabelcolor)
+    except AttributeError:
+        import warnings
 
-		# y2-axis
-		if y2_label != '':
-			ax2.set_ylabel(y2_label)
-		if ax2.get_ylabel() != '' and y2_labelcolor != '':
-			ax2.yaxis.label.set_color(y2_labelcolor)
-		ax2.set_ylim(y2_lim if y2_lim is not None else ax.get_ylim())
-		if invert_y2axis:
-			ax2.invert_yaxis()
-		if y2_scale is not None:
-			ax2.set_yscale(y2_scale)
-		if y2_ticks is not None:
-			ax2.set_yticks(y2_ticks)
-		if y2_ticklabels is not None:
-			ax2.set_yticklabels(y2_ticklabels)
-		if y2_ticklabelcolor != '':
-			ax2.tick_params(axis='y', colors=y2_ticklabelcolor)
-		if y2axis_minor_ticks_visible:
-			ax2.get_yaxis().set_tick_params(which='minor', size=0)
-			ax2.get_yaxis().set_tick_params(which='minor', width=0)
-		if not y2axis_visible:
-			ax2.get_yaxis().set_visible(False)
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''z_ticklabelcolor'' is disregarded.",
+            RuntimeWarning,
+        )
+
+    # unlabelled axes ticks
+    if not xaxis_minor_ticks_visible:
+        ax.get_xaxis().set_tick_params(which="minor", size=0)
+        ax.get_xaxis().set_tick_params(which="minor", width=0)
+    if not yaxis_minor_ticks_visible:
+        ax.get_yaxis().set_tick_params(which="minor", size=0)
+        ax.get_yaxis().set_tick_params(which="minor", width=0)
+    try:
+        if not zaxis_minor_ticks_visible:
+            ax.get_zaxis().set_tick_params(which="minor", size=0)
+            ax.get_zaxis().set_tick_params(which="minor", width=0)
+    except AttributeError:
+        import warnings
+
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''zaxis_minor_ticks_visible'' is disregarded.",
+            RuntimeWarning,
+        )
+
+    # axes visibility
+    if not xaxis_visible:
+        ax.get_xaxis().set_visible(False)
+    if not yaxis_visible:
+        ax.get_yaxis().set_visible(False)
+    try:
+        if not zaxis_visible:
+            ax.get_zaxis().set_visible(False)
+    except AttributeError:
+        import warnings
+
+        warnings.warn(
+            "The plot is not three-dimensional, therefore the "
+            "argument ''zaxis_visible'' is disregarded.",
+            RuntimeWarning,
+        )
+
+    # legend
+    if legend_on:
+        if legend_bbox_to_anchor is None:
+            ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
+        else:
+            ax.legend(
+                loc=legend_loc,
+                framealpha=legend_framealpha,
+                ncol=legend_ncol,
+                bbox_to_anchor=legend_bbox_to_anchor,
+            )
+
+    # text box
+    if text is not None:
+        ax.add_artist(AnchoredText(text, loc=text_locations[text_loc]))
+
+    # plot grid
+    if grid_on:
+        gps = grid_properties if grid_properties is not None else {}
+        ax.grid(True, **gps)
+
+    if ax2_on:
+        ax2 = ax.twiny()
+
+        # x2-axis
+        if x2_label != "":
+            ax2.set_xlabel(x2_label)
+        if ax2.get_xlabel() != "" and x2_labelcolor != "":
+            ax2.xaxis.label.set_color(x2_labelcolor)
+        ax2.set_xlim(x2_lim if x2_lim is not None else ax.get_xlim())
+        if invert_x2axis:
+            ax2.invert_xaxis()
+        if x2_scale is not None:
+            ax2.set_xscale(x2_scale)
+        if x2_ticks is not None:
+            ax2.set_xticks(x2_ticks)
+        if x2_ticklabels is not None:
+            ax2.set_xticklabels(x2_ticklabels)
+        if x2_ticklabelcolor != "":
+            ax2.tick_params(axis="x", colors=x2_ticklabelcolor)
+        if x2axis_minor_ticks_visible:
+            ax2.get_xaxis().set_tick_params(which="minor", size=0)
+            ax2.get_xaxis().set_tick_params(which="minor", width=0)
+        if not x2axis_visible:
+            ax2.get_xaxis().set_visible(False)
+
+        # y2-axis
+        if y2_label != "":
+            ax2.set_ylabel(y2_label)
+        if ax2.get_ylabel() != "" and y2_labelcolor != "":
+            ax2.yaxis.label.set_color(y2_labelcolor)
+        ax2.set_ylim(y2_lim if y2_lim is not None else ax.get_ylim())
+        if invert_y2axis:
+            ax2.invert_yaxis()
+        if y2_scale is not None:
+            ax2.set_yscale(y2_scale)
+        if y2_ticks is not None:
+            ax2.set_yticks(y2_ticks)
+        if y2_ticklabels is not None:
+            ax2.set_yticklabels(y2_ticklabels)
+        if y2_ticklabelcolor != "":
+            ax2.tick_params(axis="y", colors=y2_ticklabelcolor)
+        if y2axis_minor_ticks_visible:
+            ax2.get_yaxis().set_tick_params(which="minor", size=0)
+            ax2.get_yaxis().set_tick_params(which="minor", width=0)
+        if not y2axis_visible:
+            ax2.get_yaxis().set_visible(False)
 
 
 def reverse_colormap(cmap, name=None):
-	"""
+    """
 	Reverse a Matplotlib colormap.
 
 	Parameters
@@ -705,33 +730,42 @@ def reverse_colormap(cmap, name=None):
 	----------
 	https://stackoverflow.com/questions/3279560/invert-colormap-in-matplotlib.
 	"""
-	keys = []
-	reverse = []
+    keys = []
+    reverse = []
 
-	for key in cmap._segmentdata:
-		# extract the channel
-		keys.append(key)
-		channel = cmap._segmentdata[key]
+    for key in cmap._segmentdata:
+        # extract the channel
+        keys.append(key)
+        channel = cmap._segmentdata[key]
 
-		# reverse the channel
-		data = []
-		for t in channel:
-			data.append((1-t[0], t[2], t[1]))
-		reverse.append(sorted(data))
+        # reverse the channel
+        data = []
+        for t in channel:
+            data.append((1 - t[0], t[2], t[1]))
+        reverse.append(sorted(data))
 
-	# set the name of the reversed map
-	if name is None:
-		name = cmap.name + '_r'
+    # set the name of the reversed map
+    if name is None:
+        name = cmap.name + "_r"
 
-	return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
+    return LinearSegmentedColormap(name, dict(zip(keys, reverse)))
 
 
 def set_colorbar(
-	fig, mappable, color_levels, *, cbar_ticks_step=1, cbar_ticks_pos='center',
-	cbar_title='', cbar_x_label='', cbar_y_label='', cbar_orientation='vertical',
-	cbar_ax=None, cbar_format=None
+    fig,
+    mappable,
+    color_levels,
+    *,
+    cbar_ticks_step=1,
+    cbar_ticks_pos="center",
+    cbar_title="",
+    cbar_x_label="",
+    cbar_y_label="",
+    cbar_orientation="vertical",
+    cbar_ax=None,
+    cbar_format=None
 ):
-	"""
+    """
 	Ease the configuration of the colorbar in Matplotlib plots.
 
 	Parameters
@@ -764,34 +798,36 @@ def set_colorbar(
 	cbar_format : str
 		Format for colorbar tick labels.
 	"""
-	if cbar_ax is None:
-		cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
-	else:
-		try:
-			axes = fig.get_axes()
-			cb = plt.colorbar(
-				mappable, orientation=cbar_orientation, format=cbar_format,
-    			ax=[axes[i] for i in cbar_ax]
-			)
-		except TypeError:
-			# cbar_ax is not iterable
-			cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
-		except IndexError:
-			# cbar_ax contains an index which exceeds the number of axes in the figure
-			cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+    if cbar_ax is None:
+        cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+    else:
+        try:
+            axes = fig.get_axes()
+            cb = plt.colorbar(
+                mappable,
+                orientation=cbar_orientation,
+                format=cbar_format,
+                ax=[axes[i] for i in cbar_ax],
+            )
+        except TypeError:
+            # cbar_ax is not iterable
+            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+        except IndexError:
+            # cbar_ax contains an index which exceeds the number of axes in the figure
+            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 
-	cb.ax.set_title(cbar_title)
-	cb.ax.set_xlabel(cbar_x_label)
-	cb.ax.set_ylabel(cbar_y_label)
+    cb.ax.set_title(cbar_title)
+    cb.ax.set_xlabel(cbar_x_label)
+    cb.ax.set_ylabel(cbar_y_label)
 
-	if cbar_ticks_pos == 'center':
-		cb.set_ticks(0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step])
-	else:
-		cb.set_ticks(color_levels[::cbar_ticks_step])
+    if cbar_ticks_pos == "center":
+        cb.set_ticks(0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step])
+    else:
+        cb.set_ticks(color_levels[::cbar_ticks_step])
 
 
 def make_lineplot(x, y, ax, **kwargs):
-	"""
+    """
 	Plot a line.
 
 	Parameters
@@ -832,49 +868,63 @@ def make_lineplot(x, y, ax, **kwargs):
 	legend_label : str
 		The legend label for the line. Defaults to an empty string.
 	"""
-	# get keyword arguments
-	fontsize     	= kwargs.get('fontsize', 16)
-	x_factor     	= kwargs.get('x_factor', 1.)
-	y_factor     	= kwargs.get('y_factor', 1.)
-	linestyle    	= kwargs.get('linestyle', 'solid')
-	linewidth    	= kwargs.get('linewidth', 1.5)
-	linecolor	 	= kwargs.get('linecolor', 'blue')
-	marker  		= kwargs.get('marker', None)
-	markersize  	= kwargs.get('markersize', 5)
-	markeredgewidth = kwargs.get('markeredgewidth', 1.5)
-	markerfacecolor = kwargs.get('markerfacecolor', 'blue')
-	markeredgecolor = kwargs.get('markeredgecolor', 'blue')
-	legend_label 	= kwargs.get('legend_label', '')
+    # get keyword arguments
+    fontsize = kwargs.get("fontsize", 16)
+    x_factor = kwargs.get("x_factor", 1.0)
+    y_factor = kwargs.get("y_factor", 1.0)
+    linestyle = kwargs.get("linestyle", "solid")
+    linewidth = kwargs.get("linewidth", 1.5)
+    linecolor = kwargs.get("linecolor", "blue")
+    marker = kwargs.get("marker", None)
+    markersize = kwargs.get("markersize", 5)
+    markeredgewidth = kwargs.get("markeredgewidth", 1.5)
+    markerfacecolor = kwargs.get("markerfacecolor", "blue")
+    markeredgecolor = kwargs.get("markeredgecolor", "blue")
+    legend_label = kwargs.get("legend_label", "")
 
-	# global settings
-	rcParams['font.size'] = fontsize
+    # global settings
+    rcParams["font.size"] = fontsize
 
-	# rescale the axes for visualization purposes
-	x *= x_factor
-	y *= y_factor
+    # rescale the axes for visualization purposes
+    x *= x_factor
+    y *= y_factor
 
-	# plot
-	if legend_label == '' or legend_label is None:
-		ax.plot(
-			x, y, color=linecolor, linestyle=linestyle_dict[linestyle], linewidth=linewidth,
-			marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
-			markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor
-		)
-	else:
-		ax.plot(
-			x, y, color=linecolor, linestyle=linestyle_dict[linestyle], linewidth=linewidth,
-			marker=marker, markersize=markersize, markeredgewidth=markeredgewidth,
-			markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor,
-			label=legend_label
-		)
+    # plot
+    if legend_label == "" or legend_label is None:
+        ax.plot(
+            x,
+            y,
+            color=linecolor,
+            linestyle=linestyle_dict[linestyle],
+            linewidth=linewidth,
+            marker=marker,
+            markersize=markersize,
+            markeredgewidth=markeredgewidth,
+            markerfacecolor=markerfacecolor,
+            markeredgecolor=markeredgecolor,
+        )
+    else:
+        ax.plot(
+            x,
+            y,
+            color=linecolor,
+            linestyle=linestyle_dict[linestyle],
+            linewidth=linewidth,
+            marker=marker,
+            markersize=markersize,
+            markeredgewidth=markeredgewidth,
+            markerfacecolor=markerfacecolor,
+            markeredgecolor=markeredgecolor,
+            label=legend_label,
+        )
 
-	# bring axes back to original units
-	x /= x_factor
-	y /= y_factor
+    # bring axes back to original units
+    x /= x_factor
+    y /= y_factor
 
 
 def make_contour(x, y, field, ax, **kwargs):
-	"""
+    """
 	Generate a contour plot.
 
 	Parameters
@@ -912,46 +962,46 @@ def make_contour(x, y, field, ax, **kwargs):
 		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
 	"""
-	# shortcuts
-	ni, nk = field.shape
+    # shortcuts
+    ni, nk = field.shape
 
-	# get keyword arguments
-	fontsize     = kwargs.get('fontsize', 16)
-	x_factor     = kwargs.get('x_factor', 1.)
-	y_factor     = kwargs.get('y_factor', 1.)
-	field_bias	 = kwargs.get('field_bias', 0.)
-	field_factor = kwargs.get('field_factor', 1.)
-	alpha		 = kwargs.get('alpha', 1.0)
-	colors		 = kwargs.get('colors', 'black')
-	draw_vlevels = kwargs.get('draw_vertical_levels', False)
+    # get keyword arguments
+    fontsize = kwargs.get("fontsize", 16)
+    x_factor = kwargs.get("x_factor", 1.0)
+    y_factor = kwargs.get("y_factor", 1.0)
+    field_bias = kwargs.get("field_bias", 0.0)
+    field_factor = kwargs.get("field_factor", 1.0)
+    alpha = kwargs.get("alpha", 1.0)
+    colors = kwargs.get("colors", "black")
+    draw_vlevels = kwargs.get("draw_vertical_levels", False)
 
-	# global settings
-	rcParams['font.size'] = fontsize
+    # global settings
+    rcParams["font.size"] = fontsize
 
-	# rescale the axes and the field for visualization purposes
-	x     *= x_factor
-	y     *= y_factor
-	field -= field_bias
-	field *= field_factor
+    # rescale the axes and the field for visualization purposes
+    x *= x_factor
+    y *= y_factor
+    field -= field_bias
+    field *= field_factor
 
-	# plot the vertical levels
-	if draw_vlevels:
-		for k in range(nk):
-			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
+    # plot the vertical levels
+    if draw_vlevels:
+        for k in range(nk):
+            ax.plot(x[:, k], y[:, k], color="gray", linewidth=1, alpha=0.5)
 
-	# plot the field
-	if field.min() != field.max():
-		ax.contour(x, y, field, colors=colors, alpha=alpha)
+    # plot the field
+    if field.min() != field.max():
+        ax.contour(x, y, field, colors=colors, alpha=alpha)
 
-	# bring axes and field back to original units
-	x     /= x_factor
-	y 	  /= y_factor
-	field /= field_factor
-	field += field_bias
+    # bring axes and field back to original units
+    x /= x_factor
+    y /= y_factor
+    field /= field_factor
+    field += field_bias
 
 
 def make_contourf(x, y, field, fig, ax, **kwargs):
-	"""
+    """
 	Generate a contourf plot.
 
 	Parameters
@@ -1025,88 +1075,100 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
 		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
 	"""
-	# get keyword arguments
-	fontsize         = kwargs.get('fontsize', 12)
-	x_factor         = kwargs.get('x_factor', 1.)
-	y_factor         = kwargs.get('y_factor', 1.)
-	field_bias		 = kwargs.get('field_bias', 0.)
-	field_factor     = kwargs.get('field_factor', 1.)
-	cmap_name        = kwargs.get('cmap_name', 'RdYlBu')
-	cbar_on			 = kwargs.get('cbar_on', True)
-	cbar_levels		 = kwargs.get('cbar_levels', 14)
-	cbar_ticks_step  = kwargs.get('cbar_ticks_step', 1)
-	cbar_ticks_pos	 = kwargs.get('cbar_ticks_pos', 'center')
-	cbar_center		 = kwargs.get('cbar_center', None)
-	cbar_half_width  = kwargs.get('cbar_half_width', None)
-	cbar_x_label	 = kwargs.get('cbar_x_label', '')
-	cbar_y_label	 = kwargs.get('cbar_y_label', '')
-	cbar_title		 = kwargs.get('cbar_title', '')
-	cbar_orientation = kwargs.get('cbar_orientation', 'vertical')
-	cbar_ax			 = kwargs.get('cbar_ax', None)
-	cbar_format      = kwargs.get('cbar_format', None)
-	cbar_extend		 = kwargs.get('cbar_extend', True)
-	draw_vlevels 	 = kwargs.get('draw_vertical_levels', False)
+    # get keyword arguments
+    fontsize = kwargs.get("fontsize", 12)
+    x_factor = kwargs.get("x_factor", 1.0)
+    y_factor = kwargs.get("y_factor", 1.0)
+    field_bias = kwargs.get("field_bias", 0.0)
+    field_factor = kwargs.get("field_factor", 1.0)
+    cmap_name = kwargs.get("cmap_name", "RdYlBu")
+    cbar_on = kwargs.get("cbar_on", True)
+    cbar_levels = kwargs.get("cbar_levels", 14)
+    cbar_ticks_step = kwargs.get("cbar_ticks_step", 1)
+    cbar_ticks_pos = kwargs.get("cbar_ticks_pos", "center")
+    cbar_center = kwargs.get("cbar_center", None)
+    cbar_half_width = kwargs.get("cbar_half_width", None)
+    cbar_x_label = kwargs.get("cbar_x_label", "")
+    cbar_y_label = kwargs.get("cbar_y_label", "")
+    cbar_title = kwargs.get("cbar_title", "")
+    cbar_orientation = kwargs.get("cbar_orientation", "vertical")
+    cbar_ax = kwargs.get("cbar_ax", None)
+    cbar_format = kwargs.get("cbar_format", None)
+    cbar_extend = kwargs.get("cbar_extend", True)
+    draw_vlevels = kwargs.get("draw_vertical_levels", False)
 
-	# global settings
-	rcParams['font.size'] = fontsize
+    # global settings
+    rcParams["font.size"] = fontsize
 
-	# rescale the axes and the field for visualization purposes
-	x     *= x_factor
-	y     *= y_factor
-	field -= field_bias
-	field *= field_factor
+    # rescale the axes and the field for visualization purposes
+    x *= x_factor
+    y *= y_factor
+    field -= field_bias
+    field *= field_factor
 
-	# create colorbar for colormap
-	field_min, field_max = np.amin(field), np.amax(field)
-	if cbar_center is None:
-		cbar_lb, cbar_ub = field_min, field_max
-	else:
-		half_width = max(cbar_center-field_min, field_max-cbar_center) \
-			if cbar_half_width is None else cbar_half_width
-		cbar_lb, cbar_ub = cbar_center-half_width, cbar_center+half_width
-	color_levels = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint=True)
-	if eq(color_levels[0], color_levels[-1]):
-		color_levels = np.linspace(cbar_lb-1e-8, cbar_ub+1e-8, cbar_levels, endpoint=True)
+    # create colorbar for colormap
+    field_min, field_max = np.amin(field), np.amax(field)
+    if cbar_center is None:
+        cbar_lb, cbar_ub = field_min, field_max
+    else:
+        half_width = (
+            max(cbar_center - field_min, field_max - cbar_center)
+            if cbar_half_width is None
+            else cbar_half_width
+        )
+        cbar_lb, cbar_ub = cbar_center - half_width, cbar_center + half_width
+    color_levels = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint=True)
+    if eq(color_levels[0], color_levels[-1]):
+        color_levels = np.linspace(
+            cbar_lb - 1e-8, cbar_ub + 1e-8, cbar_levels, endpoint=True
+        )
 
-	# create colormap
-	if cmap_name == 'BuRd':
-		cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
-	elif cmap_name == 'BuYlRd':
-		cm = reverse_colormap(plt.get_cmap('RdYlBu'), 'BuYlRd')
-	elif cmap_name == 'CMRmap_r':
-		cm = reverse_colormap(plt.get_cmap('CMRmap'), 'CMRmap_r')
-	else:
-		cm = plt.get_cmap(cmap_name)
+    # create colormap
+    if cmap_name == "BuRd":
+        cm = reverse_colormap(plt.get_cmap("RdBu"), "BuRd")
+    elif cmap_name == "BuYlRd":
+        cm = reverse_colormap(plt.get_cmap("RdYlBu"), "BuYlRd")
+    elif cmap_name == "CMRmap_r":
+        cm = reverse_colormap(plt.get_cmap("CMRmap"), "CMRmap_r")
+    else:
+        cm = plt.get_cmap(cmap_name)
 
-	# plot the vertical levels
-	if draw_vlevels:
-		for k in range(x.shape[1]):
-			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
+    # plot the vertical levels
+    if draw_vlevels:
+        for k in range(x.shape[1]):
+            ax.plot(x[:, k], y[:, k], color="gray", linewidth=1, alpha=0.5)
 
-	# plot the field
-	if cbar_extend:
-		surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
-	else:
-		surf = ax.contourf(x, y, field, color_levels, cmap=cm)
+    # plot the field
+    if cbar_extend:
+        surf = ax.contourf(x, y, field, color_levels, cmap=cm, extend="both")
+    else:
+        surf = ax.contourf(x, y, field, color_levels, cmap=cm)
 
-	# set the colorbar
-	if cbar_on:
-		set_colorbar(
-			fig, surf, color_levels,
-			cbar_ticks_step=cbar_ticks_step, cbar_ticks_pos=cbar_ticks_pos,
-			cbar_title=cbar_title, cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax, cbar_format=cbar_format
-		)
+    # set the colorbar
+    if cbar_on:
+        set_colorbar(
+            fig,
+            surf,
+            color_levels,
+            cbar_ticks_step=cbar_ticks_step,
+            cbar_ticks_pos=cbar_ticks_pos,
+            cbar_title=cbar_title,
+            cbar_x_label=cbar_x_label,
+            cbar_y_label=cbar_y_label,
+            cbar_orientation=cbar_orientation,
+            cbar_ax=cbar_ax,
+            cbar_format=cbar_format,
+        )
 
-	# bring axes and field back to original units
-	x     /= x_factor
-	y 	  /= y_factor
-	field /= field_factor
-	field += field_bias
+    # bring axes and field back to original units
+    x /= x_factor
+    y /= y_factor
+    field /= field_factor
+    field += field_bias
 
 
 def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
-	"""
+    """
 	Generate the quiver plot of a gridded vector field at a cross-section
 	parallel to a coordinate plane.
 
@@ -1216,130 +1278,153 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
 		:obj:`True` to draw the underlying vertical levels, :obj:`False` otherwise.
 		Defaults to :obj:`False`.
 	"""
-	# get keyword arguments
-	fontsize          	= kwargs.get('fontsize', 12)
-	x_factor          	= kwargs.get('x_factor', 1.)
-	x_step            	= kwargs.get('x_step', 2)
-	y_factor          	= kwargs.get('y_factor', 1.)
-	y_step            	= kwargs.get('y_step', 2)
-	scalar_bias		  	= kwargs.get('scalar_bias', 0.)
-	scalar_factor     	= kwargs.get('scalar_factor', 1.)
-	arrow_scale		  	= kwargs.get('arrow_scale', None)
-	arrow_scale_units 	= kwargs.get('arrow_scale_units', None)
-	arrow_headwidth 	= kwargs.get('arrow_headwidth', 3.0)
-	cmap_name         	= kwargs.get('cmap_name', None)
-	cbar_on			  	= kwargs.get('cbar_on', True)
-	cbar_levels		  	= kwargs.get('cbar_levels', 14)
-	cbar_ticks_step   	= kwargs.get('cbar_ticks_step', 1)
-	cbar_ticks_pos	  	= kwargs.get('cbar_ticks_pos', 'center')
-	cbar_center		  	= kwargs.get('cbar_center', None)
-	cbar_half_width   	= kwargs.get('cbar_half_width', None)
-	cbar_x_label	  	= kwargs.get('cbar_x_label', '')
-	cbar_y_label	  	= kwargs.get('cbar_y_label', '')
-	cbar_title		  	= kwargs.get('cbar_title', '')
-	cbar_orientation  	= kwargs.get('cbar_orientation', 'vertical')
-	cbar_ax			  	= kwargs.get('cbar_ax', None)
-	cbar_format         = kwargs.get('cbar_format', None)
-	quiverkey_on	  	= kwargs.get('quiverkey_on', False)
-	quiverkey_loc	  	= kwargs.get('quiverkey_loc', (1, 1))
-	quiverkey_length	= kwargs.get('quiverkey_length', 1.0)
-	quiverkey_label	  	= kwargs.get('quiverkey_label', '1 m s$^{-1}$')
-	quiverkey_label_loc	= kwargs.get('quiverkey_label_loc', 'E')
-	quiverkey_color		= kwargs.get('quiverkey_color', None)
-	quiverkey_fontprops = kwargs.get('quiverkey_fontproperties', {})
-	draw_vlevels 	 	= kwargs.get('draw_vertical_levels', False)
+    # get keyword arguments
+    fontsize = kwargs.get("fontsize", 12)
+    x_factor = kwargs.get("x_factor", 1.0)
+    x_step = kwargs.get("x_step", 2)
+    y_factor = kwargs.get("y_factor", 1.0)
+    y_step = kwargs.get("y_step", 2)
+    scalar_bias = kwargs.get("scalar_bias", 0.0)
+    scalar_factor = kwargs.get("scalar_factor", 1.0)
+    arrow_scale = kwargs.get("arrow_scale", None)
+    arrow_scale_units = kwargs.get("arrow_scale_units", None)
+    arrow_headwidth = kwargs.get("arrow_headwidth", 3.0)
+    cmap_name = kwargs.get("cmap_name", None)
+    cbar_on = kwargs.get("cbar_on", True)
+    cbar_levels = kwargs.get("cbar_levels", 14)
+    cbar_ticks_step = kwargs.get("cbar_ticks_step", 1)
+    cbar_ticks_pos = kwargs.get("cbar_ticks_pos", "center")
+    cbar_center = kwargs.get("cbar_center", None)
+    cbar_half_width = kwargs.get("cbar_half_width", None)
+    cbar_x_label = kwargs.get("cbar_x_label", "")
+    cbar_y_label = kwargs.get("cbar_y_label", "")
+    cbar_title = kwargs.get("cbar_title", "")
+    cbar_orientation = kwargs.get("cbar_orientation", "vertical")
+    cbar_ax = kwargs.get("cbar_ax", None)
+    cbar_format = kwargs.get("cbar_format", None)
+    quiverkey_on = kwargs.get("quiverkey_on", False)
+    quiverkey_loc = kwargs.get("quiverkey_loc", (1, 1))
+    quiverkey_length = kwargs.get("quiverkey_length", 1.0)
+    quiverkey_label = kwargs.get("quiverkey_label", "1 m s$^{-1}$")
+    quiverkey_label_loc = kwargs.get("quiverkey_label_loc", "E")
+    quiverkey_color = kwargs.get("quiverkey_color", None)
+    quiverkey_fontprops = kwargs.get("quiverkey_fontproperties", {})
+    draw_vlevels = kwargs.get("draw_vertical_levels", False)
 
-	# global settings
-	rcParams['font.size'] = fontsize
+    # global settings
+    rcParams["font.size"] = fontsize
 
-	# rescale the axes and the field for visualization purposes
-	x *= x_factor
-	y *= y_factor
-	if scalar is not None:
-		scalar -= scalar_bias
-		scalar *= scalar_factor
+    # rescale the axes and the field for visualization purposes
+    x *= x_factor
+    y *= y_factor
+    if scalar is not None:
+        scalar -= scalar_bias
+        scalar *= scalar_factor
 
-	if cmap_name is not None:
-		# create colorbar for colormap
-		if scalar is None:
-			scalar = np.sqrt(vx ** 2 + vy ** 2)
-		scalar_min, scalar_max = np.amin(scalar), np.amax(scalar)
-		if cbar_center is None or not (lt(scalar_min, cbar_center) and lt(cbar_center, scalar_max)):
-			cbar_lb, cbar_ub = scalar_min, scalar_max
-		else:
-			half_width = max(cbar_center-scalar_min, scalar_max-cbar_center) \
-				if cbar_half_width is None else cbar_half_width
-			cbar_lb, cbar_ub = cbar_center-half_width, cbar_center+half_width
-		color_levels = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint=True)
-		if eq(color_levels[0], color_levels[-1]):
-			color_levels = np.linspace(cbar_lb-1e-8, cbar_ub+1e-8, cbar_levels, endpoint=True)
+    if cmap_name is not None:
+        # create colorbar for colormap
+        if scalar is None:
+            scalar = np.sqrt(vx ** 2 + vy ** 2)
+        scalar_min, scalar_max = np.amin(scalar), np.amax(scalar)
+        if cbar_center is None or not (
+            lt(scalar_min, cbar_center) and lt(cbar_center, scalar_max)
+        ):
+            cbar_lb, cbar_ub = scalar_min, scalar_max
+        else:
+            half_width = (
+                max(cbar_center - scalar_min, scalar_max - cbar_center)
+                if cbar_half_width is None
+                else cbar_half_width
+            )
+            cbar_lb, cbar_ub = cbar_center - half_width, cbar_center + half_width
+        color_levels = np.linspace(cbar_lb, cbar_ub, cbar_levels, endpoint=True)
+        if eq(color_levels[0], color_levels[-1]):
+            color_levels = np.linspace(
+                cbar_lb - 1e-8, cbar_ub + 1e-8, cbar_levels, endpoint=True
+            )
 
-		# create colormap
-		if cmap_name == 'BuRd':
-			cm = reverse_colormap(plt.get_cmap('RdBu'), 'BuRd')
-		elif cmap_name == 'BuYlRd':
-			cm = reverse_colormap(plt.get_cmap('RdYlBu'), 'BuYlRd')
-		elif cmap_name == 'CMRmap_r':
-			cm = reverse_colormap(plt.get_cmap('CMRmap'), 'CMRmap_r')
-		else:
-			cm = plt.get_cmap(cmap_name)
-	else:
-		cm = None
+        # create colormap
+        if cmap_name == "BuRd":
+            cm = reverse_colormap(plt.get_cmap("RdBu"), "BuRd")
+        elif cmap_name == "BuYlRd":
+            cm = reverse_colormap(plt.get_cmap("RdYlBu"), "BuYlRd")
+        elif cmap_name == "CMRmap_r":
+            cm = reverse_colormap(plt.get_cmap("CMRmap"), "CMRmap_r")
+        else:
+            cm = plt.get_cmap(cmap_name)
+    else:
+        cm = None
 
-	# plot the vertical levels
-	if draw_vlevels:
-		for k in range(x.shape[1]):
-			ax.plot(x[:, k], y[:, k], color='gray', linewidth=1, alpha=0.5)
+    # plot the vertical levels
+    if draw_vlevels:
+        for k in range(x.shape[1]):
+            ax.plot(x[:, k], y[:, k], color="gray", linewidth=1, alpha=0.5)
 
-	# generate quiver-plot
-	if cm is None:
-		q = ax.quiver(
-			x[::x_step, ::y_step], y[::x_step, ::y_step],
-			vx[::x_step, ::y_step], vy[::x_step, ::y_step],
-			scale=arrow_scale, scale_units=arrow_scale_units,
-			headwidth=arrow_headwidth
-		)
-	else:
-		q = ax.quiver(
-			x[::x_step, ::y_step], y[::x_step, ::y_step],
-			vx[::x_step, ::y_step], vy[::x_step, ::y_step],
-			scalar[::x_step, ::y_step], cmap=cm,
-			scale=arrow_scale, scale_units=arrow_scale_units,
-			headwidth=arrow_headwidth
-		)
+    # generate quiver-plot
+    if cm is None:
+        q = ax.quiver(
+            x[::x_step, ::y_step],
+            y[::x_step, ::y_step],
+            vx[::x_step, ::y_step],
+            vy[::x_step, ::y_step],
+            scale=arrow_scale,
+            scale_units=arrow_scale_units,
+            headwidth=arrow_headwidth,
+        )
+    else:
+        q = ax.quiver(
+            x[::x_step, ::y_step],
+            y[::x_step, ::y_step],
+            vx[::x_step, ::y_step],
+            vy[::x_step, ::y_step],
+            scalar[::x_step, ::y_step],
+            cmap=cm,
+            scale=arrow_scale,
+            scale_units=arrow_scale_units,
+            headwidth=arrow_headwidth,
+        )
 
-	# set the colorbar
-	if cm is not None and cbar_on:
-		set_colorbar(
-			fig, q, color_levels,
-			cbar_ticks_step=cbar_ticks_step,
-			cbar_ticks_pos=cbar_ticks_pos, cbar_title=cbar_title,
-			cbar_x_label=cbar_x_label, cbar_y_label=cbar_y_label,
-			cbar_orientation=cbar_orientation, cbar_ax=cbar_ax,
-			cbar_format=cbar_format
-		)
+    # set the colorbar
+    if cm is not None and cbar_on:
+        set_colorbar(
+            fig,
+            q,
+            color_levels,
+            cbar_ticks_step=cbar_ticks_step,
+            cbar_ticks_pos=cbar_ticks_pos,
+            cbar_title=cbar_title,
+            cbar_x_label=cbar_x_label,
+            cbar_y_label=cbar_y_label,
+            cbar_orientation=cbar_orientation,
+            cbar_ax=cbar_ax,
+            cbar_format=cbar_format,
+        )
 
-	# set quiver key
-	if quiverkey_on:
-		qk = ax.quiverkey(
-			q, quiverkey_loc[0], quiverkey_loc[1],
-			quiverkey_length, quiverkey_label,
-			coordinates='axes', labelpos=quiverkey_label_loc,
-			fontproperties=quiverkey_fontprops,
-		)
-		if quiverkey_color is not None:
-			qk.text.set_backgroundcolor(quiverkey_color)
+    # set quiver key
+    if quiverkey_on:
+        qk = ax.quiverkey(
+            q,
+            quiverkey_loc[0],
+            quiverkey_loc[1],
+            quiverkey_length,
+            quiverkey_label,
+            coordinates="axes",
+            labelpos=quiverkey_label_loc,
+            fontproperties=quiverkey_fontprops,
+        )
+        if quiverkey_color is not None:
+            qk.text.set_backgroundcolor(quiverkey_color)
 
-	# bring axes and field back to original units
-	x /= x_factor
-	y /= y_factor
-	if scalar is not None:
-		scalar /= scalar_factor
-		scalar += scalar_bias
+    # bring axes and field back to original units
+    x /= x_factor
+    y /= y_factor
+    if scalar is not None:
+        scalar /= scalar_factor
+        scalar += scalar_bias
 
 
 def make_circle(ax, **kwargs):
-	"""
+    """
 	Draw a circle.
 
 	Parameters
@@ -1361,20 +1446,20 @@ def make_circle(ax, **kwargs):
 	facecolor : str
 		Face color. Defaults to 'white'.
 	"""
-	xy 		  = kwargs.get('xy', (0.0, 0.0))
-	radius 	  = kwargs.get('radius', 1.0)
-	linewidth = kwargs.get('linewidth', 1.0)
-	edgecolor = kwargs.get('edgecolor', 'black')
-	facecolor = kwargs.get('facecolor', 'white')
+    xy = kwargs.get("xy", (0.0, 0.0))
+    radius = kwargs.get("radius", 1.0)
+    linewidth = kwargs.get("linewidth", 1.0)
+    edgecolor = kwargs.get("edgecolor", "black")
+    facecolor = kwargs.get("facecolor", "white")
 
-	circ = patches.Circle(
-		xy, radius, linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor
-	)
-	ax.add_patch(circ)
+    circ = patches.Circle(
+        xy, radius, linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor
+    )
+    ax.add_patch(circ)
 
 
 def make_rectangle(ax, **kwargs):
-	"""
+    """
 	Draw a rectangle.
 
 	Parameters
@@ -1400,23 +1485,28 @@ def make_rectangle(ax, **kwargs):
 	facecolor : str
 		Face color. Defaults to 'white'.
 	"""
-	xy 		  = kwargs.get('xy', (0.0, 0.0))
-	width 	  = kwargs.get('width', 1.0)
-	height 	  = kwargs.get('height', 1.0)
-	angle 	  = kwargs.get('angle', 0.0)
-	linewidth = kwargs.get('linewidth', 1.0)
-	edgecolor = kwargs.get('edgecolor', 'black')
-	facecolor = kwargs.get('facecolor', 'white')
+    xy = kwargs.get("xy", (0.0, 0.0))
+    width = kwargs.get("width", 1.0)
+    height = kwargs.get("height", 1.0)
+    angle = kwargs.get("angle", 0.0)
+    linewidth = kwargs.get("linewidth", 1.0)
+    edgecolor = kwargs.get("edgecolor", "black")
+    facecolor = kwargs.get("facecolor", "white")
 
-	rect = patches.Rectangle(
-		xy, width, height, angle=angle, linewidth=linewidth,
-		edgecolor=edgecolor, facecolor=facecolor
-	)
-	ax.add_patch(rect)
+    rect = patches.Rectangle(
+        xy,
+        width,
+        height,
+        angle=angle,
+        linewidth=linewidth,
+        edgecolor=edgecolor,
+        facecolor=facecolor,
+    )
+    ax.add_patch(rect)
 
 
 def make_cdf(data, ax, **kwargs):
-	"""
+    """
 	Plot the cumulative distribution function (CDF) for an array of points.
 
 	Parameters
@@ -1443,31 +1533,31 @@ def make_cdf(data, ax, **kwargs):
 		Any keyword argument accepted by :
 		func:`tasmania.python.plot.plot_utils.make_lineplot`.
 	"""
-	# get keyword arguments
-	fontsize     	= kwargs.get('fontsize', 16)
-	data_on_xaxis   = kwargs.get('data_on_xaxis', False)
-	number_of_bins  = kwargs.get('number_of_bins', 1000)
-	threshold       = kwargs.get('threshold', None)
+    # get keyword arguments
+    fontsize = kwargs.get("fontsize", 16)
+    data_on_xaxis = kwargs.get("data_on_xaxis", False)
+    number_of_bins = kwargs.get("number_of_bins", 1000)
+    threshold = kwargs.get("threshold", None)
 
-	# global settings
-	rcParams['font.size'] = fontsize
+    # global settings
+    rcParams["font.size"] = fontsize
 
- 	# filter data
-	if threshold is not None:
-		rdata = data[data > threshold]
-	else:
-		rdata = data
+    # filter data
+    if threshold is not None:
+        rdata = data[data > threshold]
+    else:
+        rdata = data
 
-	# compute the cdf
-	rdata_min, rdata_max = rdata.min(), rdata.max()
-	bins = np.linspace(0, 1, number_of_bins+1)
-	values = rdata_min + bins * (rdata_max - rdata_min)
-	cdf = np.zeros(number_of_bins+1)
-	for k in range(number_of_bins+1):
-		cdf[k] = np.sum(rdata <= values[k]) / rdata.size
+    # compute the cdf
+    rdata_min, rdata_max = rdata.min(), rdata.max()
+    bins = np.linspace(0, 1, number_of_bins + 1)
+    values = rdata_min + bins * (rdata_max - rdata_min)
+    cdf = np.zeros(number_of_bins + 1)
+    for k in range(number_of_bins + 1):
+        cdf[k] = np.sum(rdata <= values[k]) / rdata.size
 
-	# plot
-	if data_on_xaxis:
-		make_lineplot(values, cdf, ax, **kwargs)
-	else:
-		make_lineplot(cdf, values, ax, **kwargs)
+    # plot
+    if data_on_xaxis:
+        make_lineplot(values, cdf, ax, **kwargs)
+    else:
+        make_lineplot(cdf, values, ax, **kwargs)

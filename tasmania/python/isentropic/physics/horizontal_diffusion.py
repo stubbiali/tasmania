@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	IsentropicHorizontalDiffusion(TendencyComponent)
+    IsentropicHorizontalDiffusion(TendencyComponent)
 """
 import numpy as np
 
@@ -44,11 +44,11 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 class IsentropicHorizontalDiffusion(TendencyComponent):
     """
-	Calculate the tendencies due to horizontal diffusion for the
-	prognostic fields of an isentropic model state. The class is
-	always instantiated over the numerical grid of the
-	underlying domain.
-	"""
+    Calculate the tendencies due to horizontal diffusion for the
+    prognostic fields of an isentropic model state. The class is
+    always instantiated over the numerical grid of the
+    underlying domain.
+    """
 
     def __init__(
         self,
@@ -72,51 +72,51 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         **kwargs
     ):
         """
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		diffusion_type : str
-			The type of numerical diffusion to implement.
-			See :class:`~tasmania.HorizontalDiffusion` for all available options.
-		diffusion_coeff : sympl.DataArray
-			1-item array representing the diffusion coefficient;
-			in units compatible with [s^-1].
-		diffusion_coeff_max : sympl.DataArray
-			1-item array representing the maximum value assumed by the
-			diffusion coefficient close to the upper boundary;
-			in units compatible with [s^-1].
-		diffusion_damp_depth : int
-			Depth of the damping region.
-		moist : `bool`, optional
-			:obj:`True` if water species are included in the model and should
-			be diffused, :obj:`False` otherwise. Defaults to :obj:`False`.
-		diffusion_moist_coeff : `sympl.DataArray`, optional
-			1-item array representing the diffusion coefficient for the
-			water species; in units compatible with [s^-1].
-		diffusion_moist_coeff_max : `sympl.DataArray`, optional
-			1-item array representing the maximum value assumed by the
-			diffusion coefficient for the water species close to the upper boundary;
-			in units compatible with [s^-1].
-		diffusion_damp_depth : int
-			Depth of the damping region for the water species.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			TODO
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
-		**kwargs :
-			Keyword arguments to be directly forwarded to the parent constructor.
-		"""
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        diffusion_type : str
+            The type of numerical diffusion to implement.
+            See :class:`~tasmania.HorizontalDiffusion` for all available options.
+        diffusion_coeff : sympl.DataArray
+            1-item array representing the diffusion coefficient;
+            in units compatible with [s^-1].
+        diffusion_coeff_max : sympl.DataArray
+            1-item array representing the maximum value assumed by the
+            diffusion coefficient close to the upper boundary;
+            in units compatible with [s^-1].
+        diffusion_damp_depth : int
+            Depth of the damping region.
+        moist : `bool`, optional
+            :obj:`True` if water species are included in the model and should
+            be diffused, :obj:`False` otherwise. Defaults to :obj:`False`.
+        diffusion_moist_coeff : `sympl.DataArray`, optional
+            1-item array representing the diffusion coefficient for the
+            water species; in units compatible with [s^-1].
+        diffusion_moist_coeff_max : `sympl.DataArray`, optional
+            1-item array representing the maximum value assumed by the
+            diffusion coefficient for the water species close to the upper boundary;
+            in units compatible with [s^-1].
+        diffusion_damp_depth : int
+            Depth of the damping region for the water species.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        **kwargs :
+            Keyword arguments to be directly forwarded to the parent constructor.
+        """
         self._moist = moist and diffusion_moist_coeff is not None
 
         super().__init__(domain, "numerical", **kwargs)

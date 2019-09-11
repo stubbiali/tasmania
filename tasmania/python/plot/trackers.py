@@ -35,15 +35,25 @@ from tasmania.python.plot.plot_utils import make_contourf, make_lineplot
 
 
 class TimeSeries(Drawer):
-	"""
+    """
 	Drawer which visualizes a time series.
 	"""
-	def __init__(
-		self, grid, field_name, field_units, x=0, y=0, z=0,
-		time_mode='elapsed', init_time=None, time_units='s', time_on_xaxis=True,
-		properties=None
-	):
-		"""
+
+    def __init__(
+        self,
+        grid,
+        field_name,
+        field_units,
+        x=0,
+        y=0,
+        z=0,
+        time_mode="elapsed",
+        init_time=None,
+        time_units="s",
+        time_on_xaxis=True,
+        properties=None,
+    ):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -80,64 +90,78 @@ class TimeSeries(Drawer):
 			settings, and whose values specify values for those settings.
 			See :func:`tasmania.python.plot.utils.make_lineplot`.
 		"""
-		super().__init__(properties)
+        super().__init__(properties)
 
-		slice_x = slice(x, x+1 if x != -1 else None)
-		slice_y = slice(y, y+1 if y != -1 else None)
-		slice_z = slice(z, z+1 if z != -1 else None)
+        slice_x = slice(x, x + 1 if x != -1 else None)
+        slice_y = slice(y, y + 1 if y != -1 else None)
+        slice_z = slice(z, z + 1 if z != -1 else None)
 
-		self._retriever = DataRetriever(
-			grid, field_name, field_units, slice_x, slice_y, slice_z
-		)
+        self._retriever = DataRetriever(
+            grid, field_name, field_units, slice_x, slice_y, slice_z
+        )
 
-		self._tmode  = time_mode
-		self._itime  = init_time
-		self._uitime = init_time is not None
-		self._tunits = time_units
-		self._txaxis = time_on_xaxis
+        self._tmode = time_mode
+        self._itime = init_time
+        self._uitime = init_time is not None
+        self._tunits = time_units
+        self._txaxis = time_on_xaxis
 
-		self._time = []
-		self._data = []
+        self._time = []
+        self._data = []
 
-	def reset(self):
-		self._time = []
-		self._data = []
+    def reset(self):
+        self._time = []
+        self._data = []
 
-		if not self._uitime:
-			self._itime = None
+        if not self._uitime:
+            self._itime = None
 
-	def __call__(self, state, fig=None, ax=None):
-		"""
+    def __call__(self, state, fig=None, ax=None):
+        """
 		Call operator updating and visualizing the time series.
 		"""
-		if self._tmode == 'elapsed':
-			self._itime = state['time'] if self._itime is None else self._itime
-			ctime = DataArray(
-				(state['time'] - self._itime).total_seconds(), attrs={'units': 's'}
-			)
-			self._time.append(ctime.to_units(self._tunits).values.item())
-		else:
-			self._time.append(state['time'])
+        if self._tmode == "elapsed":
+            self._itime = state["time"] if self._itime is None else self._itime
+            ctime = DataArray(
+                (state["time"] - self._itime).total_seconds(), attrs={"units": "s"}
+            )
+            self._time.append(ctime.to_units(self._tunits).values.item())
+        else:
+            self._time.append(state["time"])
 
-		self._data.append(self._retriever(state).item())
+        self._data.append(self._retriever(state).item())
 
-		x = np.array(self._time if self._txaxis else self._data)
-		y = np.array(self._data if self._txaxis else self._time)
+        x = np.array(self._time if self._txaxis else self._data)
+        y = np.array(self._data if self._txaxis else self._time)
 
-		if ax is not None:
-			make_lineplot(x, y, ax, **self.properties)
+        if ax is not None:
+            make_lineplot(x, y, ax, **self.properties)
 
 
 class HovmollerDiagram(Drawer):
-	"""
+    """
 	Drawer which generates a Hovmoller diagram.
 	"""
-	def __init__(
-		self, grid, field_name, field_units, x=None, y=None, z=None,
-		axis_name=None, axis_units=None, axis_x=None, axis_y=None, axis_z=None,
-		time_mode='elapsed', init_time=None, time_units='s', properties=None
-	):
-		"""
+
+    def __init__(
+        self,
+        grid,
+        field_name,
+        field_units,
+        x=None,
+        y=None,
+        z=None,
+        axis_name=None,
+        axis_units=None,
+        axis_x=None,
+        axis_y=None,
+        axis_z=None,
+        time_mode="elapsed",
+        init_time=None,
+        time_units="s",
+        properties=None,
+    ):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -218,66 +242,91 @@ class HovmollerDiagram(Drawer):
 			settings, and whose values specify values for those settings.
 			See :func:`tasmania.python.plot.utils.make_contourf`.
 		"""
-		super().__init__(properties)
+        super().__init__(properties)
 
-		self._retriever = LineProfile(
-			grid, field_name, field_units, x, y, z,
-			axis_name, axis_units, axis_x, axis_y, axis_z
-		)
+        self._retriever = LineProfile(
+            grid,
+            field_name,
+            field_units,
+            x,
+            y,
+            z,
+            axis_name,
+            axis_units,
+            axis_x,
+            axis_y,
+            axis_z,
+        )
 
-		self._tmode  = time_mode
-		self._itime  = init_time
-		self._uitime = init_time is not None
-		self._tunits = time_units
-		self._txaxis = z is None
+        self._tmode = time_mode
+        self._itime = init_time
+        self._uitime = init_time is not None
+        self._tunits = time_units
+        self._txaxis = z is None
 
-		self._time = []
-		self._axis = None
-		self._data = None
+        self._time = []
+        self._axis = None
+        self._data = None
 
-	def reset(self):
-		self._time = []
-		self._axis = None
-		self._data = None
+    def reset(self):
+        self._time = []
+        self._axis = None
+        self._data = None
 
-		if not self._uitime:
-			self._itime = None
+        if not self._uitime:
+            self._itime = None
 
-	def __call__(self, state, fig=None, ax=None):
-		"""
+    def __call__(self, state, fig=None, ax=None):
+        """
 		Call operator generating the plot.
 		"""
-		if self._tmode == 'elapsed':
-			self._itime = state['time'] if self._itime is None else self._itime
-			ctime = DataArray(
-				(state['time'] - self._itime).total_seconds(), attrs={'units': 's'}
-			)
-			self._time.append(ctime.to_units(self._tunits).values.item())
-		else:
-			self._time.append(state['time'])
+        if self._tmode == "elapsed":
+            self._itime = state["time"] if self._itime is None else self._itime
+            ctime = DataArray(
+                (state["time"] - self._itime).total_seconds(), attrs={"units": "s"}
+            )
+            self._time.append(ctime.to_units(self._tunits).values.item())
+        else:
+            self._time.append(state["time"])
 
-		if self._txaxis:
-			field, spatial_axis = self._retriever(state)
+        if self._txaxis:
+            field, spatial_axis = self._retriever(state)
 
-			self._axis = spatial_axis[np.newaxis, :] if self._axis is None else \
-				np.concatenate((self._axis, spatial_axis[np.newaxis, :]), axis=0)
-			self._data = field[np.newaxis, :] if self._data is None else \
-				np.concatenate((self._data, field[np.newaxis, :]), axis=0)
+            self._axis = (
+                spatial_axis[np.newaxis, :]
+                if self._axis is None
+                else np.concatenate((self._axis, spatial_axis[np.newaxis, :]), axis=0)
+            )
+            self._data = (
+                field[np.newaxis, :]
+                if self._data is None
+                else np.concatenate((self._data, field[np.newaxis, :]), axis=0)
+            )
 
-			x   = np.repeat(np.array(self._time)[:, np.newaxis], self._axis.shape[1], axis=1)
-			y   = self._axis
-			val = self._data
-		else:
-			spatial_axis, field = self._retriever(state)
+            x = np.repeat(
+                np.array(self._time)[:, np.newaxis], self._axis.shape[1], axis=1
+            )
+            y = self._axis
+            val = self._data
+        else:
+            spatial_axis, field = self._retriever(state)
 
-			self._axis = spatial_axis[:, np.newaxis] if self._axis is None else \
-				np.concatenate((self._axis, spatial_axis[:, np.newaxis]), axis=1)
-			self._data = field[:, np.newaxis] if self._data is None else \
-				np.concatenate((self._data, field[:, np.newaxis]), axis=1)
+            self._axis = (
+                spatial_axis[:, np.newaxis]
+                if self._axis is None
+                else np.concatenate((self._axis, spatial_axis[:, np.newaxis]), axis=1)
+            )
+            self._data = (
+                field[:, np.newaxis]
+                if self._data is None
+                else np.concatenate((self._data, field[:, np.newaxis]), axis=1)
+            )
 
-			x   = self._axis
-			y   = np.repeat(np.array(self._time)[np.newaxis, :], self._axis.shape[0], axis=0)
-			val = self._data
+            x = self._axis
+            y = np.repeat(
+                np.array(self._time)[np.newaxis, :], self._axis.shape[0], axis=0
+            )
+            val = self._data
 
-		if not((fig is None) or (ax is None)):
-			make_contourf(x, y, val, fig, ax, **self.properties)
+        if not ((fig is None) or (ax is None)):
+            make_contourf(x, y, val, fig, ax, **self.properties)

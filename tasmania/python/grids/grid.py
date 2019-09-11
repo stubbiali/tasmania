@@ -45,51 +45,51 @@ except ImportError:
 
 class Grid:
     """
-	This class represents a rectangular, regular and prismatic
-	three-dimensional grid embedded in a reference system whose
-	coordinates are
+    This class represents a rectangular, regular and prismatic
+    three-dimensional grid embedded in a reference system whose
+    coordinates are
 
-		* the first horizontal coordinate :math:`x`;
-		* the second horizontal coordinate :math:`y`;
-		* the vertical (terrain-following) coordinate :math:`z`.
+        * the first horizontal coordinate :math:`x`;
+        * the second horizontal coordinate :math:`y`;
+        * the vertical (terrain-following) coordinate :math:`z`.
 
-	The vertical coordinate :math:`z` may be formulated to define a hybrid
-	terrain-following coordinate system with terrain-following coordinate
-	lines between the surface terrain-height and :math:`z = z_F`, where
-	:math:`z`-coordinate lines change back to flat horizontal lines. However,
-	no assumption is made on the actual nature of :math:`z`, which may be either
-	pressure-based or height-based.
+    The vertical coordinate :math:`z` may be formulated to define a hybrid
+    terrain-following coordinate system with terrain-following coordinate
+    lines between the surface terrain-height and :math:`z = z_F`, where
+    :math:`z`-coordinate lines change back to flat horizontal lines. However,
+    no assumption is made on the actual nature of :math:`z`, which may be either
+    pressure-based or height-based.
 
-	A grid consists of the following entities:
+    A grid consists of the following entities:
 
-		* the horizontal grid;
-		* the vertical discretization;
-		* the underlying topography.
+        * the horizontal grid;
+        * the vertical discretization;
+        * the underlying topography.
 
-	Note
-	----
-	For the sake of compliancy with the `COSMO model <http://cosmo-model.org>`_,
-	the vertical grid points are ordered from the top of the domain to the surface.
-	"""
+    Note
+    ----
+    For the sake of compliancy with the `COSMO model <http://cosmo-model.org>`_,
+    the vertical grid points are ordered from the top of the domain to the surface.
+    """
 
     def __init__(self, grid_xy, z, z_on_interface_levels, z_interface, topography):
         """ 
-		Parameters
-		----------
-		grid_xy : tasmania.HorizontalGrid
-			The horizontal grid.
-		z : sympl.DataArray
-			1-D :class:`sympl.DataArray` collecting the vertical coordinates
-			of the vertical main levels.
-		z_on_interface_levels : sympl.DataArray
-			1-D :class:`sympl.DataArray` collecting the vertical coordinates
-			of the vertical interface levels.
-		z_interface : sympl.DataArray
-			1-item :class:`sympl.DataArray` representing the interface
-			altitude :math:`z_F`.
-		topography : tasmania.Topography
-			The underlying topography.
-		"""
+        Parameters
+        ----------
+        grid_xy : tasmania.HorizontalGrid
+            The horizontal grid.
+        z : sympl.DataArray
+            1-D :class:`sympl.DataArray` collecting the vertical coordinates
+            of the vertical main levels.
+        z_on_interface_levels : sympl.DataArray
+            1-D :class:`sympl.DataArray` collecting the vertical coordinates
+            of the vertical interface levels.
+        z_interface : sympl.DataArray
+            1-item :class:`sympl.DataArray` representing the interface
+            altitude :math:`z_F`.
+        topography : tasmania.Topography
+            The underlying topography.
+        """
         self._grid_xy = grid_xy
         self._z = z
         self._zhl = z_on_interface_levels
@@ -104,181 +104,181 @@ class Grid:
     @property
     def grid_xy(self):
         """
-		Return
-		------
-		tasmania.PhysicalHorizontalGrid :
-			The underlying physical horizontal grid.
-		"""
+        Return
+        ------
+        tasmania.PhysicalHorizontalGrid :
+            The underlying physical horizontal grid.
+        """
         return self._grid_xy
 
     @property
     def x(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the mass grid points
-			along the first horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the mass grid points
+            along the first horizontal dimension.
+        """
         return self._grid_xy.x
 
     @property
     def x_at_u_locations(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the staggered grid points
-			along the first horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the staggered grid points
+            along the first horizontal dimension.
+        """
         return self._grid_xy.x_at_u_locations
 
     @property
     def nx(self):
         """
-		Returns
-		-------
-		int :
-			Number of mass grid points featured by the grid along
-			the first horizontal dimension.
-		"""
+        Returns
+        -------
+        int :
+            Number of mass grid points featured by the grid along
+            the first horizontal dimension.
+        """
         return self._grid_xy.nx
 
     @property
     def dx(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-item :class:`sympl.DataArray` representing the grid spacing
-			along the first horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-item :class:`sympl.DataArray` representing the grid spacing
+            along the first horizontal dimension.
+        """
         return self._grid_xy.dx
 
     @property
     def y(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the mass grid points
-			along the second horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the mass grid points
+            along the second horizontal dimension.
+        """
         return self._grid_xy.y
 
     @property
     def y_at_v_locations(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the staggered grid points
-			along the second horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the staggered grid points
+            along the second horizontal dimension.
+        """
         return self._grid_xy.y_at_v_locations
 
     @property
     def ny(self):
         """
-		Returns
-		-------
-		int :
-			Number of mass grid points featured by the grid along
-			the second horizontal dimension.
-		"""
+        Returns
+        -------
+        int :
+            Number of mass grid points featured by the grid along
+            the second horizontal dimension.
+        """
         return self._grid_xy.ny
 
     @property
     def dy(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-item :class:`sympl.DataArray` representing the grid spacing
-			along the second horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-item :class:`sympl.DataArray` representing the grid spacing
+            along the second horizontal dimension.
+        """
         return self._grid_xy.dy
 
     @property
     def z(self):
         """
-		Return
-		------
-		sympl.DataArray :
-			The vertical coordinates of the main levels
-		"""
+        Return
+        ------
+        sympl.DataArray :
+            The vertical coordinates of the main levels
+        """
         return self._z
 
     @property
     def z_on_interface_levels(self):
         """
-		Return
-		------
-		sympl.DataArray :
-			The vertical coordinates of the interface levels
-		"""
+        Return
+        ------
+        sympl.DataArray :
+            The vertical coordinates of the interface levels
+        """
         return self._zhl
 
     @property
     def nz(self):
         """
-		Return
-		------
-		int :
-			Number of vertical main levels.
-		"""
+        Return
+        ------
+        int :
+            Number of vertical main levels.
+        """
         return self._nz
 
     @property
     def dz(self):
         """
-		Return
-		------
-		sympl.DataArray :
-			1-item :class:`sympl.DataArray` representing the vertical
-			grid spacing.
-		"""
+        Return
+        ------
+        sympl.DataArray :
+            1-item :class:`sympl.DataArray` representing the vertical
+            grid spacing.
+        """
         return self._dz
 
     @property
     def z_interface(self):
         """
-		Return
-		------
-		sympl.DataArray :
-			1-item :class:`sympl.DataArray` representing the interface
-			altitude where the terrain-following coordinate surfaces
-			flat black to horizontal lines.
-		"""
+        Return
+        ------
+        sympl.DataArray :
+            1-item :class:`sympl.DataArray` representing the interface
+            altitude where the terrain-following coordinate surfaces
+            flat black to horizontal lines.
+        """
         return self._zi
 
     @property
     def topography(self):
         """
-		Return
-		------
-		tasmania.PhysicalTopography :
-			The topography defined over the underlying physical grid.
-		"""
+        Return
+        ------
+        tasmania.PhysicalTopography :
+            The topography defined over the underlying physical grid.
+        """
         return self._topo
 
     def update_topography(self, time):
         """
-		Update the underlying (time-dependent) topography.
+        Update the underlying (time-dependent) topography.
 
-		Parameters
-		----------
-		time : datetime.timedelta
-			The elapsed simulation time.
-		"""
+        Parameters
+        ----------
+        time : datetime.timedelta
+            The elapsed simulation time.
+        """
         self._topo.update(time)
 
 
 class PhysicalGrid(Grid):
     """
-	This class represents a rectangular, regular and prismatic
-	three-dimensional *physical* grid.
-	"""
+    This class represents a rectangular, regular and prismatic
+    three-dimensional *physical* grid.
+    """
 
     def __init__(
         self,
@@ -294,49 +294,49 @@ class PhysicalGrid(Grid):
         dtype=datatype,
     ):
         """
-		Parameters
-		----------
-		domain_x : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the first horizontal dimension.
-		nx : int
-			Number of mass points featured by the *physical* grid
-			along the first horizontal dimension.
-		domain_y : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the second horizontal dimension.
-		ny : int
-			Number of mass points featured by the *physical* grid
-			along the second horizontal dimension.
-		domain_z : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the domain includes along the
-			:math:`z`-axis. The interval should be specified in the form
-			:math:`(z_{top}, ~ z_{surface})`.
-		nz : int
-			Number of vertical main levels.
-		z_interface : `sympl.DataArray`, optional
-			Interface value :math:`z_F`. If not specified, it is assumed that
-			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
-			top of the domain. In other words, the coordinate system is supposed
-			fully terrain-following.
-		topography_type : `str`, optional
-			Topography type. Defaults to 'flat_terrain'.
-			See :class:`tasmania.Topography` for available options.
-		topography_kwargs : `dict`, optional
-			Keyword arguments to be forwarded to the constructor of
-			:class:`tasmania.Topography`.
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
+        Parameters
+        ----------
+        domain_x : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the first horizontal dimension.
+        nx : int
+            Number of mass points featured by the *physical* grid
+            along the first horizontal dimension.
+        domain_y : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the second horizontal dimension.
+        ny : int
+            Number of mass points featured by the *physical* grid
+            along the second horizontal dimension.
+        domain_z : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the domain includes along the
+            :math:`z`-axis. The interval should be specified in the form
+            :math:`(z_{top}, ~ z_{surface})`.
+        nz : int
+            Number of vertical main levels.
+        z_interface : `sympl.DataArray`, optional
+            Interface value :math:`z_F`. If not specified, it is assumed that
+            :math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
+            top of the domain. In other words, the coordinate system is supposed
+            fully terrain-following.
+        topography_type : `str`, optional
+            Topography type. Defaults to 'flat_terrain'.
+            See :class:`tasmania.Topography` for available options.
+        topography_kwargs : `dict`, optional
+            Keyword arguments to be forwarded to the constructor of
+            :class:`tasmania.Topography`.
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated within
+            this class.
 
-		Raises
-		------
-		ValueError :
-			If :obj:`interface` lays outside the domain.
-		"""
+        Raises
+        ------
+        ValueError :
+            If :obj:`interface` lays outside the domain.
+        """
         # xy-grid
         grid_xy = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)
 
@@ -399,19 +399,19 @@ class PhysicalGrid(Grid):
 
 class NumericalGrid(Grid):
     """
-	This class represents a rectangular, regular and prismatic
-	three-dimensional *numerical* grid.
-	"""
+    This class represents a rectangular, regular and prismatic
+    three-dimensional *numerical* grid.
+    """
 
     def __init__(self, phys_grid, boundary):
         """
-		Parameters
-		----------
-		phys_grid : tasmania.PhysicalGrid
-			The associated physical grid.
-		boundary : tasmania.HorizontalBoundary
-			The object handling the lateral boundary conditions.
-		"""
+        Parameters
+        ----------
+        phys_grid : tasmania.PhysicalGrid
+            The associated physical grid.
+        boundary : tasmania.HorizontalBoundary
+            The object handling the lateral boundary conditions.
+        """
         # the horizontal grid
         phys_grid_xy = phys_grid.grid_xy
         grid_xy = NumericalHorizontalGrid(phys_grid_xy, boundary)

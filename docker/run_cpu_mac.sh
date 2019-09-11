@@ -21,8 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-CALL_DIR=$HOME/Desktop/phd/tasmania-develop-gt4py-v0.5.0
-TASMANIA_ROOT=$HOME/Desktop/phd/tasmania-develop-gt4py-v0.5.0
+CALL_DIR=$HOME/Desktop/phd/tasmania-hack
+TASMANIA_ROOT=$HOME/Desktop/phd/tasmania-hack
 EXTERNAL_DIR=$TASMANIA_ROOT/docker/external
 GT4PY_BRANCH=tasmania_migration
 IMAGE_NAME=tasmania:cpu

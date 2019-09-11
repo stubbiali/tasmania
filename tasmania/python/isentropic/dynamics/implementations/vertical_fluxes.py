@@ -22,13 +22,13 @@
 #
 """
 This module contains:
-	Upwind(IsentropicVerticalFlux)
-	Centered(IsentropicVerticalFlux)
-	MacCormack(IsentropicVerticalFlux)
+    Upwind(IsentropicVerticalFlux)
+    Centered(IsentropicVerticalFlux)
+    MacCormack(IsentropicVerticalFlux)
 
-	get_upwind_flux
-	get_centered_flux
-	get_maccormack_flux
+    get_upwind_flux
+    get_centered_flux
+    get_maccormack_flux
 """
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.vertical_fluxes import IsentropicVerticalFlux
@@ -36,19 +36,19 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import IsentropicVertic
 
 class Upwind(IsentropicVerticalFlux):
     """
-	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
-	to implement the upwind scheme to compute the vertical
-	numerical fluxes for the governing equations expressed
-	in conservative form using isentropic coordinates.
+    Class which inherits
+    :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
+    to implement the upwind scheme to compute the vertical
+    numerical fluxes for the governing equations expressed
+    in conservative form using isentropic coordinates.
 
-	Attributes
-	----------
-	nb : int
-		Number of boundary layers.
-	order : int
-		Order of accuracy.
-	"""
+    Attributes
+    ----------
+    nb : int
+        Number of boundary layers.
+    order : int
+        Order of accuracy.
+    """
 
     def __init__(self, grid, moist):
         super().__init__(grid, moist)
@@ -113,19 +113,19 @@ def get_upwind_flux(i, j, k, w_mid, phi):
 
 class Centered(IsentropicVerticalFlux):
     """
-	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
-	to implement the centered scheme to compute the vertical
-	numerical fluxes for the governing equations expressed in
-	conservative form using isentropic coordinates.
+    Class which inherits
+    :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
+    to implement the centered scheme to compute the vertical
+    numerical fluxes for the governing equations expressed in
+    conservative form using isentropic coordinates.
 
-	Attributes
-	----------
-	nb : int
-		Number of boundary layers.
-	order : int
-		Order of accuracy.
-	"""
+    Attributes
+    ----------
+    nb : int
+        Number of boundary layers.
+    order : int
+        Order of accuracy.
+    """
 
     def __init__(self, grid, moist):
         super().__init__(grid, moist)
@@ -188,19 +188,19 @@ def get_centered_flux(i, j, k, w_mid, phi):
 
 class MacCormack(IsentropicVerticalFlux):
     """
-	Class which inherits
-	:class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
-	to implement the MacCormack scheme to compute the vertical
-	numerical fluxes for the governing equations expressed in
-	conservative form using isentropic coordinates.
+    Class which inherits
+    :class:`~tasmania.dynamics.isentropic_fluxes.IsentropicVerticalFlux`
+    to implement the MacCormack scheme to compute the vertical
+    numerical fluxes for the governing equations expressed in
+    conservative form using isentropic coordinates.
 
-	Attributes
-	----------
-	nb : int
-		Number of boundary layers.
-	order : int
-		Order of accuracy.
-	"""
+    Attributes
+    ----------
+    nb : int
+        Number of boundary layers.
+    order : int
+        Order of accuracy.
+    """
 
     def __init__(self, grid, moist):
         super().__init__(grid, moist)
