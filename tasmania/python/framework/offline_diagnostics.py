@@ -22,11 +22,11 @@
 #
 """
 This module contains:
-	FakeComponent
-	OfflineDiagnosticComponent
-	RMSD(OfflineDiagnosticComponent)
-	RRMSD(OfflineDiagnosticComponent)
-	ColumnSum(OfflineDiagnosticComponent)
+    FakeComponent
+    OfflineDiagnosticComponent
+    RMSD(OfflineDiagnosticComponent)
+    RRMSD(OfflineDiagnosticComponent)
+    ColumnSum(OfflineDiagnosticComponent)
 """
 import abc
 import numpy as np
@@ -56,9 +56,9 @@ class FakeComponent:
 
 class OfflineDiagnosticComponent:
     """
-	Abstract base class whose derived classes retrieve diagnostics
-	from multiple state dictionaries.
-	"""
+    Abstract base class whose derived classes retrieve diagnostics
+    from multiple state dictionaries.
+    """
 
     __metaclass__ = abc.ABCMeta
 
@@ -96,47 +96,47 @@ class OfflineDiagnosticComponent:
     @abc.abstractmethod
     def input_properties(self):
         """
-		Returns
-		-------
-		sequence[dict] :
-			Sequence of dictionaries, whose keys are strings denoting
-			variables which should be present in the corresponding input
-			state, and whose values are dictionaries specifying fundamental
-			properties (dims, units) for those variables.
-		"""
+        Returns
+        -------
+        sequence[dict] :
+            Sequence of dictionaries, whose keys are strings denoting
+            variables which should be present in the corresponding input
+            state, and whose values are dictionaries specifying fundamental
+            properties (dims, units) for those variables.
+        """
         pass
 
     @property
     @abc.abstractmethod
     def diagnostic_properties(self):
         """
-		Returns
-		-------
-		dict :
-			Dictionary whose keys are strings denoting the output diagnostics,
-			and whose values are dictionaries specifying fundamental
-			properties (dims, units) for those diagnostics.
-		"""
+        Returns
+        -------
+        dict :
+            Dictionary whose keys are strings denoting the output diagnostics,
+            and whose values are dictionaries specifying fundamental
+            properties (dims, units) for those diagnostics.
+        """
         pass
 
     def __call__(self, *states):
         """
-		Call operator retrieving the diagnostics.
+        Call operator retrieving the diagnostics.
 
-		Parameters
-		----------
-		states : dict
-			State dictionaries whose keys are strings denoting
-			model variables, and whose values are :class:`sympl.DataArray`\s
-			representing values for those variables.
+        Parameters
+        ----------
+        states : dict
+            State dictionaries whose keys are strings denoting
+            model variables, and whose values are :class:`sympl.DataArray`\s
+            representing values for those variables.
 
-		Returns
-		-------
-		dict :
-			Dictionary whose keys are strings denoting diagnostics,
-			and whose values are :class:`sympl.DataArray`\s representing
-			values for those diagnostics.
-		"""
+        Returns
+        -------
+        dict :
+            Dictionary whose keys are strings denoting diagnostics,
+            and whose values are :class:`sympl.DataArray`\s representing
+            values for those diagnostics.
+        """
         assert_sequence(states, reflen=len(self.input_properties), reftype=dict)
 
         for input_checker, state in zip(self._input_checkers, states):
@@ -168,59 +168,59 @@ class OfflineDiagnosticComponent:
     @abc.abstractmethod
     def array_call(self, *states):
         """
-		Retrieve the diagnostics.
+        Retrieve the diagnostics.
 
-		Parameters
-		----------
-		states : dict
-			State dictionaries whose keys are strings denoting
-			model variables, and whose values are :class:`numpy.ndarray`\s
-			representing raw values for those variables.
+        Parameters
+        ----------
+        states : dict
+            State dictionaries whose keys are strings denoting
+            model variables, and whose values are :class:`numpy.ndarray`\s
+            representing raw values for those variables.
 
-		Returns
-		-------
-		dict :
-			Dictionary whose keys are strings denoting diagnostics,
-			and whose values are :class:`numpy.ndarray`\s representing
-			raw values for those diagnostics.
-		"""
+        Returns
+        -------
+        dict :
+            Dictionary whose keys are strings denoting diagnostics,
+            and whose values are :class:`numpy.ndarray`\s representing
+            raw values for those diagnostics.
+        """
         pass
 
 
 class RMSD(OfflineDiagnosticComponent):
     """
-	Offline diagnostic calculating the root-mean-square deviation (RMSD)
-	between model variables of two state dictionaries.
-	"""
+    Offline diagnostic calculating the root-mean-square deviation (RMSD)
+    between model variables of two state dictionaries.
+    """
 
     def __init__(self, grid, fields, x=None, y=None, z=None):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid, seq[tasmania.Grid]
-			The underlying grid(s). The two input states may be defined
-			over different grids.
-		fields : dict
-			Dictionary whose keys are strings denoting the model variables
-			for which the RMSD should be computed, and whose values are
-			dictionaries specifying fundamental properties (dims, units)
-			for those variables
-		x : `slice`, `seq[slice]`, optional
+        Parameters
+        ----------
+        grid : tasmania.Grid, seq[tasmania.Grid]
+            The underlying grid(s). The two input states may be defined
+            over different grids.
+        fields : dict
+            Dictionary whose keys are strings denoting the model variables
+            for which the RMSD should be computed, and whose values are
+            dictionaries specifying fundamental properties (dims, units)
+            for those variables
+        x : `slice`, `seq[slice]`, optional
             The projection along the first coordinate axis of the slice
             of grid points to be considered for the calculation of the RMSD.
             If not specified, all grid points along the first dimension
             are considered. Different slices for different states are allowed.
-		y : `slice`, `seq[slice]`, optional
+        y : `slice`, `seq[slice]`, optional
             The projection along the second coordinate axis of the slice
             of grid points to be considered for the calculation of the RMSD.
             If not specified, all grid points along the second dimension
             are considered. Different slices for different states are allowed.
-		z : `slice`, `seq[slice]`, optional
+        z : `slice`, `seq[slice]`, optional
             The projection along the third coordinate axis of the slice
             of grid points to be considered for the calculation of the RMSD.
             If not specified, all grid points along the third dimension
             are considered. Different slices for different states are allowed.
-		"""
+        """
         self._grids = grid if isinstance(grid, SequenceType) else (grid, grid)
         assert_sequence(self._grids, reflen=2, reftype=GridType)
 
@@ -291,38 +291,38 @@ class RMSD(OfflineDiagnosticComponent):
 
 class RRMSD(OfflineDiagnosticComponent):
     """
-	Offline diagnostic calculating the relative root-mean-square
-	deviation (RRMSD) between model variables of two state dictionaries.
-	"""
+    Offline diagnostic calculating the relative root-mean-square
+    deviation (RRMSD) between model variables of two state dictionaries.
+    """
 
     def __init__(self, grid, fields, x=None, y=None, z=None):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid, seq[tasmania.Grid]
-			The underlying grid(s). The two input states may be defined
-			over different grids.
-		fields : dict
-			Dictionary whose keys are strings denoting the model variables
-			for which the RRMSD should be computed, and whose values are
-			dictionaries specifying fundamental properties (dims, units)
-			for those variables
-		x : `slice`, `seq[slice]`, optional
+        Parameters
+        ----------
+        grid : tasmania.Grid, seq[tasmania.Grid]
+            The underlying grid(s). The two input states may be defined
+            over different grids.
+        fields : dict
+            Dictionary whose keys are strings denoting the model variables
+            for which the RRMSD should be computed, and whose values are
+            dictionaries specifying fundamental properties (dims, units)
+            for those variables
+        x : `slice`, `seq[slice]`, optional
             The projection along the first coordinate axis of the slice
             of grid points to be considered for the calculation of the RRMSD.
             If not specified, all grid points along the first dimension
             are considered. Different slices for different states are allowed.
-		y : `slice`, `seq[slice]`, optional
+        y : `slice`, `seq[slice]`, optional
             The projection along the second coordinate axis of the slice
             of grid points to be considered for the calculation of the RRMSD.
             If not specified, all grid points along the second dimension
             are considered. Different slices for different states are allowed.
-		z : `slice`, `seq[slice]`, optional
+        z : `slice`, `seq[slice]`, optional
             The projection along the third coordinate axis of the slice
             of grid points to be considered for the calculation of the RRMSD.
             If not specified, all grid points along the third dimension
             are considered. Different slices for different states are allowed.
-		"""
+        """
         self._grids = grid if isinstance(grid, SequenceType) else (grid, grid)
         assert_sequence(self._grids, reflen=2, reftype=GridType)
 
@@ -393,8 +393,8 @@ class RRMSD(OfflineDiagnosticComponent):
 
 class ColumnSum(OfflineDiagnosticComponent):
     """
-	Sum the values of a field over each column.
-	"""
+    Sum the values of a field over each column.
+    """
 
     def __init__(self, grid, field_name, field_units):
         self._grid = grid

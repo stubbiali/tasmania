@@ -25,7 +25,7 @@
 # User input
 # ==================================================
 REMOTE=daint
-REMOTE_ROOT=/project/s299/subbiali/tasmania
+REMOTE_ROOT=/project/s299/subbiali/tasmania-hack
 LOCAL_ROOT=../..
 
 # ==================================================

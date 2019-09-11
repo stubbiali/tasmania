@@ -75,10 +75,17 @@ def test_smagorinsky(data):
 
     cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
 
-    state = data.draw(st_isentropic_state_f(grid, moist=False), label="state")
-
     backend = data.draw(st_one_of(conf_backend), label="backend")
     halo = data.draw(st_one_of(conf_halo), label="halo")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            grid, moist=False, backend=backend, halo=halo, storage_shape=storage_shape
+        ),
+        label="state",
+    )
 
     # ========================================
     # test bed
@@ -102,20 +109,33 @@ def test_smagorinsky(data):
         dtype=dtype,
         halo=halo,
         rebuild=False,
+        storage_shape=storage_shape,
     )
 
     tendencies, diagnostics = smag(state)
 
     assert "x_momentum_isentropic" in tendencies
     compare_dataarrays(
-        tendencies["x_momentum_isentropic"][nb:-nb, nb:-nb],
-        get_dataarray_3d(s * u_tnd, grid, "kg m^-1 K^-1 s^-2")[nb:-nb, nb:-nb],
+        tendencies["x_momentum_isentropic"][nb : -nb - 1, nb : -nb - 1, :-1],
+        get_dataarray_3d(
+            s * u_tnd,
+            grid,
+            "kg m^-1 K^-1 s^-2",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        )[nb : -nb - 1, nb : -nb - 1, :-1],
         compare_coordinate_values=False,
     )
     assert "y_momentum_isentropic" in tendencies
     compare_dataarrays(
-        tendencies["y_momentum_isentropic"][nb:-nb, nb:-nb],
-        get_dataarray_3d(s * v_tnd, grid, "kg m^-1 K^-1 s^-2")[nb:-nb, nb:-nb],
+        tendencies["y_momentum_isentropic"][nb : -nb - 1, nb : -nb - 1, :-1],
+        get_dataarray_3d(
+            s * v_tnd,
+            grid,
+            "kg m^-1 K^-1 s^-2",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+            )[nb : -nb - 1, nb : -nb - 1, :-1],
         compare_coordinate_values=False,
     )
     assert len(tendencies) == 2

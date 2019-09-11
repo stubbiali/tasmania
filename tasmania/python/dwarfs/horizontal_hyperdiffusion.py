@@ -22,13 +22,13 @@
 #
 """
 This module contains:
-	HorizontalHyperDiffusion
-	FirstOrder(HorizontalHyperDiffusion)
-	FirstOrder{1DX, 1DY}(HorizontalHyperDiffusion)
-	SecondOrder(HorizontalHyperDiffusion)
-	SecondOrder{1DX, 1DY}(HorizontalHyperDiffusion)
-	ThirdOrder(HorizontalHyperDiffusion)
-	ThirdOrder{1DX, 1DY}(HorizontalHyperDiffusion)
+    HorizontalHyperDiffusion
+    FirstOrder(HorizontalHyperDiffusion)
+    FirstOrder{1DX, 1DY}(HorizontalHyperDiffusion)
+    SecondOrder(HorizontalHyperDiffusion)
+    SecondOrder{1DX, 1DY}(HorizontalHyperDiffusion)
+    ThirdOrder(HorizontalHyperDiffusion)
+    ThirdOrder{1DX, 1DY}(HorizontalHyperDiffusion)
 """
 import abc
 import math
@@ -63,9 +63,9 @@ def stage_laplacian(dx, dy, phi):
 
 class HorizontalHyperDiffusion(abc.ABC):
     """
-	Abstract base class whose derived classes calculates the
-	tendency due to horizontal hyper-diffusion.
-	"""
+    Abstract base class whose derived classes calculates the
+    tendency due to horizontal hyper-diffusion.
+    """
 
     def __init__(
         self,
@@ -85,38 +85,38 @@ class HorizontalHyperDiffusion(abc.ABC):
         rebuild,
     ):
         """
-		Parameters
-		----------
-		shape : tuple
-			Shape of the 3-D arrays for which tendencies should be computed.
-		dx : float
-			The grid spacing along the first horizontal dimension.
-		dy : float
-			The grid spacing along the second horizontal dimension.
-		diffusion_coeff : float
-			Value for the diffusion coefficient far from the top boundary.
-		diffusion_coeff_max : float
-			Maximum value for the diffusion coefficient.
-		diffusion_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
-		nb : int
-			Number of boundary layers.
-		backend : str
-			TODO
-		backend_opts : dict
-			TODO
-		build_info : dict
-			TODO
-		dtype : numpy.dtype
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		exec_info : dict
-			TODO
-		halo : tuple
-			TODO
-		rebuild : bool
-			TODO
-		"""
+        Parameters
+        ----------
+        shape : tuple
+            Shape of the 3-D arrays for which tendencies should be computed.
+        dx : float
+            The grid spacing along the first horizontal dimension.
+        dy : float
+            The grid spacing along the second horizontal dimension.
+        diffusion_coeff : float
+            Value for the diffusion coefficient far from the top boundary.
+        diffusion_coeff_max : float
+            Maximum value for the diffusion coefficient.
+        diffusion_damp_depth : int
+            Depth of, i.e., number of vertical regions in the damping region.
+        nb : int
+            Number of boundary layers.
+        backend : str
+            TODO
+        backend_opts : dict
+            TODO
+        build_info : dict
+            TODO
+        dtype : numpy.dtype
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : dict
+            TODO
+        halo : tuple
+            TODO
+        rebuild : bool
+            TODO
+        """
         # store input arguments needed at run-time
         self._shape = shape
         self._nb = nb
@@ -159,15 +159,15 @@ class HorizontalHyperDiffusion(abc.ABC):
     @abc.abstractmethod
     def __call__(self, phi, phi_tnd):
         """
-		Calculate the tendency.
+        Calculate the tendency.
 
-		Parameters
-		----------
-		phi : gridtools.storage.Storage
-			The 3-D prognostic field.
-		phi_tnd : gridtools.storage.Storage
-			Buffer where the calculated tendency will be written.
-		"""
+        Parameters
+        ----------
+        phi : gridtools.storage.Storage
+            The 3-D prognostic field.
+        phi_tnd : gridtools.storage.Storage
+            Buffer where the calculated tendency will be written.
+        """
         pass
 
     @staticmethod
@@ -190,55 +190,55 @@ class HorizontalHyperDiffusion(abc.ABC):
         rebuild=False
     ):
         """
-		Static method returning an instance of the derived class
-		calculating the tendency due to horizontal hyper-diffusion of type
-		:data:`diffusion_type`.
+        Static method returning an instance of the derived class
+        calculating the tendency due to horizontal hyper-diffusion of type
+        :data:`diffusion_type`.
 
-		Parameters
-		----------
-		diffusion_type : string
-			String specifying the diffusion technique to implement. Either:
+        Parameters
+        ----------
+        diffusion_type : string
+            String specifying the diffusion technique to implement. Either:
 
-			* 'first_order', for first-order numerical hyper-diffusion;
-			* 'second_order', for second-order numerical hyper-diffusion;
-			* 'third_order', for third-order numerical hyper-diffusion.
+            * 'first_order', for first-order numerical hyper-diffusion;
+            * 'second_order', for second-order numerical hyper-diffusion;
+            * 'third_order', for third-order numerical hyper-diffusion.
 
-		shape : tuple
-			Shape of the 3-D arrays for which tendencies should be computed.
-		dx : float
-			The grid spacing along the first horizontal dimension.
-		dy : float
-			The grid spacing along the second horizontal dimension.
-		diffusion_coeff : float
-			Value for the diffusion coefficient far from the top boundary.
-		diffusion_coeff_max : float
-			Maximum value for the diffusion coefficient.
-		diffusion_damp_depth : int
-			Depth of, i.e., number of vertical regions in the damping region.
-		nb : `int`, optional
-			Number of boundary layers. If not specified, this is derived
-			from the extent of the underlying stencil.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
+        shape : tuple
+            Shape of the 3-D arrays for which tendencies should be computed.
+        dx : float
+            The grid spacing along the first horizontal dimension.
+        dy : float
+            The grid spacing along the second horizontal dimension.
+        diffusion_coeff : float
+            Value for the diffusion coefficient far from the top boundary.
+        diffusion_coeff_max : float
+            Maximum value for the diffusion coefficient.
+        diffusion_damp_depth : int
+            Depth of, i.e., number of vertical regions in the damping region.
+        nb : `int`, optional
+            Number of boundary layers. If not specified, this is derived
+            from the extent of the underlying stencil.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
 
-		Return
-		------
-		obj :
-			Instance of the appropriate derived class.
-		"""
+        Return
+        ------
+        obj :
+            Instance of the appropriate derived class.
+        """
         args = [
             shape,
             dx,
@@ -310,16 +310,16 @@ class HorizontalHyperDiffusion(abc.ABC):
 
 class FirstOrder(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to first-order horizontal hyper-diffusion for any
-	three-dimensional field	with at least three elements in each direction.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to first-order horizontal hyper-diffusion for any
+    three-dimensional field	with at least three elements in each direction.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose dimensions
-	match those specified at instantiation time. Hence, one should use (at least)
-	one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose dimensions
+    match those specified at instantiation time. Hence, one should use (at least)
+    one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -393,16 +393,16 @@ class FirstOrder(HorizontalHyperDiffusion):
 
 class FirstOrder1DX(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to first-order horizontal hyper-diffusion for any
-	three-dimensional field	with only one element along the second dimension.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to first-order horizontal hyper-diffusion for any
+    three-dimensional field	with only one element along the second dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -476,16 +476,16 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
 
 class FirstOrder1DY(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to first-order horizontal hyper-diffusion for any
-	three-dimensional field	with only one element along the first dimension.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to first-order horizontal hyper-diffusion for any
+    three-dimensional field	with only one element along the first dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -559,16 +559,16 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
 
 class SecondOrder(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to second-order horizontal hyper-diffusion for any
-	three-dimensional field	with at least three elements in each direction.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to second-order horizontal hyper-diffusion for any
+    three-dimensional field	with at least three elements in each direction.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -643,16 +643,16 @@ class SecondOrder(HorizontalHyperDiffusion):
 
 class SecondOrder1DX(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to second-order horizontal hyper-diffusion for any
-	three-dimensional field	with only one element along the second dimension.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to second-order horizontal hyper-diffusion for any
+    three-dimensional field	with only one element along the second dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -727,16 +727,16 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
 
 class SecondOrder1DY(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to second-order horizontal hyper-diffusion for any
-	three-dimensional field	with only one element along the first dimension.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to second-order horizontal hyper-diffusion for any
+    three-dimensional field	with only one element along the first dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -811,16 +811,16 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
 
 class ThirdOrder(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to third-order horizontal hyper-diffusion for any
-	three-dimensional field	with at least three elements in each direction.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to third-order horizontal hyper-diffusion for any
+    three-dimensional field	with at least three elements in each direction.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -896,16 +896,16 @@ class ThirdOrder(HorizontalHyperDiffusion):
 
 class ThirdOrder1DX(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to third-order horizontal hyper-diffusion for any
-	three-dimensional field	with only one element along the second dimension.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to third-order horizontal hyper-diffusion for any
+    three-dimensional field	with only one element along the second dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,
@@ -981,16 +981,16 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
 
 class ThirdOrder1DY(HorizontalHyperDiffusion):
     """
-	This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
-	to calculate the tendency due to third-order horizontal hyper-diffusion for any
-	three-dimensional field	with only one element along the first dimension.
+    This class inherits	:class:`~tasmania.HorizontalHyperDiffusion`
+    to calculate the tendency due to third-order horizontal hyper-diffusion for any
+    three-dimensional field	with only one element along the first dimension.
 
-	Note
-	----
-	An instance of this class should only be applied to fields whose
-	dimensions match those specified at instantiation time.
-	Hence, one should use (at least) one instance per field shape.
-	"""
+    Note
+    ----
+    An instance of this class should only be applied to fields whose
+    dimensions match those specified at instantiation time.
+    Hence, one should use (at least) one instance per field shape.
+    """
 
     def __init__(
         self,

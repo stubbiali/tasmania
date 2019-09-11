@@ -22,21 +22,21 @@
 #
 """
 This module contains:
-	BurgersAdvection
-	_FirstOrder(BurgersAdvection)
-	_SecondOrder(BurgersAdvection)
-	_ThirdOrder(BurgersAdvection)
-	_FourthOrder(BurgersAdvection)
-	_FifthOrder(BurgersAdvection)
-	_SixthOrder(BurgersAdvection)
+    BurgersAdvection
+    _FirstOrder(BurgersAdvection)
+    _SecondOrder(BurgersAdvection)
+    _ThirdOrder(BurgersAdvection)
+    _FourthOrder(BurgersAdvection)
+    _FifthOrder(BurgersAdvection)
+    _SixthOrder(BurgersAdvection)
 """
 import abc
 
 
 class BurgersAdvection(abc.ABC):
     """
-	A discretizer for the 2-D Burgers advection flux.
-	"""
+    A discretizer for the 2-D Burgers advection flux.
+    """
 
     extent = None
 

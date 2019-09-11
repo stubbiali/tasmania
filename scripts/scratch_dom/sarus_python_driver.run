@@ -1,0 +1,56 @@
+#!/bin/bash -l
+#SBATCH --job-name=moist-cc3
+#SBATCH --account=s299m
+#SBATCH --time=04:30:00
+#SBATCH --nodes=1
+#SBATCH --partition=normal
+#SBATCH --constraint=mc
+#SBATCH --output=output/slurm-moist-cc3.out
+#SBATCH --error=error/slurm-moist-cc3.err
+
+# ==================================================
+# User inputs
+# ==================================================
+IMAGE_NAME=tasmania  # options: tasmania
+IMAGE_TAG=master  # options: master
+VENV=py36  # options: py35, py36, py37
+TASMANIA_ROOT=/project/s299/subbiali/tasmania  # options: /project/s299/subbiali/tasmania
+DRIVER_DIR=isentropic_moist_si  # options: any directory under TASMANIA_ROOT/drivers
+DRIVER_NAME=driver_namelist_cc.py  # options: any driver under TASMANIA_ROOT/drivers/DRIVER_DIR
+NAMELIST=namelists/namelist_cc_3.py  # options: any namelist under DRIVER_DIR/
+
+# ==================================================
+# Code
+# ==================================================
+module load daint-mc
+module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5-daint
+
+mkdir -p buffer
+
+srun --unbuffered \
+	sarus run \
+		--mount=type=bind,src=$TASMANIA_ROOT/buffer,dst=/home/tasmania-user/tasmania/buffer \
+		--mount=type=bind,src=$PWD/buffer,dst=/home/tasmania-user/tasmania/data \
+		--mount=type=bind,src=$TASMANIA_ROOT/docker/gridtools4py,dst=/home/tasmania-user/tasmania/docker/gridtools4py \
+		--mount=type=bind,src=$TASMANIA_ROOT/docs,dst=/home/tasmania-user/tasmania/docs \
+		--mount=type=bind,src=$TASMANIA_ROOT/drivers,dst=/home/tasmania-user/tasmania/drivers \
+		--mount=type=bind,src=$TASMANIA_ROOT/makefile,dst=/home/tasmania-user/tasmania/makefile \
+		--mount=type=bind,src=$TASMANIA_ROOT/notebooks,dst=/home/tasmania-user/tasmania/notebooks \
+		--mount=type=bind,src=$TASMANIA_ROOT/README.md,dst=/home/tasmania-user/tasmania/README.md \
+		--mount=type=bind,src=$TASMANIA_ROOT/requirements.txt,dst=/home/tasmania-user/tasmania/requirements.txt \
+		--mount=type=bind,src=$TASMANIA_ROOT/results,dst=/home/tasmania-user/tasmania/results \
+		--mount=type=bind,src=$TASMANIA_ROOT/scripts,dst=/home/tasmania-user/tasmania/scripts \
+		--mount=type=bind,src=$TASMANIA_ROOT/setup.cfg,dst=/home/tasmania-user/tasmania/setup.cfg \
+		--mount=type=bind,src=$TASMANIA_ROOT/setup.py,dst=/home/tasmania-user/tasmania/setup.py \
+		--mount=type=bind,src=$TASMANIA_ROOT/tasmania/__init__.py,dst=/home/tasmania-user/tasmania/tasmania/__init__.py \
+		--mount=type=bind,src=$TASMANIA_ROOT/tasmania/conf.py,dst=/home/tasmania-user/tasmania/tasmania/conf.py \
+		--mount=type=bind,src=$TASMANIA_ROOT/tasmania/python,dst=/home/tasmania-user/tasmania/tasmania/python \
+		--mount=type=bind,src=$TASMANIA_ROOT/tests,dst=/home/tasmania-user/tasmania/tests \
+		load/library/$IMAGE_NAME:$IMAGE_TAG \
+		bash -c \
+		 	". $VENV/bin/activate; \
+		 	 cd tasmania/drivers/$DRIVER_DIR; \
+		 	 python $DRIVER_NAME -n $NAMELIST; \
+		 	 deactivate; \
+		 	 exit"
+

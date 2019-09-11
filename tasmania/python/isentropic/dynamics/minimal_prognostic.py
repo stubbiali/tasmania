@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	IsentropicMinimalPrognostic
+    IsentropicMinimalPrognostic
 """
 import abc
 import numpy as np
@@ -46,14 +46,14 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 class IsentropicMinimalPrognostic(abc.ABC):
     """
-	Abstract base class whose derived classes implement different
-	schemes to carry out the prognostic steps of the three-dimensional
-	minimal, moist, isentropic dynamical core. Here, *minimal* means
-	that only horizontal advection is integrated with the dynamical core.
-	The vertical advection, the Coriolis acceleration, the pressure gradient
-	and the sedimentation motion are not included in the dynamics, but
-	rather parameterized. The conservative form of the governing equations is used.
-	"""
+    Abstract base class whose derived classes implement different
+    schemes to carry out the prognostic steps of the three-dimensional
+    minimal, moist, isentropic dynamical core. Here, *minimal* means
+    that only horizontal advection is integrated with the dynamical core.
+    The vertical advection, the Coriolis acceleration, the pressure gradient
+    and the sedimentation motion are not included in the dynamics, but
+    rather parameterized. The conservative form of the governing equations is used.
+    """
 
     def __init__(
         self,
@@ -72,40 +72,40 @@ class IsentropicMinimalPrognostic(abc.ABC):
         rebuild,
     ):
         """
-		Parameters
-		----------
-		horizontal_flux_scheme : str
-			The numerical horizontal flux scheme to implement.
-			See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
-			for the complete list of the available options.
-		mode : str
-			Either
-				* 'x', to integrate only the x-advection,
-				* 'y', to integrate only the y-advection, or
-				* 'xy', to integrate both the x- and the y-advection.
-		grid : tasmania.Grid
-			The underlying grid.
-		hb : tasmania.HorizontalBoundary
-			The object handling the lateral boundary conditions.
-		moist : bool
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-		substeps : int
-			The number of substeps to perform.
-		backend : str
-			TODO
-		backend_opts : dict
-			TODO
-		build_info : dict
-			TODO
-		dtype : numpy.dtype
-			TODO
-		exec_info : dict
-			TODO
-		halo : tuple
-			TODO
-		rebuild : bool
-			TODO
-		"""
+        Parameters
+        ----------
+        horizontal_flux_scheme : str
+            The numerical horizontal flux scheme to implement.
+            See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+            for the complete list of the available options.
+        mode : str
+            Either
+                * 'x', to integrate only the x-advection,
+                * 'y', to integrate only the y-advection, or
+                * 'xy', to integrate both the x- and the y-advection.
+        grid : tasmania.Grid
+            The underlying grid.
+        hb : tasmania.HorizontalBoundary
+            The object handling the lateral boundary conditions.
+        moist : bool
+            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+        substeps : int
+            The number of substeps to perform.
+        backend : str
+            TODO
+        backend_opts : dict
+            TODO
+        build_info : dict
+            TODO
+        dtype : numpy.dtype
+            TODO
+        exec_info : dict
+            TODO
+        halo : tuple
+            TODO
+        rebuild : bool
+            TODO
+        """
         # store arguments needed at compile- and run-time
         self._hflux_scheme = horizontal_flux_scheme
         self._mode = mode if mode in ["x", "y", "xy"] else "xy"
@@ -153,33 +153,33 @@ class IsentropicMinimalPrognostic(abc.ABC):
     @abc.abstractmethod
     def stages(self):
         """
-		Return
-		------
-		int :
-			The number of stages performed by the time-integration scheme.
-		"""
+        Return
+        ------
+        int :
+            The number of stages performed by the time-integration scheme.
+        """
 
     @property
     @abc.abstractmethod
     def substep_fractions(self):
         """
-		Return
-		------
-		float or tuple :
-			In a partial time splitting framework, for each stage, fraction of the
-			total number of substeps to carry out.
-		"""
+        Return
+        ------
+        float or tuple :
+            In a partial time splitting framework, for each stage, fraction of the
+            total number of substeps to carry out.
+        """
 
     @property
     def substep_output_properties(self):
         """
-		Return
-		------
-		dict :
-			Dictionary whose keys are strings denoting variables which are
-			included in the output state returned by any substep, and whose
-			values are fundamental properties (dims, units) of those variables.
-		"""
+        Return
+        ------
+        dict :
+            Dictionary whose keys are strings denoting variables which are
+            included in the output state returned by any substep, and whose
+            values are fundamental properties (dims, units) of those variables.
+        """
         if self._substep_output_properties is None:
             raise RuntimeError("substep_output_properties required but not set.")
         return self._substep_output_properties
@@ -187,76 +187,76 @@ class IsentropicMinimalPrognostic(abc.ABC):
     @substep_output_properties.setter
     def substep_output_properties(self, value):
         """
-		Parameters
-		----------
-		value : dict
-			Dictionary whose keys are strings denoting variables which are
-			included in the output state returned by any substep, and whose
-			values are fundamental properties (dims, units) of those variables.
-		"""
+        Parameters
+        ----------
+        value : dict
+            Dictionary whose keys are strings denoting variables which are
+            included in the output state returned by any substep, and whose
+            values are fundamental properties (dims, units) of those variables.
+        """
         self._substep_output_properties = value
 
     @abc.abstractmethod
     def stage_call(self, stage, timestep, state, tendencies=None):
         """
-		Perform a stage.
+        Perform a stage.
 
-		Parameters
-		----------
-		stage : int
-			The stage to perform.
-		timestep : timedelta
-			:class:`datetime.timedelta` representing the time step.
-		state : dict
-			Dictionary whose keys are strings indicating model variables,
-			and values are :class:`numpy.ndarray`\s representing the values
-			for those variables.
-		tendencies : dict
-			Dictionary whose keys are strings indicating model variables,
-			and values are :class:`numpy.ndarray`\s representing (slow and
-			intermediate) physical tendencies for those variables.
+        Parameters
+        ----------
+        stage : int
+            The stage to perform.
+        timestep : timedelta
+            :class:`datetime.timedelta` representing the time step.
+        state : dict
+            Dictionary whose keys are strings indicating model variables,
+            and values are :class:`numpy.ndarray`\s representing the values
+            for those variables.
+        tendencies : dict
+            Dictionary whose keys are strings indicating model variables,
+            and values are :class:`numpy.ndarray`\s representing (slow and
+            intermediate) physical tendencies for those variables.
 
-		Return
-		------
-		dict :
-			Dictionary whose keys are strings indicating the conservative
-			prognostic model variables, and values are :class:`numpy.ndarray`\s
-			containing new values for those variables.
-		"""
+        Return
+        ------
+        dict :
+            Dictionary whose keys are strings indicating the conservative
+            prognostic model variables, and values are :class:`numpy.ndarray`\s
+            containing new values for those variables.
+        """
         pass
 
     def substep_call(
         self, stage, substep, timestep, state, stage_state, tmp_state, tendencies=None
     ):
         """
-		Perform a sub-step.
+        Perform a sub-step.
 
-		Parameters
-		----------
-		stage : int
-			The stage to perform.
-		substep : int
-			The substep to perform.
-		timestep : timedelta
-			:class:`datetime.timedelta` representing the time step.
-		state : dict
-			The raw state at the current *main* time level.
-		stage_state : dict
-			The (raw) state dictionary returned by the latest stage.
-		tmp_state : dict
-			The raw state to sub-step.
-		tendencies : dict
-			Dictionary whose keys are strings indicating model variables,
-			and values are :class:`numpy.ndarray`\s representing
-			(fast) tendencies for those values.
+        Parameters
+        ----------
+        stage : int
+            The stage to perform.
+        substep : int
+            The substep to perform.
+        timestep : timedelta
+            :class:`datetime.timedelta` representing the time step.
+        state : dict
+            The raw state at the current *main* time level.
+        stage_state : dict
+            The (raw) state dictionary returned by the latest stage.
+        tmp_state : dict
+            The raw state to sub-step.
+        tendencies : dict
+            Dictionary whose keys are strings indicating model variables,
+            and values are :class:`numpy.ndarray`\s representing
+            (fast) tendencies for those values.
 
-		Return
-		------
-		dict :
-			Dictionary whose keys are strings indicating the conservative
-			prognostic model variables, and values are :class:`numpy.ndarray`\s
-			containing new values for those variables.
-		"""
+        Return
+        ------
+        dict :
+            Dictionary whose keys are strings indicating the conservative
+            prognostic model variables, and values are :class:`numpy.ndarray`\s
+            containing new values for those variables.
+        """
         # initialize the stencil object
         if self._substep_stencil is None:
             self._substep_stencil_initialize(tendencies)
@@ -294,51 +294,51 @@ class IsentropicMinimalPrognostic(abc.ABC):
         dtype=datatype,
     ):
         """
-		Static method returning an instance of the derived class implementing
-		the time stepping scheme specified by ``time_scheme``.
+        Static method returning an instance of the derived class implementing
+        the time stepping scheme specified by ``time_scheme``.
 
-		Parameters
-		----------
-		time_integration_scheme : str
-			The time stepping method to implement. Available options are:
+        Parameters
+        ----------
+        time_integration_scheme : str
+            The time stepping method to implement. Available options are:
 
-				* 'forward_euler', for the forward Euler scheme;
-				* 'centered', for a centered scheme;
-				* 'rk2', for the two-stages, second-order Runge-Kutta (RK) scheme;
-				* 'rk3ws', for the three-stages RK scheme as used in the
-					`COSMO model <http://www.cosmo-model.org>`_; this method is
-					nominally second-order, and third-order for linear problems;
-				* 'rk3', for the three-stages, third-order RK scheme.
+                * 'forward_euler', for the forward Euler scheme;
+                * 'centered', for a centered scheme;
+                * 'rk2', for the two-stages, second-order Runge-Kutta (RK) scheme;
+                * 'rk3ws', for the three-stages RK scheme as used in the
+                    `COSMO model <http://www.cosmo-model.org>`_; this method is
+                    nominally second-order, and third-order for linear problems;
+                * 'rk3', for the three-stages, third-order RK scheme.
 
-		horizontal_flux_scheme : str
-			The numerical horizontal flux scheme to implement.
-			See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
-			for the complete list of the available options.
-		mode : str
-			Either
-				* 'x', to integrate only the x-advection,
-				* 'y', to integrate only the y-advection, or
-				* 'xy', to integrate both the x- and the y-advection.
-		grid : tasmania.Grid
-			The underlying grid.
-		hb : tasmania.HorizontalBoundary
-			The object handling the lateral boundary conditions.
-		moist : `bool`, optional
-			:obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
-		substeps : int
-			The number of substeps to perform.
-		backend : obj
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+        horizontal_flux_scheme : str
+            The numerical horizontal flux scheme to implement.
+            See :class:`~tasmania.IsentropicMinimalHorizontalFlux`
+            for the complete list of the available options.
+        mode : str
+            Either
+                * 'x', to integrate only the x-advection,
+                * 'y', to integrate only the y-advection, or
+                * 'xy', to integrate both the x- and the y-advection.
+        grid : tasmania.Grid
+            The underlying grid.
+        hb : tasmania.HorizontalBoundary
+            The object handling the lateral boundary conditions.
+        moist : `bool`, optional
+            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+            Defaults to :obj:`False`.
+        substeps : int
+            The number of substeps to perform.
+        backend : obj
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
 
-		Return
-		------
-		obj :
-			An instance of the derived class implementing ``time_integration_scheme``.
-		"""
+        Return
+        ------
+        obj :
+            An instance of the derived class implementing ``time_integration_scheme``.
+        """
         from .implementations.minimal_prognostic import (
             ForwardEuler,
             Centered,
@@ -369,9 +369,9 @@ class IsentropicMinimalPrognostic(abc.ABC):
 
     def _stage_stencil_allocate_inputs(self, tendencies):
         """
-		Allocate the attributes which serve as inputs to the GT4Py stencils
-		which implement the stages.
-		"""
+        Allocate the attributes which serve as inputs to the GT4Py stencils
+        which implement the stages.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         dtype = self._dtype
@@ -410,9 +410,9 @@ class IsentropicMinimalPrognostic(abc.ABC):
 
     def _stage_stencil_allocate_outputs(self):
         """
-		Allocate the Numpy arrays which serve as outputs for the GT4Py stencils
-		which perform the stages.
-		"""
+        Allocate the Numpy arrays which serve as outputs for the GT4Py stencils
+        which perform the stages.
+        """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         dtype = self._dtype
@@ -428,9 +428,9 @@ class IsentropicMinimalPrognostic(abc.ABC):
 
     def _stage_stencil_set_inputs(self, stage, timestep, state, tendencies):
         """
-		Update the attributes which serve as inputs to the GT4Py stencils
-		which perform the stages.
-		"""
+        Update the attributes which serve as inputs to the GT4Py stencils
+        which perform the stages.
+        """
         # shortcuts
         if tendencies is not None:
             s_tnd_on = tendencies.get("air_isentropic_density", None) is not None

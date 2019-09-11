@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	Domain
+    Domain
 """
 import numpy as np
 
@@ -37,13 +37,13 @@ except ImportError:
 
 class Domain:
     """
-	This class represents a discrete, rectangular, three-dimensional domain.
-	A discrete domain which is usable by computing components consists of:
+    This class represents a discrete, rectangular, three-dimensional domain.
+    A discrete domain which is usable by computing components consists of:
 
-		* the *physical* grid;
-		* the *numerical* grid;
-		* the object handling the lateral boundary conditions.
-	"""
+        * the *physical* grid;
+        * the *numerical* grid;
+        * the object handling the lateral boundary conditions.
+    """
 
     def __init__(
         self,
@@ -62,52 +62,52 @@ class Domain:
         dtype=datatype,
     ):
         """ 
-		Parameters
-		----------
-		domain_x : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the first horizontal dimension.
-		nx : int
-			Number of mass points featured by the *physical* grid
-			along the first horizontal dimension.
-		domain_y : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the second horizontal dimension.
-		ny : int
-			Number of mass points featured by the *physical* grid
-			along the second horizontal dimension.
-		domain_z : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the domain includes along the
-			:math:`z`-axis. The interval should be specified in the form
-			:math:`(z_{top}, ~ z_{surface})`.
-		nz : int
-			Number of vertical main levels.
-		z_interface : `sympl.DataArray`, optional
-			Interface value :math:`z_F`. If not specified, it is assumed that
-			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
-			top of the domain. In other words, the coordinate system is supposed
-			fully terrain-following.
-		horizontal_boundary_type : `str`, optional
-			The type of lateral boundary conditions. Defaults to 'periodic'.
-			See :class:`tasmania.HorizontalBoundary` for all available options.
-		nb : `int`, optional
-			Number of boundary layers. Defaults to 3.
-		horizontal_boundary_kwargs : `dict`, optional
-			Keyword arguments to be broadcast to
-			:meth:`tasmania.HorizontalBoundary.factory`.
-		topography_type : `str`, optional
-			Topography type. Defaults to 'flat_terrain'.
-			See :class:`tasmania.Topography` for available options.
-		topography_kwargs : `dict`, optional
-			Keyword arguments to be forwarded to the constructor of
-			:class:`tasmania.Topography`.
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
-		"""
+        Parameters
+        ----------
+        domain_x : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the first horizontal dimension.
+        nx : int
+            Number of mass points featured by the *physical* grid
+            along the first horizontal dimension.
+        domain_y : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the second horizontal dimension.
+        ny : int
+            Number of mass points featured by the *physical* grid
+            along the second horizontal dimension.
+        domain_z : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the domain includes along the
+            :math:`z`-axis. The interval should be specified in the form
+            :math:`(z_{top}, ~ z_{surface})`.
+        nz : int
+            Number of vertical main levels.
+        z_interface : `sympl.DataArray`, optional
+            Interface value :math:`z_F`. If not specified, it is assumed that
+            :math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
+            top of the domain. In other words, the coordinate system is supposed
+            fully terrain-following.
+        horizontal_boundary_type : `str`, optional
+            The type of lateral boundary conditions. Defaults to 'periodic'.
+            See :class:`tasmania.HorizontalBoundary` for all available options.
+        nb : `int`, optional
+            Number of boundary layers. Defaults to 3.
+        horizontal_boundary_kwargs : `dict`, optional
+            Keyword arguments to be broadcast to
+            :meth:`tasmania.HorizontalBoundary.factory`.
+        topography_type : `str`, optional
+            Topography type. Defaults to 'flat_terrain'.
+            See :class:`tasmania.Topography` for available options.
+        topography_kwargs : `dict`, optional
+            Keyword arguments to be forwarded to the constructor of
+            :class:`tasmania.Topography`.
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated within
+            this class.
+        """
         # the physical grid
         kwargs = (
             {}
@@ -144,40 +144,40 @@ class Domain:
     @property
     def physical_grid(self):
         """
-		Return
-		------
-		tasmania.PhysicalGrid :
-			The physical grid.
-		"""
+        Return
+        ------
+        tasmania.PhysicalGrid :
+            The physical grid.
+        """
         return self._pgrid
 
     @property
     def numerical_grid(self):
         """
-		Return
-		------
-		tasmania.NumericalGrid :
-			The numerical grid.
-		"""
+        Return
+        ------
+        tasmania.NumericalGrid :
+            The numerical grid.
+        """
         return self._cgrid
 
     @property
     def horizontal_boundary(self):
         """
-		Get the object handling the horizontal boundary conditions,
-		enriched with three new methods:
+        Get the object handling the horizontal boundary conditions,
+        enriched with three new methods:
 
-			* `dmn_enforce_field`,
-			* `dmn_enforce_raw`,
-			* `dmn_enforce`,
-			* `dmn_set_outermost_layers_x`, and
-			* `dmn_set_outermost_layers_y`.
+            * `dmn_enforce_field`,
+            * `dmn_enforce_raw`,
+            * `dmn_enforce`,
+            * `dmn_set_outermost_layers_x`, and
+            * `dmn_set_outermost_layers_y`.
 
-		Return
-		------
-		tasmania.HorizontalBoundary :
-			The *enriched* object handling the horizontal boundary conditions.
-		"""
+        Return
+        ------
+        tasmania.HorizontalBoundary :
+            The *enriched* object handling the horizontal boundary conditions.
+        """
         hb = self._hb
 
         hb.dmn_enforce_field = lambda field, field_name=None, field_units=None, time=None: hb.enforce_field(
@@ -212,12 +212,12 @@ class Domain:
 
     def update_topography(self, time):
         """
-		Update the (time-dependent) topography. 
+        Update the (time-dependent) topography.
 
-		Parameters
-		----------
-		time : datetime.timedelta
-			The elapsed simulation time.
-		"""
+        Parameters
+        ----------
+        time : datetime.timedelta
+            The elapsed simulation time.
+        """
         self._pgrid.update_topography(time)
         self._cgrid.update_topography(time)

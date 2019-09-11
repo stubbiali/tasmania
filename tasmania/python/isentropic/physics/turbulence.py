@@ -22,14 +22,14 @@
 #
 """
 This module contains:
-	IsentropicSmagorinsky
+    IsentropicSmagorinsky
 """
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -39,12 +39,12 @@ except ImportError:
 
 class IsentropicSmagorinsky(Smagorinsky2d):
     """
-	Implementation of the Smagorinsky turbulence model for the
-	isentropic model. The conservative form of the governing
-	equations is used.
-	The class is instantiated over the *numerical* grid of the
-	underlying domain.
-	"""
+    Implementation of the Smagorinsky turbulence model for the
+    isentropic model. The conservative form of the governing
+    equations is used.
+    The class is instantiated over the *numerical* grid of the
+    underlying domain.
+    """
 
     def __init__(
         self,
@@ -58,40 +58,43 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         exec_info=None,
         halo=None,
         rebuild=False,
+        storage_shape=None,
         **kwargs
     ):
         """
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
 
-				* 'physical';
-				* 'numerical' (default).
+                * 'physical';
+                * 'numerical' (default).
 
-		smagorinsky_constant : `float`, optional
-			The Smagorinsky constant. Defaults to 0.18.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
-		**kwargs :
-			Additional keyword arguments to be directly forwarded to the parent
-			:class:`~tasmania.python.physics.turbulence.Smagorinsky2d`.
-		"""
+        smagorinsky_constant : `float`, optional
+            The Smagorinsky constant. Defaults to 0.18.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        storage_shape : `tuple`, optional
+            TODO
+        **kwargs :
+            Additional keyword arguments to be directly forwarded to the parent
+            :class:`~tasmania.python.physics.turbulence.Smagorinsky2d`.
+        """
         super().__init__(
             domain,
             smagorinsky_constant,
@@ -102,6 +105,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             exec_info=exec_info,
             halo=halo,
             rebuild=rebuild,
+            storage_shape=storage_shape,
             **kwargs
         )
 
@@ -112,16 +116,13 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             backend_opts=backend_opts,
             build_info=build_info,
             exec_info=exec_info,
-            rebuild=True,
+            rebuild=rebuild,
         )
 
-        storage_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
-        descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
-        self._in_s = gt.storage.zeros(descriptor, backend=backend)
-        self._in_su = gt.storage.zeros(descriptor, backend=backend)
-        self._in_sv = gt.storage.zeros(descriptor, backend=backend)
-        self._out_su_tnd = gt.storage.zeros(descriptor, backend=backend)
-        self._out_sv_tnd = gt.storage.zeros(descriptor, backend=backend)
+        self._in_u = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._in_v = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._out_su_tnd = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._out_sv_tnd = zeros(self._storage_shape, backend, dtype, halo=halo)
 
     @property
     def input_properties(self):
@@ -150,13 +151,11 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         dx = self.grid.dx.to_units("m").values.item()
         dy = self.grid.dy.to_units("m").values.item()
 
-        self._in_s.data[:nx, :ny, :nz] = state["air_isentropic_density"]
-        self._in_su.data[:nx, :ny, :nz] = state["x_momentum_isentropic"]
-        self._in_sv.data[:nx, :ny, :nz] = state["y_momentum_isentropic"]
+        in_s = state["air_isentropic_density"]
+        in_su = state["x_momentum_isentropic"]
+        in_sv = state["y_momentum_isentropic"]
 
-        self._hv.get_velocity_components(
-            self._in_s, self._in_su, self._in_sv, self._in_u, self._in_v
-        )
+        self._hv.get_velocity_components(in_s, in_su, in_sv, self._in_u, self._in_v)
 
         self._stencil(
             in_u=self._in_u,
@@ -172,7 +171,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
 
         self._hv.get_momenta(
-            self._in_s,
+            in_s,
             self._out_u_tnd,
             self._out_v_tnd,
             self._out_su_tnd,
@@ -180,8 +179,8 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
 
         tendencies = {
-            "x_momentum_isentropic": self._out_su_tnd.data[:nx, :ny, :nz],
-            "y_momentum_isentropic": self._out_sv_tnd.data[:nx, :ny, :nz],
+            "x_momentum_isentropic": self._out_su_tnd,
+            "y_momentum_isentropic": self._out_sv_tnd,
         }
         diagnostics = {}
 

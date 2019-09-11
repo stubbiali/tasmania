@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	DiagnosticComponentComposite
+    DiagnosticComponentComposite
 """
 from sympl import DiagnosticComponent, combine_component_properties
 
@@ -32,47 +32,47 @@ from tasmania.python.utils.utils import assert_sequence
 
 class DiagnosticComponentComposite:
     """
-	Callable class wrapping and chaining a set of :class:`sympl.DiagnosticComponent`\s.
+    Callable class wrapping and chaining a set of :class:`sympl.DiagnosticComponent`\s.
 
-	Attributes
-	----------
-	input_properties : dict
-		Dictionary whose keys are strings denoting model variables
-		which should be present in the input state dictionary, and
-		whose values are dictionaries specifying fundamental properties
-		(dims, units) of those variables.
-	diagnostic_properties : dict
-		Dictionary whose keys are strings denoting model variables
-		retrieved from the input state dictionary, and whose values
-		are dictionaries specifying fundamental properties (dims, units)
-		of those variables.
-	output_properties : dict
-		Dictionary whose keys are strings denoting model variables which
-		will be present in the input state dictionary when the call operator
-		returns, and whose values are dictionaries specifying fundamental
-		properties (dims, units) for those variables.
-	"""
+    Attributes
+    ----------
+    input_properties : dict
+        Dictionary whose keys are strings denoting model variables
+        which should be present in the input state dictionary, and
+        whose values are dictionaries specifying fundamental properties
+        (dims, units) of those variables.
+    diagnostic_properties : dict
+        Dictionary whose keys are strings denoting model variables
+        retrieved from the input state dictionary, and whose values
+        are dictionaries specifying fundamental properties (dims, units)
+        of those variables.
+    output_properties : dict
+        Dictionary whose keys are strings denoting model variables which
+        will be present in the input state dictionary when the call operator
+        returns, and whose values are dictionaries specifying fundamental
+        properties (dims, units) for those variables.
+    """
 
     def __init__(self, *args, execution_policy="serial"):
         """
-		Parameters
-		----------
-		*args :
-			The :class:`sympl.Diagnostic`\s to wrap and chain.
-		execution_policy : `str`, optional
-			String specifying the runtime policy according to which parameterizations
-			should be invoked. Either:
+        Parameters
+        ----------
+        *args :
+            The :class:`sympl.Diagnostic`\s to wrap and chain.
+        execution_policy : `str`, optional
+            String specifying the runtime policy according to which parameterizations
+            should be invoked. Either:
 
-				* 'serial', to call the physical packages sequentially,
-					and add diagnostics to the current state incrementally;
-				* 'as_parallel', to call the physical packages *as* we
-					were in a parallel region where each package may be
-					assigned to a different thread/process; in other terms,
-					we do not rely on the order in which parameterizations
-					are passed to this object, and diagnostics are not added
-					to the current state before returning.
+                * 'serial', to call the physical packages sequentially,
+                    and add diagnostics to the current state incrementally;
+                * 'as_parallel', to call the physical packages *as* we
+                    were in a parallel region where each package may be
+                    assigned to a different thread/process; in other terms,
+                    we do not rely on the order in which parameterizations
+                    are passed to this object, and diagnostics are not added
+                    to the current state before returning.
 
-		"""
+        """
         assert_sequence(args, reftype=DiagnosticComponent)
         self._components_list = args
 
@@ -89,24 +89,24 @@ class DiagnosticComponentComposite:
 
     def __call__(self, state):
         """
-		Retrieve diagnostics from the input state by sequentially calling
-		the wrapped :class:`sympl.DiagnosticComponent`\s, and incrementally
-		update the input state with those diagnostics.
+        Retrieve diagnostics from the input state by sequentially calling
+        the wrapped :class:`sympl.DiagnosticComponent`\s, and incrementally
+        update the input state with those diagnostics.
 
-		Parameters
-		----------
-		state : dict
-			The input model state as a dictionary whose keys are strings denoting
-			model variables, and whose values are :class:`sympl.DataArray`\s storing
-			data for those variables.
+        Parameters
+        ----------
+        state : dict
+            The input model state as a dictionary whose keys are strings denoting
+            model variables, and whose values are :class:`sympl.DataArray`\s storing
+            data for those variables.
 
-		Return
-		------
-		dict :
-			Dictionary whose keys are strings denoting diagnostic variables,
-			and whose values are :class:`sympl.DataArray`\s storing data for
-			those variables.
-		"""
+        Return
+        ------
+        dict :
+            Dictionary whose keys are strings denoting diagnostic variables,
+            and whose values are :class:`sympl.DataArray`\s storing data for
+            those variables.
+        """
         return self._call(state)
 
     def _call_serial(self, state):

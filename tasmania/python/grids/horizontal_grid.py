@@ -22,9 +22,9 @@
 #
 """
 This module contains:
-	HorizontalGrid
-	PhysicalHorizontalGrid
-	NumericalHorizontalGrid
+    HorizontalGrid
+    PhysicalHorizontalGrid
+    NumericalHorizontalGrid
 """
 import numpy as np
 import sympl
@@ -37,33 +37,33 @@ except ImportError:
 
 class HorizontalGrid:
     """
-	This class represents a rectangular and regular two-dimensional grid
-	embedded in a reference	system whose coordinates are, in the order,
-	:math:`x` and :math:`y`. No assumption is made on the nature of the
-	coordinates. For instance, :math:`x` may be the longitude - in which
-	case :math:`x \equiv \lambda` - and :math:`y` may be the latitude -
-	in which case :math:`y \equiv \phi`.
-	"""
+    This class represents a rectangular and regular two-dimensional grid
+    embedded in a reference	system whose coordinates are, in the order,
+    :math:`x` and :math:`y`. No assumption is made on the nature of the
+    coordinates. For instance, :math:`x` may be the longitude - in which
+    case :math:`x \equiv \lambda` - and :math:`y` may be the latitude -
+    in which case :math:`y \equiv \phi`.
+    """
 
     def __init__(self, x, y, x_at_u_locations=None, y_at_v_locations=None):
         """
-		Parameters
-		----------
-		x : sympl.DataArray
-			1-D :class:`sympl.DataArray` collecting the mass grid points
-			along the first horizontal dimension.
-		y : sympl.DataArray
-			1-D :class:`sympl.DataArray` collecting the mass grid points
-			along the second horizontal dimension.
-		x_at_u_locations : `sympl.DataArray`, optional
-			1-D :class:`sympl.DataArray` collecting the staggered grid points
-			along the first horizontal dimension. If not given, this is
-			retrieved from `x`.
-		y_at_v_locations : `sympl.DataArray`, optional
-			1-D :class:`sympl.DataArray` collecting the staggered grid points
-			along the second horizontal dimension. If not given, this is
-			retrieved from `y`.
-		"""
+        Parameters
+        ----------
+        x : sympl.DataArray
+            1-D :class:`sympl.DataArray` collecting the mass grid points
+            along the first horizontal dimension.
+        y : sympl.DataArray
+            1-D :class:`sympl.DataArray` collecting the mass grid points
+            along the second horizontal dimension.
+        x_at_u_locations : `sympl.DataArray`, optional
+            1-D :class:`sympl.DataArray` collecting the staggered grid points
+            along the first horizontal dimension. If not given, this is
+            retrieved from `x`.
+        y_at_v_locations : `sympl.DataArray`, optional
+            1-D :class:`sympl.DataArray` collecting the staggered grid points
+            along the second horizontal dimension. If not given, this is
+            retrieved from `y`.
+        """
         # global properties
         dtype = x.values.dtype
 
@@ -124,123 +124,123 @@ class HorizontalGrid:
     @property
     def x(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the mass grid points
-			along the first horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the mass grid points
+            along the first horizontal dimension.
+        """
         return self._x
 
     @property
     def x_at_u_locations(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the staggered grid points
-			along the first horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the staggered grid points
+            along the first horizontal dimension.
+        """
         return self._xu
 
     @property
     def nx(self):
         """
-		Returns
-		-------
-		int :
-			Number of mass grid points featured by the grid along
-			the first horizontal dimension.
-		"""
+        Returns
+        -------
+        int :
+            Number of mass grid points featured by the grid along
+            the first horizontal dimension.
+        """
         return self._nx
 
     @property
     def dx(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-item :class:`sympl.DataArray` representing the grid spacing
-			along the first horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-item :class:`sympl.DataArray` representing the grid spacing
+            along the first horizontal dimension.
+        """
         return self._dx
 
     @property
     def y(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the mass grid points
-			along the second horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the mass grid points
+            along the second horizontal dimension.
+        """
         return self._y
 
     @property
     def y_at_v_locations(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-D :class:`sympl.DataArray` collecting the staggered grid points
-			along the second horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-D :class:`sympl.DataArray` collecting the staggered grid points
+            along the second horizontal dimension.
+        """
         return self._yv
 
     @property
     def ny(self):
         """
-		Returns
-		-------
-		int :
-			Number of mass grid points featured by the grid along
-			the second horizontal dimension.
-		"""
+        Returns
+        -------
+        int :
+            Number of mass grid points featured by the grid along
+            the second horizontal dimension.
+        """
         return self._ny
 
     @property
     def dy(self):
         """
-		Returns
-		-------
-		sympl.DataArray :
-			1-item :class:`sympl.DataArray` representing the grid spacing
-			along the second horizontal dimension.
-		"""
+        Returns
+        -------
+        sympl.DataArray :
+            1-item :class:`sympl.DataArray` representing the grid spacing
+            along the second horizontal dimension.
+        """
         return self._dy
 
 
 class PhysicalHorizontalGrid(HorizontalGrid):
     """
-	This class represents a rectangular and regular grid embedded
-	in a two-dimensional *physical* domain.
-	"""
+    This class represents a rectangular and regular grid embedded
+    in a two-dimensional *physical* domain.
+    """
 
     def __init__(self, domain_x, nx, domain_y, ny, dtype=datatype):
         """ 
-		Parameters
-		----------
-		domain_x : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the first horizontal dimension.
-		nx : int
-			Number of mass points featured by the grid along the first
-			horizontal dimension.
-		domain_y : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the second horizontal dimension.
-		ny : int
-			Number of mass points featured by the grid along the second
-			horizontal dimension.
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within this class.
+        Parameters
+        ----------
+        domain_x : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the first horizontal dimension.
+        nx : int
+            Number of mass points featured by the grid along the first
+            horizontal dimension.
+        domain_y : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the second horizontal dimension.
+        ny : int
+            Number of mass points featured by the grid along the second
+            horizontal dimension.
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated within this class.
 
-		Note
-		----
-		Axes labels should use the `CF Conventions <http://cfconventions.org>`_.
-		"""
+        Note
+        ----
+        Axes labels should use the `CF Conventions <http://cfconventions.org>`_.
+        """
         # extract x-axis properties
         values_x = domain_x.values
         dims_x = domain_x.dims
@@ -277,20 +277,20 @@ class PhysicalHorizontalGrid(HorizontalGrid):
 
 class NumericalHorizontalGrid(HorizontalGrid):
     """
-	This class represents a rectangular and regular grid embedded
-	in a two-dimensional *numerical* domain.
-	"""
+    This class represents a rectangular and regular grid embedded
+    in a two-dimensional *numerical* domain.
+    """
 
     def __init__(self, phys_grid, boundary):
         """
-		Parameters
-		----------
-		phys_grid : tasmania.HorizontalGrid
-			The associated *physical* grid.
-		boundary : tasmania.HorizontalBoundary
-			The :class:`tasmania.HorizontalBoundary` handling the horizontal
-			boundary conditions.
-		"""
+        Parameters
+        ----------
+        phys_grid : tasmania.HorizontalGrid
+            The associated *physical* grid.
+        boundary : tasmania.HorizontalBoundary
+            The :class:`tasmania.HorizontalBoundary` handling the horizontal
+            boundary conditions.
+        """
         # x-coordinates of the mass points
         dims = "c_" + phys_grid.x.dims[0]
         x = boundary.get_numerical_xaxis(phys_grid.x, dims=dims)

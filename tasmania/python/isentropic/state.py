@@ -30,7 +30,7 @@ from sympl import DataArray
 
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.meteo_utils import convert_relative_humidity_to_water_vapor
-from tasmania.python.utils.storage_utils import get_dataarray_3d
+from tasmania.python.utils.storage_utils import get_dataarray_3d, get_storage_shape, zeros
 
 try:
     from tasmania.conf import datatype
@@ -63,8 +63,12 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     moist=False,
     precipitation=False,
     relative_humidity=0.5,
-    dtype=datatype,
     physical_constants=None,
+    *,
+    backend="numpy",
+    dtype=datatype,
+    halo=None,
+    storage_shape=None
 ):
     """
     Compute a valid state for the isentropic model given
@@ -125,84 +129,160 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     pref = pcs["reference_air_pressure"]
     cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
+    # get storage shape and define the allocator
+    storage_shape = get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
+
+    def allocate():
+        return zeros(storage_shape, backend, dtype, halo=halo)
+
     # initialize the velocity components
-    u = x_velocity.to_units("m s^-1").values.item() * np.ones(
-        (nx + 1, ny, nz), dtype=dtype
-    )
-    v = y_velocity.to_units("m s^-1").values.item() * np.ones(
-        (nx, ny + 1, nz), dtype=dtype
-    )
+    u = allocate()
+    u[: nx + 1, :ny, :nz] = x_velocity.to_units("m s^-1").values.item()
+    v = allocate()
+    v[:nx, : ny + 1, :nz] = y_velocity.to_units("m s^-1").values.item()
 
     # compute the geometric height of the half levels
     theta1d = grid.z.to_units("K").values[np.newaxis, np.newaxis, :]
-    theta = np.tile(theta1d, (nx, ny, 1))
-    h = np.zeros((nx, ny, nz + 1), dtype=dtype)
-    h[:, :, -1] = hs
+    h = allocate()
+    h[:nx, :ny, nz] = hs
     for k in range(nz - 1, -1, -1):
-        h[:, :, k] = h[:, :, k + 1] + g * dz / ((bv ** 2) * theta[:, :, k])
+        h[:nx, :ny, k] = h[:nx, :ny, k + 1] + g * dz / ((bv ** 2) * theta1d[:, :, k])
 
     # initialize the Exner function
-    exn = np.zeros((nx, ny, nz + 1), dtype=dtype)
-    exn[:, :, -1] = cp
+    exn = allocate()
+    exn[:nx, :ny, nz] = cp
     for k in range(nz - 1, -1, -1):
-        exn[:, :, k] = exn[:, :, k + 1] - dz * (g ** 2) / (
-            (bv ** 2) * (theta[:, :, k] ** 2)
+        exn[:nx, :ny, k] = exn[:nx, :ny, k + 1] - dz * (g ** 2) / (
+            (bv ** 2) * (theta1d[:, :, k] ** 2)
         )
 
     # diagnose the air pressure
-    p = pref * ((exn / cp) ** (cp / Rd))
+    p = allocate()
+    p[:nx, :ny, : nz + 1] = pref * ((exn[:nx, :ny, : nz + 1] / cp) ** (cp / Rd))
 
     # diagnose the Montgomery potential
-    mtg_s = grid.z_on_interface_levels.to_units("K").values[-1] * exn[:, :, -1] + g * hs
-    mtg = np.zeros((nx, ny, nz), dtype=dtype)
-    mtg[:, :, -1] = mtg_s + 0.5 * dz * exn[:, :, -1]
+    mtg_s = (
+        grid.z_on_interface_levels.to_units("K").values[-1] * exn[:nx, :ny, nz] + g * hs
+    )
+    mtg = allocate()
+    mtg[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz]
     for k in range(nz - 2, -1, -1):
-        mtg[:, :, k] = mtg[:, :, k + 1] + dz * exn[:, :, k + 1]
+        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
 
     # diagnose the isentropic density and the momenta
-    s = -(p[:, :, :-1] - p[:, :, 1:]) / (g * dz)
-    su = 0.5 * s * (u[:-1, :, :] + u[1:, :, :])
-    sv = 0.5 * s * (v[:, :-1, :] + v[:, 1:, :])
+    s = allocate()
+    s[:nx, :ny, :nz] = -(p[:nx, :ny, :nz] - p[:nx, :ny, 1 : nz + 1]) / (g * dz)
+    su = allocate()
+    su[:nx, :ny, :nz] = (
+        0.5 * s[:nx, :ny, :nz] * (u[:nx, :ny, :nz] + u[1 : nx + 1, :ny, :nz])
+    )
+    sv = allocate()
+    sv[:nx, :ny, :nz] = (
+        0.5 * s[:nx, :ny, :nz] * (v[:nx, :ny, :nz] + v[:nx, 1 : ny + 1, :nz])
+    )
 
     # instantiate the return state
     state = {
         "time": time,
         "air_isentropic_density": get_dataarray_3d(
-            s, grid, "kg m^-2 K^-1", name="air_isentropic_density"
+            s,
+            grid,
+            "kg m^-2 K^-1",
+            name="air_isentropic_density",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         ),
         "air_pressure_on_interface_levels": get_dataarray_3d(
-            p, grid, "Pa", name="air_pressure_on_interface_levels"
+            p,
+            grid,
+            "Pa",
+            name="air_pressure_on_interface_levels",
+            grid_shape=(nx, ny, nz + 1),
+            set_coordinates=False,
         ),
         "exner_function_on_interface_levels": get_dataarray_3d(
-            exn, grid, "J K^-1 kg^-1", name="exner_function_on_interface_levels"
+            exn,
+            grid,
+            "J K^-1 kg^-1",
+            name="exner_function_on_interface_levels",
+            grid_shape=(nx, ny, nz + 1),
+            set_coordinates=False,
         ),
         "height_on_interface_levels": get_dataarray_3d(
-            h, grid, "m", name="height_on_interface_levels"
+            h,
+            grid,
+            "m",
+            name="height_on_interface_levels",
+            grid_shape=(nx, ny, nz + 1),
+            set_coordinates=False,
         ),
         "montgomery_potential": get_dataarray_3d(
-            mtg, grid, "J kg^-1", name="montgomery_potential"
+            mtg,
+            grid,
+            "J kg^-1",
+            name="montgomery_potential",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         ),
         "x_momentum_isentropic": get_dataarray_3d(
-            su, grid, "kg m^-1 K^-1 s^-1", name="x_momentum_isentropic"
+            su,
+            grid,
+            "kg m^-1 K^-1 s^-1",
+            name="x_momentum_isentropic",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         ),
         "x_velocity_at_u_locations": get_dataarray_3d(
-            u, grid, "m s^-1", name="x_velocity_at_u_locations"
+            u,
+            grid,
+            "m s^-1",
+            name="x_velocity_at_u_locations",
+            grid_shape=(nx + 1, ny, nz),
+            set_coordinates=False,
         ),
         "y_momentum_isentropic": get_dataarray_3d(
-            sv, grid, "kg m^-1 K^-1 s^-1", name="y_momentum_isentropic"
+            sv,
+            grid,
+            "kg m^-1 K^-1 s^-1",
+            name="y_momentum_isentropic",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         ),
         "y_velocity_at_v_locations": get_dataarray_3d(
-            v, grid, "m s^-1", name="y_velocity_at_v_locations"
+            v,
+            grid,
+            "m s^-1",
+            name="y_velocity_at_v_locations",
+            grid_shape=(nx, ny + 1, nz),
+            set_coordinates=False,
         ),
     }
 
     if moist:
         # diagnose the air density and temperature
-        rho = s * dz / (h[:, :, :-1] - h[:, :, 1:])
-        state["air_density"] = get_dataarray_3d(rho, grid, "kg m^-3", name="air_density")
-        temp = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:]) * theta / cp
+        rho = allocate()
+        rho[:nx, :ny, :nz] = (
+            s[:nx, :ny, :nz] * dz / (h[:nx, :ny, :nz] - h[:nx, :ny, 1 : nz + 1])
+        )
+        state["air_density"] = get_dataarray_3d(
+            rho,
+            grid,
+            "kg m^-3",
+            name="air_density",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        )
+        temp = allocate()
+        temp[:nx, :ny, :nz] = (
+            0.5 * (exn[:nx, :ny, :nz] + exn[:nx, :ny, 1 : nz + 1]) * theta1d / cp
+        )
         state["air_temperature"] = get_dataarray_3d(
-            temp, grid, "K", name="air_temperature"
+            temp,
+            grid,
+            "K",
+            name="air_temperature",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
         )
 
         # initialize the relative humidity
@@ -210,31 +290,45 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         rh_ = get_dataarray_3d(rh, grid, "1")
 
         # interpolate the pressure at the main levels
-        p_unstg = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
+        p_unstg = 0.5 * (p[:nx, :ny, :nz] + p[:nx, :ny, 1 : nz + 1])
         p_unstg_ = get_dataarray_3d(p_unstg, grid, "Pa")
 
         # diagnose the mass fraction of water vapor
-        qv = convert_relative_humidity_to_water_vapor(
-            "goff_gratch", p_unstg_, state["air_temperature"], rh_
+        qv = allocate()
+        qv[:nx, :ny, :nz] = convert_relative_humidity_to_water_vapor(
+            "goff_gratch", p_unstg_, state["air_temperature"][:nx, :ny, :nz], rh_
         )
-        state[mfwv] = get_dataarray_3d(qv, grid, "g g^-1", name=mfwv)
+        state[mfwv] = get_dataarray_3d(
+            qv, grid, "g g^-1", name=mfwv, grid_shape=(nx, ny, nz), set_coordinates=False
+        )
 
         # initialize the mass fraction of cloud liquid water and precipitation water
-        qc = np.zeros((nx, ny, nz), dtype=dtype)
-        state[mfcw] = get_dataarray_3d(qc, grid, "g g^-1", name=mfcw)
-        qr = np.zeros((nx, ny, nz), dtype=dtype)
-        state[mfpw] = get_dataarray_3d(qr, grid, "g g^-1", name=mfpw)
+        qc = allocate()
+        state[mfcw] = get_dataarray_3d(
+            qc, grid, "g g^-1", name=mfcw, grid_shape=(nx, ny, nz), set_coordinates=False
+        )
+        qr = allocate()
+        state[mfpw] = get_dataarray_3d(
+            qr, grid, "g g^-1", name=mfpw, grid_shape=(nx, ny, nz), set_coordinates=False
+        )
 
         # precipitation and accumulated precipitation
         if precipitation:
             state["precipitation"] = get_dataarray_3d(
-                np.zeros((nx, ny, 1), dtype=dtype), grid, "mm hr^-1", name="precipitation"
+                zeros((storage_shape[0], storage_shape[1], 1), backend, dtype, halo=halo),
+                grid,
+                "mm hr^-1",
+                name="precipitation",
+                grid_shape=(nx, ny, 1),
+                set_coordinates=False,
             )
             state["accumulated_precipitation"] = get_dataarray_3d(
-                np.zeros((nx, ny, 1), dtype=dtype),
+                zeros((storage_shape[0], storage_shape[1], 1), backend, dtype, halo=halo),
                 grid,
                 "mm",
                 name="accumulated_precipitation",
+                grid_shape=(nx, ny, 1),
+                set_coordinates=False,
             )
 
     return state

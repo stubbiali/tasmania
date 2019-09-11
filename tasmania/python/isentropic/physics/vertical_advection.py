@@ -22,8 +22,8 @@
 #
 """
 This module contains:
-	IsentropicVerticalAdvection
-	PrescribedSurfaceHeating
+    IsentropicVerticalAdvection
+    PrescribedSurfaceHeating
 """
 import numpy as np
 from sympl import DataArray
@@ -34,7 +34,7 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -49,12 +49,12 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 class IsentropicVerticalAdvection(TendencyComponent):
     """
-	This class inherits :class:`tasmania.TendencyComponent` to calculate
-	the vertical derivative of the conservative vertical advection flux
-	in isentropic coordinates for any prognostic variable included in
-	the isentropic model. The class is always instantiated over the
-	numerical grid of the underlying domain.
-	"""
+    This class inherits :class:`tasmania.TendencyComponent` to calculate
+    the vertical derivative of the conservative vertical advection flux
+    in isentropic coordinates for any prognostic variable included in
+    the isentropic model. The class is always instantiated over the
+    numerical grid of the underlying domain.
+    """
 
     def __init__(
         self,
@@ -70,42 +70,45 @@ class IsentropicVerticalAdvection(TendencyComponent):
         exec_info=None,
         halo=None,
         rebuild=False,
+        storage_shape=None,
         **kwargs
     ):
         """
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		flux_scheme : `str`, optional
-			The numerical flux scheme to implement. Defaults to 'upwind'.
-			See :class:`~tasmania.IsentropicMinimalVerticalFlux` for all
-			available options.
-		moist : `bool`, optional
-			:obj:`True` if water species are included in the model,
-			:obj:`False` otherwise. Defaults to :obj:`False`.
-		tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-			:obj:`True` if the input tendency of air potential temperature
-			is defined at the interface levels, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			TODO
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
-		**kwargs :
-			Additional keyword arguments to be directly forwarded to the parent
-			:class:`~tasmania.TendencyComponent`.
-		"""
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        flux_scheme : `str`, optional
+            The numerical flux scheme to implement. Defaults to 'upwind'.
+            See :class:`~tasmania.IsentropicMinimalVerticalFlux` for all
+            available options.
+        moist : `bool`, optional
+            :obj:`True` if water species are included in the model,
+            :obj:`False` otherwise. Defaults to :obj:`False`.
+        tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
+            :obj:`True` if the input tendency of air potential temperature
+            is defined at the interface levels, :obj:`False` otherwise.
+            Defaults to :obj:`False`.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        storage_shape : `tuple`, optional
+            TODO
+        **kwargs :
+            Additional keyword arguments to be directly forwarded to the parent
+            :class:`~tasmania.TendencyComponent`.
+        """
         # keep track of the input arguments needed at run-time
         self._moist = moist
         self._stgz = tendency_of_air_potential_temperature_on_interface_levels
@@ -117,26 +120,24 @@ class IsentropicVerticalAdvection(TendencyComponent):
         # instantiate the object calculating the flux
         self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme)
 
-        # allocate the gt4py storages collecting the stencil inputs
+        # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        descriptor = get_storage_descriptor((nx, ny, nz + 1), dtype, halo=halo)
-        self._in_w = gt.storage.zeros(descriptor, backend=backend)
-        self._in_s = gt.storage.zeros(descriptor, backend=backend)
-        self._in_su = gt.storage.zeros(descriptor, backend=backend)
-        self._in_sv = gt.storage.zeros(descriptor, backend=backend)
-        if moist:
-            self._in_qv = gt.storage.zeros(descriptor, backend=backend)
-            self._in_qc = gt.storage.zeros(descriptor, backend=backend)
-            self._in_qr = gt.storage.zeros(descriptor, backend=backend)
+        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
+        error_msg = "storage_shape must be larger or equal than {}.".format(
+            (nx, ny, nz + 1)
+        )
+        assert storage_shape[0] >= nx, error_msg
+        assert storage_shape[1] >= ny, error_msg
+        assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages collecting the stencil outputs
-        self._out_s = gt.storage.zeros(descriptor, backend=backend)
-        self._out_su = gt.storage.zeros(descriptor, backend=backend)
-        self._out_sv = gt.storage.zeros(descriptor, backend=backend)
+        self._out_s = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_su = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_sv = zeros(storage_shape, backend, dtype, halo=halo)
         if moist:
-            self._out_qv = gt.storage.zeros(descriptor, backend=backend)
-            self._out_qc = gt.storage.zeros(descriptor, backend=backend)
-            self._out_qr = gt.storage.zeros(descriptor, backend=backend)
+            self._out_qv = zeros(storage_shape, backend, dtype, halo=halo)
+            self._out_qc = zeros(storage_shape, backend, dtype, halo=halo)
+            self._out_qr = zeros(storage_shape, backend, dtype, halo=halo)
 
         # instantiate the underlying stencil object
         externals = self._vflux.externals.copy()
@@ -231,28 +232,38 @@ class IsentropicVerticalAdvection(TendencyComponent):
         dz = self.grid.dz.to_units("K").values.item()
         nb = self._vflux.extent
 
-        # set the stencil's inputs
-        self._stencil_set_inputs(state)
+        # grab the required model variables
+        in_w = (
+            state["tendency_of_air_potential_temperature_on_interface_levels"]
+            if self._stgz
+            else state["tendency_of_air_potential_temperature"]
+        )
+        in_s = state["air_isentropic_density"]
+        in_su = state["x_momentum_isentropic"]
+        in_sv = state["y_momentum_isentropic"]
+        in_qv = state[mfwv] if self._moist else None
+        in_qc = state[mfcw] if self._moist else None
+        in_qr = state[mfpw] if self._moist else None
 
         # set the stencil's arguments
         stencil_args = {
             "dz": dz,
-            "in_w": self._in_w,
-            "in_s": self._in_s,
+            "in_w": in_w,
+            "in_s": in_s,
             "out_s": self._out_s,
-            "in_su": self._in_su,
+            "in_su": in_su,
             "out_su": self._out_su,
-            "in_sv": self._in_sv,
+            "in_sv": in_sv,
             "out_sv": self._out_sv,
         }
         if self._moist:
             stencil_args.update(
                 {
-                    "in_qv": self._in_qv,
+                    "in_qv": in_qv,
                     "out_qv": self._out_qv,
-                    "in_qc": self._in_qc,
+                    "in_qc": in_qc,
                     "out_qc": self._out_qc,
-                    "in_qr": self._in_qr,
+                    "in_qr": in_qr,
                     "out_qr": self._out_qr,
                 }
             )
@@ -266,41 +277,20 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # set lower layers
-        self._set_lower_layers()
+        self._set_lower_layers(state)
 
         # collect the output arrays in a dictionary
         tendencies = {
-            "air_isentropic_density": self._out_s.data[:, :, :nz],
-            "x_momentum_isentropic": self._out_su.data[:, :, :nz],
-            "y_momentum_isentropic": self._out_sv.data[:, :, :nz],
+            "air_isentropic_density": self._out_s,
+            "x_momentum_isentropic": self._out_su,
+            "y_momentum_isentropic": self._out_sv,
         }
         if self._moist:
-            tendencies[mfwv] = self._out_qv.data[:, :, :nz]
-            tendencies[mfcw] = self._out_qc.data[:, :, :nz]
-            tendencies[mfpw] = self._out_qr.data[:, :, :nz]
+            tendencies[mfwv] = self._out_qv
+            tendencies[mfcw] = self._out_qc
+            tendencies[mfpw] = self._out_qr
 
         return tendencies, {}
-
-    def _stencil_set_inputs(self, state):
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-
-        if self._stgz:
-            self._in_w.data[...] = state[
-                "tendency_of_air_potential_temperature_on_interface_levels"
-            ][...]
-        else:
-            self._in_w.data[:, :, :nz] = state["tendency_of_air_potential_temperature"][
-                ...
-            ]
-
-        self._in_s.data[:, :, :nz] = state["air_isentropic_density"][...]
-        self._in_su.data[:, :, :nz] = state["x_momentum_isentropic"][...]
-        self._in_sv.data[:, :, :nz] = state["y_momentum_isentropic"][...]
-
-        if self._moist:
-            self._in_qv.data[:, :, :nz] = state[mfwv][...]
-            self._in_qc.data[:, :, :nz] = state[mfcw][...]
-            self._in_qr.data[:, :, :nz] = state[mfpw][...]
 
     @staticmethod
     def _stencil_defs(
@@ -345,55 +335,59 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
             out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
 
-    def _set_lower_layers(self):
+    def _set_lower_layers(self, state):
         nz = self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
         nb, order = self._vflux.extent, self._vflux.order
 
-        w = (
-            self._in_w.data[:, :, :nz]
+        w_tmp = (
+            state["tendency_of_air_potential_temperature"]
             if not self._stgz
-            else 0.5
-            * (self._in_w.data[:, :, -nb - 2 :] + self._in_w.data[:, :, -nb - 3 : -1])
+            else state["tendency_of_air_potential_temperature_on_interface_levels"]
+        )
+        w = (
+            w_tmp[:, :, :nz]
+            if not self._stgz
+            else 0.5 * (w_tmp[:, :, -nb - 2 :] + w_tmp[:, :, -nb - 3 : -1])
         )
 
-        s = self._in_s.data[:, :, :nz]
-        su = self._in_su.data[:, :, :nz]
-        sv = self._in_sv.data[:, :, :nz]
+        s = state["air_isentropic_density"][:, :, :nz]
+        su = state["x_momentum_isentropic"][:, :, :nz]
+        sv = state["y_momentum_isentropic"][:, :, :nz]
         if self._moist:
-            qv = self._in_qv.data[:, :, :nz]
-            qc = self._in_qc.data[:, :, :nz]
-            qr = self._in_qr.data[:, :, :nz]
+            qv = state[mfwv][:, :, :nz]
+            qc = state[mfcw][:, :, :nz]
+            qr = state[mfpw][:, :, :nz]
 
         if order == 1:
-            self._out_s.data[:, :, nz - nb : nz] = (
+            self._out_s[:, :, nz - nb : nz] = (
                 w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1]
                 - w[:, :, -nb:] * s[:, :, -nb:]
             ) / dz
-            self._out_su.data[:, :, nz - nb : nz] = (
+            self._out_su[:, :, nz - nb : nz] = (
                 w[:, :, -nb - 1 : -1] * su[:, :, -nb - 1 : -1]
                 - w[:, :, -nb:] * su[:, :, -nb:]
             ) / dz
-            self._out_sv.data[:, :, nz - nb : nz] = (
+            self._out_sv[:, :, nz - nb : nz] = (
                 w[:, :, -nb - 1 : -1] * sv[:, :, -nb - 1 : -1]
                 - w[:, :, -nb:] * sv[:, :, -nb:]
             ) / dz
 
             if self._moist:
-                self._out_qv.data[:, :, nz - nb : nz] = (
+                self._out_qv[:, :, nz - nb : nz] = (
                     w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1] * qv[:, :, -nb - 1 : -1]
                     - w[:, :, -nb:] * s[:, :, -nb:] * qv[:, :, -nb:]
                 ) / (dz * s[:, :, -nb:])
-                self._out_qc.data[:, :, nz - nb : nz] = (
+                self._out_qc[:, :, nz - nb : nz] = (
                     w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1] * qc[:, :, -nb - 1 : -1]
                     - w[:, :, -nb:] * s[:, :, -nb:] * qc[:, :, -nb:]
                 ) / (dz * s[:, :, -nb:])
-                self._out_qr.data[:, :, nz - nb : nz] = (
+                self._out_qr[:, :, nz - nb : nz] = (
                     w[:, :, -nb - 1 : -1] * s[:, :, -nb - 1 : -1] * qr[:, :, -nb - 1 : -1]
                     - w[:, :, -nb:] * s[:, :, -nb:] * qr[:, :, -nb:]
                 ) / (dz * s[:, :, -nb:])
         else:
-            self._out_s.data[:, :, nz - nb : nz] = (
+            self._out_s[:, :, nz - nb : nz] = (
                 0.5
                 * (
                     -3.0 * w[:, :, -nb:] * s[:, :, -nb:]
@@ -402,7 +396,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 )
                 / dz
             )
-            self._out_su.data[:, :, nz - nb : nz] = (
+            self._out_su[:, :, nz - nb : nz] = (
                 0.5
                 * (
                     -3.0 * w[:, :, -nb:] * su[:, :, -nb:]
@@ -411,7 +405,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 )
                 / dz
             )
-            self._out_sv.data[:, :, nz - nb : nz] = (
+            self._out_sv[:, :, nz - nb : nz] = (
                 0.5
                 * (
                     -3.0 * w[:, :, -nb:] * sv[:, :, -nb:]
@@ -422,7 +416,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             )
 
             if self._moist:
-                self._out_qv.data[:, :, nz - nb : nz] = (
+                self._out_qv[:, :, nz - nb : nz] = (
                     0.5
                     * (
                         -3.0 * w[:, :, -nb:] * s[:, :, -nb:] * qv[:, :, -nb:]
@@ -437,7 +431,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
                     )
                     / (dz * s[:, :, -nb:])
                 )
-                self._out_qc.data[:, :, nz - nb : nz] = (
+                self._out_qc[:, :, nz - nb : nz] = (
                     0.5
                     * (
                         -3.0 * w[:, :, -nb:] * s[:, :, -nb:] * qc[:, :, -nb:]
@@ -452,7 +446,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
                     )
                     / (dz * s[:, :, -nb:])
                 )
-                self._out_qr.data[:, :, nz - nb : nz] = (
+                self._out_qr[:, :, nz - nb : nz] = (
                     0.5
                     * (
                         -3.0 * w[:, :, -nb:] * s[:, :, -nb:] * qr[:, :, -nb:]
@@ -471,31 +465,31 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
 class PrescribedSurfaceHeating(TendencyComponent):
     """
-	Calculate the variation in air potential temperature as prescribed
-	in the reference paper, namely
+    Calculate the variation in air potential temperature as prescribed
+    in the reference paper, namely
 
-    	.. math::
-        	\dot{\theta} =
-        	\Biggl \lbrace
-        	{
-        		\\frac{\theta \, R_d \, \alpha(t)}{p \, C_p}
-            	\exp[\left( - \alpha(t) \left( z - h_s \\right) \\right]}
-            	\left[ F_0^{sw}(t) \sin{\left( \omega^{sw} (t - t_0) \\right)}
-            	+ F_0^{fw}(t) \sin{\left( \omega^{fw} (t - t_0) \\right)} \\right]
-            	\text{if} {r = \sqrt{x^2 + y^2} < R}
-            	\atop
-            	0 \text{otherwise}
+        .. math::
+            \dot{\theta} =
+            \Biggl \lbrace
+            {
+                \\frac{\theta \, R_d \, \alpha(t)}{p \, C_p}
+                \exp[\left( - \alpha(t) \left( z - h_s \\right) \\right]}
+                \left[ F_0^{sw}(t) \sin{\left( \omega^{sw} (t - t_0) \\right)}
+                + F_0^{fw}(t) \sin{\left( \omega^{fw} (t - t_0) \\right)} \\right]
+                \text{if} {r = \sqrt{x^2 + y^2} < R}
+                \atop
+                0 \text{otherwise}
             } .
 
-	The class is always instantiated over the numerical grid of the
-	underlying domain.
+    The class is always instantiated over the numerical grid of the
+    underlying domain.
 
-	References
-	----------
-	Reisner, J. M., and P. K. Smolarkiewicz. (1994). \
-		Thermally forced low Froude number flow past three-dimensional obstacles. \
-		*Journal of Atmospheric Sciences*, *51*(1):117-133.
-	"""
+    References
+    ----------
+    Reisner, J. M., and P. K. Smolarkiewicz. (1994). \
+        Thermally forced low Froude number flow past three-dimensional obstacles. \
+        *Journal of Atmospheric Sciences*, *51*(1):117-133.
+    """
 
     # Default values for the physical constants used in the class
     _d_physical_constants = {
@@ -526,68 +520,68 @@ class PrescribedSurfaceHeating(TendencyComponent):
         **kwargs
     ):
         """
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
-			:obj:`True` to place the calculated tendency of air
-			potential temperature in the ``diagnostics`` output
-			dictionary, :obj:`False` to regularly place it in the
-			`tendencies` dictionary. Defaults to :obj:`False`.
-		tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-			:obj:`True` (respectively, :obj:`False`) if the tendency
-			of air potential temperature should be calculated at the
-			interface (resp., main) vertical levels. Defaults to :obj:`False`.
-		air_pressure_on_interface_levels : `bool`, optional
-			:obj:`True` (respectively, :obj:`False`) if the input
-			air potential pressure is defined at the interface
-			(resp., main) vertical levels. Defaults to :obj:`True`.
-		amplitude_at_day_sw : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at day,
-			in units compatible with [W m^-2].
-		amplitude_at_day_fw : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`F_0^{fw}` at day,
-			in units compatible with [W m^-2].
-		amplitude_at_night_sw : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at night,
-			in units compatible with [W m^-2].
-		amplitude_at_night_fw : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`F_0^{fw}` at night,
-			in units compatible with [W m^-2].
-		frequency_sw : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`\omega^{sw}`,
-			in units compatible with [s^-1].
-		frequency_fw : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`\omega^{fw}`,
-			in units compatible with [s^-1].
-		attenuation_coefficient_at_day : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`\alpha` at day,
-			in units compatible with [m^-1].
-		attenuation_coefficient_at_night : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`\alpha` at night,
-			in units compatible with [m^-1].
-		characteristic_length : `sympl.DataArray`, optional
-			1-item :class:`~sympl.DataArray` representing :math:`R`,
-			in units compatible with [m].
-		starting_time : `datetime`, optional
-			The time :math:`t_0` when surface heating/cooling is triggered.
-		backend : `obj`, optional
-			TODO
-		physical_constants : `dict`, optional
-			Dictionary whose keys are strings indicating physical constants used
-			within this object, and whose values are :class:`~sympl.DataArray`\s
-			storing the values and units of those constants. The constants might be:
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
+            :obj:`True` to place the calculated tendency of air
+            potential temperature in the ``diagnostics`` output
+            dictionary, :obj:`False` to regularly place it in the
+            `tendencies` dictionary. Defaults to :obj:`False`.
+        tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
+            :obj:`True` (respectively, :obj:`False`) if the tendency
+            of air potential temperature should be calculated at the
+            interface (resp., main) vertical levels. Defaults to :obj:`False`.
+        air_pressure_on_interface_levels : `bool`, optional
+            :obj:`True` (respectively, :obj:`False`) if the input
+            air potential pressure is defined at the interface
+            (resp., main) vertical levels. Defaults to :obj:`True`.
+        amplitude_at_day_sw : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at day,
+            in units compatible with [W m^-2].
+        amplitude_at_day_fw : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`F_0^{fw}` at day,
+            in units compatible with [W m^-2].
+        amplitude_at_night_sw : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at night,
+            in units compatible with [W m^-2].
+        amplitude_at_night_fw : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`F_0^{fw}` at night,
+            in units compatible with [W m^-2].
+        frequency_sw : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`\omega^{sw}`,
+            in units compatible with [s^-1].
+        frequency_fw : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`\omega^{fw}`,
+            in units compatible with [s^-1].
+        attenuation_coefficient_at_day : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`\alpha` at day,
+            in units compatible with [m^-1].
+        attenuation_coefficient_at_night : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`\alpha` at night,
+            in units compatible with [m^-1].
+        characteristic_length : `sympl.DataArray`, optional
+            1-item :class:`~sympl.DataArray` representing :math:`R`,
+            in units compatible with [m].
+        starting_time : `datetime`, optional
+            The time :math:`t_0` when surface heating/cooling is triggered.
+        backend : `obj`, optional
+            TODO
+        physical_constants : `dict`, optional
+            Dictionary whose keys are strings indicating physical constants used
+            within this object, and whose values are :class:`~sympl.DataArray`\s
+            storing the values and units of those constants. The constants might be:
 
-				* 'gas_constant_of_dry_air', in units compatible with \
-					[J K^-1 kg^-1];
-				* 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
-					with [J K^-1 kg^-1].
+                * 'gas_constant_of_dry_air', in units compatible with \
+                    [J K^-1 kg^-1];
+                * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
+                    with [J K^-1 kg^-1].
 
-		**kwargs :
-			Additional keyword arguments to be directly forwarded to the parent
-			:class:`sympl.TendencyComponent`.
-		"""
+        **kwargs :
+            Additional keyword arguments to be directly forwarded to the parent
+            :class:`sympl.TendencyComponent`.
+        """
         self._tid = tendency_of_air_potential_temperature_in_diagnostics
         self._apil = air_pressure_on_interface_levels
         self._aptil = (

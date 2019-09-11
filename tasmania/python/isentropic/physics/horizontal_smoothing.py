@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	IsentropicHorizontalSmoothing(DiagnosticComponent)
+    IsentropicHorizontalSmoothing(DiagnosticComponent)
 """
 import numpy as np
 
@@ -44,10 +44,10 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 class IsentropicHorizontalSmoothing(DiagnosticComponent):
     """
-	Apply numerical smoothing to the prognostic fields of an
-	isentropic model state. The class is always instantiated
-	over the numerical grid of the underlying domain.
-	"""
+    Apply numerical smoothing to the prognostic fields of an
+    isentropic model state. The class is always instantiated
+    over the numerical grid of the underlying domain.
+    """
 
     def __init__(
         self,
@@ -70,45 +70,45 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         rebuild=False
     ):
         """
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		smooth_type : str
-			The type of numerical smoothing to implement.
-			See :class:`~tasmania.HorizontalSmoothing` for all available options.
-		smooth_coeff : float
-			The smoothing coefficient.
-		smooth_coeff_max : float
-			The maximum value assumed by the smoothing coefficient close to the
-			upper boundary.
-		smooth_damp_depth : int
-			Depth of the damping region.
-		moist : `bool`, optional
-			:obj:`True` if water species are included in the model and should
-			be smoothed, :obj:`False` otherwise. Defaults to :obj:`False`.
-		smooth_moist_coeff : `float`, optional
-			The smoothing coefficient for the water species.
-		smooth_moist_coeff_max : `float`, optional
-			The maximum value assumed by the smoothing coefficient for the water
-			species close to the upper boundary.
-		smooth_damp_depth : int
-			Depth of the damping region for the water species.
-		backend : `str`, optional
-			TODO
-		backend_opts : `dict`, optional
-			TODO
-		build_info : `dict`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			TODO
-		exec_info : `dict`, optional
-			TODO
-		halo : `tuple`, optional
-			TODO
-		rebuild : `bool`, optional
-			TODO
-		"""
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        smooth_type : str
+            The type of numerical smoothing to implement.
+            See :class:`~tasmania.HorizontalSmoothing` for all available options.
+        smooth_coeff : float
+            The smoothing coefficient.
+        smooth_coeff_max : float
+            The maximum value assumed by the smoothing coefficient close to the
+            upper boundary.
+        smooth_damp_depth : int
+            Depth of the damping region.
+        moist : `bool`, optional
+            :obj:`True` if water species are included in the model and should
+            be smoothed, :obj:`False` otherwise. Defaults to :obj:`False`.
+        smooth_moist_coeff : `float`, optional
+            The smoothing coefficient for the water species.
+        smooth_moist_coeff_max : `float`, optional
+            The maximum value assumed by the smoothing coefficient for the water
+            species close to the upper boundary.
+        smooth_damp_depth : int
+            Depth of the damping region for the water species.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        """
         self._moist = moist and smooth_moist_coeff is not None
 
         super().__init__(domain, "numerical")

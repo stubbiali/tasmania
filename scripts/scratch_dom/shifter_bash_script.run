@@ -1,22 +1,20 @@
 #!/bin/bash -l
-#SBATCH --job-name=cc1
+#SBATCH --job-name=ps0
 #SBATCH --account=s299m
-#SBATCH --time=00:15:00
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --partition=normal
 #SBATCH --constraint=mc
-#SBATCH --output=output/slurm-cc1.out
-#SBATCH --error=error/slurm-cc1.err
+#SBATCH --output=output/slurm-%j.out
+#SBATCH --error=error/slurm-%j.err
 
 # ==================================================
 # User inputs
 # ==================================================
 VENV=py36  # options: py35, py36, py37
-ROOT_DIR=tasmania-develop  # options: tasmania, tasmania-develop, tasmania-restyling
-DRIVER_DIR=isentropic_dry  # options: any directory under ROOT_DIR/drivers
-DRIVER_NAME=driver_namelist_cc.py  # options: any driver under ROOT_DIR/drivers/DRIVER_DIR
-NAMELIST_SRC=namelist_cc.py  # options: any namelist under ROOT_DIT/drivers/DRIVER_DIR
-NAMELIST_DST=namelist_cc.py  # options: any namelist under ROOT_DIT/drivers/DRIVER_DIR
+ROOT_DIR=tasmania-develop
+DIR=drivers/burgers
+SCRIPT_NAME=run_ps.sh  # options: any bash script under ROOT_DIR/DIR
 
 # ==================================================
 # Code
@@ -34,8 +32,7 @@ srun --unbuffered shifter run \
 		 cp -r $ROOT_DIR/tasmania/conf.py ~/tasmania/tasmania; \
 		 cd ~; \
 		 . $VENV/bin/activate; \
-		 cd $SCRATCH/$ROOT_DIR/drivers/$DRIVER_DIR; \
-		 cp $NAMELIST_SRC $NAMELIST_DST; \
-		 python $DRIVER_NAME; \
+		 cd $SCRATCH/$ROOT_DIR/$DIR; \
+		 . $SCRIPT_NAME; \
 		 deactivate; \
 		 exit"

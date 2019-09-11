@@ -124,7 +124,7 @@ def get_montgomery_potential(grid, s, pt, mtg):
     exn = cp * (p / pref) ** (rd / cp)
 
     mtg_s = theta_s * exn[:, :, -1] + g * topo
-    mtg[:nx, :ny, -1] = mtg_s + 0.5 * dz * exn[:, :, -1]
+    mtg[:nx, :ny, -2] = mtg_s + 0.5 * dz * exn[:, :, -1]
     for k in range(nz - 2, -1, -1):
         mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:, :, k + 1]
 
@@ -137,7 +137,10 @@ def get_velocity_components(nx, ny, s, su, sv, u, v):
 def apply_rayleigh_damping(vd, dt, phi_now, phi_new, phi_ref, phi_out):
     ni, nj, nk = phi_now.shape
     rmat = vd._rmat[:ni, :nj, :nk]
-    phi_out[...] = phi_new - dt.total_seconds() * rmat * (phi_now - phi_ref)
+    dnk = vd._damp_depth
+    phi_out[:ni, :nj, :dnk] = phi_new[:ni, :nj, :dnk] - dt.total_seconds() * rmat[
+        :ni, :nj, :dnk
+    ] * (phi_now[:ni, :nj, :dnk] - phi_ref[:ni, :nj, :dnk])
 
 
 def apply_second_order_smoothing(hs, phi, phi_out):
@@ -395,7 +398,7 @@ def rk3wssi_stage(
     for key in raw_state_new:
         if key != "time":
             raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
-    hb.dmn_enforce_raw(raw_state_new, field_properties=field_properties)
+    hb.dmn_enforce_raw(raw_state_new_min, field_properties=field_properties)
 
     if damp:
         names = [
@@ -574,7 +577,6 @@ def rk3ws_step(
     deadline=None,
 )
 @given(hyp_st.data())
-@reproduce_failure('4.28.0', b'AXicY2BABYIzGDBE2FD4vJ3oKqgDmIhQ8x6ZAwA1SgLg')
 def test1(data):
     """
     - Slow tendencies: no
@@ -602,7 +604,7 @@ def test1(data):
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
-    moist = False  # data.draw(hyp_st.booleans(), label='moist')
+    moist = True  # data.draw(hyp_st.booleans(), label='moist')
     state = data.draw(
         st_isentropic_state_f(
             grid, moist=moist, backend=backend, halo=halo, storage_shape=storage_shape
@@ -616,7 +618,7 @@ def test1(data):
 
     eps = data.draw(st_floats(min_value=0, max_value=1), label="eps")
 
-    damp = False
+    damp = True
     damp_depth = data.draw(
         hyp_st.integers(min_value=0, max_value=grid.nz), label="damp_depth"
     )
@@ -624,7 +626,7 @@ def test1(data):
         False
     )  # data.draw(hyp_st.booleans(), label='damp_at_every_stage')
 
-    smooth = False  # data.draw(hyp_st.booleans(), label='smooth')
+    smooth = True  # data.draw(hyp_st.booleans(), label='smooth')
     smooth_damp_depth = data.draw(
         hyp_st.integers(min_value=0, max_value=grid.nz), label="smooth_damp_depth"
     )

@@ -28,107 +28,114 @@ from sympl import DataArray
 
 # backend settings
 backend = gt.mode.NUMPY
-dtype   = np.float64
+dtype = np.float64
 
 # computational domain
-domain_x = DataArray([-20, 20], dims='x', attrs={'units': 'km'}).to_units('m')
-nx       = 41
-domain_y = DataArray([-250, 250], dims='y', attrs={'units': 'km'}).to_units('m')
-ny       = 1
-domain_z = DataArray([400, 300], dims='potential_temperature', attrs={'units': 'K'})
-nz       = 100
+domain_x = DataArray([-20, 20], dims="x", attrs={"units": "km"}).to_units("m")
+nx = 41
+domain_y = DataArray([-250, 250], dims="y", attrs={"units": "km"}).to_units("m")
+ny = 1
+domain_z = DataArray([400, 300], dims="potential_temperature", attrs={"units": "K"})
+nz = 100
 
 # horizontal boundary
-hb_type = 'periodic'
+hb_type = "periodic"
 nb = 3
 hb_kwargs = {}
 
 # topography
-topo_type   = 'flat_terrain'
+topo_type = "flat_terrain"
 topo_kwargs = {
-	'time': timedelta(seconds=1800),
-	'max_height': DataArray(1.0, attrs={'units': 'km'}),
-	'width_x': DataArray(50.0, attrs={'units': 'km'}),
-	'width_y': DataArray(50.0, attrs={'units': 'km'}),
-	'smooth': False,
+    "time": timedelta(seconds=1800),
+    "max_height": DataArray(1.0, attrs={"units": "km"}),
+    "width_x": DataArray(50.0, attrs={"units": "km"}),
+    "width_y": DataArray(50.0, attrs={"units": "km"}),
+    "smooth": False,
 }
 
 # initial conditions
-init_time  = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(20.0, attrs={'units': 'm s^-1'})
-y_velocity = DataArray(0.0, attrs={'units': 'm s^-1'})
-background_temperature = DataArray(300, attrs={'units': 'K'})
-bubble_center_x = DataArray(0, attrs={'units': 'km'})
-bubble_center_y = DataArray(0, attrs={'units': 'km'})
-bubble_center_height = DataArray(2, attrs={'units': 'km'})
-bubble_radius = DataArray(2, attrs={'units': 'km'})
-bubble_maximum_perturbation = DataArray(-2, attrs={'units': 'K'})
+init_time = datetime(year=1992, month=2, day=20, hour=0)
+x_velocity = DataArray(20.0, attrs={"units": "m s^-1"})
+y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
+background_temperature = DataArray(300, attrs={"units": "K"})
+bubble_center_x = DataArray(0, attrs={"units": "km"})
+bubble_center_y = DataArray(0, attrs={"units": "km"})
+bubble_center_height = DataArray(2, attrs={"units": "km"})
+bubble_radius = DataArray(2, attrs={"units": "km"})
+bubble_maximum_perturbation = DataArray(-2, attrs={"units": "K"})
 
 # moisture
 moist = True
 precipitation = False
 
 # time stepping
-time_integration_scheme = 'rk3ws'
-substeps                = 0
+time_integration_scheme = "rk3ws"
+substeps = 0
 
 # advection
-horizontal_flux_scheme = 'fifth_order_upwind'
+horizontal_flux_scheme = "fifth_order_upwind"
 
 # pressure gradient
-pg_scheme = 'second_order'
+pg_scheme = "second_order"
 
 # damping
-damp                = True
-damp_type           = 'rayleigh'
-damp_depth          = 15
-damp_max            = 0.0002
+damp = True
+damp_type = "rayleigh"
+damp_depth = 15
+damp_max = 0.0002
 damp_at_every_stage = False
 
 # horizontal diffusion
-diff                = False
-diff_type           = 'second_order'
-diff_coeff          = DataArray(0.12, attrs={'units': 's^-1'})
-diff_coeff_max      = DataArray(0.12, attrs={'units': 's^-1'})
-diff_damp_depth     = 0
+diff = False
+diff_type = "second_order"
+diff_coeff = DataArray(0.12, attrs={"units": "s^-1"})
+diff_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
+diff_damp_depth = 0
 
 # horizontal smoothing
-smooth                = False
-smooth_type           = 'second_order'
-smooth_coeff          = 0.12
-smooth_coeff_max      = 0.12
-smooth_damp_depth     = 0
+smooth = False
+smooth_type = "second_order"
+smooth_coeff = 0.12
+smooth_coeff_max = 0.12
+smooth_damp_depth = 0
 smooth_at_every_stage = False
 
 # turbulence
-turbulence 			 = True
+turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis           = False
-coriolis_parameter = None  #DataArray(1e-3, attrs={'units': 'rad s^-1'})
+coriolis = False
+coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
 timestep = Timedelta(seconds=1)
-niter    = 500  #int(2200 / timestep.total_seconds())
+niter = 500  # int(2200 / timestep.total_seconds())
 
 # output
-filename = \
-	'../../data/isentropic_bubble_{}_{}_pg{}_nx{}_ny{}_nz{}_dt{}_nt{}_' \
-	'u{}_dT{}{}{}{}{}_cc.nc'.format(
-		time_integration_scheme, horizontal_flux_scheme,
-		2 if pg_scheme == 'second_order' else (4 if pg_scheme == 'fourth_order' else 'ptw'),
-		nx, ny, nz, int(timestep.total_seconds()), niter,
-		int(x_velocity.to_units('m s^-1').values.item()),
-		int(bubble_maximum_perturbation.to_units('K').values.item()),
-		'_diff' if diff else '', '_smooth' if smooth else '',
-		'_turb' if turbulence else '', '_f' if coriolis else ''
-	)
-filename = None
-store_names = (
-	'air_temperature',
-	'height_on_interface_levels',
+filename = (
+    "../../data/isentropic_bubble_{}_{}_pg{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "u{}_dT{}{}{}{}{}_cc.nc".format(
+        time_integration_scheme,
+        horizontal_flux_scheme,
+        2
+        if pg_scheme == "second_order"
+        else (4 if pg_scheme == "fourth_order" else "ptw"),
+        nx,
+        ny,
+        nz,
+        int(timestep.total_seconds()),
+        niter,
+        int(x_velocity.to_units("m s^-1").values.item()),
+        int(bubble_maximum_perturbation.to_units("K").values.item()),
+        "_diff" if diff else "",
+        "_smooth" if smooth else "",
+        "_turb" if turbulence else "",
+        "_f" if coriolis else "",
+    )
 )
-save_frequency  = 5
+filename = None
+store_names = ("air_temperature", "height_on_interface_levels")
+save_frequency = 5
 print_frequency = 1
-plot_frequency  = -1
+plot_frequency = -1

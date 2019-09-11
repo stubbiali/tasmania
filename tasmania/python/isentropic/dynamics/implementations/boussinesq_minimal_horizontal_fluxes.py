@@ -22,10 +22,10 @@
 #
 """
 This module contains:
-	Upwind(IsentropicBoussinesqMinimalHorizontalFlux)
-	Centered(IsentropicBoussinesqMinimalHorizontalFlux)
-	MacCormack(IsentropicBoussinesqMinimalHorizontalFlux)
-	FifthOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux)
+    Upwind(IsentropicBoussinesqMinimalHorizontalFlux)
+    Centered(IsentropicBoussinesqMinimalHorizontalFlux)
+    MacCormack(IsentropicBoussinesqMinimalHorizontalFlux)
+    FifthOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux)
 """
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicBoussinesqMinimalHorizontalFlux,
@@ -50,8 +50,8 @@ from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_flux
 
 class Upwind(IsentropicBoussinesqMinimalHorizontalFlux):
     """
-	Upwind scheme.
-	"""
+    Upwind scheme.
+    """
 
     extent = 1
     order = 1
@@ -112,8 +112,8 @@ class Upwind(IsentropicBoussinesqMinimalHorizontalFlux):
 
 class Centered(IsentropicBoussinesqMinimalHorizontalFlux):
     """
-	Centered scheme.
-	"""
+    Centered scheme.
+    """
 
     extent = 1
     order = 2
@@ -174,8 +174,8 @@ class Centered(IsentropicBoussinesqMinimalHorizontalFlux):
 
 class ThirdOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux):
     """
-	Third-order upwind scheme.
-	"""
+    Third-order upwind scheme.
+    """
 
     extent = 2
     order = 3
@@ -236,8 +236,8 @@ class ThirdOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux):
 
 class FifthOrderUpwind(IsentropicBoussinesqMinimalHorizontalFlux):
     """
-	Fifth-order upwind scheme.
-	"""
+    Fifth-order upwind scheme.
+    """
 
     extent = 3
     order = 5

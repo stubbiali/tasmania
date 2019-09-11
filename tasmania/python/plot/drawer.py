@@ -28,7 +28,7 @@ import abc
 
 
 class Drawer:
-	"""
+    """
 	This abstract base class represents a generic drawer.
 	A *drawer* is a functor which uses the data grabbed
 	from an input state dictionary (or a time-series of state
@@ -41,22 +41,23 @@ class Drawer:
 		Dictionary whose keys are strings denoting plot-specific
 		settings, and whose values specify values for those settings.
 	"""
-	# make the class abstract
-	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, properties=None):
-		"""
+    # make the class abstract
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, properties=None):
+        """
 		Parameters
 		----------
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			settings, and whose values specify values for those settings.
 		"""
-		self.properties = {} if properties is None else properties
+        self.properties = {} if properties is None else properties
 
-	@abc.abstractmethod
-	def __call__(self, state, fig, ax):
-		"""
+    @abc.abstractmethod
+    def __call__(self, state, fig, ax):
+        """
 		Call operator generating the plot.
 
 		Parameters
@@ -72,4 +73,4 @@ class Drawer:
 		ax : matplotlib.axes.Axes
 			The axes encapsulating the plot
 		"""
-		pass
+        pass

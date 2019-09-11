@@ -38,18 +38,34 @@ from tasmania.python.plot.utils import to_units
 
 
 class Contourf(Drawer):
-	"""
+    """
 	Drawer which generates a contour-filled plot of a state quantity
 	at a cross-section parallel to one coordinate plane.
 	"""
-	def __init__(
-		self, grid, field_name, field_units, x=None, y=None, z=None,
-		xaxis_name=None, xaxis_units=None, xaxis_y=None, xaxis_z=None,
-		yaxis_name=None, yaxis_units=None, yaxis_x=None, yaxis_z=None,
-		zaxis_name=None, zaxis_units=None, zaxis_x=None, zaxis_y=None,
-		properties=None
-	):
-		"""
+
+    def __init__(
+        self,
+        grid,
+        field_name,
+        field_units,
+        x=None,
+        y=None,
+        z=None,
+        xaxis_name=None,
+        xaxis_units=None,
+        xaxis_y=None,
+        xaxis_z=None,
+        yaxis_name=None,
+        yaxis_units=None,
+        yaxis_x=None,
+        yaxis_z=None,
+        zaxis_name=None,
+        zaxis_units=None,
+        zaxis_x=None,
+        zaxis_y=None,
+        properties=None,
+    ):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -130,151 +146,219 @@ class Contourf(Drawer):
 			settings, and whose values specify values for those settings.
 			See :func:`~tasmania.python.plot.plot_utils.make_contourf`.
 		"""
-		super().__init__(properties)
+        super().__init__(properties)
 
-		flag_x = 0 if x is None else 1
-		flag_y = 0 if y is None else 1
-		flag_z = 0 if z is None else 1
-		if flag_x + flag_y + flag_z != 1:
-			raise ValueError(
-				"A plane is uniquely identified by one index, but here "
-				"x is{}given, y is{}given and z is{}given.".format(
-					" " if flag_x else " not ",
-					" " if flag_y else " not ",
-					" " if flag_z else " not ",
-				)
-			)
+        flag_x = 0 if x is None else 1
+        flag_y = 0 if y is None else 1
+        flag_z = 0 if z is None else 1
+        if flag_x + flag_y + flag_z != 1:
+            raise ValueError(
+                "A plane is uniquely identified by one index, but here "
+                "x is{}given, y is{}given and z is{}given.".format(
+                    " " if flag_x else " not ",
+                    " " if flag_y else " not ",
+                    " " if flag_z else " not ",
+                )
+            )
 
-		slice_x = slice(x, x+1 if x != -1 else None, None) if flag_x else None
-		slice_y = slice(y, y+1 if y != -1 else None, None) if flag_y else None
-		slice_z = slice(z, z+1 if z != -1 else None, None) if flag_z else None
+        slice_x = slice(x, x + 1 if x != -1 else None, None) if flag_x else None
+        slice_y = slice(y, y + 1 if y != -1 else None, None) if flag_y else None
+        slice_z = slice(z, z + 1 if z != -1 else None, None) if flag_z else None
 
-		retriever = DataRetriever(
-			grid, field_name, field_units, slice_x, slice_y, slice_z
-		)
+        retriever = DataRetriever(
+            grid, field_name, field_units, slice_x, slice_y, slice_z
+        )
 
-		if flag_z:
-			self._slave = lambda state, fig, ax: make_contourf_xy(
-				grid, xaxis_units, yaxis_units, retriever,
-				state, fig, ax, **self.properties
-			)
-		else:
-			if zaxis_name != 'z':
-				zax = zaxis_x if zaxis_x is not None else x
-				zay = zaxis_y if zaxis_y is not None else y
-				zaslice_x = None if zax is None else \
-					slice(zax, zax+1 if zax != -1 else None, None)
-				zaslice_y = None if zay is None else \
-					slice(zay, zay+1 if zay != -1 else None, None)
-				zaxis_retriever = DataRetriever(
-					grid, zaxis_name, zaxis_units, zaslice_x, zaslice_y
-				)
+        if flag_z:
+            self._slave = lambda state, fig, ax: make_contourf_xy(
+                grid,
+                xaxis_units,
+                yaxis_units,
+                retriever,
+                state,
+                fig,
+                ax,
+                **self.properties
+            )
+        else:
+            if zaxis_name != "z":
+                zax = zaxis_x if zaxis_x is not None else x
+                zay = zaxis_y if zaxis_y is not None else y
+                zaslice_x = (
+                    None
+                    if zax is None
+                    else slice(zax, zax + 1 if zax != -1 else None, None)
+                )
+                zaslice_y = (
+                    None
+                    if zay is None
+                    else slice(zay, zay + 1 if zay != -1 else None, None)
+                )
+                zaxis_retriever = DataRetriever(
+                    grid, zaxis_name, zaxis_units, zaslice_x, zaslice_y
+                )
 
-				if flag_x:
-					self._slave = lambda state, fig, ax: make_contourf_yh(
-						grid, yaxis_units, zaxis_retriever, retriever,
-						state, fig, ax, **self.properties
-					)
-				else:
-					self._slave = lambda state, fig, ax: make_contourf_xh(
-						grid, xaxis_units, zaxis_retriever, retriever,
-						state, fig, ax, **self.properties
-					)
-			else:
-				if flag_x:
-					self._slave = lambda state, fig, ax: make_contourf_yz(
-						grid, yaxis_units, zaxis_units, retriever,
-						state, fig, ax, **self.properties
-					)
-				else:
-					self._slave = lambda state, fig, ax: make_contourf_xz(
-						grid, xaxis_units, zaxis_units, retriever,
-						state, fig, ax, **self.properties
-					)
+                if flag_x:
+                    self._slave = lambda state, fig, ax: make_contourf_yh(
+                        grid,
+                        yaxis_units,
+                        zaxis_retriever,
+                        retriever,
+                        state,
+                        fig,
+                        ax,
+                        **self.properties
+                    )
+                else:
+                    self._slave = lambda state, fig, ax: make_contourf_xh(
+                        grid,
+                        xaxis_units,
+                        zaxis_retriever,
+                        retriever,
+                        state,
+                        fig,
+                        ax,
+                        **self.properties
+                    )
+            else:
+                if flag_x:
+                    self._slave = lambda state, fig, ax: make_contourf_yz(
+                        grid,
+                        yaxis_units,
+                        zaxis_units,
+                        retriever,
+                        state,
+                        fig,
+                        ax,
+                        **self.properties
+                    )
+                else:
+                    self._slave = lambda state, fig, ax: make_contourf_xz(
+                        grid,
+                        xaxis_units,
+                        zaxis_units,
+                        retriever,
+                        state,
+                        fig,
+                        ax,
+                        **self.properties
+                    )
 
-	def __call__(self, state, fig, ax):
-		"""
+    def __call__(self, state, fig, ax):
+        """
 		Call operator generating the contourf plot.
 		"""
-		self._slave(state, fig, ax)
+        self._slave(state, fig, ax)
 
 
 def make_contourf_xy(
-	grid, xaxis_units, yaxis_units, field_retriever, state, fig, ax, **kwargs
+    grid, xaxis_units, yaxis_units, field_retriever, state, fig, ax, **kwargs
 ):
-	field = np.squeeze(field_retriever(state))
+    field = np.squeeze(field_retriever(state))
 
-	xv = to_units(grid.x, xaxis_units).values if field.shape[0] == grid.nx \
-		else to_units(grid.x_at_u_locations, xaxis_units).values
-	yv = to_units(grid.y, yaxis_units).values if field.shape[1] == grid.ny \
-		else to_units(grid.y_at_v_locations, yaxis_units).values
-	x  = np.repeat(xv[:, np.newaxis], yv.shape[0], axis=1)
-	y  = np.repeat(yv[np.newaxis, :], xv.shape[0], axis=0)
+    xv = (
+        to_units(grid.x, xaxis_units).values
+        if field.shape[0] == grid.nx
+        else to_units(grid.x_at_u_locations, xaxis_units).values
+    )
+    yv = (
+        to_units(grid.y, yaxis_units).values
+        if field.shape[1] == grid.ny
+        else to_units(grid.y_at_v_locations, yaxis_units).values
+    )
+    x = np.repeat(xv[:, np.newaxis], yv.shape[0], axis=1)
+    y = np.repeat(yv[np.newaxis, :], xv.shape[0], axis=0)
 
-	make_contourf(x, y, field, fig, ax, **kwargs)
+    make_contourf(x, y, field, fig, ax, **kwargs)
 
 
 def make_contourf_xz(
-	grid, xaxis_units, zaxis_units, field_retriever, state, fig, ax, **kwargs
+    grid, xaxis_units, zaxis_units, field_retriever, state, fig, ax, **kwargs
 ):
-	field = np.squeeze(field_retriever(state))
+    field = np.squeeze(field_retriever(state))
 
-	xv = to_units(grid.x, xaxis_units).values if field.shape[0] == grid.nx \
-		else to_units(grid.x_at_u_locations, xaxis_units).values
-	zv = to_units(grid.z, zaxis_units).values if field.shape[1] == grid.nz \
-		else to_units(grid.z_on_interface_levels, zaxis_units).values
-	x  = np.repeat(xv[:, np.newaxis], zv.shape[0], axis=1)
-	z  = np.repeat(zv[np.newaxis, :], xv.shape[0], axis=0)
+    xv = (
+        to_units(grid.x, xaxis_units).values
+        if field.shape[0] == grid.nx
+        else to_units(grid.x_at_u_locations, xaxis_units).values
+    )
+    zv = (
+        to_units(grid.z, zaxis_units).values
+        if field.shape[1] == grid.nz
+        else to_units(grid.z_on_interface_levels, zaxis_units).values
+    )
+    x = np.repeat(xv[:, np.newaxis], zv.shape[0], axis=1)
+    z = np.repeat(zv[np.newaxis, :], xv.shape[0], axis=0)
 
-	make_contourf(x, z, field, fig, ax, **kwargs)
+    make_contourf(x, z, field, fig, ax, **kwargs)
 
 
 def make_contourf_xh(
-	grid, xaxis_units, zaxis_retriever, field_retriever, state, fig, ax, **kwargs
+    grid, xaxis_units, zaxis_retriever, field_retriever, state, fig, ax, **kwargs
 ):
-	field = np.squeeze(field_retriever(state))
+    field = np.squeeze(field_retriever(state))
 
-	zv    = np.squeeze(zaxis_retriever(state))
-	field = 0.5 * (field[:-1, :] + field[1:, :]) if field.shape[0] > zv.shape[0] else field
-	zv    = 0.5 * (zv[:-1, :] + zv[1:, :]) if zv.shape[0] > field.shape[0] else zv
-	field = 0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
-	z     = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
+    zv = np.squeeze(zaxis_retriever(state))
+    field = (
+        0.5 * (field[:-1, :] + field[1:, :]) if field.shape[0] > zv.shape[0] else field
+    )
+    zv = 0.5 * (zv[:-1, :] + zv[1:, :]) if zv.shape[0] > field.shape[0] else zv
+    field = (
+        0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
+    )
+    z = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
 
-	xv = to_units(grid.x, xaxis_units).values if field.shape[0] == grid.nx \
-		else to_units(grid.x_at_u_locations, xaxis_units).values
-	x  = np.repeat(xv[:, np.newaxis], z.shape[1], axis=1)
+    xv = (
+        to_units(grid.x, xaxis_units).values
+        if field.shape[0] == grid.nx
+        else to_units(grid.x_at_u_locations, xaxis_units).values
+    )
+    x = np.repeat(xv[:, np.newaxis], z.shape[1], axis=1)
 
-	make_contourf(x, z, field, fig, ax, **kwargs)
+    make_contourf(x, z, field, fig, ax, **kwargs)
 
 
 def make_contourf_yz(
-	grid, yaxis_units, zaxis_units, field_retriever, state, fig, ax, **kwargs
+    grid, yaxis_units, zaxis_units, field_retriever, state, fig, ax, **kwargs
 ):
-	field = np.squeeze(field_retriever(state))
+    field = np.squeeze(field_retriever(state))
 
-	yv = to_units(grid.y, yaxis_units).values if field.shape[0] == grid.ny \
-		else to_units(grid.y_at_v_locations, yaxis_units).values
-	zv = to_units(grid.z, zaxis_units).values if field.shape[1] == grid.nz \
-		else to_units(grid.z_on_interface_levels, zaxis_units).values
-	y  = np.repeat(yv[:, np.newaxis], zv.shape[0], axis=1)
-	z  = np.repeat(zv[np.newaxis, :], yv.shape[0], axis=0)
+    yv = (
+        to_units(grid.y, yaxis_units).values
+        if field.shape[0] == grid.ny
+        else to_units(grid.y_at_v_locations, yaxis_units).values
+    )
+    zv = (
+        to_units(grid.z, zaxis_units).values
+        if field.shape[1] == grid.nz
+        else to_units(grid.z_on_interface_levels, zaxis_units).values
+    )
+    y = np.repeat(yv[:, np.newaxis], zv.shape[0], axis=1)
+    z = np.repeat(zv[np.newaxis, :], yv.shape[0], axis=0)
 
-	make_contourf(y, z, field, fig, ax, **kwargs)
+    make_contourf(y, z, field, fig, ax, **kwargs)
 
 
 def make_contourf_yh(
-	grid, yaxis_units, zaxis_retriever, field_retriever, state, fig, ax, **kwargs
+    grid, yaxis_units, zaxis_retriever, field_retriever, state, fig, ax, **kwargs
 ):
-	field = np.squeeze(field_retriever(state))
+    field = np.squeeze(field_retriever(state))
 
-	zv    = np.squeeze(zaxis_retriever(state))
-	field = 0.5 * (field[:-1, :] + field[1:, :]) if field.shape[0] > zv.shape[0] else field
-	zv    = 0.5 * (zv[:-1, :] + zv[1:, :]) if zv.shape[0] > field.shape[0] else zv
-	field = 0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
-	z     = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
+    zv = np.squeeze(zaxis_retriever(state))
+    field = (
+        0.5 * (field[:-1, :] + field[1:, :]) if field.shape[0] > zv.shape[0] else field
+    )
+    zv = 0.5 * (zv[:-1, :] + zv[1:, :]) if zv.shape[0] > field.shape[0] else zv
+    field = (
+        0.5 * (field[:, :-1] + field[:, 1:]) if field.shape[1] > zv.shape[1] else field
+    )
+    z = 0.5 * (zv[:, :-1] + zv[:, 1:]) if zv.shape[1] > field.shape[1] else zv
 
-	yv  = to_units(grid.y, yaxis_units).values if field.shape[0] == grid.ny \
-		else to_units(grid.y_at_v_locations, yaxis_units).values
-	y  = np.repeat(yv[:, np.newaxis], z.shape[1], axis=1)
+    yv = (
+        to_units(grid.y, yaxis_units).values
+        if field.shape[0] == grid.ny
+        else to_units(grid.y_at_v_locations, yaxis_units).values
+    )
+    y = np.repeat(yv[:, np.newaxis], z.shape[1], axis=1)
 
-	make_contourf(y, z, field, fig, ax, **kwargs)
+    make_contourf(y, z, field, fig, ax, **kwargs)
