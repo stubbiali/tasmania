@@ -32,8 +32,11 @@ import os
 from sympl import Monitor
 
 from tasmania.python.plot.drawer import Drawer
-from tasmania.python.plot.plot_utils import \
-	get_figure_and_axes, set_axes_properties, set_figure_properties
+from tasmania.python.plot.plot_utils import (
+    get_figure_and_axes,
+    set_axes_properties,
+    set_figure_properties,
+)
 from tasmania.python.plot.utils import assert_sequence
 
 
@@ -41,20 +44,20 @@ SequenceType = (tuple, list)
 
 
 def get_time(states):
-	for level0 in states:
-		if isinstance(level0, dict):  # level0 is a state dictionary
-			if 'time' in level0:
-				return level0['time']
-		else:  # level0 is a collection of state dictionaries
-			for level1 in level0:
-				if 'time' in level1:
-					return level1['time']
+    for level0 in states:
+        if isinstance(level0, dict):  # level0 is a state dictionary
+            if "time" in level0:
+                return level0["time"]
+        else:  # level0 is a collection of state dictionaries
+            for level1 in level0:
+                if "time" in level1:
+                    return level1["time"]
 
-	raise ValueError('No state dictionary contains the key ''time''.')
+    raise ValueError("No state dictionary contains the key " "time" ".")
 
 
 class Plot(Monitor):
-	"""
+    """
 	A :class:`sympl.Monitor` for visualization purposes, generating a
 	plot by nicely overlapping distinct plots drawn by one or multiple
 	:class:`tasmania.Drawer`\s.
@@ -78,11 +81,17 @@ class Plot(Monitor):
 		Keyword arguments specifying settings for the
 		:class:`~matplotlib.axes.Axes` enclosing the plot.
 	"""
-	def __init__(
-		self, *drawers, interactive=True, print_time=None, init_time=None,
-		figure_properties=None, axes_properties=None
-	):
-		"""
+
+    def __init__(
+        self,
+        *drawers,
+        interactive=True,
+        print_time=None,
+        init_time=None,
+        figure_properties=None,
+        axes_properties=None,
+    ):
+        """
 		Parameters
 		----------
 		drawers : tasmania.Drawer
@@ -114,42 +123,42 @@ class Plot(Monitor):
 			:func:`~tasmania.get_figure_and_axes_properties`
 			and :func:`~tasmania.set_axes_properties`.
 		"""
-		assert_sequence(drawers, reftype=Drawer)
-		self._artists = drawers
+        assert_sequence(drawers, reftype=Drawer)
+        self._artists = drawers
 
-		self.interactive = interactive
+        self.interactive = interactive
 
-		self._ptime = print_time
-		self._itime = init_time
+        self._ptime = print_time
+        self._itime = init_time
 
-		self.figure_properties = {} if figure_properties is None else figure_properties
-		self.axes_properties = {} if axes_properties is None else axes_properties
+        self.figure_properties = {} if figure_properties is None else figure_properties
+        self.axes_properties = {} if axes_properties is None else axes_properties
 
-		self._figure = None
+        self._figure = None
 
-	@property
-	def artists(self):
-		"""
+    @property
+    def artists(self):
+        """
 		Returns
 		-------
 		tuple :
 			The artists.
 		"""
-		return self._artists
+        return self._artists
 
-	@property
-	def figure(self):
-		"""
+    @property
+    def figure(self):
+        """
 		Returns
 		-------
 		matplotlib.figure.Figure :
 			The figure used and *owned* by this object.
 		"""
-		self._set_figure()
-		return self._figure
+        self._set_figure()
+        return self._figure
 
-	def store(self, *states, fig=None, ax=None, save_dest=None, show=False):
-		"""
+    def store(self, *states, fig=None, ax=None, save_dest=None, show=False):
+        """
 		Use the input state(s) to update the plot.
 
 		Parameters
@@ -180,95 +189,98 @@ class Plot(Monitor):
 		out_ax : matplotlib.axes.Axes
 			The axes enclosing the plot.
 		"""
-		assert_sequence(states, reflen=len(self._artists), reftype=dict)
+        assert_sequence(states, reflen=len(self._artists), reftype=dict)
 
-		# set the private _figure attribute
-		self._set_figure(fig)
+        # set the private _figure attribute
+        self._set_figure(fig)
 
-		# retrieve figure and axes
-		out_fig, out_ax = get_figure_and_axes(
-			fig, ax, default_fig=self._figure,
-			**self.figure_properties,
-			**{
-				key: value for key, value in self.axes_properties.items()
-				if key not in self.figure_properties
-			},
-		)
+        # retrieve figure and axes
+        out_fig, out_ax = get_figure_and_axes(
+            fig,
+            ax,
+            default_fig=self._figure,
+            **self.figure_properties,
+            **{
+                key: value
+                for key, value in self.axes_properties.items()
+                if key not in self.figure_properties
+            },
+        )
 
-		# if needed, clean the canvas
-		if ax is None:
-			out_ax.cla()
+        # if needed, clean the canvas
+        if ax is None:
+            out_ax.cla()
 
-		# save initial time
-		if self._ptime == 'elapsed' and self._itime is None:
-			self._itime = get_time(states)
+        # save initial time
+        if self._ptime == "elapsed" and self._itime is None:
+            self._itime = get_time(states)
 
-		# let the drawers draw
-		for drawer, state in zip(self._artists, states):
-			drawer(state, out_fig, out_ax)
+        # let the drawers draw
+        for drawer, state in zip(self._artists, states):
+            drawer(state, out_fig, out_ax)
 
-		# set axes properties
-		if self.axes_properties != {}:
-			if self._ptime == 'elapsed':
-				time = get_time(states)
-				time_str = str(time - self._itime)
-			elif self._ptime == 'absolute':
-				time = get_time(states)
-				time_str = str(time)
-			else:
-				time_str = None
+        # set axes properties
+        if self.axes_properties != {}:
+            if self._ptime == "elapsed":
+                time = get_time(states)
+                time_str = str(time - self._itime)
+            elif self._ptime == "absolute":
+                time = get_time(states)
+                time_str = str(time)
+            else:
+                time_str = None
 
-			if time_str is not None:
-				self.axes_properties['title_right'] = time_str
+            if time_str is not None:
+                self.axes_properties["title_right"] = time_str
 
-			set_axes_properties(out_ax, **self.axes_properties)
+            set_axes_properties(out_ax, **self.axes_properties)
 
-		# if figure is not provided, set figure properties
-		if fig is None and self.figure_properties != {}:
-			set_figure_properties(out_fig, **self.figure_properties)
+        # if figure is not provided, set figure properties
+        if fig is None and self.figure_properties != {}:
+            set_figure_properties(out_fig, **self.figure_properties)
 
-		# save
-		if not (save_dest is None or save_dest == ''):
-			_, ext = os.path.splitext(save_dest)
-			plt.savefig(save_dest, format=ext[1:], dpi=1000)
+        # save
+        if not (save_dest is None or save_dest == ""):
+            _, ext = os.path.splitext(save_dest)
+            plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		# show
-		if fig is None:
-			if self.interactive:
-				out_fig.canvas.draw()
-				plt.show(block=False)
-			elif show:
-				plt.show()
+        # show
+        if fig is None:
+            if self.interactive:
+                out_fig.canvas.draw()
+                plt.show(block=False)
+            elif show:
+                plt.show()
 
-		return out_fig, out_ax
+        return out_fig, out_ax
 
-	def _set_figure(self, fig=None):
-		"""
+    def _set_figure(self, fig=None):
+        """
 		Set the private attribute representing the figure
 		*owned* by this object.
 		"""
-		if fig is not None:
-			self._figure = None
-			return
+        if fig is not None:
+            self._figure = None
+            return
 
-		fontsize = self.figure_properties.get('fontsize', 12)
-		figsize  = self.figure_properties.get('figsize', (7, 7))
+        fontsize = self.figure_properties.get("fontsize", 12)
+        figsize = self.figure_properties.get("figsize", (7, 7))
 
-		if self.interactive:
-			plt.ion()
-			if self._figure is not None:
-				rcParams['font.size'] = fontsize
-				self._figure = plt.figure(figsize=figsize)
-		else:
-			plt.ioff()
-			rcParams['font.size'] = fontsize
-			self._figure = \
-				plt.figure(figsize=figsize) if self._figure is None \
-				else self._figure
+        if self.interactive:
+            plt.ion()
+            if self._figure is not None:
+                rcParams["font.size"] = fontsize
+                self._figure = plt.figure(figsize=figsize)
+        else:
+            plt.ioff()
+            rcParams["font.size"] = fontsize
+            self._figure = (
+                plt.figure(figsize=figsize) if self._figure is None else self._figure
+            )
 
 
 class PlotComposite:
-	"""
+    """
 	This class creates a visualization consisting of different subplots,
 	with each subplot generated by a :class:`~tasmania.Plot`.
 
@@ -280,11 +292,18 @@ class PlotComposite:
 		:func:`~tasmania.get_figure_and_axes_properties`
 		and :func:`~tasmania.set_figure_properties`.
 	"""
-	def __init__(
-		self, *artists, nrows=1, ncols=1, interactive=True, 
-		print_time=None, init_time=None, figure_properties=None
-	):
-		"""
+
+    def __init__(
+        self,
+        *artists,
+        nrows=1,
+        ncols=1,
+        interactive=True,
+        print_time=None,
+        init_time=None,
+        figure_properties=None,
+    ):
+        """
 		Parameters
 		----------
 		artists : sequence
@@ -316,58 +335,57 @@ class PlotComposite:
 			:func:`~tasmania.get_figure_and_axes_properties`
 			and :func:`~tasmania.set_figure_properties`.
 		"""
-		# check input artists list
-		assert_sequence(artists, reftype=Plot)
+        # check input artists list
+        assert_sequence(artists, reftype=Plot)
 
-		# store input arguments as private attributes
-		self._artists 	  = artists
-		self._nrows	  	  = nrows
-		self._ncols	  	  = ncols
-		self._interactive = interactive
-		self._ptime       = print_time
-		self._itime       = init_time
+        # store input arguments as private attributes
+        self._artists = artists
+        self._nrows = nrows
+        self._ncols = ncols
+        self._interactive = interactive
+        self._ptime = print_time
+        self._itime = init_time
 
-		# store input arguments as public attributes
-		self.figure_properties = \
-			{} if figure_properties is None else figure_properties
+        # store input arguments as public attributes
+        self.figure_properties = {} if figure_properties is None else figure_properties
 
-		# initialize the figure attribute
-		self._figure = None
+        # initialize the figure attribute
+        self._figure = None
 
-	@property
-	def artists(self):
-		"""
+    @property
+    def artists(self):
+        """
 		Returns
 		-------
 		tuple :
 			The artists.
 		"""
-		return self._artists
+        return self._artists
 
-	@property
-	def figure(self):
-		"""
+    @property
+    def figure(self):
+        """
 		Returns
 		-------
 		matplotlib.figure.Figure :
 			The figure used and *owned* by this object.
 		"""
-		self._set_figure()
-		return self._figure
+        self._set_figure()
+        return self._figure
 
-	@property
-	def interactive(self):
-		"""
+    @property
+    def interactive(self):
+        """
 		Returns
 		-------
 		bool :
 			:obj:`True` if interactive model is enabled, :obj:`False` otherwise.
 		"""
-		return self._interactive
+        return self._interactive
 
-	@interactive.setter
-	def interactive(self, value):
-		"""
+    @interactive.setter
+    def interactive(self, value):
+        """
 		Switch interactive mode on/off.
 
 		Parameters
@@ -375,12 +393,12 @@ class PlotComposite:
 		value : bool
 			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
 		"""
-		self._interactive = value
-		for artist in self.artists:
-			artist.interactive = value
+        self._interactive = value
+        for artist in self.artists:
+            artist.interactive = value
 
-	def store(self, *states, fig=None, save_dest=None, show=False):
-		"""
+    def store(self, *states, fig=None, save_dest=None, show=False):
+        """
 		Use the input states to update the plot.
 
 		Parameters
@@ -408,96 +426,100 @@ class PlotComposite:
 		matplotlib.figure.Figure
 			The figure encapsulating all the subplots.
 		"""
-		# assert the list of states
-		assert_sequence(
-			states, reflen=len(self.artists), reftype=SequenceType + (dict, )
-		)
+        # assert the list of states
+        assert_sequence(
+            states, reflen=len(self.artists), reftype=SequenceType + (dict,)
+        )
 
-		# set the figure attribute, if needed
-		self._set_figure(fig)
+        # set the figure attribute, if needed
+        self._set_figure(fig)
 
-		# set output figure
-		out_fig = fig if fig is not None else self._figure
+        # set output figure
+        out_fig = fig if fig is not None else self._figure
 
-		# clear the canvas, if needed
-		if fig is None:
-			out_fig.clear()
+        # clear the canvas, if needed
+        if fig is None:
+            out_fig.clear()
 
-		# get the initial time
-		if self._ptime == 'elapsed' and self._itime is None:
-			self._itime = get_time(states)
+        # get the initial time
+        if self._ptime == "elapsed" and self._itime is None:
+            self._itime = get_time(states)
 
-		# generate all the subplot axes
-		axes = []
-		for i in range(len(self.artists)):
-			out_fig, ax = get_figure_and_axes(
-				out_fig, nrows=self._nrows, ncols=self._ncols,
-				index=i+1, **self.figure_properties,
-				**{
-					key: val for key, val in self.artists[i].axes_properties.items()
-					if key not in self.figure_properties
-				},
-			)
-			axes.append(ax)
+        # generate all the subplot axes
+        axes = []
+        for i in range(len(self.artists)):
+            out_fig, ax = get_figure_and_axes(
+                out_fig,
+                nrows=self._nrows,
+                ncols=self._ncols,
+                index=i + 1,
+                **self.figure_properties,
+                **{
+                    key: val
+                    for key, val in self.artists[i].axes_properties.items()
+                    if key not in self.figure_properties
+                },
+            )
+            axes.append(ax)
 
-		for i in range(len(self.artists)):
-			artist = self.artists[i]
-			state = states[i]
-			ax = axes[i]
+        for i in range(len(self.artists)):
+            artist = self.artists[i]
+            state = states[i]
+            ax = axes[i]
 
-			if isinstance(state, dict):
-				out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
-			else:
-				out_fig, _ = artist.store(*state, fig=out_fig, ax=ax, show=False)
+            if isinstance(state, dict):
+                out_fig, _ = artist.store(state, fig=out_fig, ax=ax, show=False)
+            else:
+                out_fig, _ = artist.store(*state, fig=out_fig, ax=ax, show=False)
 
-		time = get_time(states)
+        time = get_time(states)
 
-		if self._ptime == 'elapsed':
-			time_str = str(time - self._itime)
-		elif self._ptime == 'absolute':
-			time_str = str(time)
-		else:
-			time_str = None
+        if self._ptime == "elapsed":
+            time_str = str(time - self._itime)
+        elif self._ptime == "absolute":
+            time_str = str(time)
+        else:
+            time_str = None
 
-		if time_str is not None:
-			self.figure_properties['suptitle'] = time_str
+        if time_str is not None:
+            self.figure_properties["suptitle"] = time_str
 
-		# set figure properties
-		set_figure_properties(out_fig, **self.figure_properties)
+        # set figure properties
+        set_figure_properties(out_fig, **self.figure_properties)
 
-		# save
-		if not (save_dest is None or save_dest == ''):
-			_, ext = os.path.splitext(save_dest)
-			plt.savefig(save_dest, format=ext[1:], dpi=1000)
+        # save
+        if not (save_dest is None or save_dest == ""):
+            _, ext = os.path.splitext(save_dest)
+            plt.savefig(save_dest, format=ext[1:], dpi=1000)
 
-		# show
-		if fig is None:
-			if self.interactive:
-				out_fig.canvas.draw()
-				plt.show(block=False)
-			elif show:
-				plt.show()
+        # show
+        if fig is None:
+            if self.interactive:
+                out_fig.canvas.draw()
+                plt.show(block=False)
+            elif show:
+                plt.show()
 
-		return out_fig
+        return out_fig
 
-	def _set_figure(self, fig=None):
-		"""
+    def _set_figure(self, fig=None):
+        """
 		Set the private attribute representing the figure
 		*owned* by this object.
 		"""
-		if fig is not None:
-			self._figure = None
-			return
+        if fig is not None:
+            self._figure = None
+            return
 
-		fontsize = self.figure_properties.get('fontsize', 12)
-		figsize  = self.figure_properties.get('figsize', (7, 7))
+        fontsize = self.figure_properties.get("fontsize", 12)
+        figsize = self.figure_properties.get("figsize", (7, 7))
 
-		if self.interactive:
-			plt.ion()
-			if self._figure is None:
-				rcParams['font.size'] = fontsize
-				self._figure = plt.figure(figsize=figsize)
-		else:
-			plt.ioff()
-			rcParams['font.size'] = fontsize
-			self._figure = plt.figure(figsize=figsize)
+        if self.interactive:
+            plt.ion()
+            if self._figure is None:
+                rcParams["font.size"] = fontsize
+                self._figure = plt.figure(figsize=figsize)
+        else:
+            plt.ioff()
+            rcParams["font.size"] = fontsize
+            self._figure = plt.figure(figsize=figsize)

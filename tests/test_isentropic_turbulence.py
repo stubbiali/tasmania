@@ -20,89 +20,108 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from hypothesis import \
-	assume, given, HealthCheck, reproduce_failure, settings, strategies as hyp_st
+from hypothesis import (
+    assume,
+    given,
+    HealthCheck,
+    reproduce_failure,
+    settings,
+    strategies as hyp_st,
+)
 import pytest
 
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.utils.data_utils import make_dataarray_3d
 
 try:
-	from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-	from .test_turbulence import smagorinsky2d_validation
-	from .utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
-		st_isentropic_state_f
+    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .test_turbulence import smagorinsky2d_validation
+    from .utils import (
+        compare_dataarrays,
+        st_domain,
+        st_floats,
+        st_one_of,
+        st_isentropic_state_f,
+    )
 except (ImportError, ModuleNotFoundError):
-	from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-	from test_turbulence import smagorinsky2d_validation
-	from utils import compare_dataarrays, st_domain, st_floats, st_one_of, \
-		st_isentropic_state_f
+    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from test_turbulence import smagorinsky2d_validation
+    from utils import (
+        compare_dataarrays,
+        st_domain,
+        st_floats,
+        st_one_of,
+        st_isentropic_state_f,
+    )
 
 
 @settings(
-	suppress_health_check=(
-		HealthCheck.too_slow,
-		HealthCheck.data_too_large,
-		HealthCheck.filter_too_much,
-	),
-	deadline=None
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
 )
 @given(hyp_st.data())
 def test_smagorinsky(data):
-	# ========================================
-	# random data generation
-	# ========================================
-	nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label='nb')
+    # ========================================
+    # random data generation
+    # ========================================
+    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
 
-	domain = data.draw(st_domain(nb=nb), label='domain')
-	grid = domain.numerical_grid
+    domain = data.draw(st_domain(nb=nb), label="domain")
+    grid = domain.numerical_grid
 
-	cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label='cs')
+    cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
 
-	state = data.draw(st_isentropic_state_f(grid, moist=False), label='state')
+    state = data.draw(st_isentropic_state_f(grid, moist=False), label="state")
 
-	backend = data.draw(st_one_of(conf_backend), label='backend')
-	halo = data.draw(st_one_of(conf_halo), label='halo')
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    halo = data.draw(st_one_of(conf_halo), label="halo")
 
-	# ========================================
-	# test bed
-	# ========================================
-	dx = grid.dx.to_units('m').values.item()
-	dy = grid.dy.to_units('m').values.item()
-	dtype = grid.x.dtype
+    # ========================================
+    # test bed
+    # ========================================
+    dx = grid.dx.to_units("m").values.item()
+    dy = grid.dy.to_units("m").values.item()
+    dtype = grid.x.dtype
 
-	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
-	sv = state['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1').values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
 
-	u = su / s
-	v = sv / s
-	u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
+    u = su / s
+    v = sv / s
+    u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
 
-	smag = IsentropicSmagorinsky(
-		domain, smagorinsky_constant=cs, backend=backend, dtype=dtype,
-		halo=halo, rebuild=False
-	)
+    smag = IsentropicSmagorinsky(
+        domain,
+        smagorinsky_constant=cs,
+        backend=backend,
+        dtype=dtype,
+        halo=halo,
+        rebuild=False,
+    )
 
-	tendencies, diagnostics = smag(state)
+    tendencies, diagnostics = smag(state)
 
-	assert 'x_momentum_isentropic' in tendencies
-	compare_dataarrays(
-		tendencies['x_momentum_isentropic'][nb:-nb, nb:-nb],
-		make_dataarray_3d(s * u_tnd, grid, 'kg m^-1 K^-1 s^-2')[nb:-nb, nb:-nb],
-		compare_coordinate_values=False
-	)
-	assert 'y_momentum_isentropic' in tendencies
-	compare_dataarrays(
-		tendencies['y_momentum_isentropic'][nb:-nb, nb:-nb],
-		make_dataarray_3d(s * v_tnd, grid, 'kg m^-1 K^-1 s^-2')[nb:-nb, nb:-nb],
-		compare_coordinate_values=False
-	)
-	assert len(tendencies) == 2
+    assert "x_momentum_isentropic" in tendencies
+    compare_dataarrays(
+        tendencies["x_momentum_isentropic"][nb:-nb, nb:-nb],
+        make_dataarray_3d(s * u_tnd, grid, "kg m^-1 K^-1 s^-2")[nb:-nb, nb:-nb],
+        compare_coordinate_values=False,
+    )
+    assert "y_momentum_isentropic" in tendencies
+    compare_dataarrays(
+        tendencies["y_momentum_isentropic"][nb:-nb, nb:-nb],
+        make_dataarray_3d(s * v_tnd, grid, "kg m^-1 K^-1 s^-2")[nb:-nb, nb:-nb],
+        compare_coordinate_values=False,
+    )
+    assert len(tendencies) == 2
 
-	assert len(diagnostics) == 0
+    assert len(diagnostics) == 0
 
 
-if __name__ == '__main__':
-	pytest.main([__file__])
-
+if __name__ == "__main__":
+    pytest.main([__file__])

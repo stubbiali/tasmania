@@ -29,14 +29,15 @@ from copy import deepcopy
 
 
 class HorizontalBoundary:
-	"""
+    """
 	Abstract base class whose children handle the
 	horizontal boundary conditions.
 	"""
-	__metaclass__ = abc.ABCMeta
 
-	def __init__(self, nx, ny, nb):
-		"""
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, nx, ny, nb):
+        """
 		Parameters
 		----------
 		nx : int
@@ -48,130 +49,131 @@ class HorizontalBoundary:
 		nb : int
 			Number of boundary layers.
 		"""
-		self._nx = nx
-		self._ny = ny
-		self._nb = nb
+        self._nx = nx
+        self._ny = ny
+        self._nb = nb
 
-		self._type = ''
-		self._kwargs = {}
-		self._ref_state = None
+        self._type = ""
+        self._kwargs = {}
+        self._ref_state = None
 
-	@property
-	def nx(self):
-		"""
+    @property
+    def nx(self):
+        """
 		Return
 		------
 		int :
 			Number of mass points featured by the *physical* grid
 			along the first horizontal dimension.
 		"""
-		return self._nx
+        return self._nx
 
-	@property
-	def ny(self):
-		"""
+    @property
+    def ny(self):
+        """
 		Return
 		------
 		int :
 			Number of mass points featured by the *physical* grid
 			along the second horizontal dimension.
 		"""
-		return self._ny
+        return self._ny
 
-	@property
-	def nb(self):
-		"""
+    @property
+    def nb(self):
+        """
 		Return
 		------
 		int :
 			Number of boundary layers.
 		"""
-		return self._nb
+        return self._nb
 
-	@property
-	@abc.abstractmethod
-	def ni(self):
-		"""
+    @property
+    @abc.abstractmethod
+    def ni(self):
+        """
 		Return
 		------
 		int :
 			Number of mass points featured by the *numerical* grid
 			along the first horizontal dimension.
 		"""
-		pass
+        pass
 
-	@property
-	@abc.abstractmethod
-	def nj(self):
-		"""
+    @property
+    @abc.abstractmethod
+    def nj(self):
+        """
 		Return
 		------
 		int :
 			Number of mass points featured by the *numerical* grid
 			along the second horizontal dimension.
 		"""
-		pass
+        pass
 
-	@property
-	def type(self):
-		"""
+    @property
+    def type(self):
+        """
 		Return
 		------
 			The string passed to :meth:`tasmania.HorizontalBoundary.factory`
 			as `boundary_type` argument.
 		"""
-		return self._type
+        return self._type
 
-	@type.setter
-	def type(self, type_str):
-		"""
+    @type.setter
+    def type(self, type_str):
+        """
 		Parameters
 		----------
 		type_str : str
 			The string passed to :meth:`tasmania.HorizontalBoundary.factory`
 			as `boundary_type` argument.
 		"""
-		self._type = type_str
+        self._type = type_str
 
-	@property
-	def kwargs(self):
-		"""
+    @property
+    def kwargs(self):
+        """
 		Return
 		------
 		dict :
 			The keyword arguments passed to the constructor of the derived class.
 		"""
-		return self._kwargs
+        return self._kwargs
 
-	@property
-	def reference_state(self):
-		"""
+    @property
+    def reference_state(self):
+        """
 		Return
 		------
 		dict :
 			The reference model state dictionary, defined over the
 			numerical grid.
 		"""
-		return self._ref_state if self._ref_state is not None else {}
+        return self._ref_state if self._ref_state is not None else {}
 
-	@reference_state.setter
-	def reference_state(self, ref_state):
-		"""
+    @reference_state.setter
+    def reference_state(self, ref_state):
+        """
 		Parameters
 		----------
 		ref_state : dict
 			The reference model state dictionary.
 		"""
-		for name in ref_state:
-			if name != 'time':
-				assert 'units' in ref_state[name].attrs, \
-					"Field {} of reference state misses units attribute.".format(name)
+        for name in ref_state:
+            if name != "time":
+                assert (
+                    "units" in ref_state[name].attrs
+                ), "Field {} of reference state misses units attribute.".format(name)
 
-		self._ref_state = deepcopy(ref_state)
+        self._ref_state = deepcopy(ref_state)
 
-	@abc.abstractmethod
-	def get_numerical_xaxis(self, paxis, dims=None):
-		"""
+    @abc.abstractmethod
+    def get_numerical_xaxis(self, paxis, dims=None):
+        """
 		Parameters
 		----------
 		paxis : sympl.DataArray
@@ -188,11 +190,11 @@ class HorizontalBoundary:
 			1-D :class:`sympl.DataArray` representing the associated
 			numerical axis.
 		"""
-		pass
+        pass
 
-	@abc.abstractmethod
-	def get_numerical_yaxis(self, paxis, dims=None):
-		"""
+    @abc.abstractmethod
+    def get_numerical_yaxis(self, paxis, dims=None):
+        """
 		Parameters
 		----------
 		paxis : sympl.DataArray
@@ -209,11 +211,11 @@ class HorizontalBoundary:
 			1-D :class:`sympl.DataArray` representing the associated
 			numerical axis.
 		"""
-		pass
+        pass
 
-	@abc.abstractmethod
-	def get_numerical_field(self, field, field_name=None):
-		"""
+    @abc.abstractmethod
+    def get_numerical_field(self, field, field_name=None):
+        """
 		Parameters
 		----------
 		field : numpy.ndarray
@@ -227,9 +229,9 @@ class HorizontalBoundary:
 			The same field defined over the *numerical* grid.
 		"""
 
-	@abc.abstractmethod
-	def get_physical_xaxis(self, caxis, dims=None):
-		"""
+    @abc.abstractmethod
+    def get_physical_xaxis(self, caxis, dims=None):
+        """
 		Parameters
 		----------
 		caxis : sympl.DataArray
@@ -246,11 +248,11 @@ class HorizontalBoundary:
 			1-D :class:`sympl.DataArray` representing the associated
 			physical axis.
 		"""
-		pass
+        pass
 
-	@abc.abstractmethod
-	def get_physical_yaxis(self, caxis, dims=None):
-		"""
+    @abc.abstractmethod
+    def get_physical_yaxis(self, caxis, dims=None):
+        """
 		Parameters
 		----------
 		caxis : sympl.DataArray
@@ -267,11 +269,11 @@ class HorizontalBoundary:
 			1-D :class:`sympl.DataArray` representing the associated
 			physical axis.
 		"""
-		pass
+        pass
 
-	@abc.abstractmethod
-	def get_physical_field(self, field, field_name=None):
-		"""
+    @abc.abstractmethod
+    def get_physical_field(self, field, field_name=None):
+        """
 		Parameters
 		----------
 		field : numpy.ndarray
@@ -285,9 +287,11 @@ class HorizontalBoundary:
 			The same field defined over the *physical* grid.
 		"""
 
-	@abc.abstractmethod
-	def enforce_field(self, field, field_name=None, field_units=None, time=None, grid=None):
-		"""
+    @abc.abstractmethod
+    def enforce_field(
+        self, field, field_name=None, field_units=None, time=None, grid=None
+    ):
+        """
 		Enforce the horizontal boundary conditions on the passed field,
 		which is modified in-place.
 
@@ -305,8 +309,8 @@ class HorizontalBoundary:
 			The underlying numerical grid.
 		"""
 
-	def enforce_raw(self, state, field_properties=None, grid=None):
-		"""
+    def enforce_raw(self, state, field_properties=None, grid=None):
+        """
 		Enforce the horizontal boundary conditions on the passed state,
 		which is modified in-place.
 
@@ -325,28 +329,33 @@ class HorizontalBoundary:
 		grid : `tasmania.NumericalGrid`, optional
 			The underlying numerical grid.
 		"""
-		rfps = {
-			name: {'units': self.reference_state[name].attrs['units']}
-			for name in self.reference_state if name != 'time'
-		}
-		fps = rfps if field_properties is None else \
-			{key: val for key, val in field_properties.items() if key in rfps}
+        rfps = {
+            name: {"units": self.reference_state[name].attrs["units"]}
+            for name in self.reference_state
+            if name != "time"
+        }
+        fps = (
+            rfps
+            if field_properties is None
+            else {key: val for key, val in field_properties.items() if key in rfps}
+        )
 
-		fns = tuple(
-			name for name in state if name != 'time' and name in fps
-		)
+        fns = tuple(name for name in state if name != "time" and name in fps)
 
-		time = state.get('time', None)
+        time = state.get("time", None)
 
-		for field_name in fns:
-			field_units = fps[field_name].get('units', rfps[field_name]['units'])
-			self.enforce_field(
-				state[field_name], field_name=field_name,
-				field_units=field_units, time=time, grid=grid
-			)
+        for field_name in fns:
+            field_units = fps[field_name].get("units", rfps[field_name]["units"])
+            self.enforce_field(
+                state[field_name],
+                field_name=field_name,
+                field_units=field_units,
+                time=time,
+                grid=grid,
+            )
 
-	def enforce(self, state, field_names=None, grid=None):
-		"""
+    def enforce(self, state, field_names=None, grid=None):
+        """
 		Enforce the horizontal boundary conditions on the passed state,
 		which is modified in-place.
 
@@ -364,30 +373,34 @@ class HorizontalBoundary:
 		grid : `tasmania.NumericalGrid`, optional
 			The underlying numerical grid.
 		"""
-		fns = \
-			tuple(name for name in self.reference_state if name != 'time') \
-			if field_names is None else \
-			tuple(name for name in field_names if name in self.reference_state)
+        fns = (
+            tuple(name for name in self.reference_state if name != "time")
+            if field_names is None
+            else tuple(name for name in field_names if name in self.reference_state)
+        )
 
-		fns = tuple(name for name in state if name in fns)
+        fns = tuple(name for name in state if name in fns)
 
-		time = state.get('time', None)
+        time = state.get("time", None)
 
-		for field_name in fns:
-			try:
-				field_units = state[field_name].attrs['units']
-			except KeyError:
-				raise KeyError("Field {} misses units attribute.".format(field_name))
-			self.enforce_field(
-				state[field_name].values, field_name=field_name,
-				field_units=field_units, time=time, grid=grid
-			)
+        for field_name in fns:
+            try:
+                field_units = state[field_name].attrs["units"]
+            except KeyError:
+                raise KeyError("Field {} misses units attribute.".format(field_name))
+            self.enforce_field(
+                state[field_name].values,
+                field_name=field_name,
+                field_units=field_units,
+                time=time,
+                grid=grid,
+            )
 
-	@abc.abstractmethod
-	def set_outermost_layers_x(
-		self, field, field_name=None, field_units=None, time=None, grid=None
-	):
-		"""
+    @abc.abstractmethod
+    def set_outermost_layers_x(
+        self, field, field_name=None, field_units=None, time=None, grid=None
+    ):
+        """
 		Set the outermost layers along the first horizontal dimension of a
 		x-staggered field, which is modified in-place.
 
@@ -404,13 +417,13 @@ class HorizontalBoundary:
 		grid : `tasmania.NumericalGrid`, optional
 			The underlying numerical grid.
 		"""
-		pass
+        pass
 
-	@abc.abstractmethod
-	def set_outermost_layers_y(
-		self, field, field_name=None, field_units=None, time=None, grid=None
-	):
-		"""
+    @abc.abstractmethod
+    def set_outermost_layers_y(
+        self, field, field_name=None, field_units=None, time=None, grid=None
+    ):
+        """
 		Set the outermost layers along the second horizontal dimension of a
 		x-staggered field, which is modified in-place.
 
@@ -427,11 +440,11 @@ class HorizontalBoundary:
 		grid : `tasmania.NumericalGrid`, optional
 			The underlying numerical grid.
 		"""
-		pass
+        pass
 
-	@staticmethod
-	def factory(boundary_type, nx, ny, nb, **kwargs):
-		"""
+    @staticmethod
+    def factory(boundary_type, nx, ny, nb, **kwargs):
+        """
 		Parameters
 		----------
 		boundary_type : str
@@ -460,47 +473,46 @@ class HorizontalBoundary:
 		obj :
 			An object of the suitable child class.
 		"""
-		args = (nx, ny, nb)
+        args = (nx, ny, nb)
 
-		import tasmania.python.grids._horizontal_boundary as module
+        import tasmania.python.grids._horizontal_boundary as module
 
-		if boundary_type == 'relaxed':
-			if ny == 1:
-				obj = module.Relaxed1DX(*args, **kwargs)
-			elif nx == 1:
-				obj = module.Relaxed1DY(*args, **kwargs)
-			else:
-				obj = module.Relaxed(*args, **kwargs)
-		elif boundary_type == 'periodic':
-			if ny == 1:
-				obj = module.Periodic1DX(*args, **kwargs)
-			elif nx == 1:
-				obj = module.Periodic1DY(*args, **kwargs)
-			else:
-				obj = module.Periodic(*args, **kwargs)
-		elif boundary_type == 'dirichlet':
-			if ny == 1:
-				obj = module.Dirichlet1DX(*args, **kwargs)
-			elif nx == 1:
-				obj = module.Dirichlet1DY(*args, **kwargs)
-			else:
-				obj = module.Dirichlet(*args, **kwargs)
-		elif boundary_type == 'identity':
-			if ny == 1:
-				obj = module.Identity1DX(*args, **kwargs)
-			elif nx == 1:
-				obj = module.Identity1DY(*args, **kwargs)
-			else:
-				obj = module.Identity(*args, **kwargs)
-		else:
-			raise ValueError(
-				'Unknown boundary type {}. Supported types are {}.'.format(
-					boundary_type, ','.join(('relaxed', 'periodic', 'dirichlet', 'identity'))
-				)
-			)
+        if boundary_type == "relaxed":
+            if ny == 1:
+                obj = module.Relaxed1DX(*args, **kwargs)
+            elif nx == 1:
+                obj = module.Relaxed1DY(*args, **kwargs)
+            else:
+                obj = module.Relaxed(*args, **kwargs)
+        elif boundary_type == "periodic":
+            if ny == 1:
+                obj = module.Periodic1DX(*args, **kwargs)
+            elif nx == 1:
+                obj = module.Periodic1DY(*args, **kwargs)
+            else:
+                obj = module.Periodic(*args, **kwargs)
+        elif boundary_type == "dirichlet":
+            if ny == 1:
+                obj = module.Dirichlet1DX(*args, **kwargs)
+            elif nx == 1:
+                obj = module.Dirichlet1DY(*args, **kwargs)
+            else:
+                obj = module.Dirichlet(*args, **kwargs)
+        elif boundary_type == "identity":
+            if ny == 1:
+                obj = module.Identity1DX(*args, **kwargs)
+            elif nx == 1:
+                obj = module.Identity1DY(*args, **kwargs)
+            else:
+                obj = module.Identity(*args, **kwargs)
+        else:
+            raise ValueError(
+                "Unknown boundary type {}. Supported types are {}.".format(
+                    boundary_type,
+                    ",".join(("relaxed", "periodic", "dirichlet", "identity")),
+                )
+            )
 
-		obj.type = boundary_type
+        obj.type = boundary_type
 
-		return obj
-
-
+        return obj

@@ -30,32 +30,35 @@ This module contains:
 import numpy as np
 from sympl import DataArray
 
-from tasmania.python.utils.data_utils import \
-	get_physical_constants, make_dataarray_3d
+from tasmania.python.utils.data_utils import get_physical_constants, make_dataarray_3d
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 _d_physical_constants = {
-	'gas_constant_of_dry_air':
-		DataArray(287.05, attrs={'units': 'J K^-1 kg^-1'}),
-	'gravitational_acceleration':
-		DataArray(9.81, attrs={'units': 'm s^-2'}),
-	'reference_air_pressure':
-		DataArray(1.0e5, attrs={'units': 'Pa'}),
-	'specific_heat_of_dry_air_at_constant_pressure':
-		DataArray(1004.0, attrs={'units': 'J K^-1 kg^-1'}),
+    "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
+    "gravitational_acceleration": DataArray(9.81, attrs={"units": "m s^-2"}),
+    "reference_air_pressure": DataArray(1.0e5, attrs={"units": "Pa"}),
+    "specific_heat_of_dry_air_at_constant_pressure": DataArray(
+        1004.0, attrs={"units": "J K^-1 kg^-1"}
+    ),
 }
 
 
 def get_isothermal_isentropic_analytical_solution(
-	grid, x_velocity_initial, temperature, mountain_height, mountain_width,
-	x_staggered=True, z_staggered=False, physical_constants=None
+    grid,
+    x_velocity_initial,
+    temperature,
+    mountain_height,
+    mountain_width,
+    x_staggered=True,
+    z_staggered=False,
+    physical_constants=None,
 ):
-	"""
+    """
 	Get the analytical expression of a two-dimensional, hydrostatic, isentropic
 	and isothermal flow over an isolated 'Switch of Agnesi' mountain.
 
@@ -108,71 +111,93 @@ def get_isothermal_isentropic_analytical_solution(
 	Durran, D. R. (1981). _The effects of moisture on mountain lee waves_. \
 		Doctoral dissertation, Massachussets Institute of Technology.
 	"""
-	# Ensure the computational domain consists of only one grid-point in y-direction
-	assert grid.ny == 1
+    # Ensure the computational domain consists of only one grid-point in y-direction
+    assert grid.ny == 1
 
-	# Shortcuts
-	u_bar = x_velocity_initial.to_units('m s^-1').values.item()
-	T = temperature.to_units('K').values.item()
-	h = mountain_height.to_units('m').values.item()
-	a = mountain_width.to_units(grid.x.attrs['units']).values.item()
+    # Shortcuts
+    u_bar = x_velocity_initial.to_units("m s^-1").values.item()
+    T = temperature.to_units("K").values.item()
+    h = mountain_height.to_units("m").values.item()
+    a = mountain_width.to_units(grid.x.attrs["units"]).values.item()
 
-	# Get physical constants
-	pcs   = get_physical_constants(_d_physical_constants, physical_constants)
-	Rd    = pcs['gas_constant_of_dry_air']
-	g     = pcs['gravitational_acceleration']
-	p_ref = pcs['reference_air_pressure']
-	cp    = pcs['specific_heat_of_dry_air_at_constant_pressure']
+    # Get physical constants
+    pcs = get_physical_constants(_d_physical_constants, physical_constants)
+    Rd = pcs["gas_constant_of_dry_air"]
+    g = pcs["gravitational_acceleration"]
+    p_ref = pcs["reference_air_pressure"]
+    cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
-	# Compute Scorer parameter
-	scpam = np.sqrt((g**2) / (cp * T  * (u_bar**2)) - (g**2) / (4. * (Rd**2) * (T**2)))
+    # Compute Scorer parameter
+    scpam = np.sqrt(
+        (g ** 2) / (cp * T * (u_bar ** 2)) - (g ** 2) / (4.0 * (Rd ** 2) * (T ** 2))
+    )
 
-	# Build the underlying x-z grid
-	xv = grid.x_at_u_locations.values if x_staggered else grid.x.values
-	zv = grid.z_on_interface_levels.values if z_staggered else grid.z.values
-	x, theta = np.meshgrid(xv, zv, indexing='ij')
-	
-	# The topography
-	zs = h * (a**2) / ((x**2) + (a**2))
+    # Build the underlying x-z grid
+    xv = grid.x_at_u_locations.values if x_staggered else grid.x.values
+    zv = grid.z_on_interface_levels.values if z_staggered else grid.z.values
+    x, theta = np.meshgrid(xv, zv, indexing="ij")
 
-	# The geometric height
-	theta_s = grid.z_on_interface_levels.to_units('K').values[-1]
-	z = zs + cp * T / g * np.log(theta / theta_s)
-	dz_dx = - 2. * h * (a**2) * x / (((x**2) + (a**2))**2)
-	dz_dtheta = cp * T / (g * theta)
+    # The topography
+    zs = h * (a ** 2) / ((x ** 2) + (a ** 2))
 
-	# Compute mean pressure
-	p_bar = p_ref * (T / theta) ** (cp / Rd)
+    # The geometric height
+    theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
+    z = zs + cp * T / g * np.log(theta / theta_s)
+    dz_dx = -2.0 * h * (a ** 2) * x / (((x ** 2) + (a ** 2)) ** 2)
+    dz_dtheta = cp * T / (g * theta)
 
-	# Base and mean density
-	rho_ref = p_ref / (Rd * T)
-	rho_bar = p_bar / (Rd * T)
-	drho_bar_dtheta = - cp * p_ref / ((Rd**2) * (T**2)) * ((T / theta)**(cp / Rd + 1.))
+    # Compute mean pressure
+    p_bar = p_ref * (T / theta) ** (cp / Rd)
 
-	# Compute the streamlines displacement and its derivative
-	d = ((rho_bar / rho_ref)**(-0.5)) * h * a * \
-		(a * np.cos(scpam*z) - x * np.sin(scpam*z)) / ((x**2) + (a**2))
-	dd_dx = - ((rho_bar / rho_ref)**(-0.5)) * h * a / (((x**2) + (a**2))**2) * \
-			(((a * np.sin(scpam*z) + x * np.cos(scpam*z)) * scpam * dz_dx + np.sin(scpam*z)) *
-			 ((x**2) + (a**2)) + 2. * x * (a * np.cos(scpam*z) - x * np.sin(scpam*z)))
-	dd_dtheta = 0.5 * cp / (Rd * T) * ((theta / T)**(0.5 * cp / Rd - 1.)) * \
-				h * a * (a * np.cos(scpam*z) - x * np.sin(scpam*z)) / ((x**2) + (a**2)) - \
-				((theta / T)**(0.5 * cp / Rd)) * h * a * \
-				(a * np.sin(scpam*z) + x * np.cos(scpam*z)) * scpam * dz_dtheta / \
-				((x**2) + (a**2))
-	dd_dz = dd_dtheta / dz_dtheta
+    # Base and mean density
+    rho_ref = p_ref / (Rd * T)
+    rho_bar = p_bar / (Rd * T)
+    drho_bar_dtheta = (
+        -cp * p_ref / ((Rd ** 2) * (T ** 2)) * ((T / theta) ** (cp / Rd + 1.0))
+    )
 
-	# Compute the horizontal and vertical velocity
-	u_ = u_bar * (1. - drho_bar_dtheta * d / (dz_dtheta * rho_bar) - dd_dz)
-	u  = make_dataarray_3d(u_[:, np.newaxis, :], grid, 'm s^-1')
-	w_ = u_bar * dd_dx
-	w  = make_dataarray_3d(w_[:, np.newaxis, :], grid, 'm s^-1')
+    # Compute the streamlines displacement and its derivative
+    d = (
+        ((rho_bar / rho_ref) ** (-0.5))
+        * h
+        * a
+        * (a * np.cos(scpam * z) - x * np.sin(scpam * z))
+        / ((x ** 2) + (a ** 2))
+    )
+    dd_dx = (
+        -((rho_bar / rho_ref) ** (-0.5))
+        * h
+        * a
+        / (((x ** 2) + (a ** 2)) ** 2)
+        * (
+            (
+                (a * np.sin(scpam * z) + x * np.cos(scpam * z)) * scpam * dz_dx
+                + np.sin(scpam * z)
+            )
+            * ((x ** 2) + (a ** 2))
+            + 2.0 * x * (a * np.cos(scpam * z) - x * np.sin(scpam * z))
+        )
+    )
+    dd_dtheta = 0.5 * cp / (Rd * T) * ((theta / T) ** (0.5 * cp / Rd - 1.0)) * h * a * (
+        a * np.cos(scpam * z) - x * np.sin(scpam * z)
+    ) / ((x ** 2) + (a ** 2)) - ((theta / T) ** (0.5 * cp / Rd)) * h * a * (
+        a * np.sin(scpam * z) + x * np.cos(scpam * z)
+    ) * scpam * dz_dtheta / (
+        (x ** 2) + (a ** 2)
+    )
+    dd_dz = dd_dtheta / dz_dtheta
 
-	return u, w
+    # Compute the horizontal and vertical velocity
+    u_ = u_bar * (1.0 - drho_bar_dtheta * d / (dz_dtheta * rho_bar) - dd_dz)
+    u = make_dataarray_3d(u_[:, np.newaxis, :], grid, "m s^-1")
+    w_ = u_bar * dd_dx
+    w = make_dataarray_3d(w_[:, np.newaxis, :], grid, "m s^-1")
+
+    return u, w
 
 
 def convert_relative_humidity_to_water_vapor(method, p, T, rh):
-	"""
+    """
 	Convert relative humidity to water vapor mixing ratio.
 
 	Parameters
@@ -202,34 +227,34 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
 	Vaisala, O. (2013). _Humidity conversion formulas: Calculation formulas for humidity_. \
 		Retrieved from `<https://www.vaisala.com>`_.
 	"""
-	# Extract the raw arrays
-	p_  = p.to_units('Pa').values
-	T_  = T.to_units('K').values
-	rh_ = rh.to_units('1').values
+    # Extract the raw arrays
+    p_ = p.to_units("Pa").values
+    T_ = T.to_units("K").values
+    rh_ = rh.to_units("1").values
 
-	# Get the saturation water vapor pressure
-	if method == 'tetens':
-		p_sat = tetens_formula(T_)
-	elif method == 'goff_gratch':
-		p_sat = goff_gratch_formula(T_)
-	else:
-		raise ValueError(
-			"Unknown formula to compute the saturation water vapor pressure. "
-			"Available options are: ''teten'', ''goff_gratch''."
-		)
+    # Get the saturation water vapor pressure
+    if method == "tetens":
+        p_sat = tetens_formula(T_)
+    elif method == "goff_gratch":
+        p_sat = goff_gratch_formula(T_)
+    else:
+        raise ValueError(
+            "Unknown formula to compute the saturation water vapor pressure. "
+            "Available options are: ''teten'', ''goff_gratch''."
+        )
 
-	# Compute the water vapor pressure
-	pw = rh_ * p_sat
+    # Compute the water vapor pressure
+    pw = rh_ * p_sat
 
-	# Compute the mixing ratio of water vapor
-	B = 0.62198
-	qv = np.where(p_sat >= 0.616 * p_, 0., B * pw / (p_ - pw))
+    # Compute the mixing ratio of water vapor
+    B = 0.62198
+    qv = np.where(p_sat >= 0.616 * p_, 0.0, B * pw / (p_ - pw))
 
-	return qv
+    return qv
 
 
 def tetens_formula(t):
-	"""
+    """
 	Compute the saturation vapor pressure over water at a given temperature,
 	according to the Tetens formula.
 
@@ -243,18 +268,18 @@ def tetens_formula(t):
 	numpy.ndarray :
 		The saturation water vapor pressure in [Pa].
 	"""
-	pw = 610.78
-	aw = 17.27
-	tr = 273.16
-	bw = 35.86
+    pw = 610.78
+    aw = 17.27
+    tr = 273.16
+    bw = 35.86
 
-	e = pw * np.exp(aw * (t - tr) / (t - bw))
+    e = pw * np.exp(aw * (t - tr) / (t - bw))
 
-	return e
+    return e
 
 
 def goff_gratch_formula(t):
-	"""
+    """
 	Compute the saturation vapor pressure over water at a given temperature,
 	according to the Goff-Gratch formula.
 
@@ -273,20 +298,20 @@ def goff_gratch_formula(t):
 	Goff, J. A., and S. Gratch. (1946). `Low-pressure properties of water from -160 to 212 F`. \
 		*Transactions of the American Society of Heating and Ventilating Engineers*, 95-122.
 	"""
-	c1 = 7.90298
-	c2 = 5.02808
-	c3 = 1.3816e-7
-	c4 = 11.344
-	c5 = 8.1328e-3
-	c6 = 3.49149
-	t_st = 373.15
-	e_st = 1013.25e2
+    c1 = 7.90298
+    c2 = 5.02808
+    c3 = 1.3816e-7
+    c4 = 11.344
+    c5 = 8.1328e-3
+    c6 = 3.49149
+    t_st = 373.15
+    e_st = 1013.25e2
 
-	e = e_st * 10 ** (
-		- c1 * (t_st / t - 1.)
-		+ c2 * np.log10(t_st / t)
-		- c3 * (10. ** (c4 * (1. - t / t_st)) - 1.)
-		+ c5 * (10 ** (- c6 * (t_st / t - 1.)) - 1.)
-	)
+    e = e_st * 10 ** (
+        -c1 * (t_st / t - 1.0)
+        + c2 * np.log10(t_st / t)
+        - c3 * (10.0 ** (c4 * (1.0 - t / t_st)) - 1.0)
+        + c5 * (10 ** (-c6 * (t_st / t - 1.0)) - 1.0)
+    )
 
-	return e
+    return e

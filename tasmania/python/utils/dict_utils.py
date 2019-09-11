@@ -30,7 +30,7 @@ This module contains:
 
 
 def add(state_1, state_2, units=None, unshared_variables_in_output=True):
-	"""
+    """
 	Sum two dictionaries of :class:`sympl.DataArray`\s.
 
 	Parameters
@@ -58,41 +58,49 @@ def add(state_1, state_2, units=None, unshared_variables_in_output=True):
 	dict :
 		The sum of the two input dictionaries.
 	"""
-	units = {} if units is None else units
+    units = {} if units is None else units
 
-	try:
-		out_state = {'time': state_1['time']}
-	except KeyError:
-		out_state = {}
+    try:
+        out_state = {"time": state_1["time"]}
+    except KeyError:
+        out_state = {}
 
-	for key in set().union(state_1.keys(), state_2.keys()):
-		if key != 'time':
-			if (state_1.get(key, None) is not None) and (state_2.get(key, None) is not None):
-				if units.get(key, None) is not None:
-					out_state[key] = state_1[key].to_units(units[key]) + \
-									 state_2[key].to_units(units[key])
-				else:
-					out_state[key] = state_1[key] + \
-									 state_2[key].to_units(state_1[key].attrs['units'])
+    for key in set().union(state_1.keys(), state_2.keys()):
+        if key != "time":
+            if (state_1.get(key, None) is not None) and (
+                state_2.get(key, None) is not None
+            ):
+                if units.get(key, None) is not None:
+                    out_state[key] = state_1[key].to_units(units[key]) + state_2[
+                        key
+                    ].to_units(units[key])
+                else:
+                    out_state[key] = state_1[key] + state_2[key].to_units(
+                        state_1[key].attrs["units"]
+                    )
 
-			if unshared_variables_in_output:
-				if (state_1.get(key, None) is not None) and (state_2.get(key, None) is None):
-					if units.get(key, None) is not None:
-						out_state[key] = state_1[key].to_units(units[key])
-					else:
-						out_state[key] = state_1[key]
+            if unshared_variables_in_output:
+                if (state_1.get(key, None) is not None) and (
+                    state_2.get(key, None) is None
+                ):
+                    if units.get(key, None) is not None:
+                        out_state[key] = state_1[key].to_units(units[key])
+                    else:
+                        out_state[key] = state_1[key]
 
-				if (state_1.get(key, None) is None) and (state_2.get(key, None) is not None):
-					if units.get(key, None) is not None:
-						out_state[key] = state_2[key].to_units(units[key])
-					else:
-						out_state[key] = state_2[key]
+                if (state_1.get(key, None) is None) and (
+                    state_2.get(key, None) is not None
+                ):
+                    if units.get(key, None) is not None:
+                        out_state[key] = state_2[key].to_units(units[key])
+                    else:
+                        out_state[key] = state_2[key]
 
-	return out_state
+    return out_state
 
 
 def subtract(state_1, state_2, units=None, unshared_variables_in_output=True):
-	"""
+    """
 	Subtract two dictionaries of :class:`sympl.DataArray`\s.
 
 	Parameters
@@ -121,41 +129,49 @@ def subtract(state_1, state_2, units=None, unshared_variables_in_output=True):
 	dict :
 		The subtraction of the two input dictionaries.
 	"""
-	units = {} if units is None else units
+    units = {} if units is None else units
 
-	try:
-		out_state = {'time': state_1['time']}
-	except KeyError:
-		out_state = {}
+    try:
+        out_state = {"time": state_1["time"]}
+    except KeyError:
+        out_state = {}
 
-	for key in set().union(state_1.keys(), state_2.keys()):
-		if key != 'time':
-			if (state_1.get(key, None) is not None) and (state_2.get(key, None) is not None):
-				if units.get(key, None) is not None:
-					out_state[key] = state_1[key].to_units(units[key]) - \
-									 state_2[key].to_units(units[key])
-				else:
-					out_state[key] = state_1[key] - \
-									 state_2[key].to_units(state_1[key].attrs['units'])
+    for key in set().union(state_1.keys(), state_2.keys()):
+        if key != "time":
+            if (state_1.get(key, None) is not None) and (
+                state_2.get(key, None) is not None
+            ):
+                if units.get(key, None) is not None:
+                    out_state[key] = state_1[key].to_units(units[key]) - state_2[
+                        key
+                    ].to_units(units[key])
+                else:
+                    out_state[key] = state_1[key] - state_2[key].to_units(
+                        state_1[key].attrs["units"]
+                    )
 
-			if unshared_variables_in_output:
-				if (state_1.get(key, None) is not None) and (state_2.get(key, None) is None):
-					if units.get(key, None) is not None:
-						out_state[key] = state_1[key].to_units(units[key])
-					else:
-						out_state[key] = state_1[key]
+            if unshared_variables_in_output:
+                if (state_1.get(key, None) is not None) and (
+                    state_2.get(key, None) is None
+                ):
+                    if units.get(key, None) is not None:
+                        out_state[key] = state_1[key].to_units(units[key])
+                    else:
+                        out_state[key] = state_1[key]
 
-				if (state_1.get(key, None) is None) and (state_2.get(key, None) is not None):
-					if units.get(key, None) is not None:
-						out_state[key] = - state_2[key].to_units(units[key])
-					else:
-						out_state[key] = - state_2[key]
+                if (state_1.get(key, None) is None) and (
+                    state_2.get(key, None) is not None
+                ):
+                    if units.get(key, None) is not None:
+                        out_state[key] = -state_2[key].to_units(units[key])
+                    else:
+                        out_state[key] = -state_2[key]
 
-	return out_state
+    return out_state
 
 
 def multiply(factor, state, units=None):
-	"""
+    """
 	Scale all :class:`sympl.DataArray`\s contained in a dictionary by a scalar factor.
 
 	Parameters
@@ -177,28 +193,28 @@ def multiply(factor, state, units=None):
 	dict :
 		The scaled input dictionary.
 	"""
-	units = {} if units is None else units
+    units = {} if units is None else units
 
-	try:
-		out_state = {'time': state['time']}
-	except KeyError:
-		out_state = {}
+    try:
+        out_state = {"time": state["time"]}
+    except KeyError:
+        out_state = {}
 
-	for key in state.keys():
-		if key != 'time':
-			if units.get(key, None) is not None:
-				val = state[key].to_units(units[key])
-				out_state[key] = factor * val
-				out_state[key].attrs.update(val.attrs)
-			else:
-				out_state[key] = factor * state[key]
-				out_state[key].attrs.update(state[key].attrs)
+    for key in state.keys():
+        if key != "time":
+            if units.get(key, None) is not None:
+                val = state[key].to_units(units[key])
+                out_state[key] = factor * val
+                out_state[key].attrs.update(val.attrs)
+            else:
+                out_state[key] = factor * state[key]
+                out_state[key].attrs.update(state[key].attrs)
 
-	return out_state
+    return out_state
 
 
 def copy(state_1, state_2):
-	"""
+    """
 	Overwrite the :class:`sympl.DataArrays` in one dictionary using the
 	:class:`sympl.DataArrays` contained in another dictionary.
 
@@ -209,9 +225,11 @@ def copy(state_1, state_2):
 	state_2 : dict
 		The source dictionary.
 	"""
-	if 'time' in state_2:
-		state_1['time'] = state_2['time']
+    if "time" in state_2:
+        state_1["time"] = state_2["time"]
 
-	shared_keys = tuple(key for key in state_1 if key in state_2 and key != 'time')
-	for key in shared_keys:
-		state_1[key].values[...] = state_2[key].to_units(state_1[key].attrs['units']).values[...]
+    shared_keys = tuple(key for key in state_1 if key in state_2 and key != "time")
+    for key in shared_keys:
+        state_1[key].values[...] = (
+            state_2[key].to_units(state_1[key].attrs["units"]).values[...]
+        )

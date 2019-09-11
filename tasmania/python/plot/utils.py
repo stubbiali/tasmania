@@ -40,7 +40,7 @@ d_tol = 1e-10
 
 
 def equal_to(a, b, tol=d_tol):
-	"""
+    """
 	Compare floating point numbers, or arrays of floating point numbers,
 	properly accounting for round-off errors.
 
@@ -59,11 +59,11 @@ def equal_to(a, b, tol=d_tol):
 		:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`,
 		:obj:`False` otherwise.
 	"""
-	return math.fabs(a - b) <= tol
+    return math.fabs(a - b) <= tol
 
 
 def smaller_than(a, b, tol=d_tol):
-	"""
+    """
 	Compare floating point numbers, or arrays of floating point numbers,
 	properly accounting for round-off errors.
 
@@ -82,11 +82,11 @@ def smaller_than(a, b, tol=d_tol):
 		:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`,
 		:obj:`False` otherwise.
 	"""
-	return a < (b - tol)
+    return a < (b - tol)
 
 
 def smaller_or_equal_than(a, b, tol=d_tol):
-	"""
+    """
 	Compare floating point numbers or arrays of floating point numbers,
 	properly accounting for round-off errors.
 
@@ -105,11 +105,11 @@ def smaller_or_equal_than(a, b, tol=d_tol):
 		:obj:`True` if :data:`a` is smaller than or equal to :data:`b`
 		up to :data:`tol`, :obj:`False` otherwise.
 	"""
-	return a <= (b + tol)
+    return a <= (b + tol)
 
 
 def greater_than(a, b, tol=d_tol):
-	"""
+    """
 	Compare floating point numbers, or arrays of floating point numbers,
 	properly accounting for round-off errors.
 
@@ -128,11 +128,11 @@ def greater_than(a, b, tol=d_tol):
 		:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`,
 		:obj:`False` otherwise.
 	"""
-	return a > (b + tol)
+    return a > (b + tol)
 
 
 def greater_or_equal_than(a, b, tol=d_tol):
-	"""
+    """
 	Compare floating point numbers, or arrays of floating point numbers,
 	properly accounting for round-off errors.
 
@@ -151,11 +151,11 @@ def greater_or_equal_than(a, b, tol=d_tol):
 		:obj:`True` if :data:`a` is greater than or equal to :data:`b`
 		up to :data:`tol`, :obj:`False` otherwise.
 	"""
-	return a >= (b - tol)
+    return a >= (b - tol)
 
 
 def assert_sequence(seq, reflen=None, reftype=None):
-	"""
+    """
 	Assert if a sequence has appropriate length and contains objects
 	of appropriate type.
 
@@ -168,26 +168,31 @@ def assert_sequence(seq, reflen=None, reftype=None):
 	reftype : obj
 		The reference type, or a list of reference types.
 	"""
-	if reflen is not None:
-		assert len(seq) == reflen, \
-			'The input sequence has length {}, but {} was expected.' \
-				.format(len(seq), reflen)
+    if reflen is not None:
+        assert (
+            len(seq) == reflen
+        ), "The input sequence has length {}, but {} was expected.".format(
+            len(seq), reflen
+        )
 
-	if reftype is not None:
-		if type(reftype) is not tuple:
-			reftype = (reftype, )
-		for item in seq:
-			error_msg = 'An item of the input sequence is of type ' \
-						+ str(type(item)) + ', but one of [ '
-			for reftype_ in reftype:
-				error_msg += str(reftype_) + ' '
-			error_msg += '] was expected.'
+    if reftype is not None:
+        if type(reftype) is not tuple:
+            reftype = (reftype,)
+        for item in seq:
+            error_msg = (
+                "An item of the input sequence is of type "
+                + str(type(item))
+                + ", but one of [ "
+            )
+            for reftype_ in reftype:
+                error_msg += str(reftype_) + " "
+            error_msg += "] was expected."
 
-			assert isinstance(item, reftype), error_msg
+            assert isinstance(item, reftype), error_msg
 
 
 def convert_datetime64_to_datetime(time):
-	"""
+    """
 	Convert :class:`numpy.datetime64` to :class:`datetime.datetime`.
 
 	Parameters
@@ -205,16 +210,16 @@ def convert_datetime64_to_datetime(time):
 	https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
 	https://github.com/bokeh/bokeh/pull/6192/commits/48aea137edbabe731fb9a9c160ff4ab2b463e036.
 	"""
-	# Safeguard check
-	if type(time) == datetime:
-		return time
+    # Safeguard check
+    if type(time) == datetime:
+        return time
 
-	ts = (time - np.datetime64('1970-01-01')) / np.timedelta64(1, 's')
-	return datetime.utcfromtimestamp(ts)
+    ts = (time - np.datetime64("1970-01-01")) / np.timedelta64(1, "s")
+    return datetime.utcfromtimestamp(ts)
 
 
 def get_time_string(seconds):
-	"""
+    """
 	Convert seconds into a string of the form hours:minutes:seconds.
 
 	Parameters
@@ -222,24 +227,27 @@ def get_time_string(seconds):
 	seconds : float
 		Total seconds.
 	"""
-	s = ''
+    s = ""
 
-	hours = int(seconds / (60*60))
-	s += '0{}:'.format(hours) if hours < 10 else '{}:'.format(hours)
-	remainder = seconds - hours*60*60
+    hours = int(seconds / (60 * 60))
+    s += "0{}:".format(hours) if hours < 10 else "{}:".format(hours)
+    remainder = seconds - hours * 60 * 60
 
-	minutes = int(remainder / 60)
-	s += '0{}:'.format(minutes) if minutes < 10 else '{}:'.format(minutes)
-	remainder -= minutes*60
+    minutes = int(remainder / 60)
+    s += "0{}:".format(minutes) if minutes < 10 else "{}:".format(minutes)
+    remainder -= minutes * 60
 
-	s += '0{}'.format(int(remainder)) if int(remainder) < 10 \
-		else '{}'.format(int(remainder))
+    s += (
+        "0{}".format(int(remainder))
+        if int(remainder) < 10
+        else "{}".format(int(remainder))
+    )
 
-	return s
+    return s
 
 
 def to_units(field, units=None):
-	"""
+    """
 	Convert units of a field.
 
 	Parameters
@@ -254,4 +262,4 @@ def to_units(field, units=None):
 	sympl.DataArray :
 		The converted field.
 	"""
-	return field if units is None else field.to_units(units)
+    return field if units is None else field.to_units(units)

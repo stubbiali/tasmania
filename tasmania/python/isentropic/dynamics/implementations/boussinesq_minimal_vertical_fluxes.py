@@ -27,78 +27,88 @@ This module contains:
 	ThirdOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux)
 	FifthOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux)
 """
-from tasmania.python.isentropic.dynamics.vertical_fluxes import \
-	IsentropicBoussinesqMinimalVerticalFlux
-from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import \
-	Upwind as CoreUpwind, get_upwind_flux, \
-	Centered as CoreCentered, get_centered_flux, \
-	ThirdOrderUpwind as CoreThirdOrderUpwind, get_third_order_upwind_flux, \
-	FifthOrderUpwind as CoreFifthOrderUpwind, get_fifth_order_upwind_flux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import (
+    IsentropicBoussinesqMinimalVerticalFlux,
+)
+from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes import (
+    Upwind as CoreUpwind,
+    get_upwind_flux,
+    Centered as CoreCentered,
+    get_centered_flux,
+    ThirdOrderUpwind as CoreThirdOrderUpwind,
+    get_third_order_upwind_flux,
+    FifthOrderUpwind as CoreFifthOrderUpwind,
+    get_fifth_order_upwind_flux,
+)
 
 
 class Upwind(IsentropicBoussinesqMinimalVerticalFlux):
-	"""
+    """
 	Upwind scheme.
 	"""
-	extent = 1
-	order = 1
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
-		self._core = CoreUpwind(grid, moist)
+    extent = 1
+    order = 1
 
-	def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-		return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
-		return_list.insert(3, get_upwind_flux(k, w, ddmtg))
-		return return_list
+    def __init__(self, grid, moist):
+        super().__init__(grid, moist)
+        self._core = CoreUpwind(grid, moist)
+
+    def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+        return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
+        return_list.insert(3, get_upwind_flux(k, w, ddmtg))
+        return return_list
 
 
 class Centered(IsentropicBoussinesqMinimalVerticalFlux):
-	"""
+    """
 	Centered scheme.
 	"""
-	extent = 1
-	order = 2
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
-		self._core = CoreCentered(grid, moist)
+    extent = 1
+    order = 2
 
-	def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-		return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
-		return_list.insert(3, get_centered_flux(k, w, ddmtg))
-		return return_list
+    def __init__(self, grid, moist):
+        super().__init__(grid, moist)
+        self._core = CoreCentered(grid, moist)
+
+    def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+        return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
+        return_list.insert(3, get_centered_flux(k, w, ddmtg))
+        return return_list
 
 
 class ThirdOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux):
-	"""
+    """
 	Third-order upwind scheme.
 	"""
-	extent = 2
-	order = 3
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
-		self._core = CoreThirdOrderUpwind(grid, moist)
+    extent = 2
+    order = 3
 
-	def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-		return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
-		return_list.insert(3, get_third_order_upwind_flux(k, w, ddmtg))
-		return return_list
+    def __init__(self, grid, moist):
+        super().__init__(grid, moist)
+        self._core = CoreThirdOrderUpwind(grid, moist)
+
+    def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+        return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
+        return_list.insert(3, get_third_order_upwind_flux(k, w, ddmtg))
+        return return_list
 
 
 class FifthOrderUpwind(IsentropicBoussinesqMinimalVerticalFlux):
-	"""
+    """
 	Fifth-order upwind scheme.
 	"""
-	extent = 3
-	order = 5
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
-		self._core = CoreFifthOrderUpwind(grid, moist)
+    extent = 3
+    order = 5
 
-	def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
-		return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
-		return_list.insert(3, get_fifth_order_upwind_flux(k, w, ddmtg))
-		return return_list
+    def __init__(self, grid, moist):
+        super().__init__(grid, moist)
+        self._core = CoreFifthOrderUpwind(grid, moist)
+
+    def __call__(self, k, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
+        return_list = self._core(k, w, s, su, sv, sqv, sqc, sqr)
+        return_list.insert(3, get_fifth_order_upwind_flux(k, w, ddmtg))
+        return return_list

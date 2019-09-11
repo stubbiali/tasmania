@@ -27,11 +27,12 @@ from tasmania.python.utils.data_utils import make_dataarray_3d
 
 
 class ZhaoSolutionFactory:
-	"""
+    """
 	A class generating valid velocity fields for the Zhao test case.
 	"""
-	def __init__(self, initial_time, eps):
-		"""
+
+    def __init__(self, initial_time, eps):
+        """
 		Parameters
 		----------
 		initial_time : datetime.datetime
@@ -40,16 +41,21 @@ class ZhaoSolutionFactory:
         	1-item :class:`sympl.DataArray` representing the diffusivity.
         	The units should be compatible with 'm s^-2'.
 		"""
-		self._itime = initial_time
-		self._eps = eps.to_units('m^2 s^-1').values.item()
+        self._itime = initial_time
+        self._eps = eps.to_units("m^2 s^-1").values.item()
 
-		self._ureg = pint.UnitRegistry()
+        self._ureg = pint.UnitRegistry()
 
-	def __call__(
-		self, time, grid, slice_x=None, slice_y=None,
-		field_name='x_velocity', field_units=None
-	):
-		"""
+    def __call__(
+        self,
+        time,
+        grid,
+        slice_x=None,
+        slice_y=None,
+        field_name="x_velocity",
+        field_units=None,
+    ):
+        """
 		Parameters
 		----------
 		time : datetime.datetime
@@ -76,49 +82,71 @@ class ZhaoSolutionFactory:
 		numpy.ndarray :
 			The computed model variable.
 		"""
-		eps = self._eps
-		ureg = self._ureg
+        eps = self._eps
+        ureg = self._ureg
 
-		slice_x = slice(0, grid.nx) if slice_x is None else slice_x
-		slice_y = slice(0, grid.ny) if slice_y is None else slice_y
+        slice_x = slice(0, grid.nx) if slice_x is None else slice_x
+        slice_y = slice(0, grid.ny) if slice_y is None else slice_y
 
-		mi = slice_x.stop - slice_x.start
-		mj = slice_y.stop - slice_y.start
+        mi = slice_x.stop - slice_x.start
+        mj = slice_y.stop - slice_y.start
 
-		x = grid.x.to_units('m').values[slice_x]
-		x = np.tile(x[:, np.newaxis, np.newaxis], (1, mj, grid.nz))
-		y = grid.y.to_units('m').values[slice_y]
-		y = np.tile(y[np.newaxis, :, np.newaxis], (mi, 1, grid.nz))
+        x = grid.x.to_units("m").values[slice_x]
+        x = np.tile(x[:, np.newaxis, np.newaxis], (1, mj, grid.nz))
+        y = grid.y.to_units("m").values[slice_y]
+        y = np.tile(y[np.newaxis, :, np.newaxis], (mi, 1, grid.nz))
 
-		t = (time - self._itime).total_seconds()
+        t = (time - self._itime).total_seconds()
 
-		if field_units is None or field_units == 'm s^-1':
-			factor = 1.0
-		else:
-			factor = (1.0 * ureg.meter / ureg.second).to(field_units).magnitude
+        if field_units is None or field_units == "m s^-1":
+            factor = 1.0
+        else:
+            factor = (1.0 * ureg.meter / ureg.second).to(field_units).magnitude
 
-		if field_name == 'x_velocity':
-			tmp = - 2.0 * eps * 2.0 * np.pi * np.exp(- 5.0 * np.pi**2 * eps * t) * \
-				np.cos(2.0 * np.pi * x) * np.sin(np.pi * y) / \
-				(2.0 + np.exp(- 5.0 * np.pi**2 * eps * t) *
-				 np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
-		elif field_name == 'y_velocity':
-			tmp = - 2.0 * eps * np.pi * np.exp(- 5.0 * np.pi**2 * eps * t) * \
-				np.sin(2.0 * np.pi * x) * np.cos(np.pi * y) / \
-				(2.0 + np.exp(- 5.0 * np.pi**2 * eps * t) *
-				 np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
-		else:
-			raise ValueError()
+        if field_name == "x_velocity":
+            tmp = (
+                -2.0
+                * eps
+                * 2.0
+                * np.pi
+                * np.exp(-5.0 * np.pi ** 2 * eps * t)
+                * np.cos(2.0 * np.pi * x)
+                * np.sin(np.pi * y)
+                / (
+                    2.0
+                    + np.exp(-5.0 * np.pi ** 2 * eps * t)
+                    * np.sin(2.0 * np.pi * x)
+                    * np.sin(np.pi * y)
+                )
+            )
+        elif field_name == "y_velocity":
+            tmp = (
+                -2.0
+                * eps
+                * np.pi
+                * np.exp(-5.0 * np.pi ** 2 * eps * t)
+                * np.sin(2.0 * np.pi * x)
+                * np.cos(np.pi * y)
+                / (
+                    2.0
+                    + np.exp(-5.0 * np.pi ** 2 * eps * t)
+                    * np.sin(2.0 * np.pi * x)
+                    * np.sin(np.pi * y)
+                )
+            )
+        else:
+            raise ValueError()
 
-		return factor * tmp
+        return factor * tmp
 
 
 class ZhaoStateFactory:
-	"""
+    """
 	A class generating valid states for the Zhao test case.
 	"""
-	def __init__(self, initial_time, eps):
-		"""
+
+    def __init__(self, initial_time, eps):
+        """
 		Parameters
 		----------
 		initial_time : datetime
@@ -127,10 +155,10 @@ class ZhaoStateFactory:
         	1-item :class:`sympl.DataArray` representing the diffusivity.
         	The units should be compatible with 'm s^-2'.
 		"""
-		self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
+        self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
 
-	def __call__(self, time, grid):
-		"""
+    def __call__(self, time, grid):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -143,11 +171,11 @@ class ZhaoStateFactory:
 		dict :
 			The computed model state dictionary.
 		"""
-		u = self._solution_factory(time, grid, field_name='x_velocity')
-		v = self._solution_factory(time, grid, field_name='y_velocity')
+        u = self._solution_factory(time, grid, field_name="x_velocity")
+        v = self._solution_factory(time, grid, field_name="y_velocity")
 
-		return {
-			'time': time,
-			'x_velocity': make_dataarray_3d(u, grid, 'm s^-1', 'x_velocity'),
-			'y_velocity': make_dataarray_3d(v, grid, 'm s^-1', 'y_velocity'),
-		}
+        return {
+            "time": time,
+            "x_velocity": make_dataarray_3d(u, grid, "m s^-1", "x_velocity"),
+            "y_velocity": make_dataarray_3d(v, grid, "m s^-1", "y_velocity"),
+        }

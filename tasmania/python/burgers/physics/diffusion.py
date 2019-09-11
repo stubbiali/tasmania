@@ -32,22 +32,34 @@ from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float64
+    datatype = np.float64
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):
-	"""
+    """
 	A :class:`tasmania.TendencyComponent` calculating the tendencies
 	due to diffusion for the 2-D Burgers equations.
 	"""
-	def __init__(
-		self, domain, grid_type, diffusion_type, diffusion_coeff, *,
-		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
-		exec_info=None, halo=None, rebuild=False, **kwargs
-	):
-		"""
+
+    def __init__(
+        self,
+        domain,
+        grid_type,
+        diffusion_type,
+        diffusion_coeff,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -81,61 +93,70 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 		kwargs :
 			Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
 		"""
-		super().__init__(domain, grid_type, **kwargs)
+        super().__init__(domain, grid_type, **kwargs)
 
-		nx, ny = self.grid.grid_xy.nx, self.grid.grid_xy.ny
-		dx = self.grid.grid_xy.dx.to_units('m').values.item()
-		dy = self.grid.grid_xy.dy.to_units('m').values.item()
+        nx, ny = self.grid.grid_xy.nx, self.grid.grid_xy.ny
+        dx = self.grid.grid_xy.dx.to_units("m").values.item()
+        dy = self.grid.grid_xy.dy.to_units("m").values.item()
 
-		self._diffuser = HorizontalDiffusion.factory(
-			diffusion_type, (nx, ny, 1), dx, dy,
-			diffusion_coeff=diffusion_coeff.to_units('m^2 s^-1').values.item(),
-			diffusion_coeff_max=diffusion_coeff.to_units('m^2 s^-1').values.item(),
-			diffusion_damp_depth=0, nb=self.horizontal_boundary.nb,
-			backend=backend, backend_opts=backend_opts, build_info=build_info,
-			dtype=dtype, exec_info=exec_info, halo=halo, rebuild=rebuild
-		)
+        self._diffuser = HorizontalDiffusion.factory(
+            diffusion_type,
+            (nx, ny, 1),
+            dx,
+            dy,
+            diffusion_coeff=diffusion_coeff.to_units("m^2 s^-1").values.item(),
+            diffusion_coeff_max=diffusion_coeff.to_units("m^2 s^-1").values.item(),
+            diffusion_damp_depth=0,
+            nb=self.horizontal_boundary.nb,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=dtype,
+            exec_info=exec_info,
+            halo=halo,
+            rebuild=rebuild,
+        )
 
-		storage_shape = (nx, ny, 1)
-		descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
-		self._in_u = gt.storage.zeros(descriptor, backend=backend)
-		self._in_v = gt.storage.zeros(descriptor, backend=backend)
-		self._out_u_tnd = gt.storage.zeros(descriptor, backend=backend)
-		self._out_v_tnd = gt.storage.zeros(descriptor, backend=backend)
+        storage_shape = (nx, ny, 1)
+        descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
+        self._in_u = gt.storage.zeros(descriptor, backend=backend)
+        self._in_v = gt.storage.zeros(descriptor, backend=backend)
+        self._out_u_tnd = gt.storage.zeros(descriptor, backend=backend)
+        self._out_v_tnd = gt.storage.zeros(descriptor, backend=backend)
 
-	@property
-	def input_properties(self):
-		g = self.grid
-		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
-		return {
-			'x_velocity': {'dims': dims, 'units': 'm s^-1'},
-			'y_velocity': {'dims': dims, 'units': 'm s^-1'},
-		}
+    @property
+    def input_properties(self):
+        g = self.grid
+        dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
+        return {
+            "x_velocity": {"dims": dims, "units": "m s^-1"},
+            "y_velocity": {"dims": dims, "units": "m s^-1"},
+        }
 
-	@property
-	def tendency_properties(self):
-		g = self.grid
-		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
-		return {
-			'x_velocity': {'dims': dims, 'units': 'm s^-2'},
-			'y_velocity': {'dims': dims, 'units': 'm s^-2'},
-		}
+    @property
+    def tendency_properties(self):
+        g = self.grid
+        dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
+        return {
+            "x_velocity": {"dims": dims, "units": "m s^-2"},
+            "y_velocity": {"dims": dims, "units": "m s^-2"},
+        }
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-	def array_call(self, state):
-		self._in_u.data[...] = state['x_velocity']
-		self._in_v.data[...] = state['y_velocity']
+    def array_call(self, state):
+        self._in_u.data[...] = state["x_velocity"]
+        self._in_v.data[...] = state["y_velocity"]
 
-		self._diffuser(self._in_u, self._out_u_tnd)
-		self._diffuser(self._in_v, self._out_v_tnd)
+        self._diffuser(self._in_u, self._out_u_tnd)
+        self._diffuser(self._in_v, self._out_v_tnd)
 
-		tendencies = {
-			'x_velocity': self._out_u_tnd.data,
-			'y_velocity': self._out_v_tnd.data
-		}
-		diagnostics = {}
+        tendencies = {
+            "x_velocity": self._out_u_tnd.data,
+            "y_velocity": self._out_v_tnd.data,
+        }
+        diagnostics = {}
 
-		return tendencies, diagnostics
+        return tendencies, diagnostics

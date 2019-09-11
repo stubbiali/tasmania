@@ -25,23 +25,30 @@ This module contains:
 	ConcurrentCoupling
 """
 import copy
-from sympl import \
-	DiagnosticComponent, DiagnosticComponentComposite as SymplDiagnosticComponentComposite, \
-	TendencyComponent, TendencyComponentComposite, \
-	ImplicitTendencyComponent, ImplicitTendencyComponentComposite, \
-	combine_component_properties
+from sympl import (
+    DiagnosticComponent,
+    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
+    TendencyComponent,
+    TendencyComponentComposite,
+    ImplicitTendencyComponent,
+    ImplicitTendencyComponentComposite,
+    combine_component_properties,
+)
 from sympl._core.units import clean_units
 
-from tasmania.python.framework.composite import \
-	DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite
+from tasmania.python.framework.composite import (
+    DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
+)
 from tasmania.python.utils.dict_utils import add
-from tasmania.python.utils.framework_utils import \
-	check_properties_compatibility, get_input_properties
+from tasmania.python.utils.framework_utils import (
+    check_properties_compatibility,
+    get_input_properties,
+)
 from tasmania.python.utils.utils import assert_sequence
 
 
 class ConcurrentCoupling:
-	"""
+    """
 	Callable class which automates the execution of a bundle of physical
 	parameterizations pursuing the *explicit* concurrent coupling strategy.
 
@@ -68,22 +75,24 @@ class ConcurrentCoupling:
 		A simple comparison of four physics-dynamics coupling schemes. \
 		*Mon. Weather Rev.*, *130*:3129-3135.
 	"""
-	allowed_diagnostic_type = (
-		DiagnosticComponent,
-		SymplDiagnosticComponentComposite,
-		TasmaniaDiagnosticComponentComposite,
-	)
-	allowed_tendency_type = (
-		TendencyComponent,
-		TendencyComponentComposite,
-		ImplicitTendencyComponent,
-		ImplicitTendencyComponentComposite,
-	)
-	allowed_component_type = \
-		allowed_diagnostic_type + allowed_tendency_type + (__name__, )
 
-	def __init__(self, *args, execution_policy='serial', time_units='s'):
-		"""
+    allowed_diagnostic_type = (
+        DiagnosticComponent,
+        SymplDiagnosticComponentComposite,
+        TasmaniaDiagnosticComponentComposite,
+    )
+    allowed_tendency_type = (
+        TendencyComponent,
+        TendencyComponentComposite,
+        ImplicitTendencyComponent,
+        ImplicitTendencyComponentComposite,
+    )
+    allowed_component_type = (
+        allowed_diagnostic_type + allowed_tendency_type + (__name__,)
+    )
+
+    def __init__(self, *args, execution_policy="serial", time_units="s"):
+        """
 		Parameters
 		----------
 		*args : obj
@@ -115,61 +124,66 @@ class ConcurrentCoupling:
 		time_units : `str`, optional
 			The time units used within this object. Defaults to 's', i.e., seconds.
 		"""
-		assert_sequence(args, reftype=self.__class__.allowed_component_type)
-		self._component_list = args
+        assert_sequence(args, reftype=self.__class__.allowed_component_type)
+        self._component_list = args
 
-		self._policy = execution_policy
-		if execution_policy == 'serial':
-			self._call = self._call_serial
-		else:
-			self._call = self._call_asparallel
+        self._policy = execution_policy
+        if execution_policy == "serial":
+            self._call = self._call_serial
+        else:
+            self._call = self._call_asparallel
 
-		# Set properties
-		self.input_properties = self._init_input_properties()
-		self.tendency_properties = self._init_tendency_properties()
-		self.diagnostic_properties = self._init_diagnostic_properties()
+        # Set properties
+        self.input_properties = self._init_input_properties()
+        self.tendency_properties = self._init_tendency_properties()
+        self.diagnostic_properties = self._init_diagnostic_properties()
 
-		self._tunits = time_units
+        self._tunits = time_units
 
-		# Ensure that dimensions and units of the variables present
-		# in both input_properties and tendency_properties are compatible
-		# across the two dictionaries
-		output_properties = copy.deepcopy(self.tendency_properties)
-		for key in output_properties:
-			output_properties[key]['units'] = \
-				clean_units(self.tendency_properties[key]['units'] + self._tunits)
-		check_properties_compatibility(
-			self.input_properties, output_properties,
-			properties1_name='input_properties',
-			properties2_name='output_properties',
-		)
+        # Ensure that dimensions and units of the variables present
+        # in both input_properties and tendency_properties are compatible
+        # across the two dictionaries
+        output_properties = copy.deepcopy(self.tendency_properties)
+        for key in output_properties:
+            output_properties[key]["units"] = clean_units(
+                self.tendency_properties[key]["units"] + self._tunits
+            )
+        check_properties_compatibility(
+            self.input_properties,
+            output_properties,
+            properties1_name="input_properties",
+            properties2_name="output_properties",
+        )
 
-	def _init_input_properties(self):
-		flag = self._policy == 'serial'
-		return get_input_properties(self._component_list, consider_diagnostics=flag)
+    def _init_input_properties(self):
+        flag = self._policy == "serial"
+        return get_input_properties(self._component_list, consider_diagnostics=flag)
 
-	def _init_tendency_properties(self):
-		tendency_list = tuple(
-			c for c in self._component_list
-			if isinstance(c, self.__class__.allowed_tendency_type + (self.__class__,))
-		)
-		return combine_component_properties(tendency_list, 'tendency_properties')
+    def _init_tendency_properties(self):
+        tendency_list = tuple(
+            c
+            for c in self._component_list
+            if isinstance(c, self.__class__.allowed_tendency_type + (self.__class__,))
+        )
+        return combine_component_properties(tendency_list, "tendency_properties")
 
-	def _init_diagnostic_properties(self):
-		return combine_component_properties(self._component_list, 'diagnostic_properties')
+    def _init_diagnostic_properties(self):
+        return combine_component_properties(
+            self._component_list, "diagnostic_properties"
+        )
 
-	@property
-	def component_list(self):
-		"""
+    @property
+    def component_list(self):
+        """
 		Return
 		------
 		tuple :
 			The wrapped components.
 		"""
-		return self._component_list
+        return self._component_list
 
-	def __call__(self, state, timestep):
-		"""
+    def __call__(self, state, timestep):
+        """
 		Execute the wrapped components to calculate tendencies and retrieve
 		diagnostics with the help of the input state.
 
@@ -189,81 +203,85 @@ class ConcurrentCoupling:
 			tendencies have been computed, and whose values are :class:`sympl.DataArray`\s
 			storing the tendencies for those variables.
 		"""
-		tendencies, diagnostics = self._call(state, timestep)
+        tendencies, diagnostics = self._call(state, timestep)
 
-		try:
-			tendencies['time'] = state['time']
-			diagnostics['time'] = state['time']
-		except KeyError:
-			pass
+        try:
+            tendencies["time"] = state["time"]
+            diagnostics["time"] = state["time"]
+        except KeyError:
+            pass
 
-		return tendencies, diagnostics
+        return tendencies, diagnostics
 
-	def _call_serial(self, state, timestep):
-		"""
+    def _call_serial(self, state, timestep):
+        """
 		Process the components in 'serial' runtime mode.
 		"""
-		aux_state = {}
-		aux_state.update(state)
+        aux_state = {}
+        aux_state.update(state)
 
-		out_tendencies = {}
-		tendency_units = {
-			tendency: properties['units']
-			for tendency, properties in self.tendency_properties.items()
-		}
+        out_tendencies = {}
+        tendency_units = {
+            tendency: properties["units"]
+            for tendency, properties in self.tendency_properties.items()
+        }
 
-		out_diagnostics = {}
+        out_diagnostics = {}
 
-		for component in self._component_list:
-			if isinstance(component, self.__class__.allowed_diagnostic_type):
-				diagnostics = component(aux_state)
-				aux_state.update(diagnostics)
-				out_diagnostics.update(diagnostics)
-			else:
-				try:
-					tendencies, diagnostics = component(aux_state)
-				except TypeError:
-					tendencies, diagnostics = component(aux_state, timestep)
+        for component in self._component_list:
+            if isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics = component(aux_state)
+                aux_state.update(diagnostics)
+                out_diagnostics.update(diagnostics)
+            else:
+                try:
+                    tendencies, diagnostics = component(aux_state)
+                except TypeError:
+                    tendencies, diagnostics = component(aux_state, timestep)
 
-				out_tendencies.update(
-					add(
-						out_tendencies, tendencies,
-						units=tendency_units, unshared_variables_in_output=True
-					)
-				)
-				aux_state.update(diagnostics)
-				out_diagnostics.update(diagnostics)
+                out_tendencies.update(
+                    add(
+                        out_tendencies,
+                        tendencies,
+                        units=tendency_units,
+                        unshared_variables_in_output=True,
+                    )
+                )
+                aux_state.update(diagnostics)
+                out_diagnostics.update(diagnostics)
 
-		return out_tendencies, out_diagnostics
+        return out_tendencies, out_diagnostics
 
-	def _call_asparallel(self, state, timestep):
-		"""
+    def _call_asparallel(self, state, timestep):
+        """
 		Process the components in 'as_parallel' runtime mode.
 		"""
-		out_tendencies = {}
-		tendency_units = {
-			tendency: properties['units']
-			for tendency, properties in self.tendency_properties.items()
-		}
+        out_tendencies = {}
+        tendency_units = {
+            tendency: properties["units"]
+            for tendency, properties in self.tendency_properties.items()
+        }
 
-		out_diagnostics = {}
+        out_diagnostics = {}
 
-		for component in self._component_list:
-			if isinstance(component, self.__class__.allowed_diagnostic_type):
-				diagnostics = component(state)
-				out_diagnostics.update(diagnostics)
-			else:
-				try:
-					tendencies, diagnostics = component(state)
-				except TypeError:
-					tendencies, diagnostics = component(state, timestep)
+        for component in self._component_list:
+            if isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics = component(state)
+                out_diagnostics.update(diagnostics)
+            else:
+                try:
+                    tendencies, diagnostics = component(state)
+                except TypeError:
+                    tendencies, diagnostics = component(state, timestep)
 
-				out_tendencies.update(
-					add(
-						out_tendencies, tendencies,
-						units=tendency_units, unshared_variables_in_output=True
-					)
-				)
-				out_diagnostics.update(diagnostics)
+                out_tendencies.update(
+                    add(
+                        out_tendencies,
+                        tendencies,
+                        units=tendency_units,
+                        unshared_variables_in_output=True,
+                    )
+                )
+                out_diagnostics.update(diagnostics)
 
-		return out_tendencies, out_diagnostics
+        return out_tendencies, out_diagnostics

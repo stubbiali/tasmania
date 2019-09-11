@@ -22,14 +22,21 @@
 #
 from copy import deepcopy
 from datetime import timedelta
-from hypothesis import \
-	assume, given, HealthCheck, settings, strategies as hyp_st, reproduce_failure
+from hypothesis import (
+    assume,
+    given,
+    HealthCheck,
+    settings,
+    strategies as hyp_st,
+    reproduce_failure,
+)
 import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import utils
 
@@ -37,130 +44,132 @@ from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(data=hyp_st.data())
 def test_compatibility(
-	data, make_fake_tendency_component_1, make_fake_tendency_component_2
+    data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
-	# ========================================
-	# random data generation
-	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
-	cgrid = domain.numerical_grid
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(utils.st_domain(), label="domain")
+    cgrid = domain.numerical_grid
 
-	state = data.draw(
-		utils.st_isentropic_state(cgrid, moist=True, precipitation=True), label="state"
-	)
+    state = data.draw(
+        utils.st_isentropic_state(cgrid, moist=True, precipitation=True), label="state"
+    )
 
-	dt = data.draw(utils.st_timedeltas(
-		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60))
-	)
+    dt = data.draw(
+        utils.st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        )
+    )
 
-	# ========================================
-	# test bed
-	# ========================================
-	tc1 = make_fake_tendency_component_1(domain, 'numerical')
-	tc2 = make_fake_tendency_component_2(domain, 'numerical')
+    # ========================================
+    # test bed
+    # ========================================
+    tc1 = make_fake_tendency_component_1(domain, "numerical")
+    tc2 = make_fake_tendency_component_2(domain, "numerical")
 
-	#
-	# failing
-	#
-	state_dc = deepcopy(state)
-	cc1 = ConcurrentCoupling(tc1, tc2, execution_policy='as_parallel')
-	try:
-		cc1(state_dc, dt)
-		assert False
-	except InvalidStateError:
-		assert True
+    #
+    # failing
+    #
+    state_dc = deepcopy(state)
+    cc1 = ConcurrentCoupling(tc1, tc2, execution_policy="as_parallel")
+    try:
+        cc1(state_dc, dt)
+        assert False
+    except InvalidStateError:
+        assert True
 
-	#
-	# failing
-	#
-	state_dc = deepcopy(state)
-	cc2 = ConcurrentCoupling(tc2, tc1, execution_policy='serial')
-	try:
-		cc2(state_dc, dt)
-		assert False
-	except InvalidStateError:
-		assert True
+    #
+    # failing
+    #
+    state_dc = deepcopy(state)
+    cc2 = ConcurrentCoupling(tc2, tc1, execution_policy="serial")
+    try:
+        cc2(state_dc, dt)
+        assert False
+    except InvalidStateError:
+        assert True
 
-	#
-	# successful
-	#
-	state_dc = deepcopy(state)
-	cc3 = ConcurrentCoupling(tc1, tc2, execution_policy='serial')
-	try:
-		cc3(state_dc, dt)
-		assert True
-	except InvalidStateError:
-		assert False
+    #
+    # successful
+    #
+    state_dc = deepcopy(state)
+    cc3 = ConcurrentCoupling(tc1, tc2, execution_policy="serial")
+    try:
+        cc3(state_dc, dt)
+        assert True
+    except InvalidStateError:
+        assert False
 
 
 @settings(
-	suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-	deadline=None
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
 )
 @given(data=hyp_st.data())
-def test_numerics(
-	data, make_fake_tendency_component_1, make_fake_tendency_component_2
-):
-	# ========================================
-	# random data generation
-	# ========================================
-	domain = data.draw(utils.st_domain(), label="domain")
-	cgrid = domain.numerical_grid
+def test_numerics(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(utils.st_domain(), label="domain")
+    cgrid = domain.numerical_grid
 
-	state = data.draw(
-		utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="state"
-	)
+    state = data.draw(
+        utils.st_isentropic_state(cgrid, moist=False, precipitation=False),
+        label="state",
+    )
 
-	dt = data.draw(utils.st_timedeltas(
-		min_value=timedelta(seconds=0), max_value=timedelta(minutes=60))
-	)
+    dt = data.draw(
+        utils.st_timedeltas(
+            min_value=timedelta(seconds=0), max_value=timedelta(minutes=60)
+        )
+    )
 
-	# ========================================
-	# test bed
-	# ========================================
-	tc1 = make_fake_tendency_component_1(domain, 'numerical')
-	tc2 = make_fake_tendency_component_2(domain, 'numerical')
+    # ========================================
+    # test bed
+    # ========================================
+    tc1 = make_fake_tendency_component_1(domain, "numerical")
+    tc2 = make_fake_tendency_component_2(domain, "numerical")
 
-	cc = ConcurrentCoupling(tc1, tc2, execution_policy='serial')
-	tendencies, diagnostics = cc(state, dt)
+    cc = ConcurrentCoupling(tc1, tc2, execution_policy="serial")
+    tendencies, diagnostics = cc(state, dt)
 
-	assert 'fake_variable' in diagnostics
-	s = state['air_isentropic_density'].to_units('kg m^-2 K^-1').values
-	f = diagnostics['fake_variable'].to_units('kg m^-2 K^-1').values
-	assert np.allclose(f, 2*s)
+    assert "fake_variable" in diagnostics
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
+    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").values
+    assert np.allclose(f, 2 * s)
 
-	assert 'air_isentropic_density' in tendencies
-	assert np.allclose(
-		tendencies['air_isentropic_density'].to_units('kg m^-2 K^-1 s^-1').values,
-		1e-3*s + 1e-2*f
-	)
+    assert "air_isentropic_density" in tendencies
+    assert np.allclose(
+        tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
+        1e-3 * s + 1e-2 * f,
+    )
 
-	assert 'x_momentum_isentropic' in tendencies
-	su = state['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-1')
-	assert np.allclose(
-		tendencies['x_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values,
-		300*su
-	)
+    assert "x_momentum_isentropic" in tendencies
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1")
+    assert np.allclose(
+        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+        300 * su,
+    )
 
-	assert 'y_momentum_isentropic' in tendencies
-	v = state['y_velocity_at_v_locations'].to_units('m s^-1').values
-	assert np.allclose(
-		tendencies['y_momentum_isentropic'].to_units('kg m^-1 K^-1 s^-2').values,
-		0.5 * s * (v[:, :-1, :] + v[:, 1:, :]),
-	)
+    assert "y_momentum_isentropic" in tendencies
+    v = state["y_velocity_at_v_locations"].to_units("m s^-1").values
+    assert np.allclose(
+        tendencies["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+        0.5 * s * (v[:, :-1, :] + v[:, 1:, :]),
+    )
 
-	assert 'x_velocity_at_u_locations' in tendencies
-	u = state['x_velocity_at_u_locations'].to_units('m s^-1').values
-	assert np.allclose(
-		tendencies['x_velocity_at_u_locations'].to_units('m s^-2').values,
-		50 * u
-	)
+    assert "x_velocity_at_u_locations" in tendencies
+    u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
+    assert np.allclose(
+        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
+    )
 
 
-if __name__ == '__main__':
-	pytest.main([__file__])
+if __name__ == "__main__":
+    pytest.main([__file__])

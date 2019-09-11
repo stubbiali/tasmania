@@ -28,23 +28,24 @@ import numpy as np
 
 import gridtools as gt
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
-from tasmania.python.isentropic.dynamics.minimal_prognostic import \
-	IsentropicMinimalPrognostic
+from tasmania.python.isentropic.dynamics.minimal_prognostic import (
+    IsentropicMinimalPrognostic,
+)
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 # convenient shortcuts
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+mfwv = "mass_fraction_of_water_vapor_in_air"
+mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
+mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
-	"""
+    """
 	The three-dimensional (moist) isentropic minimal dynamical core.
 	Here, *minimal* refers to the fact that only the horizontal advection
 	is included in the so-called *dynamics*. Any other large-scale process
@@ -52,21 +53,39 @@ class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
 	be included in the model only via parameterizations.
 	The conservative form of the governing equations is used.
 	"""
-	def __init__(
-		self, domain, intermediate_tendencies=None, intermediate_diagnostics=None,
-		substeps=0, fast_tendencies=None, fast_diagnostics=None,
-		moist=False, time_integration_scheme='forward_euler',
-		horizontal_flux_scheme='upwind',
-		damp=True, damp_at_every_stage=True,
-		damp_type='rayleigh', damp_depth=15, damp_max=0.0002,
-		smooth=True, smooth_at_every_stage=True, smooth_type='first_order',
-		smooth_coeff=.03, smooth_coeff_max=.24, smooth_damp_depth=10,
-		smooth_moist=False, smooth_moist_at_every_stage=True,
-		smooth_moist_type='first_order', smooth_moist_coeff=.03,
-		smooth_moist_coeff_max=.24, smooth_moist_damp_depth=10,
-		backend=gt.mode.NUMPY, dtype=datatype
-	):
-		"""
+
+    def __init__(
+        self,
+        domain,
+        intermediate_tendencies=None,
+        intermediate_diagnostics=None,
+        substeps=0,
+        fast_tendencies=None,
+        fast_diagnostics=None,
+        moist=False,
+        time_integration_scheme="forward_euler",
+        horizontal_flux_scheme="upwind",
+        damp=True,
+        damp_at_every_stage=True,
+        damp_type="rayleigh",
+        damp_depth=15,
+        damp_max=0.0002,
+        smooth=True,
+        smooth_at_every_stage=True,
+        smooth_type="first_order",
+        smooth_coeff=0.03,
+        smooth_coeff_max=0.24,
+        smooth_damp_depth=10,
+        smooth_moist=False,
+        smooth_moist_at_every_stage=True,
+        smooth_moist_type="first_order",
+        smooth_moist_coeff=0.03,
+        smooth_moist_coeff_max=0.24,
+        smooth_moist_damp_depth=10,
+        backend=gt.mode.NUMPY,
+        dtype=datatype,
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -191,77 +210,112 @@ class IsentropicMinimalDynamicalCore(IsentropicDynamicalCore):
 			The data type for any :class:`numpy.ndarray` allocated and
 			used within this class.
 		"""
-		#
-		# input parameters
-		#
-		self._moist							= moist
-		self._damp					   	   	= damp
-		self._damp_at_every_stage		   	= damp_at_every_stage
-		self._smooth					   	= smooth
-		self._smooth_at_every_stage		   	= smooth_at_every_stage
-		self._smooth_moist			   		= smooth_moist
-		self._smooth_moist_at_every_stage  	= smooth_moist_at_every_stage
-		self._dtype						   	= dtype
+        #
+        # input parameters
+        #
+        self._moist = moist
+        self._damp = damp
+        self._damp_at_every_stage = damp_at_every_stage
+        self._smooth = smooth
+        self._smooth_at_every_stage = smooth_at_every_stage
+        self._smooth_moist = smooth_moist
+        self._smooth_moist_at_every_stage = smooth_moist_at_every_stage
+        self._dtype = dtype
 
-		#
-		# parent constructor
-		#
-		super().__init__(
-			domain, intermediate_tendencies, intermediate_diagnostics,
-			substeps, fast_tendencies, fast_diagnostics, moist=moist,
-			damp=damp, damp_at_every_stage=damp_at_every_stage, damp_type=damp_type,
-			damp_depth=damp_depth, damp_max=damp_max,
-			smooth=smooth, smooth_at_every_stage=smooth_at_every_stage,
-			smooth_type=smooth_type, smooth_coeff=smooth_coeff,
-			smooth_coeff_max=smooth_coeff_max, smooth_damp_depth=smooth_damp_depth,
-			smooth_moist=smooth_moist,
-			smooth_moist_at_every_stage=smooth_moist_at_every_stage,
-			smooth_moist_type=smooth_moist_type, smooth_moist_coeff=smooth_moist_coeff,
-			smooth_moist_coeff_max=smooth_moist_coeff_max,
-			smooth_moist_damp_depth=smooth_moist_damp_depth,
-			backend=backend, dtype=dtype
-		)
+        #
+        # parent constructor
+        #
+        super().__init__(
+            domain,
+            intermediate_tendencies,
+            intermediate_diagnostics,
+            substeps,
+            fast_tendencies,
+            fast_diagnostics,
+            moist=moist,
+            damp=damp,
+            damp_at_every_stage=damp_at_every_stage,
+            damp_type=damp_type,
+            damp_depth=damp_depth,
+            damp_max=damp_max,
+            smooth=smooth,
+            smooth_at_every_stage=smooth_at_every_stage,
+            smooth_type=smooth_type,
+            smooth_coeff=smooth_coeff,
+            smooth_coeff_max=smooth_coeff_max,
+            smooth_damp_depth=smooth_damp_depth,
+            smooth_moist=smooth_moist,
+            smooth_moist_at_every_stage=smooth_moist_at_every_stage,
+            smooth_moist_type=smooth_moist_type,
+            smooth_moist_coeff=smooth_moist_coeff,
+            smooth_moist_coeff_max=smooth_moist_coeff_max,
+            smooth_moist_damp_depth=smooth_moist_damp_depth,
+            backend=backend,
+            dtype=dtype,
+        )
 
-		#
-		# prognostic
-		#
-		self._prognostic = IsentropicMinimalPrognostic.factory(
-			time_integration_scheme, horizontal_flux_scheme, 'xy',
-			self.grid, self.horizontal_boundary, moist, substeps, backend, dtype
-		)
-		self._prognostic.substep_output_properties = self._substep_output_properties
+        #
+        # prognostic
+        #
+        self._prognostic = IsentropicMinimalPrognostic.factory(
+            time_integration_scheme,
+            horizontal_flux_scheme,
+            "xy",
+            self.grid,
+            self.horizontal_boundary,
+            moist,
+            substeps,
+            backend,
+            dtype,
+        )
+        self._prognostic.substep_output_properties = self._substep_output_properties
 
-	@property
-	def _input_properties(self):
-		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
-		dims_stg_x = (
-			self.grid.x_at_u_locations.dims[0], self.grid.y.dims[0], self.grid.z.dims[0]
-		)
-		dims_stg_y = (
-			self.grid.x.dims[0], self.grid.y_at_v_locations.dims[0], self.grid.z.dims[0]
-		)
+    @property
+    def _input_properties(self):
+        dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+        dims_stg_x = (
+            self.grid.x_at_u_locations.dims[0],
+            self.grid.y.dims[0],
+            self.grid.z.dims[0],
+        )
+        dims_stg_y = (
+            self.grid.x.dims[0],
+            self.grid.y_at_v_locations.dims[0],
+            self.grid.z.dims[0],
+        )
 
-		return_dict = {
-			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'x_velocity_at_u_locations': {'dims': dims_stg_x, 'units': 'm s^-1'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'y_velocity_at_v_locations': {'dims': dims_stg_y, 'units': 'm s^-1'},
-		}
+        return_dict = {
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "x_velocity_at_u_locations": {"dims": dims_stg_x, "units": "m s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_velocity_at_v_locations": {"dims": dims_stg_y, "units": "m s^-1"},
+        }
 
-		if self._moist:
-			return_dict[mfwv] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfcw] = {'dims': dims, 'units': 'g g^-1'}
-			return_dict[mfpw] = {'dims': dims, 'units': 'g g^-1'}
+        if self._moist:
+            return_dict[mfwv] = {"dims": dims, "units": "g g^-1"}
+            return_dict[mfcw] = {"dims": dims, "units": "g g^-1"}
+            return_dict[mfpw] = {"dims": dims, "units": "g g^-1"}
 
-		return return_dict
+        return return_dict
 
-	def substep_array_call(
-		self, stage, substep, raw_state, raw_stage_state, raw_tmp_state,
-		raw_tendencies, timestep
-	):
-		# merely perform the sub-step
-		return self._prognostic.substep_call(
-			stage, substep, timestep, raw_state, raw_stage_state,
-			raw_tmp_state, raw_tendencies
-		)
+    def substep_array_call(
+        self,
+        stage,
+        substep,
+        raw_state,
+        raw_stage_state,
+        raw_tmp_state,
+        raw_tendencies,
+        timestep,
+    ):
+        # merely perform the sub-step
+        return self._prognostic.substep_call(
+            stage,
+            substep,
+            timestep,
+            raw_state,
+            raw_stage_state,
+            raw_tmp_state,
+            raw_tendencies,
+        )

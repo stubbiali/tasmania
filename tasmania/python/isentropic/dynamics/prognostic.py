@@ -31,19 +31,19 @@ import gridtools as gt
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 # convenient aliases
-mfwv = 'mass_fraction_of_water_vapor_in_air'
-mfcw = 'mass_fraction_of_cloud_liquid_water_in_air'
-mfpw = 'mass_fraction_of_precipitation_water_in_air'
+mfwv = "mass_fraction_of_water_vapor_in_air"
+mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
+mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 class IsentropicPrognostic(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes implement different
 	schemes to carry out the prognostic steps of the three-dimensional
 	moist, isentropic dynamical core. The schemes might be *semi-implicit* -
@@ -52,11 +52,23 @@ class IsentropicPrognostic(abc.ABC):
 	the sedimentation motion are not included in the dynamics, but rather
 	parameterized. The conservative form of the governing equations is used.
 	"""
-	def __init__(
-		self, horizontal_flux_class, horizontal_flux_scheme, grid, hb, moist,
-		backend, backend_opts, build_info, dtype, exec_info, halo, rebuild
-	):
-		"""
+
+    def __init__(
+        self,
+        horizontal_flux_class,
+        horizontal_flux_scheme,
+        grid,
+        hb,
+        moist,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        """
 		Parameters
 		----------
 		horizontal_flux_class : IsentropicHorizontalFlux, IsentropicMinimal
@@ -88,49 +100,52 @@ class IsentropicPrognostic(abc.ABC):
 		rebuild : bool
 			TODO
 		"""
-		# store input arguments needed at compile- and run-time
-		self._grid          = grid
-		self._hb            = hb
-		self._moist      	= moist
-		self._backend		= backend
-		self._backend_opts  = backend_opts
-		self._build_info    = build_info
-		self._exec_info     = exec_info
-		self._rebuild       = rebuild
+        # store input arguments needed at compile- and run-time
+        self._grid = grid
+        self._hb = hb
+        self._moist = moist
+        self._backend = backend
+        self._backend_opts = backend_opts
+        self._build_info = build_info
+        self._exec_info = exec_info
+        self._rebuild = rebuild
 
-		# get the storage descriptor
-		storage_shape = (grid.nx+1, grid.ny+1, grid.nz+1)
-		self._descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
+        # get the storage descriptor
+        storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
+        self._descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo)
 
-		# instantiate the class computing the numerical horizontal fluxes
-		self._hflux = horizontal_flux_class.factory(horizontal_flux_scheme)
-		assert hb.nb >= self._hflux.extent, \
-			"The number of lateral boundary layers is {}, but should be " \
-			"greater or equal than {}.".format(hb.nb, self._hflux.extent)
-		assert grid.nx >= 2*hb.nb+1, \
-			"The number of grid points along the first horizontal " \
-			"dimension is {}, but should be greater or equal than {}.".format(
-				grid.nx, 2*hb.nb+1
-			)
-		assert grid.ny >= 2*hb.nb+1, \
-			"The number of grid points along the second horizontal " \
-			"dimension is {}, but should be greater or equal than {}.".format(
-				grid.ny, 2*hb.nb+1
-			)
+        # instantiate the class computing the numerical horizontal fluxes
+        self._hflux = horizontal_flux_class.factory(horizontal_flux_scheme)
+        assert hb.nb >= self._hflux.extent, (
+            "The number of lateral boundary layers is {}, but should be "
+            "greater or equal than {}.".format(hb.nb, self._hflux.extent)
+        )
+        assert grid.nx >= 2 * hb.nb + 1, (
+            "The number of grid points along the first horizontal "
+            "dimension is {}, but should be greater or equal than {}.".format(
+                grid.nx, 2 * hb.nb + 1
+            )
+        )
+        assert grid.ny >= 2 * hb.nb + 1, (
+            "The number of grid points along the second horizontal "
+            "dimension is {}, but should be greater or equal than {}.".format(
+                grid.ny, 2 * hb.nb + 1
+            )
+        )
 
-	@property
-	@abc.abstractmethod
-	def stages(self):
-		"""
+    @property
+    @abc.abstractmethod
+    def stages(self):
+        """
 		Return
 		------
 		int :
 			The number of stages performed by the time-integration scheme.
 		"""
 
-	@abc.abstractmethod
-	def stage_call(self, stage, timestep, state, tendencies=None):
-		"""
+    @abc.abstractmethod
+    def stage_call(self, stage, timestep, state, tendencies=None):
+        """
 		Perform a stage.
 
 		Parameters
@@ -155,15 +170,26 @@ class IsentropicPrognostic(abc.ABC):
 			prognostic model variables, and values are :class:`numpy.ndarray`\s
 			containing new values for those variables.
 		"""
-		pass
+        pass
 
-	@staticmethod
-	def factory(
-		time_integration_scheme, horizontal_flux_scheme, grid, hb, moist=False,
-		*, backend="numpy", backend_opts=None, build_info=None, dtype=datatype,
-		exec_info=None, halo=None, rebuild=False, **kwargs
-	):
-		"""
+    @staticmethod
+    def factory(
+        time_integration_scheme,
+        horizontal_flux_scheme,
+        grid,
+        hb,
+        moist=False,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        """
 		Static method returning an instance of the derived class implementing
 		the time stepping scheme specified by ``time_scheme``.
 
@@ -209,114 +235,134 @@ class IsentropicPrognostic(abc.ABC):
 		obj :
 			An instance of the derived class implementing ``time_integration_scheme``.
 		"""
-		from .implementations.prognostic import \
-			ForwardEulerSI, CenteredSI, RK3WSSI, SIL3
-		args = (
-			horizontal_flux_scheme,	grid, hb, moist, backend, backend_opts,
-			build_info, dtype, exec_info, halo, rebuild
-		)
+        from .implementations.prognostic import (
+            ForwardEulerSI,
+            CenteredSI,
+            RK3WSSI,
+            SIL3,
+        )
 
-		available = ('forward_euler_si', 'centered_si', 'rk3ws_si', 'sil3')
+        args = (
+            horizontal_flux_scheme,
+            grid,
+            hb,
+            moist,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		if time_integration_scheme == 'forward_euler_si':
-			return ForwardEulerSI(*args, **kwargs)
-		elif time_integration_scheme == 'centered_si':
-			return CenteredSI(*args, **kwargs)
-		elif time_integration_scheme == 'rk3ws_si':
-			return RK3WSSI(*args, **kwargs)
-		elif time_integration_scheme == 'sil3':
-			return SIL3(*args, **kwargs)
-		else:
-			raise ValueError(
-				"Unknown time integration scheme {}. Available options are "
-				"{}.".format(time_integration_scheme, ','.join(available))
-			)
+        available = ("forward_euler_si", "centered_si", "rk3ws_si", "sil3")
 
-	def _stencils_allocate(self, tendencies):
-		"""
+        if time_integration_scheme == "forward_euler_si":
+            return ForwardEulerSI(*args, **kwargs)
+        elif time_integration_scheme == "centered_si":
+            return CenteredSI(*args, **kwargs)
+        elif time_integration_scheme == "rk3ws_si":
+            return RK3WSSI(*args, **kwargs)
+        elif time_integration_scheme == "sil3":
+            return SIL3(*args, **kwargs)
+        else:
+            raise ValueError(
+                "Unknown time integration scheme {}. Available options are "
+                "{}.".format(time_integration_scheme, ",".join(available))
+            )
+
+    def _stencils_allocate(self, tendencies):
+        """
 		Allocate the storages which serve as inputs and outputs to the 
 		underlying gt4py stencils.
 		"""
-		# shortcuts
-		descriptor, backend = self._descriptor, self._backend
-		tendency_names = () if tendencies is None else tendencies.keys()
+        # shortcuts
+        descriptor, backend = self._descriptor, self._backend
+        tendency_names = () if tendencies is None else tendencies.keys()
 
-		# allocate the storages which will collect the current values
-		# for the model variables
-		self._s_now	  = gt.storage.zeros(descriptor, backend=backend)
-		self._u_now	  = gt.storage.zeros(descriptor, backend=backend)
-		self._v_now	  = gt.storage.zeros(descriptor, backend=backend)
-		self._mtg_now = gt.storage.zeros(descriptor, backend=backend)
-		self._su_now  = gt.storage.zeros(descriptor, backend=backend)
-		self._sv_now  = gt.storage.zeros(descriptor, backend=backend)
-		if self._moist:
-			self._sqv_now = gt.storage.zeros(descriptor, backend=backend)
-			self._sqc_now = gt.storage.zeros(descriptor, backend=backend)
-			self._sqr_now = gt.storage.zeros(descriptor, backend=backend)
+        # allocate the storages which will collect the current values
+        # for the model variables
+        self._s_now = gt.storage.zeros(descriptor, backend=backend)
+        self._u_now = gt.storage.zeros(descriptor, backend=backend)
+        self._v_now = gt.storage.zeros(descriptor, backend=backend)
+        self._mtg_now = gt.storage.zeros(descriptor, backend=backend)
+        self._su_now = gt.storage.zeros(descriptor, backend=backend)
+        self._sv_now = gt.storage.zeros(descriptor, backend=backend)
+        if self._moist:
+            self._sqv_now = gt.storage.zeros(descriptor, backend=backend)
+            self._sqc_now = gt.storage.zeros(descriptor, backend=backend)
+            self._sqr_now = gt.storage.zeros(descriptor, backend=backend)
 
-		# allocate the storages which will collect the tendencies
-		# for the model variables
-		if tendency_names is not None:
-			if 'air_isentropic_density' in tendency_names:
-				self._s_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if 'x_momentum_isentropic' in tendency_names:
-				self._su_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if 'y_momentum_isentropic' in tendency_names:
-				self._sv_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if mfwv in tendency_names:
-				self._qv_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if mfcw in tendency_names:
-				self._qc_tnd = gt.storage.zeros(descriptor, backend=backend)
-			if mfpw in tendency_names:
-				self._qr_tnd = gt.storage.zeros(descriptor, backend=backend)
+        # allocate the storages which will collect the tendencies
+        # for the model variables
+        if tendency_names is not None:
+            if "air_isentropic_density" in tendency_names:
+                self._s_tnd = gt.storage.zeros(descriptor, backend=backend)
+            if "x_momentum_isentropic" in tendency_names:
+                self._su_tnd = gt.storage.zeros(descriptor, backend=backend)
+            if "y_momentum_isentropic" in tendency_names:
+                self._sv_tnd = gt.storage.zeros(descriptor, backend=backend)
+            if mfwv in tendency_names:
+                self._qv_tnd = gt.storage.zeros(descriptor, backend=backend)
+            if mfcw in tendency_names:
+                self._qc_tnd = gt.storage.zeros(descriptor, backend=backend)
+            if mfpw in tendency_names:
+                self._qr_tnd = gt.storage.zeros(descriptor, backend=backend)
 
-		# allocate the storages which will collect the output values for
-		# the model variables
-		self._s_new  = gt.storage.zeros(descriptor, backend=backend)
-		self._su_new = gt.storage.zeros(descriptor, backend=backend)
-		self._sv_new = gt.storage.zeros(descriptor, backend=backend)
-		if self._moist:
-			self._sqv_new = gt.storage.zeros(descriptor, backend=backend)
-			self._sqc_new = gt.storage.zeros(descriptor, backend=backend)
-			self._sqr_new = gt.storage.zeros(descriptor, backend=backend)
+        # allocate the storages which will collect the output values for
+        # the model variables
+        self._s_new = gt.storage.zeros(descriptor, backend=backend)
+        self._su_new = gt.storage.zeros(descriptor, backend=backend)
+        self._sv_new = gt.storage.zeros(descriptor, backend=backend)
+        if self._moist:
+            self._sqv_new = gt.storage.zeros(descriptor, backend=backend)
+            self._sqc_new = gt.storage.zeros(descriptor, backend=backend)
+            self._sqr_new = gt.storage.zeros(descriptor, backend=backend)
 
-	def _stencils_set_inputs(self, stage, state, tendencies):
-		"""
+    def _stencils_set_inputs(self, stage, state, tendencies):
+        """
 		Update the attributes which serve as inputs to the gt4py stencils
 		which perform the stages.
 		"""
-		# shortcuts
-		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
-		if tendencies is not None:
-			s_tnd_on  = tendencies.get('air_isentropic_density', None) is not None
-			su_tnd_on = tendencies.get('x_momentum_isentropic', None) is not None
-			sv_tnd_on = tendencies.get('y_momentum_isentropic', None) is not None
-			qv_tnd_on = tendencies.get(mfwv, None) is not None
-			qc_tnd_on = tendencies.get(mfcw, None) is not None
-			qr_tnd_on = tendencies.get(mfpw, None) is not None
-		else:
-			s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
+        # shortcuts
+        nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
+        if tendencies is not None:
+            s_tnd_on = tendencies.get("air_isentropic_density", None) is not None
+            su_tnd_on = tendencies.get("x_momentum_isentropic", None) is not None
+            sv_tnd_on = tendencies.get("y_momentum_isentropic", None) is not None
+            qv_tnd_on = tendencies.get(mfwv, None) is not None
+            qc_tnd_on = tendencies.get(mfcw, None) is not None
+            qr_tnd_on = tendencies.get(mfpw, None) is not None
+        else:
+            s_tnd_on = su_tnd_on = sv_tnd_on = qv_tnd_on = qc_tnd_on = qr_tnd_on = False
 
-		# update the storages which serve as inputs to the gt4py stencils
-		self._s_now.data[:nx, :ny, :nz]   = state['air_isentropic_density'][...]
-		self._u_now.data[:nx+1, :ny, :nz] = state['x_velocity_at_u_locations'][...]
-		self._v_now.data[:nx, :ny+1, :nz] = state['y_velocity_at_v_locations'][...]
-		self._mtg_now.data[:nx, :ny, :nz] = state['montgomery_potential'][...]
-		self._su_now.data[:nx, :ny, :nz]  = state['x_momentum_isentropic'][...]
-		self._sv_now.data[:nx, :ny, :nz]  = state['y_momentum_isentropic'][...]
-		if self._moist:
-			self._sqv_now.data[:nx, :ny, :nz] = state['isentropic_density_of_water_vapor'][...]
-			self._sqc_now.data[:nx, :ny, :nz] = state['isentropic_density_of_cloud_liquid_water'][...]
-			self._sqr_now.data[:nx, :ny, :nz] = state['isentropic_density_of_precipitation_water'][...]
-		if s_tnd_on:
-			self._s_tnd.data[:nx, :ny, :nz]  = tendencies['air_isentropic_density'][...]
-		if su_tnd_on:
-			self._su_tnd.data[:nx, :ny, :nz] = tendencies['x_momentum_isentropic'][...]
-		if sv_tnd_on:
-			self._sv_tnd.data[:nx, :ny, :nz] = tendencies['y_momentum_isentropic'][...]
-		if qv_tnd_on:
-			self._qv_tnd.data[:nx, :ny, :nz] = tendencies[mfwv][...]
-		if qc_tnd_on:
-			self._qc_tnd.data[:nx, :ny, :nz] = tendencies[mfcw][...]
-		if qr_tnd_on:
-			self._qr_tnd.data[:nx, :ny, :nz] = tendencies[mfpw][...]
+        # update the storages which serve as inputs to the gt4py stencils
+        self._s_now.data[:nx, :ny, :nz] = state["air_isentropic_density"][...]
+        self._u_now.data[: nx + 1, :ny, :nz] = state["x_velocity_at_u_locations"][...]
+        self._v_now.data[:nx, : ny + 1, :nz] = state["y_velocity_at_v_locations"][...]
+        self._mtg_now.data[:nx, :ny, :nz] = state["montgomery_potential"][...]
+        self._su_now.data[:nx, :ny, :nz] = state["x_momentum_isentropic"][...]
+        self._sv_now.data[:nx, :ny, :nz] = state["y_momentum_isentropic"][...]
+        if self._moist:
+            self._sqv_now.data[:nx, :ny, :nz] = state[
+                "isentropic_density_of_water_vapor"
+            ][...]
+            self._sqc_now.data[:nx, :ny, :nz] = state[
+                "isentropic_density_of_cloud_liquid_water"
+            ][...]
+            self._sqr_now.data[:nx, :ny, :nz] = state[
+                "isentropic_density_of_precipitation_water"
+            ][...]
+        if s_tnd_on:
+            self._s_tnd.data[:nx, :ny, :nz] = tendencies["air_isentropic_density"][...]
+        if su_tnd_on:
+            self._su_tnd.data[:nx, :ny, :nz] = tendencies["x_momentum_isentropic"][...]
+        if sv_tnd_on:
+            self._sv_tnd.data[:nx, :ny, :nz] = tendencies["y_momentum_isentropic"][...]
+        if qv_tnd_on:
+            self._qv_tnd.data[:nx, :ny, :nz] = tendencies[mfwv][...]
+        if qc_tnd_on:
+            self._qc_tnd.data[:nx, :ny, :nz] = tendencies[mfcw][...]
+        if qr_tnd_on:
+            self._qr_tnd.data[:nx, :ny, :nz] = tendencies[mfpw][...]

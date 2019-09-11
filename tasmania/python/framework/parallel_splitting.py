@@ -24,22 +24,30 @@
 This module contains:
 	ParallelSplitting
 """
-from sympl import \
-	DiagnosticComponent, DiagnosticComponentComposite as SymplDiagnosticComponentComposite, \
-	TendencyComponent, TendencyComponentComposite, \
-	ImplicitTendencyComponent, ImplicitTendencyComponentComposite
+from sympl import (
+    DiagnosticComponent,
+    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
+    TendencyComponent,
+    TendencyComponentComposite,
+    ImplicitTendencyComponent,
+    ImplicitTendencyComponentComposite,
+)
 
-from tasmania.python.framework.composite import \
-	DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite
+from tasmania.python.framework.composite import (
+    DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
+)
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import tendencystepper_factory
 from tasmania.python.utils.dict_utils import add, subtract
-from tasmania.python.utils.framework_utils import \
-	check_properties_compatibility, get_input_properties, get_output_properties
+from tasmania.python.utils.framework_utils import (
+    check_properties_compatibility,
+    get_input_properties,
+    get_output_properties,
+)
 
 
 class ParallelSplitting:
-	"""
+    """
 	Callable class which integrates a bundle of physical processes pursuing
 	the parallel splitting strategy.
 
@@ -74,25 +82,29 @@ class ParallelSplitting:
 		Impact of physics parameterization ordering in a global atmosphere model. \
 		*Journal of Advances in Modeling earth Systems*, *10*:481-499.
 	"""
-	allowed_diagnostic_type = (
-		DiagnosticComponent,
-		SymplDiagnosticComponentComposite,
-		TasmaniaDiagnosticComponentComposite,
-	)
-	allowed_tendency_type = (
-		TendencyComponent,
-		TendencyComponentComposite,
-		ImplicitTendencyComponent,
-		ImplicitTendencyComponentComposite,
-	)
-	allowed_component_type = \
-		allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling, )
 
-	def __init__(
-		self, *args, execution_policy='serial',
-		retrieve_diagnostics_from_provisional_state=False
-	):
-		"""
+    allowed_diagnostic_type = (
+        DiagnosticComponent,
+        SymplDiagnosticComponentComposite,
+        TasmaniaDiagnosticComponentComposite,
+    )
+    allowed_tendency_type = (
+        TendencyComponent,
+        TendencyComponentComposite,
+        ImplicitTendencyComponent,
+        ImplicitTendencyComponentComposite,
+    )
+    allowed_component_type = (
+        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
+    )
+
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        retrieve_diagnostics_from_provisional_state=False
+    ):
+        """
 		Parameters
 		----------
 		*args : dict
@@ -170,154 +182,180 @@ class ParallelSplitting:
 			to the provisional (resp., current) state dictionary.
 			Defaults to :obj:`False`.
 		"""
-		self._component_list = []
-		self._substeps = []
-		for process in args:
-			try:
-				bare_component = process['component']
-			except KeyError:
-				msg = "Missing mandatory key ''component'' in one item of ''processes''."
-				raise KeyError(msg)
+        self._component_list = []
+        self._substeps = []
+        for process in args:
+            try:
+                bare_component = process["component"]
+            except KeyError:
+                msg = (
+                    "Missing mandatory key ''component'' in one item of ''processes''."
+                )
+                raise KeyError(msg)
 
-			assert isinstance(bare_component, self.__class__.allowed_component_type), \
-				"''component'' value should be either a {}.".format(
-					', '.join(str(ctype) for ctype in self.__class__.allowed_component_type)
-				)
+            assert isinstance(
+                bare_component, self.__class__.allowed_component_type
+            ), "''component'' value should be either a {}.".format(
+                ", ".join(str(ctype) for ctype in self.__class__.allowed_component_type)
+            )
 
-			if isinstance(bare_component, self.__class__.allowed_diagnostic_type):
-				self._component_list.append(bare_component)
-				self._substeps.append(1)
-			else:
-				integrator = process.get('time_integrator', 'forward_euler')
-				enforce_hb = process.get('enforce_horizontal_boundary', False)
+            if isinstance(bare_component, self.__class__.allowed_diagnostic_type):
+                self._component_list.append(bare_component)
+                self._substeps.append(1)
+            else:
+                integrator = process.get("time_integrator", "forward_euler")
+                enforce_hb = process.get("enforce_horizontal_boundary", False)
 
-				TendencyStepper = tendencystepper_factory(integrator)
-				self._component_list.append(
-					TendencyStepper(bare_component, enforce_horizontal_boundary=enforce_hb)
-				)
+                TendencyStepper = tendencystepper_factory(integrator)
+                self._component_list.append(
+                    TendencyStepper(
+                        bare_component, enforce_horizontal_boundary=enforce_hb
+                    )
+                )
 
-				substeps_ = process.get('substeps', 1)
-				substeps  = substeps_ if substeps_ > 0 else 1
-				self._substeps.append(substeps)
+                substeps_ = process.get("substeps", 1)
+                substeps = substeps_ if substeps_ > 0 else 1
+                self._substeps.append(substeps)
 
-		self._policy = execution_policy
-		if execution_policy == 'serial':
-			self._call = self._call_serial
-		else:
-			self._call = self._call_asparallel
+        self._policy = execution_policy
+        if execution_policy == "serial":
+            self._call = self._call_serial
+        else:
+            self._call = self._call_asparallel
 
-		if execution_policy == 'as_parallel' and retrieve_diagnostics_from_provisional_state:
-			import warnings
-			warnings.warn(
-				'Argument retrieve_diagnostics_from_provisional_state '
-				'only effective when execution policy set on ''serial''.'
-			)
-			self._diagnostics_from_provisional = False
-		else:
-			self._diagnostics_from_provisional = retrieve_diagnostics_from_provisional_state
+        if (
+            execution_policy == "as_parallel"
+            and retrieve_diagnostics_from_provisional_state
+        ):
+            import warnings
 
-		# Set properties
-		self.input_properties = self._init_input_properties()
-		self.provisional_input_properties = self._init_provisional_input_properties()
-		self.output_properties = self._init_output_properties()
-		self.provisional_output_properties = self._init_provisional_output_properties()
+            warnings.warn(
+                "Argument retrieve_diagnostics_from_provisional_state "
+                "only effective when execution policy set on "
+                "serial"
+                "."
+            )
+            self._diagnostics_from_provisional = False
+        else:
+            self._diagnostics_from_provisional = (
+                retrieve_diagnostics_from_provisional_state
+            )
 
-		# Ensure that dimensions and units of the variables present
-		# in both input_properties and output_properties are compatible
-		# across the two dictionaries
-		check_properties_compatibility(
-			self.input_properties, self.output_properties,
-			properties1_name='input_properties',
-			properties2_name='output_properties',
-		)
+        # Set properties
+        self.input_properties = self._init_input_properties()
+        self.provisional_input_properties = self._init_provisional_input_properties()
+        self.output_properties = self._init_output_properties()
+        self.provisional_output_properties = self._init_provisional_output_properties()
 
-		# Ensure that dimensions and units of the variables present
-		# in both provisional_input_properties and provisional_output_properties
-		# are compatible across the two dictionaries
-		check_properties_compatibility(
-			self.provisional_input_properties, self.provisional_output_properties,
-			properties1_name='provisional_input_properties',
-			properties2_name='provisional_output_properties',
-		)
+        # Ensure that dimensions and units of the variables present
+        # in both input_properties and output_properties are compatible
+        # across the two dictionaries
+        check_properties_compatibility(
+            self.input_properties,
+            self.output_properties,
+            properties1_name="input_properties",
+            properties2_name="output_properties",
+        )
 
-	def _init_input_properties(self):
-		if not self._diagnostics_from_provisional:
-			flag = self._policy == 'serial'
-			return get_input_properties(self._component_list, consider_diagnostics=flag)
-		else:
-			tendencystepper_components = tuple(
-				component for component in self._component_list
-				if not isinstance(component, self.__class__.allowed_diagnostic_type)
-			)
-			return get_input_properties(tendencystepper_components, consider_diagnostics=True)
+        # Ensure that dimensions and units of the variables present
+        # in both provisional_input_properties and provisional_output_properties
+        # are compatible across the two dictionaries
+        check_properties_compatibility(
+            self.provisional_input_properties,
+            self.provisional_output_properties,
+            properties1_name="provisional_input_properties",
+            properties2_name="provisional_output_properties",
+        )
 
-	def _init_provisional_input_properties(self):
-		# We require that all prognostic variables affected by the
-		# parameterizations are included in the provisional state
-		tendencystepper_components = tuple(
-			component for component in self._component_list
-			if not isinstance(component, self.__class__.allowed_diagnostic_type)
-		)
-		return_dict = get_input_properties(
-			tendencystepper_components, component_attribute_name='output_properties',
-			consider_diagnostics=False
-		)
+    def _init_input_properties(self):
+        if not self._diagnostics_from_provisional:
+            flag = self._policy == "serial"
+            return get_input_properties(self._component_list, consider_diagnostics=flag)
+        else:
+            tendencystepper_components = tuple(
+                component
+                for component in self._component_list
+                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+            )
+            return get_input_properties(
+                tendencystepper_components, consider_diagnostics=True
+            )
 
-		if self._diagnostics_from_provisional:
-			diagnostic_components = (
-				component for component in self._component_list
-				if isinstance(component, self.__class__.allowed_diagnostic_type)
-			)
+    def _init_provisional_input_properties(self):
+        # We require that all prognostic variables affected by the
+        # parameterizations are included in the provisional state
+        tendencystepper_components = tuple(
+            component
+            for component in self._component_list
+            if not isinstance(component, self.__class__.allowed_diagnostic_type)
+        )
+        return_dict = get_input_properties(
+            tendencystepper_components,
+            component_attribute_name="output_properties",
+            consider_diagnostics=False,
+        )
 
-			return_dict.update(
-				get_input_properties(
-					diagnostic_components, consider_diagnostics=True,
-					return_dict=return_dict
-				)
-			)
+        if self._diagnostics_from_provisional:
+            diagnostic_components = (
+                component
+                for component in self._component_list
+                if isinstance(component, self.__class__.allowed_diagnostic_type)
+            )
 
-		return return_dict
+            return_dict.update(
+                get_input_properties(
+                    diagnostic_components,
+                    consider_diagnostics=True,
+                    return_dict=return_dict,
+                )
+            )
 
-	def _init_output_properties(self):
-		if not self._diagnostics_from_provisional:
-			return get_output_properties(self._component_list)
-		else:
-			tendencystepper_components = tuple(
-				component for component in self._component_list
-				if not isinstance(component, self.__class__.allowed_diagnostic_type)
-			)
-			return get_output_properties(tendencystepper_components)
+        return return_dict
 
-	def _init_provisional_output_properties(self):
-		return_dict = self.provisional_input_properties
+    def _init_output_properties(self):
+        if not self._diagnostics_from_provisional:
+            return get_output_properties(self._component_list)
+        else:
+            tendencystepper_components = tuple(
+                component
+                for component in self._component_list
+                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+            )
+            return get_output_properties(tendencystepper_components)
 
-		if self._diagnostics_from_provisional:
-			diagnostic_components = (
-				component for component in self._component_list
-				if isinstance(component, self.__class__.allowed_diagnostic_type)
-			)
+    def _init_provisional_output_properties(self):
+        return_dict = self.provisional_input_properties
 
-			return_dict.update(
-				get_output_properties(
-					diagnostic_components, component_attribute_name='',
-					consider_diagnostics=True, return_dict=return_dict
-				)
-			)
+        if self._diagnostics_from_provisional:
+            diagnostic_components = (
+                component
+                for component in self._component_list
+                if isinstance(component, self.__class__.allowed_diagnostic_type)
+            )
 
-		return return_dict
+            return_dict.update(
+                get_output_properties(
+                    diagnostic_components,
+                    component_attribute_name="",
+                    consider_diagnostics=True,
+                    return_dict=return_dict,
+                )
+            )
 
-	@property
-	def component_list(self):
-		"""
+        return return_dict
+
+    @property
+    def component_list(self):
+        """
 		Return
 		------
 		tuple :
 			The wrapped components.
 		"""
-		return tuple(self._component_list)
+        return tuple(self._component_list)
 
-	def __call__(self, state, state_prv, timestep):
-		"""
+    def __call__(self, state, state_prv, timestep):
+        """
 		Advance the model state one timestep forward in time by pursuing
 		the parallel splitting method.
 
@@ -347,96 +385,100 @@ class ParallelSplitting:
 		by each process. In other words, when this method returns, :obj:`state_prv`
 		will represent the state at the next time level.
 		"""
-		self._call(state, state_prv, timestep)
+        self._call(state, state_prv, timestep)
 
-		# Ensure the provisional state is now defined at the next time level
-		state_prv['time'] = state['time'] + timestep
+        # Ensure the provisional state is now defined at the next time level
+        state_prv["time"] = state["time"] + timestep
 
-	def _call_serial(self, state, state_prv, timestep):
-		"""
+    def _call_serial(self, state, state_prv, timestep):
+        """
 		Process the components in 'serial' runtime mode.
 		"""
-		out_units = {
-			name: properties['units'] for name, properties in
-			self.provisional_output_properties.items()
-		}
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.provisional_output_properties.items()
+        }
 
-		for component, substeps in zip(self._component_list, self._substeps):
-			if not isinstance(component, self.__class__.allowed_diagnostic_type):
-				diagnostics, state_tmp = component(state, timestep/substeps)
+        for component, substeps in zip(self._component_list, self._substeps):
+            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics, state_tmp = component(state, timestep / substeps)
 
-				if substeps > 1:
-					state_tmp.update(
-						{
-							key: value for key, value in state.items()
-							if key not in state_tmp
-						}
-					)
+                if substeps > 1:
+                    state_tmp.update(
+                        {
+                            key: value
+                            for key, value in state.items()
+                            if key not in state_tmp
+                        }
+                    )
 
-					for _ in range(1, substeps):
-						_, state_aux = component(state_tmp, timestep/substeps)
-						state_tmp.update(state_aux)
+                    for _ in range(1, substeps):
+                        _, state_aux = component(state_tmp, timestep / substeps)
+                        state_tmp.update(state_aux)
 
-				increment = subtract(
-					state_tmp, state,
-					unshared_variables_in_output=False
-				)
-				state_prv.update(
-					add(
-						state_prv, increment,
-						units=out_units, unshared_variables_in_output=True
-					)
-				)
+                increment = subtract(
+                    state_tmp, state, unshared_variables_in_output=False
+                )
+                state_prv.update(
+                    add(
+                        state_prv,
+                        increment,
+                        units=out_units,
+                        unshared_variables_in_output=True,
+                    )
+                )
 
-				state.update(diagnostics)
-			else:
-				if self._diagnostics_from_provisional:
-					diagnostics = component(state_prv)
-					state_prv.update(diagnostics)
-				else:
-					diagnostics = component(state)
-					state.update(diagnostics)
+                state.update(diagnostics)
+            else:
+                if self._diagnostics_from_provisional:
+                    diagnostics = component(state_prv)
+                    state_prv.update(diagnostics)
+                else:
+                    diagnostics = component(state)
+                    state.update(diagnostics)
 
-	def _call_asparallel(self, state, state_prv, timestep):
-		"""
+    def _call_asparallel(self, state, state_prv, timestep):
+        """
 		Process the components in 'as_parallel' runtime mode.
 		"""
-		agg_diagnostics = {}
-		out_units = {
-			name: properties['units'] for name, properties in
-			self.provisional_output_properties.items()
-		}
+        agg_diagnostics = {}
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.provisional_output_properties.items()
+        }
 
-		for component, substeps in zip(self._component_list, self._substeps):
-			if not isinstance(component, self.__class__.allowed_diagnostic_type):
-				diagnostics, state_tmp = component(state, timestep/substeps)
+        for component, substeps in zip(self._component_list, self._substeps):
+            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics, state_tmp = component(state, timestep / substeps)
 
-				if substeps > 1:
-					state_tmp.update(
-						{
-							key: value for key, value in state.items()
-							if key not in state_tmp
-						}
-					)
+                if substeps > 1:
+                    state_tmp.update(
+                        {
+                            key: value
+                            for key, value in state.items()
+                            if key not in state_tmp
+                        }
+                    )
 
-					for _ in range(1, substeps):
-						_, state_aux = component(state_tmp, timestep/substeps)
-						state_tmp.update(state_aux)
+                    for _ in range(1, substeps):
+                        _, state_aux = component(state_tmp, timestep / substeps)
+                        state_tmp.update(state_aux)
 
-				increment = subtract(
-					state_tmp, state,
-					unshared_variables_in_output=False
-				)
-				state_prv.update(
-					add(
-						state_prv, increment,
-						units=out_units, unshared_variables_in_output=True
-					)
-				)
+                increment = subtract(
+                    state_tmp, state, unshared_variables_in_output=False
+                )
+                state_prv.update(
+                    add(
+                        state_prv,
+                        increment,
+                        units=out_units,
+                        unshared_variables_in_output=True,
+                    )
+                )
 
-				agg_diagnostics.update(diagnostics)
-			else:
-				diagnostics = component(state)
-				agg_diagnostics.update(diagnostics)
+                agg_diagnostics.update(diagnostics)
+            else:
+                diagnostics = component(state)
+                agg_diagnostics.update(diagnostics)
 
-		state.update(agg_diagnostics)
+        state.update(agg_diagnostics)

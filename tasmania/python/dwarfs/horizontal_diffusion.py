@@ -33,26 +33,38 @@ import math
 import numpy as np
 
 import gridtools as gt
-from gridtools.storage import StorageDescriptor
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	from numpy import float32 as datatype
+    from numpy import float32 as datatype
 
 
 class HorizontalDiffusion(abc.ABC):
-	"""
+    """
 	Abstract base class whose derived classes calculates the
 	tendency due to horizontal diffusion.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		"""
+
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        """
 		Parameters
 		----------
 		shape : tuple
@@ -85,36 +97,38 @@ class HorizontalDiffusion(abc.ABC):
 		rebuild : bool
 			TODO
 		"""
-		# store input arguments needed at run-time
-		self._shape = shape
-		self._nb = nb
-		self._dx = dx
-		self._dy = dy
-		self._exec_info = exec_info
+        # store input arguments needed at run-time
+        self._shape = shape
+        self._nb = nb
+        self._dx = dx
+        self._dy = dy
+        self._exec_info = exec_info
 
-		# initialize the diffusivity
-		gamma = diffusion_coeff * np.ones((1, 1, shape[2]), dtype=dtype)
+        # initialize the diffusivity
+        gamma = diffusion_coeff * np.ones((1, 1, shape[2]), dtype=dtype)
 
-		# the diffusivity is monotonically increased towards the top of the model,
-		# so to mimic the effect of a short-length wave absorber
-		n = diffusion_damp_depth
-		if n > 0:
-			pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-			gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+        # the diffusivity is monotonically increased towards the top of the model,
+        # so to mimic the effect of a short-length wave absorber
+        n = diffusion_damp_depth
+        if n > 0:
+            pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
+            gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
-		# convert diffusivity to gt4py storage
-		descriptor = get_storage_descriptor(shape, dtype, halo, mask=(True, True, True))  # mask=(False, False, True)
-		self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
+        # convert diffusivity to gt4py storage
+        descriptor = get_storage_descriptor(
+            shape, dtype, halo, mask=(True, True, True)
+        )  # mask=(False, False, True)
+        self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
 
-		# initialize the underlying stencil
-		decorator = gt.stencil(
-			backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
-		)
-		self._stencil = decorator(self._stencil_defs)
+        # initialize the underlying stencil
+        decorator = gt.stencil(
+            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        )
+        self._stencil = decorator(self._stencil_defs)
 
-	@abc.abstractmethod
-	def __call__(self, phi, phi_tnd):
-		"""
+    @abc.abstractmethod
+    def __call__(self, phi, phi_tnd):
+        """
 		Calculate the tendency.
 
 		Parameters
@@ -124,15 +138,28 @@ class HorizontalDiffusion(abc.ABC):
 		phi_tnd : gridtools.storage.Storage
 			Buffer where the calculated tendency will be written.
 		"""
-		pass
+        pass
 
-	@staticmethod
-	def factory(
-		diffusion_type, shape, dx, dy, diffusion_coeff,	diffusion_coeff_max,
-		diffusion_damp_depth, nb=None, *, backend="numpy", backend_opts=None,
-		build_info=None, dtype=datatype, exec_info=None, halo=None, rebuild=False
-	):
-		"""
+    @staticmethod
+    def factory(
+        diffusion_type,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb=None,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False
+    ):
+        """
 		Parameters
 		----------
 		diffusion_type : string
@@ -177,44 +204,55 @@ class HorizontalDiffusion(abc.ABC):
 		obj :
 			Instance of the appropriate derived class.
 		"""
-		args = [
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info,
-			dtype, exec_info, halo, rebuild
-		]
+        args = [
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        ]
 
-		if diffusion_type == 'second_order':
-			assert not(shape[0] < 3 and shape[1] < 3)
+        if diffusion_type == "second_order":
+            assert not (shape[0] < 3 and shape[1] < 3)
 
-			if shape[1] < 3:
-				return SecondOrder1DX(*args)
-			elif shape[0] < 3:
-				return SecondOrder1DY(*args)
-			else:
-				return SecondOrder(*args)
-		elif diffusion_type == 'fourth_order':
-			assert not(shape[0] < 5 and shape[1] < 5)
+            if shape[1] < 3:
+                return SecondOrder1DX(*args)
+            elif shape[0] < 3:
+                return SecondOrder1DY(*args)
+            else:
+                return SecondOrder(*args)
+        elif diffusion_type == "fourth_order":
+            assert not (shape[0] < 5 and shape[1] < 5)
 
-			if shape[1] < 5:
-				return FourthOrder1DX(*args)
-			elif shape[0] < 5:
-				return FourthOrder1DY(*args)
-			else:
-				return FourthOrder(*args)
-		else:
-			raise ValueError(
-				"Supported diffusion operators are ''second_order'' "
-				"and ''fourth_order''."
-			)
+            if shape[1] < 5:
+                return FourthOrder1DX(*args)
+            elif shape[0] < 5:
+                return FourthOrder1DY(*args)
+            else:
+                return FourthOrder(*args)
+        else:
+            raise ValueError(
+                "Supported diffusion operators are ''second_order'' "
+                "and ''fourth_order''."
+            )
 
-	@staticmethod
-	@abc.abstractmethod
-	def _stencil_defs(in_phi, in_gamma, out_phi, *, dx, dy):
-		pass
+    @staticmethod
+    @abc.abstractmethod
+    def _stencil_defs(in_phi, in_gamma, out_phi, *, dx, dy):
+        pass
 
 
 class SecondOrder(HorizontalDiffusion):
-	"""
+    """
 	This class inherits	:class:`tasmania.HorizontalDiffusion`
 	to calculate the tendency due to second-order horizontal diffusion for any
 	three-dimensional field	with at least three elements in each direction.
@@ -225,47 +263,76 @@ class SecondOrder(HorizontalDiffusion):
 	match those specified at instantiation time. Hence, one should use (at least)
 	one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 1 if (nb is None or nb < 1) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 1 if (nb is None or nb < 1) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
-			exec_info=self._exec_info
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		out_phi = in_gamma[0, 0, 0] * (
-			(in_phi[-1, 0, 0] - 2.0*in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx*dx) +
-			(in_phi[0, -1, 0] - 2.0*in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy*dy)
-		)
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+            exec_info=self._exec_info,
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dx: float,
+        dy: float
+    ):
+        out_phi = in_gamma[0, 0, 0] * (
+            (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx * dx)
+            + (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy * dy)
+        )
 
 
 class SecondOrder1DX(HorizontalDiffusion):
-	"""
+    """
 	This class inherits	:class:`tasmania.HorizontalDiffusion`
 	to calculate the tendency due to second-order horizontal diffusion for any
 	three-dimensional field	with only one element along the second dimension.
@@ -276,45 +343,77 @@ class SecondOrder1DX(HorizontalDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 1 if (nb is None or nb < 1) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 1 if (nb is None or nb < 1) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz),
-			exec_info=self._exec_info
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		out_phi = in_gamma[0, 0, 0] * \
-			(in_phi[-1, 0, 0] - 2.0*in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx*dx)
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, 0, 0)},
+            domain=(nx - 2 * nb, ny, nz),
+            exec_info=self._exec_info,
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dx: float,
+        dy: float
+    ):
+        out_phi = (
+            in_gamma[0, 0, 0]
+            * (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
+            / (dx * dx)
+        )
 
 
 class SecondOrder1DY(HorizontalDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to second-order horizontal diffusion for any
 	three-dimensional field	with only one element along the first dimension.
@@ -325,45 +424,81 @@ class SecondOrder1DY(HorizontalDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 1 if (nb is None or nb < 1) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 1 if (nb is None or nb < 1) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"in_phi": (0, nb, 0), "in_gamma": (0, nb, 0), "out_phi": (0, nb, 0)},
-			domain=(nx, ny-2*nb, nz), exec_info=self._exec_info
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[False, False, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		out_phi = in_gamma[0, 0, 0] * \
-			(in_phi[0, -1, 0] - 2.0*in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy*dy)
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={
+                "in_phi": (0, nb, 0),
+                "in_gamma": (0, nb, 0),
+                "out_phi": (0, nb, 0),
+            },
+            domain=(nx, ny - 2 * nb, nz),
+            exec_info=self._exec_info,
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dx: float,
+        dy: float
+    ):
+        out_phi = (
+            in_gamma[0, 0, 0]
+            * (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
+            / (dy * dy)
+        )
 
 
 class FourthOrder(HorizontalDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to fourth-order horizontal diffusion for any
 	three-dimensional field	with at least three elements in each direction.
@@ -374,57 +509,90 @@ class FourthOrder(HorizontalDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 2 if (nb is None or nb < 2) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 2 if (nb is None or nb < 2) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, nb, 0)}, domain=(nx-2*nb, ny-2*nb, nz),
-			exec_info=self._exec_info
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		out_phi = in_gamma[0, 0, 0] * \
-			(
-				(
-					- in_phi[-2, 0, 0] + 16.0 * in_phi[-1, 0, 0]
-					- 30.0 * in_phi[0, 0, 0]
-					+ 16.0 * in_phi[1, 0, 0] - in_phi[2, 0, 0]
-				) / (12.0 * dx * dx)
-				+
-				(
-					- in_phi[0, -2, 0] + 16.0 * in_phi[0, -1, 0]
-					- 30.0 * in_phi[0, 0, 0]
-					+ 16.0 * in_phi[0, 1, 0] - in_phi[0, 2, 0]
-				) / (12.0 * dy * dy)
-			)
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+            exec_info=self._exec_info,
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dx: float,
+        dy: float
+    ):
+        out_phi = in_gamma[0, 0, 0] * (
+            (
+                -in_phi[-2, 0, 0]
+                + 16.0 * in_phi[-1, 0, 0]
+                - 30.0 * in_phi[0, 0, 0]
+                + 16.0 * in_phi[1, 0, 0]
+                - in_phi[2, 0, 0]
+            )
+            / (12.0 * dx * dx)
+            + (
+                -in_phi[0, -2, 0]
+                + 16.0 * in_phi[0, -1, 0]
+                - 30.0 * in_phi[0, 0, 0]
+                + 16.0 * in_phi[0, 1, 0]
+                - in_phi[0, 2, 0]
+            )
+            / (12.0 * dy * dy)
+        )
 
 
 class FourthOrder1DX(HorizontalDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to fourth-order horizontal diffusion for any
 	three-dimensional field	with only one element along the second dimension.
@@ -435,49 +603,83 @@ class FourthOrder1DX(HorizontalDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 2 if (nb is None or nb < 2) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 2 if (nb is None or nb < 2) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (nb, 0, 0)}, domain=(nx-2*nb, ny, nz),
-			exec_info=self._exec_info
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		out_phi = in_gamma[0, 0, 0] * \
-			(
-				- in_phi[-2, 0, 0] + 16.0 * in_phi[-1, 0, 0]
-				- 30.0 * in_phi[0, 0, 0]
-				+ 16.0 * in_phi[1, 0, 0] - in_phi[2, 0, 0]
-			) / (12.0 * dx * dx)
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, 0, 0)},
+            domain=(nx - 2 * nb, ny, nz),
+            exec_info=self._exec_info,
+        )
+
+    @staticmethod
+    def _stencil_defs(
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dx: float,
+        dy: float
+    ):
+        out_phi = (
+            in_gamma[0, 0, 0]
+            * (
+                -in_phi[-2, 0, 0]
+                + 16.0 * in_phi[-1, 0, 0]
+                - 30.0 * in_phi[0, 0, 0]
+                + 16.0 * in_phi[1, 0, 0]
+                - in_phi[2, 0, 0]
+            )
+            / (12.0 * dx * dx)
+        )
 
 
 class FourthOrder1DY(HorizontalDiffusion):
-	"""
+    """
 	This class inherits	:class:`~tasmania.HorizontalDiffusion`
 	to calculate the tendency due to fourth-order horizontal diffusion for any
 	three-dimensional field	with only one element along the first dimension.
@@ -488,43 +690,112 @@ class FourthOrder1DY(HorizontalDiffusion):
 	dimensions match those specified at instantiation time.
 	Hence, one should use (at least) one instance per field shape.
 	"""
-	def __init__(
-		self, shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-		diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-		exec_info, halo, rebuild
-	):
-		nb = 2 if (nb is None or nb < 2) else nb
-		super().__init__(
-			shape, dx, dy, diffusion_coeff, diffusion_coeff_max,
-			diffusion_damp_depth, nb, backend, backend_opts, build_info, dtype,
-			exec_info, halo, rebuild
-		)
 
-	def __call__(self, phi, phi_tnd):
-		# shortcuts
-		dx, dy, nb = self._dx, self._dy, self._nb
-		nx, ny, nz = self._shape
+    def __init__(
+        self,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        nb = 2 if (nb is None or nb < 2) else nb
+        super().__init__(
+            shape,
+            dx,
+            dy,
+            diffusion_coeff,
+            diffusion_coeff_max,
+            diffusion_damp_depth,
+            nb,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-		# run the stencil
-		self._stencil(
-			in_phi=phi, in_gamma=self._gamma, out_phi=phi_tnd, dx=dx, dy=dy,
-			origin={"_all_": (0, nb, 0)}, domain=(nx, ny-2*nb, nz),
-			exec_info=self._exec_info
-		)
+    def __call__(self, phi, phi_tnd):
+        # shortcuts
+        dx, dy, nb = self._dx, self._dy, self._nb
+        nx, ny, nz = self._shape
 
-	@staticmethod
-	def _stencil_defs(
-		in_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		in_gamma: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		out_phi: StorageDescriptor(np.float64, grid_group="domain", mask=[True, True, True]),
-		*,
-		dx: float,
-		dy: float
-	):
-		out_phi = in_gamma[0, 0, 0] * \
-			(
-				- in_phi[0, -2, 0] + 16.0 * in_phi[0, -1, 0]
-				- 30.0 * in_phi[0, 0, 0]
-				+ 16.0 * in_phi[0, 1, 0] - in_phi[0, 2, 0]
-			) / (12.0 * dy * dy)
+        # run the stencil
+        self._stencil(
+            in_phi=phi,
+            in_gamma=self._gamma,
+            out_phi=phi_tnd,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (0, nb, 0)},
+            domain=(nx, ny - 2 * nb, nz),
+            exec_info=self._exec_info,
+        )
 
+    @staticmethod
+    def _stencil_defs(
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dx: float,
+        dy: float
+    ):
+        out_phi = (
+            in_gamma[0, 0, 0]
+            * (
+                -in_phi[0, -2, 0]
+                + 16.0 * in_phi[0, -1, 0]
+                - 30.0 * in_phi[0, 0, 0]
+                + 16.0 * in_phi[0, 1, 0]
+                - in_phi[0, 2, 0]
+            )
+            / (12.0 * dy * dy)
+        )
+
+
+if __name__ == "__main__":
+    diffusion_type = "second_order"
+    shape = (20, 30, 15)
+    dx = 1.0
+    dy = 1.0
+    diffusion_coeff = 1.0
+    diffusion_coeff_max = 2.0
+    diffusion_damp_depth = 0
+    nb = 3
+    backend = "numpy"
+    dtype = np.float64
+    halo = (0, 0, 0)
+    rebuild = True
+
+    phi_rnd = np.random.rand(*shape)
+    descriptor = get_storage_descriptor(shape, dtype, halo=halo)
+    phi = gt.storage.from_array(phi_rnd, descriptor, backend=backend)
+    phi_out = gt.storage.zeros(descriptor, backend=backend)
+
+    diffuser = HorizontalDiffusion.factory(
+        diffusion_type,
+        shape,
+        dx,
+        dy,
+        diffusion_coeff,
+        diffusion_coeff_max,
+        diffusion_damp_depth,
+        nb,
+        backend=backend,
+        dtype=dtype,
+        halo=halo,
+        rebuild=rebuild,
+    )
+    diffuser(phi, phi_out)

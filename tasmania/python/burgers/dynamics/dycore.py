@@ -28,22 +28,32 @@ from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except TypeError:
-	from numpy import float32 as datatype
+    from numpy import float32 as datatype
 
 
 class BurgersDynamicalCore(DynamicalCore):
-	"""
+    """
 	The dynamical core for the inviscid 2-D Burgers equations.
 	"""
-	def __init__(
-		self, domain, intermediate_tendencies=None,
-		time_integration_scheme='forward_euler', flux_scheme='upwind', *,
-		backend='numpy', backend_opts=None, build_info=None, dtype=datatype,
-		exec_info=None, halo=None, rebuild=None
-	):
-		"""
+
+    def __init__(
+        self,
+        domain,
+        intermediate_tendencies=None,
+        time_integration_scheme="forward_euler",
+        flux_scheme="upwind",
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=None
+    ):
+        """
 		Parameters
 		----------
 		domain : tasmania.Domain
@@ -84,84 +94,103 @@ class BurgersDynamicalCore(DynamicalCore):
 		rebuild : `bool`, optional
 			TODO
 		"""
-		super().__init__(
-			domain, grid_type='numerical', time_units='s',
-			intermediate_tendencies=intermediate_tendencies,
-			intermediate_diagnostics=None, substeps=0,
-			fast_tendencies=None, fast_diagnostics=None, dtype=dtype
-		)
+        super().__init__(
+            domain,
+            grid_type="numerical",
+            time_units="s",
+            intermediate_tendencies=intermediate_tendencies,
+            intermediate_diagnostics=None,
+            substeps=0,
+            fast_tendencies=None,
+            fast_diagnostics=None,
+            dtype=dtype,
+        )
 
-		assert self.grid.nz == 1, \
-			'The number grid points along the vertical dimension must be 1.'
+        assert (
+            self.grid.nz == 1
+        ), "The number grid points along the vertical dimension must be 1."
 
-		self._stepper = BurgersStepper.factory(
-			time_integration_scheme, self.grid.grid_xy, self.horizontal_boundary.nb,
-			flux_scheme, backend=backend, backend_opts=backend_opts,
-			build_info=build_info, dtype=dtype, exec_info=exec_info,
-			halo=halo, rebuild=rebuild
-		)
+        self._stepper = BurgersStepper.factory(
+            time_integration_scheme,
+            self.grid.grid_xy,
+            self.horizontal_boundary.nb,
+            flux_scheme,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=dtype,
+            exec_info=exec_info,
+            halo=halo,
+            rebuild=rebuild,
+        )
 
-	@property
-	def _input_properties(self):
-		g = self.grid
-		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
-		return {
-			'x_velocity': {'dims': dims, 'units': 'm s^-1'},
-			'y_velocity': {'dims': dims, 'units': 'm s^-1'},
-		}
+    @property
+    def _input_properties(self):
+        g = self.grid
+        dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
+        return {
+            "x_velocity": {"dims": dims, "units": "m s^-1"},
+            "y_velocity": {"dims": dims, "units": "m s^-1"},
+        }
 
-	@property
-	def _substep_input_properties(self):
-		return {}
+    @property
+    def _substep_input_properties(self):
+        return {}
 
-	@property
-	def _tendency_properties(self):
-		g = self.grid
-		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
-		return {
-			'x_velocity': {'dims': dims, 'units': 'm s^-2'},
-			'y_velocity': {'dims': dims, 'units': 'm s^-2'},
-		}
+    @property
+    def _tendency_properties(self):
+        g = self.grid
+        dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
+        return {
+            "x_velocity": {"dims": dims, "units": "m s^-2"},
+            "y_velocity": {"dims": dims, "units": "m s^-2"},
+        }
 
-	@property
-	def _substep_tendency_properties(self):
-		return {}
+    @property
+    def _substep_tendency_properties(self):
+        return {}
 
-	@property
-	def _output_properties(self):
-		g = self.grid
-		dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
-		return {
-			'x_velocity': {'dims': dims, 'units': 'm s^-1'},
-			'y_velocity': {'dims': dims, 'units': 'm s^-1'},
-		}
+    @property
+    def _output_properties(self):
+        g = self.grid
+        dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
+        return {
+            "x_velocity": {"dims": dims, "units": "m s^-1"},
+            "y_velocity": {"dims": dims, "units": "m s^-1"},
+        }
 
-	@property
-	def _substep_output_properties(self):
-		return {}
+    @property
+    def _substep_output_properties(self):
+        return {}
 
-	@property
-	def stages(self):
-		return self._stepper.stages
+    @property
+    def stages(self):
+        return self._stepper.stages
 
-	def substep_fractions(self):
-		return 1
+    def substep_fractions(self):
+        return 1
 
-	def array_call(self, stage, raw_state, raw_tendencies, timestep):
-		out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
+    def array_call(self, stage, raw_state, raw_tendencies, timestep):
+        out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
-		self.horizontal_boundary.dmn_enforce_raw(
-			out_state,
-			field_properties={
-				'x_velocity': {'units': 'm s^-1'},
-				'y_velocity': {'units': 'm s^-1'},
-			},
-		)
+        self.horizontal_boundary.dmn_enforce_raw(
+            out_state,
+            field_properties={
+                "x_velocity": {"units": "m s^-1"},
+                "y_velocity": {"units": "m s^-1"},
+            },
+        )
 
-		return out_state
+        return out_state
 
-	def substep_array_call(
-		self, stage, substep, raw_state, raw_stage_state, raw_tmp_state,
-		raw_tendencies, timestep
-	):
-		raise NotImplementedError()
+    def substep_array_call(
+        self,
+        stage,
+        substep,
+        raw_state,
+        raw_stage_state,
+        raw_tmp_state,
+        raw_tendencies,
+        timestep,
+    ):
+        raise NotImplementedError()

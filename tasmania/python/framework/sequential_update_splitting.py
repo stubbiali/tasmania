@@ -24,21 +24,29 @@
 This module contains:
 	SequentialUpdateSplitting
 """
-from sympl import \
-	DiagnosticComponent, DiagnosticComponentComposite as SymplDiagnosticComponentComposite, \
-	TendencyComponent, TendencyComponentComposite, \
-	ImplicitTendencyComponent, ImplicitTendencyComponentComposite
+from sympl import (
+    DiagnosticComponent,
+    DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
+    TendencyComponent,
+    TendencyComponentComposite,
+    ImplicitTendencyComponent,
+    ImplicitTendencyComponentComposite,
+)
 
-from tasmania.python.framework.composite import \
-	DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite
+from tasmania.python.framework.composite import (
+    DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
+)
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import tendencystepper_factory
-from tasmania.python.utils.framework_utils import \
-	check_properties_compatibility, get_input_properties, get_output_properties
+from tasmania.python.utils.framework_utils import (
+    check_properties_compatibility,
+    get_input_properties,
+    get_output_properties,
+)
 
 
 class SequentialUpdateSplitting:
-	"""
+    """
 	Callable class which integrates a bundle of physical processes pursuing
 	the sequential update splitting strategy.
 
@@ -61,22 +69,24 @@ class SequentialUpdateSplitting:
 		Impact of physics parameterization ordering in a global atmosphere model. \
 		*Journal of Advances in Modeling earth Systems*, *10*:481-499.
 	"""
-	allowed_diagnostic_type = (
-		DiagnosticComponent,
-		SymplDiagnosticComponentComposite,
-		TasmaniaDiagnosticComponentComposite,
-	)
-	allowed_tendency_type = (
-		TendencyComponent,
-		TendencyComponentComposite,
-		ImplicitTendencyComponent,
-		ImplicitTendencyComponentComposite,
-	)
-	allowed_component_type = \
-		allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling, )
 
-	def __init__(self, *args):
-		"""
+    allowed_diagnostic_type = (
+        DiagnosticComponent,
+        SymplDiagnosticComponentComposite,
+        TasmaniaDiagnosticComponentComposite,
+    )
+    allowed_tendency_type = (
+        TendencyComponent,
+        TendencyComponentComposite,
+        ImplicitTendencyComponent,
+        ImplicitTendencyComponentComposite,
+    )
+    allowed_component_type = (
+        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
+    )
+
+    def __init__(self, *args):
+        """
 		Parameters
 		----------
 		*args : dict
@@ -135,56 +145,62 @@ class SequentialUpdateSplitting:
 					'substeps' represents the number of substeps to carry out to
 					integrate the process. Defaults to 1.
 		"""
-		self._component_list = []
-		self._substeps = []
-		for process in args:
-			try:
-				bare_component = process['component']
-			except KeyError:
-				msg = "Missing mandatory key ''component'' in one item of ''processes''."
-				raise KeyError(msg)
+        self._component_list = []
+        self._substeps = []
+        for process in args:
+            try:
+                bare_component = process["component"]
+            except KeyError:
+                msg = (
+                    "Missing mandatory key ''component'' in one item of ''processes''."
+                )
+                raise KeyError(msg)
 
-			assert isinstance(bare_component, self.__class__.allowed_component_type), \
-				"''component'' value should be either a {}.".format(
-					', '.join(str(ctype) for ctype in self.__class__.allowed_component_type)
-				)
+            assert isinstance(
+                bare_component, self.__class__.allowed_component_type
+            ), "''component'' value should be either a {}.".format(
+                ", ".join(str(ctype) for ctype in self.__class__.allowed_component_type)
+            )
 
-			if isinstance(bare_component, self.__class__.allowed_diagnostic_type):
-				self._component_list.append(bare_component)
-				self._substeps.append(1)
-			else:
-				integrator = process.get('time_integrator', 'forward_euler')
-				enforce_hb = process.get('enforce_horizontal_boundary', False)
+            if isinstance(bare_component, self.__class__.allowed_diagnostic_type):
+                self._component_list.append(bare_component)
+                self._substeps.append(1)
+            else:
+                integrator = process.get("time_integrator", "forward_euler")
+                enforce_hb = process.get("enforce_horizontal_boundary", False)
 
-				TendencyStepper = tendencystepper_factory(integrator)
-				self._component_list.append(
-					TendencyStepper(bare_component, enforce_horizontal_boundary=enforce_hb)
-				)
+                TendencyStepper = tendencystepper_factory(integrator)
+                self._component_list.append(
+                    TendencyStepper(
+                        bare_component, enforce_horizontal_boundary=enforce_hb
+                    )
+                )
 
-				substeps = process.get('substeps', 1)
-				self._substeps.append(substeps)
+                substeps = process.get("substeps", 1)
+                self._substeps.append(substeps)
 
-		# Set properties
-		self.input_properties = self._init_input_properties()
-		self.output_properties = self._init_output_properties()
+        # Set properties
+        self.input_properties = self._init_input_properties()
+        self.output_properties = self._init_output_properties()
 
-		# Ensure that dimensions and units of the variables present
-		# in both input_properties and output_properties are compatible
-		# across the two dictionaries
-		check_properties_compatibility(
-			self.input_properties, self.output_properties,
-			properties1_name='input_properties',
-			properties2_name='output_properties',
-		)
+        # Ensure that dimensions and units of the variables present
+        # in both input_properties and output_properties are compatible
+        # across the two dictionaries
+        check_properties_compatibility(
+            self.input_properties,
+            self.output_properties,
+            properties1_name="input_properties",
+            properties2_name="output_properties",
+        )
 
-	def _init_input_properties(self):
-		return get_input_properties(self._component_list, consider_diagnostics=True)
+    def _init_input_properties(self):
+        return get_input_properties(self._component_list, consider_diagnostics=True)
 
-	def _init_output_properties(self):
-		return get_output_properties(self._component_list, consider_diagnostics=True)
+    def _init_output_properties(self):
+        return get_output_properties(self._component_list, consider_diagnostics=True)
 
-	def __call__(self, state, timestep):
-		"""
+    def __call__(self, state, timestep):
+        """
 		Advance the model state one timestep forward in time by pursuing
 		the parallel splitting method.
 
@@ -201,32 +217,33 @@ class SequentialUpdateSplitting:
 		----
 		:obj:`state` is modified in-place to represent the final model state.
 		"""
-		current_time = state['time']
+        current_time = state["time"]
 
-		for component, substeps in zip(self._component_list, self._substeps):
-			if not isinstance(component, self.__class__.allowed_diagnostic_type):
-				diagnostics, state_tmp = component(state, timestep/substeps)
+        for component, substeps in zip(self._component_list, self._substeps):
+            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics, state_tmp = component(state, timestep / substeps)
 
-				if substeps > 1:
-					state_tmp.update(
-						{
-							key: value for key, value in state.items()
-							if key not in state_tmp
-						}
-					)
+                if substeps > 1:
+                    state_tmp.update(
+                        {
+                            key: value
+                            for key, value in state.items()
+                            if key not in state_tmp
+                        }
+                    )
 
-					for _ in range(1, substeps):
-						_, state_aux = component(state_tmp, timestep/substeps)
-						state_tmp.update(state_aux)
+                    for _ in range(1, substeps):
+                        _, state_aux = component(state_tmp, timestep / substeps)
+                        state_tmp.update(state_aux)
 
-				state.update(state_tmp)
-				state.update(diagnostics)
-			else:
-				diagnostics = component(state)
-				state.update(diagnostics)
+                state.update(state_tmp)
+                state.update(diagnostics)
+            else:
+                diagnostics = component(state)
+                state.update(diagnostics)
 
-			# Ensure state is still defined at current time level
-			state['time'] = current_time
+            # Ensure state is still defined at current time level
+            state["time"] = current_time
 
-		# Ensure the state is defined at the next time level
-		state['time'] = current_time + timestep
+        # Ensure the state is defined at the next time level
+        state["time"] = current_time + timestep
