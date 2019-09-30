@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 import pytest
 from sympl import DataArray
 
@@ -219,10 +220,17 @@ class FakeTendencyComponent2(TendencyComponent):
         f = state["fake_variable"]
         v = state["y_velocity_at_v_locations"]
 
-        tendencies = {
-            "air_isentropic_density": f / 100,
-            "y_momentum_isentropic": 0.5 * s * (v[:, :-1, :] + v[:, 1:, :]) / 3.6e6,
-        }
+        g = self.grid
+
+        if s.shape == (g.nx, g.ny, g.nz):
+            sv = 0.5 * 1e-6 * s * (v[:, :-1, :] / 3.6 + v[:, 1:, :] / 3.6)
+        elif s.shape == (g.nx + 1, g.ny + 1, g.nz + 1):
+            sv = np.zeros_like(s, dtype=s.dtype)
+            sv[:, :-1] = 0.5 * 1e-6 * s[:, :-1] * (v[:, :-1] / 3.6 + v[:, 1:] / 3.6)
+        else:
+            raise RuntimeError()
+
+        tendencies = {"air_isentropic_density": f / 100, "y_momentum_isentropic": sv}
 
         diagnostics = {}
 

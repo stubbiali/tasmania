@@ -36,7 +36,7 @@ from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .test_horizontal_diffusion import (
+    from .dwarfs.test_horizontal_diffusion import (
         second_order_diffusion_xyz,
         second_order_diffusion_xz,
         second_order_diffusion_yz,
@@ -50,7 +50,7 @@ try:
     from .utils import st_burgers_state, st_domain, st_floats, st_one_of
 except (ImportError, ModuleNotFoundError):
     from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from test_horizontal_diffusion import (
+    from dwarfs.test_horizontal_diffusion import (
         second_order_diffusion_xyz,
         second_order_diffusion_xz,
         second_order_diffusion_yz,

@@ -46,7 +46,7 @@ from sympl._core.units import clean_units
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import (
     get_increment,
-    restore_tendencies_units,
+    restore_tendency_units,
 )
 from tasmania.python.utils.dict_utils import (
     add,
@@ -415,7 +415,7 @@ class ForwardEuler(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        # restore_tendencies_units(tendencies)
+        # restore_tendency_units(tendencies)
 
         return diagnostics, out_state
 
@@ -463,7 +463,7 @@ class RungeKutta2(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        # restore_tendencies_units(k0)
+        # restore_tendency_units(k0)
 
         # second stage
         k1, _ = get_increment(out_state, timestep, self.prognostic)
@@ -478,7 +478,7 @@ class RungeKutta2(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        # restore_tendencies_units(k1)
+        # restore_tendency_units(k1)
 
         # remove undesired variables
         for name in state:
@@ -535,7 +535,7 @@ class RungeKutta3WS(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        # restore_tendencies_units(k0)
+        # restore_tendency_units(k0)
 
         # second stage
         k1, _ = get_increment(out_state, timestep, self.prognostic)
@@ -553,7 +553,7 @@ class RungeKutta3WS(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        # restore_tendencies_units(k1)
+        # restore_tendency_units(k1)
 
         # third stage
         k2, _ = get_increment(out_state, timestep, self.prognostic)
@@ -568,7 +568,7 @@ class RungeKutta3WS(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        # restore_tendencies_units(k2)
+        # restore_tendency_units(k2)
 
         # remove undesired variables
         for name in state:
@@ -704,8 +704,8 @@ class RungeKutta3(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
-        restore_tendencies_units(k0)
-        restore_tendencies_units(k1)
-        restore_tendencies_units(k2)
+        restore_tendency_units(k0)
+        restore_tendency_units(k1)
+        restore_tendency_units(k2)
 
         return diagnostics, out_state

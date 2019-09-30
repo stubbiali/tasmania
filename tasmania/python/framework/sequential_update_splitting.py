@@ -144,8 +144,7 @@ class SequentialUpdateSplitting:
 
                     'substeps' represents the number of substeps to carry out to
                     integrate the process. Defaults to 1.
-                * 'backend' TODO
-                * 'halo' TODO
+                * 'time_integrator_kwargs'
         """
         self._component_list = []
         self._substeps = []
@@ -168,16 +167,15 @@ class SequentialUpdateSplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                backend = process.get("backend", None)
-                halo = process.get("halo", None)
+                kwargs = process.get("time_integrator_kwargs", {"backend": None, "halo": None})
 
                 TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(
                     TendencyStepper(
                         bare_component,
+                        execution_policy="serial",
                         enforce_horizontal_boundary=enforce_hb,
-                        backend=backend,
-                        halo=halo,
+                        **kwargs
                     )
                 )
 

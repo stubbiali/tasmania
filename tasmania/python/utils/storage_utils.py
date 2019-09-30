@@ -150,8 +150,8 @@ def get_dataarray_3d(
         and whose units are `units`.
     """
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
-    grid_origin = (0, 0, 0) if grid_origin is None else grid_origin
-    grid_shape = array.shape if grid_shape is None else grid_shape
+    grid_origin = grid_origin or (0, 0, 0)
+    grid_shape = grid_shape or array.shape
     try:
         ni, nj, nk = grid_shape
     except ValueError:
