@@ -1,3 +1,10 @@
+Install
+---
+To make Jupyter work properly: use `tornado==5`.
+
+Run
+---
+
 To run the [Jupyter Notebook](http://jupyter.org/) inside a [Docker](https://www.docker.com/) container, from within this folder launch
 
 	jupyter notebook --ip 0.0.0.0
