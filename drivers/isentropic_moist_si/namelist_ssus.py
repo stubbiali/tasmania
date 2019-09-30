@@ -40,8 +40,8 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
-    "backend_opts": None,
+    "backend": "gtx86",
+    "backend_opts": {"max_region_offset": 3, "verbose": True},
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -121,10 +121,10 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = True
-sedimentation = True
+precipitation = False
+sedimentation = False
 sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = True
+rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
@@ -159,7 +159,7 @@ filename = (
         "_evap" if rain_evaporation else "",
     )
 )
-filename = "../../data/isentropic_ssus_{}.nc".format(gt_kwargs["backend"])
+filename = None  # "../../data/isentropic_ssus_{}.nc".format(gt_kwargs["backend"])
 store_names = (
     "accumulated_precipitation",
     "air_density",
@@ -178,7 +178,7 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-save_frequency = 5
+save_frequency = -1
 print_dry_frequency = 5
 print_moist_frequency = 5
 plot_frequency = -1

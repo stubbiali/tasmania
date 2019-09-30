@@ -46,7 +46,7 @@ gt_kwargs = {
     "dtype": np.float64,
     "exec_info": None,
     "halo": (nb, nb, 0),
-    "rebuild": True,
+    "rebuild": False,
 }
 
 # topography
@@ -120,8 +120,8 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = False
-sedimentation = False
+precipitation = True
+sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
 rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})

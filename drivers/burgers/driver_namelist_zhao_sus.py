@@ -91,10 +91,9 @@ physics = taz.SequentialUpdateSplitting(
     {
         "component": diff,
         "time_integrator": nl.physics_time_integration_scheme,
+        "time_integrator_kwargs": nl.gt_kwargs,
         "enforce_horizontal_boundary": True,
         "substeps": 1,
-        "backend": nl.gt_kwargs["backend"],
-        "halo": nl.gt_kwargs["halo"],
     }
 )
 

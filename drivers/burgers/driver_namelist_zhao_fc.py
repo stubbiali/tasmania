@@ -131,10 +131,18 @@ for i in range(nt):
 
         # print useful info
         print(
-            "Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s".format(
-                i + 1, err_u, err_v
-            )
+           "Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s".format(
+               i + 1, err_u, err_v
+           )
         )
+
+        # umax, vmax = u[3:-3, 3:-3].max(), v[3:-3, 3:-3].max()
+        # umin, vmin = u[3:-3, 3:-3].min(), v[3:-3, 3:-3].min()
+        # print(
+        #     "Iteration {:6d}: umax = {:8.6E}, umin = {:8.6E}, vmax = {:8.6E}, vmin = {:8.6E}".format(
+        #         i + 1, umax, umin, vmax, vmin
+        #     )
+        # )
 
     # shortcuts
     to_save = (nl.filename is not None) and (

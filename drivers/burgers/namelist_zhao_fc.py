@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 2
+factor = 1
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -48,13 +48,13 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "gtmc",
     "backend_opts": None,
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
     "halo": (nb, nb, 0),
-    "rebuild": False,
+    "rebuild": True,
 }
 
 # numerical scheme
@@ -74,5 +74,5 @@ filename = None  # '../../data/burgers_fc_{}.nc'.format(gt_kwargs['backend'])
 #       nx, ny, int(timestep.total_seconds()), niter,
 #   )
 save_frequency = -1
-print_frequency = -1
+print_frequency = 1
 plot_frequency = -1
