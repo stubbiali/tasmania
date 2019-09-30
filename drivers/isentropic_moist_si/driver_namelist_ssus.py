@@ -26,6 +26,8 @@ import os
 import tasmania as taz
 import time
 
+from tasmania.python.utils.storage_utils import zeros
+
 
 # ============================================================
 # The namelist
@@ -66,6 +68,8 @@ domain = taz.Domain(
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
+storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+nl.gt_kwargs["storage_shape"] = storage_shape
 
 # ============================================================
 # The initial state
@@ -79,7 +83,10 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     moist=True,
     precipitation=nl.precipitation,
     relative_humidity=nl.relative_humidity,
+    backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
+    halo=nl.gt_kwargs["halo"],
+    storage_shape=storage_shape,
 )
 domain.horizontal_boundary.reference_state = state
 
@@ -135,9 +142,23 @@ if nl.coriolis:
         **nl.gt_kwargs
     )
     args_before_dynamics.append(
-        {"component": cf, "time_integrator": "forward_euler", "substeps": 1}
+        {
+            "component": cf,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
     )
-    args_after_dynamics.append({"component": cf, "time_integrator": ptis, "substeps": 1})
+    args_after_dynamics.append(
+        {
+            "component": cf,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
+    )
 
 if nl.smooth:
     # component performing the horizontal smoothing
@@ -169,16 +190,36 @@ if nl.diff:
         diffusion_moist_damp_depth=nl.diff_moist_damp_depth,
         **nl.gt_kwargs
     )
-    args_after_dynamics.append({"component": hd, "time_integrator": ptis, "substeps": 1})
+    args_after_dynamics.append(
+        {
+            "component": hd,
+            "time_integrator": ptis,
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
+    )
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
     turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
     args_before_dynamics.append(
-        {"component": turb, "time_integrator": "forward_euler", "substeps": 1}
+        {
+            "component": turb,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
     )
     args_after_dynamics.append(
-        {"component": turb, "time_integrator": ptis, "substeps": 1}
+        {
+            "component": turb,
+            "time_integrator": ptis,
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
     )
 
 # component calculating the microphysics
@@ -201,6 +242,8 @@ if nl.update_frequency > 0:
             "component": UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
             "time_integrator": "forward_euler",
             "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
         }
     )
     args_after_dynamics.append(
@@ -208,13 +251,29 @@ if nl.update_frequency > 0:
             "component": UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
             "time_integrator": ptis,
             "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
         }
     )
 else:
     args_before_dynamics.append(
-        {"component": ke, "time_integrator": "forward_euler", "substeps": 1}
+        {
+            "component": ke,
+            "time_integrator": "forward_euler",
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
     )
-    args_after_dynamics.append({"component": ke, "time_integrator": ptis, "substeps": 1})
+    args_after_dynamics.append(
+        {
+            "component": ke,
+            "time_integrator": ptis,
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
+    )
 
 # component clipping the negative values of the water species
 water_species_names = (
@@ -230,7 +289,16 @@ if nl.rain_evaporation:
     state[
         "tendency_of_air_potential_temperature"
     ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-        np.zeros((cgrid.nx, cgrid.ny, cgrid.nz)), cgrid, "K s^-1"
+        zeros(
+            storage_shape,
+            backend=nl.gt_kwargs["backend"],
+            dtype=nl.gt_kwargs["dtype"],
+            halo=nl.gt_kwargs["halo"],
+        ),
+        cgrid,
+        "K s^-1",
+        grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+        set_coordinates=False,
     )
 
     # component integrating the vertical flux
@@ -242,10 +310,22 @@ if nl.rain_evaporation:
         **nl.gt_kwargs
     )
     args_before_dynamics.append(
-        {"component": vf, "time_integrator": "rk3ws", "substeps": 1}
+        {
+            "component": vf,
+            "time_integrator": "rk3ws",
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
     )
     args_after_dynamics.append(
-        {"component": vf, "time_integrator": "rk3ws", "substeps": 1}
+        {
+            "component": vf,
+            "time_integrator": "rk3ws",
+            "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
+        }
     )
 
 if nl.precipitation:
@@ -264,6 +344,8 @@ if nl.precipitation:
             "component": taz.ConcurrentCoupling(rfv, sd),
             "time_integrator": "forward_euler",
             "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
         }
     )
     args_after_dynamics.append(
@@ -271,6 +353,8 @@ if nl.precipitation:
             "component": taz.ConcurrentCoupling(rfv, sd),
             "time_integrator": ptis,
             "substeps": 1,
+            "backend": nl.gt_kwargs["backend"],
+            "halo": nl.gt_kwargs["halo"],
         }
     )
 
@@ -281,12 +365,22 @@ sa = taz.KesslerSaturationAdjustment(
 args_after_dynamics.append({"component": sa})
 
 # component calculating the accumulated precipitation
-ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
-args_before_dynamics.append({"component": ap})
-args_after_dynamics.append({"component": ap})
-state["raindrop_fall_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-    np.zeros((cgrid.nx, cgrid.ny, cgrid.nz), dtype=nl.gt_kwargs["dtype"]), cgrid, "m s^-1"
-)
+if nl.precipitation:
+    ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
+    args_before_dynamics.append({"component": ap})
+    args_after_dynamics.append({"component": ap})
+    state[
+        "raindrop_fall_velocity"
+    ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        taz.zeros(
+            storage_shape,
+            backend=nl.gt_kwargs["backend"],
+            dtype=nl.gt_kwargs["dtype"],
+            halo=nl.gt_kwargs["halo"],
+        ),
+        cgrid,
+        "m s^-1",
+    )
 
 iargs_before_dynamics = args_before_dynamics[::-1]
 
@@ -439,32 +533,44 @@ for i in range(nt):
     # update the (time-dependent) topography
     dycore.update_topography((i + 1) * dt)
 
-    # compute the physics before the dynamics
-    physics_before_dynamics(state, 0.5 * dt)
+    # initialize an auxiliary state
+    state_aux = {}
+    state_aux.update(state)
 
-    # ensure the state is still defined at the current time level
+    # calculate the physics
+    physics_before_dynamics(state_aux, 0.5 * dt)
+    taz.dict_copy(state, state_aux)
+
+    # calculate the dynamics
     state["time"] = nl.init_time + i * dt
+    state_prv = dycore(state, {}, dt)
 
-    # compute the dynamics
-    state_new = dycore(state, {}, dt)
-    taz.dict_update(state, state_new)
+    # calculate the physics
+    state_prv["time"] = nl.init_time + (i + 0.5) * dt
+    physics_after_dynamics(state_prv, 0.5 * dt)
 
-    # ensure the state is defined at the half time level
-    state["time"] = nl.init_time + (i + 0.5) * dt
-
-    # compute the physics
-    physics_after_dynamics(state, 0.5 * dt)
+    # update the state
+    taz.dict_copy(state, state_prv)
+    state["time"] = nl.init_time + (i + 1) * dt
 
     compute_time += time.time() - compute_time_start
 
     if (nl.print_dry_frequency > 0) and ((i + 1) % nl.print_dry_frequency == 0):
         u = (
-            state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[...]
-            / state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[...]
+            state["x_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-1")
+            .values[3:-4, 3:-4, :-1]
+            / state["air_isentropic_density"]
+            .to_units("kg m^-2 K^-1")
+            .values[3:-4, 3:-4, :-1]
         )
         v = (
-            state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[...]
-            / state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[...]
+            state["y_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-1")
+            .values[3:-4, 3:-4, :-1]
+            / state["air_isentropic_density"]
+            .to_units("kg m^-2 K^-1")
+            .values[3:-4, 3:-4, :-1]
         )
 
         umax, umin = u.max(), u.min()
@@ -484,29 +590,32 @@ for i in range(nt):
 
     if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
         qv_max = (
-            state["mass_fraction_of_water_vapor_in_air"].values[10:-10, 10:-10, 30:].max()
+            state["mass_fraction_of_water_vapor_in_air"].values[10:-11, 10:-11, :-1].max()
             * 1e3
         )
         qc_max = (
             state["mass_fraction_of_cloud_liquid_water_in_air"]
-            .values[10:-10, 10:-10, 30:]
+            .values[10:-11, 10:-11, :-1]
             .max()
             * 1e3
         )
         qr_max = (
             state["mass_fraction_of_precipitation_water_in_air"]
-            .values[10:-10, 10:-10, 30:]
+            .values[10:-11, 10:-11, :-1]
             .max()
             * 1e3
         )
         if "precipitation" in state:
             prec_max = (
-                state["precipitation"].to_units("mm hr^-1").values[10:-10, 10:-10].max()
+                state["precipitation"]
+                .to_units("mm hr^-1")
+                .values[10:-11, 10:-11, :-1]
+                .max()
             )
             accprec_max = (
                 state["accumulated_precipitation"]
                 .to_units("mm")
-                .values[10:-10, 10:-10]
+                .values[10:-11, 10:-11, :-1]
                 .max()
             )
             print(
