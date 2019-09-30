@@ -952,8 +952,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             in_vt=in_vt,
             out_qr=self._out_qr,
             dt=dt,
-            origin={"_all_": (0, 0, nbv)},
-            domain=(nx, ny, nz - nbv),
+            origin={"_all_": (nbh, nbh, nbv)},
+            domain=(nx - 2*nbh, ny - 2*nbh, nz - nbv),
             exec_info=self._exec_info,
         )
 
@@ -985,4 +985,4 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
         dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
 
-        out_qr = dfdz[0, 0, 0] / in_rho[0, 0, 0] + 0 * dt
+        out_qr = dfdz[0, 0, 0] / in_rho[0, 0, 0]

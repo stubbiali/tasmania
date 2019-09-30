@@ -51,8 +51,8 @@ from tasmania.python.utils.storage_utils import zeros
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
-    from .test_isentropic_prognostic import forward_euler_step
+    from .isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+    from .isentropic.test_isentropic_prognostic import forward_euler_step
     from .utils import (
         compare_arrays,
         compare_datetimes,
@@ -61,10 +61,10 @@ try:
         st_domain,
         st_isentropic_state_f,
     )
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
     from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
-    from test_isentropic_prognostic import forward_euler_step
+    from isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+    from isentropic.test_isentropic_prognostic import forward_euler_step
     from utils import (
         compare_arrays,
         compare_datetimes,
