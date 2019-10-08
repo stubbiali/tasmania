@@ -25,6 +25,11 @@ import os
 import tasmania as taz
 import time
 
+try:
+    from .utils import print_info
+except (ImportError, ModuleNotFoundError):
+    from utils import print_info
+
 
 # ============================================================
 # The namelist
@@ -63,6 +68,7 @@ domain = taz.Domain(
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
+nl.gt_kwargs['storage_shape'] = (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1)
 
 # ============================================================
 # The initial state
@@ -76,7 +82,10 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     moist=True,
     precipitation=nl.precipitation,
     relative_humidity=nl.relative_humidity,
+    backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
+    halo=nl.gt_kwargs["halo"],
+    storage_shape=nl.gt_kwargs["storage_shape"],
 )
 domain.horizontal_boundary.reference_state = state
 
@@ -387,7 +396,7 @@ for i in range(nt):
     state_new = dycore(state, slow_tendencies, dt)
 
     # update the state
-    taz.dict_update(state, state_new)
+    taz.dict_copy(state, state_new)
 
     # retrieve the slow diagnostics
     _, diagnostics = slow_diags(state, dt)
@@ -395,69 +404,8 @@ for i in range(nt):
 
     compute_time += time.time() - compute_time_start
 
-    if (nl.print_dry_frequency > 0) and ((i + 1) % nl.print_dry_frequency == 0):
-        u = (
-            state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[...]
-            / state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[...]
-        )
-        v = (
-            state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[...]
-            / state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[...]
-        )
-
-        umax, umin = u.max(), u.min()
-        vmax, vmin = v.max(), v.min()
-        cfl = max(
-            umax * dt.total_seconds() / pgrid.dx.to_units("m").values.item(),
-            vmax * dt.total_seconds() / pgrid.dy.to_units("m").values.item(),
-        )
-
-        # print useful info
-        print(
-            "Iteration {:6d}: CFL = {:4f}, umax = {:8.4f} m/s, umin = {:8.4f} m/s, "
-            "vmax = {:8.4f} m/s, vmin = {:8.4f} m/s".format(
-                i + 1, cfl, umax, umin, vmax, vmin
-            )
-        )
-
-    if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
-        qv_max = (
-            state["mass_fraction_of_water_vapor_in_air"].values[10:-10, 10:-10].max()
-            * 1e3
-        )
-        qc_max = (
-            state["mass_fraction_of_cloud_liquid_water_in_air"]
-            .values[10:-10, 10:-10]
-            .max()
-            * 1e3
-        )
-        qr_max = (
-            state["mass_fraction_of_precipitation_water_in_air"]
-            .values[10:-10, 10:-10]
-            .max()
-            * 1e3
-        )
-        if "precipitation" in state:
-            prec_max = (
-                state["precipitation"].to_units("mm hr^-1").values[10:-10, 10:-10].max()
-            )
-            accprec_max = (
-                state["accumulated_precipitation"]
-                .to_units("mm")
-                .values[10:-10, 10:-10]
-                .max()
-            )
-            print(
-                "Iteration {:6d}: qvmax = {:8.4f} g/kg, qcmax = {:8.4f} g/kg, "
-                "qrmax = {:8.4f} g/kg, prec_max = {:8.4f} mm/hr, accprec_max = {:8.4f} mm".format(
-                    i + 1, qv_max, qc_max, qr_max, prec_max, accprec_max
-                )
-            )
-        else:
-            print(
-                "Iteration {:6d}: qvmax = {:8.4f} g/kg, qcmax = {:8.4f} g/kg, "
-                "qrmax = {:8.4f} g/kg".format(i + 1, qv_max, qc_max, qr_max)
-            )
+    # print useful info
+    print_info(dt, i, nl, pgrid, state)
 
     # shortcuts
     to_save = (nl.filename is not None) and (

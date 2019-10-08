@@ -39,17 +39,29 @@ from tasmania.python.framework.tendency_steppers import (
     RungeKutta2,
     GTRungeKutta2,
     RungeKutta3WS,
-GTRungeKutta3WS,
+    GTRungeKutta3WS,
     RungeKutta3,
 )
 from tasmania import get_dataarray_dict
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .utils import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
+    from .utils import (
+        compare_arrays,
+        st_domain,
+        st_isentropic_state_f,
+        st_one_of,
+        st_timedeltas,
+    )
 except (ImportError, ModuleNotFoundError):
     from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from utils import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
+    from utils import (
+        compare_arrays,
+        st_domain,
+        st_isentropic_state_f,
+        st_one_of,
+        st_timedeltas,
+    )
 
 
 @settings(
@@ -114,18 +126,20 @@ def test_forward_euler(data, make_fake_tendency_component_1):
 
     s_tnd = tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     s_new = s + dt.total_seconds() * s_tnd
-    assert np.allclose(s_new, out_state["air_isentropic_density"].values)
+    compare_arrays(s_new, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su_new = su + dt.total_seconds() * su_tnd
-    assert np.allclose(su_new, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su_new, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u_new = u + dt.total_seconds() * u_tnd
-    assert np.allclose(u_new, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u_new, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
     _, _ = fe(out_state, dt)
 
@@ -208,7 +222,7 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(s_new, out_state["air_isentropic_density"].values)
+    compare_arrays(s_new, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su_new = su + dt.total_seconds() * su_tnd
@@ -219,7 +233,7 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su_new, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su_new, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u_new = u + dt.total_seconds() * u_tnd
@@ -230,10 +244,12 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u_new, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u_new, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
@@ -303,18 +319,20 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
 
     s_tnd = tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     s_new = s + dt.total_seconds() * s_tnd
-    assert np.allclose(s_new, out_state["air_isentropic_density"].values)
+    compare_arrays(s_new, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su_new = su + dt.total_seconds() * su_tnd
-    assert np.allclose(su_new, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su_new, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u_new = u + dt.total_seconds() * u_tnd
-    assert np.allclose(u_new, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u_new, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
     _, _ = fe(out_state, dt)
 
@@ -402,7 +420,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(s_new, out_state["air_isentropic_density"].values)
+    compare_arrays(s_new, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su_new = su + dt.total_seconds() * su_tnd
@@ -413,7 +431,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su_new, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su_new, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u_new = u + dt.total_seconds() * u_tnd
@@ -424,10 +442,12 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u_new, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u_new, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
@@ -516,18 +536,20 @@ def test_rk2(data, make_fake_tendency_component_1):
 
     s_tnd = tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     s2 = s + dt.total_seconds() * s_tnd
-    assert np.allclose(s2, out_state["air_isentropic_density"].values)
+    compare_arrays(s2, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su2 = su + dt.total_seconds() * su_tnd
-    assert np.allclose(su2, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su2, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u2 = u + dt.total_seconds() * u_tnd
-    assert np.allclose(u2, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u2, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
     _, _ = rk2(out_state, dt)
 
@@ -656,7 +678,7 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
         grid=cgrid,
     )
 
-    assert np.allclose(s2, out_state["air_isentropic_density"].values)
+    compare_arrays(s2, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su2 = su + dt.total_seconds() * su_tnd
@@ -667,7 +689,7 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su2, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su2, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u2 = u + dt.total_seconds() * u_tnd
@@ -678,10 +700,12 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u2, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u2, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
@@ -779,18 +803,20 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
 
     s_tnd = tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     s2 = s + dt.total_seconds() * s_tnd
-    assert np.allclose(s2, out_state["air_isentropic_density"].values)
+    compare_arrays(s2, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su2 = su + dt.total_seconds() * su_tnd
-    assert np.allclose(su2, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su2, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u2 = u + dt.total_seconds() * u_tnd
-    assert np.allclose(u2, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u2, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
     _, _ = rk2(out_state, dt)
 
@@ -928,7 +954,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         grid=cgrid,
     )
 
-    assert np.allclose(s2, out_state["air_isentropic_density"].values)
+    compare_arrays(s2, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su2 = su + dt.total_seconds() * su_tnd
@@ -939,7 +965,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su2, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su2, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u2 = u + dt.total_seconds() * u_tnd
@@ -950,10 +976,12 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u2, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u2, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
@@ -1061,18 +1089,20 @@ def test_rk3ws(data, make_fake_tendency_component_1):
 
     s_tnd = tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     s3 = s + dt.total_seconds() * s_tnd
-    assert np.allclose(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(s3, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su3 = su + dt.total_seconds() * su_tnd
-    assert np.allclose(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u3 = u + dt.total_seconds() * u_tnd
-    assert np.allclose(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
@@ -1238,7 +1268,7 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(s3, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su3 = su + dt.total_seconds() * su_tnd
@@ -1249,7 +1279,7 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u3 = u + dt.total_seconds() * u_tnd
@@ -1260,17 +1290,19 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -1288,8 +1320,12 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo,
-            storage_shape=(nx+1, ny+1, nz+1)
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            halo=halo,
+            storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
         label="state",
     )
@@ -1344,9 +1380,12 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
         "x_velocity_at_u_locations": u1,
     }
     properties = {
-        "air_isentropic_density": {"units": "kg m^-2 K^-1", 'grid_shape': (nx, ny, nz)},
-        "x_momentum_isentropic": {"units": "kg m^-1 K^-1 s^-1", 'grid_shape': (nx, ny, nz)},
-        "x_velocity_at_u_locations": {"units": "m s^-1", 'grid_shape': (nx+1, ny, nz)},
+        "air_isentropic_density": {"units": "kg m^-2 K^-1", "grid_shape": (nx, ny, nz)},
+        "x_momentum_isentropic": {
+            "units": "kg m^-1 K^-1 s^-1",
+            "grid_shape": (nx, ny, nz),
+        },
+        "x_velocity_at_u_locations": {"units": "m s^-1", "grid_shape": (nx + 1, ny, nz)},
     }
     state_1 = get_dataarray_dict(raw_state_1, cgrid, properties, set_coordinates=False)
 
@@ -1373,25 +1412,27 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
 
     s_tnd = tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     s3 = s + dt.total_seconds() * s_tnd
-    assert np.allclose(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(s3, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su3 = su + dt.total_seconds() * su_tnd
-    assert np.allclose(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u3 = u + dt.total_seconds() * u_tnd
-    assert np.allclose(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -1411,8 +1452,12 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo,
-            storage_shape=(nx+1, ny+1, nz+1)
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            halo=halo,
+            storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
         label="state",
     )
@@ -1495,9 +1540,12 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         "x_velocity_at_u_locations": u1,
     }
     properties = {
-        "air_isentropic_density": {"units": "kg m^-2 K^-1", 'grid_shape': (nx, ny, nz)},
-        "x_momentum_isentropic": {"units": "kg m^-1 K^-1 s^-1", 'grid_shape': (nx, ny, nz)},
-        "x_velocity_at_u_locations": {"units": "m s^-1", 'grid_shape': (nx+1, ny, nz)},
+        "air_isentropic_density": {"units": "kg m^-2 K^-1", "grid_shape": (nx, ny, nz)},
+        "x_momentum_isentropic": {
+            "units": "kg m^-1 K^-1 s^-1",
+            "grid_shape": (nx, ny, nz),
+        },
+        "x_velocity_at_u_locations": {"units": "m s^-1", "grid_shape": (nx + 1, ny, nz)},
     }
     state_1 = get_dataarray_dict(raw_state_1, cgrid, properties, set_coordinates=False)
 
@@ -1552,7 +1600,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(s3, out_state["air_isentropic_density"].values)
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su3 = su + dt.total_seconds() * su_tnd
@@ -1563,7 +1611,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u3 = u + dt.total_seconds() * u_tnd
@@ -1574,10 +1622,12 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
 
     assert "fake_variable" in out_diagnostics
-    assert np.allclose(diagnostics["fake_variable"], out_diagnostics["fake_variable"])
+    compare_arrays(
+        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+    )
 
 
 @settings(
@@ -1701,21 +1751,21 @@ def _test_rk3(data, make_fake_tendency_component_1):
         * tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values
     )
     s3 = s + g0 * k0_s + g1 * k1_s + g2 * k2_s
-    assert np.allclose(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(s3, out_state["air_isentropic_density"].values)
 
     k2_su = (
         dt.total_seconds()
         * tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     )
     su3 = su + g0 * k0_su + g1 * k1_su + g2 * k2_su
-    assert np.allclose(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
 
     k2_u = (
         dt.total_seconds()
         * tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     )
     u3 = u + g0 * k0_u + g1 * k1_u + g2 * k2_u
-    assert np.allclose(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
 
 
 @settings(
@@ -1896,7 +1946,7 @@ def _test_rk3_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(s3, out_state["air_isentropic_density"].values)
 
     k2_su = (
         dt.total_seconds()
@@ -1910,7 +1960,7 @@ def _test_rk3_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
 
     k2_u = (
         dt.total_seconds()
@@ -1924,7 +1974,7 @@ def _test_rk3_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    assert np.allclose(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
 
 
 if __name__ == "__main__":

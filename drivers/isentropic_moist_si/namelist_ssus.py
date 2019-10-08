@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 41
+nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
+ny = 161
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -40,14 +40,18 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
-    "backend_opts": {"max_region_offset": 3, "verbose": True},
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
     "halo": (nb, nb, 0),
-    "rebuild": True,
+    "rebuild": False,
 }
+gt_kwargs["backend_opts"] = (
+    {"max_region_offset": 3, "verbose": True}
+    if gt_kwargs["backend"] in ("gtx86", "gtmc")
+    else None
+)
 
 # topography
 topo_type = "gaussian"
@@ -73,7 +77,7 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
-physics_time_integration_scheme = "rk2"
+physics_time_integration_scheme = "gt_rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
@@ -131,8 +135,8 @@ collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
-niter = int(4 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=10)
+niter = 100  # int(4 * 60 * 60 / timestep.total_seconds())
 
 # output
 filename = (
