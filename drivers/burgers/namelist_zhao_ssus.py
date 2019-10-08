@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 1
+factor = 7
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -48,7 +48,7 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "backend_opts": None,
     "build_info": None,
     "dtype": np.float64,
@@ -65,7 +65,7 @@ physics_time_integration_scheme = "rk2"
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 4 ** factor * 100
+niter = 100  # 4 ** factor * 100
 
 # output
 filename = None  # "../../data/burgers_ssus_{}.nc".format(gt_kwargs["backend"])
@@ -75,5 +75,5 @@ filename = None  # "../../data/burgers_ssus_{}.nc".format(gt_kwargs["backend"])
 #       nx, ny, int(timestep.total_seconds()), niter,
 #   )
 save_frequency = -1
-print_frequency = 1
+print_frequency = -1
 plot_frequency = -1

@@ -32,7 +32,7 @@ This module contain:
     RungeKutta3
 """
 import abc
-from copy import deepcopy
+import numpy as np
 from sympl import (
     DataArray,
     TendencyComponent,
@@ -43,8 +43,10 @@ from sympl import (
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
+import gridtools as gt
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import (
+    forward_euler,
     get_increment,
     restore_tendency_units,
 )
@@ -52,7 +54,7 @@ from tasmania.python.utils.dict_utils import (
     add,
     add_inplace,
     multiply,
-multiply_inplace,
+    multiply_inplace,
     subtract,
     subtract_inplace,
 )
@@ -66,13 +68,43 @@ class FakeComponent:
         self.input_properties = getattr(real_component, property_name)
 
 
+def rk2_stage_0(
+    in_field: gt.storage.f64_sd,
+    in_field_prv: gt.storage.f64_sd,
+    in_tnd: gt.storage.f64_sd,
+    out_field: gt.storage.f64_sd,
+    *,
+    dt: float
+):
+    out_field = 0.5 * (in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0])
+
+
+def rk3ws_stage_0(
+    in_field: gt.storage.f64_sd,
+    in_field_prv: gt.storage.f64_sd,
+    in_tnd: gt.storage.f64_sd,
+    out_field: gt.storage.f64_sd,
+    *,
+    dt: float
+):
+    out_field = (
+        2.0 * in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0]
+    ) / 3.0
+
+
 def tendencystepper_factory(scheme):
     if scheme == "forward_euler":
         return ForwardEuler
+    elif scheme == "gt_forward_euler":
+        return GTForwardEuler
     elif scheme == "rk2":
         return RungeKutta2
+    elif scheme == "gt_rk2":
+        return GTRungeKutta2
     elif scheme == "rk3ws":
         return RungeKutta3WS
+    elif scheme == "gt_rk3ws":
+        return GTRungeKutta3WS
     elif scheme == "rk3":
         return RungeKutta3
     else:
@@ -99,11 +131,17 @@ class STSTendencyStepper(abc.ABC):
         ConcurrentCoupling,
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        enforce_horizontal_boundary=False,
+        time_units="s"
+    ):
         """
         Parameters
         ----------
-        obj :
+        args :
             Instances of
 
                 * :class:`sympl.TendencyComponent`,
@@ -113,13 +151,10 @@ class STSTendencyStepper(abc.ABC):
                 * :class:`tasmania.ConcurrentCoupling`
 
             providing tendencies for the prognostic variables.
-
-        Keyword arguments
-        -----------------
-        execution_policy : str
+        execution_policy : `str`, optional
             String specifying the runtime mode in which parameterizations
             should be invoked. See :class:`tasmania.ConcurrentCoupling`.
-        enforce_horizontal_boundary : bool
+        enforce_horizontal_boundary : `bool`, optional
             :obj:`True` if the class should enforce the lateral boundary
             conditions after each stage of the time integrator,
             :obj:`False` otherwise. Defaults to :obj:`False`.
@@ -129,10 +164,9 @@ class STSTendencyStepper(abc.ABC):
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
-        backend : str
+        time_units : `str`, optional
             TODO
-        halo : str
-            TODO
+
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -141,13 +175,11 @@ class STSTendencyStepper(abc.ABC):
             args[0]
             if (len(args) == 1 and isinstance(args[0], ConcurrentCoupling))
             else ConcurrentCoupling(
-                *args,
-                execution_policy=kwargs.get("execution_policy", "serial"),
-                time_units=kwargs.get("time_units", "s")
+                *args, execution_policy=execution_policy, time_units=time_units
             )
         )
 
-        self._tunits = kwargs.get("time_units", "s")
+        self._tunits = time_units
 
         self.input_properties = self._get_input_properties()
         self.provisional_input_properties = self._get_provisional_input_properties()
@@ -161,7 +193,7 @@ class STSTendencyStepper(abc.ABC):
         self._diagnostic_checker = DiagnosticChecker(self)
         self._output_checker = OutputChecker(self)
 
-        enforce_hb = kwargs.get("enforce_horizontal_boundary", False)
+        enforce_hb = enforce_horizontal_boundary
         if enforce_hb:
             found = False
             for prognostic in args:
@@ -186,9 +218,6 @@ class STSTendencyStepper(abc.ABC):
                 self._enforce_hb = False
         else:
             self._enforce_hb = False
-
-        self._backend = kwargs.get("backend", None)
-        self._halo = kwargs.get("halo", None)
 
         self._out_state = None
 
@@ -353,39 +382,53 @@ class STSTendencyStepper(abc.ABC):
         pass
 
     def _allocate_output_state(self, state):
-        backend = self._backend
-        halo = self._halo
+        backend = getattr(self, "_backend", None)
+        halo = getattr(self, "_halo", None)
 
-        if self._out_state is None:
-            if backend is None:
-                out_state = {
-                    name: deepcopy(state[name]) for name in self.output_properties
-                }
-            else:
-                out_state = {}
-                for name in self.output_properties:
-                    storage_shape = state[name].shape
-                    dtype = state[name].dtype
-                    gt_storage = zeros(storage_shape, backend, dtype, halo=halo)
+        out_state = self._out_state or {}
 
-                    dims = state[name].dims
-                    coords = state[name].coords
-                    attrs = state[name].attrs.copy()
-                    out_state[name] = DataArray(
-                        gt_storage, dims=dims, coords=coords, attrs=attrs
-                    )
+        if not out_state:
+            for name in self.output_properties:
+                storage_shape = state[name].shape
+                dtype = state[name].dtype
+                raw_buffer = (
+                    zeros(storage_shape, backend, dtype, halo=halo)
+                    if backend
+                    else np.zeros(storage_shape, dtype=dtype)
+                )
+
+                dims = state[name].dims
+                coords = state[name].coords
+                attrs = state[name].attrs.copy()
+                attrs["units"] = self.output_properties[name]["units"]
+                out_state[name] = DataArray(
+                    raw_buffer, dims=dims, coords=coords, attrs=attrs
+                )
 
         return out_state
 
 
 class ForwardEuler(STSTendencyStepper):
-    """
-    This class inherits :class:`tasmania.STSTendencyStepper` to
-    implement the forward Euler time integration scheme.
-    """
+    """ The forward Euler scheme. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        enforce_horizontal_boundary=False,
+        time_units="s",
+        backend="numpy",
+        halo=None,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            execution_policy=execution_policy,
+            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            time_units=time_units
+        )
+        self._backend = backend
+        self._halo = halo
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -395,8 +438,7 @@ class ForwardEuler(STSTendencyStepper):
         }
 
         # initialize the output state
-        if self._out_state is None:
-            self._out_state = self._allocate_output_state(state)
+        self._out_state = self._out_state or self._allocate_output_state(state)
         out_state = self._out_state
 
         # calculate the tendencies and the diagnostics
@@ -420,10 +462,92 @@ class ForwardEuler(STSTendencyStepper):
         return diagnostics, out_state
 
 
+class GTForwardEuler(STSTendencyStepper):
+    """ Gridtools-powered implementation of the forward Euler scheme. """
+
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        time_units="s",
+        enforce_horizontal_boundary=False,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            execution_policy=execution_policy,
+            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            time_units=time_units
+        )
+
+        self._backend = backend
+        self._exec_info = exec_info
+        self._halo = halo
+
+        decorator = gt.stencil(
+            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        )
+        self._stencil = decorator(forward_euler)
+
+    def _call(self, state, prv_state, timestep):
+        # shortcuts
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.output_properties.items()
+        }
+
+        # initialize the output state
+        self._out_state = self._out_state or self._allocate_output_state(state)
+        out_state = self._out_state
+
+        # calculate the tendencies and the diagnostics
+        tendencies, diagnostics = get_increment(state, timestep, self.prognostic)
+
+        # extract the raw fields in the correct units
+        names = tuple(name for name in out_units)
+        raw_prv_state = {
+            name: prv_state[name].to_units(out_units[name]).values for name in names
+        }
+        raw_tendencies = {name: tendencies[name].values for name in names}
+        raw_out_state = {name: out_state[name].values for name in names}
+
+        # step the solution
+        halo = (0, 0, 0) or self._halo
+        origin = halo if self._enforce_hb else (0, 0, 0)
+        storage_shape = raw_prv_state[names[0]].shape
+        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        for name in raw_out_state:
+            self._stencil(
+                in_field=raw_prv_state[name],
+                in_tnd=raw_tendencies[name],
+                out_field=raw_out_state[name],
+                dt=timestep.total_seconds(),
+                origin={"_all_": origin},
+                domain=iteration_domain,
+                exec_info=self._exec_info,
+            )
+
+        if self._enforce_hb:
+            # enforce the boundary conditions on each prognostic variable
+            self._hb.enforce(
+                out_state, field_names=self.output_properties.keys(), grid=self._grid
+            )
+
+        # restore original units for the tendencies
+        # restore_tendency_units(tendencies)
+
+        return diagnostics, out_state
+
+
 class RungeKutta2(STSTendencyStepper):
     """
-    This class inherits :class:`tasmania.STSTendencyStepper` to
-    implement the two-stages, second-order Runge-Kutta scheme.
+    The two-stages, second-order Runge-Kutta scheme.
 
     References
     ----------
@@ -431,8 +555,24 @@ class RungeKutta2(STSTendencyStepper):
         ordinary differential equations.* Prentice Hall PTR.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        enforce_horizontal_boundary=False,
+        time_units="s",
+        backend="numpy",
+        halo=None,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            execution_policy=execution_policy,
+            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            time_units=time_units
+        )
+        self._backend = backend
+        self._halo = halo
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -443,8 +583,7 @@ class RungeKutta2(STSTendencyStepper):
         dt = timestep.total_seconds()
 
         # initialize the output state
-        if self._out_state is None:
-            self._out_state = self._allocate_output_state(state)
+        self._out_state = self._out_state or self._allocate_output_state(state)
         out_state = self._out_state
 
         # first stage
@@ -453,7 +592,9 @@ class RungeKutta2(STSTendencyStepper):
         add_inplace(out_state, prv_state, unshared_variables_in_output=False)
         add_inplace(out_state, state, unshared_variables_in_output=False)
         multiply_inplace(0.5, out_state, units=out_units)
-        out_state.update({key: value for key, value in state.items() if key not in out_state})
+        out_state.update(
+            {key: value for key, value in state.items() if key not in out_state}
+        )
         out_state["time"] = state["time"] + 0.5 * timestep
 
         if self._enforce_hb:
@@ -467,8 +608,17 @@ class RungeKutta2(STSTendencyStepper):
 
         # second stage
         k1, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # remove undesired variables
+        for name in state:
+            if name != "time" and name not in self.output_properties:
+                out_state.pop(name, None)
+
+        # step the solution
         multiply(dt, k1, out=out_state)
-        add_inplace(out_state, prv_state, units=out_units, unshared_variables_in_output=False)
+        add_inplace(
+            out_state, prv_state, units=out_units, unshared_variables_in_output=False
+        )
         out_state["time"] = state["time"] + timestep
 
         if self._enforce_hb:
@@ -478,6 +628,133 @@ class RungeKutta2(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
+        # restore_tendency_units(k1)
+
+        return diagnostics, out_state
+
+
+class GTRungeKutta2(STSTendencyStepper):
+    """
+    GridTools-powered implementation of the two-stages, second-order Runge-Kutta scheme.
+
+    References
+    ----------
+    Gear, C. W. (1971). *Numerical initial value problems in \
+        ordinary differential equations.* Prentice Hall PTR.
+    """
+
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        time_units="s",
+        enforce_horizontal_boundary=False,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            execution_policy=execution_policy,
+            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            time_units=time_units
+        )
+
+        self._backend = backend
+        self._exec_info = exec_info
+        self._halo = halo
+
+        decorator = gt.stencil(
+            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        )
+        self._stencil_stage_0 = decorator(rk2_stage_0)
+        self._stencil_stage_1 = decorator(forward_euler)
+
+    def _call(self, state, prv_state, timestep):
+        # shortcuts
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.output_properties.items()
+        }
+
+        # initialize the output state
+        self._out_state = self._out_state or self._allocate_output_state(state)
+        out_state = self._out_state
+
+        # calculate the first stage
+        k0, diagnostics = get_increment(state, timestep, self.prognostic)
+
+        # extract the raw arrays in the correct units
+        names = tuple(name for name in out_units)
+        raw_state = {name: state[name].to_units(out_units[name]).values for name in names}
+        raw_prv_state = {
+            name: prv_state[name].to_units(out_units[name]).values for name in names
+        }
+        raw_k0 = {name: k0[name].values for name in names}
+        raw_out_state = {name: out_state[name].values for name in names}
+
+        # update the solution
+        halo = (0, 0, 0) or self._halo
+        origin = halo if self._enforce_hb else (0, 0, 0)
+        storage_shape = raw_state[names[0]].shape
+        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        for name in raw_out_state:
+            self._stencil_stage_0(
+                in_field=raw_state[name],
+                in_field_prv=raw_prv_state[name],
+                in_tnd=raw_k0[name],
+                out_field=raw_out_state[name],
+                dt=timestep.total_seconds(),
+                origin={"_all_": origin},
+                domain=iteration_domain,
+                exec_info=self._exec_info,
+            )
+        out_state["time"] = state["time"] + 0.5 * timestep
+
+        # populate out_state with all other variables from state
+        for name in state:
+            if name != "time" and name not in out_state:
+                out_state[name] = state[name]
+
+        if self._enforce_hb:
+            # enforce the boundary conditions on each prognostic variable
+            self._hb.enforce(
+                out_state, field_names=self.output_properties.keys(), grid=self._grid
+            )
+
+        # restore original units for the tendencies
+        # restore_tendency_units(k0)
+
+        # second stage
+        k1, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # extract the raw arrays in the correct units
+        raw_k1 = {name: k1[name].values for name in names}
+
+        # update the solution
+        for name in raw_out_state:
+            self._stencil_stage_1(
+                in_field=raw_prv_state[name],
+                in_tnd=raw_k1[name],
+                out_field=raw_out_state[name],
+                dt=timestep.total_seconds(),
+                origin={"_all_": origin},
+                domain=iteration_domain,
+                exec_info=self._exec_info,
+            )
+        out_state["time"] = state["time"] + timestep
+
+        if self._enforce_hb:
+            # enforce the boundary conditions on each prognostic variable
+            self._hb.enforce(
+                out_state, field_names=self.output_properties.keys(), grid=self._grid
+            )
+
+        # restore original units for the tendencies
         # restore_tendency_units(k1)
 
         # remove undesired variables
@@ -490,10 +767,7 @@ class RungeKutta2(STSTendencyStepper):
 
 class RungeKutta3WS(STSTendencyStepper):
     """
-    This class inherits :class:`tasmania.STSTendencyStepper` to
-    implement the three-stages Runge-Kutta scheme as used in the
-    `COSMO model <http://www.cosmo-model.org>`_. This integrator is
-    nominally second-order, and third-order for linear problems.
+    The Wicker-Skamarock Runge-Kutta scheme.
 
     References
     ----------
@@ -502,8 +776,24 @@ class RungeKutta3WS(STSTendencyStepper):
         Deutscher Wetterdienst, Germany.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        enforce_horizontal_boundary=False,
+        time_units="s",
+        backend="numpy",
+        halo=None,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            execution_policy=execution_policy,
+            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            time_units=time_units
+        )
+        self._backend = backend
+        self._halo = halo
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -514,8 +804,7 @@ class RungeKutta3WS(STSTendencyStepper):
         dt = timestep.total_seconds()
 
         # initialize the output state
-        if self._out_state is None:
-            self._out_state = self._allocate_output_state(state)
+        self._out_state = self._out_state or self._allocate_output_state(state)
         out_state = self._out_state
 
         # first stage
@@ -524,8 +813,10 @@ class RungeKutta3WS(STSTendencyStepper):
         add_inplace(out_state, prv_state, unshared_variables_in_output=False)
         add_inplace(out_state, state, unshared_variables_in_output=False)
         add_inplace(out_state, state, unshared_variables_in_output=False)
-        multiply_inplace(1.0/3.0, out_state, units=out_units)
-        out_state.update({key: value for key, value in state.items() if key not in out_state})
+        multiply_inplace(1.0 / 3.0, out_state, units=out_units)
+        out_state.update(
+            {key: value for key, value in state.items() if key not in out_state}
+        )
         out_state["time"] = state["time"] + 1.0 / 3.0 * timestep
 
         if self._enforce_hb:
@@ -539,11 +830,20 @@ class RungeKutta3WS(STSTendencyStepper):
 
         # second stage
         k1, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # remove undesired variables
+        for name in state:
+            if name != "time" and name not in self.output_properties:
+                out_state.pop(name, None)
+
+        # step the solution
         multiply(dt, k1, out=out_state)
         add_inplace(out_state, prv_state, unshared_variables_in_output=False)
         add_inplace(out_state, state, unshared_variables_in_output=False)
         multiply_inplace(0.5, out_state, units=out_units)
-        out_state.update({key: value for key, value in state.items() if key not in out_state})
+        out_state.update(
+            {key: value for key, value in state.items() if key not in out_state}
+        )
         out_state["time"] = state["time"] + 0.5 * timestep
 
         if self._enforce_hb:
@@ -557,8 +857,17 @@ class RungeKutta3WS(STSTendencyStepper):
 
         # third stage
         k2, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # remove undesired variables
+        for name in state:
+            if name != "time" and name not in self.output_properties:
+                out_state.pop(name, None)
+
+        # step the solution
         multiply(dt, k2, out=out_state)
-        add_inplace(out_state, prv_state, units=out_units)
+        add_inplace(
+            out_state, prv_state, units=out_units, unshared_variables_in_output=False
+        )
         out_state["time"] = state["time"] + timestep
 
         if self._enforce_hb:
@@ -568,6 +877,164 @@ class RungeKutta3WS(STSTendencyStepper):
             )
 
         # restore original units of the tendencies
+        # restore_tendency_units(k2)
+
+        return diagnostics, out_state
+
+
+class GTRungeKutta3WS(STSTendencyStepper):
+    """
+    GridTools-powered implementation of the Wicker-Skamarock Runge-Kutta scheme.
+
+    References
+    ----------
+    Doms, G., and M. Baldauf. (2015). *A description of the nonhydrostatic \
+        regional COSMO-model. Part I: Dynamics and numerics.* \
+        Deutscher Wetterdienst, Germany.
+    """
+
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        time_units="s",
+        enforce_horizontal_boundary=False,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        **kwargs
+    ):
+        super().__init__(
+            *args,
+            execution_policy=execution_policy,
+            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            time_units=time_units
+        )
+
+        self._backend = backend
+        self._exec_info = exec_info
+        self._halo = halo
+
+        decorator = gt.stencil(
+            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        )
+        self._stencil_stage_0 = decorator(rk3ws_stage_0)
+        self._stencil_stage_1 = decorator(rk2_stage_0)
+        self._stencil_stage_2 = decorator(forward_euler)
+
+    def _call(self, state, prv_state, timestep):
+        # shortcuts
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.output_properties.items()
+        }
+
+        # initialize the output state
+        self._out_state = self._out_state or self._allocate_output_state(state)
+        out_state = self._out_state
+
+        # first stage
+        k0, diagnostics = get_increment(state, timestep, self.prognostic)
+
+        # extract the raw arrays in the correct units
+        names = tuple(name for name in out_units)
+        raw_state = {name: state[name].to_units(out_units[name]).values for name in names}
+        raw_prv_state = {
+            name: prv_state[name].to_units(out_units[name]).values for name in names
+        }
+        raw_k0 = {name: k0[name].values for name in names}
+        raw_out_state = {name: out_state[name].values for name in names}
+
+        # update the solution
+        halo = (0, 0, 0) or self._halo
+        origin = halo if self._enforce_hb else (0, 0, 0)
+        storage_shape = raw_state[names[0]].shape
+        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        for name in raw_out_state:
+            self._stencil_stage_0(
+                in_field=raw_state[name],
+                in_field_prv=raw_prv_state[name],
+                in_tnd=raw_k0[name],
+                out_field=raw_out_state[name],
+                dt=timestep.total_seconds(),
+                origin={"_all_": origin},
+                domain=iteration_domain,
+                exec_info=self._exec_info,
+            )
+        out_state["time"] = state["time"] + timestep / 3.0
+
+        # populate out_state with all other variables from state
+        for name in state:
+            if name != "time" and name not in out_state:
+                out_state[name] = state[name]
+
+        if self._enforce_hb:
+            # enforce the boundary conditions on each prognostic variable
+            self._hb.enforce(
+                out_state, field_names=self.output_properties.keys(), grid=self._grid
+            )
+
+        # restore original units for the tendencies
+        # restore_tendency_units(k0)
+
+        # second stage
+        k1, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # extract the raw arrays in the correct units
+        raw_k1 = {name: k1[name].values for name in names}
+
+        # update the solution
+        for name in raw_out_state:
+            self._stencil_stage_1(
+                in_field=raw_state[name],
+                in_field_prv=raw_prv_state[name],
+                in_tnd=raw_k1[name],
+                out_field=raw_out_state[name],
+                dt=timestep.total_seconds(),
+                origin={"_all_": origin},
+                domain=iteration_domain,
+                exec_info=self._exec_info,
+            )
+        out_state["time"] = state["time"] + 0.5 * timestep
+
+        if self._enforce_hb:
+            # enforce the boundary conditions on each prognostic variable
+            self._hb.enforce(
+                out_state, field_names=self.output_properties.keys(), grid=self._grid
+            )
+
+        # restore original units for the tendencies
+        # restore_tendency_units(k1)
+
+        # third stage
+        k2, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # extract the raw arrays in the correct units
+        raw_k2 = {name: k2[name].values for name in names}
+
+        # update the solution
+        for name in raw_out_state:
+            self._stencil_stage_2(
+                in_field=raw_prv_state[name],
+                in_tnd=raw_k2[name],
+                out_field=raw_out_state[name],
+                dt=timestep.total_seconds(),
+                origin={"_all_": origin},
+                domain=iteration_domain,
+                exec_info=self._exec_info,
+            )
+        out_state["time"] = state["time"] + timestep
+
+        if self._enforce_hb:
+            # enforce the boundary conditions on each prognostic variable
+            self._hb.enforce(
+                out_state, field_names=self.output_properties.keys(), grid=self._grid
+            )
+
+        # restore original units for the tendencies
         # restore_tendency_units(k2)
 
         # remove undesired variables

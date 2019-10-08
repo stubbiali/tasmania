@@ -167,7 +167,9 @@ class SequentialUpdateSplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                kwargs = process.get("time_integrator_kwargs", {"backend": None, "halo": None})
+                kwargs = process.get(
+                    "time_integrator_kwargs", {"backend": None, "halo": None}
+                )
 
                 TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(

@@ -687,30 +687,34 @@ class RK3WSSI(IsentropicPrognostic):
         stencil_args = {
             "s_now": self._s_now,
             "s_int": state["air_isentropic_density"],
-            "s_tnd": self._s_tnd if self._s_tnd is not None else self._s_now,
             "s_new": self._s_new,
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
             "su_int": state["x_momentum_isentropic"],
             "sv_int": state["y_momentum_isentropic"],
         }
+        if self._s_tnd is not None:
+            stencil_args["s_tnd"] = self._s_tnd
         if self._moist:
             stencil_args.update(
                 {
                     "sqv_now": self._sqv_now,
                     "sqv_int": state["isentropic_density_of_water_vapor"],
-                    "qv_tnd": self._qv_tnd if self._qv_tnd is not None else self._sqv_now,
                     "sqv_new": self._sqv_new,
                     "sqc_now": self._sqc_now,
                     "sqc_int": state["isentropic_density_of_cloud_liquid_water"],
-                    "qc_tnd": self._qc_tnd if self._qc_tnd is not None else self._sqc_now,
                     "sqc_new": self._sqc_new,
                     "sqr_now": self._sqr_now,
                     "sqr_int": state["isentropic_density_of_precipitation_water"],
-                    "qr_tnd": self._qr_tnd if self._qr_tnd is not None else self._sqr_now,
                     "sqr_new": self._sqr_new,
                 }
             )
+            if self._qv_tnd is not None:
+                stencil_args["qv_tnd"] = self._qv_tnd
+            if self._qc_tnd is not None:
+                stencil_args["qc_tnd"] = self._qc_tnd
+            if self._qr_tnd is not None:
+                stencil_args["qr_tnd"] = self._qr_tnd
 
         # step the isentropic density and the water species
         self._stencil(
@@ -753,13 +757,15 @@ class RK3WSSI(IsentropicPrognostic):
             "mtg_new": self._mtg_new,
             "su_now": self._su_now,
             "su_int": state["x_momentum_isentropic"],
-            "su_tnd": self._su_tnd if self._su_tnd is not None else self._su_now,
             "su_new": self._su_new,
             "sv_now": self._sv_now,
             "sv_int": state["y_momentum_isentropic"],
-            "sv_tnd": self._sv_tnd if self._sv_tnd is not None else self._sv_now,
             "sv_new": self._sv_new,
         }
+        if self._su_tnd is not None:
+            stencil_args["su_tnd"] = self._su_tnd
+        if self._sv_tnd is not None:
+            stencil_args["sv_tnd"] = self._sv_tnd
 
         # step the momenta
         self._stencil_momentum(

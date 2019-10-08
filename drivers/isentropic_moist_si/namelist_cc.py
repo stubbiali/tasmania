@@ -40,14 +40,18 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtmc",
-    "backend_opts": {"max_region_offset": 3, "verbose": True},
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
     "halo": (nb, nb, 0),
     "rebuild": False,
 }
+gt_kwargs["backend_opts"] = (
+    {"max_region_offset": 3, "verbose": True}
+    if gt_kwargs["backend"] in ("gtx86", "gtmc")
+    else None
+)
 
 # topography
 topo_type = "gaussian"
@@ -120,8 +124,8 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = True
-sedimentation = True
+precipitation = False
+sedimentation = False
 sedimentation_flux_scheme = "second_order_upwind"
 rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
@@ -131,7 +135,7 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = 200  # int(4 * 60 * 60 / timestep.total_seconds())
+niter = int(4 * 60 * 60 / timestep.total_seconds())
 
 # output
 filename = (
@@ -177,6 +181,6 @@ store_names = (
     "y_velocity_at_v_locations",
 )
 save_frequency = -1
-print_dry_frequency = 1
-print_moist_frequency = 1
+print_dry_frequency = 5
+print_moist_frequency = 5
 plot_frequency = -1

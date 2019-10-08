@@ -25,6 +25,11 @@ import os
 import tasmania as taz
 import time
 
+try:
+    from .utils import print_info
+except (ImportError, ModuleNotFoundError):
+    from utils import print_info
+
 
 # ============================================================
 # The namelist
@@ -402,69 +407,8 @@ for i in range(nt):
 
     compute_time += time.time() - compute_time_start
 
-    if (nl.print_dry_frequency > 0) and ((i + 1) % nl.print_dry_frequency == 0):
-        u = (
-            state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[3:-4, 3:-4, :-1]
-        )
-        v = (
-            state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[3:-4, 3:-4, :-1]
-            / state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[3:-4, 3:-4, :-1]
-        )
-
-        umax, umin = u.max(), u.min()
-        vmax, vmin = v.max(), v.min()
-        cfl = max(
-            umax * dt.total_seconds() / pgrid.dx.to_units("m").values.item(),
-            vmax * dt.total_seconds() / pgrid.dy.to_units("m").values.item(),
-        )
-
-        # print useful info
-        print(
-            "Iteration {:6d}: CFL = {:4f}, umax = {:8.4f} m/s, umin = {:8.4f} m/s, "
-            "vmax = {:8.4f} m/s, vmin = {:8.4f} m/s".format(
-                i + 1, cfl, umax, umin, vmax, vmin
-            )
-        )
-
-    if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
-        qv_max = (
-            state["mass_fraction_of_water_vapor_in_air"].values[10:-11, 10:-11, :-1].max()
-            * 1e3
-        )
-        qc_max = (
-            state["mass_fraction_of_cloud_liquid_water_in_air"]
-            .values[10:-11, 10:-11, :-1]
-            .max()
-            * 1e3
-        )
-        qr_max = (
-            state["mass_fraction_of_precipitation_water_in_air"]
-            .values[10:-11, 10:-11, :-1]
-            .max()
-            * 1e3
-        )
-        if "precipitation" in state:
-            prec_max = (
-                state["precipitation"].to_units("mm hr^-1").values[10:-11, 10:-11].max()
-            )
-            accprec_max = (
-                state["accumulated_precipitation"]
-                .to_units("mm")
-                .values[10:-11, 10:-11]
-                .max()
-            )
-            print(
-                "Iteration {:6d}: qvmax = {:8.4f} g/kg, qcmax = {:8.4f} g/kg, "
-                "qrmax = {:8.4f} g/kg, prec_max = {:8.4f} mm/hr, accprec_max = {:8.4f} mm".format(
-                    i + 1, qv_max, qc_max, qr_max, prec_max, accprec_max
-                )
-            )
-        else:
-            print(
-                "Iteration {:6d}: qvmax = {:8.4f} g/kg, qcmax = {:8.4f} g/kg, "
-                "qrmax = {:8.4f} g/kg".format(i + 1, qv_max, qc_max, qr_max)
-            )
+    # print useful info
+    print_info(dt, i, nl, pgrid, state)
 
     # shortcuts
     to_save = (nl.filename is not None) and (

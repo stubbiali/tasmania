@@ -597,11 +597,6 @@ class RungeKutta2(TendencyStepper):
         # restore original units for the tendencies
         # restore_tendency_units(k1)
 
-        # remove undesired variables
-        for name in state:
-            if name != "time" and name not in self.output_properties:
-                out_state.pop(name, None)
-
         return diagnostics, out_state
 
 
@@ -667,7 +662,7 @@ class GTRungeKutta2(TendencyStepper):
 
         # update the solution
         halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else halo
+        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
         iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
         for name in raw_out_state:
@@ -682,7 +677,7 @@ class GTRungeKutta2(TendencyStepper):
             )
         out_state["time"] = state["time"] + 0.5 * timestep
 
-        # fill out_state with all other variables from state
+        # populate out_state with all other variables from state
         for name in state:
             if name != "time" and name not in out_state:
                 out_state[name] = state[name]
@@ -790,6 +785,13 @@ class RungeKutta3WS(TendencyStepper):
 
         # second stage
         k1, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # remove undesired variables
+        for name in state:
+            if name != "time" and name not in self.output_properties:
+                out_state.pop(name, None)
+
+        # step the solution
         multiply(0.5 * timestep.total_seconds(), k1, out=out_state)
         add_inplace(out_state, state, units=out_units, unshared_variables_in_output=True)
         out_state["time"] = state["time"] + 0.5 * timestep
@@ -805,6 +807,13 @@ class RungeKutta3WS(TendencyStepper):
 
         # second stage
         k2, _ = get_increment(out_state, timestep, self.prognostic)
+
+        # remove undesired variables
+        for name in state:
+            if name != "time" and name not in self.output_properties:
+                out_state.pop(name, None)
+
+        # step the solution
         multiply(timestep.total_seconds(), k2, out=out_state)
         add_inplace(out_state, state, units=out_units, unshared_variables_in_output=False)
         out_state["time"] = state["time"] + timestep
@@ -817,11 +826,6 @@ class RungeKutta3WS(TendencyStepper):
 
         # restore original units for the tendencies
         # restore_tendency_units(k2)
-
-        # remove undesired variables
-        for name in state:
-            if name != "time" and name not in self.output_properties:
-                out_state.pop(name, None)
 
         return diagnostics, out_state
 
@@ -889,7 +893,7 @@ class GTRungeKutta3WS(TendencyStepper):
 
         # update the solution
         halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else halo
+        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
         iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
         for name in raw_out_state:
@@ -904,7 +908,7 @@ class GTRungeKutta3WS(TendencyStepper):
             )
         out_state["time"] = state["time"] + timestep / 3.0
 
-        # fill out_state with all other variables from state
+        # populate out_state with all other variables from state
         for name in state:
             if name != "time" and name not in out_state:
                 out_state[name] = state[name]
