@@ -22,8 +22,8 @@
 #
 """
 This module contains:
-	VerticalDamping
-	Rayleigh(VerticalDamping)
+    VerticalDamping
+    Rayleigh(VerticalDamping)
 """
 import abc
 import math
@@ -31,265 +31,290 @@ import numpy as np
 from sympl import DataArray
 
 import gridtools as gt
+from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	from numpy import float32 as datatype
+    from numpy import float32 as datatype
 
 
-class VerticalDamping:
-	"""
-	Abstract base class whose derived classes implement different
-	vertical damping, i.e., wave absorbing, techniques.
-	"""
-	# Make the class abstract
-	__metaclass__ = abc.ABCMeta
+class VerticalDamping(abc.ABC):
+    """
+    Abstract base class whose derived classes implement different
+    vertical damping, i.e., wave absorbing, techniques.
+    """
 
-	def __init__(
-		self, shape, grid, damp_depth, damp_coeff_max,
-		time_units, backend, dtype
-	):
-		"""
-		Parameters
-		----------
-		shape : tuple
-			Shape of the 3-D arrays on which applying the absorber.
-		grid : tasmania.Grid
-			The underlying grid.
-		damp_depth : int
-			Number of vertical layers in the damping region.
-		damp_coeff_max : float
-			Maximum value for the damping coefficient.
-		time_units : str
-			Time units to be used throughout the class.
-		backend : obj
-			TODO
-		dtype : numpy.dtype
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		"""
-		# safety-guard checks
-		assert damp_depth <= grid.nz, \
-			"The depth of the damping region ({}) should be smaller or equal than " \
-			"the number of main vertical levels ({}).".format(damp_depth, grid.nz)
+    def __init__(
+        self,
+        grid,
+        damp_depth,
+        damp_coeff_max,
+        time_units,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+        storage_shape,
+    ):
+        """
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        damp_depth : int
+            Number of vertical layers in the damping region.
+        damp_coeff_max : float
+            Maximum value for the damping coefficient.
+        time_units : str
+            Time units to be used throughout the class.
+        backend : str
+            TODO
+        backend_opts : dict
+            TODO
+        build_info : dict
+            TODO
+        dtype : numpy.dtype
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : dict
+            TODO
+        halo : tuple
+            TODO
+        rebuild : bool
+            TODO
+        storage_shape : tuple
+            TODO
+        """
+        # safety-guard checks
+        assert damp_depth <= grid.nz, (
+            "The depth of the damping region ({}) should be smaller or equal than "
+            "the number of main vertical levels ({}).".format(damp_depth, grid.nz)
+        )
 
-		# store input arguments
-		self._shape   = shape
-		self._grid    = grid
-		self._depth   = damp_depth
-		self._cmax    = damp_coeff_max
-		self._tunits  = time_units
-		self._backend = backend
+        # store input arguments needed at run-time
+        self._damp_depth = damp_depth
+        self._tunits = time_units
+        self._exec_info = exec_info
+        storage_shape = (
+            (grid.nx, grid.ny, grid.nz) if storage_shape is None else storage_shape
+        )
+        assert grid.nz <= storage_shape[2] <= grid.nz + 1
+        self._shape = storage_shape
 
-		# compute lower-bound of damping region
-		self._lb = grid.z.values[damp_depth-1]
+        # compute lower-bound of damping region
+        lb = grid.z.values[damp_depth - 1]
 
-		# initialize the underlying GT4Py stencil
-		self._stencil_initialize(dtype)
+        # compute the damping matrix
+        z = (
+             np.concatenate((grid.z.values, np.array([0, ])), axis=0)
+             if storage_shape[2] == grid.nz + 1
+             else grid.z.values
+        )
+        zt = grid.z_on_interface_levels.values[0]
+        za = z[damp_depth - 1]
+        r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
+        self._rmat = zeros(
+            storage_shape, backend, dtype, halo=halo, mask=(True, True, True)
+        )
+        self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
-	@abc.abstractmethod
-	def __call__(
-		self, dt, field_now, field_new, field_ref, field_out
-	):
-		"""
-		Apply vertical damping to a generic field.
-		As this method is marked as abstract, its implementation
-		is delegated to the derived classes.
+        # instantiate the underlying stencil
+        decorator = gt.stencil(
+            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        )
+        self._stencil = decorator(self._stencil_defs)
 
-		Parameters
-		----------
-		dt : timedelta
-			The time step.
-		field_now : numpy.ndarray
-			The field at the current time level.
-		field_new : numpy.ndarray
-			The field at the next time level, on which the absorber will be applied.
-		field_ref : numpy.ndarray
-			A reference value for the field.
-		field_out : array_like
-			Buffer into which writing the output, vertically damped field.
-		"""
+    @abc.abstractmethod
+    def __call__(self, dt, field_now, field_new, field_ref, field_out):
+        """
+        Apply vertical damping to a generic field.
+        As this method is marked as abstract, its implementation
+        is delegated to the derived classes.
 
-	@abc.abstractmethod
-	def _stencil_initialize(self, dtype):
-		"""
-		Initialize the GT4Py stencil applying vertical damping.
-		As this method is marked as abstract, its implementation is
-		delegated to the derived classes.
+        Parameters
+        ----------
+        dt : timedelta
+            The time step.
+        field_now : gridtools.storage.Storage
+            The field at the current time level.
+        field_new : gridtools.storage.Storage
+            The field at the next time level, on which the absorber will be applied.
+        field_ref : gridtools.storage.Storage
+            A reference value for the field.
+        field_out : gridtools.storage.Storage
+            Buffer into which writing the output, vertically damped field.
+        """
+        pass
 
-		Parameters
-		----------
-		dtype : obj
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-		"""
+    @staticmethod
+    def factory(
+        damp_type,
+        grid,
+        damp_depth,
+        damp_coeff_max,
+        time_units="s",
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        storage_shape=None
+    ):
+        """
+        Static method which returns an instance of the derived class
+        implementing the damping method specified by :data:`damp_type`.
 
-	@staticmethod
-	def factory(
-		damp_type, shape, grid, damp_depth, damp_coeff_max,
-		time_units='s', backend=gt.mode.NUMPY, dtype=datatype
-	):
-		"""
-		Static method which returns an instance of the derived class
-		implementing the damping method specified by :data:`damp_type`.
+        Parameters
+        ----------
+        damp_type : str
+            String specifying the damper to implement. Either:
 
-		Parameters
-		----------
-		damp_type : str
-			String specifying the damper to implement. Either:
+                * 'rayleigh', for a Rayleigh damper.
 
-				* 'rayleigh', for a Rayleigh damper.
+        grid : tasmania.Grid
+            The underlying grid.
+        damp_depth : int
+            Number of vertical layers in the damping region.
+        damp_coeff_max : float
+            Maximum value for the damping coefficient.
+        time_units : `str`, optional
+            Time units to be used throughout the class. Defaults to 's'.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        storage_shape : `tuple`, optional
+            TODO
 
-		shape : tuple
-			Shape of the 3-D arrays on which applying the absorber.
-		grid : tasmania.Grid
-			The underlying grid.
-		damp_depth : int
-			Number of vertical layers in the damping region.
-		damp_coeff_max : float
-			Maximum value for the damping coefficient.
-		time_units : `str`, optional
-			Time units to be used throughout the class. Defaults to 's'.
-		backend : `obj`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
+        Return
+        ------
+        obj :
+            An instance of the appropriate derived class.
+        """
+        args = [
+            grid,
+            damp_depth,
+            damp_coeff_max,
+            time_units,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+            storage_shape,
+        ]
+        if damp_type == "rayleigh":
+            return Rayleigh(*args)
+        else:
+            raise ValueError("Unknown damping scheme. Available options: " "rayleigh" ".")
 
-		Return
-		------
-		obj :
-			An instance of the appropriate derived class.
-		"""
-		args = [shape, grid, damp_depth, damp_coeff_max, time_units, backend, dtype]
-		if damp_type == 'rayleigh':
-			return Rayleigh(*args)
-		else:
-			raise ValueError('Unknown damping scheme. Available options: ''rayleigh''.')
+    @staticmethod
+    @abc.abstractmethod
+    def _stencil_defs(
+        in_phi_now: gt.storage.f64_sd,
+        in_phi_new: gt.storage.f64_sd,
+        in_phi_ref: gt.storage.f64_sd,
+        in_rmat: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dt: float
+    ):
+        pass
 
 
 class Rayleigh(VerticalDamping):
-	"""
-	This class inherits	:class:`~tasmania.VerticalDamping`
-	to implement a Rayleigh absorber.
-	"""
-	def __init__(
-		self, shape, grid, damp_depth=15, damp_coeff_max=0.0002,
-		time_units='s', backend=gt.mode.NUMPY, dtype=datatype
-	):
-		"""
-		Parameters
-		----------
-		shape : tuple
-			Shape of the 3-D arrays on which applying the absorber.
-		grid : tasmania.Grid
-			The underlying grid.
-		damp_depth : `int`, optional
-			Number of vertical layers in the damping region. Defaults to 15.
-		damp_coeff_max : `float`, optional
-			Maximum value for the damping coefficient. Defaults to 0.0002.
-		time_units : `str`, optional
-			Time units to be used throughout the class. Defaults to 's'.
-		backend : `obj`, optional
-			TODO
-		dtype : `obj`, optional
-			Instance of :class:`numpy.dtype` specifying the data type for
-			any :class:`numpy.ndarray` used within this class.
-		"""
-		super().__init__(
-			shape, grid, damp_depth, damp_coeff_max, time_units, backend, dtype
-		)
+    """
+    This class inherits	:class:`~tasmania.VerticalDamping`
+    to implement a Rayleigh absorber.
+    """
 
-	def __call__(self, dt, field_now, field_new, field_ref, field_out):
-		# update the attributes which will serve as stencil's inputs
-		self._dt.value = \
-			DataArray(dt.total_seconds(), attrs={'units': 's'}).to_units(self._tunits).values.item()
-		self._field_now[...] = field_now[...]
-		self._field_new[...] = field_new[...]
-		self._field_ref[...] = field_ref[...]
+    def __init__(
+        self,
+        grid,
+        damp_depth=15,
+        damp_coeff_max=0.0002,
+        time_units="s",
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        storage_shape=None,
+    ):
+        super().__init__(
+            grid,
+            damp_depth,
+            damp_coeff_max,
+            time_units,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+            storage_shape,
+        )
 
-		# run the stencil's compute function
-		self._stencil.compute()
+    def __call__(self, dt, field_now, field_new, field_ref, field_out):
+        # shortcuts
+        ni, nj, nk = self._shape
+        dnk = self._damp_depth
 
-		# write into the output buffer
-		field_out[:, :, :self._depth] = self._field_out[:, :, :self._depth]
-		field_out[:, :, self._depth:] = field_new[:, :, self._depth:]
+        # convert the timestep to seconds
+        dt_da = DataArray(dt.total_seconds(), attrs={"units": "s"})
+        dt_raw = dt_da.to_units(self._tunits).values.item()
 
-	def _stencil_initialize(self, dtype):
-		# shortcuts
-		grid = self._grid
-		nz, za, zt = grid.nz, self._lb, grid.z_on_interface_levels.values[0]
-		ni, nj, nk = self._shape
+        if dnk > 0:
+            # run the stencil
+            self._stencil(
+                in_phi_now=field_now,
+                in_phi_new=field_new,
+                in_phi_ref=field_ref,
+                in_rmat=self._rmat,
+                out_phi=field_out,
+                dt=dt_raw,
+                origin={"_all_": (0, 0, 0)},
+                domain=(ni, nj, dnk),
+                exec_info=self._exec_info,
+            )
 
-		if nk == nz:
-			# compute the damping matrix in the case of a z-unstaggered field
-			z = grid.z.values
-			r = ge(z, za) * self._cmax * (1 - np.cos(math.pi * (z - za) / (zt - za)))
-			self._rmat = np.tile(r[np.newaxis, np.newaxis, :], (ni, nj, 1))
-		else:
-			# compute the damping matrix in the case of a z-staggered field
-			z = grid.z_on_interface_levels.values
-			r = ge(z, za) * self._cmax * (1 - np.cos(math.pi * (z - za) / (zt - za)))
-			self._rmat = np.tile(r[np.newaxis, np.newaxis, :], (ni, nj, 1))
+        # set the lowermost layers, outside of the damping region
+        field_out[:, :, dnk:] = field_new[:, :, dnk:]
 
-		# allocate the attributes which will serve as stencil's inputs
-		self._dt = gt.Global()
-		self._field_now = np.zeros((ni, nj, nk), dtype=dtype)
-		self._field_new = np.zeros((ni, nj, nk), dtype=dtype)
-		self._field_ref = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# allocate the numpy array which will serve as stencil's output
-		self._field_out = np.zeros((ni, nj, nk), dtype=dtype)
-
-		# instantiate the stencil
-		# TODO: exclude boundary layers from stencil computational domain
-		self._stencil = gt.NGStencil(
-			definitions_func=self._stencil_defs,
-			inputs={
-				'field_now': self._field_now, 'field_new': self._field_new,
-				'field_ref': self._field_ref, 'rmat': self._rmat
-			},
-			global_inputs={'dt': self._dt},
-			outputs={'field_out': self._field_out},
-			domain=gt.domain.Rectangle((0, 0, 0), (ni-1, nj-1, self._depth-1)),
-			mode=self._backend
-		)
-
-	@staticmethod
-	def _stencil_defs(dt, field_now, field_new, field_ref, rmat):
-		"""
-		The GT4Py stencil applying Rayleigh vertical damping.
-
-		Parameters
-		----------
-		dt : gridtools.Global
-			The time step.
-		field_now : gridtools.Equation
-			The field at the current time level.
-		field_new : gridtools.Equation
-			The field at the next time level, on which the absorber will be applied.
-		field_ref : gridtools.Equation
-			The reference field.
-		rmat : gridtools.Equation
-			The damping coefficient.
-
-		Return
-		------
-		gridtools.Equation :
-			The damped field.
-		"""
-		# indices
-		i = gt.Index()
-		j = gt.Index()
-		k = gt.Index()
-
-		# output field
-		field_out = gt.Equation()
-
-		# computations
-		field_out[i, j, k] = field_new[i, j, k] - \
-			dt * rmat[i, j, k] * (field_now[i, j, k] - field_ref[i, j, k])
-
-		return field_out
+    @staticmethod
+    def _stencil_defs(
+        in_phi_now: gt.storage.f64_sd,
+        in_phi_new: gt.storage.f64_sd,
+        in_phi_ref: gt.storage.f64_sd,
+        in_rmat: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
+        *,
+        dt: float
+    ):
+        out_phi = in_phi_new[0, 0, 0] - dt * in_rmat[0, 0, 0] * (
+            in_phi_now[0, 0, 0] - in_phi_ref[0, 0, 0]
+        )

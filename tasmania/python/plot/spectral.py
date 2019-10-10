@@ -32,14 +32,15 @@ from tasmania.python.plot.plot_utils import make_cdf
 
 
 class CDF(Drawer):
-	"""
+    """
 	Drawer which computes and visualizes a cumulative distribution function (CDF)
 	of a state quantity based on its grid point values at multiple time steps.
 	"""
-	def __init__(
-		self, grid, field_name, field_units, x=None, y=None, z=None, properties=None
-	):
-		"""
+
+    def __init__(
+        self, grid, field_name, field_units, x=None, y=None, z=None, properties=None
+    ):
+        """
 		Parameters
 		----------
 		grid : tasmania.Grid
@@ -65,23 +66,21 @@ class CDF(Drawer):
 			settings, and whose values specify values for those settings.
 			See :func:`tasmania.python.plot.utils.make_cdf`.
 		"""
-		super().__init__(properties)
-		self._retriever = DataRetriever(grid, field_name, field_units, x, y, z)
-		self._data = None
+        super().__init__(properties)
+        self._retriever = DataRetriever(grid, field_name, field_units, x, y, z)
+        self._data = None
 
-	def reset(self):
-		self._data = None
+    def reset(self):
+        self._data = None
 
-	def __call__(self, state, fig=None, ax=None):
-		"""
+    def __call__(self, state, fig=None, ax=None):
+        """
 		Call operator computing and visualizing the CDF.
 		"""
-		if self._data is None:
-			self._data = self._retriever(state)
-		else:
-			self._data = np.concatenate((self._data, self._retriever(state)), axis=2)
+        if self._data is None:
+            self._data = self._retriever(state)
+        else:
+            self._data = np.concatenate((self._data, self._retriever(state)), axis=2)
 
-		if ax is not None:
-			make_cdf(self._data, ax, **self.properties)
-
-
+        if ax is not None:
+            make_cdf(self._data, ax, **self.properties)

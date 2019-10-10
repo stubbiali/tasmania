@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --job-name=cc1
 #SBATCH --account=s299m
-#SBATCH --time=01:15:00
+#SBATCH --time=00:15:00
 #SBATCH --nodes=1
 #SBATCH --partition=normal
 #SBATCH --constraint=mc
@@ -15,7 +15,7 @@ VENV=py36  # options: py35, py36, py37
 ROOT_DIR=tasmania-develop  # options: tasmania, tasmania-develop, tasmania-restyling
 DRIVER_DIR=isentropic_dry  # options: any directory under ROOT_DIR/drivers
 DRIVER_NAME=driver_namelist_cc.py  # options: any driver under ROOT_DIR/drivers/DRIVER_DIR
-NAMELIST_SRC=namelists/namelist_cc_1.py  # options: any namelist under ROOT_DIT/drivers/DRIVER_DIR
+NAMELIST_SRC=namelist_cc.py  # options: any namelist under ROOT_DIT/drivers/DRIVER_DIR
 NAMELIST_DST=namelist_cc.py  # options: any namelist under ROOT_DIT/drivers/DRIVER_DIR
 
 # ==================================================
@@ -31,6 +31,7 @@ srun --unbuffered shifter run \
 	bash -c \
 		"cp -r $ROOT_DIR/tasmania/python ~/tasmania/tasmania; \
 		 cp -r $ROOT_DIR/tasmania/__init__.py ~/tasmania/tasmania; \
+		 cp -r $ROOT_DIR/tasmania/conf.py ~/tasmania/tasmania; \
 		 cd ~; \
 		 . $VENV/bin/activate; \
 		 cd $SCRATCH/$ROOT_DIR/drivers/$DRIVER_DIR; \

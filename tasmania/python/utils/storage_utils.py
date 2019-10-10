@@ -22,427 +22,429 @@
 #
 """
 This module contains:
-	get_physical_state
-	get_numerical_state
-	NetCDFMonitor
-	load_netcdf_dataset
-	load_grid
-	load_states
+    get_dataarray_2d
+    get_dataarray_3d
+    get_dataarray_dict
+    get_array_dict
+    get_physical_state
+    get_numerical_state
+    get_storage_descriptor
+    get_storage_shape
+    zeros
+    ones
 """
-from copy import deepcopy
-from datetime import timedelta
-import netCDF4 as nc4
 import numpy as np
-from pandas import Timedelta
-import sympl
-import xarray as xr
+from sympl import DataArray
 
-from tasmania.python.burgers.state import ZhaoSolutionFactory
-from tasmania.python.grids.domain import Domain
-from tasmania.python.utils.data_utils import make_dataarray_3d
-from tasmania.python.utils.utils import convert_datetime64_to_datetime
+import gridtools as gt
 
 
-def get_physical_state(domain, cstate, store_names=None):
-	"""
-	Given a state defined over the numerical grid, transpose that state
-	over the corresponding physical grid.
-	"""
-	pgrid = domain.physical_grid
-	hb = domain.horizontal_boundary
+def get_dataarray_2d(
+    array, grid, units, name=None, grid_origin=None, grid_shape=None, set_coordinates=True
+):
+    """
+    Create a DataArray out of a 2-D ndarray-like storage.
 
-	store_names = store_names if store_names is not None else \
-		tuple(name for name in cstate if name != 'time')
-	store_names = tuple(name for name in store_names if name in cstate)
+    Parameters
+    ----------
+    array : array-like
+        2-D buffer storing the field values.
+    grid : tasmania.Grid
+        The underlying grid.
+    units : str
+        The variable units.
+    name : `str`, optional
+        The variable name. Defaults to `None`.
+    grid_origin : `sequence`, optional
+        The index of the element in the buffer associated with the (0, 0)
+        grid point. If not specified, it is assumed that `grid_origin = (0, 0)`.
+    grid_shape : `sequence`, optional
+        The shape of grid underlying the field. It cannot exceed the shape
+        of the passed buffer. If not specified, it is assumed that it coincides
+        with the shape of the buffer.
+    set_coordinates : `bool`, optional
+        TODO
 
-	pstate = {'time': cstate['time']} if 'time' in cstate else {}
+    Return
+    ------
+    dataarray-like :
+        The :class:`sympl.DataArray` whose value array is `array`,
+        whose coordinates and dimensions are retrieved from `grid`,
+        and whose units are `units`.
+    """
+    nx, ny = grid.nx, grid.ny
+    grid_origin = (0, 0) if grid_origin is None else grid_origin
+    grid_shape = array.shape if grid_shape is None else grid_shape
+    try:
+        ni, nj = grid_shape
+    except ValueError:
+        raise ValueError("Expected a 2-D array, got a {}-D one.".format(len(grid_shape)))
 
-	for name in store_names:
-		if name != 'time':
-			units = cstate[name].attrs['units']
-			raw_cfield = cstate[name].values
-			raw_pfield = hb.get_physical_field(raw_cfield, name)
-			pstate[name] = make_dataarray_3d(raw_pfield, pgrid, units, name)
+    if ni == nx:
+        x = grid.x
+    elif ni == nx + 1:
+        x = grid.x_at_u_locations
+    else:
+        raise ValueError(
+            "The array extent in the x-direction is {} but either "
+            "{} or {} was expected.".format(ni, nx, nx + 1)
+        )
 
-	return pstate
+    if nj == ny:
+        y = grid.y
+    elif nj == ny + 1:
+        y = grid.y_at_v_locations
+    else:
+        raise ValueError(
+            "The array extent in the y-direction is {} but either "
+            "{} or {} was expected.".format(nj, ny, ny + 1)
+        )
+
+    if set_coordinates:
+        xslice = slice(grid_origin[0], grid_origin[0] + ni)
+        yslice = slice(grid_origin[1], grid_origin[1] + nj)
+        return DataArray(
+            array[xslice, yslice],
+            coords=[x.coords[x.dims[0]].values, y.coords[y.dims[0]].values],
+            dims=[x.dims[0], y.dims[0]],
+            name=name,
+            attrs={"units": units},
+        )
+    else:
+        return DataArray(
+            array, dims=[x.dims[0], y.dims[0]], name=name, attrs={"units": units}
+        )
+
+
+def get_dataarray_3d(
+    array, grid, units, name=None, grid_origin=None, grid_shape=None, set_coordinates=True
+):
+    """
+    Create a DataArray out of a 3-D ndarray-like storage.
+
+    Parameters
+    ----------
+    array : array-like
+        3-D buffer storing the field values.
+    grid : tasmania.Grid
+        The underlying grid.
+    units : str
+        The variable units.
+    name : `str`, optional
+        The variable name. Defaults to `None`.
+    grid_origin : `sequence`, optional
+        The index of the element in the buffer associated with the (0, 0, 0)
+        grid point. If not specified, it is assumed that `grid_origin = (0, 0, 0)`.
+    grid_shape : `sequence`, optional
+        The shape of grid underlying the field. It cannot exceed the shape
+        of the passed buffer. If not specified, it is assumed that it coincides
+        with the shape of the buffer.
+    set_coordinates : `bool`, optional
+        TODO
+
+    Return
+    ------
+    dataarray-like :
+        The :class:`sympl.DataArray` whose value array is `array`,
+        whose coordinates and dimensions are retrieved from `grid`,
+        and whose units are `units`.
+    """
+    nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+    grid_origin = grid_origin or (0, 0, 0)
+    grid_shape = grid_shape or array.shape
+    try:
+        ni, nj, nk = grid_shape
+    except ValueError:
+        raise ValueError("Expected a 3-D array, got a {}-D one.".format(len(grid_shape)))
+
+    if ni == 1 and nx != 1:
+        x = DataArray(
+            np.array([grid.grid_xy.x.values[0]]),
+            dims=grid.grid_xy.x.dims[0] + "_gp",
+            attrs={"units": grid.grid_xy.x.attrs["units"]},
+        )
+    elif ni == nx:
+        x = grid.grid_xy.x
+    elif ni == nx + 1:
+        x = grid.grid_xy.x_at_u_locations
+    else:
+        raise ValueError(
+            "The grid extent in the x-direction is {} but either "
+            "{}, {} or {} was expected.".format(ni, 1, nx, nx + 1)
+        )
+
+    if nj == 1 and ny != 1:
+        y = DataArray(
+            np.array([grid.grid_xy.y.values[0]]),
+            dims=grid.grid_xy.y.dims[0] + "_gp",
+            attrs={"units": grid.grid_xy.y.attrs["units"]},
+        )
+    elif nj == ny:
+        y = grid.grid_xy.y
+    elif nj == ny + 1:
+        y = grid.grid_xy.y_at_v_locations
+    else:
+        raise ValueError(
+            "The grid extent in the y-direction is {} but either "
+            "{}, {} or {} was expected.".format(nj, 1, ny, ny + 1)
+        )
+
+    if nk == 1:
+        if nz > 1:
+            z = DataArray(
+                np.array([grid.z_on_interface_levels.values[-1]]),
+                dims=grid.z.dims[0] + "_at_surface_level",
+                attrs={"units": grid.z.attrs["units"]},
+            )
+        else:
+            z = DataArray(
+                np.array([grid.z.values[-1]]),
+                dims=grid.z.dims[0],
+                attrs={"units": grid.z.attrs["units"]},
+            )
+    elif nk == nz:
+        z = grid.z
+    elif nk == nz + 1:
+        z = grid.z_on_interface_levels
+    else:
+        raise ValueError(
+            "The grid extent in the z-direction is {} but either "
+            "1, {} or {} was expected.".format(nk, nz, nz + 1)
+        )
+
+    if set_coordinates:
+        xslice = slice(grid_origin[0], grid_origin[0] + ni)
+        yslice = slice(grid_origin[1], grid_origin[1] + nj)
+        zslice = slice(grid_origin[2], grid_origin[2] + nk)
+        return DataArray(
+            array[xslice, yslice, zslice],
+            coords=[
+                x.coords[x.dims[0]].values,
+                y.coords[y.dims[0]].values,
+                z.coords[z.dims[0]].values,
+            ],
+            dims=[x.dims[0], y.dims[0], z.dims[0]],
+            name=name,
+            attrs={"units": units},
+        )
+    else:
+        return DataArray(
+            array,
+            dims=[x.dims[0], y.dims[0], z.dims[0]],
+            name=name,
+            attrs={"units": units},
+        )
+
+
+def get_dataarray_dict(array_dict, grid, properties, set_coordinates=True):
+    """
+    Parameters
+    ----------
+    array_dict : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`numpy.ndarray`\s
+        containing the data for those variables.
+    grid : tasmania.Grid
+        The underlying grid.
+    properties : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are strings indicating
+        the units in which those variables should be expressed.
+    set_coordinates : `bool`, optional
+        TODO
+
+    Return
+    ------
+    dict :
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`sympl.DataArray`\s
+        containing the data for those variables.
+    """
+    try:
+        dataarray_dict = {"time": array_dict["time"]}
+    except KeyError:
+        dataarray_dict = {}
+
+    for key in array_dict.keys():
+        if key != "time":
+            units = properties[key]["units"]
+            grid_origin = properties[key].get("grid_origin", None)
+            grid_shape = properties[key].get("grid_shape", None)
+            if len(array_dict[key].shape) == 2:
+                dataarray_dict[key] = get_dataarray_2d(
+                    array_dict[key],
+                    grid,
+                    units,
+                    name=key,
+                    grid_origin=grid_origin,
+                    grid_shape=grid_shape,
+                    set_coordinates=set_coordinates,
+                )
+            else:
+                dataarray_dict[key] = get_dataarray_3d(
+                    array_dict[key],
+                    grid,
+                    units,
+                    name=key,
+                    grid_origin=grid_origin,
+                    grid_shape=grid_shape,
+                    set_coordinates=set_coordinates,
+                )
+
+    return dataarray_dict
+
+
+def get_array_dict(dataarray_dict, properties):
+    """
+    Parameters
+    ----------
+    dataarray_dict : dict
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`sympl.DataArray`\s
+        containing the data for those variables.
+    properties : dict
+        TODO
+
+    Return
+    ------
+    dict :
+        Dictionary whose keys are strings indicating the variables
+        included in the model state, and values are :class:`numpy.ndarray`\s
+        containing the data for those variables.
+    """
+    try:
+        array_dict = {"time": dataarray_dict["time"]}
+    except KeyError:
+        array_dict = {}
+
+    for key in dataarray_dict.keys():
+        if key != "time":
+            props = properties.get(key, {})
+            units = props.get("units", dataarray_dict[key].attrs.get("units"))
+            assert units is not None, "Units not specified for {}.".format(key)
+            array_dict[key] = dataarray_dict[key].to_units(units).values
+
+    return array_dict
+
+
+def get_physical_state(domain, cstate, properties, store_names=None):
+    """
+    Given a state dictionary defined over the numerical grid, transpose that state
+    over the corresponding physical grid.
+    """
+    pgrid = domain.physical_grid
+    hb = domain.horizontal_boundary
+
+    store_names = (
+        store_names
+        if store_names is not None
+        else tuple(name for name in cstate if name != "time")
+    )
+    store_names = tuple(name for name in store_names if name in cstate)
+
+    pstate = {"time": cstate["time"]} if "time" in cstate else {}
+
+    for name in store_names:
+        if name != "time":
+            storage_shape = cstate[name].shape
+            if len(storage_shape) == 2:
+                grid_origin = properties[name].get("grid_origin", (0, 0))
+                grid_shape = properties[name].get("grid_shape", storage_shape)
+                xslice = slice(grid_origin[0], grid_origin[0] + grid_shape[0])
+                yslice = slice(grid_origin[1], grid_origin[1] + grid_shape[1])
+                units = cstate[name].attrs["units"]
+                raw_cfield = cstate[name].values[xslice, yslice]
+                raw_pfield = hb.get_physical_field(raw_cfield, name)
+                pstate[name] = get_dataarray_2d(
+                    raw_pfield, pgrid, units, name=name, set_coordinates=True
+                )
+            else:
+                grid_origin = properties[name].get("grid_origin", (0, 0, 0))
+                grid_shape = properties[name].get("grid_shape", storage_shape)
+                xslice = slice(grid_origin[0], grid_origin[0] + grid_shape[0])
+                yslice = slice(grid_origin[1], grid_origin[1] + grid_shape[1])
+                zslice = slice(grid_origin[2], grid_origin[2] + grid_shape[2])
+                units = cstate[name].attrs["units"]
+                raw_cfield = cstate[name].values[xslice, yslice, zslice]
+                raw_pfield = hb.get_physical_field(raw_cfield, name)
+                pstate[name] = get_dataarray_3d(
+                    raw_pfield, pgrid, units, name=name, set_coordinates=True
+                )
+
+    return pstate
 
 
 def get_numerical_state(domain, pstate, store_names=None):
-	"""
-	Given a state defined over the physical grid, transpose that state
-	over the corresponding numerical grid.
-	"""
-	cgrid = domain.numerical_grid
-	hb = domain.horizontal_boundary
+    """
+    Given a state defined over the physical grid, transpose that state
+    over the corresponding numerical grid.
+    """
+    cgrid = domain.numerical_grid
+    hb = domain.horizontal_boundary
 
-	store_names = store_names if store_names is not None else \
-		tuple(name for name in pstate if name != 'time')
-	store_names = tuple(name for name in store_names if name in pstate)
+    store_names = (
+        store_names
+        if store_names is not None
+        else tuple(name for name in pstate if name != "time")
+    )
+    store_names = tuple(name for name in store_names if name in pstate)
 
-	cstate = {'time': pstate['time']} if 'time' in pstate else {}
+    cstate = {"time": pstate["time"]} if "time" in pstate else {}
 
-	for name in store_names:
-		if name != 'time':
-			units = pstate[name].attrs['units']
-			raw_pfield = pstate[name].values
-			raw_cfield = hb.get_numerical_field(raw_pfield, name)
-			cstate[name] = make_dataarray_3d(raw_cfield, cgrid, units, name)
+    for name in store_names:
+        if name != "time":
+            units = pstate[name].attrs["units"]
+            raw_pfield = pstate[name].values
+            raw_cfield = hb.get_numerical_field(raw_pfield, name)
+            if len(raw_cfield.shape) == 2:
+                cstate[name] = get_dataarray_2d(
+                    raw_cfield, cgrid, units, name, set_coordinates=True
+                )
+            else:
+                cstate[name] = get_dataarray_3d(
+                    raw_cfield, cgrid, units, name, set_coordinates=True
+                )
 
-	return cstate
-
-
-class NetCDFMonitor(sympl.NetCDFMonitor):
-	"""
-	Customized version of :class:`sympl.NetCDFMonitor`, which
-	caches stored states and then write them to a NetCDF file,
-	together with some grid properties.
-	"""
-	def __init__(
-		self, filename, domain, grid_type, time_units='seconds',
-		store_names=None, write_on_store=False, aliases=None
-	):
-		"""
-		The constructor.
-
-		Parameters
-		----------
-		filename : str
-			The path where the NetCDF file will be written.
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : str
-			String specifying the type of grid over which the states should be saved.
-			Either:
-
-				* 'physical';
-				* 'numerical'.
-
-		time_units : str, optional
-			The units in which time will be
-			stored in the NetCDF file. Time is stored as an integer
-			number of these units. Default is seconds.
-		store_names : iterable of str, optional
-			Names of quantities to store. If not given,
-			all quantities are stored.
-		write_on_store : bool, optional
-			If True, stored changes are immediately written to file.
-			This can result in many file open/close operations.
-			Default is to write only when the write() method is
-			called directly.
-		aliases : dict
-			A dictionary of string replacements to apply to state variable
-			names before saving them in netCDF files.
-		"""
-		super().__init__(
-			filename, time_units, store_names, write_on_store, aliases
-		)
-		self._domain = domain
-		self._gtype  = grid_type
-
-	def store(self, state):
-		"""
-		If the state is defined over the numerical (respectively physical)
-		grid but should be saved over the physical (resp. numerical) grid:
-		transpose the state over the appropriate grid, make a deep copy of this
-		new state, and call the parent's method.
-		If the state is already defined over the expected grid: make a deep copy
-		of the input state before calling the parent's method.
-		"""
-		grid = self._domain.physical_grid if self._gtype == 'physical' \
-			else self._domain.numerical_grid
-		dims_x = (grid.x.dims[0], grid.x_at_u_locations.dims[0])
-		dims_y = (grid.y.dims[0], grid.y_at_v_locations.dims[0])
-
-		if self._gtype == 'physical':
-			names = tuple(key for key in state if key != 'time')
-			if not(
-				state[names[0]].dims[0] in dims_x and
-				state[names[0]].dims[1] in dims_y
-			):
-				to_save = get_physical_state(self._domain, state, self._store_names)
-			else:
-				to_save = state
-		else:
-			names = tuple(key for key in state if key != 'time')
-			if not(
-				state[names[0]].dims[0] in dims_x and
-				state[names[0]].dims[1] in dims_y
-			):
-				to_save = get_numerical_state(self._domain, state, self._store_names)
-			else:
-				to_save = state
-
-		super().store(deepcopy(to_save))
-
-	def write(self):
-		"""
-		Write grid properties and all cached states to the NetCDF file,
-		and clear the cache. This will append to any existing NetCDF file.
-		"""
-		super().write()
-
-		with nc4.Dataset(self._filename, 'a') as dataset:
-			g = self._domain.physical_grid
-
-			dataset.createDimension('bool_dim', 1)
-			dataset.createDimension('scalar_dim', 1)
-			dataset.createDimension('str_dim', 1)
-			dataset.createDimension('timedelta_dim', 1)
-			dataset.createDimension('functor_dim', 1)
-
-			# list model state variable names
-			names = [var for var in dataset.variables if var != 'time']
-			dataset.createDimension('strvec1_dim', len(names))
-			state_variable_names = dataset.createVariable(
-				'state_variable_names', str, ('strvec1_dim',)
-			)
-			state_variable_names[:] = np.array(names, dtype='object')
-
-			# type of the underlying grid over which the states are defined
-			grid_type = dataset.createVariable('grid_type', str, ('str_dim',))
-			grid_type[:] = np.array([self._gtype], dtype='object')
-
-			# x-axis
-			dim1_name = dataset.createVariable('dim1_name', str, ('str_dim',))
-			dim1_name[:] = np.array([g.x.dims[0]], dtype='object')
-			dim1 = dataset.createVariable(g.x.dims[0], g.x.values.dtype, (g.x.dims[0],))
-			dim1[:] = g.x.values[:]
-			dim1.setncattr('units', g.x.attrs['units'])
-			try:
-				dim1_u = dataset.createVariable(
-						g.x_at_u_locations.dims[0], 
-						g.x_at_u_locations.values.dtype,
-						(g.x_at_u_locations.dims[0],)
-				)
-				dim1_u[:] = g.x_at_u_locations.values[:]
-				dim1_u.setncattr('units', g.x_at_u_locations.attrs['units'])
-			except ValueError:
-				pass
-
-			# y-axis
-			dim2_name = dataset.createVariable('dim2_name', str, ('str_dim',))
-			dim2_name[:] = np.array([g.y.dims[0]], dtype='object')
-			dim2 = dataset.createVariable(g.y.dims[0], g.y.values.dtype, (g.y.dims[0],))
-			dim2[:] = g.y.values[:]
-			dim2.setncattr('units', g.y.attrs['units'])
-			try:
-				dim2_v = dataset.createVariable(
-						g.y_at_v_locations.dims[0],
-						g.y_at_v_locations.values.dtype,
-						(g.y_at_v_locations.dims[0],)
-				)
-				dim2_v[:] = g.y_at_v_locations.values[:]
-				dim2_v.setncattr('units', g.y_at_v_locations.attrs['units'])
-			except ValueError:
-				pass
-
-			# z-axis
-			dim3_name = dataset.createVariable('dim3_name', str, ('str_dim',))
-			dim3_name[:] = np.array([g.z.dims[0]], dtype='object')
-			dim3 = dataset.createVariable(g.z.dims[0], g.z.values.dtype, (g.z.dims[0],))
-			dim3[:] = g.z.values[:]
-			dim3.setncattr('units', g.z.attrs['units'])
-			try:
-				dim3_hl = dataset.createVariable(
-						g.z_on_interface_levels.dims[0],
-						g.z_on_interface_levels.values.dtype,
-						(g.z_on_interface_levels.dims[0],)
-				)
-				dim3_hl[:] = g.z_on_interface_levels.values[:]
-				dim3_hl.setncattr('units', g.z_on_interface_levels.attrs['units'])
-			except ValueError:
-				pass
-
-			# vertical interface level
-			z_interface = dataset.createVariable(
-				'z_interface', g.z_interface.values.dtype, ('scalar_dim',)
-			)
-			z_interface[:] = g.z_interface.values.item()
-			z_interface.setncattr('units', g.z_interface.attrs['units'])
-
-			# type of horizontal boundary conditions
-			hb = self._domain.horizontal_boundary
-			hb_type = dataset.createVariable('horizontal_boundary_type', str, ('str_dim',))
-			hb_type[:] = np.array(hb.type, dtype='object')
-
-			# the number of boundary layers
-			nb = dataset.createVariable('nb', int, ('scalar_dim',))
-			nb[:] = np.array([hb.nb], dtype=int)
-
-			# the keyword arguments used to instantiate the object handling the
-			# lateral boundary conditions
-			keys = []
-			for key in hb.kwargs.keys():
-				hb_key = 'hb_' + key
-				value = hb.kwargs[key]
-
-				if isinstance(value, (int, float)):
-					var    = dataset.createVariable(hb_key, type(value), ('scalar_dim',))
-					var[:] = np.array([value], dtype=type(value))
-				elif isinstance(value, ZhaoSolutionFactory):
-					# TODO: this actually does not work, because only primitive types
-					# TODO: can be stored in a netCDF dataset
-					var    = dataset.createVariable(hb_key, ZhaoSolutionFactory, ('functor_dim',))
-					var[:] = np.array([value], dtype='object')
-
-				keys.append(hb_key)
-
-			# list of keyword parameter names used to instantiate the object handling
-			# the lateral boundary conditions
-			dataset.createDimension('strvec2_dim', len(keys))
-			hb_kwargs    = dataset.createVariable('horizontal_boundary_kwargs', str, ('strvec2_dim',))
-			hb_kwargs[:] = np.array(keys, dtype='object')
-
-			# topography type
-			topo         = g.topography
-			topo_type    = dataset.createVariable('topography_type', str, ('str_dim',))
-			topo_type[:] = np.array([topo.type], dtype='object')
-
-			# keyword arguments used to instantiate the topography
-			keys = []
-			for key in topo.kwargs.keys():
-				topo_key = 'topo_' + key
-				value = topo.kwargs[key]
-
-				if isinstance(value, sympl.DataArray):
-					var    = dataset.createVariable(topo_key, value.values.dtype, ('scalar_dim',))
-					var[:] = value.values.item()
-					var.setncattr('units', value.attrs['units'])
-				elif isinstance(value, str):
-					var    = dataset.createVariable(topo_key, str, ('str_dim',))
-					var[:] = np.array([value], dtype='object')
-				elif isinstance(value, bool):
-					var    = dataset.createVariable(topo_key, int, ('bool_dim',))
-					var[:] = np.array([1 if value else 0], dtype=bool)
-				elif isinstance(value, timedelta) or isinstance(value, Timedelta):
-					var    = dataset.createVariable(topo_key, float, ('timedelta_dim',))
-					var[:] = np.array([value.total_seconds()], dtype=float)
-					var.setncattr('units', 's')
-
-				keys.append(topo_key)
-
-			# list of keyword parameter names used to instantiate the topography
-			dataset.createDimension('strvec3_dim', len(keys))
-			topo_kwargs    = dataset.createVariable('topography_kwargs', str, ('strvec3_dim',))
-			topo_kwargs[:] = np.array(keys, dtype='object')
+    return cstate
 
 
-def load_netcdf_dataset(filename):
-	"""
-	Load the sequence of states stored in a NetCDF dataset,
-	and build the underlying domain.
-
-	Parameters
-	----------
-	filename : str
-		Path to the NetCDF dataset.
-
-	Returns
-	-------
-	domain : tasmania.Domain
-		The underlying domain.
-	grid_type : str
-		The type of the underlying grid over which the states are defined.
-		Either 'physical' or 'numerical'.
-	states : list[dict]
-		The list of state dictionaries stored in the NetCDF file.
-	"""
-	with xr.open_dataset(filename) as dataset:
-		return load_domain(dataset), load_grid_type(dataset), load_states(dataset)
+def get_storage_descriptor(storage_shape, dtype, halo=None, mask=(True, True, True)):
+    halo = (0, 0, 0) if halo is None else halo
+    halo = tuple(halo[i] if storage_shape[i] > 2 * halo[i] else 0 for i in range(3))
+    domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+    descriptor = gt.storage.StorageDescriptor(
+        dtype=dtype, mask=mask, halo=halo, iteration_domain=domain
+    )
+    return descriptor
 
 
-def load_domain(dataset):
-	# x-axis
-	dims_x = dataset.data_vars['dim1_name'].values.item()
-	x = dataset.coords[dims_x]
-	domain_x = sympl.DataArray(
-		[x.values[0], x.values[-1]],
-		dims=[dims_x], attrs={'units': x.attrs['units']}
-	)
-	nx = x.shape[0]
+def get_storage_shape(in_shape, min_shape, max_shape=None):
+    out_shape = min_shape if in_shape is None else in_shape
 
-	# y-axis
-	dims_y = dataset.data_vars['dim2_name'].values.item()
-	y = dataset.coords[dims_y]
-	domain_y = sympl.DataArray(
-		[y.values[0], y.values[-1]],
-		dims=[dims_y], attrs={'units': y.attrs['units']}
-	)
-	ny = y.shape[0]
+    if max_shape is None:
+        error_msg = "storage shape must be larger or equal than {}.".format(min_shape)
+        assert all(
+            tuple(out_shape[i] >= min_shape[i] for i in range(len(min_shape)))
+        ), error_msg
+    else:
+        error_msg = "storage shape must be between {} and {}".format(min_shape, max_shape)
+        assert all(
+            tuple(
+                min_shape[i] <= out_shape[i] <= max_shape[i]
+                for i in range(len(min_shape))
+            )
+        ), error_msg
 
-	# z-axis
-	dims_z = dataset.data_vars['dim3_name'].values.item()
-	z_hl = dataset.coords[dims_z + '_on_interface_levels']
-	domain_z = sympl.DataArray(
-		[z_hl.values[0], z_hl.values[-1]],
-		dims=[dims_z], attrs={'units': z_hl.attrs['units']}
-	)
-	nz = z_hl.shape[0]-1
-
-	# vertical interface level
-	z_interface = sympl.DataArray(dataset.data_vars['z_interface'])
-
-	# horizontal boundary type
-	hb_type = dataset.data_vars['horizontal_boundary_type'].values.item()
-
-	# number of lateral boundary layers
-	nb = dataset.data_vars['nb'].values.item()
-
-	# horizontal boundary keyword arguments
-	keys = dataset.data_vars['horizontal_boundary_kwargs'].values[:]
-	hb_kwargs = {}
-	for hb_key in keys:
-		val = dataset.data_vars[hb_key]
-		key = hb_key[3:]
-
-		if isinstance(val.values.item(), int):
-			hb_kwargs[key] = val.values.item()
-
-	# topography type
-	topo_type = dataset.data_vars['topography_type'].values.item()
-
-	# topography keyword arguments
-	keys = dataset.data_vars['topography_kwargs'].values[:]
-	topo_kwargs = {}
-	for topo_key in keys:
-		val = dataset.data_vars[topo_key]
-		key = topo_key[5:]
-
-		if isinstance(val.values.item(), (str, bool)):
-			topo_kwargs[key] = val.values.item()
-		elif isinstance(val.values.item(), int):
-			topo_kwargs[key] = bool(val.values.item())
-		elif val.dims[0] == 'timedelta_dim':
-			topo_kwargs[key] = Timedelta(seconds=val.values.item())
-		else:
-			topo_kwargs[key] = sympl.DataArray(val, attrs={'units': val.attrs['units']})
-
-	return Domain(
-		domain_x, nx, domain_y, ny, domain_z, nz, z_interface,
-		horizontal_boundary_type=hb_type, nb=nb, horizontal_boundary_kwargs=hb_kwargs,
-		topography_type=topo_type, topography_kwargs=topo_kwargs,
-		dtype=domain_z.values.dtype
-	)
+    return out_shape
 
 
-def load_grid_type(dataset):
-	return dataset.data_vars['grid_type'].values.item()
+def zeros(storage_shape, backend, dtype, halo=None, mask=None):
+    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
+    gt_storage = gt.storage.zeros(descriptor=descriptor, backend=backend)
+    return gt_storage.data
 
 
-def load_states(dataset):
-	names = dataset.data_vars['state_variable_names'].values
-	nt = dataset.data_vars[names[0]].shape[0]
-
-	states = []
-	for n in range(nt):
-		try:
-			state = {'time': convert_datetime64_to_datetime(dataset['time'][n])}
-		except TypeError:
-			state = {'time': convert_datetime64_to_datetime(dataset['time'][n].values.item())}
-
-		for name in names:
-			state[name] = sympl.DataArray(dataset.data_vars[name][n, :, :, :])
-
-		states.append(state)
-
-	return states
+def ones(storage_shape, backend, dtype, halo=None, mask=None):
+    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
+    gt_storage = gt.storage.ones(descriptor=descriptor, backend=backend)
+    return gt_storage.data

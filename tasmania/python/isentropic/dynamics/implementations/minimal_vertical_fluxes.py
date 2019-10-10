@@ -22,113 +22,146 @@
 #
 """
 This module contains:
-	Upwind(IsentropicMinimalVerticalFlux)
-	Centered(IsentropicMinimalVerticalFlux)
-	ThirdOrderUpwind(IsentropicMinimalVerticalFlux)
-	FifthOrderUpwind(IsentropicMinimalVerticalFlux)
+    Upwind(IsentropicMinimalVerticalFlux)
+    Centered(IsentropicMinimalVerticalFlux)
+    ThirdOrderUpwind(IsentropicMinimalVerticalFlux)
+    FifthOrderUpwind(IsentropicMinimalVerticalFlux)
+
+    get_upwind_flux
+    get_centered_flux
+    get_third_order_upwind_flux
+    get_fifth_order_upwind_flux
 """
-from tasmania.python.isentropic.dynamics.vertical_fluxes import \
-	IsentropicMinimalVerticalFlux
-from tasmania.python.isentropic.dynamics.implementations.ng_minimal_vertical_fluxes import \
-	get_upwind_flux, get_centered_flux, \
-	get_third_order_upwind_flux, get_fifth_order_upwind_flux
+from tasmania.python.isentropic.dynamics.vertical_fluxes import (
+    IsentropicMinimalVerticalFlux,
+)
+
+
+def get_upwind_flux(w, phi):
+    flux = w[0, 0, 0] * (
+        (w[0, 0, 0] > 0.0) * phi[0, 0, 0] + (w[0, 0, 0] < 0.0) * phi[0, 0, -1]
+    )
+    return flux
 
 
 class Upwind(IsentropicMinimalVerticalFlux):
-	"""
-	Upwind scheme.
-	"""
-	extent = 1
-	order = 1
+    """ Upwind scheme. """
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+    extent = 1
+    order = 1
+    externals = {"get_upwind_flux": get_upwind_flux}
 
-	def __call__(self, k, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-		out_s  = get_upwind_flux(k, w, s)
-		out_su = get_upwind_flux(k, w, su)
-		out_sv = get_upwind_flux(k, w, sv)
-		return_list = [out_s, out_su, out_sv]
+    @staticmethod
+    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        flux_s = get_upwind_flux(w=w, phi=s)
+        flux_su = get_upwind_flux(w=w, phi=su)
+        flux_sv = get_upwind_flux(w=w, phi=sv)
 
-		if self._moist:
-			out_sqv = get_upwind_flux(k, w, sqv)
-			out_sqc = get_upwind_flux(k, w, sqc)
-			out_sqr = get_upwind_flux(k, w, sqr)
-			return_list += [out_sqv, out_sqc, out_sqr]
+        if not moist:
+            return flux_s, flux_su, flux_sv
+        else:
+            flux_sqv = get_upwind_flux(w=w, phi=sqv)
+            flux_sqc = get_upwind_flux(w=w, phi=sqc)
+            flux_sqr = get_upwind_flux(w=w, phi=sqr)
 
-		return return_list
+            return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
+
+
+def get_centered_flux(w, phi):
+    flux = w[0, 0, 0] * 0.5 * (phi[0, 0, 0] + phi[0, 0, -1])
+    return flux
 
 
 class Centered(IsentropicMinimalVerticalFlux):
-	"""
-	Centered scheme.
-	"""
-	extent = 1
-	order = 2
+    """	Centered scheme. """
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+    extent = 1
+    order = 2
+    externals = {"get_centered_flux": get_centered_flux}
 
-	def __call__(self, k, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-		out_s  = get_centered_flux(k, w, s)
-		out_su = get_centered_flux(k, w, su)
-		out_sv = get_centered_flux(k, w, sv)
-		return_list = [out_s, out_su, out_sv]
+    @staticmethod
+    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        flux_s = get_centered_flux(w=w, phi=s)
+        flux_su = get_centered_flux(w=w, phi=su)
+        flux_sv = get_centered_flux(w=w, phi=sv)
 
-		if self._moist:
-			out_sqv = get_centered_flux(k, w, sqv)
-			out_sqc = get_centered_flux(k, w, sqc)
-			out_sqr = get_centered_flux(k, w, sqr)
-			return_list += [out_sqv, out_sqc, out_sqr]
+        if not moist:
+            return flux_s, flux_su, flux_sv
+        else:
+            flux_sqv = get_centered_flux(w=w, phi=sqv)
+            flux_sqc = get_centered_flux(w=w, phi=sqc)
+            flux_sqr = get_centered_flux(w=w, phi=sqr)
 
-		return return_list
+            return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
+
+
+def get_third_order_upwind_flux(w, phi):
+    flux = w[0, 0, 0] / 12.0 * (
+        7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] + phi[0, 0, 1])
+    ) - (w[0, 0, 0] * (w[0, 0, 0] > 0.0) - w[0, 0, 0] * (w[0, 0, 0] < 0.0)) / 12.0 * (
+        3.0 * (phi[0, 0, -1] - phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] - phi[0, 0, 1])
+    )
+    return flux
 
 
 class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
-	"""
-	Third-order upwind scheme.
-	"""
-	extent = 2
-	order = 3
+    """	Third-order upwind scheme. """
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+    extent = 2
+    order = 3
+    externals = {"get_third_order_upwind_flux": get_third_order_upwind_flux}
 
-	def __call__(self, k, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-		out_s  = get_third_order_upwind_flux(k, w, s)
-		out_su = get_third_order_upwind_flux(k, w, su)
-		out_sv = get_third_order_upwind_flux(k, w, sv)
-		return_list = [out_s, out_su, out_sv]
+    @staticmethod
+    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        flux_s = get_third_order_upwind_flux(w=w, phi=s)
+        flux_su = get_third_order_upwind_flux(w=w, phi=su)
+        flux_sv = get_third_order_upwind_flux(w=w, phi=sv)
 
-		if self._moist:
-			out_sqv = get_third_order_upwind_flux(k, w, sqv)
-			out_sqc = get_third_order_upwind_flux(k, w, sqc)
-			out_sqr = get_third_order_upwind_flux(k, w, sqr)
-			return_list += [out_sqv, out_sqc, out_sqr]
+        if not moist:
+            return flux_s, flux_su, flux_sv
+        else:
+            flux_sqv = get_third_order_upwind_flux(w=w, phi=sqv)
+            flux_sqc = get_third_order_upwind_flux(w=w, phi=sqc)
+            flux_sqr = get_third_order_upwind_flux(w=w, phi=sqr)
 
-		return return_list
+            return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
+
+
+def get_fifth_order_upwind_flux(w, phi):
+    flux = w[0, 0, 0] / 60.0 * (
+        37.0 * (phi[0, 0, -1] + phi[0, 0, 0])
+        - 8.0 * (phi[0, 0, -2] + phi[0, 0, 1])
+        + 1.0 * (phi[0, 0, -3] + phi[0, 0, 2])
+    ) - (w[0, 0, 0] * (w[0, 0, 0] > 0.0) - w[0, 0, 0] * (w[0, 0, 0] < 0.0)) / 60.0 * (
+        10.0 * (phi[0, 0, -1] - phi[0, 0, 0])
+        - 5.0 * (phi[0, 0, -2] - phi[0, 0, 1])
+        + 1.0 * (phi[0, 0, -3] - phi[0, 0, 2])
+    )
+    return flux
 
 
 class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
-	"""
-	Fifth-order upwind scheme.
-	"""
-	extent = 3
-	order = 5
+    """	Fifth-order upwind scheme. """
 
-	def __init__(self, grid, moist):
-		super().__init__(grid, moist)
+    extent = 3
+    order = 5
+    externals = {"get_fifth_order_upwind_flux": get_fifth_order_upwind_flux}
 
-	def __call__(self, k, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-		out_s  = get_fifth_order_upwind_flux(k, w, s)
-		out_su = get_fifth_order_upwind_flux(k, w, su)
-		out_sv = get_fifth_order_upwind_flux(k, w, sv)
-		return_list = [out_s, out_su, out_sv]
+    @staticmethod
+    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        flux_s = get_fifth_order_upwind_flux(w=w, phi=s)
+        flux_su = get_fifth_order_upwind_flux(w=w, phi=su)
+        flux_sv = get_fifth_order_upwind_flux(w=w, phi=sv)
 
-		if self._moist:
-			out_sqv = get_fifth_order_upwind_flux(k, w, sqv)
-			out_sqc = get_fifth_order_upwind_flux(k, w, sqc)
-			out_sqr = get_fifth_order_upwind_flux(k, w, sqr)
-			return_list += [out_sqv, out_sqc, out_sqr]
+        if not moist:
+            return flux_s, flux_su, flux_sv
+        else:
+            flux_sqv = get_fifth_order_upwind_flux(w=w, phi=sqv)
+            flux_sqc = get_fifth_order_upwind_flux(w=w, phi=sqc)
+            flux_sqr = get_fifth_order_upwind_flux(w=w, phi=sqr)
 
-		return return_list
+            return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr

@@ -30,13 +30,14 @@ from tasmania.python.plot.monitors import PlotComposite
 
 
 class Animation:
-	"""
+    """
 	This class creates an animation by leveraging a wrapped
 	:class:`~tasmania.Plot` or :class:`~tasmania.PlotComposite`
 	to generate the frames.
 	"""
-	def __init__(self, artist, fps=15):
-		"""
+
+    def __init__(self, artist, fps=15):
+        """
 		Parameters
 		----------
 		artist : `tasmania.Plot, tasmania.PlotComposite`
@@ -44,18 +45,18 @@ class Animation:
 		fps : `int`, optional
 			Frames per second. Defaults to 15.
 		"""
-		# store input arguments as private attributes
-		self._artist = artist
-		self._fps = fps
+        # store input arguments as private attributes
+        self._artist = artist
+        self._fps = fps
 
-		# ensure the artist is in non-interactive mode
-		self._artist.interactive = False
+        # ensure the artist is in non-interactive mode
+        self._artist.interactive = False
 
-		# initialize the list of states
-		self._states = []
+        # initialize the list of states
+        self._states = []
 
-	def store(self, *states):
-		"""
+    def store(self, *states):
+        """
 		Append a new state (respectively, a list of states), to the list of
 		states (resp., lists of states) stored in this object.
 
@@ -64,16 +65,16 @@ class Animation:
 		states : dict or list
 			A model state dictionary, or a list of model state dictionaries.
 		"""
-		self._states.append(states)
+        self._states.append(states)
 
-	def reset(self):
-		"""
+    def reset(self):
+        """
 		Empty the list of stored states.
 		"""
-		self._states = []
+        self._states = []
 
-	def run(self, save_dest):
-		"""
+    def run(self, save_dest):
+        """
 		Generate the animation based on the list of states stored in this object.
 
 		Parameters
@@ -82,30 +83,31 @@ class Animation:
 			Path to the location where the movie should be saved.
 			The path should include the format extension.
 		"""
-		nt = len(self._states)
-		if nt == 0:
-			import warnings
-			warnings.warn(
-				"This object does not contain any model state, "
-				"so no movie will be created."
-			)
-			return
+        nt = len(self._states)
+        if nt == 0:
+            import warnings
 
-		# instantiate writer class
-		ffmpeg_writer = manimation.writers['ffmpeg']
-		metadata = {'title': ''}
-		writer = ffmpeg_writer(fps=self._fps, metadata=metadata)
+            warnings.warn(
+                "This object does not contain any model state, "
+                "so no movie will be created."
+            )
+            return
 
-		# retrieve the figure object from the artist
-		fig = self._artist.figure
+        # instantiate writer class
+        ffmpeg_writer = manimation.writers["ffmpeg"]
+        metadata = {"title": ""}
+        writer = ffmpeg_writer(fps=self._fps, metadata=metadata)
 
-		with writer.saving(fig, save_dest, nt):
-			for n in range(nt):
-				# clean the canvas
-				fig.clear()
+        # retrieve the figure object from the artist
+        fig = self._artist.figure
 
-				# create the frame
-				_ = self._artist.store(*self._states[n], fig=fig, show=False)
+        with writer.saving(fig, save_dest, nt):
+            for n in range(nt):
+                # clean the canvas
+                fig.clear()
 
-				# let the writer grab the frame
-				writer.grab_frame()
+                # create the frame
+                _ = self._artist.store(*self._states[n], fig=fig, show=False)
+
+                # let the writer grab the frame
+                writer.grab_frame()

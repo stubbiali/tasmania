@@ -28,6 +28,7 @@ srun --unbuffered shifter run \
 	bash -c \
 		"cp -r $ROOT_DIR/tasmania/python ~/tasmania/tasmania; \
 		 cp -r $ROOT_DIR/tasmania/__init__.py ~/tasmania/tasmania; \
+		 cp -r $ROOT_DIR/tasmania/conf.py ~/tasmania/tasmania; \
 		 cd ~; \
 		 . $VENV/bin/activate; \
 		 cd $SCRATCH/$ROOT_DIR/$DIR; \

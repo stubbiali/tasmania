@@ -22,242 +22,251 @@
 #
 """
 This module contains:
-	DiagnosticComponent
-	ImplicitTendencyComponent
-	Stepper
-	TendencyComponent
+    DiagnosticComponent
+    ImplicitTendencyComponent
+    Stepper
+    TendencyComponent
 """
 import abc
 import sympl
 
 
-allowed_grid_types = ('physical', 'numerical')
+allowed_grid_types = ("physical", "numerical")
 
 
 class DiagnosticComponent(sympl.DiagnosticComponent):
-	"""
-	Customized version of :class:`sympl.DiagnosticComponent` which keeps track
-	of the grid over which the component is instantiated.
-	"""
-	__metaclass__ = abc.ABCMeta
+    """
+    Customized version of :class:`sympl.DiagnosticComponent` which keeps track
+    of the grid over which the component is instantiated.
+    """
 
-	def __init__(self, domain, grid_type='numerical'):
-		"""
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
+    __metaclass__ = abc.ABCMeta
 
-				* 'physical';
-				* 'numerical' (default).
-		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__()
+    def __init__(self, domain, grid_type="numerical"):
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
 
-	@property
-	def grid(self):
-		"""
-		Returns
-		-------
-		tasmania.Grid :
-			The underlying grid.
-		"""
-		return self._grid
+                * 'physical';
+                * 'numerical' (default).
+        """
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__()
 
-	@property
-	def horizontal_boundary(self):
-		"""
-		Returns
-		-------
-		tasmania.HorizontalBoundary :
-			The object handling the lateral boundary conditions.
-		"""
-		return self._hb
+    @property
+    def grid(self):
+        """
+        Returns
+        -------
+        tasmania.Grid :
+            The underlying grid.
+        """
+        return self._grid
+
+    @property
+    def horizontal_boundary(self):
+        """
+        Returns
+        -------
+        tasmania.HorizontalBoundary :
+            The object handling the lateral boundary conditions.
+        """
+        return self._hb
 
 
 class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
-	"""
-	Customized version of :class:`sympl.ImplicitTendencyComponent` which keeps track
-	of the grid over which the component is instantiated.
-	"""
-	__metaclass__ = abc.ABCMeta
+    """
+    Customized version of :class:`sympl.ImplicitTendencyComponent` which keeps track
+    of the grid over which the component is instantiated.
+    """
 
-	def __init__(
-		self, domain, grid_type='numerical',
-		tendencies_in_diagnostics=False, name=None
-	):
-		"""
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
+    __metaclass__ = abc.ABCMeta
 
-				* 'physical';
-				* 'numerical' (default).
+    def __init__(
+        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
+    ):
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
 
-		tendencies_in_diagnostics : `bool`, optional
+                * 'physical';
+                * 'numerical' (default).
+
+        tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
         name : `str`, optional
             A label to be used for this object, for example as would be used for
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
-		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__(tendencies_in_diagnostics, name)
+        """
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__(tendencies_in_diagnostics, name)
 
-	@property
-	def grid(self):
-		"""
-		Returns
-		-------
-		tasmania.Grid :
-			The underlying grid.
-		"""
-		return self._grid
+    @property
+    def grid(self):
+        """
+        Returns
+        -------
+        tasmania.Grid :
+            The underlying grid.
+        """
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
-		Returns
-		-------
-		tasmania.HorizontalBoundary :
-			The object handling the lateral boundary conditions.
-		"""
-		return self._hb
+    @property
+    def horizontal_boundary(self):
+        """
+        Returns
+        -------
+        tasmania.HorizontalBoundary :
+            The object handling the lateral boundary conditions.
+        """
+        return self._hb
 
 
 class Stepper(sympl.Stepper):
-	"""
-	Customized version of :class:`sympl.Stepper` which keeps track
-	of the grid over which the component is instantiated.
-	"""
-	__metaclass__ = abc.ABCMeta
+    """
+    Customized version of :class:`sympl.Stepper` which keeps track
+    of the grid over which the component is instantiated.
+    """
 
-	def __init__(
-		self, domain, grid_type='numerical',
-		tendencies_in_diagnostics=False, name=None
-	):
-		"""
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
+    __metaclass__ = abc.ABCMeta
 
-				* 'physical';
-				* 'numerical' (default).
+    def __init__(
+        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
+    ):
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
 
-		tendencies_in_diagnostics : `bool`, optional
+                * 'physical';
+                * 'numerical' (default).
+
+        tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
         name : `str`, optional
             A label to be used for this object, for example as would be used for
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
-		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__(tendencies_in_diagnostics, name)
+        """
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__(tendencies_in_diagnostics, name)
 
-	@property
-	def grid(self):
-		"""
-		Returns
-		-------
-		tasmania.Grid :
-			The underlying grid.
-		"""
-		return self._grid
+    @property
+    def grid(self):
+        """
+        Returns
+        -------
+        tasmania.Grid :
+            The underlying grid.
+        """
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
-		Returns
-		-------
-		tasmania.HorizontalBoundary :
-			The object handling the lateral boundary conditions.
-		"""
-		return self._hb
+    @property
+    def horizontal_boundary(self):
+        """
+        Returns
+        -------
+        tasmania.HorizontalBoundary :
+            The object handling the lateral boundary conditions.
+        """
+        return self._hb
 
 
 class TendencyComponent(sympl.TendencyComponent):
-	"""
-	Customized version of :class:`sympl.TendencyComponent` which keeps track
-	of the grid over which the component is instantiated.
-	"""
-	__metaclass__ = abc.ABCMeta
+    """
+    Customized version of :class:`sympl.TendencyComponent` which keeps track
+    of the grid over which the component is instantiated.
+    """
 
-	def __init__(
-		self, domain, grid_type='numerical',
-		tendencies_in_diagnostics=False, name=None
-	):
-		"""
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
+    __metaclass__ = abc.ABCMeta
 
-				* 'physical';
-				* 'numerical' (default).
+    def __init__(
+        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
+    ):
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
 
-		tendencies_in_diagnostics : `bool`, optional
+                * 'physical';
+                * 'numerical' (default).
+
+        tendencies_in_diagnostics : `bool`, optional
             A boolean indicating whether this object will put tendencies of
             quantities in its diagnostic output.
         name : `str`, optional
             A label to be used for this object, for example as would be used for
             Y in the name "X_tendency_from_Y". By default the class name in
             lowercase is used.
-		"""
-		assert grid_type in allowed_grid_types, \
-			'grid_type is {}, but either ({}) was expected.'.format(
-				grid_type, ','.join(allowed_grid_types)
-			)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
-		self._hb = domain.horizontal_boundary
-		super().__init__(tendencies_in_diagnostics, name)
+        """
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+        self._hb = domain.horizontal_boundary
+        super().__init__(tendencies_in_diagnostics, name)
 
-	@property
-	def grid(self):
-		"""
-		Returns
-		-------
-		tasmania.Grid :
-			The underlying grid.
-		"""
-		return self._grid
+    @property
+    def grid(self):
+        """
+        Returns
+        -------
+        tasmania.Grid :
+            The underlying grid.
+        """
+        return self._grid
 
-	@property
-	def horizontal_boundary(self):
-		"""
-		Returns
-		-------
-		tasmania.HorizontalBoundary :
-			The object handling the lateral boundary conditions.
-		"""
-		return self._hb
+    @property
+    def horizontal_boundary(self):
+        """
+        Returns
+        -------
+        tasmania.HorizontalBoundary :
+            The object handling the lateral boundary conditions.
+        """
+        return self._hb

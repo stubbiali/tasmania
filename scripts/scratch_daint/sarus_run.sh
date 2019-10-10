@@ -22,10 +22,10 @@
 #
 
 IMAGE_NAME=tasmania
-IMAGE_TAG=master
-TASMANIA_ROOT=/project/s299/subbiali/tasmania
+IMAGE_TAG=gpu
+TASMANIA_ROOT=/project/s299/subbiali/tasmania-hack
 
-module load daint-mc
+module load daint-gpu
 module load /apps/dom/SI/modulefiles/sarus/1.0.0-rc5-daint
 
 mkdir -p buffer

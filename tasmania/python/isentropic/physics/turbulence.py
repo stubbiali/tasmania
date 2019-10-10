@@ -22,102 +22,166 @@
 #
 """
 This module contains:
-	IsentropicSmagorinsky
+    IsentropicSmagorinsky
 """
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
+from tasmania.python.utils.storage_utils import zeros
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float64
+    datatype = np.float64
 
 
 class IsentropicSmagorinsky(Smagorinsky2d):
-	"""
-	Implementation of the Smagorinsky turbulence model for the
-	isentropic model. The conservative form of the governing
-	equations is used.
-	"""
-	def __init__(
-		self, domain, grid_type='numerical', smagorinsky_constant=0.18,
-		backend=gt.mode.NUMPY, dtype=datatype, **kwargs
-	):
-		"""
-		Parameters
-		----------
-		domain : tasmania.Domain
-			The underlying domain.
-		grid_type : `str`, optional
-			The type of grid over which instantiating the class. Either:
+    """
+    Implementation of the Smagorinsky turbulence model for the
+    isentropic model. The conservative form of the governing
+    equations is used.
+    The class is instantiated over the *numerical* grid of the
+    underlying domain.
+    """
 
-				* 'physical';
-				* 'numerical' (default).
+    def __init__(
+        self,
+        domain,
+        smagorinsky_constant=0.18,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False,
+        storage_shape=None,
+        **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
 
-		smagorinsky_constant : `float`, optional
-			The Smagorinsky constant. Defaults to 0.18.
-		backend : `obj`, optional
-			TODO
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated and
-			used within this class.
-		**kwargs :
-			Additional keyword arguments to be directly forwarded to the parent
-			:class:`~tasmania.python.physics.turbulence.Smagorinsky2d`.
-		"""
-		super().__init__(
-			domain, grid_type, smagorinsky_constant, backend, dtype, **kwargs
-		)
+                * 'physical';
+                * 'numerical' (default).
 
-		self._hv = HorizontalVelocity(
-			self.grid, staggering=False, backend=backend, dtype=dtype
-		)
+        smagorinsky_constant : `float`, optional
+            The Smagorinsky constant. Defaults to 0.18.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
+        storage_shape : `tuple`, optional
+            TODO
+        **kwargs :
+            Additional keyword arguments to be directly forwarded to the parent
+            :class:`~tasmania.python.physics.turbulence.Smagorinsky2d`.
+        """
+        super().__init__(
+            domain,
+            smagorinsky_constant,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=dtype,
+            exec_info=exec_info,
+            halo=halo,
+            rebuild=rebuild,
+            storage_shape=storage_shape,
+            **kwargs
+        )
 
-		nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-		self._out_su_tnd = np.zeros((nx, ny, nz), dtype=dtype)
-		self._out_sv_tnd = np.zeros((nx, ny, nz), dtype=dtype)
+        self._hv = HorizontalVelocity(
+            self.grid,
+            staggering=False,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            exec_info=exec_info,
+            rebuild=rebuild,
+        )
 
-	@property
-	def input_properties(self):
-		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
-		return {
-			'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1'},
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-1'}
-		}
+        self._in_u = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._in_v = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._out_su_tnd = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._out_sv_tnd = zeros(self._storage_shape, backend, dtype, halo=halo)
 
-	@property
-	def tendency_properties(self):
-		dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
-		return {
-			'x_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'},
-			'y_momentum_isentropic': {'dims': dims, 'units': 'kg m^-1 K^-1 s^-2'}
-		}
+    @property
+    def input_properties(self):
+        dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+        return {
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-1"},
+        }
 
-	@property
-	def diagnostic_properties(self):
-		return {}
+    @property
+    def tendency_properties(self):
+        dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
+        return {
+            "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+            "y_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
+        }
 
-	def array_call(self, state):
-		s = state['air_isentropic_density']
-		su = state['x_momentum_isentropic']
-		sv = state['y_momentum_isentropic']
+    @property
+    def diagnostic_properties(self):
+        return {}
 
-		self._hv.get_velocity_components(s, su, sv, self._in_u, self._in_v)
+    def array_call(self, state):
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        nb = self._nb
+        dx = self.grid.dx.to_units("m").values.item()
+        dy = self.grid.dy.to_units("m").values.item()
 
-		self._stencil.compute()
+        in_s = state["air_isentropic_density"]
+        in_su = state["x_momentum_isentropic"]
+        in_sv = state["y_momentum_isentropic"]
 
-		self._hv.get_momenta(
-			s, self._out_u_tnd, self._out_v_tnd, self._out_su_tnd, self._out_sv_tnd
-		)
+        self._hv.get_velocity_components(in_s, in_su, in_sv, self._in_u, self._in_v)
 
-		tendencies = {
-			'x_momentum_isentropic': self._out_su_tnd,
-			'y_momentum_isentropic': self._out_sv_tnd
-		}
-		diagnostics = {}
+        self._stencil(
+            in_u=self._in_u,
+            in_v=self._in_v,
+            out_u_tnd=self._out_u_tnd,
+            out_v_tnd=self._out_v_tnd,
+            dx=dx,
+            dy=dy,
+            cs=self._cs,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, nz),
+            exec_info=self._exec_info,
+        )
 
-		return tendencies, diagnostics
+        self._hv.get_momenta(
+            in_s,
+            self._out_u_tnd,
+            self._out_v_tnd,
+            self._out_su_tnd,
+            self._out_sv_tnd,
+        )
+
+        tendencies = {
+            "x_momentum_isentropic": self._out_su_tnd,
+            "y_momentum_isentropic": self._out_sv_tnd,
+        }
+        diagnostics = {}
+
+        return tendencies, diagnostics

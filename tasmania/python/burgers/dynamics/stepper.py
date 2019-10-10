@@ -22,355 +22,537 @@
 #
 """
 This module contains:
-	ForwardEulerStepper
-	BurgersStepper
-	_ForwardEuler(BurgersStepper)
-	_RK2(BurgersStepper)
-	_RK3WS(BurgersStepper)
+    ForwardEulerStepper
+    BurgersStepper
+    _ForwardEuler(BurgersStepper)
+    _RK2(BurgersStepper)
+    _RK3WS(BurgersStepper)
 """
 import abc
-import numpy as np
 
 import gridtools as gt
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
+from tasmania.python.utils.storage_utils import zeros
 
 try:
-	from tasmania.conf import nb as conf_nb
+    from tasmania.conf import nb as conf_nb
 except ImportError:
-	conf_nb = None
+    conf_nb = None
+
+try:
+    from tasmania.conf import datatype
+except ImportError:
+    from numpy import float32 as datatype
 
 
-class ForwardEulerStep:
-	def __init__(self, grid, advection):
-		self._grid = grid
-		self._advection = advection
+def forward_euler_step(
+    in_u: gt.storage.f64_sd,
+    in_v: gt.storage.f64_sd,
+    in_u_tmp: gt.storage.f64_sd,
+    in_v_tmp: gt.storage.f64_sd,
+    in_u_tnd: gt.storage.f64_sd,
+    in_v_tnd: gt.storage.f64_sd,
+    out_u: gt.storage.f64_sd,
+    out_v: gt.storage.f64_sd,
+    *,
+    dt: float,
+    dx: float,
+    dy: float
+):
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp)
 
-	def __call__(self, dt, in_u, in_v, tmp_u, tmp_v, tnd_u=None, tnd_v=None):
-		# shortcuts
-		dx = self._grid.dx.to_units('m').values.item()
-		dy = self._grid.dy.to_units('m').values.item()
+    if tnd_u:
+        out_u = in_u[0, 0, 0] - dt * (
+            adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0] - in_u_tnd[0, 0, 0]
+        )
+    else:
+        out_u = in_u[0, 0, 0] - dt * (adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0])
 
-		# indices
-		i = gt.Index(axis=0)
-		j = gt.Index(axis=1)
-
-		# output fields
-		out_u = gt.Equation()
-		out_v = gt.Equation()
-
-		# calculations
-		adv_u_x, adv_u_y, adv_v_x, adv_v_y = self._advection(
-			i, j, dx, dy, tmp_u, tmp_v
-		)
-		out_u[i, j] = in_u[i, j] - dt * (
-			adv_u_x[i, j] + adv_u_y[i, j] if tnd_u is None
-			else adv_u_x[i, j] + adv_u_y[i, j] - tnd_u[i, j]
-		)
-		out_v[i, j] = in_v[i, j] - dt * (
-			adv_v_x[i, j] + adv_v_y[i, j] if tnd_v is None
-			else adv_v_x[i, j] + adv_v_y[i, j] - tnd_v[i, j]
-		)
-
-		return out_u, out_v
+    if tnd_v:
+        out_v = in_v[0, 0, 0] - dt * (
+            adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0] - in_v_tnd[0, 0, 0]
+        )
+    else:
+        out_v = in_v[0, 0, 0] - dt * (adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0])
 
 
-class BurgersStepper:
-	"""
-	Abstract base class whose children integrate the 2-D inviscid Burgers
-	equations implementing different time integrators.
-	"""
-	__metaclass__ = abc.ABCMeta
+class BurgersStepper(abc.ABC):
+    """
+    Abstract base class whose children integrate the 2-D inviscid Burgers
+    equations implementing different time integrators.
+    """
 
-	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
-		"""
-		Parameters
-		----------
-		grid_xy : tasmania.HorizontalGrid
-			The underlying horizontal grid.
-		nb : int
-			Number of boundary layers.
-		flux_scheme : str
-			String specifying the advective flux scheme to be used.
-			See :class:`tasmania.BurgersAdvection` for all available options.
-		backend : obj
-			TODO
-		dtype : numpy.dtype
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
-		"""
-		self._grid_xy = grid_xy
-		self._backend = backend
-		self._dtype = dtype
+    def __init__(
+        self,
+        grid_xy,
+        nb,
+        flux_scheme,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        """
+        Parameters
+        ----------
+        grid_xy : tasmania.HorizontalGrid
+            The underlying horizontal grid.
+        nb : int
+            Number of boundary layers.
+        flux_scheme : str
+            String specifying the advective flux scheme to be used.
+            See :class:`tasmania.BurgersAdvection` for all available options.
+        backend : str
+            TODO
+        backend_opts : dict
+            TODO
+        build_info : dict
+            TODO
+        dtype : numpy.dtype
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : dict
+            TODO
+        halo : tuple
+            TODO
+        rebuild : bool
+            TODO
+        """
+        self._grid_xy = grid_xy
+        self._backend = backend
+        self._backend_opts = backend_opts
+        self._build_info = build_info
+        self._dtype = dtype
+        self._exec_info = exec_info
+        self._halo = halo
+        self._rebuild = rebuild
 
-		self._advection = BurgersAdvection.factory(flux_scheme)
+        self._advection = BurgersAdvection.factory(flux_scheme)
 
-		assert nb >= self._advection.extent
-		self._nb = nb
+        assert nb >= self._advection.extent
+        self._nb = nb
 
-		self._fwe_step = ForwardEulerStep(grid_xy, self._advection)
+        self._stencil = None
 
-	@property
-	@abc.abstractmethod
-	def stages(self):
-		"""
-		Returns
-		-------
-		int :
-			Number of stages the time integrator consists of.
-		"""
-		pass
+    @property
+    @abc.abstractmethod
+    def stages(self):
+        """
+        Returns
+        -------
+        int :
+            Number of stages the time integrator consists of.
+        """
+        pass
 
-	@abc.abstractmethod
-	def __call__(self, stage, state, tendency, timestep):
-		"""
-		Performing a stage of the time integrator.
+    @abc.abstractmethod
+    def __call__(self, stage, state, tendencies, timestep):
+        """
+        Performing a stage of the time integrator.
 
-		Parameters
-		----------
-		stage : int
-			The stage to be performed.
-		state : dict
-			Dictionary whose keys are strings denoting model variables,
-			and whose values are :class:`numpy.ndarray`\s storing values
-			for those variables.
-		tendency : dict
-			Dictionary whose keys are strings denoting model variables,
-			and whose values are :class:`numpy.ndarray`\s storing tendencies
-			for those variables.
-		timestep : timedelta
-			The time step size.
+        Parameters
+        ----------
+        stage : int
+            The stage to be performed.
+        state : dict
+            Dictionary whose keys are strings denoting model variables,
+            and whose values are :class:`numpy.ndarray`\s storing values
+            for those variables.
+        tendencies : dict
+            Dictionary whose keys are strings denoting model variables,
+            and whose values are :class:`numpy.ndarray`\s storing tendencies
+            for those variables.
+        timestep : timedelta
+            The time step size.
 
-		Return
-		------
-		dict :
-			Dictionary whose keys are strings denoting model variables,
-			and whose values are :class:`numpy.ndarray`\s storing new values
-			for those variables.
-		"""
-		pass
+        Return
+        ------
+        dict :
+            Dictionary whose keys are strings denoting model variables,
+            and whose values are :class:`numpy.ndarray`\s storing new values
+            for those variables.
+        """
+        pass
 
-	@staticmethod
-	def factory(
-		time_integration_scheme, grid_xy, nb, flux_scheme, backend, dtype
-	):
-		"""
-		Parameters
-		----------
-		time_integration_scheme : str
-			String specifying the time integrator to be used. Either:
+    @staticmethod
+    def factory(
+        time_integration_scheme,
+        grid_xy,
+        nb,
+        flux_scheme,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        halo=None,
+        rebuild=False
+    ):
+        """
+        Parameters
+        ----------
+        time_integration_scheme : str
+            String specifying the time integrator to be used. Either:
 
-				* 'forward_euler' for the forward Euler method;
-				* 'rk2' for the explicit, two-stages, second-order \
-					Runge-Kutta (RK) method;
-				* 'rk3ws' for the explicit, three-stages, second-order \
-					RK method by Wicker & Skamarock.
-		grid_xy : tasmania.HorizontalGrid
-			The underlying horizontal grid.
-		nb : int
-			Number of boundary layers.
-		flux_scheme : str
-			String specifying the advective flux scheme to be used.
-			See :class:`tasmania.BurgersAdvection` for all available options.
-		backend : obj
-			TODO
-		dtype : numpy.dtype
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
+                * 'forward_euler' for the forward Euler method;
+                * 'rk2' for the explicit, two-stages, second-order \
+                    Runge-Kutta (RK) method;
+                * 'rk3ws' for the explicit, three-stages, second-order \
+                    RK method by Wicker & Skamarock.
+        grid_xy : tasmania.HorizontalGrid
+            The underlying horizontal grid.
+        nb : int
+            Number of boundary layers.
+        flux_scheme : str
+            String specifying the advective flux scheme to be used.
+            See :class:`tasmania.BurgersAdvection` for all available options.
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated and
+            used within this class.
+        exec_info : `dict`, optional
+            TODO
+        halo : `tuple`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
 
-		Return
-		------
-		tasmania.BurgersStepper :
-			An instance of the appropriate derived class.
-		"""
-		args = (grid_xy, nb, flux_scheme, backend, dtype)
-		if time_integration_scheme == 'forward_euler':
-			return _ForwardEuler(*args)
-		elif time_integration_scheme == 'rk2':
-			return _RK2(*args)
-		elif time_integration_scheme == 'rk3ws':
-			return _RK3WS(*args)
-		else:
-			raise RuntimeError()
+        Return
+        ------
+        tasmania.BurgersStepper :
+            An instance of the appropriate derived class.
+        """
+        args = (
+            grid_xy,
+            nb,
+            flux_scheme,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
+        if time_integration_scheme == "forward_euler":
+            return _ForwardEuler(*args)
+        elif time_integration_scheme == "rk2":
+            return _RK2(*args)
+        elif time_integration_scheme == "rk3ws":
+            return _RK3WS(*args)
+        else:
+            raise RuntimeError()
 
 
 class _ForwardEuler(BurgersStepper):
-	"""
-	The forward Euler time integrator for the inviscid Burgers equations.
-	"""
-	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
-		super().__init__(grid_xy, nb, flux_scheme, backend, dtype)
-		self._stencil = None
+    """
+    The forward Euler time integrator for the inviscid Burgers equations.
+    """
 
-	@property
-	def stages(self):
-		return 1
+    def __init__(
+        self,
+        grid_xy,
+        nb,
+        flux_scheme,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        super().__init__(
+            grid_xy,
+            nb,
+            flux_scheme,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-	def __call__(self, stage, state, tendency, timestep):
-		if self._stencil is None:
-			self._stencil_initialize(tendency)
+    @property
+    def stages(self):
+        return 1
 
-		self._dt.value = timestep.total_seconds()
-		self._in_u[...] = state['x_velocity']
-		self._in_v[...] = state['y_velocity']
-		if 'x_velocity' in tendency:
-			self._tnd_u[...] = tendency['x_velocity']
-		if 'y_velocity' in tendency:
-			self._tnd_v[...] = tendency['y_velocity']
+    def __call__(self, stage, state, tendencies, timestep):
+        nx, ny = self._grid_xy.nx, self._grid_xy.ny
+        nb = self._nb
 
-		self._stencil.compute()
+        if self._stencil is None:
+            self._stencil_initialize(tendencies)
 
-		return {
-			'time': state['time'] + timestep,
-			'x_velocity': self._out_u,
-			'y_velocity': self._out_v,
-		}
+        dt = timestep.total_seconds()
+        dx = self._grid_xy.dx.to_units("m").values.item()
+        dy = self._grid_xy.dy.to_units("m").values.item()
 
-	def _stencil_initialize(self, tendency):
-		mi, mj = self._grid_xy.nx, self._grid_xy.ny
-		nb = self._nb
+        self._stencil_args["in_u"] = state["x_velocity"]
+        self._stencil_args["in_u_tmp"] = state["x_velocity"]
+        self._stencil_args["in_v"] = state["y_velocity"]
+        self._stencil_args["in_v_tmp"] = state["y_velocity"]
+        if "in_u_tnd" in self._stencil_args and "x_velocity" in tendencies:
+            self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
+        if "in_v_tnd" in self._stencil_args and "y_velocity" in tendencies:
+            self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
 
-		self._dt = gt.Global()
+        self._stencil(
+            **self._stencil_args,
+            dt=dt,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, 1),
+            exec_info=self._exec_info
+        )
 
-		self._in_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-		self._in_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-		inputs = {
-			'in_u': self._in_u, 'in_v': self._in_v,
-			'tmp_u': self._in_u, 'tmp_v': self._in_v
-		}
+        return {
+            "time": state["time"] + timestep,
+            "x_velocity": self._stencil_args["out_u"],
+            "y_velocity": self._stencil_args["out_v"],
+        }
 
-		if 'x_velocity' in tendency:
-			self._tnd_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-			inputs['tnd_u'] = self._tnd_u
+    def _stencil_initialize(self, tendencies):
+        storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
+        backend = self._backend
+        dtype = self._dtype
+        halo = self._halo
 
-		if 'y_velocity' in tendency:
-			self._tnd_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-			inputs['tnd_v'] = self._tnd_v
+        self._stencil_args = {
+            "in_u": None,
+            "in_u_tmp": None,
+            "in_v": None,
+            "in_v_tmp": None,
+        }
 
-		self._out_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-		self._out_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-		outputs = {'out_u': self._out_u, 'out_v': self._out_v}
+        tnd_u = "x_velocity" in tendencies
+        if tnd_u:
+            self._stencil_args["in_u_tnd"] = None
 
-		self._stencil = gt.NGStencil(
-			definitions_func=self._fwe_step.__call__,
-			inputs=inputs, global_inputs={'dt': self._dt}, outputs=outputs,
-			domain=gt.domain.Rectangle((nb, nb, 0), (mi-nb-1, mj-nb-1, 0)),
-			mode=self._backend,
-		)
+        tnd_v = "y_velocity" in tendencies
+        if tnd_v:
+            self._stencil_args["in_v_tnd"] = None
+
+        self._stencil_args["out_u"] = zeros(storage_shape, backend, dtype, halo=halo)
+        self._stencil_args["out_v"] = zeros(storage_shape, backend, dtype, halo=halo)
+
+        decorator = gt.stencil(
+            backend,
+            backend_opts=self._backend_opts,
+            build_info=self._build_info,
+            rebuild=self._rebuild,
+            min_signature=True,
+            externals={
+                "advection": self._advection.__call__,
+                "tnd_u": tnd_u,
+                "tnd_v": tnd_v,
+            },
+        )
+        self._stencil = decorator(forward_euler_step)
 
 
 class _RK2(BurgersStepper):
-	"""
-	The two-stages RK time integrator for the inviscid Burgers equations.
-	"""
-	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
-		super().__init__(grid_xy, nb, flux_scheme, backend, dtype)
-		self._stencil = None
+    """
+    The two-stages RK time integrator for the inviscid Burgers equations.
+    """
 
-	@property
-	def stages(self):
-		return 2
+    def __init__(
+        self,
+        grid_xy,
+        nb,
+        flux_scheme,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        super().__init__(
+            grid_xy,
+            nb,
+            flux_scheme,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-	def __call__(self, stage, state, tendency, timestep):
-		if self._stencil is None:
-			self._stencil_initialize(tendency)
+    @property
+    def stages(self):
+        return 2
 
-		if stage == 0:
-			self._dt.value = 0.5 * timestep.total_seconds()
-			self._in_u[...] = state['x_velocity'][...]
-			self._in_v[...] = state['y_velocity'][...]
-		elif stage == 1:
-			self._dt.value = timestep.total_seconds()
+    def __call__(self, stage, state, tendencies, timestep):
+        nx, ny = self._grid_xy.nx, self._grid_xy.ny
+        nb = self._nb
 
-		self._tmp_u[...] = state['x_velocity'][...]
-		self._tmp_v[...] = state['y_velocity'][...]
+        if self._stencil is None:
+            self._stencil_initialize(tendencies)
 
-		if 'x_velocity' in tendency:
-			self._tnd_u[...] = tendency['x_velocity'][...]
-		if 'y_velocity' in tendency:
-			self._tnd_v[...] = tendency['y_velocity'][...]
+        dx = self._grid_xy.dx.to_units("m").values.item()
+        dy = self._grid_xy.dy.to_units("m").values.item()
 
-		self._stencil.compute()
+        if stage == 0:
+            dt = 0.5 * timestep.total_seconds()
+            self._stencil_args["in_u"] = state["x_velocity"]
+            self._stencil_args["in_v"] = state["y_velocity"]
+        else:
+            dt = timestep.total_seconds()
 
-		return {
-			'time': state['time'] + 0.5*timestep,
-			'x_velocity': self._out_u,
-			'y_velocity': self._out_v,
-		}
+        self._stencil_args["in_u_tmp"] = state["x_velocity"]
+        self._stencil_args["in_v_tmp"] = state["y_velocity"]
+        if "in_u_tnd" in self._stencil_args and "x_velocity" in tendencies:
+            self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
+        if "in_v_tnd" in self._stencil_args and "y_velocity" in tendencies:
+            self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
 
-	def _stencil_initialize(self, tendency):
-		mi, mj = self._grid_xy.nx, self._grid_xy.ny
-		nb = self._nb
+        self._stencil(
+            **self._stencil_args,
+            dt=dt,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, 1),
+            exec_info=self._exec_info
+        )
 
-		self._dt = gt.Global()
+        return {
+            "time": state["time"] + 0.5 * timestep,
+            "x_velocity": self._stencil_args["out_u"],
+            "y_velocity": self._stencil_args["out_v"],
+        }
 
-		self._in_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-		self._in_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-		self._tmp_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-		self._tmp_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-		inputs = {
-			'in_u': self._in_u, 'in_v': self._in_v,
-			'tmp_u': self._tmp_u, 'tmp_v': self._tmp_v,
-		}
+    def _stencil_initialize(self, tendencies):
+        storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
+        backend = self._backend
+        dtype = self._dtype
+        halo = self._halo
 
-		if 'x_velocity' in tendency:
-			self._tnd_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-			inputs['tnd_u'] = self._tnd_u
+        self._stencil_args = {
+            "in_u": None,
+            "in_u_tmp": None,
+            "in_v": None,
+            "in_v_tmp": None,
+        }
 
-		if 'y_velocity' in tendency:
-			self._tnd_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-			inputs['tnd_v'] = self._tnd_v
+        tnd_u = "x_velocity" in tendencies
+        if tnd_u:
+            self._stencil_args["in_u_tnd"] = None
 
-		self._out_u = np.zeros((mi, mj, 1), dtype=self._dtype)
-		self._out_v = np.zeros((mi, mj, 1), dtype=self._dtype)
-		outputs = {'out_u': self._out_u, 'out_v': self._out_v}
+        tnd_v = "y_velocity" in tendencies
+        if tnd_v:
+            self._stencil_args["in_v_tnd"] = None
 
-		self._stencil = gt.NGStencil(
-			definitions_func=self._fwe_step.__call__,
-			inputs=inputs, global_inputs={'dt': self._dt}, outputs=outputs,
-			domain=gt.domain.Rectangle((nb, nb, 0), (mi-nb-1, mj-nb-1, 0)),
-			mode=self._backend,
-		)
+        self._stencil_args["out_u"] = zeros(storage_shape, backend, dtype, halo=halo)
+        self._stencil_args["out_v"] = zeros(storage_shape, backend, dtype, halo=halo)
+
+        decorator = gt.stencil(
+            backend,
+            backend_opts=self._backend_opts,
+            build_info=self._build_info,
+            rebuild=self._rebuild,
+            min_signature=True,
+            externals={
+                "advection": self._advection.__call__,
+                "tnd_u": tnd_u,
+                "tnd_v": tnd_v,
+            },
+        )
+        self._stencil = decorator(forward_euler_step)
 
 
 class _RK3WS(_RK2):
-	"""
-	The three-stages RK time integrator for the inviscid Burgers equations.
-	"""
-	def __init__(self, grid_xy, nb, flux_scheme, backend, dtype):
-		super().__init__(grid_xy, nb, flux_scheme, backend, dtype)
+    """
+    The three-stages RK time integrator for the inviscid Burgers equations.
+    """
 
-	@property
-	def stages(self):
-		return 3
+    def __init__(
+        self,
+        grid_xy,
+        nb,
+        flux_scheme,
+        backend,
+        backend_opts,
+        build_info,
+        dtype,
+        exec_info,
+        halo,
+        rebuild,
+    ):
+        super().__init__(
+            grid_xy,
+            nb,
+            flux_scheme,
+            backend,
+            backend_opts,
+            build_info,
+            dtype,
+            exec_info,
+            halo,
+            rebuild,
+        )
 
-	def __call__(self, stage, state, tendency, timestep):
-		if self._stencil is None:
-			self._stencil_initialize(tendency)
+    @property
+    def stages(self):
+        return 3
 
-		if stage == 0:
-			dtr = 1.0/3.0 * timestep
-			self._dt.value = 1.0/3.0 * timestep.total_seconds()
-			self._in_u[...] = state['x_velocity'][...]
-			self._in_v[...] = state['y_velocity'][...]
-		elif stage == 1:
-			dtr = 1.0/6.0 * timestep
-			self._dt.value = 0.5 * timestep.total_seconds()
-		else:
-			dtr = 1.0/2.0 * timestep
-			self._dt.value = timestep.total_seconds()
+    def __call__(self, stage, state, tendencies, timestep):
+        nx, ny = self._grid_xy.nx, self._grid_xy.ny
+        nb = self._nb
 
-		self._tmp_u[...] = state['x_velocity'][...]
-		self._tmp_v[...] = state['y_velocity'][...]
+        if self._stencil is None:
+            self._stencil_initialize(tendencies)
 
-		if 'x_velocity' in tendency:
-			self._tnd_u[...] = tendency['x_velocity'][...]
-		if 'y_velocity' in tendency:
-			self._tnd_v[...] = tendency['y_velocity'][...]
+        dx = self._grid_xy.dx.to_units("m").values.item()
+        dy = self._grid_xy.dy.to_units("m").values.item()
 
-		self._stencil.compute()
+        if stage == 0:
+            dtr = 1.0 / 3.0 * timestep
+            dt = 1.0 / 3.0 * timestep.total_seconds()
+            self._stencil_args["in_u"] = state["x_velocity"]
+            self._stencil_args["in_v"] = state["y_velocity"]
+        elif stage == 1:
+            dtr = 1.0 / 6.0 * timestep
+            dt = 0.5 * timestep.total_seconds()
+        else:
+            dtr = 1.0 / 2.0 * timestep
+            dt = timestep.total_seconds()
 
-		return {
-			'time': state['time'] + dtr,
-			'x_velocity': self._out_u,
-			'y_velocity': self._out_v,
-		}
+        self._stencil_args["in_u_tmp"] = state["x_velocity"]
+        self._stencil_args["in_v_tmp"] = state["y_velocity"]
+        if "in_u_tnd" in self._stencil_args and "x_velocity" in tendencies:
+            self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
+        if "in_v_tnd" in self._stencil_args and "y_velocity" in tendencies:
+            self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
+
+        self._stencil(
+            **self._stencil_args,
+            dt=dt,
+            dx=dx,
+            dy=dy,
+            origin={"_all_": (nb, nb, 0)},
+            domain=(nx - 2 * nb, ny - 2 * nb, 1),
+            exec_info=self._exec_info
+        )
+
+        return {
+            "time": state["time"] + dtr,
+            "x_velocity": self._stencil_args["out_u"],
+            "y_velocity": self._stencil_args["out_v"],
+        }

@@ -35,6 +35,7 @@ shifter run \
 	load/library/$IMAGE_NAME:$IMAGE_TAG \
 	bash -c \
 		"cp -r $ROOT_DIR/tasmania/python ~/tasmania/tasmania; \
-		 cp -r $ROOT_DIR/tasmania/tasmania/__init__.py ~/tasmania/tasmania; \
+		 cp -r $ROOT_DIR/tasmania/__init__.py ~/tasmania/tasmania; \
+		 cp -r $ROOT_DIR/tasmania/conf.py ~/tasmania/tasmania; \
 		 export XAUTHORITY=/home/tasmania-user/mount-point/.Xauthority; \
 		 bash"

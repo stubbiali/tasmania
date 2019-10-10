@@ -22,22 +22,30 @@
 #
 from datetime import datetime
 import pandas as pd
+<<<<<<< HEAD
 import gridtools as gt
+=======
+>>>>>>> gt4py_framework
 import numpy as np
 from sympl import DataArray
 import tasmania as taz
 
 
+<<<<<<< HEAD
 factor = 3
 
 # backend settings
 backend = gt.mode.NUMPY
 dtype   = np.float64
+=======
+factor = 1
+>>>>>>> gt4py_framework
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
 
 # diffusion
+<<<<<<< HEAD
 diffusion_type  = 'fourth_order'
 diffusion_coeff = DataArray(0.1, attrs={'units': 'm^2 s^-1'})
 zsof = taz.ZhaoSolutionFactory(init_time, diffusion_coeff)
@@ -72,3 +80,49 @@ save_frequency  = -1
 print_frequency = -1
 plot_frequency  = -1
 
+=======
+diffusion_type = "fourth_order"
+diffusion_coeff = DataArray(0.1, attrs={"units": "m^2 s^-1"})
+zsof = taz.ZhaoSolutionFactory(init_time, diffusion_coeff)
+
+# domain
+domain_x = DataArray([0, 1], dims="x", attrs={"units": "m"})
+nx = 10 * (2 ** factor) + 1
+domain_y = DataArray([0, 1], dims="y", attrs={"units": "m"})
+ny = 10 * (2 ** factor) + 1
+hb_type = "dirichlet"
+nb = 3
+hb_kwargs = {"core": zsof}
+
+# gt4py settings
+gt_kwargs = {
+    "backend": "gtmc",
+    "backend_opts": None,
+    "build_info": None,
+    "dtype": np.float64,
+    "exec_info": None,
+    "halo": (nb, nb, 0),
+    "rebuild": False,
+}
+
+# numerical scheme
+time_integration_scheme = "rk3ws"
+flux_scheme = "fifth_order"
+physics_time_integration_scheme = "rk2"
+
+# simulation time
+cfl = 1.0
+timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
+niter = 4 ** factor * 100
+
+# output
+filename = "../../data/burgers_sts_{}.nc".format(gt_kwargs["backend"])
+#   \
+#   '../../data/burgers_{}_{}_{}_nx{}_ny{}_dt{}_nt{}_sus.nc'.format(
+#       time_integration_scheme, flux_scheme, physics_time_integration_scheme,
+#       nx, ny, int(timestep.total_seconds()), niter,
+#   )
+save_frequency = 1
+print_frequency = 1
+plot_frequency = -1
+>>>>>>> gt4py_framework

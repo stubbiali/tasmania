@@ -26,6 +26,12 @@ projectFilesBackup/
 result_images/
 .hypothesis/
 
+<<<<<<< HEAD
+=======
+# gt4py
+.gt_cache/
+
+>>>>>>> gt4py_framework
 # packaging
 .eggs/
 tasmania.egg-info/
@@ -41,6 +47,7 @@ build/
 buffer/
 spike/
 todo.ods
+docker/xz-0.5.4
 
 # AUTOMATICALLY GENERATED TEXT
 # The text after this comment and up to the end of file
@@ -49,15 +56,14 @@ todo.ods
 # no modifications should be applied by non-expert users.
 
 # Files which exceed maximum size allowed by GitHub
+./docker/tasmania_master_ng.tar
 ./tests/baseline_datasets/isentropic_data.tar.xz
 ./tests/baseline_datasets/validation.nc
 ./tests/baseline_datasets/isentropic_dry.nc
-./.git/objects/pack/pack-bcbe959e4d1f985585d278f1054c699e1ff066cb.pack
+./.git/objects/pack/pack-71cc58652e60360ebc607841c20e08cbc0b7fba7.pack
 ./.git/lfs/objects/1f/74/1f74f47b8311efbfe8eda3daf611828607ae150df07204278101df35852aa5a0
 ./.git/lfs/objects/3a/51/3a51ff33ddda1bc76fbbdc859543cfa772dc306497df99a28cd64822994327ee
 ./.git/lfs/objects/15/ad/15ada08e0747a274bfe9e3aba61f6c0c63ad2cb82cecd2555f8564dc9a263f43
-./.git/modules/docker/gridtools4py/objects/pack/pack-a19671cf737ff2134bbbc190edff079cc9ce0e03.pack
-./data/isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx41_ny41_nz60_dt40_nt270_gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_cc_val.nc
-./data/isentropic_moist_rk3ws_si_fifth_order_upwind_pg2_nx41_ny41_nz60_dt40_nt270_gaussian_L50000_H1000_u15_rh90_thetas280_mcfreq0_turb_sed_evap_cc.nc
+./.git/modules/docker/gridtools4py/objects/pack/pack-cd18acc9f40496efb27f03cc805d7394360c7a83.pack
 
 # END OF AUTOMATICALLY GENERATED TEXT

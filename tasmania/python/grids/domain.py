@@ -22,7 +22,7 @@
 #
 """
 This module contains:
-	Domain
+    Domain
 """
 import numpy as np
 
@@ -30,175 +30,194 @@ from tasmania.python.grids.horizontal_boundary import HorizontalBoundary as HB
 from tasmania.python.grids.grid import PhysicalGrid, NumericalGrid
 
 try:
-	from tasmania.conf import datatype
+    from tasmania.conf import datatype
 except ImportError:
-	datatype = np.float32
+    datatype = np.float32
 
 
 class Domain:
-	"""
-	This class represents a discrete, rectangular, three-dimensional domain.
-	A discrete domain which is usable by computing components consists of:
+    """
+    This class represents a discrete, rectangular, three-dimensional domain.
+    A discrete domain which is usable by computing components consists of:
 
-		* the *physical* grid;
-		* the *numerical* grid;
-		* the object handling the lateral boundary conditions.
-	"""
-	def __init__(
-		self, domain_x, nx, domain_y, ny, domain_z, nz, z_interface=None,
-		horizontal_boundary_type='periodic', nb=3, horizontal_boundary_kwargs=None,
-		topography_type='flat_terrain', topography_kwargs=None, dtype=datatype
-	):
-		""" 
-		Parameters
-		----------
-		domain_x : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the first horizontal dimension.
-		nx : int
-			Number of mass points featured by the *physical* grid
-			along the first horizontal dimension.
-		domain_y : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the physical domain includes along
-			the second horizontal dimension.
-		ny : int
-			Number of mass points featured by the *physical* grid
-			along the second horizontal dimension.
-		domain_z : sympl.DataArray
-			2-items :class:`sympl.DataArray` storing the end-points, dimension
-			and units of the interval which the domain includes along the
-			:math:`z`-axis. The interval should be specified in the form
-			:math:`(z_{top}, ~ z_{surface})`.
-		nz : int
-			Number of vertical main levels.
-		z_interface : `sympl.DataArray`, optional
-			Interface value :math:`z_F`. If not specified, it is assumed that
-			:math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
-			top of the domain. In other words, the coordinate system is supposed
-			fully terrain-following.
-		horizontal_boundary_type : `str`, optional
-			The type of lateral boundary conditions. Defaults to 'periodic'.
-			See :class:`tasmania.HorizontalBoundary` for all available options.
-		nb : `int`, optional
-			Number of boundary layers. Defaults to 3.
-		horizontal_boundary_kwargs : `dict`, optional
-			Keyword arguments to be broadcast to
-			:meth:`tasmania.HorizontalBoundary.factory`.
-		topography_type : `str`, optional
-			Topography type. Defaults to 'flat_terrain'.
-			See :class:`tasmania.Topography` for available options.
-		topography_kwargs : `dict`, optional
-			Keyword arguments to be forwarded to the constructor of
-			:class:`tasmania.Topography`.
-		dtype : `numpy.dtype`, optional
-			The data type for any :class:`numpy.ndarray` instantiated within
-			this class.
-		"""
-		# the physical grid
-		kwargs = \
-			{} if (
-				topography_kwargs is None or not isinstance(topography_kwargs, dict)
-			) \
-			else topography_kwargs
-		self._pgrid = PhysicalGrid(
-			domain_x, nx, domain_y, ny, domain_z, nz, z_interface=z_interface,
-			topography_type=topography_type, topography_kwargs=kwargs, dtype=dtype
-		)
+        * the *physical* grid;
+        * the *numerical* grid;
+        * the object handling the lateral boundary conditions.
+    """
 
-		# the object handling the horizontal boundary conditions
-		kwargs = \
-			{} if (
-				horizontal_boundary_kwargs is None or
-				not isinstance(horizontal_boundary_kwargs, dict)
-			) \
-			else horizontal_boundary_kwargs
-		self._hb = HB.factory(horizontal_boundary_type, nx, ny, nb, **kwargs)
+    def __init__(
+        self,
+        domain_x,
+        nx,
+        domain_y,
+        ny,
+        domain_z,
+        nz,
+        z_interface=None,
+        horizontal_boundary_type="periodic",
+        nb=3,
+        horizontal_boundary_kwargs=None,
+        topography_type="flat_terrain",
+        topography_kwargs=None,
+        dtype=datatype,
+    ):
+        """ 
+        Parameters
+        ----------
+        domain_x : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the first horizontal dimension.
+        nx : int
+            Number of mass points featured by the *physical* grid
+            along the first horizontal dimension.
+        domain_y : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the physical domain includes along
+            the second horizontal dimension.
+        ny : int
+            Number of mass points featured by the *physical* grid
+            along the second horizontal dimension.
+        domain_z : sympl.DataArray
+            2-items :class:`sympl.DataArray` storing the end-points, dimension
+            and units of the interval which the domain includes along the
+            :math:`z`-axis. The interval should be specified in the form
+            :math:`(z_{top}, ~ z_{surface})`.
+        nz : int
+            Number of vertical main levels.
+        z_interface : `sympl.DataArray`, optional
+            Interface value :math:`z_F`. If not specified, it is assumed that
+            :math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
+            top of the domain. In other words, the coordinate system is supposed
+            fully terrain-following.
+        horizontal_boundary_type : `str`, optional
+            The type of lateral boundary conditions. Defaults to 'periodic'.
+            See :class:`tasmania.HorizontalBoundary` for all available options.
+        nb : `int`, optional
+            Number of boundary layers. Defaults to 3.
+        horizontal_boundary_kwargs : `dict`, optional
+            Keyword arguments to be broadcast to
+            :meth:`tasmania.HorizontalBoundary.factory`.
+        topography_type : `str`, optional
+            Topography type. Defaults to 'flat_terrain'.
+            See :class:`tasmania.Topography` for available options.
+        topography_kwargs : `dict`, optional
+            Keyword arguments to be forwarded to the constructor of
+            :class:`tasmania.Topography`.
+        dtype : `numpy.dtype`, optional
+            The data type for any :class:`numpy.ndarray` instantiated within
+            this class.
+        """
+        # the physical grid
+        kwargs = (
+            {}
+            if (topography_kwargs is None or not isinstance(topography_kwargs, dict))
+            else topography_kwargs
+        )
+        self._pgrid = PhysicalGrid(
+            domain_x,
+            nx,
+            domain_y,
+            ny,
+            domain_z,
+            nz,
+            z_interface=z_interface,
+            topography_type=topography_type,
+            topography_kwargs=kwargs,
+            dtype=dtype,
+        )
 
-		# the numerical grid
-		self._cgrid = NumericalGrid(self._pgrid, self._hb)
+        # the object handling the horizontal boundary conditions
+        kwargs = (
+            {}
+            if (
+                horizontal_boundary_kwargs is None
+                or not isinstance(horizontal_boundary_kwargs, dict)
+            )
+            else horizontal_boundary_kwargs
+        )
+        self._hb = HB.factory(horizontal_boundary_type, nx, ny, nb, **kwargs)
 
-	@property
-	def physical_grid(self):
-		"""
-		Return
-		------
-		tasmania.PhysicalGrid :
-			The physical grid.
-		"""
-		return self._pgrid
+        # the numerical grid
+        self._cgrid = NumericalGrid(self._pgrid, self._hb)
 
-	@property
-	def numerical_grid(self):
-		"""
-		Return
-		------
-		tasmania.NumericalGrid :
-			The numerical grid.
-		"""
-		return self._cgrid
+    @property
+    def physical_grid(self):
+        """
+        Return
+        ------
+        tasmania.PhysicalGrid :
+            The physical grid.
+        """
+        return self._pgrid
 
-	@property
-	def horizontal_boundary(self):
-		"""
-		Get the object handling the horizontal boundary conditions,
-		enriched with three new methods:
+    @property
+    def numerical_grid(self):
+        """
+        Return
+        ------
+        tasmania.NumericalGrid :
+            The numerical grid.
+        """
+        return self._cgrid
 
-			* `dmn_enforce_field`,
-			* `dmn_enforce_raw`,
-			* `dmn_enforce`,
-			* `dmn_set_outermost_layers_x`, and
-			* `dmn_set_outermost_layers_y`.
+    @property
+    def horizontal_boundary(self):
+        """
+        Get the object handling the horizontal boundary conditions,
+        enriched with three new methods:
 
-		Return
-		------
-		tasmania.HorizontalBoundary :
-			The *enriched* object handling the horizontal boundary conditions.
-		"""
-		hb = self._hb
+            * `dmn_enforce_field`,
+            * `dmn_enforce_raw`,
+            * `dmn_enforce`,
+            * `dmn_set_outermost_layers_x`, and
+            * `dmn_set_outermost_layers_y`.
 
-		hb.dmn_enforce_field = \
-			lambda field, field_name=None, field_units=None, time=None : \
-			hb.enforce_field(
-				field, field_name=field_name, field_units=field_units,
-				time=time, grid=self.numerical_grid
-			)
-		hb.dmn_enforce_raw = \
-			lambda state, field_properties=None : \
-			hb.enforce_raw(
-				state, field_properties=field_properties,
-				grid=self.numerical_grid
-			)
-		hb.dmn_enforce = \
-			lambda state, field_names=None : \
-			hb.enforce(
-				state, field_names=field_names,
-				grid=self.numerical_grid
-			)
-		hb.dmn_set_outermost_layers_x = \
-			lambda field, field_name=None, field_units=None, time=None : \
-			hb.set_outermost_layers_x(
-				field, field_name=field_name, field_units=field_units,
-				time=time, grid=self.numerical_grid
-			)
-		hb.dmn_set_outermost_layers_y = \
-			lambda field, field_name=None, field_units=None, time=None : \
-			hb.set_outermost_layers_y(
-				field, field_name=field_name, field_units=field_units,
-				time=time, grid=self.numerical_grid
-			)
+        Return
+        ------
+        tasmania.HorizontalBoundary :
+            The *enriched* object handling the horizontal boundary conditions.
+        """
+        hb = self._hb
 
-		return self._hb
+        hb.dmn_enforce_field = lambda field, field_name=None, field_units=None, time=None: hb.enforce_field(
+            field,
+            field_name=field_name,
+            field_units=field_units,
+            time=time,
+            grid=self.numerical_grid,
+        )
+        hb.dmn_enforce_raw = lambda state, field_properties=None: hb.enforce_raw(
+            state, field_properties=field_properties, grid=self.numerical_grid
+        )
+        hb.dmn_enforce = lambda state, field_names=None: hb.enforce(
+            state, field_names=field_names, grid=self.numerical_grid
+        )
+        hb.dmn_set_outermost_layers_x = lambda field, field_name=None, field_units=None, time=None: hb.set_outermost_layers_x(
+            field,
+            field_name=field_name,
+            field_units=field_units,
+            time=time,
+            grid=self.numerical_grid,
+        )
+        hb.dmn_set_outermost_layers_y = lambda field, field_name=None, field_units=None, time=None: hb.set_outermost_layers_y(
+            field,
+            field_name=field_name,
+            field_units=field_units,
+            time=time,
+            grid=self.numerical_grid,
+        )
 
-	def update_topography(self, time):
-		"""
-		Update the (time-dependent) topography. 
+        return self._hb
 
-		Parameters
-		----------
-		time : datetime.timedelta
-			The elapsed simulation time.
-		"""
-		self._pgrid.update_topography(time)
-		self._cgrid.update_topography(time)
+    def update_topography(self, time):
+        """
+        Update the (time-dependent) topography.
+
+        Parameters
+        ----------
+        time : datetime.timedelta
+            The elapsed simulation time.
+        """
+        self._pgrid.update_topography(time)
+        self._cgrid.update_topography(time)
