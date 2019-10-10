@@ -20,6 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+#
+# Tasmania
+#
+# Copyright (c) 2018-2019, ETH Zurich
+# All rights reserved.
+#
+# This file is part of the Tasmania project. Tasmania is free software:
+# you can redistribute it and/or modify it under the terms of the
+# GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 """
 This module contains:
     IsentropicVerticalAdvection
@@ -317,14 +338,14 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
         if not moist:
             flux_s, flux_su, flux_sv = vflux(
-                dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
+                dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
             )
         else:
             sqv = in_s[0, 0, 0] * in_qv[0, 0, 0]
             sqc = in_s[0, 0, 0] * in_qc[0, 0, 0]
             sqr = in_s[0, 0, 0] * in_qr[0, 0, 0]
             flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = vflux(
-                dt=0.0, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv, sqv=sqv, sqc=sqc, sqr=sqr
+                dz=dz, w=w, s=in_s, su=in_su, sv=in_sv, sqv=sqv, sqc=sqc, sqr=sqr
             )
 
         out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz

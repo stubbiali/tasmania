@@ -375,7 +375,7 @@ class _SecondOrderUpwind(SedimentationFlux):
         tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
 
         # evaluate the space-dependent coefficients occurring in the
-        # second-order, upwind finite difference approximation of the
+        # second-order upwind finite difference approximation of the
         # vertical derivative of the flux
         tmp_a = (2.0 * tmp_h[0, 0, 0] - tmp_h[0, 0, -1] - tmp_h[0, 0, -2]) / (
             (tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, 0])

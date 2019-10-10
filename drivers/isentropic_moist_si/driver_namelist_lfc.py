@@ -20,6 +20,27 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+#
+# Tasmania
+#
+# Copyright (c) 2018-2019, ETH Zurich
+# All rights reserved.
+#
+# This file is part of the Tasmania project. Tasmania is free software:
+# you can redistribute it and/or modify it under the terms of the
+# GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 import argparse
 import os
 import tasmania as taz
@@ -39,7 +60,7 @@ parser.add_argument(
     "-n",
     metavar="NAMELIST",
     type=str,
-    default="namelist_cc.py",
+    default="namelist_lfc.py",
     help="The namelist file.",
     dest="namelist",
 )
@@ -68,8 +89,7 @@ domain = taz.Domain(
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
-storage_shape = (cgrid.nx+1, cgrid.ny+1, cgrid.nz+1)
-nl.gt_kwargs['storage_shape'] = storage_shape
+nl.gt_kwargs["storage_shape"] = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
 
 # ============================================================
 # The initial state
@@ -83,15 +103,15 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     moist=True,
     precipitation=nl.precipitation,
     relative_humidity=nl.relative_humidity,
-    backend=nl.gt_kwargs['backend'],
+    backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
-    halo=nl.gt_kwargs['halo'],
-    storage_shape=storage_shape
+    halo=nl.gt_kwargs["halo"],
+    storage_shape=nl.gt_kwargs["storage_shape"],
 )
 domain.horizontal_boundary.reference_state = state
 
 # ============================================================
-# The intermediate tendencies
+# The slow tendencies
 # ============================================================
 args = []
 
@@ -120,7 +140,9 @@ if nl.diff:
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
-    turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
+    turb = taz.IsentropicSmagorinsky(
+        domain, smagorinsky_constant=nl.smagorinsky_constant, **nl.gt_kwargs
+    )
     args.append(turb)
 
 # component calculating the microphysics
@@ -153,7 +175,7 @@ if nl.rain_evaporation:
     )
     args.append(vf)
 
-if nl.precipitation:
+if nl.precipitation and nl.sedimentation:
     # component estimating the raindrop fall velocity
     rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.gt_kwargs)
     args.append(rfv)
@@ -168,31 +190,29 @@ if nl.precipitation:
     args.append(sd)
 
 # wrap the components in a ConcurrentCoupling object
-inter_tends = taz.ConcurrentCoupling(*args, execution_policy="serial")
-
-# ============================================================
-# The intermediate diagnostics
-# ============================================================
-# component retrieving the diagnostic variables
-pt = state["air_pressure_on_interface_levels"][0, 0, 0]
-dv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=True, pt=pt, **nl.gt_kwargs
+slow_tends = taz.ConcurrentCoupling(
+    *args, execution_policy="serial", gt_powered=True, **nl.gt_kwargs
 )
-
-# component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
-    domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
-)
-
-# wrap the components in a DiagnosticComponentComposite object
-inter_diags = taz.DiagnosticComponentComposite(dv, sa)
 
 # ============================================================
 # The slow diagnostics
 # ============================================================
 args = []
 
-if nl.precipitation:
+# component retrieving the diagnostic variables
+pt = state["air_pressure_on_interface_levels"][0, 0, 0]
+idv = taz.IsentropicDiagnostics(
+    domain, grid_type="numerical", moist=True, pt=pt, **nl.gt_kwargs
+)
+args.append(idv)
+
+# component performing the saturation adjustment
+sa = taz.KesslerSaturationAdjustment(
+    domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
+)
+args.append(sa)
+
+if nl.precipitation and nl.sedimentation:
     # component calculating the accumulated precipitation
     ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
     args.append(ap)
@@ -213,11 +233,8 @@ if nl.smooth:
     vc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
     args.append(vc)
 
-if len(args) > 0:
-    # wrap the components in a ConcurrentCoupling object
-    slow_diags = taz.ConcurrentCoupling(*args, execution_policy="serial")
-else:
-    slow_diags = None
+# wrap the components in a ConcurrentCoupling object
+slow_diags = taz.ConcurrentCoupling(*args, execution_policy="serial")
 
 # ============================================================
 # The dynamical core
@@ -226,8 +243,8 @@ dycore = taz.IsentropicDynamicalCore(
     domain,
     moist=True,
     # parameterizations
-    intermediate_tendencies=inter_tends,
-    intermediate_diagnostics=inter_diags,
+    intermediate_tendencies=None,
+    intermediate_diagnostics=None,
     substeps=nl.substeps,
     fast_tendencies=None,
     fast_diagnostics=None,
@@ -394,16 +411,19 @@ for i in range(nt):
     # update the (time-dependent) topography
     dycore.update_topography((i + 1) * dt)
 
-    # calculate the dynamics
-    state_new = dycore(state, {}, dt)
+    # calculate the slow tendencies
+    slow_tendencies, diagnostics = slow_tends(state, dt)
+    state.update(diagnostics)
+
+    # step the solution
+    state_new = dycore(state, slow_tendencies, dt)
 
     # update the state
     taz.dict_copy(state, state_new)
 
-    # calculate the slow physics
-    if slow_diags is not None:
-        _, diagnostics = slow_diags(state, dt)
-        state.update(diagnostics)
+    # retrieve the slow diagnostics
+    _, diagnostics = slow_diags(state, dt)
+    state.update(diagnostics)
 
     compute_time += time.time() - compute_time_start
 

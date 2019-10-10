@@ -60,7 +60,7 @@ gt_kwargs = {
 # numerical scheme
 time_integration_scheme = "rk3ws"
 flux_scheme = "fifth_order"
-physics_time_integration_scheme = "rk2"
+physics_time_integration_scheme = "gt_rk2"
 
 # simulation time
 cfl = 1.0

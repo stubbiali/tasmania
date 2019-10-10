@@ -45,7 +45,7 @@ from tasmania.python.framework.tendency_steppers import (
 from tasmania import get_dataarray_dict
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, halo as conf_halo
     from .utils import (
         compare_arrays,
         st_domain,
@@ -54,7 +54,7 @@ try:
         st_timedeltas,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, halo as conf_halo
     from utils import (
         compare_arrays,
         st_domain,
