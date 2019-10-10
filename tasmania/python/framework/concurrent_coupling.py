@@ -20,12 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    ConcurrentCoupling
-"""
 import copy
-import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -37,15 +32,20 @@ from sympl import (
 )
 from sympl._core.units import clean_units
 
+import gridtools as gt
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
-from tasmania.python.utils.dict_utils import add, add_inplace
+from tasmania.python.utils.dict_utils import add_inplace
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
 )
 from tasmania.python.utils.utils import assert_sequence
+
+
+def stencil_sum_defs(inout_a: gt.storage.f64_sd, in_b: gt.storage.f64_sd):
+    inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
 
 
 class ConcurrentCoupling:
@@ -90,7 +90,19 @@ class ConcurrentCoupling:
     )
     allowed_component_type = allowed_diagnostic_type + allowed_tendency_type + (__name__,)
 
-    def __init__(self, *args, execution_policy="serial", time_units="s"):
+    def __init__(
+        self,
+        *args,
+        execution_policy="serial",
+        time_units="s",
+        gt_powered=False,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        rebuild=False,
+        **kwargs
+    ):
         """
         Parameters
         ----------
@@ -122,24 +134,36 @@ class ConcurrentCoupling:
                     a component are not usable by any other component.
         time_units : `str`, optional
             The time units used within this object. Defaults to 's', i.e., seconds.
+        gt_powered : `bool`, optional
+            TODO
+        backend : `str`, optional
+            TODO
+        backend_opts : `dict`, optional
+            TODO
+        build_info : `dict`, optional
+            TODO
+        exec_info : `dict`, optional
+            TODO
+        rebuild : `bool`, optional
+            TODO
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
         self._component_list = args
 
         self._policy = execution_policy
         if execution_policy == "serial":
-            self._call = self._call_serial
+            self._call = self._call_serial_gt if gt_powered else self._call_serial
         else:
-            self._call = self._call_asparallel
+            self._call = self._call_asparallel_gt if gt_powered else self._call_asparallel
 
-        # Set properties
+        # set properties
         self.input_properties = self._init_input_properties()
         self.tendency_properties = self._init_tendency_properties()
         self.diagnostic_properties = self._init_diagnostic_properties()
 
         self._tunits = time_units
 
-        # Ensure that dimensions and units of the variables present
+        # ensure that dimensions and units of the variables present
         # in both input_properties and tendency_properties are compatible
         # across the two dictionaries
         output_properties = copy.deepcopy(self.tendency_properties)
@@ -153,6 +177,16 @@ class ConcurrentCoupling:
             properties1_name="input_properties",
             properties2_name="output_properties",
         )
+
+        if gt_powered:
+            # compile the underlying stencil
+            decorator = gt.stencil(
+                backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+            )
+            self._stencil_sum = decorator(stencil_sum_defs)
+
+            # store parameters needed at run-time
+            self._exec_info = exec_info
 
     def _init_input_properties(self):
         flag = self._policy == "serial"
@@ -247,9 +281,91 @@ class ConcurrentCoupling:
 
         return out_tendencies, out_diagnostics
 
+    def _call_serial_gt(self, state, timestep):
+        """
+        Process the components in 'serial' runtime mode;
+        summations are performed using GridTools4Py.
+        """
+        aux_state = {}
+        aux_state.update(state)
+
+        out_tendencies = {}
+        tendency_units = {
+            tendency: properties["units"]
+            for tendency, properties in self.tendency_properties.items()
+        }
+
+        out_diagnostics = {}
+
+        for component in self._component_list:
+            if isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics = component(aux_state)
+                aux_state.update(diagnostics)
+                out_diagnostics.update(diagnostics)
+            else:
+                try:
+                    tendencies, diagnostics = component(aux_state)
+                except TypeError:
+                    tendencies, diagnostics = component(aux_state, timestep)
+
+                for name in tendencies:
+                    if name != "time":
+                        if name not in out_tendencies:
+                            out_tendencies[name] = tendencies[name].to_units(
+                                tendency_units[name]
+                            )
+                        else:
+                            a = out_tendencies[name].values
+                            b = tendencies[name].to_units(tendency_units[name]).values
+                            self._stencil_sum(
+                                inout_a=a,
+                                in_b=b,
+                                origin=(0, 0, 0),
+                                domain=a.shape,
+                                exec_info=self._exec_info,
+                            )
+
+                aux_state.update(diagnostics)
+                out_diagnostics.update(diagnostics)
+
+        return out_tendencies, out_diagnostics
+
     def _call_asparallel(self, state, timestep):
         """
         Process the components in 'as_parallel' runtime mode.
+        """
+        out_tendencies = {}
+        tendency_units = {
+            tendency: properties["units"]
+            for tendency, properties in self.tendency_properties.items()
+        }
+
+        out_diagnostics = {}
+
+        for component in self._component_list:
+            if isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics = component(state)
+                out_diagnostics.update(diagnostics)
+            else:
+                try:
+                    tendencies, diagnostics = component(state)
+                except TypeError:
+                    tendencies, diagnostics = component(state, timestep)
+
+                add_inplace(
+                    out_tendencies,
+                    tendencies,
+                    units=tendency_units,
+                    unshared_variables_in_output=True,
+                )
+                out_diagnostics.update(diagnostics)
+
+        return out_tendencies, out_diagnostics
+
+    def _call_asparallel_gt(self, state, timestep):
+        """
+        Process the components in 'as_parallel' runtime mode;
+        summations are performed using GridTools4Py.
         """
         out_tendencies = {}
         tendency_units = {

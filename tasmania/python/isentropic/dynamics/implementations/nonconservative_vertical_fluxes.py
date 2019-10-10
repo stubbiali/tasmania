@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# -*- coing: utf-8 -*-
 """
 This module contains:
 	Centered(IsentropicNonconservativeVerticalFlux)

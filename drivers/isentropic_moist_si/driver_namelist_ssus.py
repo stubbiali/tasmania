@@ -145,7 +145,7 @@ if nl.coriolis:
     args_before_dynamics.append(
         {
             "component": cf,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "gt_forward_euler" if "gt" in ptis else "forward_euler",
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }

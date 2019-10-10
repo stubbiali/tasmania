@@ -27,6 +27,7 @@ This module contains:
     KesslerFallVelocity(DiagnosticComponent)
     KesslerSedimentation(ImplicitTendencyComponent)
 """
+import numpy as np
 from sympl import DataArray
 
 import gridtools as gt
@@ -891,6 +892,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
         self._out_qr = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_dfdz = zeros(storage_shape, backend, dtype, halo=halo)
 
         decorator = gt.stencil(
             backend,
@@ -950,6 +952,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             in_h=in_h,
             in_qr=in_qr,
             in_vt=in_vt,
+            out_dfdz=self._out_dfdz,
             out_qr=self._out_qr,
             dt=dt,
             origin={"_all_": (nbh, nbh, nbv)},
@@ -974,6 +977,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         in_h: gt.storage.f64_sd,
         in_qr: gt.storage.f64_sd,
         in_vt: gt.storage.f64_sd,
+        out_dfdz: gt.storage.f64_sd,
         out_qr: gt.storage.f64_sd,
         *,
         dt: float
@@ -983,6 +987,6 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         # 	(in_vt[0, 0, 0] >  max_cfl * dh[0, 0, 0] / dt) * max_cfl * dh[0, 0, 0] / dt + \
         # 	(in_vt[0, 0, 0] <= max_cfl * dh[0, 0, 0] / dt) * in_vt[0, 0, 0]
 
-        dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
+        out_dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
 
-        out_qr = dfdz[0, 0, 0] / in_rho[0, 0, 0]
+        out_qr = out_dfdz[0, 0, 0] / in_rho[0, 0, 0]

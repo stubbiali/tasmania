@@ -53,6 +53,7 @@ class Upwind(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
         flux_s = get_upwind_flux(w=w, phi=s)
         flux_su = get_upwind_flux(w=w, phi=su)
         flux_sv = get_upwind_flux(w=w, phi=sv)
@@ -81,6 +82,7 @@ class Centered(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
         flux_s = get_centered_flux(w=w, phi=s)
         flux_su = get_centered_flux(w=w, phi=su)
         flux_sv = get_centered_flux(w=w, phi=sv)
@@ -113,6 +115,7 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
         flux_s = get_third_order_upwind_flux(w=w, phi=s)
         flux_su = get_third_order_upwind_flux(w=w, phi=su)
         flux_sv = get_third_order_upwind_flux(w=w, phi=sv)
@@ -149,6 +152,7 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
         flux_s = get_fifth_order_upwind_flux(w=w, phi=s)
         flux_su = get_fifth_order_upwind_flux(w=w, phi=su)
         flux_sv = get_fifth_order_upwind_flux(w=w, phi=sv)

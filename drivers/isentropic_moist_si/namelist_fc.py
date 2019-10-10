@@ -34,9 +34,9 @@ domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "
 nz = 60
 
 # horizontal boundary
-hb_type = "relaxed"
+hb_type = "periodic"
 nb = 3
-hb_kwargs = {"nr": 6}
+hb_kwargs = None  # {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
@@ -124,10 +124,10 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = False
-sedimentation = False
-sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = False
+precipitation = True
+sedimentation = True
+sedimentation_flux_scheme = "first_order_upwind"
+rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
@@ -135,7 +135,7 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(4 * 60 * 60 / timestep.total_seconds())
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 filename = (
