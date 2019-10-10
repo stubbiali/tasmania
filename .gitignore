@@ -26,16 +26,18 @@ projectFilesBackup/
 result_images/
 .hypothesis/
 
-<<<<<<< HEAD
-=======
 # gt4py
 .gt_cache/
+docker/external/gridtools4py
 
->>>>>>> gt4py_framework
 # packaging
 .eggs/
 tasmania.egg-info/
 build/
+pip-wheel-metadata/
+
+# venv
+venv/
 
 # archives
 *.tar
