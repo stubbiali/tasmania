@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 7
+factor = 8
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -48,14 +48,14 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
-    "backend_opts": None,
+    "backend": "gtcuda",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
     "halo": (nb, nb, 0),
     "rebuild": False,
 }
+gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
 
 # numerical scheme
 time_integration_scheme = "rk3ws"

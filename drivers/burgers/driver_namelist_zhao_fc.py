@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import gridtools as gt
 import numpy as np
 import os
 from sympl import DataArray
@@ -30,6 +31,9 @@ try:
     from . import namelist_zhao_fc as nl
 except (ImportError, ModuleNotFoundError):
     import namelist_zhao_fc as nl
+
+
+gt.storage.prepare_numpy()
 
 # ============================================================
 # The underlying domain
@@ -120,26 +124,32 @@ for i in range(nt):
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
-        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
 
-        uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
-        vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
+        # uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
+        # vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
+        # state_ex = zsf(state["time"], cgrid)
+        # uex = state_ex["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        # vex = state_ex["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
-        err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
-        err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
+        # err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
+        # err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
+
+        err_u = u.max()
+        err_v = v.max()
 
         # print useful info
         print(
-           "Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s".format(
-               i + 1, err_u, err_v
-           )
+            "Iteration {:6d}: ||u - uex|| = {:12.10E} m/s, ||v - vex|| = {:12.10E} m/s".format(
+                i + 1, err_u.item(), err_v.item()
+            )
         )
 
         # umax, vmax = u[3:-3, 3:-3].max(), v[3:-3, 3:-3].max()
         # umin, vmin = u[3:-3, 3:-3].min(), v[3:-3, 3:-3].min()
         # print(
-        #     "Iteration {:6d}: umax = {:8.6E}, umin = {:8.6E}, vmax = {:8.6E}, vmin = {:8.6E}".format(
+        #     "Iteration {:6d}: umax = {:12.10E}, umin = {:12.10E}, vmax = {:12.10E}, vmin = {:12.10E}".format(
         #         i + 1, umax, umin, vmax, vmin
         #     )
         # )

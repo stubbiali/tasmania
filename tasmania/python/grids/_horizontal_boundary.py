@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,10 +26,12 @@ This module contains:
     RelaxedXZ(HorizontalBoundary)
     RelaxedYZ(HorizontalBoundary)
 """
+import cupy as cp
 import inspect
 import numpy as np
 from sympl import DataArray
 
+import gridtools as gt
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
@@ -1031,18 +1033,48 @@ class Dirichlet(HorizontalBoundary):
         nb, core = self.nb, self._kwargs["core"]
         mi, mj = field.shape[0], field.shape[1]
 
-        field[:nb, :] = core(
-            time, grid, slice(0, nb), slice(0, mj), field_name, field_units
-        )
-        field[-nb:, :] = core(
-            time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
-        )
-        field[nb:-nb, :nb] = core(
-            time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
-        )
-        field[nb:-nb, -nb:] = core(
-            time, grid, slice(nb, mi - nb), slice(mj - nb, mj), field_name, field_units
-        )
+        if isinstance(field, gt.storage.storage.GPUStorage):
+            field[:nb, :] = cp.asarray(
+                core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
+            )
+            field[-nb:, :] = cp.asarray(
+                core(
+                    time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
+                )
+            )
+            field[nb:-nb, :nb] = cp.asarray(
+                core(
+                    time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
+                )
+            )
+            field[nb:-nb, -nb:] = cp.asarray(
+                core(
+                    time,
+                    grid,
+                    slice(nb, mi - nb),
+                    slice(mj - nb, mj),
+                    field_name,
+                    field_units,
+                )
+            )
+        else:
+            field[:nb, :] = core(
+                time, grid, slice(0, nb), slice(0, mj), field_name, field_units
+            )
+            field[-nb:, :] = core(
+                time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
+            )
+            field[nb:-nb, :nb] = core(
+                time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
+            )
+            field[nb:-nb, -nb:] = core(
+                time,
+                grid,
+                slice(nb, mi - nb),
+                slice(mj - nb, mj),
+                field_name,
+                field_units,
+            )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None

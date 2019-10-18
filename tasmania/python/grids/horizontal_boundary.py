@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,12 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    HorizontalBoundary
-"""
 import abc
 from copy import deepcopy
+
+from tasmania.python.utils.storage_utils import deepcopy_dataarray
 
 
 class HorizontalBoundary(abc.ABC):
@@ -167,7 +165,12 @@ class HorizontalBoundary(abc.ABC):
                     "units" in ref_state[name].attrs
                 ), "Field {} of reference state misses units attribute.".format(name)
 
-        self._ref_state = deepcopy(ref_state)
+        self._ref_state = {}
+        for name in ref_state:
+            if name == "time":
+                self._ref_state["time"] = deepcopy(ref_state["time"])
+            else:
+                self._ref_state[name] = deepcopy_dataarray(ref_state[name])
 
     @abc.abstractmethod
     def get_numerical_xaxis(self, paxis, dims=None):

@@ -26,7 +26,7 @@ This module contains:
 """
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import empty, get_dataarray_3d, zeros
 
 try:
     from tasmania.conf import datatype
@@ -182,9 +182,9 @@ class BurgersDynamicalCore(DynamicalCore):
         dtype = self._dtype
         halo = self._halo
 
-        u = zeros((nx, ny, 1), backend, dtype, halo=halo)
+        u = empty((nx, ny, 1), backend, dtype, halo=halo)
         u_da = get_dataarray_3d(u, grid, "m s^-1", name="x_velocity")
-        v = zeros((nx, ny, 1), backend, dtype, halo=halo)
+        v = empty((nx, ny, 1), backend, dtype, halo=halo)
         v_da = get_dataarray_3d(v, grid, "m s^-1", name="y_velocity")
 
         return {"x_velocity": u_da, "y_velocity": v_da}

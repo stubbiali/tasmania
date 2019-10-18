@@ -20,20 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    HorizontalDiffusion
-    SecondOrder(HorizontalDiffusion)
-    SecondOrder1D{X, Y}(HorizontalDiffusion)
-    FourthOrder(HorizontalDiffusion)
-    FourthOrder1D{X, Y}(HorizontalDiffusion)
-"""
 import abc
 import math
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.utils.storage_utils import ones
+from tasmania.python.utils.storage_utils import ones, zeros
 
 try:
     from tasmania.conf import datatype
@@ -105,10 +97,15 @@ class HorizontalDiffusion(abc.ABC):
         self._exec_info = exec_info
 
         # initialize the diffusivity
-        gamma = diffusion_coeff * ones(
+        # gamma = diffusion_coeff * ones(
+        #     (shape[0], shape[1], shape[2]), backend, dtype, halo, mask=[True, True, True]
+        #     # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
+        # )
+        gamma = zeros(
             (shape[0], shape[1], shape[2]), backend, dtype, halo, mask=[True, True, True]
             # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
         )
+        gamma[...] = diffusion_coeff
         self._gamma = gamma
 
         # the diffusivity is monotonically increased towards the top of the model,
@@ -116,7 +113,7 @@ class HorizontalDiffusion(abc.ABC):
         n = diffusion_damp_depth
         if n > 0:
             pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-            gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+            gamma[:, :, :n] = gamma[:, :, :n] + (diffusion_coeff_max - diffusion_coeff) * pert
 
         # initialize the underlying stencil
         decorator = gt.stencil(

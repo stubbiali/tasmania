@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 7
+factor = 8
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -48,7 +48,7 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "gtcuda",
     "backend_opts": None,
     "build_info": None,
     "dtype": np.float64,
@@ -56,6 +56,7 @@ gt_kwargs = {
     "halo": (nb, nb, 0),
     "rebuild": False,
 }
+gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
 
 # numerical scheme
 time_integration_scheme = "rk3ws"
