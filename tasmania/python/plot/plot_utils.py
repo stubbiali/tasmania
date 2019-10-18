@@ -431,6 +431,10 @@ def set_axes_properties(ax, **kwargs):
     # grid
     grid_on = kwargs.get("grid_on", False)
     grid_properties = kwargs.get("grid_properties", None)
+    # ax2 title
+    ax2_title_center = kwargs.get("title_center", "")
+    ax2_title_left = kwargs.get("title_left", "")
+    ax2_title_right = kwargs.get("title_right", "")
     # x2-axis
     ax2_on = kwargs.get("ax2_on", False)
     x2_label = kwargs.get("x2_label", "")
@@ -716,13 +720,13 @@ def set_axes_properties(ax, **kwargs):
         if not y2axis_visible:
             ax2.get_yaxis().set_visible(False)
 
-		# plot titles
-		if ax2.get_title(loc='center') == '':
-			ax2.set_title(ax2_title_center, loc='center', fontsize=rcParams['font.size']-1)
-		if ax2.get_title(loc='left') == '':
-			ax2.set_title(ax2_title_left, loc='left', fontsize=rcParams['font.size']-1)
-		if ax2.get_title(loc='right') == '':
-			ax2.set_title(ax2_title_right, loc='right', fontsize=rcParams['font.size']-1)
+        # plot titles
+        if ax2.get_title(loc='center') == '':
+            ax2.set_title(ax2_title_center, loc='center', fontsize=rcParams['font.size']-1)
+        if ax2.get_title(loc='left') == '':
+            ax2.set_title(ax2_title_left, loc='left', fontsize=rcParams['font.size']-1)
+        if ax2.get_title(loc='right') == '':
+            ax2.set_title(ax2_title_right, loc='right', fontsize=rcParams['font.size']-1)
 
 
 def reverse_colormap(cmap, name=None):

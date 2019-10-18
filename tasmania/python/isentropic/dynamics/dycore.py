@@ -458,15 +458,6 @@ class IsentropicDynamicalCore(DynamicalCore):
 
         return return_dict
 
-		prognostics = {
-			'air_isentropic_density': 'kg m^-2 K^-1',
-			'x_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
-			'y_momentum_isentropic': 'kg m^-1 K^-1 s^-1',
-		}
-		prognostics.update({
-			tracer: self._tracers[tracer]['units'] for tracer in self._tracers
-		})
-
     @property
     def _substep_input_properties(self):
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])

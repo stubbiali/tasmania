@@ -181,7 +181,6 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         0.5 * s[:nx, :ny, :nz] * (v[:nx, :ny, :nz] + v[:nx, 1 : ny + 1, :nz])
     )
 
-	if moist:
     # instantiate the return state
     state = {
         "time": time,
