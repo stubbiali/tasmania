@@ -20,16 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    BurgersAdvection
-    _FirstOrder(BurgersAdvection)
-    _SecondOrder(BurgersAdvection)
-    _ThirdOrder(BurgersAdvection)
-    _FourthOrder(BurgersAdvection)
-    _FifthOrder(BurgersAdvection)
-    _SixthOrder(BurgersAdvection)
-"""
 import abc
 
 

@@ -120,12 +120,12 @@ for i in range(nt):
 
     compute_time += time.time() - compute_time_start
 
-    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
+    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i == nt - 1:
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
-        u = state["x_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
         # uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
         # vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]

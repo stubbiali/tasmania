@@ -22,6 +22,7 @@
 #
 import abc
 from copy import deepcopy
+from numpy import float64
 
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 
@@ -32,7 +33,7 @@ class HorizontalBoundary(abc.ABC):
     horizontal boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -44,10 +45,17 @@ class HorizontalBoundary(abc.ABC):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         """
         self._nx = nx
         self._ny = ny
         self._nb = nb
+
+        self._backend = backend
+        self._dtype = dtype
 
         self._type = ""
         self._kwargs = {}
@@ -162,7 +170,7 @@ class HorizontalBoundary(abc.ABC):
         for name in ref_state:
             if name != "time":
                 assert (
-                    "units" in ref_state[name].attrs
+                        "units" in ref_state[name].attrs
                 ), "Field {} of reference state misses units attribute.".format(name)
 
         self._ref_state = {}
@@ -290,7 +298,7 @@ class HorizontalBoundary(abc.ABC):
 
     @abc.abstractmethod
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+            self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         """
         Enforce the horizontal boundary conditions on the passed field,
@@ -399,7 +407,7 @@ class HorizontalBoundary(abc.ABC):
 
     @abc.abstractmethod
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+            self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         """
         Set the outermost layers along the first horizontal dimension of a
@@ -422,7 +430,7 @@ class HorizontalBoundary(abc.ABC):
 
     @abc.abstractmethod
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
+            self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         """
         Set the outermost layers along the second horizontal dimension of a
@@ -444,7 +452,7 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @staticmethod
-    def factory(boundary_type, nx, ny, nb, **kwargs):
+    def factory(boundary_type, nx, ny, nb, backend="numpy", dtype=float64, **kwargs):
         """
         Parameters
         ----------
@@ -465,6 +473,10 @@ class HorizontalBoundary(abc.ABC):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        backend : `str`, optional
+            The GT4Py backend.
+        dtype : `numpy.dtype`, optional
+            Data type of the storages.
         kwargs :
             Keyword arguments to be directly forwarded to the
             constructor of the child class.
@@ -475,37 +487,39 @@ class HorizontalBoundary(abc.ABC):
             An object of the suitable child class.
         """
         args = (nx, ny, nb)
+        child_kwargs = {"backend": backend, "dtype": dtype}
+        child_kwargs.update(kwargs)
 
         import tasmania.python.grids._horizontal_boundary as module
 
         if boundary_type == "relaxed":
             if ny == 1:
-                obj = module.Relaxed1DX(*args, **kwargs)
+                obj = module.Relaxed1DX(*args, **child_kwargs)
             elif nx == 1:
-                obj = module.Relaxed1DY(*args, **kwargs)
+                obj = module.Relaxed1DY(*args, **child_kwargs)
             else:
-                obj = module.Relaxed(*args, **kwargs)
+                obj = module.Relaxed(*args, **child_kwargs)
         elif boundary_type == "periodic":
             if ny == 1:
-                obj = module.Periodic1DX(*args, **kwargs)
+                obj = module.Periodic1DX(*args, **child_kwargs)
             elif nx == 1:
-                obj = module.Periodic1DY(*args, **kwargs)
+                obj = module.Periodic1DY(*args, **child_kwargs)
             else:
-                obj = module.Periodic(*args, **kwargs)
+                obj = module.Periodic(*args, **child_kwargs)
         elif boundary_type == "dirichlet":
             if ny == 1:
-                obj = module.Dirichlet1DX(*args, **kwargs)
+                obj = module.Dirichlet1DX(*args, **child_kwargs)
             elif nx == 1:
-                obj = module.Dirichlet1DY(*args, **kwargs)
+                obj = module.Dirichlet1DY(*args, **child_kwargs)
             else:
-                obj = module.Dirichlet(*args, **kwargs)
+                obj = module.Dirichlet(*args, **child_kwargs)
         elif boundary_type == "identity":
             if ny == 1:
-                obj = module.Identity1DX(*args, **kwargs)
+                obj = module.Identity1DX(*args, **child_kwargs)
             elif nx == 1:
-                obj = module.Identity1DY(*args, **kwargs)
+                obj = module.Identity1DY(*args, **child_kwargs)
             else:
-                obj = module.Identity(*args, **kwargs)
+                obj = module.Identity(*args, **child_kwargs)
         else:
             raise ValueError(
                 "Unknown boundary type {}. Supported types are {}.".format(

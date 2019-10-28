@@ -115,11 +115,7 @@ class TendencyStepper(abc.ABC):
     )
 
     def __init__(
-        self,
-        *args,
-        execution_policy="serial",
-        enforce_horizontal_boundary=False,
-        time_units="s"
+        self, *args, execution_policy="serial", enforce_horizontal_boundary=False
     ):
         """
         Parameters
@@ -147,8 +143,6 @@ class TendencyStepper(abc.ABC):
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
-        time_units : `str`, optional
-            TODO
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -156,12 +150,8 @@ class TendencyStepper(abc.ABC):
         self._prognostic = (
             args[0]
             if (len(args) == 1 and isinstance(args[0], ConcurrentCoupling))
-            else ConcurrentCoupling(
-                *args, execution_policy=execution_policy, time_units=time_units
-            )
+            else ConcurrentCoupling(*args, execution_policy=execution_policy)
         )
-
-        self._tunits = time_units
 
         self._input_checker = InputChecker(self)
         self._diagnostic_checker = DiagnosticChecker(self)
@@ -224,7 +214,7 @@ class TendencyStepper(abc.ABC):
         for name in tendency_properties:
             mod_tendency_property = deepcopy(tendency_properties[name])
             mod_tendency_property["units"] = clean_units(
-                mod_tendency_property["units"] + self._tunits
+                mod_tendency_property["units"] + " s"
             )
 
             if name in return_dict:
@@ -271,7 +261,7 @@ class TendencyStepper(abc.ABC):
             return_dict[key] = deepcopy(val)
             if "units" in return_dict[key]:
                 return_dict[key]["units"] = clean_units(
-                    return_dict[key]["units"] + self._tunits
+                    return_dict[key]["units"] + " s"
                 )
 
         return return_dict
@@ -361,8 +351,6 @@ class TendencyStepper(abc.ABC):
                     if backend
                     else np.zeros(storage_shape, dtype=dtype)
                 )
-                if backend == "gtcuda":
-                    raw_buffer.synchronize()
 
                 dims = state[name].dims
                 coords = state[name].coords
@@ -383,7 +371,6 @@ class ForwardEuler(TendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        time_units="s",
         backend="numpy",
         halo=None,
         **kwargs
@@ -392,7 +379,6 @@ class ForwardEuler(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
         )
         self._backend = backend
         self._halo = halo
@@ -434,7 +420,6 @@ class GTForwardEuler(TendencyStepper):
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         enforce_horizontal_boundary=False,
         backend="numpy",
         backend_opts=None,
@@ -448,7 +433,6 @@ class GTForwardEuler(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
         )
 
         self._backend = backend
@@ -523,7 +507,6 @@ class RungeKutta2(TendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        time_units="s",
         backend="numpy",
         halo=None,
         **kwargs
@@ -532,7 +515,6 @@ class RungeKutta2(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
         )
         self._backend = backend
         self._halo = halo
@@ -602,7 +584,6 @@ class GTRungeKutta2(TendencyStepper):
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         enforce_horizontal_boundary=False,
         backend="numpy",
         backend_opts=None,
@@ -616,7 +597,6 @@ class GTRungeKutta2(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
         )
 
         self._backend = backend
@@ -731,7 +711,6 @@ class RungeKutta3WS(TendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        time_units="s",
         backend="numpy",
         halo=None,
         **kwargs
@@ -740,7 +719,6 @@ class RungeKutta3WS(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
         )
         self._backend = backend
         self._halo = halo
@@ -833,7 +811,6 @@ class GTRungeKutta3WS(TendencyStepper):
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         enforce_horizontal_boundary=False,
         backend="numpy",
         backend_opts=None,
@@ -847,7 +824,6 @@ class GTRungeKutta3WS(TendencyStepper):
             *args,
             execution_policy=execution_policy,
             enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
         )
 
         self._backend = backend

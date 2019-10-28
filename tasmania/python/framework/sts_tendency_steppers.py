@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,17 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contain:
-    FakeComponent
-    get_increment
-    tendencystepper_factory
-    STSTendencyStepper
-    ForwardEuler
-    RungeKutta2
-    RungeKutta3WS
-    RungeKutta3
-"""
 import abc
 import numpy as np
 from sympl import (
@@ -132,11 +121,7 @@ class STSTendencyStepper(abc.ABC):
     )
 
     def __init__(
-        self,
-        *args,
-        execution_policy="serial",
-        enforce_horizontal_boundary=False,
-        time_units="s"
+        self, *args, execution_policy="serial", enforce_horizontal_boundary=False
     ):
         """
         Parameters
@@ -164,9 +149,6 @@ class STSTendencyStepper(abc.ABC):
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
-        time_units : `str`, optional
-            TODO
-
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
 
@@ -174,12 +156,8 @@ class STSTendencyStepper(abc.ABC):
         self._prognostic = (
             args[0]
             if (len(args) == 1 and isinstance(args[0], ConcurrentCoupling))
-            else ConcurrentCoupling(
-                *args, execution_policy=execution_policy, time_units=time_units
-            )
+            else ConcurrentCoupling(*args, execution_policy=execution_policy)
         )
-
-        self._tunits = time_units
 
         self.input_properties = self._get_input_properties()
         self.provisional_input_properties = self._get_provisional_input_properties()
@@ -248,7 +226,7 @@ class STSTendencyStepper(abc.ABC):
         for name in tendency_properties:
             mod_tendency_property = tendency_properties[name].copy()
             mod_tendency_property["units"] = clean_units(
-                mod_tendency_property["units"] + self._tunits
+                mod_tendency_property["units"] + " s"
             )
 
             if name in return_dict:
@@ -281,7 +259,7 @@ class STSTendencyStepper(abc.ABC):
             return_dict[key] = val.copy()
             if "units" in return_dict[key]:
                 return_dict[key]["units"] = clean_units(
-                    return_dict[key]["units"] + self._tunits
+                    return_dict[key]["units"] + " s"
                 )
 
         return return_dict
@@ -416,7 +394,6 @@ class ForwardEuler(STSTendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        time_units="s",
         backend="numpy",
         halo=None,
         **kwargs
@@ -424,8 +401,7 @@ class ForwardEuler(STSTendencyStepper):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
         self._halo = halo
@@ -469,7 +445,6 @@ class GTForwardEuler(STSTendencyStepper):
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         enforce_horizontal_boundary=False,
         backend="numpy",
         backend_opts=None,
@@ -482,8 +457,7 @@ class GTForwardEuler(STSTendencyStepper):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
@@ -560,7 +534,6 @@ class RungeKutta2(STSTendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        time_units="s",
         backend="numpy",
         halo=None,
         **kwargs
@@ -568,8 +541,7 @@ class RungeKutta2(STSTendencyStepper):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
         self._halo = halo
@@ -647,7 +619,6 @@ class GTRungeKutta2(STSTendencyStepper):
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         enforce_horizontal_boundary=False,
         backend="numpy",
         backend_opts=None,
@@ -660,8 +631,7 @@ class GTRungeKutta2(STSTendencyStepper):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
@@ -781,7 +751,6 @@ class RungeKutta3WS(STSTendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        time_units="s",
         backend="numpy",
         halo=None,
         **kwargs
@@ -789,8 +758,7 @@ class RungeKutta3WS(STSTendencyStepper):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
         self._halo = halo
@@ -897,7 +865,6 @@ class GTRungeKutta3WS(STSTendencyStepper):
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         enforce_horizontal_boundary=False,
         backend="numpy",
         backend_opts=None,
@@ -910,8 +877,7 @@ class GTRungeKutta3WS(STSTendencyStepper):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
-            time_units=time_units
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
@@ -1086,8 +1052,6 @@ class RungeKutta3(STSTendencyStepper):
                 * :class:`tasmania.TendencyComponent`, or
                 * :class:`tasmania.ImplicitTendencyComponent`.
 
-        time_units : str
-            The time units used within this object. Defaults to 's', i.e., seconds.
         """
         super().__init__(*args, **kwargs)
 

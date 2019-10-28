@@ -94,7 +94,6 @@ class ConcurrentCoupling:
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         gt_powered=False,
         backend="numpy",
         backend_opts=None,
@@ -161,15 +160,13 @@ class ConcurrentCoupling:
         self.tendency_properties = self._init_tendency_properties()
         self.diagnostic_properties = self._init_diagnostic_properties()
 
-        self._tunits = time_units
-
         # ensure that dimensions and units of the variables present
         # in both input_properties and tendency_properties are compatible
         # across the two dictionaries
         output_properties = copy.deepcopy(self.tendency_properties)
         for key in output_properties:
             output_properties[key]["units"] = clean_units(
-                self.tendency_properties[key]["units"] + self._tunits
+                self.tendency_properties[key]["units"] + " s"
             )
         check_properties_compatibility(
             self.input_properties,

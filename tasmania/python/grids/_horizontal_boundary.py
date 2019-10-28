@@ -20,16 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Relaxed(HorizontalBoundary)
-    RelaxedXZ(HorizontalBoundary)
-    RelaxedYZ(HorizontalBoundary)
-"""
-import cupy as cp
 import inspect
 import numpy as np
 from sympl import DataArray
+
+try:
+    import cupy as cp
+except (ImportError, ModuleNotFoundError):
+    cp = np
 
 import gridtools as gt
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
@@ -70,7 +68,7 @@ class Relaxed(HorizontalBoundary):
     Relaxed boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, nr=8):
+    def __init__(self, nx, ny, nb, backend, dtype, nr=8):
         """
         Parameters
         ----------
@@ -80,8 +78,12 @@ class Relaxed(HorizontalBoundary):
         ny : int
             Number of points featured by the *physical* grid
             along the second horizontal dimension.
-        nb : `int`, optional
+        nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
             horizontal boundaries. Minimum is `nb`, maximum is 8 (default).
@@ -99,7 +101,7 @@ class Relaxed(HorizontalBoundary):
             nb <= nr
         ), "Number of boundary layers cannot exceed depth of relaxation region."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
         self._kwargs["nr"] = nr
 
         # the relaxation coefficients
@@ -134,15 +136,20 @@ class Relaxed(HorizontalBoundary):
         xposypos = np.transpose(xnegyneg)
         xnegypos = np.transpose(xposyneg)
 
+        # inspect the backend properties to load the proper asarray function
+        backend = backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
         # made all matrices three-dimensional to harness numpy's broadcasting
-        self._xneg = xneg[:, :, np.newaxis]
-        self._xpos = xpos[:, :, np.newaxis]
-        self._yneg = yneg[:, :, np.newaxis]
-        self._ypos = ypos[:, :, np.newaxis]
-        self._xnegyneg = xnegyneg[:, :, np.newaxis]
-        self._xnegypos = xnegypos[:, :, np.newaxis]
-        self._xposyneg = xposyneg[:, :, np.newaxis]
-        self._xposypos = xposypos[:, :, np.newaxis]
+        self._xneg = asarray(xneg[:, :, np.newaxis])
+        self._xpos = asarray(xpos[:, :, np.newaxis])
+        self._yneg = asarray(yneg[:, :, np.newaxis])
+        self._ypos = asarray(ypos[:, :, np.newaxis])
+        self._xnegyneg = asarray(xnegyneg[:, :, np.newaxis])
+        self._xnegypos = asarray(xnegypos[:, :, np.newaxis])
+        self._xposyneg = asarray(xposyneg[:, :, np.newaxis])
+        self._xposypos = asarray(xposypos[:, :, np.newaxis])
 
     @property
     def ni(self):
@@ -193,78 +200,70 @@ class Relaxed(HorizontalBoundary):
     ):
         # shortcuts
         nb, nr = self.nb, self._xneg.shape[0]
-        mi, mj, mk = field.shape
+        field_name = field_name or ""
 
         # convenient definitions
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mi_int = mi - 2 * nr
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         mj_int = mj - 2 * nr
 
         # the boundary values
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        xneg = np.repeat(field_ref[0:1, :], nr, axis=0)
-        xpos = np.repeat(field_ref[-1:, :], nr, axis=0)
-        yneg = np.repeat(field_ref[:, 0:1], nr, axis=1)
-        ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        # xneg = np.repeat(field_ref[0:1, :], nr, axis=0)
+        # xpos = np.repeat(field_ref[-1:, :], nr, axis=0)
+        # yneg = np.repeat(field_ref[:, 0:1], nr, axis=1)
+        # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
         # set the outermost layers
-        field[:nb, nb:-nb] = field_ref[:nb, nb:-nb]
-        field[-nb:, nb:-nb] = field_ref[-nb:, nb:-nb]
-        field[:, :nb] = field_ref[:, :nb]
-        field[:, -nb:] = field_ref[:, -nb:]
+        field[:nb, :] = field_ref[:nb, :]
+        field[mi - nb : mi, :] = field_ref[mi - nb : mi, :]
+        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+        field[nb : mi - nb, mj - nb : mj] = field_ref[nb : mi - nb, mj - nb : mj]
 
         # apply the relaxed boundary conditions in the negative x-direction
-        field[nb:nr, nr:-nr] -= self._xneg[nb:, :mj_int] * (
-            field[nb:nr, nr:-nr] - xneg[nb:, nr:-nr]
-        )
-        field[nb:nr, nb:nr] -= self._xnegyneg[nb:, nb:] * (
-            field[nb:nr, nb:nr] - xneg[nb:, nb:nr]
-        )
-        field[nb:nr, -nr:-nb] -= self._xnegypos[nb:, :-nb] * (
-            field[nb:nr, -nr:-nb] - xneg[nb:, -nr:-nb]
-        )
+        i, j = slice(nb, nr), slice(nr, mj - nr)
+        field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
+        i, j = slice(nb, nr), slice(nb, nr)
+        field[i, j] -= self._xnegyneg[nb:, nb:] * (field[i, j] - field_ref[i, j])
+        i, j = slice(nb, nr), slice(mj - nr, mj - nb)
+        field[i, j] -= self._xnegypos[nb:, :-nb] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive x-direction
-        field[-nr:-nb, nr:-nr] -= self._xpos[:-nb, :mj_int] * (
-            field[-nr:-nb, nr:-nr] - xpos[:-nb, nr:-nr]
-        )
-        field[-nr:-nb, nb:nr, :] -= self._xposyneg[:-nb, :-nb] * (
-            field[-nr:-nb, nb:nr] - xpos[:-nb, nb:nr]
-        )
-        field[-nr:-nb, -nr:-nb] -= self._xposypos[:-nb, nb:] * (
-            field[-nr:-nb, -nr:-nb] - xpos[:-nb, -nr:-nb]
-        )
+        i, j = slice(mi - nr, mi - nb), slice(nr, mj - nr)
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
+        i, j = slice(mi - nr, mi - nb), slice(nb, nr)
+        field[i, j] -= self._xposyneg[:-nb, :-nb] * (field[i, j] - field_ref[i, j])
+        i, j = slice(mi - nr, mi - nb), slice(mj - nr, mj - nb)
+        field[i, j] -= self._xposypos[:-nb, nb:] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the negative y-direction
-        field[nr:-nr, nb:nr] -= self._yneg[:mi_int, nb:] * (
-            field[nr:-nr, nb:nr] - yneg[nr:-nr, nb:]
-        )
+        i, j = slice(nr, mi - nr), slice(nb, nr)
+        field[i, j] -= self._yneg[:mi_int, nb:] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive y-direction
-        field[nr:-nr, -nr:-nb] -= self._ypos[:mi_int, :-nb] * (
-            field[nr:-nr, -nr:-nb] - ypos[nr:-nr, :-nb]
-        )
+        i, j = slice(nr, mi - nr), slice(mj - nr, mj - nb)
+        field[i, j] -= self._ypos[:mi_int, :-nb] * (field[i, j] - field_ref[i, j])
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        mi, mj, mk = field.shape
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        field[0, :] = field_ref[0, :]
-        field[-1, :] = field_ref[-1, :]
+        field_name = field_name or ""
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        mi, mj, mk = field.shape
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        field[:, 0] = field_ref[:, 0]
-        field[:, -1] = field_ref[:, -1]
+        field_name = field_name or ""
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Relaxed1DX(HorizontalBoundary):
@@ -273,7 +272,7 @@ class Relaxed1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, nr=8):
+    def __init__(self, nx, ny, nb, backend, dtype, nr=8):
         """
         Parameters
         ----------
@@ -285,6 +284,10 @@ class Relaxed1DX(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
             horizontal boundaries. Minimum is `nb`, maximum is 8 (default).
@@ -299,7 +302,7 @@ class Relaxed1DX(HorizontalBoundary):
             nb <= nr
         ), "Number of boundary layers cannot exceed depth of relaxation region."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
         self._kwargs["nr"] = nr
 
         nr = nr if nb <= nr <= 8 else 8
@@ -325,9 +328,14 @@ class Relaxed1DX(HorizontalBoundary):
         xneg = np.repeat(rel[:, np.newaxis], 2, axis=1)
         xpos = np.repeat(rrel[:, np.newaxis], 2, axis=1)
 
-        # made all matrices three-dimensional to harness numpy's broadcasting
-        self._xneg = xneg[:, :, np.newaxis]
-        self._xpos = xpos[:, :, np.newaxis]
+        # inspect the backend properties to load the proper asarray function
+        backend = backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        # made all matrices three-dimensional to harness array broadcasting
+        self._xneg = asarray(xneg[:, :, np.newaxis])
+        self._xpos = asarray(xpos[:, :, np.newaxis])
 
     @property
     def ni(self):
@@ -374,53 +382,53 @@ class Relaxed1DX(HorizontalBoundary):
     ):
         # shortcuts
         nb, nr = self.nb, self._xneg.shape[0]
-        mi, mj, mk = field.shape
-        lj = mj - 2 * nb
+        field_name = field_name or ""
+
+        # convenient definitions
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        mj_int = mj - 2 * nb
 
         # the boundary values
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        xneg = np.repeat(field_ref[0:1, nb:-nb], nr, axis=0)
-        xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        # xneg = np.repeat(field_ref[0:1, nb:-nb], nr, axis=0)
+        # xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
 
         # set the outermost layers
-        field[:nb, nb:-nb] = field_ref[:nb, nb:-nb]
-        field[-nb:, nb:-nb] = field_ref[-nb:, nb:-nb]
+        field[:nb, nb : mj - nb] = field_ref[:nb, nb : mj - nb]
+        field[mi - nb : mi, nb : mj - nb] = field_ref[mi - nb : mi, nb : mj - nb]
 
         # apply the relaxed boundary conditions in the negative x-direction
-        field[nb:nr, nb:-nb] -= self._xneg[nb:, :lj] * (
-            field[nb:nr, nb:-nb] - xneg[nb:, :]
-        )
+        i, j = slice(nb, nr), slice(nb, mj - nb)
+        field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive x-direction
-        field[-nr:-nb, nb:-nb] -= self._xpos[:-nb, :lj] * (
-            field[-nr:-nb, nb:-nb] - xpos[:-nb, :]
-        )
+        i, j = slice(mi - nr, mi - nb), slice(nb, mj - nb)
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
 
         # repeat the innermost column(s) along the y-direction
-        field[:, :nb] = field[:, nb : nb + 1]
-        field[:, -nb:] = field[:, -nb - 1 : -nb]
+        field[:mi, :nb] = field[:mi, nb : nb + 1]
+        field[:mi, mj - nb : mj] = field[:mi, mj - nb - 1 : mj - nb]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        mi, mj, mk = field.shape
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        field[0, :] = field_ref[0, :]
-        field[-1, :] = field_ref[-1, :]
+        field_name = field_name or ""
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        mi, mj, mk = field.shape
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        field[:, 0] = field_ref[:, 0]
-        field[:, -1] = field_ref[:, -1]
+        field_name = field_name or ""
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Relaxed1DY(HorizontalBoundary):
@@ -429,7 +437,7 @@ class Relaxed1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, nr=8):
+    def __init__(self, nx, ny, nb, backend, dtype, nr=8):
         """
         Parameters
         ----------
@@ -441,6 +449,10 @@ class Relaxed1DY(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
             horizontal boundaries. Minimum is `nb`, maximum is 8 (default).
@@ -455,7 +467,7 @@ class Relaxed1DY(HorizontalBoundary):
             nb <= nr
         ), "Number of boundary layers cannot exceed depth of relaxation region."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
         self._kwargs["nr"] = nr
 
         # the relaxation coefficients
@@ -479,9 +491,14 @@ class Relaxed1DY(HorizontalBoundary):
         yneg = np.repeat(rel[np.newaxis, :], 2, axis=0)
         ypos = np.repeat(rrel[np.newaxis, :], 2, axis=0)
 
-        # made all matrices three-dimensional to harness numpy's broadcasting
-        self._yneg = yneg[:, :, np.newaxis]
-        self._ypos = ypos[:, :, np.newaxis]
+        # inspect the backend properties to load the proper asarray function
+        backend = backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        # made all matrices three-dimensional to harness array broadcasting
+        self._yneg = asarray(yneg[:, :, np.newaxis])
+        self._ypos = asarray(ypos[:, :, np.newaxis])
 
     @property
     def ni(self):
@@ -528,53 +545,53 @@ class Relaxed1DY(HorizontalBoundary):
     ):
         # shortcuts
         nb, nr = self.nb, self._yneg.shape[1]
-        mi, mj, mk = field.shape
-        li = mi - 2 * nb
+        field_name = field_name or ""
+
+        # convenient definitions
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mi_int = mi - 2 * nb
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
 
         # the boundary values
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        yneg = np.repeat(field_ref[nb:-nb, 0:1], nr, axis=1)
-        ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        # yneg = np.repeat(field_ref[nb:-nb, 0:1], nr, axis=1)
+        # ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
 
         # set the outermost layers
-        field[nb:-nb, :nb] = field_ref[nb:-nb, :nb]
-        field[nb:-nb, -nb:] = field_ref[nb:-nb, -nb:]
+        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+        field[nb : mi - nb, mj - nb : mj] = field_ref[nb : mi - nb, mj - nb : mj]
 
         # apply the relaxed boundary conditions in the negative y-direction
-        field[nb:-nb, nb:nr] -= self._yneg[:li, nb:] * (
-            field[nb:-nb, nb:nr] - yneg[:, nb:]
-        )
+        i, j = slice(nb, mi - nb), slice(nb, nr)
+        field[i, j] -= self._yneg[:mi_int, nb:] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive y-direction
-        field[nb:-nb, -nr:-nb] -= self._ypos[:li, :-nb] * (
-            field[nb:-nb, -nr:-nb] - ypos[:, :-nb]
-        )
+        i, j = slice(nb, mi - nb), slice(mj - nr, mj - nb)
+        field[i, j] -= self._ypos[:mi_int, :-nb] * (field[i, j] - field_ref[i, j])
 
         # repeat the innermost row(s) along the x-direction
-        field[:nb, :] = field[nb : nb + 1, :]
-        field[-nb:, :] = field[-nb - 1 : -nb, :]
+        field[:nb, :mj] = field[nb : nb + 1, :mj]
+        field[mi - nb : mi, :mj] = field[mi - nb - 1 : mi - nb, :mj]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        mi, mj, mk = field.shape
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        field[0, :] = field_ref[0, :]
-        field[-1, :] = field_ref[-1, :]
+        field_name = field_name or ""
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        mi, mj, mk = field.shape
-        field_ref = (
-            self.reference_state[field_name].to_units(field_units).values[:mi, :mj, :mk]
-        )
-        field[:, 0] = field_ref[:, 0]
-        field[:, -1] = field_ref[:, -1]
+        field_name = field_name or ""
+        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
+        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
+        field_ref = self.reference_state[field_name].to_units(field_units).values
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Periodic(HorizontalBoundary):
@@ -582,7 +599,7 @@ class Periodic(HorizontalBoundary):
     Periodic boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -594,6 +611,10 @@ class Periodic(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         """
         assert (
             nx > 1
@@ -604,7 +625,7 @@ class Periodic(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -713,7 +734,7 @@ class Periodic1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -725,6 +746,10 @@ class Periodic1DX(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         """
         assert (
             nx > 1
@@ -732,7 +757,7 @@ class Periodic1DX(HorizontalBoundary):
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -836,7 +861,7 @@ class Periodic1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -848,6 +873,10 @@ class Periodic1DY(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         """
         assert nx == 1, "Number of grid points along first dimension must be 1."
         assert (
@@ -855,7 +884,7 @@ class Periodic1DY(HorizontalBoundary):
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -962,7 +991,7 @@ class Dirichlet(HorizontalBoundary):
     Dirichlet boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, core=placeholder):
+    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -974,6 +1003,10 @@ class Dirichlet(HorizontalBoundary):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        backend : str
+            The GT4Py backend.
+        dtype : numpy.dtype
+            Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.
         """
@@ -997,7 +1030,7 @@ class Dirichlet(HorizontalBoundary):
         assert "slice_y" in signature.parameters, error_msg
         assert "field_name" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
         self._kwargs["core"] = core
 
@@ -1033,41 +1066,21 @@ class Dirichlet(HorizontalBoundary):
         nb, core = self.nb, self._kwargs["core"]
         mi, mj = field.shape[0], field.shape[1]
 
-        if isinstance(field, gt.storage.storage.GPUStorage):
-            field[:nb, :] = cp.asarray(
-                core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
-            )
-            field[-nb:, :] = cp.asarray(
-                core(
-                    time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
-                )
-            )
-            field[nb:-nb, :nb] = cp.asarray(
-                core(
-                    time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
-                )
-            )
-            field[nb:-nb, -nb:] = cp.asarray(
-                core(
-                    time,
-                    grid,
-                    slice(nb, mi - nb),
-                    slice(mj - nb, mj),
-                    field_name,
-                    field_units,
-                )
-            )
-        else:
-            field[:nb, :] = core(
-                time, grid, slice(0, nb), slice(0, mj), field_name, field_units
-            )
-            field[-nb:, :] = core(
-                time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
-            )
-            field[nb:-nb, :nb] = core(
-                time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
-            )
-            field[nb:-nb, -nb:] = core(
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:nb, :] = asarray(
+            core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
+        )
+        field[-nb:, :] = asarray(
+            core(time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units)
+        )
+        field[nb:-nb, :nb] = asarray(
+            core(time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units)
+        )
+        field[nb:-nb, -nb:] = asarray(
+            core(
                 time,
                 grid,
                 slice(nb, mi - nb),
@@ -1075,6 +1088,7 @@ class Dirichlet(HorizontalBoundary):
                 field_name,
                 field_units,
             )
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1082,11 +1096,15 @@ class Dirichlet(HorizontalBoundary):
         core = self._kwargs["core"]
         mi, mj = field.shape[0], field.shape[1]
 
-        field[:1, :] = core(
-            time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:1, :] = asarray(
+            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
         )
-        field[-1:, :] = core(
-            time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units
+        field[-1:, :] = asarray(
+            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
         )
 
     def set_outermost_layers_y(
@@ -1095,11 +1113,15 @@ class Dirichlet(HorizontalBoundary):
         core = self._kwargs["core"]
         mi, mj = field.shape[0], field.shape[1]
 
-        field[:, :1] = core(
-            time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:, :1] = asarray(
+            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
         )
-        field[:, -1:] = core(
-            time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units
+        field[:, -1:] = asarray(
+            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
         )
 
 
