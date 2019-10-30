@@ -20,12 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    ForwardEulerSI(IsentropicPrognostic)
-    CenteredSI(IsentropicPrognostic)
-    RK3WSSI(IsentropicPrognostic)
-"""
 import numpy as np
 
 import gridtools as gt
@@ -730,14 +724,14 @@ class RK3WSSI(IsentropicPrognostic):
         # apply the boundary conditions on the stepped isentropic density
         try:
             self._hb.dmn_enforce_field(
-                self._s_new[:nx, :ny, :nz],
+                self._s_new,
                 "air_isentropic_density",
                 "kg m^-2 K^-1",
                 time=state["time"] + dtr,
             )
         except AttributeError:
             self._hb.enforce_field(
-                self._s_new[:nx, :ny, :nz],
+                self._s_new,
                 "air_isentropic_density",
                 "kg m^-2 K^-1",
                 time=state["time"] + dtr,

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -94,7 +94,6 @@ class ConcurrentCoupling:
         self,
         *args,
         execution_policy="serial",
-        time_units="s",
         gt_powered=False,
         backend="numpy",
         backend_opts=None,
@@ -132,20 +131,22 @@ class ConcurrentCoupling:
                     we do not rely on the order in which parameterizations
                     are passed to this object, and diagnostics computed by
                     a component are not usable by any other component.
-        time_units : `str`, optional
-            The time units used within this object. Defaults to 's', i.e., seconds.
         gt_powered : `bool`, optional
-            TODO
+            `True` to add the tendencies using GT4Py (leveraging field versioning),
+            `False` to perform the summation in plain Python.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        **kwargs:
+            Unused keyword arguments.
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
         self._component_list = args
@@ -161,15 +162,13 @@ class ConcurrentCoupling:
         self.tendency_properties = self._init_tendency_properties()
         self.diagnostic_properties = self._init_diagnostic_properties()
 
-        self._tunits = time_units
-
         # ensure that dimensions and units of the variables present
         # in both input_properties and tendency_properties are compatible
         # across the two dictionaries
         output_properties = copy.deepcopy(self.tendency_properties)
         for key in output_properties:
             output_properties[key]["units"] = clean_units(
-                self.tendency_properties[key]["units"] + self._tunits
+                self.tendency_properties[key]["units"] + " s"
             )
         check_properties_compatibility(
             self.input_properties,
@@ -284,7 +283,7 @@ class ConcurrentCoupling:
     def _call_serial_gt(self, state, timestep):
         """
         Process the components in 'serial' runtime mode;
-        summations are performed using GridTools4Py.
+        summations are performed using GT4Py.
         """
         aux_state = {}
         aux_state.update(state)
@@ -365,7 +364,7 @@ class ConcurrentCoupling:
     def _call_asparallel_gt(self, state, timestep):
         """
         Process the components in 'as_parallel' runtime mode;
-        summations are performed using GridTools4Py.
+        summations are performed using GT4Py.
         """
         out_tendencies = {}
         tendency_units = {

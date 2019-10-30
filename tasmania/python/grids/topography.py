@@ -20,12 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Topography
-    PhysicalTopography
-    NumericalTopography
-"""
 from copy import deepcopy
 import numpy as np
 from pandas import Timedelta

@@ -20,15 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicPrognostic
-"""
 import abc
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import empty, zeros
 
 try:
     from tasmania.conf import datatype
@@ -304,10 +300,10 @@ class IsentropicPrognostic(abc.ABC):
         dtype = self._dtype
         halo = self._halo
 
-        self._s_new = zeros(storage_shape, backend, dtype, halo=halo)
-        self._su_new = zeros(storage_shape, backend, dtype, halo=halo)
-        self._sv_new = zeros(storage_shape, backend, dtype, halo=halo)
+        self._s_new = empty(storage_shape, backend, dtype, halo=halo)
+        self._su_new = empty(storage_shape, backend, dtype, halo=halo)
+        self._sv_new = empty(storage_shape, backend, dtype, halo=halo)
         if self._moist:
-            self._sqv_new = zeros(storage_shape, backend, dtype, halo=halo)
-            self._sqc_new = zeros(storage_shape, backend, dtype, halo=halo)
-            self._sqr_new = zeros(storage_shape, backend, dtype, halo=halo)
+            self._sqv_new = empty(storage_shape, backend, dtype, halo=halo)
+            self._sqc_new = empty(storage_shape, backend, dtype, halo=halo)
+            self._sqr_new = empty(storage_shape, backend, dtype, halo=halo)

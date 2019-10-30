@@ -20,16 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicHorizontalSmoothing(DiagnosticComponent)
-"""
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.framework.base_components import DiagnosticComponent
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 try:
     from tasmania.conf import datatype
@@ -67,7 +63,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         dtype=datatype,
         exec_info=None,
         halo=None,
-        rebuild=False
+        rebuild=False,
+        storage_shape=None
     ):
         """
         Parameters
@@ -95,19 +92,22 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_damp_depth : int
             Depth of the damping region for the water species.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            TODO
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple`, optional
+            Shape of the storages.
         """
         self._moist = moist and smooth_moist_coeff is not None
 
@@ -116,9 +116,11 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self.horizontal_boundary.nb
 
+        shape = get_storage_shape(storage_shape, min_shape=(nx+1, ny+1, nz+1))
+
         self._core = HorizontalSmoothing.factory(
             smooth_type,
-            (nx, ny, nz),
+            shape,
             smooth_coeff,
             smooth_coeff_max,
             smooth_damp_depth,
@@ -144,7 +146,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 
             self._core_moist = HorizontalSmoothing.factory(
                 smooth_type,
-                (nx, ny, nz),
+                shape,
                 smooth_moist_coeff,
                 smooth_moist_coeff_max,
                 smooth_moist_damp_depth,
@@ -160,20 +162,13 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         else:
             self._core_moist = None
 
-        descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
-        self._in_s = gt.storage.zeros(descriptor, backend=backend)
-        self._out_s = gt.storage.zeros(descriptor, backend=backend)
-        self._in_su = gt.storage.zeros(descriptor, backend=backend)
-        self._out_su = gt.storage.zeros(descriptor, backend=backend)
-        self._in_sv = gt.storage.zeros(descriptor, backend=backend)
-        self._out_sv = gt.storage.zeros(descriptor, backend=backend)
+        self._out_s = zeros(shape, backend, dtype, halo=halo)
+        self._out_su = zeros(shape, backend, dtype, halo=halo)
+        self._out_sv = zeros(shape, backend, dtype, halo=halo)
         if self._moist:
-            self._in_qv = gt.storage.zeros(descriptor, backend=backend)
-            self._out_qv = gt.storage.zeros(descriptor, backend=backend)
-            self._in_qc = gt.storage.zeros(descriptor, backend=backend)
-            self._out_qc = gt.storage.zeros(descriptor, backend=backend)
-            self._in_qr = gt.storage.zeros(descriptor, backend=backend)
-            self._out_qr = gt.storage.zeros(descriptor, backend=backend)
+            self._out_qv = zeros(shape, backend, dtype, halo=halo)
+            self._out_qc = zeros(shape, backend, dtype, halo=halo)
+            self._out_qr = zeros(shape, backend, dtype, halo=halo)
 
     @property
     def input_properties(self):
@@ -197,31 +192,30 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         return self.input_properties
 
     def array_call(self, state):
-        self._in_s.data[...] = state["air_isentropic_density"]
-        self._in_su.data[...] = state["x_momentum_isentropic"]
-        self._in_sv.data[...] = state["y_momentum_isentropic"]
-        if self._moist:
-            self._in_qv.data[...] = state[mfwv]
-            self._in_qc.data[...] = state[mfcw]
-            self._in_qr.data[...] = state[mfpw]
-
-        self._core(self._in_s, self._out_s)
-        self._core(self._in_su, self._out_su)
-        self._core(self._in_sv, self._out_sv)
+        in_s = state["air_isentropic_density"]
+        in_su = state["x_momentum_isentropic"]
+        in_sv = state["y_momentum_isentropic"]
+        self._core(in_s, self._out_s)
+        self._core(in_su, self._out_su)
+        self._core(in_sv, self._out_sv)
 
         return_dict = {
-            "air_isentropic_density": self._out_s.data,
-            "x_momentum_isentropic": self._out_su.data,
-            "y_momentum_isentropic": self._out_sv.data,
+            "air_isentropic_density": self._out_s,
+            "x_momentum_isentropic": self._out_su,
+            "y_momentum_isentropic": self._out_sv,
         }
 
         if self._moist:
-            self._core_moist(self._in_qv, self._out_qv)
-            self._core_moist(self._in_qc, self._out_qc)
-            self._core_moist(self._in_qr, self._out_qr)
+            in_qv = state[mfwv]
+            in_qc = state[mfcw]
+            in_qr = state[mfpw]
 
-            return_dict[mfwv] = self._out_qv.data
-            return_dict[mfcw] = self._out_qc.data
-            return_dict[mfpw] = self._out_qr.data
+            self._core_moist(in_qv, self._out_qv)
+            self._core_moist(in_qc, self._out_qc)
+            self._core_moist(in_qr, self._out_qr)
+
+            return_dict[mfwv] = self._out_qv
+            return_dict[mfcw] = self._out_qc
+            return_dict[mfpw] = self._out_qr
 
         return return_dict

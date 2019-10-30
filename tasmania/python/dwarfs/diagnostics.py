@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,11 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    HorizontalVelocity
-    WaterConstituent
-"""
 import numpy as np
 
 import gridtools as gt
@@ -63,15 +58,16 @@ class HorizontalVelocity:
             on the staggered grid, :obj:`False` to collocate the velocity
             components in the mass points.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._grid = grid
@@ -85,7 +81,7 @@ class HorizontalVelocity:
             build_info=build_info,
             externals={"staggering": staggering},
             rebuild=rebuild,
-            module="staggered" if staggering else "collocated"
+            module="staggered" if staggering else "collocated",
         )
         self._stencil_diagnosing_momenta = decorator(
             self._stencil_diagnosing_momenta_defs
@@ -234,15 +230,16 @@ class WaterConstituent:
             :obj:`True` to clip the negative values of the output fields,
             :obj:`False` otherwise. Defaults to :obj:`False`.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._grid = grid

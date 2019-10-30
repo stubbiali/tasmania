@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,22 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    HorizontalHyperDiffusion
-    FirstOrder(HorizontalHyperDiffusion)
-    FirstOrder{1DX, 1DY}(HorizontalHyperDiffusion)
-    SecondOrder(HorizontalHyperDiffusion)
-    SecondOrder{1DX, 1DY}(HorizontalHyperDiffusion)
-    ThirdOrder(HorizontalHyperDiffusion)
-    ThirdOrder{1DX, 1DY}(HorizontalHyperDiffusion)
-"""
 import abc
 import math
 import numpy as np
 
 import gridtools as gt
-from gridtools.storage import StorageDescriptor
 from tasmania.python.utils.storage_utils import get_storage_descriptor
 
 try:
@@ -102,20 +91,20 @@ class HorizontalHyperDiffusion(abc.ABC):
         nb : int
             Number of boundary layers.
         backend : str
-            TODO
+            The GT4Py backend.
         backend_opts : dict
-            TODO
+            Dictionary of backend-specific options.
         build_info : dict
-            TODO
+            Dictionary of building options.
         dtype : numpy.dtype
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : dict
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : tuple
-            TODO
+            Storage halo.
         rebuild : bool
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -219,20 +208,20 @@ class HorizontalHyperDiffusion(abc.ABC):
             Number of boundary layers. If not specified, this is derived
             from the extent of the underlying stencil.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
 
         Return
         ------
@@ -292,15 +281,9 @@ class HorizontalHyperDiffusion(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -374,15 +357,9 @@ class FirstOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -457,15 +434,9 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -540,15 +511,9 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -623,15 +588,9 @@ class SecondOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -707,15 +666,9 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -791,15 +744,9 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -875,15 +822,9 @@ class ThirdOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -960,15 +901,9 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float
@@ -1045,15 +980,9 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        in_gamma: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
-        out_phi: StorageDescriptor(
-            np.float64, grid_group="domain", mask=[True, True, True]
-        ),
+        in_phi: gt.storage.f64_sd,
+        in_gamma: gt.storage.f64_sd,
+        out_phi: gt.storage.f64_sd,
         *,
         dx: float,
         dy: float

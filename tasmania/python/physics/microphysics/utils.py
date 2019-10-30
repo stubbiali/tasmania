@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,14 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Clipping(DiagnosticComponent)
-    Precipitation(ImplicitTendencyComponent)
-    SedimentationFlux
-    _{First, Second}OrderUpwind(SedimentationFlux)
-    Sedimentation(ImplicitTendencyComponent)
-"""
 import abc
 import numpy as np
 from sympl import DataArray
@@ -176,7 +168,9 @@ class Precipitation(ImplicitTendencyComponent):
         self._pcs = pcs  # needed by unit test
 
         nx, ny = self.grid.nx, self.grid.ny
-        in_shape = (storage_shape[0], storage_shape[1], 1) if storage_shape is not None else None
+        in_shape = (
+            (storage_shape[0], storage_shape[1], 1) if storage_shape is not None else None
+        )
         storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
 
         self._in_rho = zeros(storage_shape, backend, dtype, halo=halo)
@@ -235,12 +229,30 @@ class Precipitation(ImplicitTendencyComponent):
     def array_call(self, state, timestep):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-        self._in_rho[...] = state["air_density"][:, :, nz-1:nz]
-        self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
-            :, :, nz-1:nz
-        ]
-        self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz-1:nz]
-        in_accprec = state['accumulated_precipitation']
+        try:
+            state["air_density"].host_to_device()
+            self._in_rho.data[...] = state["air_density"].data[:, :, nz - 1 : nz]
+            self._in_rho._sync_state.state = self._in_rho.SyncState.SYNC_DEVICE_DIRTY
+
+            state["mass_fraction_of_precipitation_water_in_air"].host_to_device()
+            self._in_qr.data[...] = state[
+                "mass_fraction_of_precipitation_water_in_air"
+            ].data[:, :, nz - 1 : nz]
+            self._in_qr._sync_state.state = self._in_qr.SyncState.SYNC_DEVICE_DIRTY
+
+            state["raindrop_fall_velocity"].host_to_device()
+            self._in_vt.data[...] = state["raindrop_fall_velocity"].data[
+                :, :, nz - 1 : nz
+            ]
+            self._in_vt._sync_state.state = self._in_vt.SyncState.SYNC_DEVICE_DIRTY
+        except AttributeError:
+            self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
+            self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
+                :, :, nz - 1 : nz
+            ]
+            self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
+
+        in_accprec = state["accumulated_precipitation"]
 
         dt = timestep.total_seconds()
 

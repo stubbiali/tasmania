@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,9 +27,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 
 class ZhaoSolutionFactory:
-    """
-    A class generating valid velocity fields for the Zhao test case.
-    """
+    """ Factory of valid velocity fields for the Zhao test case. """
 
     def __init__(self, initial_time, eps):
         """
@@ -141,9 +139,7 @@ class ZhaoSolutionFactory:
 
 
 class ZhaoStateFactory:
-    """
-    A class generating valid states for the Zhao test case.
-    """
+    """ Factory of valid states for the Zhao test case. """
 
     def __init__(self, initial_time, eps, *, backend, dtype, halo):
         """
@@ -155,11 +151,11 @@ class ZhaoStateFactory:
             1-item :class:`sympl.DataArray` representing the diffusivity.
             The units should be compatible with 'm s^-2'.
         backend : str
-            TODO
+            The GT4Py backend.
         dtype : numpy.dtype
-            TODO
+            Data type of the storages.
         halo : tuple
-            TODO
+            Storage halo.
         """
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
         self._backend = backend
@@ -187,13 +183,13 @@ class ZhaoStateFactory:
 
         u = zeros((nx, ny, 1), backend, dtype, halo=halo)
         u[...] = self._solution_factory(time, grid, field_name="x_velocity")
-        u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity")
+        u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity", set_coordinates=False)
         u_da.attrs["backend"] = backend
         u_da.attrs["halo"] = halo
 
         v = zeros((nx, ny, 1), backend, dtype, halo=halo)
         v[...] = self._solution_factory(time, grid, field_name="y_velocity")
-        v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity")
+        v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity", set_coordinates=False)
         v_da.attrs["backend"] = backend
         v_da.attrs["halo"] = halo
 

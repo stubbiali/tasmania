@@ -43,6 +43,7 @@ import numpy as np
 
 from tasmania.python.plot.utils import smaller_than as lt, equal_to as eq
 
+
 text_locations = {
     "upper right": 1,
     "upper left": 2,
@@ -55,6 +56,7 @@ text_locations = {
     "upper center": 9,
     "center": 10,
 }
+
 
 linestyle_dict = {
     "-": "solid",
@@ -429,6 +431,10 @@ def set_axes_properties(ax, **kwargs):
     # grid
     grid_on = kwargs.get("grid_on", False)
     grid_properties = kwargs.get("grid_properties", None)
+    # ax2 title
+    ax2_title_center = kwargs.get("title_center", "")
+    ax2_title_left = kwargs.get("title_left", "")
+    ax2_title_right = kwargs.get("title_right", "")
     # x2-axis
     ax2_on = kwargs.get("ax2_on", False)
     x2_label = kwargs.get("x2_label", "")
@@ -713,6 +719,14 @@ def set_axes_properties(ax, **kwargs):
             ax2.get_yaxis().set_tick_params(which="minor", width=0)
         if not y2axis_visible:
             ax2.get_yaxis().set_visible(False)
+
+        # plot titles
+        if ax2.get_title(loc='center') == '':
+            ax2.set_title(ax2_title_center, loc='center', fontsize=rcParams['font.size']-1)
+        if ax2.get_title(loc='left') == '':
+            ax2.set_title(ax2_title_left, loc='left', fontsize=rcParams['font.size']-1)
+        if ax2.get_title(loc='right') == '':
+            ax2.set_title(ax2_title_right, loc='right', fontsize=rcParams['font.size']-1)
 
 
 def reverse_colormap(cmap, name=None):
@@ -1572,3 +1586,21 @@ def make_cdf(data, ax, **kwargs):
         make_lineplot(values, cdf, ax, **kwargs)
     else:
         make_lineplot(cdf, values, ax, **kwargs)
+
+
+def add_annotation(ax, **kwargs):
+	"""
+	Add a text annotation to a plot.
+	"""
+	# get keyword arguments
+	fontsize     		 = kwargs.get('fontsize', 16)
+	text   				 = kwargs.get('text', '')
+	location			 = kwargs.get('location', (0, 0))
+	horizontal_alignment = kwargs.get('horizontal_alignment', 'left')
+	vertical_alignment   = kwargs.get('vertical_alignment', 'center')
+ 
+	# add annotation
+	ax.annotate(
+    	text, location, horizontalalignment=horizontal_alignment,
+    	verticalalignment=vertical_alignment, fontsize=fontsize
+	)

@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicDynamicalCore(DynamicalCore)
-"""
 import numpy as np
 
 import gridtools as gt
@@ -32,7 +28,7 @@ from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import empty, get_dataarray_3d, zeros
 
 try:
     from tasmania.conf import datatype
@@ -219,21 +215,22 @@ class IsentropicDynamicalCore(DynamicalCore):
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            TODO
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
-            TODO
+            Shape of the storages.
         **kwargs :
             TODO
         """
@@ -273,7 +270,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         super().__init__(
             domain,
             "numerical",
-            "s",
             intermediate_tendencies,
             intermediate_diagnostics,
             substeps,
@@ -286,9 +282,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         #
         # prognostic
         #
-        kwargs = (
-            {} if time_integration_properties is None else time_integration_properties
-        )
+        kwargs = time_integration_properties or {}
         self._prognostic = IsentropicPrognostic.factory(
             time_integration_scheme,
             horizontal_flux_scheme,
@@ -315,7 +309,6 @@ class IsentropicDynamicalCore(DynamicalCore):
                 self.grid,
                 damp_depth,
                 damp_max,
-                time_units="s",
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
@@ -394,7 +387,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         # temporary and output arrays
         #
         def allocate():
-            return zeros(storage_shape, backend, dtype, halo=halo)
+            return empty(storage_shape, backend, dtype, halo=halo)
 
         if moist:
             self._sqv_now = allocate()
@@ -827,13 +820,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             s_out, su_out, sv_out, self._u_out, self._v_out
         )
         hb.dmn_set_outermost_layers_x(
-            self._u_out[: nx + 1, :ny, :nz],
+            self._u_out,
             field_name="x_velocity_at_u_locations",
             field_units=out_properties["x_velocity_at_u_locations"]["units"],
             time=raw_state_new["time"],
         )
         hb.dmn_set_outermost_layers_y(
-            self._v_out[:nx, : ny + 1, :nz],
+            self._v_out,
             field_name="y_velocity_at_v_locations",
             field_units=out_properties["y_velocity_at_v_locations"]["units"],
             time=raw_state_new["time"],
@@ -943,13 +936,13 @@ class IsentropicDynamicalCore(DynamicalCore):
         raw_state_new[mfpw] = self._qr_new
 
         # restrict the state onto the numerical grid
-        raw_state_new_min = {"time": raw_state_new["time"]}
-        for key in raw_state_new:
-            if key != "time":
-                raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
+        # raw_state_new_min = {"time": raw_state_new["time"]}
+        # for key in raw_state_new:
+        #     if key != "time":
+        #         raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
 
         # apply the lateral boundary conditions
-        hb.dmn_enforce_raw(raw_state_new_min, out_properties)
+        hb.dmn_enforce_raw(raw_state_new, out_properties)
 
         damped = False
         if self._damp and (self._damp_at_every_stage or stage == self.stages - 1):
@@ -1024,13 +1017,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             s_out, su_out, sv_out, self._u_out, self._v_out
         )
         hb.dmn_set_outermost_layers_x(
-            self._u_out[: nx + 1, :ny, :nz],
+            self._u_out,
             field_name="x_velocity_at_u_locations",
             field_units=out_properties["x_velocity_at_u_locations"]["units"],
             time=raw_state_new["time"],
         )
         hb.dmn_set_outermost_layers_y(
-            self._v_out[:nx, : ny + 1, :nz],
+            self._v_out,
             field_name="y_velocity_at_v_locations",
             field_units=out_properties["y_velocity_at_v_locations"]["units"],
             time=raw_state_new["time"],

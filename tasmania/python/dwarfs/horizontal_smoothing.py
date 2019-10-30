@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,16 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    HorizontalSmoothing
-    FirstOrder(HorizontalSmoothing)
-    FirstOrder{1DX, 1DY}(HorizontalSmoothing)
-    SecondOrder(HorizontalSmoothing)
-    SecondOrder{1DX, 1DY}(HorizontalSmoothing)
-    ThirdOrder(HorizontalSmoothing)
-    ThirdOrder{1DX, 1DY}(HorizontalSmoothing)
-"""
 import abc
 import math
 import numpy as np
@@ -78,20 +68,20 @@ class HorizontalSmoothing(abc.ABC):
         nb : int
             Number of boundary layers.
         backend : str
-            TODO
+            The GT4Py backend.
         backend_opts : dict
-            TODO
+            Dictionary of backend-specific options.
         build_info : dict
-            TODO
+            Dictionary of building options.
         dtype : numpy.dtype
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : dict
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : tuple
-            TODO
+            Storage halo.
         rebuild : bool
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -129,7 +119,7 @@ class HorizontalSmoothing(abc.ABC):
         ----------
         phi : gridtools.storage.Storage
             The 3-D field to filter.
-        phi_out : array_like
+        phi_out : gridtools.storage.Storage
             The 3-D buffer into which the filtered field is written.
         """
         pass
@@ -175,20 +165,20 @@ class HorizontalSmoothing(abc.ABC):
         nb : `int`, optional
             Number of boundary layers.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
 
         Return
         ------
@@ -246,9 +236,7 @@ class HorizontalSmoothing(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         pass
 
@@ -321,9 +309,7 @@ class FirstOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
             0, 0, 0
@@ -396,9 +382,7 @@ class FirstOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
             0, 0, 0
@@ -471,9 +455,7 @@ class FirstOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
             0, 0, 0
@@ -548,9 +530,7 @@ class SecondOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.75 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
             0, 0, 0
@@ -632,9 +612,7 @@ class SecondOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
             0, 0, 0
@@ -712,9 +690,7 @@ class SecondOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
             0, 0, 0
@@ -794,9 +770,7 @@ class ThirdOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.625 * in_gamma[0, 0, 0]) * in_phi[
             0, 0, 0
@@ -882,9 +856,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
             0, 0, 0
@@ -964,9 +936,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
     ):
         out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
             0, 0, 0

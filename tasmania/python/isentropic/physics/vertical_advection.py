@@ -41,11 +41,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicVerticalAdvection
-    PrescribedSurfaceHeating
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -298,7 +293,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # set lower layers
-        self._set_lower_layers(state)
+        # self._set_lower_layers(state)
 
         # collect the output arrays in a dictionary
         tendencies = {

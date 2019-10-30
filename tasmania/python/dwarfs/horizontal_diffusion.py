@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,20 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    HorizontalDiffusion
-    SecondOrder(HorizontalDiffusion)
-    SecondOrder1D{X, Y}(HorizontalDiffusion)
-    FourthOrder(HorizontalDiffusion)
-    FourthOrder1D{X, Y}(HorizontalDiffusion)
-"""
 import abc
 import math
 import numpy as np
 
 import gridtools as gt
-from tasmania.python.utils.storage_utils import ones
+from tasmania.python.utils.storage_utils import ones, zeros
 
 try:
     from tasmania.conf import datatype
@@ -82,20 +74,20 @@ class HorizontalDiffusion(abc.ABC):
         nb : int
             Number of boundary layers.
         backend : str
-            TODO
+            The GT4Py backend.
         backend_opts : dict
-            TODO
+            Dictionary of backend-specific options.
         build_info : dict
-            TODO
+            Dictionary of building options.
         dtype : numpy.dtype
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : dict
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : tuple
-            TODO
+            Storage halo.
         rebuild : bool
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -105,10 +97,19 @@ class HorizontalDiffusion(abc.ABC):
         self._exec_info = exec_info
 
         # initialize the diffusivity
-        gamma = diffusion_coeff * ones(
-            (shape[0], shape[1], shape[2]), backend, dtype, halo, mask=[True, True, True]
+        # gamma = diffusion_coeff * ones(
+        #     (shape[0], shape[1], shape[2]), backend, dtype, halo, mask=[True, True, True]
+        #     # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
+        # )
+        gamma = zeros(
+            (shape[0], shape[1], shape[2]),
+            backend,
+            dtype,
+            halo,
+            mask=[True, True, True]
             # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
         )
+        gamma[...] = diffusion_coeff
         self._gamma = gamma
 
         # the diffusivity is monotonically increased towards the top of the model,
@@ -116,7 +117,9 @@ class HorizontalDiffusion(abc.ABC):
         n = diffusion_damp_depth
         if n > 0:
             pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
-            gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+            gamma[:, :, :n] = (
+                gamma[:, :, :n] + (diffusion_coeff_max - diffusion_coeff) * pert
+            )
 
         # initialize the underlying stencil
         decorator = gt.stencil(
@@ -182,20 +185,20 @@ class HorizontalDiffusion(abc.ABC):
             Number of boundary layers. If not specified, this is derived
             from the extent of the underlying stencil.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
 
         Return
         ------

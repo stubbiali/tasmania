@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,13 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    TendencyChecker
-    DynamicalCore
-"""
 import abc
-import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -45,12 +39,7 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.utils.storage_utils import (
-    get_array_dict,
-    get_dataarray_3d,
-    get_dataarray_dict,
-    zeros
-)
+from tasmania.python.utils.storage_utils import get_array_dict, get_dataarray_dict
 from tasmania.python.utils.dict_utils import add, copy
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
@@ -99,7 +88,6 @@ class DynamicalCore(abc.ABC):
         self,
         domain,
         grid_type,
-        time_units="s",
         intermediate_tendencies=None,
         intermediate_diagnostics=None,
         substeps=0,
@@ -118,8 +106,6 @@ class DynamicalCore(abc.ABC):
                 * 'physical';
                 * 'numerical'.
 
-        time_units : `str`, optional
-            The time units used within this object. Defaults to 's', i.e., seconds.
         intermediate_tendencies : `obj`, optional
             An instance of either
 
@@ -177,7 +163,6 @@ class DynamicalCore(abc.ABC):
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
-        self._tunits = time_units
         self._dtype = dtype
 
         self._inter_tends = intermediate_tendencies
@@ -400,7 +385,7 @@ class DynamicalCore(abc.ABC):
             check_properties_compatibility(
                 self._fast_tends.tendency_properties,
                 self._output_properties,
-                to_append=self._tunits,
+                to_append=" s",
                 properties1_name="fast_tendencies.tendency_properties",
                 properties2_name="_output_properties",
             )
@@ -412,7 +397,7 @@ class DynamicalCore(abc.ABC):
             check_properties_compatibility(
                 self._fast_tends.tendency_properties,
                 self._substep_tendency_properties,
-                to_append=self._tunits,
+                to_append=" s",
                 properties1_name="fast_tendencies.tendency_properties",
                 properties2_name="_substep_tendency_properties",
             )
@@ -431,7 +416,7 @@ class DynamicalCore(abc.ABC):
             check_properties_compatibility(
                 self._fast_tends.tendency_properties,
                 self._substep_input_properties,
-                to_append=self._tunits,
+                to_append=" s",
                 properties1_name="fast_tendencies.tendency_properties",
                 properties2_name="_substep_input_properties",
             )
@@ -446,7 +431,7 @@ class DynamicalCore(abc.ABC):
             check_properties_compatibility(
                 self._fast_tends.tendency_properties,
                 self._substep_output_properties,
-                to_append=self._tunits,
+                to_append=" s",
                 properties1_name="fast_tendencies.tendency_properties",
                 properties2_name="_substep_input_properties",
             )
@@ -863,8 +848,7 @@ class DynamicalCore(abc.ABC):
 
         # Extract numpy arrays from tendencies
         tendency_properties = {
-            name: self._tendency_properties[name]
-            for name in self._tendency_properties
+            name: self._tendency_properties[name] for name in self._tendency_properties
         }
         raw_tends = get_array_dict(tends, tendency_properties)
 
@@ -880,8 +864,7 @@ class DynamicalCore(abc.ABC):
             # ============================================================
             # Create dataarrays out of the numpy arrays contained in the stepped state
             stage_state_properties = {
-                name: self._output_properties[name]
-                for name in self._output_properties
+                name: self._output_properties[name] for name in self._output_properties
             }
             stage_state = get_dataarray_dict(
                 raw_stage_state, self._grid, stage_state_properties, set_coordinates=False
@@ -996,7 +979,14 @@ class DynamicalCore(abc.ABC):
         # ============================================================
         if self._inter_diags is not None:
             inter_diags = self._inter_diags(out_state)
-            out_state.update(inter_diags)
+
+            diagnostic_fields = {}
+            for name in inter_diags:
+                if name != "time" and name not in self._output_properties:
+                    diagnostic_fields[name] = inter_diags[name]
+
+            copy(out_state, inter_diags)
+            out_state.update(diagnostic_fields)
 
         # Ensure the time specified in the output state is correct
         if stage == self.stages - 1:

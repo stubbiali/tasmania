@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,11 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    VerticalDamping
-    Rayleigh(VerticalDamping)
-"""
 import abc
 import math
 import numpy as np
@@ -73,22 +68,20 @@ class VerticalDamping(abc.ABC):
         time_units : str
             Time units to be used throughout the class.
         backend : str
-            TODO
+            The GT4Py backend.
         backend_opts : dict
-            TODO
+            Dictionary of backend-specific options.
         build_info : dict
-            TODO
+            Dictionary of building options.
         dtype : numpy.dtype
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : dict
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : tuple
-            TODO
+            Storage halo.
         rebuild : bool
-            TODO
-        storage_shape : tuple
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         # safety-guard checks
         assert damp_depth <= grid.nz, (
@@ -111,9 +104,9 @@ class VerticalDamping(abc.ABC):
 
         # compute the damping matrix
         z = (
-             np.concatenate((grid.z.values, np.array([0, ])), axis=0)
-             if storage_shape[2] == grid.nz + 1
-             else grid.z.values
+            np.concatenate((grid.z.values, np.array([0])), axis=0)
+            if storage_shape[2] == grid.nz + 1
+            else grid.z.values
         )
         zt = grid.z_on_interface_levels.values[0]
         za = z[damp_depth - 1]
@@ -188,22 +181,20 @@ class VerticalDamping(abc.ABC):
         time_units : `str`, optional
             Time units to be used throughout the class. Defaults to 's'.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
 
         Return
         ------
@@ -303,7 +294,7 @@ class Rayleigh(VerticalDamping):
             )
 
         # set the lowermost layers, outside of the damping region
-        field_out[:, :, dnk:] = field_new[:, :, dnk:]
+        field_out.data[:, :, dnk:] = field_new.data[:, :, dnk:]
 
     @staticmethod
     def _stencil_defs(

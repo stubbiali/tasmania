@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicDiagnostics
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -89,22 +85,22 @@ class IsentropicDiagnostics:
             :obj:`tasmania.IsentropicDiagnostics._d_physical_constants`
             for the default values.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
-            TODO
+            Shape of the storages.
         """
         # store the input arguments needed at run-time
         self._grid = grid
@@ -188,8 +184,10 @@ class IsentropicDiagnostics:
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         dz = self._grid.dz.to_units("K").values.item()
 
-        # retrieve all the diagnostic variables
+        # set the topography
         self._topo[:nx, :ny, -1] = self._grid.topography.profile.to_units("m").values[...]
+
+        # retrieve all the diagnostic variables
         self._stencil_diagnostic_variables(
             in_theta=self._theta,
             in_hs=self._topo,
@@ -226,8 +224,10 @@ class IsentropicDiagnostics:
         dz = self._grid.dz.to_units("K").values.item()
         theta_s = self._grid.z_on_interface_levels.to_units("K").values[-1]
 
-        # run the stencil
+        # set the topography
         self._topo[:nx, :ny, -1] = self._grid.topography.profile.to_units("m").values[...]
+
+        # run the stencil
         self._stencil_montgomery(
             in_hs=self._topo,
             in_s=s,
@@ -260,8 +260,10 @@ class IsentropicDiagnostics:
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
         dz = self._grid.dz.to_units("K").values.item()
 
-        # run the stencil
+        # set the topography
         self._topo[:nx, :ny, -1] = self._grid.topography.profile.to_units("m").values[...]
+
+        # run the stencil
         self._stencil_height(
             in_theta=self._theta,
             in_hs=self._topo,

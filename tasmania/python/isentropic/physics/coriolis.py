@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicConservativeCoriolis
-"""
 import numpy as np
 
 import gridtools as gt
@@ -72,24 +68,24 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             1-item :class:`~sympl.DataArray` representing the Coriolis
             parameter, in units compatible with [rad s^-1].
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            TODO
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
-            TODO
+            Shape of the storages.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent
-            :class:`~tasmania.TendencyComponent`.
+            Keyword arguments to be directly forwarded to the parent's constructor.
         """
         super().__init__(domain, grid_type, **kwargs)
 
@@ -104,13 +100,11 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = (nx, ny, nz) if storage_shape is None else storage_shape
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx, ny, nz)
-        )
+        error_msg = "storage_shape must be larger or equal than {}.".format((nx, ny, nz))
         assert storage_shape[0] >= nx, error_msg
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz, error_msg
-        
+
         self._tnd_su = zeros(storage_shape, backend, dtype, halo=halo)
         self._tnd_sv = zeros(storage_shape, backend, dtype, halo=halo)
 
@@ -152,8 +146,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         nb = self._nb
 
         self._stencil(
-            in_su=state['x_momentum_isentropic'],
-            in_sv=state['y_momentum_isentropic'],
+            in_su=state["x_momentum_isentropic"],
+            in_sv=state["y_momentum_isentropic"],
             tnd_su=self._tnd_su,
             tnd_sv=self._tnd_sv,
             f=self._f,

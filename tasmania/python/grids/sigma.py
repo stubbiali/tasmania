@@ -20,11 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Sigma2d(GridXZ)
-    Sigma3d(GridXYZ)
-"""
 from datetime import timedelta
 import numpy as np
 import sympl

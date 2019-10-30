@@ -20,13 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicVerticalFlux
-    IsentropicNonconservativeVerticalFlux
-    IsentropicMinimalVerticalFlux
-    IsentropicBoussinesqMinimalVerticalFlux
-"""
 import abc
 
 
@@ -294,7 +287,6 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
         """
         This method returns the :class:`gridtools.storage.Storage`\s representing
         the vertical flux for all the conservative model variables.

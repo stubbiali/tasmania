@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,16 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicHorizontalDiffusion(TendencyComponent)
-"""
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 try:
     from tasmania.conf import datatype
@@ -69,6 +65,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         exec_info=None,
         halo=None,
         rebuild=False,
+        storage_shape=None,
         **kwargs
     ):
         """
@@ -101,21 +98,24 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diffusion_damp_depth : int
             Depth of the damping region for the water species.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            TODO
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple`, optional
+            Shape of the storages.
         **kwargs :
-            Keyword arguments to be directly forwarded to the parent constructor.
+            Keyword arguments to be directly forwarded to the parent's constructor.
         """
         self._moist = moist and diffusion_moist_coeff is not None
 
@@ -129,9 +129,12 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diff_coeff = diffusion_coeff.to_units("s^-1").values.item()
         diff_coeff_max = diffusion_coeff_max.to_units("s^-1").values.item()
 
+        shape = storage_shape or (nx + 1, ny + 1, nz + 1)
+        shape = get_storage_shape(shape, min_shape=(nx + 1, ny + 1, nz + 1))
+
         self._core = HorizontalDiffusion.factory(
             diffusion_type,
-            (nx, ny, nz),
+            shape,
             dx,
             dy,
             diff_coeff,
@@ -160,7 +163,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
 
             self._core_moist = HorizontalDiffusion.factory(
                 diffusion_type,
-                (nx, ny, nz),
+                shape,
                 dx,
                 dy,
                 diff_moist_coeff,
@@ -178,20 +181,13 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         else:
             self._core_moist = None
 
-        descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
-        self._in_s = gt.storage.zeros(descriptor, backend=backend)
-        self._s_tnd = gt.storage.zeros(descriptor, backend=backend)
-        self._in_su = gt.storage.zeros(descriptor, backend=backend)
-        self._su_tnd = gt.storage.zeros(descriptor, backend=backend)
-        self._in_sv = gt.storage.zeros(descriptor, backend=backend)
-        self._sv_tnd = gt.storage.zeros(descriptor, backend=backend)
+        self._s_tnd = zeros(shape, backend, dtype, halo=halo)
+        self._su_tnd = zeros(shape, backend, dtype, halo=halo)
+        self._sv_tnd = zeros(shape, backend, dtype, halo=halo)
         if self._moist:
-            self._in_qv = gt.storage.zeros(descriptor, backend=backend)
-            self._qv_tnd = gt.storage.zeros(descriptor, backend=backend)
-            self._in_qc = gt.storage.zeros(descriptor, backend=backend)
-            self._qc_tnd = gt.storage.zeros(descriptor, backend=backend)
-            self._in_qr = gt.storage.zeros(descriptor, backend=backend)
-            self._qr_tnd = gt.storage.zeros(descriptor, backend=backend)
+            self._qv_tnd = zeros(shape, backend, dtype, halo=halo)
+            self._qc_tnd = zeros(shape, backend, dtype, halo=halo)
+            self._qr_tnd = zeros(shape, backend, dtype, halo=halo)
 
     @property
     def input_properties(self):
@@ -232,31 +228,31 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return {}
 
     def array_call(self, state):
-        self._in_s.data[...] = state["air_isentropic_density"]
-        self._in_su.data[...] = state["x_momentum_isentropic"]
-        self._in_sv.data[...] = state["y_momentum_isentropic"]
-        if self._moist:
-            self._in_qv.data[...] = state[mfwv]
-            self._in_qc.data[...] = state[mfcw]
-            self._in_qr.data[...] = state[mfpw]
+        in_s = state["air_isentropic_density"]
+        in_su = state["x_momentum_isentropic"]
+        in_sv = state["y_momentum_isentropic"]
 
-        self._core(self._in_s, self._s_tnd)
-        self._core(self._in_su, self._su_tnd)
-        self._core(self._in_sv, self._sv_tnd)
+        self._core(in_s, self._s_tnd)
+        self._core(in_su, self._su_tnd)
+        self._core(in_sv, self._sv_tnd)
 
         return_dict = {
-            "air_isentropic_density": self._s_tnd.data,
-            "x_momentum_isentropic": self._su_tnd.data,
-            "y_momentum_isentropic": self._sv_tnd.data,
+            "air_isentropic_density": self._s_tnd,
+            "x_momentum_isentropic": self._su_tnd,
+            "y_momentum_isentropic": self._sv_tnd,
         }
 
         if self._moist:
-            self._core_moist(self._in_qv, self._qv_tnd)
-            self._core_moist(self._in_qc, self._qc_tnd)
-            self._core_moist(self._in_qr, self._qr_tnd)
+            in_qv = state[mfwv]
+            in_qc = state[mfcw]
+            in_qr = state[mfpw]
 
-            return_dict[mfwv] = self._qv_tnd.data
-            return_dict[mfcw] = self._qc_tnd.data
-            return_dict[mfpw] = self._qr_tnd.data
+            self._core_moist(in_qv, self._qv_tnd)
+            self._core_moist(in_qc, self._qc_tnd)
+            self._core_moist(in_qr, self._qr_tnd)
+
+            return_dict[mfwv] = self._qv_tnd
+            return_dict[mfcw] = self._qc_tnd
+            return_dict[mfpw] = self._qr_tnd
 
         return return_dict, {}

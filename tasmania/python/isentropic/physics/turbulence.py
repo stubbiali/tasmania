@@ -20,16 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicSmagorinsky
-"""
 import numpy as np
 
 import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import empty, zeros
 
 try:
     from tasmania.conf import datatype
@@ -75,25 +71,24 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
-            TODO
+            Shape of the storages.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent
-            :class:`~tasmania.python.physics.turbulence.Smagorinsky2d`.
+            Keyword arguments to be directly forwarded to the parent's constructor.
         """
         super().__init__(
             domain,

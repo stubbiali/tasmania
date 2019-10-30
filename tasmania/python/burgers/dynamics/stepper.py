@@ -20,14 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    ForwardEulerStepper
-    BurgersStepper
-    _ForwardEuler(BurgersStepper)
-    _RK2(BurgersStepper)
-    _RK3WS(BurgersStepper)
-"""
 import abc
 
 import gridtools as gt
@@ -105,21 +97,21 @@ class BurgersStepper(abc.ABC):
         flux_scheme : str
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
-        backend : str
-            TODO
-        backend_opts : dict
-            TODO
-        build_info : dict
-            TODO
-        dtype : numpy.dtype
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
-        exec_info : dict
-            TODO
-        halo : tuple
-            TODO
-        rebuild : bool
-            TODO
+        backend : `str`, optional
+            The GT4Py backend.
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
+        dtype : `numpy.dtype`, optional
+            Data type of the storages.
+        exec_info : `dict`, optional
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        halo : `tuple`, optional
+            Storage halo.
+        rebuild : `bool`, optional
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         self._grid_xy = grid_xy
         self._backend = backend
@@ -217,8 +209,7 @@ class BurgersStepper(abc.ABC):
         build_info : `dict`, optional
             TODO
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            TODO
         exec_info : `dict`, optional
             TODO
         halo : `tuple`, optional
@@ -254,9 +245,7 @@ class BurgersStepper(abc.ABC):
 
 
 class _ForwardEuler(BurgersStepper):
-    """
-    The forward Euler time integrator for the inviscid Burgers equations.
-    """
+    """ The forward Euler time integrator. """
 
     def __init__(
         self,
@@ -364,9 +353,7 @@ class _ForwardEuler(BurgersStepper):
 
 
 class _RK2(BurgersStepper):
-    """
-    The two-stages RK time integrator for the inviscid Burgers equations.
-    """
+    """ A two-stages Runge-Kutta time integrator. """
 
     def __init__(
         self,
@@ -478,9 +465,7 @@ class _RK2(BurgersStepper):
 
 
 class _RK3WS(_RK2):
-    """
-    The three-stages RK time integrator for the inviscid Burgers equations.
-    """
+    """ A three-stages Runge-Kutta time integrator. """
 
     def __init__(
         self,

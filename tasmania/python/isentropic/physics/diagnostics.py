@@ -32,7 +32,7 @@ import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics as Core
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import empty, zeros
 
 try:
     from tasmania.conf import datatype
@@ -118,22 +118,22 @@ class IsentropicDiagnostics(DiagnosticComponent):
             :obj:`tasmania.physics.isentropic.IsentropicDiagnostics._d_physical_constants`
             for the default values.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
-            TODO
+            Shape of the storages.
         """
         # store input parameters needed at run-time
         self._moist = moist
@@ -160,13 +160,13 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         # allocate the gt4py storages collecting the output fields calculated
         # by the stencils
-        self._out_p = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_exn = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_mtg = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_h = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_p = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_exn = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_mtg = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_h = empty(storage_shape, backend, dtype, halo=halo)
         if moist:
-            self._out_r = zeros(storage_shape, backend, dtype, halo=halo)
-            self._out_t = zeros(storage_shape, backend, dtype, halo=halo)
+            self._out_r = empty(storage_shape, backend, dtype, halo=halo)
+            self._out_t = empty(storage_shape, backend, dtype, halo=halo)
 
     @property
     def input_properties(self):
@@ -245,22 +245,22 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         domain : tasmania.Domain
             The underlying domain.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
-            TODO
+            Shape of the storages.
         """
         # call the parent's constructor
         super().__init__(domain, "numerical")
@@ -287,8 +287,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages gathering the output fields
-        self._out_u = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_v = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_u = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_v = empty(storage_shape, backend, dtype, halo=halo)
 
     @property
     def input_properties(self):

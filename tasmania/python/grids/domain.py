@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Domain
-"""
 import numpy as np
 
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary as HB
@@ -59,6 +55,7 @@ class Domain:
         horizontal_boundary_kwargs=None,
         topography_type="flat_terrain",
         topography_kwargs=None,
+            backend="numpy",
         dtype=datatype,
     ):
         """ 
@@ -104,9 +101,10 @@ class Domain:
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
+        backend : `str`, optional
+            The GT4Py backend.
         dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated within
-            this class.
+            Data type of the storages.
         """
         # the physical grid
         kwargs = (
@@ -136,7 +134,7 @@ class Domain:
             )
             else horizontal_boundary_kwargs
         )
-        self._hb = HB.factory(horizontal_boundary_type, nx, ny, nb, **kwargs)
+        self._hb = HB.factory(horizontal_boundary_type, nx, ny, nb, backend, dtype, **kwargs)
 
         # the numerical grid
         self._cgrid = NumericalGrid(self._pgrid, self._hb)

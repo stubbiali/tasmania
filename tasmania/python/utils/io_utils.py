@@ -20,13 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    NetCDFMonitor
-    load_netcdf_dataset
-    load_grid
-    load_states
-"""
 from copy import deepcopy
 from datetime import timedelta
 import netCDF4 as nc4

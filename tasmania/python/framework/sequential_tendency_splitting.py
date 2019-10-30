@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    SequentialTendencySplitting
-"""
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -139,6 +135,29 @@ class SequentialTendencySplitting:
                             nominally second-order, and third-order for linear problems;
                         - 'rk3', for the three-stages, third-order RK scheme.
 
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'time_integrator_kwargs' is a dictionary of configuration
+                    options for 'time_integrator'. The dictionary may include
+                    the following keys:
+
+                        - backend (str): The GT4Py backend;
+                        - backend_opts (dict): Dictionary of backend-specific options;
+                        - build_info (dict): Dictionary of building options;
+                        - dtype (numpy.dtype): Data type of the storages;
+                        - exec_info (dict): Dictionary which will store statistics
+                            and diagnostics gathered at run time;
+                        - halo (tuple): Storage halo;
+                        - rebuild (bool): `True` to trigger the stencils compilation
+                            at any class instantiation, `False` to rely on the caching
+                            mechanism implemented by GT4Py.
+
                 * if 'component' is either an instance of or wraps objects of class
 
                         - :class:`tasmania.TendencyComponent`,
@@ -159,7 +178,6 @@ class SequentialTendencySplitting:
 
                     'substeps' represents the number of substeps to carry out to
                     integrate the process. Defaults to 1.
-                * 'time_integrator_kwargs' : TODO
         """
         self._component_list = []
         self._substeps = []

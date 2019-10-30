@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,20 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    add
-    add_inplace
-    subtract
-    subtract_inplace
-    multiply
-    multiply_inplace
-    copy
-"""
 from copy import deepcopy
 from sympl import DataArray
 from sympl._core.units import units_are_same
 
+import gridtools as gt
 from tasmania.python.utils.storage_utils import zeros
 
 
@@ -178,9 +169,10 @@ def add_inplace(state_1, state_2, units=None, unshared_variables_in_output=True)
                     _units = units.get(key, state_2[key].attrs["units"])
                     state_1[key] = state_2[key]
 
-                field_1 = state_1[key].to_units(_units).values
-                state_1[key].values[...] = field_1
-                state_1[key].attrs["units"] = _units
+                if state_1[key].attrs["units"] != _units:
+                    field_1 = state_1[key].to_units(_units).values
+                    state_1[key].attrs["units"] = _units
+                    state_1[key].values[...] = field_1
 
 
 def subtract(
@@ -432,5 +424,5 @@ def copy(state_1, state_2):
     shared_keys = tuple(key for key in state_1 if key in state_2 and key != "time")
     for key in shared_keys:
         state_1[key].values[...] = (
-            state_2[key].to_units(state_1[key].attrs["units"]).values[...]
+            state_2[key].to_units(state_1[key].attrs["units"]).values
         )

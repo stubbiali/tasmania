@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,23 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    BurgersAdvection
-    _FirstOrder(BurgersAdvection)
-    _SecondOrder(BurgersAdvection)
-    _ThirdOrder(BurgersAdvection)
-    _FourthOrder(BurgersAdvection)
-    _FifthOrder(BurgersAdvection)
-    _SixthOrder(BurgersAdvection)
-"""
 import abc
 
 
 class BurgersAdvection(abc.ABC):
-    """
-    A discretizer for the 2-D Burgers advection flux.
-    """
+    """ A discretizer for the 2-D Burgers advection flux. """
 
     extent = None
 

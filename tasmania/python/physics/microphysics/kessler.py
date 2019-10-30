@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,13 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    KesslerMicrophysics(TendencyComponent)
-    KesslerSaturationAdjustment(DiagnosticComponent)
-    KesslerFallVelocity(DiagnosticComponent)
-    KesslerSedimentation(ImplicitTendencyComponent)
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -38,7 +31,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_shape, zeros
+from tasmania.python.utils.storage_utils import empty, get_storage_shape, zeros
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
 
 try:
@@ -315,6 +308,7 @@ class KesslerMicrophysics(TendencyComponent):
 
         # extract the required model variables
         in_rho = state["air_density"]
+        in_t = state["air_temperature"]
         in_qc = state[mfcw]
         in_qr = state[mfpw]
         if self._rain_evaporation:
@@ -327,7 +321,12 @@ class KesslerMicrophysics(TendencyComponent):
             in_exn = state["exner_function"]
 
         # compute the saturation water vapor pressure
-        self._in_ps[...] = self._swvf(state["air_temperature"])
+        try:
+            in_t.host_to_device()
+            self._in_ps.data[...] = self._swvf(in_t.data)
+            self._in_ps._sync_state.state = self._in_ps.SyncState.SYNC_DEVICE_DIRTY
+        except AttributeError:
+            self._in_ps[...] = self._swvf(in_t)
 
         # collect the stencil arguments
         stencil_args = {
@@ -631,7 +630,12 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             in_p = state["air_pressure"]
 
         # compute the saturation water vapor pressure
-        self._in_ps[...] = tetens_formula(state["air_temperature"])
+        try:
+            in_t.host_to_device()
+            self._in_ps.data[...] = tetens_formula(in_t.data)
+            self._in_ps._sync_state.state = self._in_ps.SyncState.SYNC_DEVICE_DIRTY
+        except AttributeError:
+            self._in_ps[...] = tetens_formula(in_t)
 
         # run the stencil
         self._stencil(
@@ -789,7 +793,12 @@ class KesslerFallVelocity(DiagnosticComponent):
         in_qr = state[mfpw]
 
         # extract the surface density
-        self._in_rho_s[...] = in_rho[:, :, nz - 1 : nz]
+        try:
+            in_rho.host_to_device()
+            self._in_rho_s.data[...] = in_rho.data[:, :, nz - 1 : nz]
+            self._in_rho_s._sync_state.state = self._in_rho_s.SyncState.SYNC_DEVICE_DIRTY
+        except AttributeError:
+            self._in_rho_s[...] = in_rho.data[:, :, nz - 1 : nz]
 
         # run the stencil
         self._stencil(
@@ -956,7 +965,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             out_qr=self._out_qr,
             dt=dt,
             origin={"_all_": (nbh, nbh, nbv)},
-            domain=(nx - 2*nbh, ny - 2*nbh, nz - nbv),
+            domain=(nx - 2 * nbh, ny - 2 * nbh, nz - nbv),
             exec_info=self._exec_info,
         )
 

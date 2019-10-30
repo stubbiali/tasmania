@@ -20,13 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Upwind(IsentropicMinimalHorizontalFlux)
-    Centered(IsentropicMinimalHorizontalFlux)
-    MacCormack(IsentropicMinimalHorizontalFlux)
-    FifthOrderUpwind(IsentropicMinimalHorizontalFlux)
-"""
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )

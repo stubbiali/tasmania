@@ -20,13 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicHorizontalFlux
-    IsentropicNonconservativeHorizontalFlux
-    IsentropicMinimalHorizontalFlux
-    IsentropicBoussinesqMinimalHorizontalFlux
-"""
 import abc
 
 

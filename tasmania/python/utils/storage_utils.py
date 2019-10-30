@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,19 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    get_dataarray_2d
-    get_dataarray_3d
-    get_dataarray_dict
-    get_array_dict
-    get_physical_state
-    get_numerical_state
-    get_storage_descriptor
-    get_storage_shape
-    zeros
-    ones
-"""
+from copy import deepcopy
 import numpy as np
 from sympl import DataArray
 
@@ -419,7 +407,7 @@ def get_storage_descriptor(storage_shape, dtype, halo=None, mask=(True, True, Tr
 
 
 def get_storage_shape(in_shape, min_shape, max_shape=None):
-    out_shape = min_shape if in_shape is None else in_shape
+    out_shape = in_shape or min_shape
 
     if max_shape is None:
         error_msg = "storage shape must be larger or equal than {}.".format(min_shape)
@@ -438,13 +426,45 @@ def get_storage_shape(in_shape, min_shape, max_shape=None):
     return out_shape
 
 
+def empty(storage_shape, backend, dtype, halo=None, mask=None):
+    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
+    gt_storage = gt.storage.empty(descriptor=descriptor, backend=backend)
+    return gt_storage
+
+
 def zeros(storage_shape, backend, dtype, halo=None, mask=None):
     descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
     gt_storage = gt.storage.zeros(descriptor=descriptor, backend=backend)
-    return gt_storage.data
+    return gt_storage
 
 
 def ones(storage_shape, backend, dtype, halo=None, mask=None):
     descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
     gt_storage = gt.storage.ones(descriptor=descriptor, backend=backend)
-    return gt_storage.data
+    return gt_storage
+
+
+def deepcopy_array_dict(src):
+    dst = {'time': src['time']} if 'time' in src else {}
+    for name in src:
+        if name != 'time':
+            dst[name] = deepcopy(src[name])
+    return dst
+
+
+def deepcopy_dataarray(src):
+    return DataArray(
+        deepcopy(src.values),
+        coords=src.coords,
+        dims=src.dims,
+        name=src.name,
+        attrs=src.attrs.copy(),
+    )
+
+
+def deepcopy_dataarray_dict(src):
+    dst = {'time': src['time']} if 'time' in src else {}
+    for name in src:
+        if name != 'time':
+            dst[name] = deepcopy_dataarray(src[name])
+    return dst

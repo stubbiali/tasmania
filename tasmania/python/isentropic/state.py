@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -146,14 +146,16 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     h = allocate()
     h[:nx, :ny, nz] = hs
     for k in range(nz - 1, -1, -1):
-        h[:nx, :ny, k] = h[:nx, :ny, k + 1] + g * dz / ((bv ** 2) * theta1d[:, :, k])
+        h[:nx, :ny, k : k + 1] = h[:nx, :ny, k + 1 : k + 2] + g * dz / (
+            (bv ** 2) * theta1d[:, :, k : k + 1]
+        )
 
     # initialize the Exner function
     exn = allocate()
     exn[:nx, :ny, nz] = cp
     for k in range(nz - 1, -1, -1):
-        exn[:nx, :ny, k] = exn[:nx, :ny, k + 1] - dz * (g ** 2) / (
-            (bv ** 2) * (theta1d[:, :, k] ** 2)
+        exn[:nx, :ny, k : k + 1] = exn[:nx, :ny, k + 1 : k + 2] - dz * (g ** 2) / (
+            (bv ** 2) * (theta1d[:, :, k : k + 1] ** 2)
         )
 
     # diagnose the air pressure
@@ -162,12 +164,15 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
     # diagnose the Montgomery potential
     mtg_s = (
-        grid.z_on_interface_levels.to_units("K").values[-1] * exn[:nx, :ny, nz] + g * hs
+        grid.z_on_interface_levels.to_units("K").values[-1] * exn[:nx, :ny, nz : nz + 1]
+        + g * hs[:, :, np.newaxis]
     )
     mtg = allocate()
-    mtg[:nx, :ny, nz - 1] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz]
+    mtg[:nx, :ny, nz - 1 : nz] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz : nz + 1]
     for k in range(nz - 2, -1, -1):
-        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
+        mtg[:nx, :ny, k : k + 1] = (
+            mtg[:nx, :ny, k + 1 : k + 2] + dz * exn[:nx, :ny, k + 1 : k + 2]
+        )
 
     # diagnose the isentropic density and the momenta
     s = allocate()
@@ -286,17 +291,19 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         )
 
         # initialize the relative humidity
-        rh = relative_humidity * np.ones((nx, ny, nz))
+        rh = relative_humidity * np.ones(storage_shape)
         rh_ = get_dataarray_3d(rh, grid, "1")
 
         # interpolate the pressure at the main levels
-        p_unstg = 0.5 * (p[:nx, :ny, :nz] + p[:nx, :ny, 1 : nz + 1])
-        p_unstg_ = get_dataarray_3d(p_unstg, grid, "Pa")
+        p_unstg = allocate()
+        p_unstg[:nx, :ny, :nz] = 0.5 * (p[:nx, :ny, :nz] + p[:nx, :ny, 1 : nz + 1])
+        p_unstg_ = get_dataarray_3d(
+            p_unstg, grid, "Pa", grid_shape=(nx, ny, nz), set_coordinates=False
+        )
 
         # diagnose the mass fraction of water vapor
-        qv = allocate()
-        qv[:nx, :ny, :nz] = convert_relative_humidity_to_water_vapor(
-            "goff_gratch", p_unstg_, state["air_temperature"][:nx, :ny, :nz], rh_
+        qv = convert_relative_humidity_to_water_vapor(
+            "tetens", p_unstg_, state["air_temperature"], rh_
         )
         state[mfwv] = get_dataarray_3d(
             qv, grid, "g g^-1", name=mfwv, grid_shape=(nx, ny, nz), set_coordinates=False
@@ -330,6 +337,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
                 grid_shape=(nx, ny, 1),
                 set_coordinates=False,
             )
+
+        for name in state:
+            if name != 'time':
+                try:
+                    state[name].values.synchronize()
+                except AttributeError:
+                    pass
 
     return state
 

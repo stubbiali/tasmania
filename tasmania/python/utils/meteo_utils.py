@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,13 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    get_isothermal_isentropic_analytical_solution
-    convert_relative_humidity_to_water_vapor
-    tetens_formula
-    goff_gratch_formula
-"""
+from copy import deepcopy
 import numpy as np
 from sympl import DataArray
 
@@ -249,7 +243,15 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
 
     # Compute the mixing ratio of water vapor
     B = 0.62198
-    qv = np.where(p_sat >= 0.616 * p_, 0.0, B * pw / (p_ - pw))
+    qv = deepcopy(T_)
+    for i in range(qv.shape[0]):
+        for j in range(qv.shape[1]):
+            for k in range(qv.shape[2]):
+                qv[i, j, k] = (
+                    0.0
+                    if p_sat[i, j, k] >= 0.616 * p_[i, j, k]
+                    else B * pw[i, j, k] / (p_[i, j, k] - pw[i, j, k])
+                )
 
     return qv
 
@@ -274,7 +276,17 @@ def tetens_formula(t):
     tr = 273.16
     bw = 35.86
 
-    e = pw * np.exp(aw * (t - tr) / (t - bw))
+    try:
+        import cupy as cp
+
+        if isinstance(t, cp.ndarray):
+            exp = cp.exp
+        else:
+            exp = np.exp
+    except (ImportError, ModuleNotFoundError):
+       exp = np.exp
+
+    e = pw * exp(aw * (t - tr) / (t - bw))
 
     return e
 
@@ -307,6 +319,16 @@ def goff_gratch_formula(t):
     c6 = 3.49149
     t_st = 373.15
     e_st = 1013.25e2
+
+    try:
+        import cupy as cp
+    except (ImportError, ModuleNotFoundError):
+        cp = None
+
+    if cp is not None and isinstance(t, cp.ndarray):
+        log10 = cp.log10
+    else:
+        log10 = np.log10
 
     e = e_st * 10 ** (
         -c1 * (t_st / t - 1.0)

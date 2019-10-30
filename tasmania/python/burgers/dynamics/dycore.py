@@ -20,13 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    BurgersDynamicalCore(DynamicalCore)
-"""
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import empty, get_dataarray_3d, zeros
 
 try:
     from tasmania.conf import datatype
@@ -35,9 +31,7 @@ except TypeError:
 
 
 class BurgersDynamicalCore(DynamicalCore):
-    """
-    The dynamical core for the inviscid 2-D Burgers equations.
-    """
+    """ The dynamical core for the inviscid 2-D Burgers equations. """
 
     def __init__(
         self,
@@ -81,19 +75,20 @@ class BurgersDynamicalCore(DynamicalCore):
             Defaults to 'upwind'. See :class:`tasmania.BurgersAdvection`
             for all available options.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
+            Dictionary of building options.
         dtype : `numpy.dtype`, optional
-            TODO
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
         halo : `tuple`, optional
-            TODO
+            Storage halo.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         self._backend = backend
         self._dtype = dtype
@@ -102,7 +97,6 @@ class BurgersDynamicalCore(DynamicalCore):
         super().__init__(
             domain,
             grid_type="numerical",
-            time_units="s",
             intermediate_tendencies=intermediate_tendencies,
             intermediate_diagnostics=None,
             substeps=0,
@@ -182,10 +176,10 @@ class BurgersDynamicalCore(DynamicalCore):
         dtype = self._dtype
         halo = self._halo
 
-        u = zeros((nx, ny, 1), backend, dtype, halo=halo)
-        u_da = get_dataarray_3d(u, grid, "m s^-1", name="x_velocity")
-        v = zeros((nx, ny, 1), backend, dtype, halo=halo)
-        v_da = get_dataarray_3d(v, grid, "m s^-1", name="y_velocity")
+        u = empty((nx, ny, 1), backend, dtype, halo=halo)
+        u_da = get_dataarray_3d(u, grid, "m s^-1", name="x_velocity", set_coordinates=False)
+        v = empty((nx, ny, 1), backend, dtype, halo=halo)
+        v_da = get_dataarray_3d(v, grid, "m s^-1", name="y_velocity", set_coordinates=False)
 
         return {"x_velocity": u_da, "y_velocity": v_da}
 
