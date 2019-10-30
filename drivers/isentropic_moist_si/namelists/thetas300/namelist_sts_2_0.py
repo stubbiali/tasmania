@@ -21,37 +21,27 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from datetime import datetime, timedelta
+import gridtools as gt
 import numpy as np
 from sympl import DataArray
 
 
+# backend settings
+backend = gt.mode.NUMPY
+dtype = np.float64
+
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 41
+nx = 81
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+ny = 81
+domain_z = DataArray([360, 300], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
 hb_type = "relaxed"
 nb = 3
 hb_kwargs = {"nr": 6}
-
-# gt4py settings
-gt_kwargs = {
-    "backend": "gtx86",
-    "build_info": None,
-    "dtype": np.float64,
-    "exec_info": None,
-    "halo": (nb, nb, 0),
-    "rebuild": True,
-}
-gt_kwargs["backend_opts"] = (
-    {"max_region_offset": 3, "verbose": True}
-    if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda")
-    else None
-)
 
 # topography
 topo_type = "gaussian"
@@ -77,6 +67,7 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
+physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
@@ -103,10 +94,10 @@ diff_moist_damp_depth = 0
 
 # horizontal smoothing
 smooth = False
-smooth_type = "second_order"
-smooth_coeff = 1.0
+smooth_type = "first_order"
+smooth_coeff = 0.1
 smooth_coeff_max = 1.0
-smooth_damp_depth = 0
+smooth_damp_depth = 15
 smooth_at_every_stage = False
 smooth_moist = False
 smooth_moist_type = "second_order"
@@ -134,15 +125,16 @@ collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
-niter = int(8 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=24)
+niter = int(4 * 60 * 60 / timestep.total_seconds())
 
 # output
 filename = (
-    "../../data/isentropic_moist_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_cc_1.nc".format(
+    "../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_rh{}_thetas{}_mcfreq{}{}{}{}{}{}{}_sts.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
+        physics_time_integration_scheme,
         nx,
         ny,
         nz,
@@ -153,6 +145,8 @@ filename = (
         int(topo_kwargs["max_height"].to_units("m").values.item()),
         int(x_velocity.to_units("m s^-1").values.item()),
         int(relative_humidity * 100),
+        int(domain_z.to_units("K").values[1]),
+        update_frequency,
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",
@@ -161,26 +155,18 @@ filename = (
         "_evap" if rain_evaporation else "",
     )
 )
-filename = None  # "../../data/isentropic_fc_{}.nc".format(gt_kwargs["backend"])
 store_names = (
     "accumulated_precipitation",
-    "air_density",
     "air_isentropic_density",
-    "air_pressure_on_interface_levels",
-    "air_temperature",
-    "exner_function_on_interface_levels",
     "height_on_interface_levels",
     "mass_fraction_of_water_vapor_in_air",
     "mass_fraction_of_cloud_liquid_water_in_air",
     "mass_fraction_of_precipitation_water_in_air",
-    "montgomery_potential",
     "precipitation",
     "x_momentum_isentropic",
-    "x_velocity_at_u_locations",
     "y_momentum_isentropic",
-    "y_velocity_at_v_locations",
 )
 save_frequency = -1
-print_dry_frequency = 1
+print_dry_frequency = -1
 print_moist_frequency = 1
 plot_frequency = -1

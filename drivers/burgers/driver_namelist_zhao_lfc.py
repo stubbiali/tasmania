@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import gridtools as gt
 import numpy as np
 import os
 from sympl import DataArray
@@ -30,6 +31,9 @@ try:
     from . import namelist_zhao_lfc as nl
 except (ImportError, ModuleNotFoundError):
     import namelist_zhao_lfc as nl
+
+
+gt.storage.prepare_numpy()
 
 # ============================================================
 # The underlying domain
@@ -122,19 +126,21 @@ for i in range(nt):
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
-        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
 
         uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
         vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
 
-        err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
-        err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
+        # err_u = np.linalg.norm(u.data - uex.data) * np.sqrt(dx * dy)
+        # err_v = np.linalg.norm(v.data - vex.data) * np.sqrt(dx * dy)
+        err_u = u.max()
+        err_v = v.max()
 
         # Print useful info
         print(
-            "Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s".format(
-                i + 1, err_u, err_v
+            "Iteration {:6d}: ||u - uex|| = {:12.10E} m/s, ||v - vex|| = {:12.10E} m/s".format(
+                i + 1, err_u.item(), err_v.item()
             )
         )
 
