@@ -45,7 +45,7 @@ srun --unbuffered \
 		--mount=type=bind,src=$TASMANIA_ROOT/tasmania/conf.py,dst=/home/tasmania-user/tasmania/tasmania/conf.py \
 		--mount=type=bind,src=$TASMANIA_ROOT/tasmania/python,dst=/home/tasmania-user/tasmania/tasmania/python \
 		--mount=type=bind,src=$TASMANIA_ROOT/tests,dst=/home/tasmania-user/tasmania/tests \
-		load/library/tasmania:develop \
+		load/library/$IMAGE_NAME:$IMAGE_TAG \
 		bash -c \
 		 	". $VENV/bin/activate; \
 		 	 cd tasmania/$SCRIPT_DIR; \
