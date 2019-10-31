@@ -1,15 +1,18 @@
 #!/bin/bash
 
-MODULES=( python_virtualenv/15.0.3 cray-python/3.6.5.7 cudatoolkit )
-PYTHON=python3.6
-CUDA=cuda101
+# MODULES=( python_virtualenv/15.0.3 cray-python/3.6.5.7 cudatoolkit )
+MODULES=( )
+PYTHON=python3.7
+CUDA=
 VENV=venv
+FRESH_INSTALL=0
 
 function install()
 {
   source $VENV/bin/activate && \
 	  pip install -e . && \
-	  pip install -e docker/external/gridtools4py[$CUDA] && \
+	  pip install -e docker/external/gridtools4py[$CUDA] || \
+	    pip install -e docker/external/gridtools4py && \
 	  python docker/external/gridtools4py/setup.py install_gt_sources && \
 	  pip install -e docker/external/sympl && \
 	  deactivate
@@ -20,7 +23,11 @@ do
   module load $MODULE
 done
 
-rm -rf $VENV
-virtualenv --python=$PYTHON $VENV
+if [ "$FRESH_INSTALL" -gt 0 ]
+then
+  rm -rf $VENV
+  virtualenv --python=$PYTHON $VENV
+fi
+
 install || deactivate
 
