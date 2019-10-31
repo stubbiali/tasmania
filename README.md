@@ -10,9 +10,9 @@ This is the repository for Tasmania, a Python framework/toolkit to ease the comp
 Background and motivation
 --
 
-Weather and climate models are complex systems comprising several subsystems (atmosphere, ocean, land, glacier, sea ice, and marine biogeochemistry) which interact at their interfaces through the exchange of mass, momentum and energy. Each domain hosts a plethora of interlinked physical and chemical processes which can be characterized on a wide spectrum of spatio-temporal scales. Due to the limited available computer resources, creating a discrete model covering the entire range of scales, even for a single subsystem, is challenging, if not an impossible task. Rather, the grid resolution discriminate between fully resolved fluid-dynamics features (e.g., horizontal and vertical advection, pressure gradient, and Coriolis effects), and subgrid-scale aspects (e.g., radiative transfer, macro- and micro-physics, shallow and deep convection, turbulent mixing in the planetary boundary layer, and orographic drag) which do not emerge naturally on the mesh. The former are traditionally referred to as the *dynamics*, while the latter form the so-called *physics* of the model.
+Weather and climate models are complex systems comprising several subsystems (atmosphere, ocean, land, glacier, sea ice, and marine biogeochemistry) which interact at their interfaces through the exchange of mass, momentum and energy. Each domain hosts a plethora of interlinked physical and chemical processes which can be characterized on a wide spectrum of spatio-temporal scales. Due to the limited available computer resources, creating a discrete model covering the entire range of scales, even for a single subsystem, is challenging, if not an impossible task. Rather, the grid resolution discriminates between fully resolved fluid-dynamics features (e.g., horizontal and vertical advection, pressure gradient, and Coriolis acceleration), and subgrid-scale aspects (e.g., radiative transfer, macro- and micro-physics, shallow and deep convection, turbulent mixing in the planetary boundary layer, and orographic drag) which do not emerge naturally on the mesh. The former are traditionally referred to as the *dynamics*, while the latter form the so-called *physics* of the model.
 
-In all models, the *dynamical core* solves for the fluid-dynamics equations while *physical parameterizations* express the bulk effect of the subgrid-scale phenomena upon the large-scale flow. The procedure which molds all the dynamical and physical components to yield a coherent and comprehensive model is referred to as the *physics-dynamics coupling*. 
+In all models, the *dynamical core* solves for the fluid-dynamics equations while *physical parameterizations* express the bulk effect of the subgrid-scale phenomena upon the large-scale flow. The procedure which molds all the dynamics and physics components to yield a coherent and comprehensive model is referred to as the *physics-dynamics coupling*. 
 
 The continual growth in model resolution demands for increasing specialization to address the physical processes which emerge on smaller and smaller scales. This has resulted in a high compartmentalization of the model development, with dynamical cores and physics packages mostly developed in isolation. Besides easing the proliferation of software components with incompatible structure, such approach is in direct contrast with the need of improving the time stepping in the current apparatus of atmospheric models. Indeed, the time stepping is often merely accurate to the first order. However, as the error associated with the discretization of individual processes decreases, the error injected by the coupling will eventually dominate. 
 
@@ -24,21 +24,21 @@ Tasmania aims to provide a high-level platform to aid the investigation of the p
 Fact sheet
 --
 
- - Physical components must conform to [sympl](https://github.com/mcgibbon/sympl)'s (System for Modelling Planets) primitives application programming interface (API). 
+ - Physical components must conform to [sympl](https://github.com/mcgibbon/sympl)'s (System for Modelling Planets) primitives API. 
  
- - To facilitate the development of dynamical kernels, Tasmania provides an abstract base class (ABC) with intended support for multi-stage time-integrators (e.g., Runge-Kutta schemes) and partial operator splitting techniques, which integrate slow and fast processes with large and multiple small time steps, respectively. To this end, a distinction between \emph{slow} physics (calculated over the large time step, outside of the dynamical core), \emph{intermediate} physics (evaluated over the large time step at every stage) and \emph{fast} physics (computed over the shorter time step at each sub-step) is made. 
+ - To facilitate the development of dynamical kernels, Tasmania provides an abstract base class (ABC) with intended support for multi-stage time-integrators (e.g., Runge-Kutta schemes) and partial operator splitting techniques, which integrate slow and fast processes with large and multiple small time steps, respectively. To this end, a distinction between *slow* physics (calculated over the large time step, outside of the dynamical core), *intermediate* physics (evaluated over the large time step at every stage) and *fast* physics (computed over the shorter time step at each sub-step) is made. 
  
  - The following coupling mechanisms are currently implemented:
  
-	 - concurrent coupling;
-	 - *lazy* concurrent coupling;
+	 - full coupling;
+	 - *lazy* full coupling;
 	 - parallel splitting;
 	 - sequential-tendency splitting;
 	 - sequential-update splitting; 
-	 - symmetrized sequential-update splitting.
+	 - symmetrized sequential-update splitting, or Strang splitting.
 	 
 	 Hybrid approaches are possible. 
- - A simplified hydrostatic model in isentropic coordinates is available as proof-of-concept. Finite difference operators arising from the numerical discretization of the model are implemented via GridTools4Py.
+ - The two-dimensional viscud Burgers' equations and a simplified hydrostatic model in isentropic coordinates have been coded as proof-of-concepts. Finite difference operators arising from the numerical discretization of the model are implemented via GridTools4Py.
 
 GridTools and GridTools4Py
 --
@@ -52,22 +52,35 @@ Conversely, GridTools's front-end, then GridTools4Py's interface, are hardware-a
 Installation
 --
 
-To clone this repository (with submodules) on your machine and place yourself on the current branch, from within a terminal run
+To clone this repository (with submodules) on your machine and place yourself on the current branch, run
 
-	git clone --recurse-submodules https://github.com/eth-cscs/tasmania.git
+	git clone -b master --recurse-submodules https://github.com/eth-cscs/tasmania.git
 
-**Note:** both Tasmania and GridTools4Py repositories are still *private*, and you should be granted access to clone them and accomplish all the actions listed below.
+**Note:** both Tasmania and GridTools4Py repositories are *private*, so you should be granted access to clone them and accomplish all the actions listed below.
 	
-## Running Tasmania on a local machine
+Running Tasmania
+--
 
+Using a virtual environment
+--
 
-We suggest to run any script or application leveraging Tasmania inside a [Docker](https://www.docker.com/) container, spawn from a provided image. To clone the GridTools4Py repository and create a local instance of the image (named `tasmania:master`), from the root directory of the repository issue
+The `bootstrap_venv.sh` bash script automates the creation of a suitable virtual environment for Tasmania. The procedure harnesses [virtualenv](https://virtualenv.pypa.io/en/latest/) and can be customized by means of the bash variables defined in the upper section of the script. 
 
-	make docker-build
+Using a Docker container on a local machine
+--
+
+Additionally, we provide two [Docker](https://www.docker.com/) images to run a containerized version of Tasmania. The two images are based on `ubuntu:18.04` and `nvidia/cuda:latest`. Please note that the former image does not contain the CUDA toolkit, so it only supports the CPU-based backend of GridTools4Py. To create a local instance of the images (named `tasmania:cpu` and `tasmania:gpu`, respectively), from the root directory of the repository issue
+
+	make docker-build-cpu
+	make docker-build-gpu
 
 and follow the on-screen instructions. Later, launch
 
-	make docker-run
+	make docker-run-cpu
+	
+or
+
+    make docker-run-gpu
 
 to run a container in the background and get shell access to it. You login the container's shell as `tasmania-user` - a non-root user having the same `UID` of the host user who spun up the container. The container's working directory is `/home/tasmania-user`.
 
@@ -80,7 +93,7 @@ to run a container in the background and get shell access to it. You login the c
 
 Except for `tasmania/cpp`, any other file and folder present in the local repository is bind mounted into the container under `/home/tasmania-user/tasmania`. This ensures that the latest version of Tasmania is always available inside the container. More generally, data in the repository are thus seamlessly shared between the container and the host.
 
-Inside the container, the following isolated Python environments, created via [virtualenv](https://virtualenv.pypa.io/en/latest/), are available:
+Inside the container, the following isolated Python environments, created via virtualenv, are available:
 
  - `/home/tasmania-user/py35`, built around the Python3.5 interpreter;
  - `/home/tasmania-user/py36`, built around the Python3.6 interpreter;
@@ -100,13 +113,13 @@ Eventually, you can remove the container via
 
 	docker stop CONTAINER_ID
 	
-Running Tasmania on Piz Daint
+Using a Docker container on Piz Daint
 --
 
-Several aspects make Docker unsuitable to fit the needs of high-performance computing (HPC). Different ongoing initiatives are attempting to put the recognized power of containers at the service of HPC users; notable examples include Shifter, Singularity and [Sarus](http://hpcadvisorycouncil.com/events/2019/swiss-workshop/pdf/030419/K_Mariotti_CSCS_SARUS_OCI_ContainerRuntime_04032019.pdf). In the following, we detail a simple workflow harnessing Sarus to run Tasmania-based applications on the [Piz Daint](https://www.cscs.ch/computers/piz-daint/) supercomputer housed at CSCS. The workflow is specifically tailored on the filesystem and programming ecosystem of Piz Daint. However, the logical steps may be reproducible on other HPC platforms upon small modifications to the scripts. 
+Several aspects make Docker unsuitable to fit the needs of high-performance computing (HPC). Different ongoing initiatives are attempting to put the recognized power of containers at the service of HPC users; notable examples include Shifter, Singularity and [Sarus](http://hpcadvisorycouncil.com/events/2019/swiss-workshop/pdf/030419/K_Mariotti_CSCS_SARUS_OCI_ContainerRuntime_04032019.pdf). In the following, we detail a simple workflow harnessing Sarus to run Tasmania-based applications on the [Piz Daint](https://www.cscs.ch/computers/piz-daint/) supercomputer housed at CSCS. The workflow is tailored on the filesystem and programming ecosystem of Piz Daint. However, the logical steps should be easily reproducible on other HPC platforms upon small modifications to the scripts. 
 
 To set up a favourable environment for Tasmania:
-1. On your local machine, save the Docker image to a tar archive by running `make docker-build` and following the on-screen instructions;
+1. On your local machine, save the Docker image to a tar archive by running `make docker-build-cpu` or `make docker-build-gpu` and following the on-screen instructions;
 2. Copy your local instance of the repository on Piz Daint under, e.g., `$PROJECT`. You may want to use the customizable bash script `scripts/bash/transfer_to_remote.sh`;
 3. On Piz Daint, copy the content of `scripts/scratch_daint/` in `$SCRATCH`. From now on, all commands are supposed to be issued from `$SCRATCH`;
 4. Load the Docker image by submitting the Batch script `sarus_load.run` via Slurm.
@@ -121,23 +134,13 @@ Once done, you can:
 
 **Another remark:** Inside a container spawn on Piz Daint, the user is exposed to a folder organization identical to that described in the previous section. This should enable a smooth user experience when migrating from your own local machine to the remote server. The containerized directory `/home/tasmania-user/tasmania` is mapped to an instance of the repository present on Piz Daint, e.g., under `$PROJECT`. This is not valid for `/home/tasmania-user/tasmania/data` which is rather mapped to the `$SCRATCH/buffer` directory on the host to ensure it is write-accessible. Indeed, any output produced inside the container should be stored under `/home/tasmania-user/tasmania/data`. If it does not exist, the folder `$SCRATCH/buffer` gets created by either `sarus_run.sh`, `sarus_python_driver.run` or `sarus_python_script.run`.
 
-Running the tests
---
-
-To run the whole test suite against the Python3.x interpreter using [pytest](https://docs.pytest.org/en/latest/), from within the container working directory run:
-```bash
-tasmania-user@CONTAINER_ID:~$ . py3x/bin/activate
-(py3x) tasmania-user@CONTAINER_ID:~$ cd tasmania
-(py3x) tasmania-user@CONTAINER_ID:~/tasmania$ make prepare-tests-py3x && make tests
-```
-
 Repository directory structure
 --
 
 - `buffer/`: convenient location for files (e.g. Matplotlib figures) generated inside the container and to be moved to other host's directory.
 - `docker/`: configuration files and scripts to create a Docker image and run a Docker container.
 - `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation.
-- `drivers/`: namelists and drivers.
+- `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers`) or the isentropic model (`isentropic_moist_si`).
 - `notebooks/`: Jupyter notebooks.
 - `results/`: figures (`figures/`) and animations (`movies/`) generated via Matplotlib.
 - `scripts/`: bash (`bash/`), Python (`python/`), Slurm (`slurm/`) scripts for, e.g., post-processing, plotting, sharing data with a remote machine. `scratch_daint/` and `scratch_dom/` contain files which should be copy to the `$SCRATCH` folder on Piz Daint and Dom, respectively.
