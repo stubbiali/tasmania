@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import (
     assume,
     given,
@@ -32,6 +33,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion as HD
 from tasmania.python.utils.storage_utils import zeros
 
@@ -56,13 +58,13 @@ def assert_yz(phi_tnd, phi_tnd_assert, nb):
 
 
 def second_order_laplacian_x(dx, phi):
-    out = np.zeros_like(phi, phi.dtype)
+    out = deepcopy(phi)
     out[1:-1, :, :] = (phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]) / (dx * dx)
     return out
 
 
 def second_order_laplacian_y(dy, phi):
-    out = np.zeros_like(phi, phi.dtype)
+    out = deepcopy(phi)
     out[:, 1:-1, :] = (phi[:, 2:, :] - 2.0 * phi[:, 1:-1, :] + phi[:, :-2, :]) / (dy * dy)
     return out
 
@@ -79,11 +81,9 @@ def second_order_diffusion_yz(dy, phi):
     return second_order_laplacian_y(dy, phi)
 
 
-def second_order_validation(
-    phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend, halo
-):
-    dtype = phi_rnd.dtype
-    phi = phi_rnd[:ni, :nj, :nk]
+def second_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+    ni, nj, nk = phi.shape
+    dtype = phi.dtype
     phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
 
     dx = grid.dx.values.item()
@@ -128,6 +128,8 @@ def second_order_validation(
 )
 @given(hyp_st.data())
 def test_second_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -138,58 +140,39 @@ def test_second_order(data):
         ),
         label="grid",
     )
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
+    grid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = pgrid.x.dtype
+    dtype = grid.x.dtype
     halo = data.draw(st_one_of(conf_halo), label="halo")
-
-    pphi_rnd = data.draw(
-        st_raw_field(
-            (pgrid.nx + 1, pgrid.ny + 1, pgrid.nz + 1),
-            min_value=-1e10,
-            max_value=1e10,
-            backend=backend,
-            dtype=dtype,
-            halo=halo,
-        ),
-        label="pphi_rnd",
-    )
-    cphi_rnd = data.draw(
-        st_raw_field(
-            (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
-            min_value=-1e10,
-            max_value=1e10,
-            backend=backend,
-            dtype=dtype,
-            halo=halo,
-        ),
-        label="cphi_rnd",
-    )
-
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label="depth")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+
+    phi = data.draw(
+        st_raw_field(
+            shape,
+            min_value=-1e10,
+            max_value=1e10,
+            backend=backend,
+            dtype=dtype,
+            halo=halo,
+        ),
+        label="phi",
+    )
+
+    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
 
     # ========================================
     # test
     # ========================================
-    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-    second_order_validation(
-        pphi_rnd, nx + dnx, ny + dny, nz + dnz, pgrid, depth, 0, backend, halo
-    )
-
-    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-    second_order_validation(
-        cphi_rnd, nx + dnx, ny + dny, nz + dnz, cgrid, depth, nb, backend, halo
-    )
+    second_order_validation(phi, grid, depth, nb, backend, halo)
 
 
 def fourth_order_laplacian_x(dx, phi):
-    out = np.zeros_like(phi, phi.dtype)
+    out = deepcopy(phi)
     out[2:-2, :, :] = (
         -phi[:-4, :, :]
         + 16.0 * phi[1:-3, :, :]
@@ -201,7 +184,7 @@ def fourth_order_laplacian_x(dx, phi):
 
 
 def fourth_order_laplacian_y(dy, phi):
-    out = np.zeros_like(phi, phi.dtype)
+    out = deepcopy(phi)
     out[:, 2:-2, :] = (
         -phi[:, :-4, :]
         + 16.0 * phi[:, 1:-3, :]
@@ -224,11 +207,9 @@ def fourth_order_diffusion_yz(dy, phi):
     return fourth_order_laplacian_y(dy, phi)
 
 
-def fourth_order_validation(
-    phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend, halo
-):
-    dtype = phi_rnd.dtype
-    phi = phi_rnd[:ni, :nj, :nk]
+def fourth_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+    ni, nj, nk = phi.shape
+    dtype = phi.dtype
     phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
 
     dx = grid.dx.values.item()
@@ -271,6 +252,8 @@ def fourth_order_validation(
 )
 @given(hyp_st.data())
 def test_fourth_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -281,27 +264,20 @@ def test_fourth_order(data):
         ),
         label="grid",
     )
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
+    grid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = pgrid.x.dtype
+    dtype = grid.x.dtype
     halo = data.draw(st_one_of(conf_halo), label="halo")
 
-    pphi_rnd = data.draw(
+    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+
+    phi = data.draw(
         st_raw_field(
-            (pgrid.nx + 1, pgrid.ny + 1, pgrid.nz + 1),
-            min_value=-1e10,
-            max_value=1e10,
-            backend=backend,
-            dtype=dtype,
-            halo=halo,
-        ),
-        label="pphi_rnd",
-    )
-    cphi_rnd = data.draw(
-        st_raw_field(
-            (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
+            shape,
             min_value=-1e10,
             max_value=1e10,
             backend=backend,
@@ -311,24 +287,12 @@ def test_fourth_order(data):
         label="cphi_rnd",
     )
 
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label="depth")
-
-    dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
-    dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
-    dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
 
     # ========================================
     # test
     # ========================================
-    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-    fourth_order_validation(
-        pphi_rnd, nx + dnx, ny + dny, nz + dnz, pgrid, depth, 0, backend, halo
-    )
-
-    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-    fourth_order_validation(
-        cphi_rnd, nx + dnx, ny + dny, nz + dnz, cgrid, depth, nb, backend, halo
-    )
+    fourth_order_validation(phi, grid, depth, nb, backend, halo)
 
 
 if __name__ == "__main__":

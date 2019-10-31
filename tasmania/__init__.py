@@ -71,14 +71,8 @@ from tasmania.python.grids.topography import (
 )
 
 # isentropic
-# from tasmania.python.isentropic.dynamics.boussinesq_minimal_dycore import \
-# 	IsentropicBoussinesqMinimalDynamicalCore
-# from tasmania.python.isentropic.dynamics.minimal_dycore import \
-# 	IsentropicMinimalDynamicalCore
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
 
-# from tasmania.python.isentropic.physics.boussinesq_tendencies import \
-# 	IsentropicBoussinesqTendency
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
@@ -90,9 +84,6 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
-
-# from tasmania.python.isentropic.physics.pressure_gradient import \
-# 	IsentropicNonconservativePressureGradient, IsentropicConservativePressureGradient
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
@@ -103,8 +94,6 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_temperature,
 )
 
-# from tasmania.python.isentropic.state_boussinesq import \
-# 	get_isentropic_boussinesq_state_from_brunt_vaisala_frequency
 # physics
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
@@ -187,7 +176,6 @@ __all__ = (
     get_dataarray_3d,
     get_dataarray_dict,
     get_figure_and_axes,
-    # 	get_isentropic_boussinesq_state_from_brunt_vaisala_frequency,
     get_isentropic_state_from_brunt_vaisala_frequency,
     get_isentropic_state_from_temperature,
     get_isothermal_isentropic_analytical_solution,
@@ -201,16 +189,11 @@ __all__ = (
     HorizontalVelocity,
     HovmollerDiagram,
     ImplicitTendencyComponent,
-    # 	IsentropicBoussinesqMinimalDynamicalCore,
-    # 	IsentropicBoussinesqTendency,
     IsentropicConservativeCoriolis,
-    # 	IsentropicConservativePressureGradient,
     IsentropicDiagnostics,
     IsentropicDynamicalCore,
     IsentropicHorizontalDiffusion,
     IsentropicHorizontalSmoothing,
-    # 	IsentropicMinimalDynamicalCore,
-    # 	IsentropicNonconservativePressureGradient,
     IsentropicSmagorinsky,
     IsentropicVelocityComponents,
     IsentropicVerticalAdvection,

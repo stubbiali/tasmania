@@ -500,12 +500,15 @@ class HorizontalBoundary(abc.ABC):
             else:
                 obj = module.Relaxed(*args, **child_kwargs)
         elif boundary_type == "periodic":
-            if ny == 1:
-                obj = module.Periodic1DX(*args, **child_kwargs)
-            elif nx == 1:
-                obj = module.Periodic1DY(*args, **child_kwargs)
-            else:
-                obj = module.Periodic(*args, **child_kwargs)
+            # if ny == 1:
+            #     obj = module.Periodic1DX(*args, **child_kwargs)
+            # elif nx == 1:
+            #     obj = module.Periodic1DY(*args, **child_kwargs)
+            # else:
+            #     obj = module.Periodic(*args, **child_kwargs)
+            raise NotImplementedError(
+                "Periodic boundary conditions currently not supported."
+            )
         elif boundary_type == "dirichlet":
             if ny == 1:
                 obj = module.Dirichlet1DX(*args, **child_kwargs)
@@ -514,12 +517,15 @@ class HorizontalBoundary(abc.ABC):
             else:
                 obj = module.Dirichlet(*args, **child_kwargs)
         elif boundary_type == "identity":
-            if ny == 1:
-                obj = module.Identity1DX(*args, **child_kwargs)
-            elif nx == 1:
-                obj = module.Identity1DY(*args, **child_kwargs)
-            else:
-                obj = module.Identity(*args, **child_kwargs)
+            # if ny == 1:
+            #     obj = module.Identity1DX(*args, **child_kwargs)
+            # elif nx == 1:
+            #     obj = module.Identity1DY(*args, **child_kwargs)
+            # else:
+            #     obj = module.Identity(*args, **child_kwargs)
+            raise NotImplementedError(
+                "Periodic boundary conditions currently not supported."
+            )
         else:
             raise ValueError(
                 "Unknown boundary type {}. Supported types are {}.".format(

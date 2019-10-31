@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import (
     assume,
     given,
@@ -36,13 +37,14 @@ import gridtools as gt
 from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
     HorizontalHyperDiffusion as HHD,
 )
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .utils import compare_arrays, st_domain, st_floats, st_one_of
+    from .utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 except (ImportError, ModuleNotFoundError):
     from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from utils import compare_arrays, st_domain, st_floats, st_one_of
+    from utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
 def assert_xyz(phi_tnd, phi_tnd_assert, nb):
@@ -58,13 +60,13 @@ def assert_yz(phi_tnd, phi_tnd_assert, nb):
 
 
 def laplacian_x(dx, phi):
-    out = np.zeros_like(phi, phi.dtype)
+    out = deepcopy(phi)
     out[1:-1, :, :] = (phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]) / (dx * dx)
     return out
 
 
 def laplacian_y(dy, phi):
-    out = np.zeros_like(phi, phi.dtype)
+    out = deepcopy(phi)
     out[:, 1:-1, :] = (phi[:, 2:, :] - 2.0 * phi[:, 1:-1, :] + phi[:, :-2, :]) / (dy * dy)
     return out
 
@@ -88,27 +90,10 @@ def first_order_diffusion_yz(dy, phi):
     return lap
 
 
-def first_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend, halo):
-    phi = phi_rnd[:ni, :nj, :nk]
-    phi_tnd = np.zeros_like(phi)
-
-    halo_ = tuple(halo[i] if phi.shape[i] > 2 * halo[i] else 0 for i in range(3))
-    iteration_domain = tuple(phi.shape[i] - 2 * halo_[i] for i in range(3))
-
-    phi = gt.storage.from_array(
-        phi,
-        gt.storage.StorageDescriptor(
-            phi.dtype.type, iteration_domain=iteration_domain, halo=halo_
-        ),
-        backend=backend,
-    )
-    phi_tnd = gt.storage.from_array(
-        phi_tnd,
-        gt.storage.StorageDescriptor(
-            phi_tnd.dtype.type, iteration_domain=iteration_domain, halo=halo_
-        ),
-        backend=backend,
-    )
+def first_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+    ni, nj, nk = phi.shape
+    dtype = phi.dtype
+    phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -124,20 +109,22 @@ def first_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backe
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo_,
+        halo=halo,
         rebuild=True,
     )
     hhd(phi, phi_tnd)
 
+    gamma = hhd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
+
     if ni < 3:
-        phi_tnd_assert = hhd._gamma.data * first_order_diffusion_yz(dy, phi.data)
-        assert_yz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * first_order_diffusion_yz(dy, phi)
+        assert_yz(phi_tnd, phi_tnd_assert, nb)
     elif nj < 3:
-        phi_tnd_assert = hhd._gamma.data * first_order_diffusion_xz(dx, phi.data)
-        assert_xz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * first_order_diffusion_xz(dx, phi)
+        assert_xz(phi_tnd, phi_tnd_assert, nb)
     else:
-        phi_tnd_assert = hhd._gamma.data * first_order_diffusion_xyz(dx, dy, phi.data)
-        assert_xyz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * first_order_diffusion_xyz(dx, dy, phi)
+        assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -150,61 +137,47 @@ def first_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backe
 )
 @given(hyp_st.data())
 def test_first_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)))
-
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
         ),
         label="grid",
     )
-
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-
-    pphi_rnd = data.draw(
-        st_arrays(
-            pgrid.x.dtype,
-            (pgrid.nx + 1, pgrid.ny + 1, pgrid.nz + 1),
-            elements=st_floats(min_value=-1e10, max_value=1e10),
-            fill=hyp_st.nothing(),
-        ),
-        label="pphi_rnd",
-    )
-    cphi_rnd = data.draw(
-        st_arrays(
-            cgrid.x.dtype,
-            (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
-            elements=st_floats(min_value=-1e10, max_value=1e10),
-            fill=hyp_st.nothing(),
-        ),
-        label="cphi_rnd",
-    )
-
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label="depth")
+    grid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
     halo = data.draw(st_one_of(conf_halo), label="halo")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+
+    phi = data.draw(
+        st_raw_field(
+            shape,
+            min_value=-1e10,
+            max_value=1e10,
+            backend=backend,
+            dtype=dtype,
+            halo=halo,
+        ),
+        label="phi",
+    )
+
+    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
 
     # ========================================
     # test
     # ========================================
-    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-    first_order_validation(
-        pphi_rnd, nx + dnx, ny + dny, nz + dnz, pgrid, depth, 0, backend, halo
-    )
-
-    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-    first_order_validation(
-        cphi_rnd, nx + dnx, ny + dny, nz + dnz, cgrid, depth, nb, backend, halo
-    )
+    first_order_validation(phi, grid, depth, nb, backend, halo)
 
 
 def second_order_diffusion_xyz(dx, dy, phi):
@@ -225,29 +198,10 @@ def second_order_diffusion_yz(dy, phi):
     return lap1
 
 
-def second_order_validation(
-    phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend, halo
-):
-    phi = phi_rnd[:ni, :nj, :nk]
-    phi_tnd = np.zeros_like(phi)
-
-    halo_ = tuple(halo[i] if phi.shape[i] > 2 * halo[i] else 0 for i in range(3))
-    iteration_domain = tuple(phi.shape[i] - 2 * halo_[i] for i in range(3))
-
-    phi = gt.storage.from_array(
-        phi,
-        gt.storage.StorageDescriptor(
-            phi.dtype.type, iteration_domain=iteration_domain, halo=halo_
-        ),
-        backend=backend,
-    )
-    phi_tnd = gt.storage.from_array(
-        phi_tnd,
-        gt.storage.StorageDescriptor(
-            phi_tnd.dtype.type, iteration_domain=iteration_domain, halo=halo_
-        ),
-        backend=backend,
-    )
+def second_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+    ni, nj, nk = phi.shape
+    dtype = phi.dtype
+    phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -263,20 +217,22 @@ def second_order_validation(
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo_,
+        halo=halo,
         rebuild=True,
     )
     hhd(phi, phi_tnd)
 
+    gamma = hhd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
+
     if ni < 5:
-        phi_tnd_assert = hhd._gamma.data * second_order_diffusion_yz(dy, phi.data)
-        assert_yz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * second_order_diffusion_yz(dy, phi)
+        assert_yz(phi_tnd, phi_tnd_assert, nb)
     elif nj < 5:
-        phi_tnd_assert = hhd._gamma.data * second_order_diffusion_xz(dx, phi.data)
-        assert_xz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * second_order_diffusion_xz(dx, phi)
+        assert_xz(phi_tnd, phi_tnd_assert, nb)
     else:
-        phi_tnd_assert = hhd._gamma.data * second_order_diffusion_xyz(dx, dy, phi.data)
-        assert_xyz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * second_order_diffusion_xyz(dx, dy, phi)
+        assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -289,61 +245,47 @@ def second_order_validation(
 )
 @given(hyp_st.data())
 def test_second_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
-
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
         ),
         label="grid",
     )
-
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-
-    pphi_rnd = data.draw(
-        st_arrays(
-            pgrid.x.dtype,
-            (pgrid.nx + 1, pgrid.ny + 1, pgrid.nz + 1),
-            elements=st_floats(min_value=-1e10, max_value=1e10),
-            fill=hyp_st.nothing(),
-        ),
-        label="pphi_rnd",
-    )
-    cphi_rnd = data.draw(
-        st_arrays(
-            cgrid.x.dtype,
-            (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
-            elements=st_floats(min_value=-1e10, max_value=1e10),
-            fill=hyp_st.nothing(),
-        ),
-        label="cphi_rnd",
-    )
-
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label="depth")
+    grid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
     halo = data.draw(st_one_of(conf_halo), label="halo")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+
+    phi = data.draw(
+        st_raw_field(
+            shape,
+            min_value=-1e10,
+            max_value=1e10,
+            backend=backend,
+            dtype=dtype,
+            halo=halo,
+        ),
+        label="phi",
+    )
+
+    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
 
     # ========================================
     # test
     # ========================================
-    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-    second_order_validation(
-        pphi_rnd, nx + dnx, ny + dny, nz + dnz, pgrid, depth, 0, backend, halo
-    )
-
-    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-    second_order_validation(
-        cphi_rnd, nx + dnx, ny + dny, nz + dnz, cgrid, depth, nb, backend, halo
-    )
+    second_order_validation(phi, grid, depth, nb, backend, halo)
 
 
 def third_order_diffusion_xyz(dx, dy, phi):
@@ -367,27 +309,10 @@ def third_order_diffusion_yz(dy, phi):
     return lap2
 
 
-def third_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backend, halo):
-    phi = phi_rnd[:ni, :nj, :nk]
-    phi_tnd = np.zeros_like(phi)
-
-    halo_ = tuple(halo[i] if phi.shape[i] > 2 * halo[i] else 0 for i in range(3))
-    iteration_domain = tuple(phi.shape[i] - 2 * halo_[i] for i in range(3))
-
-    phi = gt.storage.from_array(
-        phi,
-        gt.storage.StorageDescriptor(
-            phi.dtype.type, iteration_domain=iteration_domain, halo=halo_
-        ),
-        backend=backend,
-    )
-    phi_tnd = gt.storage.from_array(
-        phi_tnd,
-        gt.storage.StorageDescriptor(
-            phi_tnd.dtype.type, iteration_domain=iteration_domain, halo=halo_
-        ),
-        backend=backend,
-    )
+def third_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+    ni, nj, nk = phi.shape
+    dtype = phi.dtype
+    phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -403,20 +328,22 @@ def third_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backe
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo_,
+        halo=halo,
         rebuild=True,
     )
     hhd(phi, phi_tnd)
 
+    gamma = hhd._gamma  # np.tile(hd._gamma, (ni, nj, 1))
+
     if ni < 7:
-        phi_tnd_assert = hhd._gamma.data * third_order_diffusion_yz(dy, phi.data)
-        assert_yz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * third_order_diffusion_yz(dy, phi)
+        assert_yz(phi_tnd, phi_tnd_assert, nb)
     elif nj < 7:
-        phi_tnd_assert = hhd._gamma.data * third_order_diffusion_xz(dx, phi.data)
-        assert_xz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * third_order_diffusion_xz(dx, phi)
+        assert_xz(phi_tnd, phi_tnd_assert, nb)
     else:
-        phi_tnd_assert = hhd._gamma.data * third_order_diffusion_xyz(dx, dy, phi.data)
-        assert_xyz(phi_tnd.data, phi_tnd_assert, nb)
+        phi_tnd_assert = gamma * third_order_diffusion_xyz(dx, dy, phi)
+        assert_xyz(phi_tnd, phi_tnd_assert, nb)
 
 
 @settings(
@@ -429,61 +356,47 @@ def third_order_validation(phi_rnd, ni, nj, nk, grid, diffusion_depth, nb, backe
 )
 @given(hyp_st.data())
 def test_third_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)))
-
     domain = data.draw(
         st_domain(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
         ),
         label="grid",
     )
-
-    pgrid = domain.physical_grid
-    cgrid = domain.numerical_grid
-
-    pphi_rnd = data.draw(
-        st_arrays(
-            pgrid.x.dtype,
-            (pgrid.nx + 1, pgrid.ny + 1, pgrid.nz + 1),
-            elements=st_floats(min_value=-1e10, max_value=1e10),
-            fill=hyp_st.nothing(),
-        ),
-        label="pphi_rnd",
-    )
-    cphi_rnd = data.draw(
-        st_arrays(
-            cgrid.x.dtype,
-            (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
-            elements=st_floats(min_value=-1e10, max_value=1e10),
-            fill=hyp_st.nothing(),
-        ),
-        label="cphi_rnd",
-    )
-
-    depth = data.draw(hyp_st.integers(min_value=0, max_value=pgrid.nz), label="depth")
+    grid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
     halo = data.draw(st_one_of(conf_halo), label="halo")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
+    shape = (grid.nx + dnx, grid.ny + dny, grid.nz + dnz)
+
+    phi = data.draw(
+        st_raw_field(
+            shape,
+            min_value=-1e10,
+            max_value=1e10,
+            backend=backend,
+            dtype=dtype,
+            halo=halo,
+        ),
+        label="phi",
+    )
+
+    depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz), label="depth")
 
     # ========================================
     # test
     # ========================================
-    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
-    third_order_validation(
-        pphi_rnd, nx + dnx, ny + dny, nz + dnz, pgrid, depth, 0, backend, halo
-    )
-
-    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-    third_order_validation(
-        cphi_rnd, nx + dnx, ny + dny, nz + dnz, cgrid, depth, nb, backend, halo
-    )
+    third_order_validation(phi, grid, depth, nb, backend, halo)
 
 
 if __name__ == "__main__":

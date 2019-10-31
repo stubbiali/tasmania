@@ -2,13 +2,11 @@
 
 <img align="right" src="taz.jpeg">
 
-Tasmania
-==
+# Tasmania
 
 This is the repository for Tasmania, a Python framework/toolkit to ease the composition, configuration, simulation and monitoring of Earth system models.
 
-Background and motivation
---
+## Background and motivation
 
 Weather and climate models are complex systems comprising several subsystems (atmosphere, ocean, land, glacier, sea ice, and marine biogeochemistry) which interact at their interfaces through the exchange of mass, momentum and energy. Each domain hosts a plethora of interlinked physical and chemical processes which can be characterized on a wide spectrum of spatio-temporal scales. Due to the limited available computer resources, creating a discrete model covering the entire range of scales, even for a single subsystem, is challenging, if not an impossible task. Rather, the grid resolution discriminates between fully resolved fluid-dynamics features (e.g., horizontal and vertical advection, pressure gradient, and Coriolis acceleration), and subgrid-scale aspects (e.g., radiative transfer, macro- and micro-physics, shallow and deep convection, turbulent mixing in the planetary boundary layer, and orographic drag) which do not emerge naturally on the mesh. The former are traditionally referred to as the *dynamics*, while the latter form the so-called *physics* of the model.
 
@@ -16,15 +14,13 @@ In all models, the *dynamical core* solves for the fluid-dynamics equations whil
 
 The continual growth in model resolution demands for increasing specialization to address the physical processes which emerge on smaller and smaller scales. This has resulted in a high compartmentalization of the model development, with dynamical cores and physics packages mostly developed in isolation. Besides easing the proliferation of software components with incompatible structure, such approach is in direct contrast with the need of improving the time stepping in the current apparatus of atmospheric models. Indeed, the time stepping is often merely accurate to the first order. However, as the error associated with the discretization of individual processes decreases, the error injected by the coupling will eventually dominate. 
 
-Goal
---
+## Goal
 
 Tasmania aims to provide a high-level platform to aid the investigation of the physics-dynamics coupling in atmospheric models. The framework features a component-based architecture, in which each component represents a dynamical or physical process. Couplers are offered which chain individual components pursuing a well-defined coupling algorithm.
 	
-Fact sheet
---
+## Fact sheet
 
- - Physical components must conform to [sympl](https://github.com/mcgibbon/sympl)'s (System for Modelling Planets) primitives API. 
+ - Physical components must conform to [sympl](https://github.com/stubbiali/sympl)'s (System for Modelling Planets) primitives API. 
  
  - To facilitate the development of dynamical kernels, Tasmania provides an abstract base class (ABC) with intended support for multi-stage time-integrators (e.g., Runge-Kutta schemes) and partial operator splitting techniques, which integrate slow and fast processes with large and multiple small time steps, respectively. To this end, a distinction between *slow* physics (calculated over the large time step, outside of the dynamical core), *intermediate* physics (evaluated over the large time step at every stage) and *fast* physics (computed over the shorter time step at each sub-step) is made. 
  
@@ -40,8 +36,7 @@ Fact sheet
 	 Hybrid approaches are possible. 
  - The two-dimensional viscud Burgers' equations and a simplified hydrostatic model in isentropic coordinates have been coded as proof-of-concepts. Finite difference operators arising from the numerical discretization of the model are implemented via GridTools4Py.
 
-GridTools and GridTools4Py
---
+## GridTools and GridTools4Py
 
 [GridTools4Py](https://github.com/eth-cscs/gridtools4py) is a domain specific language (DSL) for stencil-based codes. It offers a high-level entry point to the C++ template library [GridTools](https://github.com/eth-cscs/gridtools). Both tools have been developed at ETH/CSCS in collaboration with MeteoSwiss. 
 
@@ -49,8 +44,7 @@ GridTools furnishes a wide gamma of tools to implement stencil-based operations,
 
 Conversely, GridTools's front-end, then GridTools4Py's interface, are hardware-agnostic, so that the user's code can be left unchanged when porting it to different architectures. This enables a complete separation of concerns between domain scientists - who can work in a familiar and powerful development environment like Python - and computer scientists - who oversee the translation, compilation and execution stage. 
 
-Installation
---
+## Installation
 
 To clone this repository (with submodules) on your machine and place yourself on the current branch, run
 
@@ -58,16 +52,13 @@ To clone this repository (with submodules) on your machine and place yourself on
 
 **Note:** both Tasmania and GridTools4Py repositories are *private*, so you should be granted access to clone them and accomplish all the actions listed below.
 	
-Running Tasmania
---
+## Running Tasmania
 
-Using a virtual environment
---
+### Using a virtual environment
 
-The `bootstrap_venv.sh` bash script automates the creation of a suitable virtual environment for Tasmania. The procedure harnesses [virtualenv](https://virtualenv.pypa.io/en/latest/) and can be customized by means of the bash variables defined in the upper section of the script. 
+The `bootstrap_venv.sh` bash script automates the creation of an isolated Python environment for Tasmania. The [virtualenv](https://virtualenv.pypa.io/en/latest/) package is used. The procedure can be customized by means of the bash variables defined in the upper section of the script. 
 
-Using a Docker container on a local machine
---
+### Using a Docker container on a local machine
 
 Additionally, we provide two [Docker](https://www.docker.com/) images to run a containerized version of Tasmania. The two images are based on `ubuntu:18.04` and `nvidia/cuda:latest`. Please note that the former image does not contain the CUDA toolkit, so it only supports the CPU-based backend of GridTools4Py. To create a local instance of the images (named `tasmania:cpu` and `tasmania:gpu`, respectively), from the root directory of the repository issue
 
@@ -113,8 +104,7 @@ Eventually, you can remove the container via
 
 	docker stop CONTAINER_ID
 	
-Using a Docker container on Piz Daint
---
+### Using a Docker container on Piz Daint
 
 Several aspects make Docker unsuitable to fit the needs of high-performance computing (HPC). Different ongoing initiatives are attempting to put the recognized power of containers at the service of HPC users; notable examples include Shifter, Singularity and [Sarus](http://hpcadvisorycouncil.com/events/2019/swiss-workshop/pdf/030419/K_Mariotti_CSCS_SARUS_OCI_ContainerRuntime_04032019.pdf). In the following, we detail a simple workflow harnessing Sarus to run Tasmania-based applications on the [Piz Daint](https://www.cscs.ch/computers/piz-daint/) supercomputer housed at CSCS. The workflow is tailored on the filesystem and programming ecosystem of Piz Daint. However, the logical steps should be easily reproducible on other HPC platforms upon small modifications to the scripts. 
 
@@ -134,11 +124,11 @@ Once done, you can:
 
 **Another remark:** Inside a container spawn on Piz Daint, the user is exposed to a folder organization identical to that described in the previous section. This should enable a smooth user experience when migrating from your own local machine to the remote server. The containerized directory `/home/tasmania-user/tasmania` is mapped to an instance of the repository present on Piz Daint, e.g., under `$PROJECT`. This is not valid for `/home/tasmania-user/tasmania/data` which is rather mapped to the `$SCRATCH/buffer` directory on the host to ensure it is write-accessible. Indeed, any output produced inside the container should be stored under `/home/tasmania-user/tasmania/data`. If it does not exist, the folder `$SCRATCH/buffer` gets created by either `sarus_run.sh`, `sarus_python_driver.run` or `sarus_python_script.run`.
 
-Repository directory structure
---
+## Repository directory structure
 
 - `buffer/`: convenient location for files (e.g. Matplotlib figures) generated inside the container and to be moved to other host's directory.
-- `docker/`: configuration files and scripts to create a Docker image and run a Docker container.
+- `docker/`: configuration files and scripts to create the Docker images and run Docker containers.
+- `docker/external`: the GridTools4Py (`gridtools4py/`) and sympl (`sympl/`) submodules.
 - `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation.
 - `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers`) or the isentropic model (`isentropic_moist_si`).
 - `notebooks/`: Jupyter notebooks.
@@ -148,13 +138,13 @@ Repository directory structure
 - `tasmania/`: codebase, consisting of Python (`python/`) and C++ (`cpp/`) source files.
 - `tests/`: test suite. 
 
-Makefile targets
---
+## Makefile targets
 
-- `docker-build`: builds the image `tasmania:base` against the dockerfile `docker/dockerfiles/dockerfile.base` and dumps it in a tar archive, clones the GridTools4Py repository, creates a minimal version of this repository under `docker/tasmania`, and builds the image `tasmania:master` against the dockerfile `docker/dockerfiles/dockerfile.tasmania` and dumps it in a tar archive. Any of these steps is optional and can be skipped.
-- `docker-run`: runs and connects to a container spawn from the image `tasmania:master`.
+- `docker-build-cpu`: builds the image `tasmania:base-cpu` against the dockerfile `docker/cpu/dockerfiles/dockerfile.base` and the image `tasmania:cpu` against the dockerfile `docker/cpu/dockerfiles/dockerfile.tasmania`.
+- `docker-build-gpu`: builds the image `tasmania:base-gpu` against the dockerfile `docker/gpu/dockerfiles/dockerfile.base` and the image `tasmania:gpu` against the dockerfile `docker/gpu/dockerfiles/dockerfile.tasmania`.
+- `docker-run-cpu`: runs and connects to a container spawn from the image `tasmania:cpu`.
+- `docker-run-gpu`: runs and connects to a container spawn from the image `tasmania:gpu`.
 - `docs`: builds the documentation for Tasmania via Sphinx in HTML, LaTeX and LaTeX-pdf format.  
-- `prepare-tests-py35`,`prepare-tests-py36`,`prepare-tests-py37`: generate the baseline images needed by the tests. 
 - `tests`: runs the tests.
 - `clean`: deletes temporary, unnecessary files.
 - `distclean`: as `clean`, but deletes *necessary* binary files and the built documentation as well. Use it carefully!

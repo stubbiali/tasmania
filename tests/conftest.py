@@ -28,6 +28,7 @@ from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.utils.io_utils import load_netcdf_dataset
+from tasmania.python.utils.storage_utils import zeros
 
 
 @pytest.fixture(scope="module")
@@ -225,7 +226,14 @@ class FakeTendencyComponent2(TendencyComponent):
         if s.shape == (g.nx, g.ny, g.nz):
             sv = 0.5 * 1e-6 * s * (v[:, :-1, :] / 3.6 + v[:, 1:, :] / 3.6)
         elif s.shape == (g.nx + 1, g.ny + 1, g.nz + 1):
-            sv = np.zeros_like(s, dtype=s.dtype)
+            try:
+                backend = s.backend
+                dtype = s.dtype
+                halo = s.halo
+                sv = zeros(s.shape, backend, dtype, halo)
+            except AttributeError:
+                sv = np.zeros_like(s, dtype=s.dtype)
+                
             sv[:, :-1] = 0.5 * 1e-6 * s[:, :-1] * (v[:, :-1] / 3.6 + v[:, 1:] / 3.6)
         else:
             raise RuntimeError()

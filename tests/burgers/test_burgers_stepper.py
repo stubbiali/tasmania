@@ -29,17 +29,16 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.burgers.dynamics.stepper import (
     BurgersStepper,
     _ForwardEuler,
     _RK2,
     _RK3WS,
 )
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
-from tasmania.python.grids.grid import NumericalGrid
+from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
 try:
     from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
@@ -81,6 +80,8 @@ except (ImportError, ModuleNotFoundError):
 )
 @given(hyp_st.data())
 def test_forward_euler(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -174,6 +175,8 @@ def test_forward_euler(data):
 )
 @given(hyp_st.data())
 def test_rk2(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -267,7 +270,7 @@ def test_rk2(data):
     # ========================================
     # stage 1
     # ========================================
-    raw_state_1 = deepcopy(raw_state_1)
+    raw_state_1 = deepcopy_array_dict(raw_state_1)
     raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
 
     u1, v1 = raw_state_1["x_velocity"], raw_state_1["y_velocity"]
@@ -295,6 +298,8 @@ def test_rk2(data):
 )
 @given(hyp_st.data())
 def test_rk3ws(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -389,7 +394,7 @@ def test_rk3ws(data):
     # ========================================
     # stage 1
     # ========================================
-    raw_state_1 = deepcopy(raw_state_1)
+    raw_state_1 = deepcopy_array_dict(raw_state_1)
     raw_state_2 = bs(1, raw_state_1, raw_tendency, timestep)
 
     u1, v1 = raw_state_1["x_velocity"], raw_state_1["y_velocity"]
@@ -413,7 +418,7 @@ def test_rk3ws(data):
     # ========================================
     # stage 2
     # ========================================
-    raw_state_2 = deepcopy(raw_state_2)
+    raw_state_2 = deepcopy_array_dict(raw_state_2)
     raw_state_3 = bs(2, raw_state_2, raw_tendency, timestep)
 
     u2, v2 = raw_state_2["x_velocity"], raw_state_2["y_velocity"]

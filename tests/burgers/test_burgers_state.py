@@ -32,6 +32,7 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
+import gridtools as gt
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
 try:
@@ -115,6 +116,8 @@ def test_zhao_solution_factory(data):
 )
 @given(hyp_st.data())
 def test_zhao_state_factory(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================

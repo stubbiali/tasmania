@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import (
     given,
     HealthCheck,
@@ -60,7 +61,7 @@ class WrappingStencil:
         self.stencil = decorator(self.stencil_defs)
 
     def __call__(self, dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y):
-        mi, mj, mk = u.data.shape
+        mi, mj, mk = u.shape
         nb = self.nb
         self.stencil(
             in_u=u,
@@ -93,13 +94,13 @@ class WrappingStencil:
 
 
 def first_order_advection(dx, dy, u, v, phi):
-    adv_x = np.zeros_like(phi, dtype=phi.dtype)
+    adv_x = deepcopy(phi)
     adv_x[1:-1, :, :] = u[1:-1, :, :] / (2.0 * dx) * (
         phi[2:, :, :] - phi[:-2, :, :]
     ) - np.abs(u)[1:-1, :, :] / (2.0 * dx) * (
         phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]
     )
-    adv_y = np.zeros_like(phi, dtype=phi.dtype)
+    adv_y = deepcopy(phi)
     adv_y[:, 1:-1, :] = v[:, 1:-1, :] / (2.0 * dy) * (
         phi[:, 2:, :] - phi[:, :-2, :]
     ) - np.abs(v)[:, 1:-1, :] / (2.0 * dy) * (
@@ -114,6 +115,8 @@ def first_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_first_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -161,9 +164,9 @@ def test_first_order(data):
 
 
 def second_order_advection(dx, dy, u, v, phi):
-    adv_x = np.zeros_like(phi, dtype=phi.dtype)
+    adv_x = deepcopy(phi)
     adv_x[1:-1, :, :] = u[1:-1, :, :] / (2.0 * dx) * (phi[2:, :, :] - phi[:-2, :, :])
-    adv_y = np.zeros_like(phi, dtype=phi.dtype)
+    adv_y = deepcopy(phi)
     adv_y[:, 1:-1, :] = v[:, 1:-1, :] / (2.0 * dy) * (phi[:, 2:, :] - phi[:, :-2, :])
     return adv_x, adv_y
 
@@ -174,6 +177,8 @@ def second_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_second_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -221,7 +226,7 @@ def test_second_order(data):
 
 
 def third_order_advection(dx, dy, u, v, phi):
-    adv_x = np.zeros_like(phi, dtype=phi.dtype)
+    adv_x = deepcopy(phi)
     adv_x[2:-2, :, :] = u[2:-2, :, :] / (12.0 * dx) * (
         8.0 * (phi[3:-1, :, :] - phi[1:-3, :, :]) - (phi[4:, :, :] - phi[:-4, :, :])
     ) + np.abs(u)[2:-2, :, :] / (12.0 * dx) * (
@@ -229,7 +234,7 @@ def third_order_advection(dx, dy, u, v, phi):
         - 4.0 * (phi[3:-1, :, :] + phi[1:-3, :, :])
         + 6.0 * phi[2:-2, :, :]
     )
-    adv_y = np.zeros_like(phi, dtype=phi.dtype)
+    adv_y = deepcopy(phi)
     adv_y[:, 2:-2, :] = v[:, 2:-2, :] / (12.0 * dy) * (
         8.0 * (phi[:, 3:-1, :] - phi[:, 1:-3, :]) - (phi[:, 4:, :] - phi[:, :-4, :])
     ) + np.abs(v)[:, 2:-2, :] / (12.0 * dy) * (
@@ -246,6 +251,8 @@ def third_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_third_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -293,13 +300,13 @@ def test_third_order(data):
 
 
 def fourth_order_advection(dx, dy, u, v, phi):
-    adv_x = np.zeros_like(phi, dtype=phi.dtype)
+    adv_x = deepcopy(phi)
     adv_x[2:-2, :, :] = (
         u[2:-2, :, :]
         / (12.0 * dx)
         * (8.0 * (phi[3:-1, :, :] - phi[1:-3, :, :]) - (phi[4:, :, :] - phi[:-4, :, :]))
     )
-    adv_y = np.zeros_like(phi, dtype=phi.dtype)
+    adv_y = deepcopy(phi)
     adv_y[:, 2:-2, :] = (
         v[:, 2:-2, :]
         / (12.0 * dy)
@@ -314,6 +321,8 @@ def fourth_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_fourth_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -361,7 +370,7 @@ def test_fourth_order(data):
 
 
 def fifth_order_advection(dx, dy, u, v, phi):
-    adv_x = np.zeros_like(phi, dtype=phi.dtype)
+    adv_x = deepcopy(phi)
     adv_x[3:-3, :, :] = u[3:-3, :, :] / (60.0 * dx) * (
         45.0 * (phi[4:-2, :, :] - phi[2:-4, :, :])
         - 9.0 * (phi[5:-1, :, :] - phi[1:-5, :, :])
@@ -372,7 +381,7 @@ def fifth_order_advection(dx, dy, u, v, phi):
         + 15.0 * (phi[4:-2, :, :] + phi[2:-4, :, :])
         - 20.0 * phi[3:-3, :, :]
     )
-    adv_y = np.zeros_like(phi, dtype=phi.dtype)
+    adv_y = deepcopy(phi)
     adv_y[:, 3:-3, :] = v[:, 3:-3, :] / (60.0 * dy) * (
         45.0 * (phi[:, 4:-2, :] - phi[:, 2:-4, :])
         - 9.0 * (phi[:, 5:-1, :] - phi[:, 1:-5, :])
@@ -392,6 +401,8 @@ def fifth_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_fifth_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================

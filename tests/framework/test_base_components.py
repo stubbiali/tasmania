@@ -30,17 +30,16 @@ from hypothesis import (
 )
 import pytest
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
     TendencyComponent,
 )
+
+try:
+    from .utils import st_domain
+except (ImportError, ModuleNotFoundError):
+    from utils import st_domain
 
 
 class FakeDiagnosticComponent(DiagnosticComponent):
@@ -68,7 +67,7 @@ def test_diagnostic_component(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     # ========================================
     # test bed
@@ -109,7 +108,7 @@ def test_implicit_tendency_component(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     # ========================================
     # test bed
@@ -150,7 +149,7 @@ def test_tendency_component(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     # ========================================
     # test bed

@@ -32,6 +32,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
+import gridtools as gt
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 try:
@@ -86,6 +87,8 @@ def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
 )
 @given(hyp_st.data())
 def test_second_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -216,6 +219,8 @@ def fourth_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
 )
 @given(hyp_st.data())
 def test_fourth_order(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================

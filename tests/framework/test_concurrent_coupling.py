@@ -34,6 +34,7 @@ import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
+import gridtools as gt
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 
 try:
@@ -187,6 +188,8 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
 )
 @given(data=hyp_st.data())
 def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================

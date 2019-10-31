@@ -139,10 +139,7 @@ class Relaxed(HorizontalBoundary):
         # inspect the backend properties to load the proper asarray function
         backend = backend or "numpy"
         device = gt.backend.from_name(backend).storage_info["device"]
-        if device == "gpu":
-            from cupy import asarray
-        else:
-            from numpy import asarray
+        asarray = cp.asarray if device == "gpu" else np.asarray
 
         # made all matrices three-dimensional to harness array broadcasting
         self._xneg = asarray(xneg[:, :, np.newaxis])
@@ -420,15 +417,21 @@ class Relaxed1DX(HorizontalBoundary):
 
         # set the outermost layers
         field.data[:nb, nb : mj - nb] = field_ref.data[:nb, nb : mj - nb]
-        field.data[mi - nb : mi, nb : mj - nb] = field_ref.data[mi - nb : mi, nb : mj - nb]
+        field.data[mi - nb : mi, nb : mj - nb] = field_ref.data[
+            mi - nb : mi, nb : mj - nb
+        ]
 
         # apply the relaxed boundary conditions in the negative x-direction
         i, j = slice(nb, nr), slice(nb, mj - nb)
-        field.data[i, j] -= self._xneg[nb:, :mj_int] * (field.data[i, j] - field_ref.data[i, j])
+        field.data[i, j] -= self._xneg[nb:, :mj_int] * (
+            field.data[i, j] - field_ref.data[i, j]
+        )
 
         # apply the relaxed boundary conditions in the positive x-direction
         i, j = slice(mi - nr, mi - nb), slice(nb, mj - nb)
-        field.data[i, j] -= self._xpos[:-nb, :mj_int] * (field.data[i, j] - field_ref.data[i, j])
+        field.data[i, j] -= self._xpos[:-nb, :mj_int] * (
+            field.data[i, j] - field_ref.data[i, j]
+        )
 
         # repeat the innermost column(s) along the y-direction
         field.data[:mi, :nb] = field.data[:mi, nb : nb + 1]
@@ -586,15 +589,21 @@ class Relaxed1DY(HorizontalBoundary):
 
         # set the outermost layers
         field.data[nb : mi - nb, :nb] = field_ref.data[nb : mi - nb, :nb]
-        field.data[nb : mi - nb, mj - nb : mj] = field_ref.data[nb : mi - nb, mj - nb : mj]
+        field.data[nb : mi - nb, mj - nb : mj] = field_ref.data[
+            nb : mi - nb, mj - nb : mj
+        ]
 
         # apply the relaxed boundary conditions in the negative y-direction
         i, j = slice(nb, mi - nb), slice(nb, nr)
-        field.data[i, j] -= self._yneg[:mi_int, nb:] * (field.data[i, j] - field_ref.data[i, j])
+        field.data[i, j] -= self._yneg[:mi_int, nb:] * (
+            field.data[i, j] - field_ref.data[i, j]
+        )
 
         # apply the relaxed boundary conditions in the positive y-direction
         i, j = slice(nb, mi - nb), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._ypos[:mi_int, :-nb] * (field.data[i, j] - field_ref.data[i, j])
+        field.data[i, j] -= self._ypos[:mi_int, :-nb] * (
+            field.data[i, j] - field_ref.data[i, j]
+        )
 
         # repeat the innermost row(s) along the x-direction
         field.data[:nb, :mj] = field.data[nb : nb + 1, :mj]
@@ -626,7 +635,7 @@ class Periodic(HorizontalBoundary):
     Periodic boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -648,7 +657,7 @@ class Periodic(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -762,7 +771,7 @@ class Periodic1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -781,7 +790,7 @@ class Periodic1DX(HorizontalBoundary):
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -885,7 +894,7 @@ class Periodic1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -904,7 +913,7 @@ class Periodic1DY(HorizontalBoundary):
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -1084,43 +1093,26 @@ class Dirichlet(HorizontalBoundary):
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         nb, core = self.nb, self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        if isinstance(field, gt.storage.storage.GPUStorage):
-            field[:nb, :] = cp.asarray(
-                core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
-            )
-            field[-nb:, :] = cp.asarray(
-                core(
-                    time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
-                )
-            )
-            field[nb:-nb, :nb] = cp.asarray(
-                core(
-                    time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
-                )
-            )
-            field[nb:-nb, -nb:] = cp.asarray(
-                core(
-                    time,
-                    grid,
-                    slice(nb, mi - nb),
-                    slice(mj - nb, mj),
-                    field_name,
-                    field_units,
-                )
-            )
-        else:
-            field[:nb, :] = core(
-                time, grid, slice(0, nb), slice(0, mj), field_name, field_units
-            )
-            field[-nb:, :] = core(
-                time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units
-            )
-            field[nb:-nb, :nb] = core(
-                time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
-            )
-            field[nb:-nb, -nb:] = core(
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:nb, :mj] = asarray(
+            core(time, grid, slice(0, nb), slice(0, mj), field_name, field_units)
+        )
+        field[mi - nb : mi, :mj] = asarray(
+            core(time, grid, slice(mi - nb, mi), slice(0, mj), field_name, field_units)
+        )
+        field[nb : mi - nb, :nb] = asarray(
+            core(time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units)
+        )
+        field[nb : mi - nb, mj - nb : mj] = asarray(
+            core(
                 time,
                 grid,
                 slice(nb, mi - nb),
@@ -1128,31 +1120,46 @@ class Dirichlet(HorizontalBoundary):
                 field_name,
                 field_units,
             )
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         core = self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:1, :] = core(
-            time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:1, :mj] = asarray(
+            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
         )
-        field[-1:, :] = core(
-            time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units
+        field[mi - 1 : mi, :] = asarray(
+            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
         )
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         core = self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:, :1] = core(
-            time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:mi, :1] = asarray(
+            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
         )
-        field[:, -1:] = core(
-            time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units
+        field[:mi, mj - 1 : mj] = asarray(
+            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
         )
 
 
@@ -1234,42 +1241,70 @@ class Dirichlet1DX(HorizontalBoundary):
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         nb, core = self.nb, self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:nb, nb:-nb] = core(
-            time, grid, slice(0, nb), slice(nb, mj - nb), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:nb, nb : mj - nb] = asarray(
+            core(time, grid, slice(0, nb), slice(nb, mj - nb), field_name, field_units)
         )
-        field[-nb:, nb:-nb] = core(
-            time, grid, slice(mi - nb, mi), slice(nb, mj - nb), field_name, field_units
+        field[mi - nb : mi, nb : mj - nb] = asarray(
+            core(
+                time,
+                grid,
+                slice(mi - nb, mi),
+                slice(nb, mj - nb),
+                field_name,
+                field_units,
+            )
         )
 
-        field[:, :nb] = field[:, nb : nb + 1]
-        field[:, -nb:] = field[:, -nb - 1 : -nb]
+        field[:mi, :nb] = field[:mi, nb : nb + 1]
+        field[:mi, mj - nb : mj] = field[:mi, mj - nb - 1 : mj - nb]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         core = self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:1, :] = core(
-            time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:1, :mj] = asarray(
+            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
         )
-        field[-1:, :] = core(
-            time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units
+        field[mi - 1 : mi, :mj] = asarray(
+            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
         )
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         core = self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:, :1] = core(
-            time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:mi, :1] = asarray(
+            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
         )
-        field[:, -1:] = core(
-            time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units
+        field[:mi, mj - 1 : mj] = asarray(
+            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
         )
 
 
@@ -1351,42 +1386,70 @@ class Dirichlet1DY(HorizontalBoundary):
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         nb, core = self.nb, self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[nb:-nb, :nb] = core(
-            time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[nb : mi - nb, :nb] = asarray(
+            core(time, grid, slice(nb, mi - nb), slice(0, nb), field_name, field_units)
         )
-        field[nb:-nb, -nb:] = core(
-            time, grid, slice(nb, mi - nb), slice(mj - nb, mj), field_name, field_units
+        field[nb : mi - nb, mj - nb : mj] = asarray(
+            core(
+                time,
+                grid,
+                slice(nb, mi - nb),
+                slice(mj - nb, mj),
+                field_name,
+                field_units,
+            )
         )
 
-        field[:nb, :] = field[nb : nb + 1, :]
-        field[-nb:, :] = field[-nb - 1 : -nb, :]
+        field[:nb, :mj] = field[nb : nb + 1, :mj]
+        field[mi - nb : mi, :mj] = field[mi - nb - 1 : mi - nb, :mj]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         core = self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:1, :] = core(
-            time, grid, slice(0, 1), slice(0, mj), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:1, :mj] = asarray(
+            core(time, grid, slice(0, 1), slice(0, mj), field_name, field_units)
         )
-        field[-1:, :] = core(
-            time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units
+        field[mi - 1 : mi, :mj] = asarray(
+            core(time, grid, slice(mi - 1, mi), slice(0, mj), field_name, field_units)
         )
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         core = self._kwargs["core"]
-        mi, mj = field.shape[0], field.shape[1]
 
-        field[:, :1] = core(
-            time, grid, slice(0, mi), slice(0, 1), field_name, field_units
+        field_name = field_name or ""
+        mi = self.nx + 1 if "at_u_locations" in field_name else self.nx
+        mj = self.ny + 1 if "at_v_locations" in field_name else self.ny
+
+        backend = self._backend or "numpy"
+        device = gt.backend.from_name(backend).storage_info["device"]
+        asarray = cp.asarray if device == "gpu" else np.asarray
+
+        field[:mi, :1] = asarray(
+            core(time, grid, slice(0, mi), slice(0, 1), field_name, field_units)
         )
-        field[:, -1:] = core(
-            time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units
+        field[:mi, mj - 1 : mj] = asarray(
+            core(time, grid, slice(0, mi), slice(mj - 1, mj), field_name, field_units)
         )
 
 
@@ -1395,7 +1458,7 @@ class Identity(HorizontalBoundary):
     *Identity* boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -1417,7 +1480,7 @@ class Identity(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -1467,7 +1530,7 @@ class Identity1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -1486,7 +1549,7 @@ class Identity1DX(HorizontalBoundary):
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):
@@ -1540,7 +1603,7 @@ class Identity1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb):
+    def __init__(self, nx, ny, nb, backend, dtype):
         """
         Parameters
         ----------
@@ -1559,7 +1622,7 @@ class Identity1DY(HorizontalBoundary):
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb)
+        super().__init__(nx, ny, nb, backend, dtype)
 
     @property
     def ni(self):

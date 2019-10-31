@@ -32,6 +32,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 
 try:
@@ -58,6 +59,8 @@ except (ImportError, ModuleNotFoundError):
 )
 @given(hyp_st.data())
 def test_forward_euler(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -151,6 +154,8 @@ def test_forward_euler(data):
 )
 @given(hyp_st.data())
 def test_rk2(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -265,6 +270,8 @@ def test_rk2(data):
 )
 @given(hyp_st.data())
 def test_rk3ws(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
