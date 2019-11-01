@@ -53,7 +53,7 @@ class HorizontalDiffusion(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         """
@@ -83,8 +83,8 @@ class HorizontalDiffusion(abc.ABC):
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -98,16 +98,16 @@ class HorizontalDiffusion(abc.ABC):
 
         # initialize the diffusivity
         # gamma = diffusion_coeff * ones(
-        #     (shape[0], shape[1], shape[2]), backend, dtype, halo, mask=[True, True, True]
-        #     # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
+        #     (shape[0], shape[1], shape[2]), backend, dtype, default_origin, mask=[True, True, True]
+        #     # (1, 1, shape[2]), backend, dtype, default_origin, mask=[False, False, True]
         # )
         gamma = zeros(
             (shape[0], shape[1], shape[2]),
             backend,
             dtype,
-            halo,
+            default_origin,
             mask=[True, True, True]
-            # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
+            # (1, 1, shape[2]), backend, dtype, default_origin, mask=[False, False, True]
         )
         gamma[...] = diffusion_coeff
         self._gamma = gamma
@@ -157,7 +157,7 @@ class HorizontalDiffusion(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False
     ):
         """
@@ -194,8 +194,8 @@ class HorizontalDiffusion(abc.ABC):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -218,7 +218,7 @@ class HorizontalDiffusion(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         ]
 
@@ -279,7 +279,7 @@ class SecondOrder(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
@@ -296,7 +296,7 @@ class SecondOrder(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -359,7 +359,7 @@ class SecondOrder1DX(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
@@ -376,7 +376,7 @@ class SecondOrder1DX(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -440,7 +440,7 @@ class SecondOrder1DY(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
@@ -457,7 +457,7 @@ class SecondOrder1DY(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -521,7 +521,7 @@ class FourthOrder(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
@@ -538,7 +538,7 @@ class FourthOrder(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -615,7 +615,7 @@ class FourthOrder1DX(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
@@ -632,7 +632,7 @@ class FourthOrder1DX(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -702,7 +702,7 @@ class FourthOrder1DY(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
@@ -719,7 +719,7 @@ class FourthOrder1DY(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 

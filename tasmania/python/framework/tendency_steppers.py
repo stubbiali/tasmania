@@ -260,9 +260,7 @@ class TendencyStepper(abc.ABC):
         for key, val in self._prognostic.tendency_properties.items():
             return_dict[key] = deepcopy(val)
             if "units" in return_dict[key]:
-                return_dict[key]["units"] = clean_units(
-                    return_dict[key]["units"] + " s"
-                )
+                return_dict[key]["units"] = clean_units(return_dict[key]["units"] + " s")
 
         return return_dict
 
@@ -338,7 +336,7 @@ class TendencyStepper(abc.ABC):
 
     def _allocate_output_state(self, state):
         backend = getattr(self, "_backend", None)
-        halo = getattr(self, "_halo", None)
+        default_origin = getattr(self, "_default_origin", None)
 
         out_state = self._out_state or {}
 
@@ -347,12 +345,10 @@ class TendencyStepper(abc.ABC):
                 storage_shape = state[name].shape
                 dtype = state[name].dtype
                 raw_buffer = (
-                    zeros(storage_shape, backend, dtype, halo=halo)
+                    zeros(storage_shape, backend, dtype, default_origin=default_origin)
                     if backend
                     else np.zeros(storage_shape, dtype=dtype)
                 )
-                if backend == "gtcuda":
-                    raw_buffer.synchronize()
 
                 dims = state[name].dims
                 coords = state[name].coords
@@ -374,16 +370,16 @@ class ForwardEuler(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        halo=None,
+        default_origin=None,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
-        self._halo = halo
+        self._default_origin = default_origin
 
     def _call(self, state, timestep):
         # shortcuts
@@ -427,19 +423,19 @@ class GTForwardEuler(TendencyStepper):
         backend_opts=None,
         build_info=None,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
 
         decorator = gt.stencil(
             backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
@@ -467,10 +463,9 @@ class GTForwardEuler(TendencyStepper):
         raw_out_state = {name: out_state[name].values for name in names}
 
         # step the solution
-        halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
-        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        origin = (self._hb.nb, self._hb.nb, 0) if self._enforce_hb else (0, 0, 0)
+        iteration_domain = tuple(storage_shape[i] - 2 * origin[i] for i in range(3))
         for name in raw_out_state:
             self._stencil(
                 in_field=raw_state[name],
@@ -510,16 +505,16 @@ class RungeKutta2(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        halo=None,
+        default_origin=None,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
-        self._halo = halo
+        self._default_origin = default_origin
 
     def _call(self, state, timestep):
         # shortcuts
@@ -591,19 +586,19 @@ class GTRungeKutta2(TendencyStepper):
         backend_opts=None,
         build_info=None,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
 
         decorator = gt.stencil(
             backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
@@ -631,10 +626,9 @@ class GTRungeKutta2(TendencyStepper):
         raw_out_state = {name: out_state[name].values for name in names}
 
         # update the solution
-        halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
-        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        origin = (self._hb.nb, self._hb.nb, 0) if self._enforce_hb else (0, 0, 0)
+        iteration_domain = tuple(storage_shape[i] - 2 * origin[i] for i in range(3))
         for name in raw_out_state:
             self._stencil(
                 in_field=raw_state[name],
@@ -714,16 +708,16 @@ class RungeKutta3WS(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        halo=None,
+        default_origin=None,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
-        self._halo = halo
+        self._default_origin = default_origin
 
     def _call(self, state, timestep):
         # shortcuts
@@ -818,19 +812,19 @@ class GTRungeKutta3WS(TendencyStepper):
         backend_opts=None,
         build_info=None,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
 
         decorator = gt.stencil(
             backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
@@ -858,10 +852,9 @@ class GTRungeKutta3WS(TendencyStepper):
         raw_out_state = {name: out_state[name].values for name in names}
 
         # update the solution
-        halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
-        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        origin = (self._hb.nb, self._hb.nb, 0) if self._enforce_hb else (0, 0, 0)
+        iteration_domain = tuple(storage_shape[i] - 2 * origin[i] for i in range(3))
         for name in raw_out_state:
             self._stencil(
                 in_field=raw_state[name],

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -50,7 +50,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         **kwargs
     ):
@@ -81,8 +81,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -109,12 +109,16 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
         )
 
-        self._out_u_tnd = zeros((nx, ny, 1), backend, dtype, halo=halo)
-        self._out_v_tnd = zeros((nx, ny, 1), backend, dtype, halo=halo)
+        self._out_u_tnd = zeros(
+            (nx, ny, 1), backend, dtype, default_origin=default_origin
+        )
+        self._out_v_tnd = zeros(
+            (nx, ny, 1), backend, dtype, default_origin=default_origin
+        )
 
     @property
     def input_properties(self):

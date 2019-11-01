@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,22 +33,33 @@ import numpy as np
 import pytest
 
 import gridtools as gt
-from tasmania.python.burgers.dynamics.advection import (
-    BurgersAdvection,
-    _FirstOrder,
-    _SecondOrder,
-    _ThirdOrder,
-    _FourthOrder,
-    _FifthOrder,
-)
+from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .utils import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
+    from .utils import (
+        compare_arrays,
+        st_burgers_state,
+        st_one_of,
+        st_physical_grid,
+    )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from utils import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
+    from utils import (
+        compare_arrays,
+        st_burgers_state,
+        st_one_of,
+        st_physical_grid,
+    )
 
 
 class WrappingStencil:
@@ -72,7 +83,7 @@ class WrappingStencil:
             out_adv_v_y=adv_v_y,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(mi - 2 * nb, mj - 2 * nb, mk),
         )
 
@@ -129,9 +140,12 @@ def test_first_order(data):
         ),
         label="grid",
     )
-    state = data.draw(st_burgers_state(grid), label="state")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    state = data.draw(
+        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        label="state",
+    )
 
     # ========================================
     # test test
@@ -143,10 +157,10 @@ def test_first_order(data):
 
     dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_u_y = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_y = zeros(grid_shape, backend, dtype, halo=halo)
+    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
 
     advection = BurgersAdvection.factory("first_order")
 
@@ -191,9 +205,12 @@ def test_second_order(data):
         ),
         label="grid",
     )
-    state = data.draw(st_burgers_state(grid), label="state")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    state = data.draw(
+        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        label="state",
+    )
 
     # ========================================
     # test test
@@ -205,10 +222,10 @@ def test_second_order(data):
 
     dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_u_y = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_y = zeros(grid_shape, backend, dtype, halo=halo)
+    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
 
     advection = BurgersAdvection.factory("second_order")
 
@@ -265,9 +282,12 @@ def test_third_order(data):
         ),
         label="grid",
     )
-    state = data.draw(st_burgers_state(grid), label="state")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    state = data.draw(
+        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        label="state",
+    )
 
     # ========================================
     # test test
@@ -279,10 +299,10 @@ def test_third_order(data):
 
     dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_u_y = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_y = zeros(grid_shape, backend, dtype, halo=halo)
+    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
 
     advection = BurgersAdvection.factory("third_order")
 
@@ -335,9 +355,12 @@ def test_fourth_order(data):
         ),
         label="grid",
     )
-    state = data.draw(st_burgers_state(grid), label="state")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    state = data.draw(
+        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        label="state",
+    )
 
     # ========================================
     # test test
@@ -349,10 +372,10 @@ def test_fourth_order(data):
 
     dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_u_y = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_y = zeros(grid_shape, backend, dtype, halo=halo)
+    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
 
     advection = BurgersAdvection.factory("fourth_order")
 
@@ -415,9 +438,12 @@ def test_fifth_order(data):
         ),
         label="grid",
     )
-    state = data.draw(st_burgers_state(grid), label="state")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    state = data.draw(
+        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        label="state",
+    )
 
     # ========================================
     # test test
@@ -429,10 +455,10 @@ def test_fifth_order(data):
 
     dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_u_y = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_x = zeros(grid_shape, backend, dtype, halo=halo)
-    adv_v_y = zeros(grid_shape, backend, dtype, halo=halo)
+    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
 
     advection = BurgersAdvection.factory("fifth_order")
 

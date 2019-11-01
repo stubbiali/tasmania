@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -24,7 +24,7 @@ import abc
 
 import gridtools as gt
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import get_default_origin, zeros
 
 try:
     from tasmania.conf import nb as conf_nb
@@ -84,7 +84,7 @@ class BurgersStepper(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         """
@@ -107,8 +107,8 @@ class BurgersStepper(abc.ABC):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -119,7 +119,7 @@ class BurgersStepper(abc.ABC):
         self._build_info = build_info
         self._dtype = dtype
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
         self._rebuild = rebuild
 
         self._advection = BurgersAdvection.factory(flux_scheme)
@@ -181,7 +181,7 @@ class BurgersStepper(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False
     ):
         """
@@ -212,7 +212,7 @@ class BurgersStepper(abc.ABC):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -231,7 +231,7 @@ class BurgersStepper(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
         if time_integration_scheme == "forward_euler":
@@ -257,7 +257,7 @@ class _ForwardEuler(BurgersStepper):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         super().__init__(
@@ -269,7 +269,7 @@ class _ForwardEuler(BurgersStepper):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -317,7 +317,7 @@ class _ForwardEuler(BurgersStepper):
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
 
         self._stencil_args = {
             "in_u": None,
@@ -334,8 +334,12 @@ class _ForwardEuler(BurgersStepper):
         if tnd_v:
             self._stencil_args["in_v_tnd"] = None
 
-        self._stencil_args["out_u"] = zeros(storage_shape, backend, dtype, halo=halo)
-        self._stencil_args["out_v"] = zeros(storage_shape, backend, dtype, halo=halo)
+        self._stencil_args["out_u"] = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
+        self._stencil_args["out_v"] = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
 
         decorator = gt.stencil(
             backend,
@@ -365,7 +369,7 @@ class _RK2(BurgersStepper):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         super().__init__(
@@ -377,7 +381,7 @@ class _RK2(BurgersStepper):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -429,7 +433,7 @@ class _RK2(BurgersStepper):
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
 
         self._stencil_args = {
             "in_u": None,
@@ -446,8 +450,12 @@ class _RK2(BurgersStepper):
         if tnd_v:
             self._stencil_args["in_v_tnd"] = None
 
-        self._stencil_args["out_u"] = zeros(storage_shape, backend, dtype, halo=halo)
-        self._stencil_args["out_v"] = zeros(storage_shape, backend, dtype, halo=halo)
+        self._stencil_args["out_u"] = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
+        self._stencil_args["out_v"] = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
 
         decorator = gt.stencil(
             backend,
@@ -477,7 +485,7 @@ class _RK3WS(_RK2):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         super().__init__(
@@ -489,7 +497,7 @@ class _RK3WS(_RK2):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 

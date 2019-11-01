@@ -396,16 +396,6 @@ def get_numerical_state(domain, pstate, store_names=None):
     return cstate
 
 
-def get_storage_descriptor(storage_shape, dtype, halo=None, mask=(True, True, True)):
-    halo = (0, 0, 0) if halo is None else halo
-    halo = tuple(halo[i] if storage_shape[i] > 2 * halo[i] else 0 for i in range(3))
-    domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
-    descriptor = gt.storage.StorageDescriptor(
-        dtype=dtype, mask=mask, halo=halo, iteration_domain=domain
-    )
-    return descriptor
-
-
 def get_storage_shape(in_shape, min_shape, max_shape=None):
     out_shape = in_shape or min_shape
 
@@ -426,28 +416,67 @@ def get_storage_shape(in_shape, min_shape, max_shape=None):
     return out_shape
 
 
-def empty(storage_shape, backend, dtype, halo=None, mask=None):
-    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
-    gt_storage = gt.storage.empty(descriptor=descriptor, backend=backend)
+def get_default_origin(
+    default_origin, storage_shape, min_default_origin=None, max_default_origin=None
+):
+    default_origin = default_origin or (0, 0, 0)
+
+    max_default_origin = max_default_origin or default_origin
+    max_default_origin = tuple(
+        max_default_origin[i] if storage_shape[i] > 2 * max_default_origin[i] else 0
+        for i in range(3)
+    )
+
+    min_default_origin = min_default_origin or max_default_origin
+    min_default_origin = tuple(
+        min_default_origin[i]
+        if min_default_origin[i] <= max_default_origin[i]
+        else max_default_origin[i]
+        for i in range(3)
+    )
+
+    out = tuple(
+        default_origin[i]
+        if min_default_origin[i] <= default_origin[i] <= max_default_origin[i]
+        else min_default_origin[i]
+        for i in range(3)
+    )
+
+    return out
+
+
+def get_storage_descriptor(dtype, grid_group=None, mask=None):
+    grid_group = grid_group or "default_grid_group"
+    descriptor = gt.storage.StorageDescriptor(dtype, grid_group, mask=mask)
+    return descriptor
+
+
+def empty(storage_shape, backend, dtype, default_origin=None, mask=None):
+    default_origin = default_origin or (0, 0, 0)
+    gt_storage = gt.storage.empty(
+        backend, default_origin, storage_shape, dtype, mask=mask
+    )
     return gt_storage
 
 
-def zeros(storage_shape, backend, dtype, halo=None, mask=None):
-    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
-    gt_storage = gt.storage.zeros(descriptor=descriptor, backend=backend)
+def zeros(storage_shape, backend, dtype, default_origin=None, mask=None):
+    default_origin = default_origin or (0, 0, 0)
+    gt_storage = gt.storage.zeros(
+        backend, default_origin, storage_shape, dtype, mask=mask
+    )
     return gt_storage
 
 
-def ones(storage_shape, backend, dtype, halo=None, mask=None):
-    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
-    gt_storage = gt.storage.ones(descriptor=descriptor, backend=backend)
+def ones(storage_shape, backend, dtype, default_origin=None, mask=None):
+    default_origin = default_origin or (0, 0, 0)
+    gt_storage = gt.storage.ones(backend, default_origin, storage_shape, dtype, mask=mask)
     return gt_storage
 
 
 def deepcopy_array_dict(src):
-    dst = {'time': src['time']} if 'time' in src else {}
+    dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
-        if name != 'time':
+        if name != "time":
             dst[name] = deepcopy(src[name])
     return dst
 
@@ -463,8 +492,8 @@ def deepcopy_dataarray(src):
 
 
 def deepcopy_dataarray_dict(src):
-    dst = {'time': src['time']} if 'time' in src else {}
+    dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
-        if name != 'time':
+        if name != "time":
             dst[name] = deepcopy_dataarray(src[name])
     return dst

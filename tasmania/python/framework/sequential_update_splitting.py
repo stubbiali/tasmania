@@ -138,7 +138,7 @@ class SequentialUpdateSplitting:
                         - dtype (numpy.dtype): Data type of the storages;
                         - exec_info (dict): Dictionary which will store statistics
                             and diagnostics gathered at run time;
-                        - halo (tuple): Storage halo;
+                        - default_origin (tuple): Storage default origin;
                         - rebuild (bool): `True` to trigger the stencils compilation
                             at any class instantiation, `False` to rely on the caching
                             mechanism implemented by GT4Py.
@@ -186,7 +186,7 @@ class SequentialUpdateSplitting:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
                 kwargs = process.get(
-                    "time_integrator_kwargs", {"backend": None, "halo": None}
+                    "time_integrator_kwargs", {"backend": None, "default_origin": None}
                 )
 
                 TendencyStepper = tendencystepper_factory(integrator)

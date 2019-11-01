@@ -48,11 +48,11 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
-    "halo": (nb, nb, 0),
+    "default_origin": (nb, nb, 0),
     "rebuild": False,
 }
 gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
@@ -77,4 +77,3 @@ filename = None  # "../../data/burgers_sts_{}.nc".format(gt_kwargs["backend"])
 save_frequency = -1
 print_frequency = -1
 plot_frequency = -1
-(??)

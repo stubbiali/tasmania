@@ -216,51 +216,51 @@ class Relaxed(HorizontalBoundary):
         # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
         # set the outermost layers
-        field.data[:nb, :] = field_ref.data[:nb, :]
-        field.data[mi - nb : mi, :] = field_ref.data[mi - nb : mi, :]
-        field.data[nb : mi - nb, :nb] = field_ref.data[nb : mi - nb, :nb]
-        field.data[nb : mi - nb, mj - nb : mj] = field_ref.data[
+        field[:nb, :] = field_ref[:nb, :]
+        field[mi - nb : mi, :] = field_ref[mi - nb : mi, :]
+        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+        field[nb : mi - nb, mj - nb : mj] = field_ref[
             nb : mi - nb, mj - nb : mj
         ]
 
         # apply the relaxed boundary conditions in the negative x-direction
         i, j = slice(nb, nr), slice(nr, mj - nr)
-        field.data[i, j] -= self._xneg[nb:, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xneg[nb:, :mj_int] * (
+            field[i, j] - field_ref[i, j]
         )
         i, j = slice(nb, nr), slice(nb, nr)
-        field.data[i, j] -= self._xnegyneg[nb:, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xnegyneg[nb:, nb:] * (
+            field[i, j] - field_ref[i, j]
         )
         i, j = slice(nb, nr), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._xnegypos[nb:, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xnegypos[nb:, :-nb] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # apply the relaxed boundary conditions in the positive x-direction
         i, j = slice(mi - nr, mi - nb), slice(nr, mj - nr)
-        field.data[i, j] -= self._xpos[:-nb, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (
+            field[i, j] - field_ref[i, j]
         )
         i, j = slice(mi - nr, mi - nb), slice(nb, nr)
-        field.data[i, j] -= self._xposyneg[:-nb, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xposyneg[:-nb, :-nb] * (
+            field[i, j] - field_ref[i, j]
         )
         i, j = slice(mi - nr, mi - nb), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._xposypos[:-nb, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xposypos[:-nb, nb:] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # apply the relaxed boundary conditions in the negative y-direction
         i, j = slice(nr, mi - nr), slice(nb, nr)
-        field.data[i, j] -= self._yneg[:mi_int, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._yneg[:mi_int, nb:] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # apply the relaxed boundary conditions in the positive y-direction
         i, j = slice(nr, mi - nr), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._ypos[:mi_int, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._ypos[:mi_int, :-nb] * (
+            field[i, j] - field_ref[i, j]
         )
 
     def set_outermost_layers_x(
@@ -270,8 +270,8 @@ class Relaxed(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[0, :mj] = field_ref.data[0, :mj]
-        field.data[mi - 1, :mj] = field_ref.data[mi - 1, :mj]
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -280,8 +280,8 @@ class Relaxed(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[:mi, 0] = field_ref.data[:mi, 0]
-        field.data[:mi, mj - 1] = field_ref.data[:mi, mj - 1]
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Relaxed1DX(HorizontalBoundary):
@@ -349,10 +349,7 @@ class Relaxed1DX(HorizontalBoundary):
         # inspect the backend properties to load the proper asarray function
         backend = backend or "numpy"
         device = gt.backend.from_name(backend).storage_info["device"]
-        if device == "gpu":
-            from cupy import asarray
-        else:
-            from numpy import asarray
+        asarray = cp.asarray if device == "gpu" else np.asarray
 
         # made all matrices three-dimensional to harness array broadcasting
         self._xneg = asarray(xneg[:, :, np.newaxis])
@@ -416,26 +413,26 @@ class Relaxed1DX(HorizontalBoundary):
         # xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
 
         # set the outermost layers
-        field.data[:nb, nb : mj - nb] = field_ref.data[:nb, nb : mj - nb]
-        field.data[mi - nb : mi, nb : mj - nb] = field_ref.data[
+        field[:nb, nb : mj - nb] = field_ref[:nb, nb : mj - nb]
+        field[mi - nb : mi, nb : mj - nb] = field_ref[
             mi - nb : mi, nb : mj - nb
         ]
 
         # apply the relaxed boundary conditions in the negative x-direction
         i, j = slice(nb, nr), slice(nb, mj - nb)
-        field.data[i, j] -= self._xneg[nb:, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xneg[nb:, :mj_int] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # apply the relaxed boundary conditions in the positive x-direction
         i, j = slice(mi - nr, mi - nb), slice(nb, mj - nb)
-        field.data[i, j] -= self._xpos[:-nb, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # repeat the innermost column(s) along the y-direction
-        field.data[:mi, :nb] = field.data[:mi, nb : nb + 1]
-        field.data[:mi, mj - nb : mj] = field.data[:mi, mj - nb - 1 : mj - nb]
+        field[:mi, :nb] = field[:mi, nb : nb + 1]
+        field[:mi, mj - nb : mj] = field[:mi, mj - nb - 1 : mj - nb]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -444,8 +441,8 @@ class Relaxed1DX(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[0, :mj] = field_ref.data[0, :mj]
-        field.data[mi - 1, :mj] = field_ref.data[mi - 1, :mj]
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -454,8 +451,8 @@ class Relaxed1DX(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[:mi, 0] = field_ref.data[:mi, 0]
-        field.data[:mi, mj - 1] = field_ref.data[:mi, mj - 1]
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Relaxed1DY(HorizontalBoundary):
@@ -521,10 +518,7 @@ class Relaxed1DY(HorizontalBoundary):
         # inspect the backend properties to load the proper asarray function
         backend = backend or "numpy"
         device = gt.backend.from_name(backend).storage_info["device"]
-        if device == "gpu":
-            from cupy import asarray
-        else:
-            from numpy import asarray
+        asarray = cp.asarray if device == "gpu" else np.asarray
 
         # made all matrices three-dimensional to harness array broadcasting
         self._yneg = asarray(yneg[:, :, np.newaxis])
@@ -588,26 +582,26 @@ class Relaxed1DY(HorizontalBoundary):
         # ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
 
         # set the outermost layers
-        field.data[nb : mi - nb, :nb] = field_ref.data[nb : mi - nb, :nb]
-        field.data[nb : mi - nb, mj - nb : mj] = field_ref.data[
+        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+        field[nb : mi - nb, mj - nb : mj] = field_ref[
             nb : mi - nb, mj - nb : mj
         ]
 
         # apply the relaxed boundary conditions in the negative y-direction
         i, j = slice(nb, mi - nb), slice(nb, nr)
-        field.data[i, j] -= self._yneg[:mi_int, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._yneg[:mi_int, nb:] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # apply the relaxed boundary conditions in the positive y-direction
         i, j = slice(nb, mi - nb), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._ypos[:mi_int, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
+        field[i, j] -= self._ypos[:mi_int, :-nb] * (
+            field[i, j] - field_ref[i, j]
         )
 
         # repeat the innermost row(s) along the x-direction
-        field.data[:nb, :mj] = field.data[nb : nb + 1, :mj]
-        field.data[mi - nb : mi, :mj] = field.data[mi - nb - 1 : mi - nb, :mj]
+        field[:nb, :mj] = field[nb : nb + 1, :mj]
+        field[mi - nb : mi, :mj] = field[mi - nb - 1 : mi - nb, :mj]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -616,8 +610,8 @@ class Relaxed1DY(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[0, :mj] = field_ref.data[0, :mj]
-        field.data[mi - 1, :mj] = field_ref.data[mi - 1, :mj]
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -626,8 +620,8 @@ class Relaxed1DY(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[:mi, 0] = field_ref.data[:mi, 0]
-        field.data[:mi, mj - 1] = field_ref.data[:mi, mj - 1]
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Periodic(HorizontalBoundary):

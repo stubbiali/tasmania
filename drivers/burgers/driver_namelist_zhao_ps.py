@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import gridtools as gt
 import numpy as np
 import os
 from sympl import DataArray
@@ -30,6 +31,9 @@ try:
     from . import namelist_zhao_ps as nl
 except (ImportError, ModuleNotFoundError):
     import namelist_zhao_ps as nl
+
+
+gt.storage.prepare_numpy()
 
 # ============================================================
 # The underlying domain
@@ -45,6 +49,7 @@ domain = taz.Domain(
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat_terrain",
+    backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
@@ -59,7 +64,7 @@ zsf = taz.ZhaoStateFactory(
     nl.diffusion_coeff,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
-    halo=nl.gt_kwargs["halo"],
+    default_origin=nl.gt_kwargs["default_origin"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -91,11 +96,13 @@ physics = taz.ParallelSplitting(
     {
         "component": diff,
         "time_integrator": nl.physics_time_integration_scheme,
+        "time_integrator_kwargs": nl.gt_kwargs,
         "enforce_horizontal_boundary": True,
         "substeps": 1,
-        "backend": nl.gt_kwargs["backend"],
-        "halo": nl.gt_kwargs["halo"],
-    }
+    },
+    execution_policy="serial",
+    gt_powered=True,
+    **nl.gt_kwargs
 )
 
 # ============================================================
@@ -120,14 +127,14 @@ compute_time = 0.0
 for i in range(nt):
     compute_time_start = time.time()
 
-    # Calculate the dynamics
+    # calculate the dynamics
     state_prv = dycore(state, {}, dt)
 
-    # Calculate the physics
+    # calculate the physics
     physics(state, state_prv, dt)
 
+    # update the state
     taz.dict_copy(state, state_prv)
-
     state["time"] = nl.init_time + (i + 1) * dt
 
     compute_time += time.time() - compute_time_start
@@ -139,16 +146,18 @@ for i in range(nt):
         u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
         v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
-        uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
-        vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
+        # uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
+        # vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
+        # err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
+        # err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
 
-        err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
-        err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
+        err_u = u.max()
+        err_v = v.max()
 
         # Print useful info
         print(
-            "Iteration {:6d}: ||u - uex|| = {:8.4E} m/s, ||v - vex|| = {:8.4E} m/s".format(
-                i + 1, err_u, err_v
+            "Iteration {:6d}: ||u - uex|| = {:12.10E} m/s, ||v - vex|| = {:12.10E} m/s".format(
+                i + 1, err_u.item(), err_v.item()
             )
         )
 

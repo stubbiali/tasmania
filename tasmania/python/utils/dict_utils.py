@@ -36,7 +36,7 @@ def add(
     unshared_variables_in_output=True,
     *,
     backend="numpy",
-    halo=None
+    default_origin=None
 ):
     """
     Sum two dictionaries of :class:`sympl.DataArray`\s.
@@ -89,9 +89,9 @@ def add(
                     shape = state_2[key].shape
                     _backend = state_2[key].attrs.get("backend", backend)
                     dtype = state_2[key].dtype
-                    _halo = state_2[key].attrs.get("halo", halo)
+                    _default_origin = state_2[key].attrs.get("default_origin", default_origin)
 
-                    out_array = zeros(shape, _backend, dtype, halo=_halo)
+                    out_array = zeros(shape, _backend, dtype, default_origin=_default_origin)
 
                     out_da = DataArray(
                         out_array,
@@ -183,7 +183,7 @@ def subtract(
     unshared_variables_in_output=True,
     *,
     backend="numpy",
-    halo=None
+    default_origin=None
 ):
     """
     Subtract two dictionaries of :class:`sympl.DataArray`\s.
@@ -237,9 +237,9 @@ def subtract(
                     shape = state_1[key].shape
                     _backend = state_1[key].attrs.get("backend", backend)
                     dtype = state_1[key].dtype
-                    _halo = state_1[key].attrs.get("halo", halo)
+                    _default_origin = state_1[key].attrs.get("default_origin", default_origin)
 
-                    out_array = zeros(shape, _backend, dtype, halo=_halo)
+                    out_array = zeros(shape, _backend, dtype, default_origin=_default_origin)
 
                     units = {} if units is None else units
                     out_da = DataArray(

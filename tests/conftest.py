@@ -229,8 +229,8 @@ class FakeTendencyComponent2(TendencyComponent):
             try:
                 backend = s.backend
                 dtype = s.dtype
-                halo = s.halo
-                sv = zeros(s.shape, backend, dtype, halo)
+                default_origin = s.default_origin
+                sv = zeros(s.shape, backend, dtype, default_origin)
             except AttributeError:
                 sv = np.zeros_like(s, dtype=s.dtype)
                 

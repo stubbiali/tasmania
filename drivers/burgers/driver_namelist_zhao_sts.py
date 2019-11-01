@@ -49,6 +49,7 @@ domain = taz.Domain(
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat_terrain",
+    backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
@@ -63,7 +64,7 @@ zsf = taz.ZhaoStateFactory(
     nl.diffusion_coeff,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
-    halo=nl.gt_kwargs["halo"],
+    default_origin=nl.gt_kwargs["default_origin"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -141,14 +142,14 @@ for i in range(nt):
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
-        u = state["x_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
-        uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
-        vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
+        # uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
+        # vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
+        # err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
+        # err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
 
-        # err_u = np.linalg.norm(u.data - uex.data) * np.sqrt(dx * dy)
-        # err_v = np.linalg.norm(v.data - vex.data) * np.sqrt(dx * dy)
         err_u = u.max()
         err_v = v.max()
 

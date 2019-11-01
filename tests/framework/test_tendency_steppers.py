@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,6 +33,7 @@ import numpy as np
 import pytest
 from sympl import units_are_same
 
+import gridtools as gt
 from tasmania.python.framework.tendency_steppers import (
     ForwardEuler,
     GTForwardEuler,
@@ -45,7 +46,7 @@ from tasmania.python.framework.tendency_steppers import (
 from tasmania import get_dataarray_dict
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo
+    from .conf import backend as conf_backend, default_origin as conf_dorigin
     from .utils import (
         compare_arrays,
         st_domain,
@@ -54,7 +55,7 @@ try:
         st_timedeltas,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo
+    from conf import backend as conf_backend, default_origin as conf_dorigin
     from utils import (
         compare_arrays,
         st_domain,
@@ -74,6 +75,8 @@ except (ImportError, ModuleNotFoundError):
 )
 @given(data=hyp_st.data())
 def test_forward_euler(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -81,11 +84,15 @@ def test_forward_euler(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -100,7 +107,9 @@ def test_forward_euler(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    fe = ForwardEuler(tc1, execution_policy="serial", backend=backend, halo=halo)
+    fe = ForwardEuler(
+        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+    )
 
     assert "air_isentropic_density" in fe.output_properties
     assert units_are_same(
@@ -154,6 +163,8 @@ def test_forward_euler(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_forward_euler_hb(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -163,11 +174,15 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -188,7 +203,7 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in fe.output_properties
@@ -262,6 +277,8 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_gt_forward_euler(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -269,7 +286,7 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
@@ -277,7 +294,7 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
         ),
         label="state",
@@ -293,7 +310,9 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    fe = GTForwardEuler(tc1, execution_policy="serial", backend=backend, halo=halo)
+    fe = GTForwardEuler(
+        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+    )
 
     assert "air_isentropic_density" in fe.output_properties
     assert units_are_same(
@@ -347,6 +366,8 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -356,7 +377,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
@@ -364,7 +385,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1),
         ),
         label="state",
@@ -386,7 +407,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in fe.output_properties
@@ -420,7 +441,9 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(s_new, out_state["air_isentropic_density"].values)
+    compare_arrays(
+        s_new[:-1, :-1, :-1], out_state["air_isentropic_density"].values[:-1, :-1, :-1]
+    )
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su_new = su + dt.total_seconds() * su_tnd
@@ -431,7 +454,9 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(su_new, out_state["x_momentum_isentropic"].values)
+    compare_arrays(
+        su_new[:-1, :-1, :-1], out_state["x_momentum_isentropic"].values[:-1, :-1, :-1]
+    )
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u_new = u + dt.total_seconds() * u_tnd
@@ -442,11 +467,14 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(u_new, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(
+        u_new[:, :-1, :-1], out_state["x_velocity_at_u_locations"].values[:, :-1, :-1]
+    )
 
     assert "fake_variable" in out_diagnostics
     compare_arrays(
-        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+        diagnostics["fake_variable"].values[:-1, :-1, :-1],
+        out_diagnostics["fake_variable"].values[:-1, :-1, :-1],
     )
 
 
@@ -460,6 +488,8 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_rk2(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -467,11 +497,15 @@ def test_rk2(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -486,7 +520,9 @@ def test_rk2(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk2 = RungeKutta2(tc1, execution_policy="serial", backend=backend, halo=halo)
+    rk2 = RungeKutta2(
+        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+    )
 
     assert "air_isentropic_density" in rk2.output_properties
     assert units_are_same(
@@ -564,6 +600,8 @@ def test_rk2(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_rk2_hb(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -573,11 +611,15 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -598,7 +640,7 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in rk2.output_properties
@@ -718,6 +760,8 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_gt_rk2(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -725,7 +769,7 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
     state = data.draw(
@@ -734,7 +778,7 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
         label="state",
@@ -750,7 +794,9 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk2 = GTRungeKutta2(tc1, execution_policy="serial", backend=backend, halo=halo)
+    rk2 = GTRungeKutta2(
+        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+    )
 
     assert "air_isentropic_density" in rk2.output_properties
     assert units_are_same(
@@ -831,6 +877,8 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_gt_rk2_hb(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -840,7 +888,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
     state = data.draw(
@@ -849,7 +897,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
         label="state",
@@ -871,7 +919,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in rk2.output_properties
@@ -954,7 +1002,9 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         grid=cgrid,
     )
 
-    compare_arrays(s2, out_state["air_isentropic_density"].values)
+    compare_arrays(
+        s2[:-1, :-1, :-1], out_state["air_isentropic_density"].values[:-1, :-1, :-1]
+    )
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su2 = su + dt.total_seconds() * su_tnd
@@ -965,7 +1015,9 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(su2, out_state["x_momentum_isentropic"].values)
+    compare_arrays(
+        su2[:-1, :-1, :-1], out_state["x_momentum_isentropic"].values[:-1, :-1, :-1]
+    )
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u2 = u + dt.total_seconds() * u_tnd
@@ -976,11 +1028,14 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(u2, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(
+        u2[:, :-1, :-1], out_state["x_velocity_at_u_locations"].values[:, :-1, :-1]
+    )
 
     assert "fake_variable" in out_diagnostics
     compare_arrays(
-        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+        diagnostics["fake_variable"].values[:-1, :-1, :-1],
+        out_diagnostics["fake_variable"].values[:-1, :-1, :-1],
     )
 
 
@@ -994,6 +1049,8 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_rk3ws(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -1001,11 +1058,15 @@ def test_rk3ws(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -1020,7 +1081,9 @@ def test_rk3ws(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk3 = RungeKutta3WS(tc1, execution_policy="serial", backend=backend, halo=halo)
+    rk3 = RungeKutta3WS(
+        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+    )
 
     assert "air_isentropic_density" in rk3.output_properties
     assert units_are_same(
@@ -1115,6 +1178,8 @@ def test_rk3ws(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_rk3ws_hb(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -1124,11 +1189,15 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
-            cgrid, moist=False, precipitation=False, backend=backend, halo=halo
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -1149,7 +1218,7 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in rk3.output_properties
@@ -1308,6 +1377,8 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_gt_rk3ws(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -1315,7 +1386,7 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
     state = data.draw(
@@ -1324,7 +1395,7 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
         label="state",
@@ -1340,7 +1411,9 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk3 = GTRungeKutta3WS(tc1, execution_policy="serial", backend=backend, halo=halo)
+    rk3 = GTRungeKutta3WS(
+        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+    )
 
     assert "air_isentropic_density" in rk3.output_properties
     assert units_are_same(
@@ -1438,6 +1511,8 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
 )
 @given(data=hyp_st.data())
 def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -1447,7 +1522,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
     state = data.draw(
@@ -1456,7 +1531,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(nx + 1, ny + 1, nz + 1),
         ),
         label="state",
@@ -1478,7 +1553,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in rk3.output_properties
@@ -1600,7 +1675,9 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(s3, out_state["air_isentropic_density"].values)
+    compare_arrays(
+        s3[:-1, :-1, :-1], out_state["air_isentropic_density"].values[:-1, :-1, :-1]
+    )
 
     su_tnd = tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values
     su3 = su + dt.total_seconds() * su_tnd
@@ -1611,7 +1688,9 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(su3, out_state["x_momentum_isentropic"].values)
+    compare_arrays(
+        su3[:-1, :-1, :-1], out_state["x_momentum_isentropic"].values[:-1, :-1, :-1]
+    )
 
     u_tnd = tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values
     u3 = u + dt.total_seconds() * u_tnd
@@ -1622,11 +1701,14 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         time=state["time"] + dt,
         grid=cgrid,
     )
-    compare_arrays(u3, out_state["x_velocity_at_u_locations"].values)
+    compare_arrays(
+        u3[:, :-1, :-1], out_state["x_velocity_at_u_locations"].values[:, :-1, :-1]
+    )
 
     assert "fake_variable" in out_diagnostics
     compare_arrays(
-        diagnostics["fake_variable"].values, out_diagnostics["fake_variable"].values
+        diagnostics["fake_variable"].values[:-1, :-1, :-1],
+        out_diagnostics["fake_variable"].values[:-1, :-1, :-1],
     )
 
 

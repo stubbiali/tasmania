@@ -64,7 +64,7 @@ zsf = taz.ZhaoStateFactory(
     nl.diffusion_coeff,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
-    halo=nl.gt_kwargs["halo"],
+    default_origin=nl.gt_kwargs["default_origin"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -125,12 +125,11 @@ for i in range(nt):
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
-        u = state["x_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
-        v = state["y_velocity"].to_units("m s^-1").values.data[3:-3, 3:-3, :]
+        u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
+        v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
         # uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
         # vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
-        # state_ex = zsf(state["time"], cgrid)
         # uex = state_ex["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
         # vex = state_ex["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 

@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 9
+factor = 8
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -53,7 +53,7 @@ gt_kwargs = {
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
-    "halo": (nb, nb, 0),
+    "default_origin": (nb, nb, 0),
     "rebuild": False,
 }
 gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None

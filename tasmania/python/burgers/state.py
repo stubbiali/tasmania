@@ -141,7 +141,7 @@ class ZhaoSolutionFactory:
 class ZhaoStateFactory:
     """ Factory of valid states for the Zhao test case. """
 
-    def __init__(self, initial_time, eps, *, backend, dtype, halo):
+    def __init__(self, initial_time, eps, *, backend, dtype, default_origin):
         """
         Parameters
         ----------
@@ -154,13 +154,13 @@ class ZhaoStateFactory:
             The GT4Py backend.
         dtype : numpy.dtype
             Data type of the storages.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple
+            Storage default origin.
         """
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
         self._backend = backend
         self._dtype = dtype
-        self._halo = halo
+        self._default_origin = default_origin
 
     def __call__(self, time, grid):
         """
@@ -179,18 +179,18 @@ class ZhaoStateFactory:
         nx, ny = grid.nx, grid.ny
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
 
-        u = zeros((nx, ny, 1), backend, dtype, halo=halo)
+        u = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
         u[...] = self._solution_factory(time, grid, field_name="x_velocity")
         u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity", set_coordinates=False)
         u_da.attrs["backend"] = backend
-        u_da.attrs["halo"] = halo
+        u_da.attrs["default_origin"] = default_origin
 
-        v = zeros((nx, ny, 1), backend, dtype, halo=halo)
+        v = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
         v[...] = self._solution_factory(time, grid, field_name="y_velocity")
         v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity", set_coordinates=False)
         v_da.attrs["backend"] = backend
-        v_da.attrs["halo"] = halo
+        v_da.attrs["default_origin"] = default_origin
 
         return {"time": time, "x_velocity": u_da, "y_velocity": v_da}

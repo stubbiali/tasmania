@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,7 +36,11 @@ import gridtools as gt
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from .test_burgers_advection import (
         first_order_advection,
         third_order_advection,
@@ -44,7 +48,11 @@ try:
     )
     from .utils import st_burgers_state, st_domain, st_one_of, st_timedeltas
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from test_burgers_advection import (
         first_order_advection,
         third_order_advection,
@@ -74,11 +82,14 @@ def test_forward_euler(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_burgers_state(
-            grid, time=datetime(year=1992, month=2, day=20), backend=backend, halo=halo
+            grid,
+            time=datetime(year=1992, month=2, day=20),
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -98,7 +109,7 @@ def test_forward_euler(data):
         flux_scheme="first_order",
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
 
@@ -169,11 +180,14 @@ def test_rk2(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_burgers_state(
-            grid, time=datetime(year=1992, month=2, day=20), backend=backend, halo=halo
+            grid,
+            time=datetime(year=1992, month=2, day=20),
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -193,7 +207,7 @@ def test_rk2(data):
         flux_scheme="third_order",
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
 
@@ -285,11 +299,14 @@ def test_rk3ws(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_burgers_state(
-            grid, time=datetime(year=1992, month=2, day=20), backend=backend, halo=halo
+            grid,
+            time=datetime(year=1992, month=2, day=20),
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -309,7 +326,7 @@ def test_rk3ws(data):
         flux_scheme="fifth_order",
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
 

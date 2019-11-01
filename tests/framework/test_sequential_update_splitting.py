@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     assume,
@@ -33,15 +32,17 @@ from hypothesis import (
 import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
+from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from .utils import compare_arrays, st_domain, st_isentropic_state_f, st_one_of
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from utils import compare_arrays, st_domain, st_isentropic_state_f, st_one_of
 
 
@@ -149,9 +150,11 @@ def test_properties(
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_numerics_forward_euler(
+def test_forward_euler(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -167,12 +170,12 @@ def test_numerics_forward_euler(
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-    gt_kwargs = {"backend": backend, "halo": halo}
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    gt_kwargs = {"backend": backend, "default_origin": default_origin}
 
     grid = domain.numerical_grid
     state = data.draw(
-        st_isentropic_state_f(grid, moist=True, backend=backend, halo=halo), label="state"
+        st_isentropic_state_f(grid, moist=True, backend=backend, default_origin=default_origin), label="state"
     )
 
     timestep = data.draw(
@@ -201,7 +204,7 @@ def test_numerics_forward_euler(
         },
     )
 
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
     sus(state, timestep)
 
@@ -241,9 +244,11 @@ def test_numerics_forward_euler(
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_numerics_gt_forward_euler(
+def test_gt_forward_euler(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -259,8 +264,8 @@ def test_numerics_gt_forward_euler(
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-    gt_kwargs = {"backend": backend, "halo": halo, "rebuild": False}
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    gt_kwargs = {"backend": backend, "default_origin": default_origin, "rebuild": False}
 
     grid = domain.numerical_grid
     state = data.draw(
@@ -268,7 +273,7 @@ def test_numerics_gt_forward_euler(
             grid,
             moist=True,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(grid.nx + 1, grid.ny + 1, grid.nz + 1),
         ),
         label="state",
@@ -300,7 +305,7 @@ def test_numerics_gt_forward_euler(
         },
     )
 
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
     sus(state, timestep)
 
@@ -343,9 +348,11 @@ def test_numerics_gt_forward_euler(
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_numerics_rk2(
+def test_rk2(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -361,12 +368,12 @@ def test_numerics_rk2(
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-    gt_kwargs = {"backend": backend, "halo": halo}
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    gt_kwargs = {"backend": backend, "default_origin": default_origin}
 
     grid = domain.numerical_grid
     state = data.draw(
-        st_isentropic_state_f(grid, moist=True, backend=backend, halo=halo), label="state"
+        st_isentropic_state_f(grid, moist=True, backend=backend, default_origin=default_origin), label="state"
     )
 
     timestep = data.draw(
@@ -395,7 +402,7 @@ def test_numerics_rk2(
         },
     )
 
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
     sus(state, timestep)
 
@@ -439,9 +446,11 @@ def test_numerics_rk2(
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_numerics_gt_rk2(
+def test_gt_rk2(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -457,8 +466,8 @@ def test_numerics_gt_rk2(
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-    gt_kwargs = {"backend": backend, "halo": halo, "rebuild": False}
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    gt_kwargs = {"backend": backend, "default_origin": default_origin, "rebuild": False}
 
     grid = domain.numerical_grid
     state = data.draw(
@@ -466,7 +475,7 @@ def test_numerics_gt_rk2(
             grid,
             moist=True,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=(grid.nx + 1, grid.ny + 1, grid.nz + 1),
         ),
         label="state",
@@ -498,7 +507,7 @@ def test_numerics_gt_rk2(
         },
     )
 
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
     sus(state, timestep)
 
@@ -545,7 +554,7 @@ def test_numerics_gt_rk2(
     deadline=None,
 )
 @given(data=hyp_st.data())
-def _test_numerics_substepping(
+def _test_substepping(
     data, make_fake_tendency_component_1, make_fake_tendency_component_2
 ):
     # ========================================
@@ -596,7 +605,7 @@ def _test_numerics_substepping(
     hb.reference_state = state
 
     state_prv = dycore(state, {}, timestep)
-    state_prv_dc = deepcopy(state_prv)
+    state_prv_dc = deepcopy_dataarray_dict(state_prv)
 
     sus = SequentialUpdateSplitting(
         {"component": tendency1, "time_integrator": "forward_euler", "substeps": 4},

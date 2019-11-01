@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,7 +22,7 @@
 #
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.utils.storage_utils import empty, get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 try:
     from tasmania.conf import datatype
@@ -45,7 +45,7 @@ class BurgersDynamicalCore(DynamicalCore):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=None
     ):
         """
@@ -84,15 +84,15 @@ class BurgersDynamicalCore(DynamicalCore):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
         """
         self._backend = backend
         self._dtype = dtype
-        self._halo = halo
+        self._default_origin = default_origin
 
         super().__init__(
             domain,
@@ -119,7 +119,7 @@ class BurgersDynamicalCore(DynamicalCore):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
         )
 
@@ -174,12 +174,16 @@ class BurgersDynamicalCore(DynamicalCore):
         nx, ny = grid.nx, grid.ny
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
 
-        u = empty((nx, ny, 1), backend, dtype, halo=halo)
-        u_da = get_dataarray_3d(u, grid, "m s^-1", name="x_velocity", set_coordinates=False)
-        v = empty((nx, ny, 1), backend, dtype, halo=halo)
-        v_da = get_dataarray_3d(v, grid, "m s^-1", name="y_velocity", set_coordinates=False)
+        u = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
+        u_da = get_dataarray_3d(
+            u, grid, "m s^-1", name="x_velocity", set_coordinates=False
+        )
+        v = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
+        v_da = get_dataarray_3d(
+            v, grid, "m s^-1", name="y_velocity", set_coordinates=False
+        )
 
         return {"x_velocity": u_da, "y_velocity": v_da}
 

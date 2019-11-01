@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,10 +36,10 @@ import gridtools as gt
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo
+    from .conf import backend as conf_backend, default_origin as conf_dorigin
     from .utils import st_floats, st_one_of, st_physical_grid
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo
+    from conf import backend as conf_backend, default_origin as conf_dorigin
     from utils import st_floats, st_one_of, st_physical_grid
 
 
@@ -132,12 +132,14 @@ def test_zhao_state_factory(data):
 
     backend = data.draw(st_one_of(conf_backend))
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo))
+    default_origin = data.draw(st_one_of(conf_dorigin))
 
     # ========================================
     # test
     # ========================================
-    zsf = ZhaoStateFactory(init_time, eps, backend=backend, dtype=dtype, halo=halo)
+    zsf = ZhaoStateFactory(
+        init_time, eps, backend=backend, dtype=dtype, default_origin=default_origin
+    )
 
     state = zsf(init_time, grid)
 

@@ -36,7 +36,12 @@ import conf
 
 import tasmania as taz
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_dataarray_2d, get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import (
+    get_dataarray_2d,
+    get_dataarray_3d,
+    get_default_origin,
+    zeros,
+)
 from tasmania.python.utils.utils import equal_to
 
 
@@ -203,6 +208,16 @@ def st_floats(**kwargs):
 def st_one_of(seq):
     """ Strategy drawing one of the elements of the input sequence. """
     return hyp_st.one_of(hyp_st.just(el) for el in seq)
+
+
+@hyp_st.composite
+def st_default_origin(
+    draw, storage_shape, min_default_origin=None, max_default_origin=None
+):
+    default_origin = draw(st_one_of(conf.default_origin))
+    return get_default_origin(
+        default_origin, storage_shape, min_default_origin, max_default_origin
+    )
 
 
 @hyp_st.composite
@@ -609,9 +624,9 @@ def st_domain(
 
 
 @hyp_st.composite
-def st_raw_field(draw, shape, min_value, max_value, backend, dtype, halo):
+def st_raw_field(draw, shape, min_value, max_value, backend, dtype, default_origin):
     """ Strategy drawing a random :class:`numpy.ndarray`. """
-    storage = zeros(shape, backend, dtype, halo=halo)
+    storage = zeros(shape, backend, dtype, default_origin=default_origin)
     storage[...] = draw(
         st_arrays(
             dtype,
@@ -635,7 +650,7 @@ def st_horizontal_field(
     grid_origin=None,
     grid_shape=None,
     backend="numpy",
-    halo=None,
+    default_origin=None,
     set_coordinates=True,
 ):
     """ Strategy drawing a random field for the 2-D variable `field_name`. """
@@ -645,7 +660,7 @@ def st_horizontal_field(
     dtype = grid.x.dtype
 
     storage = draw(
-        st_raw_field(storage_shape, min_value, max_value, backend, dtype, halo)
+        st_raw_field(storage_shape, min_value, max_value, backend, dtype, default_origin)
     )
 
     return get_dataarray_2d(
@@ -669,7 +684,7 @@ def st_field(
     grid_origin=None,
     grid_shape=None,
     backend="numpy",
-    halo=None,
+    default_origin=None,
     set_coordinates=True,
 ):
     """ Strategy drawing a random field for the variable `field_name`. """
@@ -688,7 +703,7 @@ def st_field(
             properties_dict[name][units][1],
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         )
     )
 
@@ -714,7 +729,7 @@ def st_isentropic_state(
     moist=False,
     precipitation=False,
     backend="numpy",
-    halo=None,
+    default_origin=None,
     storage_shape=None
 ):
     """ Strategy drawing a valid isentropic model state over `grid`. """
@@ -745,7 +760,7 @@ def st_isentropic_state(
             storage_shape=storage_shape or (nx, ny, nz),
             grid_shape=(nx, ny, nz),
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=set_coordinates,
         )
     )
@@ -759,7 +774,7 @@ def st_isentropic_state(
             storage_shape=storage_shape or (nx + 1, ny, nz),
             grid_shape=(nx + 1, ny, nz),
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=set_coordinates,
         )
     )
@@ -770,7 +785,9 @@ def st_isentropic_state(
     s_units = s.attrs["units"]
     u_units = u.attrs["units"]
     su_units = clean_units(s_units + u_units)
-    su_raw = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+    su_raw = zeros(
+        storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+    )
     su_raw[:nx, :ny, :nz] = (
         s.to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
         * 0.5
@@ -797,7 +814,7 @@ def st_isentropic_state(
             storage_shape=storage_shape or (nx, ny + 1, nz),
             grid_shape=(nx, ny + 1, nz),
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=set_coordinates,
         )
     )
@@ -806,7 +823,9 @@ def st_isentropic_state(
     v = return_dict["y_velocity_at_v_locations"]
     v_units = v.attrs["units"]
     sv_units = clean_units(s_units + v_units)
-    sv_raw = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+    sv_raw = zeros(
+        storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+    )
     sv_raw[:nx, :ny, :nz] = (
         s.to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
         * 0.5
@@ -832,7 +851,9 @@ def st_isentropic_state(
     cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
     # air pressure
-    p = zeros(storage_shape or (nx, ny, nz + 1), backend, dtype, halo=halo)
+    p = zeros(
+        storage_shape or (nx, ny, nz + 1), backend, dtype, default_origin=default_origin
+    )
     p[:, :, 0] = 20
     for k in range(0, nz):
         p[:, :, k + 1] = p[:, :, k] + g * dz * s.to_units("kg m^-2 K^-1").values[:, :, k]
@@ -847,7 +868,9 @@ def st_isentropic_state(
     p[np.where(p <= 0)] = 1.0
 
     # exner function
-    exn = zeros(storage_shape or (nx, ny, nz + 1), backend, dtype, halo=halo)
+    exn = zeros(
+        storage_shape or (nx, ny, nz + 1), backend, dtype, default_origin=default_origin
+    )
     exn[...] = cp * (p / pref) ** (Rd / cp)
     return_dict["exner_function_on_interface_levels"] = get_dataarray_3d(
         exn,
@@ -859,7 +882,9 @@ def st_isentropic_state(
     )
 
     # montgomery potential
-    mtg = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+    mtg = zeros(
+        storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+    )
     mtg_s = (
         grid.z_on_interface_levels.to_units("K").values[-1] * exn[:nx, :ny, nz]
         + g * grid.topography.profile.to_units("m").values[:nx, :ny]
@@ -879,7 +904,9 @@ def st_isentropic_state(
     # height
     theta1d = grid.z_on_interface_levels.to_units("K").values
     theta = np.tile(theta1d[np.newaxis, np.newaxis, :], (nx, ny, 1))
-    h = zeros(storage_shape or (nx, ny, nz + 1), backend, dtype, halo=halo)
+    h = zeros(
+        storage_shape or (nx, ny, nz + 1), backend, dtype, default_origin=default_origin
+    )
     h[:nx, :ny, nz] = grid.topography.profile.to_units("m").values[:nx, :ny]
     for k in range(nz, 0, -1):
         h[:nx, :ny, k - 1] = h[:nx, :ny, k] - Rd * (
@@ -898,7 +925,9 @@ def st_isentropic_state(
 
     if moist:
         # air density
-        rho = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+        rho = zeros(
+            storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+        )
         rho[:nx, :ny, :nz] = (
             s.to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
             * (theta[:, :, :-1] - theta[:, :, 1:])
@@ -914,7 +943,9 @@ def st_isentropic_state(
         )
 
         # air temperature
-        temp = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+        temp = zeros(
+            storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+        )
         temp[:nx, :ny, :nz] = (
             0.5
             * (
@@ -941,7 +972,7 @@ def st_isentropic_state(
                 storage_shape=storage_shape or (nx, ny, nz),
                 grid_shape=(nx, ny, nz),
                 backend=backend,
-                halo=halo,
+                default_origin=default_origin,
                 set_coordinates=set_coordinates,
             )
         )
@@ -955,7 +986,7 @@ def st_isentropic_state(
                 storage_shape=storage_shape or (nx, ny, nz),
                 grid_shape=(nx, ny, nz),
                 backend=backend,
-                halo=halo,
+                default_origin=default_origin,
                 set_coordinates=set_coordinates,
             )
         )
@@ -969,7 +1000,7 @@ def st_isentropic_state(
                 storage_shape=storage_shape or (nx, ny, nz),
                 grid_shape=(nx, ny, nz),
                 backend=backend,
-                halo=halo,
+                default_origin=default_origin,
                 set_coordinates=set_coordinates,
             )
         )
@@ -986,7 +1017,7 @@ def st_isentropic_state(
                     else (storage_shape[0], storage_shape[1], 1),
                     grid_shape=(nx, ny, 1),
                     backend=backend,
-                    halo=halo,
+                    default_origin=default_origin,
                     set_coordinates=set_coordinates,
                 )
             )
@@ -1002,7 +1033,7 @@ def st_isentropic_state(
                     else (storage_shape[0], storage_shape[1], 1),
                     grid_shape=(nx, ny, 1),
                     backend=backend,
-                    halo=halo,
+                    default_origin=default_origin,
                     set_coordinates=set_coordinates,
                 )
             )
@@ -1019,7 +1050,7 @@ def st_isentropic_state_f(
     moist=False,
     precipitation=False,
     backend="numpy",
-    halo=None,
+    default_origin=None,
     storage_shape=None
 ):
     """ Strategy drawing a valid isentropic model state over `grid`. """
@@ -1042,7 +1073,9 @@ def st_isentropic_state_f(
 
     # air isentropic density
     s = draw(
-        st_raw_field(storage_shape or (nx, ny, nz), 1e-1, 1000.0, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny, nz), 1e-1, 1000.0, backend, dtype, default_origin
+        )
     )
     units = draw(st_one_of(conf.isentropic_state["air_isentropic_density"].keys()))
     return_dict["air_isentropic_density"] = get_dataarray_3d(
@@ -1056,7 +1089,9 @@ def st_isentropic_state_f(
 
     # x-velocity
     u = draw(
-        st_raw_field(storage_shape or (nx + 1, ny, nz), -1000, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx + 1, ny, nz), -1000, 1000, backend, dtype, default_origin
+        )
     )
     units = draw(st_one_of(conf.isentropic_state["x_velocity_at_u_locations"].keys()))
     return_dict["x_velocity_at_u_locations"] = get_dataarray_3d(
@@ -1074,7 +1109,9 @@ def st_isentropic_state_f(
     s_units = s.attrs["units"]
     u_units = u.attrs["units"]
     su_units = clean_units(s_units + u_units)
-    su_raw = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+    su_raw = zeros(
+        storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+    )
     su_raw[:nx, :ny, :nz] = (
         s.to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
         * 0.5
@@ -1094,7 +1131,9 @@ def st_isentropic_state_f(
 
     # y-velocity
     v = draw(
-        st_raw_field(storage_shape or (nx, ny + 1, nz), -1000, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny + 1, nz), -1000, 1000, backend, dtype, default_origin
+        )
     )
     units = draw(st_one_of(conf.isentropic_state["y_velocity_at_v_locations"].keys()))
     return_dict["y_velocity_at_v_locations"] = get_dataarray_3d(
@@ -1110,7 +1149,9 @@ def st_isentropic_state_f(
     v = return_dict["y_velocity_at_v_locations"]
     v_units = v.attrs["units"]
     sv_units = clean_units(s_units + v_units)
-    sv_raw = zeros(storage_shape or (nx, ny, nz), backend, dtype, halo=halo)
+    sv_raw = zeros(
+        storage_shape or (nx, ny, nz), backend, dtype, default_origin=default_origin
+    )
     sv_raw[:nx, :ny, :nz] = (
         s.to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
         * 0.5
@@ -1130,7 +1171,9 @@ def st_isentropic_state_f(
 
     # air pressure
     p = draw(
-        st_raw_field(storage_shape or (nx, ny, nz + 1), 1e-8, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny, nz + 1), 1e-8, 1000, backend, dtype, default_origin
+        )
     )
     return_dict["air_pressure_on_interface_levels"] = get_dataarray_3d(
         p,
@@ -1143,7 +1186,9 @@ def st_isentropic_state_f(
 
     # exner function
     exn = draw(
-        st_raw_field(storage_shape or (nx, ny, nz + 1), 1e-8, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny, nz + 1), 1e-8, 1000, backend, dtype, default_origin
+        )
     )
     return_dict["exner_function_on_interface_levels"] = get_dataarray_3d(
         exn,
@@ -1156,7 +1201,9 @@ def st_isentropic_state_f(
 
     # montgomery potential
     mtg = draw(
-        st_raw_field(storage_shape or (nx, ny, nz), 1e-8, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny, nz), 1e-8, 1000, backend, dtype, default_origin
+        )
     )
     return_dict["montgomery_potential"] = get_dataarray_3d(
         mtg,
@@ -1169,7 +1216,9 @@ def st_isentropic_state_f(
 
     # height
     h = draw(
-        st_raw_field(storage_shape or (nx, ny, nz + 1), 1e-8, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny, nz + 1), 1e-8, 1000, backend, dtype, default_origin
+        )
     )
     return_dict["height_on_interface_levels"] = get_dataarray_3d(
         h,
@@ -1183,7 +1232,9 @@ def st_isentropic_state_f(
     if moist:
         # air density
         rho = draw(
-            st_raw_field(storage_shape or (nx, ny, nz), 1e-8, 1000, backend, dtype, halo)
+            st_raw_field(
+                storage_shape or (nx, ny, nz), 1e-8, 1000, backend, dtype, default_origin
+            )
         )
         return_dict["air_density"] = get_dataarray_3d(
             rho,
@@ -1196,7 +1247,9 @@ def st_isentropic_state_f(
 
         # air temperature
         t = draw(
-            st_raw_field(storage_shape or (nx, ny, nz), 1e-8, 1000, backend, dtype, halo)
+            st_raw_field(
+                storage_shape or (nx, ny, nz), 1e-8, 1000, backend, dtype, default_origin
+            )
         )
         return_dict["air_temperature"] = get_dataarray_3d(
             t,
@@ -1209,7 +1262,9 @@ def st_isentropic_state_f(
 
         # mass fraction of water vapor
         q = draw(
-            st_raw_field(storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, halo)
+            st_raw_field(
+                storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, default_origin
+            )
         )
         units = draw(st_one_of(conf.isentropic_state[mfwv].keys()))
         return_dict[mfwv] = get_dataarray_3d(
@@ -1223,7 +1278,9 @@ def st_isentropic_state_f(
 
         # mass fraction of cloud liquid water
         q = draw(
-            st_raw_field(storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, halo)
+            st_raw_field(
+                storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, default_origin
+            )
         )
         units = draw(st_one_of(conf.isentropic_state[mfcw].keys()))
         return_dict[mfcw] = get_dataarray_3d(
@@ -1237,7 +1294,9 @@ def st_isentropic_state_f(
 
         # mass fraction of precipitation water
         q = draw(
-            st_raw_field(storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, halo)
+            st_raw_field(
+                storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, default_origin
+            )
         )
         units = draw(st_one_of(conf.isentropic_state[mfpw].keys()))
         return_dict[mfpw] = get_dataarray_3d(
@@ -1260,7 +1319,7 @@ def st_isentropic_state_f(
                     1000,
                     backend,
                     dtype,
-                    halo,
+                    default_origin,
                 )
             )
             units = draw(st_one_of(conf.isentropic_state["precipitation"].keys()))
@@ -1283,7 +1342,7 @@ def st_isentropic_state_f(
                     1000,
                     backend,
                     dtype,
-                    halo,
+                    default_origin,
                 )
             )
             units = draw(
@@ -1310,7 +1369,7 @@ def st_isentropic_boussinesq_state_f(
     moist=False,
     precipitation=False,
     backend="numpy",
-    halo=None,
+    default_origin=None,
     storage_shape=None
 ):
     """ Strategy drawing a valid isentropic Boussinesq model state over `grid`. """
@@ -1321,7 +1380,7 @@ def st_isentropic_boussinesq_state_f(
             moist=moist,
             precipitation=precipitation,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=storage_shape,
         )
     )
@@ -1335,7 +1394,9 @@ def st_isentropic_boussinesq_state_f(
         storage_shape[2] = max(nz + 1, storage_shape[2])
 
     ddmtg = draw(
-        st_raw_field(storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, halo)
+        st_raw_field(
+            storage_shape or (nx, ny, nz), 0, 1000, backend, dtype, default_origin
+        )
     )
     return_dict["dd_montgomery_potential"] = get_dataarray_3d(
         ddmtg,
@@ -1350,7 +1411,7 @@ def st_isentropic_boussinesq_state_f(
 
 
 @hyp_st.composite
-def st_burgers_state(draw, grid, *, time=None, backend="numpy", halo=None):
+def st_burgers_state(draw, grid, *, time=None, backend="numpy", default_origin=None):
     """ Strategy drawing a valid Burgers model state over `grid`. """
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     assert nz == 1
@@ -1369,7 +1430,7 @@ def st_burgers_state(draw, grid, *, time=None, backend="numpy", halo=None):
             "burgers_state",
             "x_velocity",
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=True,
         )
     )
@@ -1381,7 +1442,7 @@ def st_burgers_state(draw, grid, *, time=None, backend="numpy", halo=None):
             "burgers_state",
             "y_velocity",
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=True,
         )
     )
@@ -1390,7 +1451,7 @@ def st_burgers_state(draw, grid, *, time=None, backend="numpy", halo=None):
 
 
 @hyp_st.composite
-def st_burgers_tendency(draw, grid, *, time=None, backend="numpy", halo=None):
+def st_burgers_tendency(draw, grid, *, time=None, backend="numpy", default_origin=None):
     """
     Strategy drawing a set of tendencies for the variables whose evolution is
     governed by the Burgers equations.
@@ -1412,7 +1473,7 @@ def st_burgers_tendency(draw, grid, *, time=None, backend="numpy", halo=None):
             "burgers_tendency",
             "x_velocity",
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=True,
         )
     )
@@ -1424,7 +1485,7 @@ def st_burgers_tendency(draw, grid, *, time=None, backend="numpy", halo=None):
             "burgers_tendency",
             "y_velocity",
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             set_coordinates=True,
         )
     )

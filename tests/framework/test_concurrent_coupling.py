@@ -38,7 +38,7 @@ import gridtools as gt
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo
+    from .conf import backend as conf_backend, default_origin as conf_dorigin
     from .utils import (
         compare_arrays,
         st_domain,
@@ -47,7 +47,7 @@ try:
         st_timedeltas,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo
+    from conf import backend as conf_backend, default_origin as conf_dorigin
     from utils import (
         compare_arrays,
         st_domain,
@@ -200,7 +200,7 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
 
     state = data.draw(
@@ -209,7 +209,7 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=storage_shape,
         ),
         label="state",
