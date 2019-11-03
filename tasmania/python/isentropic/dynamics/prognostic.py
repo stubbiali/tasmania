@@ -23,8 +23,7 @@
 import abc
 import numpy as np
 
-import gridtools as gt
-from tasmania.python.utils.storage_utils import empty, zeros
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -61,7 +60,7 @@ class IsentropicPrognostic(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         storage_shape,
     ):
@@ -92,7 +91,7 @@ class IsentropicPrognostic(abc.ABC):
             TODO
         exec_info : dict
             TODO
-        halo : tuple
+        default_origin : tuple
             TODO
         rebuild : bool
             TODO
@@ -108,7 +107,7 @@ class IsentropicPrognostic(abc.ABC):
         self._build_info = build_info
         self._dtype = dtype
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
         self._rebuild = rebuild
 
         nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -204,7 +203,7 @@ class IsentropicPrognostic(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
             storage_shape=None,
         **kwargs
@@ -245,7 +244,7 @@ class IsentropicPrognostic(abc.ABC):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -269,7 +268,7 @@ class IsentropicPrognostic(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape
         )
@@ -298,12 +297,12 @@ class IsentropicPrognostic(abc.ABC):
         storage_shape = self._storage_shape
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
 
-        self._s_new = empty(storage_shape, backend, dtype, halo=halo)
-        self._su_new = empty(storage_shape, backend, dtype, halo=halo)
-        self._sv_new = empty(storage_shape, backend, dtype, halo=halo)
+        self._s_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._su_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._sv_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
         if self._moist:
-            self._sqv_new = empty(storage_shape, backend, dtype, halo=halo)
-            self._sqc_new = empty(storage_shape, backend, dtype, halo=halo)
-            self._sqr_new = empty(storage_shape, backend, dtype, halo=halo)
+            self._sqv_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._sqc_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._sqr_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)

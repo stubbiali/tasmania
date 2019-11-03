@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -290,7 +290,7 @@ class ForwardEulerSI(IsentropicPrognostic):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         storage_shape,
         **kwargs
@@ -307,7 +307,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape,
         )
@@ -328,7 +328,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=False,
             storage_shape=storage_shape,
         )
@@ -378,6 +378,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             "s_new": self._s_new,
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
+            "mtg_int": state["montgomery_potential"],
             "su_int": state["x_momentum_isentropic"],
             "sv_int": state["y_momentum_isentropic"],
         }
@@ -398,6 +399,53 @@ class ForwardEulerSI(IsentropicPrognostic):
                     "sqr_new": self._sqr_new,
                 }
             )
+        else:
+            stencil_args.update(
+                {
+                    "sqv_now": state["air_isentropic_density"],
+                    "sqv_int": state["air_isentropic_density"],
+                    "qv_tnd": state["air_isentropic_density"],
+                    "sqv_new": state["air_isentropic_density"],
+                    "sqc_now": state["air_isentropic_density"],
+                    "sqc_int": state["air_isentropic_density"],
+                    "qc_tnd": state["air_isentropic_density"],
+                    "sqc_new": state["air_isentropic_density"],
+                    "sqr_now": state["air_isentropic_density"],
+                    "sqr_int": state["air_isentropic_density"],
+                    "qr_tnd": state["air_isentropic_density"],
+                    "sqr_new": state["air_isentropic_density"],
+                }
+            )
+
+        # stencil_args = {
+        #     "s_now": state["air_isentropic_density"],
+        #     "s_int": state["air_isentropic_density"],
+        #     "s_new": self._s_new,
+        #     "u_int": state["x_velocity_at_u_locations"],
+        #     "v_int": state["y_velocity_at_v_locations"],
+        #     "su_int": state["x_momentum_isentropic"],
+        #     "sv_int": state["y_momentum_isentropic"],
+        # }
+        # if self._s_tnd is not None:
+        #     stencil_args['s_tnd'] = self._s_tnd
+        # if self._moist:
+        #     stencil_args['sqv_now'] = state["isentropic_density_of_water_vapor"]
+        #     stencil_args['sqv_int'] = state["isentropic_density_of_water_vapor"]
+        #     stencil_args['sqv_new'] = self._sqv_new
+        #     if self._qv_tnd:
+        #         stencil_args['qv_tnd'] = self._qv_tnd
+        #
+        #     stencil_args['sqc_now'] = state["isentropic_density_of_cloud_liquid_water"]
+        #     stencil_args['sqc_int'] = state["isentropic_density_of_cloud_liquid_water"]
+        #     stencil_args['sqc_new'] = self._sqc_new
+        #     if self._qc_tnd:
+        #         stencil_args['qc_tnd'] = self._qc_tnd
+        #
+        #     stencil_args['sqr_now'] = state["isentropic_density_of_precipitation_water"]
+        #     stencil_args['sqr_int'] = state["isentropic_density_of_precipitation_water"]
+        #     stencil_args['sqr_new'] = self._sqr_new
+        #     if self._qr_tnd:
+        #         stencil_args['qr_tnd'] = self._qr_tnd
 
         # step the isentropic density and the water species
         self._stencil(
@@ -413,14 +461,14 @@ class ForwardEulerSI(IsentropicPrognostic):
         # apply the boundary conditions on the stepped isentropic density
         try:
             self._hb.dmn_enforce_field(
-                self._s_new[:nx, :ny, :nz],
+                self._s_new,
                 "air_isentropic_density",
                 "kg m^-2 K^-1",
                 time=state["time"] + timestep,
             )
         except AttributeError:
             self._hb.enforce_field(
-                self._s_new[:nx, :ny, :nz],
+                self._s_new,
                 "air_isentropic_density",
                 "kg m^-2 K^-1",
                 time=state["time"] + timestep,
@@ -437,6 +485,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
             "mtg_now": state["montgomery_potential"],
+            "mtg_int": state["montgomery_potential"],
             "mtg_new": self._mtg_new,
             "su_now": state["x_momentum_isentropic"],
             "su_int": state["x_momentum_isentropic"],
@@ -490,8 +539,10 @@ class ForwardEulerSI(IsentropicPrognostic):
         storage_shape = self._storage_shape
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
-        self._mtg_new = zeros(storage_shape, backend, dtype, halo=halo)
+        default_origin = self._default_origin
+        self._mtg_new = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
 
     def _stencils_initialize(self, tendencies):
         # set external symbols for the first stencil
@@ -516,7 +567,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             backend_opts=self._backend_opts,
             build_info=self._build_info,
             externals=externals,
-            min_signature=True,
+            min_signature=False,
             rebuild=self._rebuild,
         )
         self._stencil = decorator(step_forward_euler)
@@ -543,7 +594,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             backend_opts=self._backend_opts,
             build_info=self._build_info,
             externals=externals,
-            min_signature=True,
+            min_signature=False,
             rebuild=self._rebuild,
         )
         self._stencil_momentum = decorator(step_forward_euler_momentum)
@@ -567,7 +618,7 @@ class RK3WSSI(IsentropicPrognostic):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         storage_shape,
         **kwargs
@@ -584,7 +635,7 @@ class RK3WSSI(IsentropicPrognostic):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape,
         )
@@ -605,7 +656,7 @@ class RK3WSSI(IsentropicPrognostic):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=False,
             storage_shape=storage_shape,
         )
@@ -799,8 +850,10 @@ class RK3WSSI(IsentropicPrognostic):
         storage_shape = self._storage_shape
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
-        self._mtg_new = zeros(storage_shape, backend, dtype, halo=halo)
+        default_origin = self._default_origin
+        self._mtg_new = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
 
     def _stencils_initialize(self, tendencies):
         # set external symbols for the first stencil
@@ -872,7 +925,7 @@ class SIL3(IsentropicPrognostic):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         **kwargs
     ):
@@ -888,7 +941,7 @@ class SIL3(IsentropicPrognostic):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -907,7 +960,7 @@ class SIL3(IsentropicPrognostic):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
         )
 

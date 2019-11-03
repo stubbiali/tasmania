@@ -52,7 +52,7 @@ class VerticalDamping(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         storage_shape,
     ):
@@ -77,8 +77,8 @@ class VerticalDamping(abc.ABC):
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -112,7 +112,7 @@ class VerticalDamping(abc.ABC):
         za = z[damp_depth - 1]
         r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
         self._rmat = zeros(
-            storage_shape, backend, dtype, halo=halo, mask=(True, True, True)
+            storage_shape, backend, dtype, default_origin=default_origin, mask=(True, True, True)
         )
         self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
@@ -157,7 +157,7 @@ class VerticalDamping(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None
     ):
@@ -190,8 +190,8 @@ class VerticalDamping(abc.ABC):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -211,7 +211,7 @@ class VerticalDamping(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape,
         ]
@@ -251,7 +251,7 @@ class Rayleigh(VerticalDamping):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
     ):
@@ -265,7 +265,7 @@ class Rayleigh(VerticalDamping):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape,
         )
@@ -294,7 +294,7 @@ class Rayleigh(VerticalDamping):
             )
 
         # set the lowermost layers, outside of the damping region
-        field_out.data[:, :, dnk:] = field_new.data[:, :, dnk:]
+        field_out[:, :, dnk:] = field_new[:, :, dnk:]
 
     @staticmethod
     def _stencil_defs(

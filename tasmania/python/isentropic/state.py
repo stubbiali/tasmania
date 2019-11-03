@@ -20,17 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    get_isentropic_state_from_brunt_vaisala_frequency
-    get_isentropic_state_from_temperature
-"""
 import numpy as np
 from sympl import DataArray
 
+try:
+    import cupy
+except (ImportError, ModuleNotFoundError):
+    cupy = np
+
+import gridtools as gt
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.meteo_utils import convert_relative_humidity_to_water_vapor
-from tasmania.python.utils.storage_utils import get_dataarray_3d, get_storage_shape, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d, get_storage_shape, ones, zeros
 
 try:
     from tasmania.conf import datatype
@@ -67,7 +68,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     *,
     backend="numpy",
     dtype=datatype,
-    halo=None,
+    default_origin=None,
     storage_shape=None
 ):
     """
@@ -133,7 +134,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     storage_shape = get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
 
     def allocate():
-        return zeros(storage_shape, backend, dtype, halo=halo)
+        return zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
     # initialize the velocity components
     u = allocate()
@@ -164,14 +165,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
     # diagnose the Montgomery potential
     mtg_s = (
-        grid.z_on_interface_levels.to_units("K").values[-1] * exn[:nx, :ny, nz : nz + 1]
-        + g * hs[:, :, np.newaxis]
+        g * h[:, :, nz:nz+1] + grid.z_on_interface_levels.to_units('K').values[-1] * exn[:, :, nz:nz+1]
     )
     mtg = allocate()
-    mtg[:nx, :ny, nz - 1 : nz] = mtg_s + 0.5 * dz * exn[:nx, :ny, nz : nz + 1]
+    mtg[:nx, :ny, nz-1] = mtg_s[:nx, :ny, 0] + 0.5 * dz * exn[:nx, :ny, nz]
     for k in range(nz - 2, -1, -1):
-        mtg[:nx, :ny, k : k + 1] = (
-            mtg[:nx, :ny, k + 1 : k + 2] + dz * exn[:nx, :ny, k + 1 : k + 2]
+        mtg[:nx, :ny, k] = (
+                mtg[:nx, :ny, k+1] + dz * exn[:nx, :ny, k+1]
         )
 
     # diagnose the isentropic density and the momenta
@@ -291,7 +291,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         )
 
         # initialize the relative humidity
-        rh = relative_humidity * np.ones(storage_shape)
+        rh = relative_humidity * ones(storage_shape, backend, dtype, default_origin)
         rh_ = get_dataarray_3d(rh, grid, "1")
 
         # interpolate the pressure at the main levels
@@ -322,7 +322,12 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         # precipitation and accumulated precipitation
         if precipitation:
             state["precipitation"] = get_dataarray_3d(
-                zeros((storage_shape[0], storage_shape[1], 1), backend, dtype, halo=halo),
+                zeros(
+                    (storage_shape[0], storage_shape[1], 1),
+                    backend,
+                    dtype,
+                    default_origin=default_origin,
+                ),
                 grid,
                 "mm hr^-1",
                 name="precipitation",
@@ -330,20 +335,18 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
                 set_coordinates=False,
             )
             state["accumulated_precipitation"] = get_dataarray_3d(
-                zeros((storage_shape[0], storage_shape[1], 1), backend, dtype, halo=halo),
+                zeros(
+                    (storage_shape[0], storage_shape[1], 1),
+                    backend,
+                    dtype,
+                    default_origin=default_origin,
+                ),
                 grid,
                 "mm",
                 name="accumulated_precipitation",
                 grid_shape=(nx, ny, 1),
                 set_coordinates=False,
             )
-
-        for name in state:
-            if name != 'time':
-                try:
-                    state[name].values.synchronize()
-                except AttributeError:
-                    pass
 
     return state
 

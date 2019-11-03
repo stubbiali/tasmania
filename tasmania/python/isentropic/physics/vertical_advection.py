@@ -20,27 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-#
-# Tasmania
-#
-# Copyright (c) 2018-2019, ETH Zurich
-# All rights reserved.
-#
-# This file is part of the Tasmania project. Tasmania is free software:
-# you can redistribute it and/or modify it under the terms of the
-# GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
 import numpy as np
 from sympl import DataArray
 
@@ -84,7 +63,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -115,7 +94,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -147,13 +126,13 @@ class IsentropicVerticalAdvection(TendencyComponent):
         assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages collecting the stencil outputs
-        self._out_s = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_su = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_sv = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_s = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_su = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_sv = zeros(storage_shape, backend, dtype, default_origin=default_origin)
         if moist:
-            self._out_qv = zeros(storage_shape, backend, dtype, halo=halo)
-            self._out_qc = zeros(storage_shape, backend, dtype, halo=halo)
-            self._out_qr = zeros(storage_shape, backend, dtype, halo=halo)
+            self._out_qv = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._out_qc = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._out_qr = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
         # instantiate the underlying stencil object
         externals = self._vflux.externals.copy()

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,12 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	PorzMicrophysics(TendencyComponent)
-	PorzFallVelocity(DiagnosticComponent)
-	PorzSedimentation(ImplicitTendencyComponent)
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -37,7 +31,7 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
 
 try:
@@ -524,7 +518,7 @@ class PorzFallVelocity(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False
     ):
         """
@@ -548,7 +542,7 @@ class PorzFallVelocity(DiagnosticComponent):
 			TODO
 		exec_info : `dict`, optional
 			TODO
-		halo : `tuple`, optional
+		default_origin : `tuple`, optional
 			TODO
 		rebuild : `bool`, optional
 			TODO
@@ -558,12 +552,11 @@ class PorzFallVelocity(DiagnosticComponent):
         self._exec_info = exec_info
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
-        self._in_rho = gt.storage.zeros(descriptor, backend=backend)
-        self._in_qr = gt.storage.zeros(descriptor, backend=backend)
-        self._in_nr = gt.storage.zeros(descriptor, backend=backend)
-        self._out_vq = gt.storage.zeros(descriptor, backend=backend)
-        self._out_vn = gt.storage.zeros(descriptor, backend=backend)
+        self._in_rho = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_qr = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_nr = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._out_vq = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._out_vn = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
         decorator = gt.stencil(
             backend,
@@ -672,7 +665,7 @@ class PorzSedimentation(ImplicitTendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         **kwargs
     ):
@@ -703,7 +696,7 @@ class PorzSedimentation(ImplicitTendencyComponent):
 			TODO
 		exec_info : `dict`, optional
 			TODO
-		halo : `tuple`, optional
+		default_origin : `tuple`, optional
 			TODO
 		rebuild : `bool`, optional
 			TODO
@@ -719,15 +712,14 @@ class PorzSedimentation(ImplicitTendencyComponent):
         self._nb = sflux.nb
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        descriptor = get_storage_descriptor((nx, ny, nz + 1), dtype, halo=halo)
-        self._in_rho = gt.storage.zeros(descriptor, backend=backend)
-        self._in_h = gt.storage.zeros(descriptor, backend=backend)
-        self._in_qr = gt.storage.zeros(descriptor, backend=backend)
-        self._in_nr = gt.storage.zeros(descriptor, backend=backend)
-        self._in_vq = gt.storage.zeros(descriptor, backend=backend)
-        self._in_vn = gt.storage.zeros(descriptor, backend=backend)
-        self._out_qr = gt.storage.zeros(descriptor, backend=backend)
-        self._out_nr = gt.storage.zeros(descriptor, backend=backend)
+        self._in_rho = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_h = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_qr = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_nr = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_vq = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._in_vn = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._out_qr = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        self._out_nr = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
         decorator = gt.stencil(
             backend,

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,12 +30,17 @@ from hypothesis import (
 )
 import pytest
 
+import gridtools as gt
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania import get_dataarray_3d
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from .test_turbulence import smagorinsky2d_validation
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
+    from .physics.test_turbulence import smagorinsky2d_validation
     from .utils import (
         compare_dataarrays,
         st_domain,
@@ -44,8 +49,12 @@ try:
         st_isentropic_state_f,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
-    from test_turbulence import smagorinsky2d_validation
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
+    from physics.test_turbulence import smagorinsky2d_validation
     from utils import (
         compare_dataarrays,
         st_domain,
@@ -65,24 +74,36 @@ except (ImportError, ModuleNotFoundError):
 )
 @given(hyp_st.data())
 def test_smagorinsky(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
 
-    domain = data.draw(st_domain(nb=nb), label="domain")
+    domain = data.draw(
+        st_domain(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=nb
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
     cs = data.draw(hyp_st.floats(min_value=0, max_value=10), label="cs")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=False, backend=backend, halo=halo, storage_shape=storage_shape
+            grid,
+            moist=False,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -92,7 +113,6 @@ def test_smagorinsky(data):
     # ========================================
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
-    dtype = grid.x.dtype
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
     su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
@@ -102,12 +122,15 @@ def test_smagorinsky(data):
     v = sv / s
     u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
 
+    import pdb
+    pdb.set_trace()
+
     smag = IsentropicSmagorinsky(
         domain,
         smagorinsky_constant=cs,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=False,
         storage_shape=storage_shape,
     )
@@ -135,7 +158,7 @@ def test_smagorinsky(data):
             "kg m^-1 K^-1 s^-2",
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
-            )[nb : -nb - 1, nb : -nb - 1, :-1],
+        )[nb : -nb - 1, nb : -nb - 1, :-1],
         compare_coordinate_values=False,
     )
     assert len(tendencies) == 2

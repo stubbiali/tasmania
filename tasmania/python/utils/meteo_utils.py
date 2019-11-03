@@ -24,6 +24,12 @@ from copy import deepcopy
 import numpy as np
 from sympl import DataArray
 
+try:
+    import cupy as cp
+except (ImportError, ModuleNotFoundError):
+    cp = np
+
+import gridtools as gt
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
@@ -276,15 +282,9 @@ def tetens_formula(t):
     tr = 273.16
     bw = 35.86
 
-    try:
-        import cupy as cp
-
-        if isinstance(t, cp.ndarray):
-            exp = cp.exp
-        else:
-            exp = np.exp
-    except (ImportError, ModuleNotFoundError):
-       exp = np.exp
+    backend = getattr(t, 'backend', 'numpy')
+    device = gt.backend.from_name(backend).storage_info["device"]
+    exp = cp.exp if device == "gpu" else np.exp
 
     e = pw * exp(aw * (t - tr) / (t - bw))
 
@@ -320,19 +320,13 @@ def goff_gratch_formula(t):
     t_st = 373.15
     e_st = 1013.25e2
 
-    try:
-        import cupy as cp
-    except (ImportError, ModuleNotFoundError):
-        cp = None
-
-    if cp is not None and isinstance(t, cp.ndarray):
-        log10 = cp.log10
-    else:
-        log10 = np.log10
+    backend = getattr(t, 'backend', 'numpy')
+    device = gt.backend.from_name(backend).storage_info["device"]
+    log10 = cp.log10 if device == "gpu" else np.log10
 
     e = e_st * 10 ** (
         -c1 * (t_st / t - 1.0)
-        + c2 * np.log10(t_st / t)
+        + c2 * log10(t_st / t)
         - c3 * (10.0 ** (c4 * (1.0 - t / t_st)) - 1.0)
         + c5 * (10 ** (-c6 * (t_st / t - 1.0)) - 1.0)
     )

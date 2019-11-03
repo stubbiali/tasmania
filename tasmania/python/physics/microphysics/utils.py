@@ -117,7 +117,7 @@ class Precipitation(ImplicitTendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -150,7 +150,7 @@ class Precipitation(ImplicitTendencyComponent):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -173,11 +173,15 @@ class Precipitation(ImplicitTendencyComponent):
         )
         storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
 
-        self._in_rho = zeros(storage_shape, backend, dtype, halo=halo)
-        self._in_qr = zeros(storage_shape, backend, dtype, halo=halo)
-        self._in_vt = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_prec = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_accprec = zeros(storage_shape, backend, dtype, halo=halo)
+        self._in_rho = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._in_qr = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._in_vt = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_prec = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
+        self._out_accprec = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
 
         decorator = gt.stencil(
             backend,
@@ -229,29 +233,34 @@ class Precipitation(ImplicitTendencyComponent):
     def array_call(self, state, timestep):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-        try:
-            state["air_density"].host_to_device()
-            self._in_rho.data[...] = state["air_density"].data[:, :, nz - 1 : nz]
-            self._in_rho._sync_state.state = self._in_rho.SyncState.SYNC_DEVICE_DIRTY
+        # try:
+        #     state["air_density"].host_to_device()
+        #     self._in_rho.data[...] = state["air_density"].data[:, :, nz - 1 : nz]
+        #     self._in_rho._sync_state.state = self._in_rho.SyncState.SYNC_DEVICE_DIRTY
+        #
+        #     state["mass_fraction_of_precipitation_water_in_air"].host_to_device()
+        #     self._in_qr.data[...] = state[
+        #         "mass_fraction_of_precipitation_water_in_air"
+        #     ].data[:, :, nz - 1 : nz]
+        #     self._in_qr._sync_state.state = self._in_qr.SyncState.SYNC_DEVICE_DIRTY
+        #
+        #     state["raindrop_fall_velocity"].host_to_device()
+        #     self._in_vt.data[...] = state["raindrop_fall_velocity"].data[
+        #         :, :, nz - 1 : nz
+        #     ]
+        #     self._in_vt._sync_state.state = self._in_vt.SyncState.SYNC_DEVICE_DIRTY
+        # except AttributeError:
+        #     self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
+        #     self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
+        #         :, :, nz - 1 : nz
+        #     ]
+        #     self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
 
-            state["mass_fraction_of_precipitation_water_in_air"].host_to_device()
-            self._in_qr.data[...] = state[
-                "mass_fraction_of_precipitation_water_in_air"
-            ].data[:, :, nz - 1 : nz]
-            self._in_qr._sync_state.state = self._in_qr.SyncState.SYNC_DEVICE_DIRTY
-
-            state["raindrop_fall_velocity"].host_to_device()
-            self._in_vt.data[...] = state["raindrop_fall_velocity"].data[
-                :, :, nz - 1 : nz
-            ]
-            self._in_vt._sync_state.state = self._in_vt.SyncState.SYNC_DEVICE_DIRTY
-        except AttributeError:
-            self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
-            self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
-                :, :, nz - 1 : nz
-            ]
-            self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
-
+        self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
+        self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
+            :, :, nz - 1 : nz
+        ]
+        self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
         in_accprec = state["accumulated_precipitation"]
 
         dt = timestep.total_seconds()

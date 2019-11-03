@@ -96,7 +96,7 @@ class KesslerMicrophysics(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -157,7 +157,7 @@ class KesslerMicrophysics(TendencyComponent):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -199,12 +199,20 @@ class KesslerMicrophysics(TendencyComponent):
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
 
         # allocate the gt4py storage collecting the outputs
-        self._in_ps = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_qc_tnd = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_qr_tnd = zeros(storage_shape, backend, dtype, halo=halo)
+        self._in_ps = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_qc_tnd = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
+        self._out_qr_tnd = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
         if rain_evaporation:
-            self._out_qv_tnd = zeros(storage_shape, backend, dtype, halo=halo)
-            self._out_theta_tnd = zeros(storage_shape, backend, dtype, halo=halo)
+            self._out_qv_tnd = zeros(
+                storage_shape, backend, dtype, default_origin=default_origin
+            )
+            self._out_theta_tnd = zeros(
+                storage_shape, backend, dtype, default_origin=default_origin
+            )
 
         # initialize the underlying gt4py stencil object
         decorator = gt.stencil(
@@ -476,7 +484,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None
     ):
@@ -524,7 +532,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -553,9 +561,9 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
 
         # allocate the gt4py storages collecting inputs and outputs
-        self._in_ps = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_qv = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_qc = zeros(storage_shape, backend, dtype, halo=halo)
+        self._in_ps = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_qv = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_qc = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
         # initialize the underlying gt4py stencil object
         decorator = gt.stencil(
@@ -712,7 +720,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None
     ):
@@ -737,7 +745,7 @@ class KesslerFallVelocity(DiagnosticComponent):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -751,8 +759,10 @@ class KesslerFallVelocity(DiagnosticComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz))
 
-        self._in_rho_s = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_vt = zeros(storage_shape, backend, dtype, halo=halo)
+        self._in_rho_s = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
+        self._out_vt = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
         decorator = gt.stencil(
             backend,
@@ -788,19 +798,17 @@ class KesslerFallVelocity(DiagnosticComponent):
     def array_call(self, state):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-        # extract the needed model variables
         in_rho = state["air_density"]
         in_qr = state[mfpw]
+        self._in_rho_s[...] = in_rho[:, :, nz - 1 : nz]
 
-        # extract the surface density
-        try:
-            in_rho.host_to_device()
-            self._in_rho_s.data[...] = in_rho.data[:, :, nz - 1 : nz]
-            self._in_rho_s._sync_state.state = self._in_rho_s.SyncState.SYNC_DEVICE_DIRTY
-        except AttributeError:
-            self._in_rho_s[...] = in_rho.data[:, :, nz - 1 : nz]
+        # try:
+        #     in_rho.host_to_device()
+        #     self._in_rho_s.data[...] = in_rho.data[:, :, nz - 1 : nz]
+        #     self._in_rho_s._sync_state.state = self._in_rho_s.SyncState.SYNC_DEVICE_DIRTY
+        # except AttributeError:
+        #     self._in_rho_s[...] = in_rho.data[:, :, nz - 1 : nz]
 
-        # run the stencil
         self._stencil(
             in_rho=in_rho,
             in_rho_s=self._in_rho_s,
@@ -849,7 +857,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -881,7 +889,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             TODO
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -900,8 +908,10 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
-        self._out_qr = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_dfdz = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_qr = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_dfdz = zeros(
+            storage_shape, backend, dtype, default_origin=default_origin
+        )
 
         decorator = gt.stencil(
             backend,
@@ -996,6 +1006,15 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         # 	(in_vt[0, 0, 0] >  max_cfl * dh[0, 0, 0] / dt) * max_cfl * dh[0, 0, 0] / dt + \
         # 	(in_vt[0, 0, 0] <= max_cfl * dh[0, 0, 0] / dt) * in_vt[0, 0, 0]
 
-        out_dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
+        # out_dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
+
+        # interpolate the geometric height at the model main levels
+        tmp_h = 0.5 * (in_h[0, 0, 0] + in_h[0, 0, 1])
+
+        # calculate the vertical derivative of the sedimentation flux
+        out_dfdz = (
+            in_rho[0, 0, -1] * in_qr[0, 0, -1] * in_vt[0, 0, -1]
+            - in_rho[0, 0, 0] * in_qr[0, 0, 0] * in_vt[0, 0, 0]
+        ) / (tmp_h[0, 0, -1] - tmp_h[0, 0, 0])
 
         out_qr = out_dfdz[0, 0, 0] / in_rho[0, 0, 0]

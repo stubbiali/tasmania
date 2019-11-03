@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     given,
@@ -46,7 +47,7 @@ from tasmania.python.utils.storage_utils import zeros
 from tasmania import get_dataarray_3d
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo
+    from .conf import backend as conf_backend, default_origin as conf_dorigin
     from .utils import (
         compare_arrays,
         compare_dataarrays,
@@ -58,7 +59,7 @@ try:
         st_raw_field,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo
+    from conf import backend as conf_backend, default_origin as conf_dorigin
     from utils import (
         compare_arrays,
         compare_dataarrays,
@@ -88,7 +89,7 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
     ids = np.where(vt > maxcfl * dh / dt)
     vt[ids] = maxcfl * dh[ids] / dt
 
-    return 3.6e6 * rho[:, :, -1:] * qr[:, :, -1:] * vt[:, :, -1:] / rhow
+    return 3.6e6 * rho * qr * vt / rhow
 
 
 @settings(
@@ -100,17 +101,19 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_precipitation(data):
+def _test_precipitation(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(zaxis_length=(2, 20)), label="domain")
-
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -120,7 +123,7 @@ def test_precipitation(data):
             moist=True,
             precipitation=True,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=storage_shape,
         ),
         label="state",
@@ -136,14 +139,12 @@ def test_precipitation(data):
     # ========================================
     # test bed
     # ========================================
-    dtype = grid.x.dtype
-
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         storage_shape=storage_shape,
     )
     state.update(rfv(state))
@@ -153,7 +154,7 @@ def test_precipitation(data):
         grid_type,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         storage_shape=storage_shape,
     )
 
@@ -220,7 +221,7 @@ class WrappingStencil:
 def first_order_flux_validation(rho, h, qr, vt):
     tmp_h = 0.5 * (h[:, :, :-1] + h[:, :, 1:])
 
-    out = np.zeros_like(rho, dtype=rho.dtype)
+    out = deepcopy(rho)
     out[:, :, 1:] = (
         rho[:, :, :-1] * qr[:, :, :-1] * vt[:, :, :-1]
         - rho[:, :, 1:] * qr[:, :, 1:] * vt[:, :, 1:]
@@ -232,20 +233,20 @@ def first_order_flux_validation(rho, h, qr, vt):
 def second_order_flux_validation(rho, h, qr, vt):
     tmp_h = 0.5 * (h[:, :, :-1] + h[:, :, 1:])
 
-    a = np.zeros_like(rho, dtype=rho.dtype)
+    a = deepcopy(rho)
     a[:, :, 2:] = (2 * tmp_h[:, :, 2:] - tmp_h[:, :, 1:-1] - tmp_h[:, :, :-2]) / (
         (tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:]) * (tmp_h[:, :, :-2] - tmp_h[:, :, 2:])
     )
-    b = np.zeros_like(rho, dtype=rho.dtype)
+    b = deepcopy(rho)
     b[:, :, 2:] = (tmp_h[:, :, :-2] - tmp_h[:, :, 2:]) / (
         (tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:]) * (tmp_h[:, :, :-2] - tmp_h[:, :, 1:-1])
     )
-    c = np.zeros_like(rho, dtype=rho.dtype)
+    c = deepcopy(rho)
     c[:, :, 2:] = -(tmp_h[:, :, 1:-1] - tmp_h[:, :, 2:]) / (
         (tmp_h[:, :, :-2] - tmp_h[:, :, 2:]) * (tmp_h[:, :, :-2] - tmp_h[:, :, 1:-1])
     )
 
-    out = np.zeros_like(rho, dtype=rho.dtype)
+    out = deepcopy(rho)
     out[:, :, 2:] = (
         a[:, :, 2:] * rho[:, :, 2:] * qr[:, :, 2:] * vt[:, :, 2:]
         + b[:, :, 2:] * rho[:, :, 1:-1] * qr[:, :, 1:-1] * vt[:, :, 1:-1]
@@ -277,55 +278,85 @@ flux_properties = {
 )
 @given(hyp_st.data())
 def test_sedimentation_flux(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
-
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     storage_shape = (nx + dnx, ny + dny, nz + 1)
 
     rho = data.draw(
-        st_raw_field(storage_shape, 1, 1e4, backend=backend, dtype=dtype, halo=halo),
+        st_raw_field(
+            storage_shape,
+            1,
+            1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         label="rho",
     )
     h = data.draw(
-        st_raw_field(storage_shape, 1, 1e4, backend=backend, dtype=dtype, halo=halo),
+        st_raw_field(
+            storage_shape,
+            1,
+            1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         label="h",
     )
     qr = data.draw(
-        st_raw_field(storage_shape, 1, 1e4, backend=backend, dtype=dtype, halo=halo),
+        st_raw_field(
+            storage_shape,
+            1,
+            1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         label="qr",
     )
     vt = data.draw(
-        st_raw_field(storage_shape, 1, 1e4, backend=backend, dtype=dtype, halo=halo),
+        st_raw_field(
+            storage_shape,
+            1,
+            1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         label="vt",
     )
 
     flux_type = data.draw(
-        st_one_of(("first_order_upwind", "second_order_upwind")), label="flux_type"
+        st_one_of(("first_order_upwind", )), label="flux_type"
     )
 
     # ========================================
     # test bed
     # ========================================
-    dfdz = zeros(storage_shape, backend, dtype, halo=halo)
+    dfdz = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
     core = SedimentationFlux.factory(flux_type)
     assert isinstance(core, flux_properties[flux_type]["type"])
 
     ws = WrappingStencil(core, backend, True)
     ws(rho, h, qr, vt, dfdz)
+
     dfdz_val = flux_properties[flux_type]["validation"](
-        rho[:nx, :ny, :nz], h[:nx, :ny, :nz+1], qr[:nx, :ny, :nz], vt[:nx, :ny, :nz]
+        rho[:nx, :ny, :nz], h[:nx, :ny, : nz + 1], qr[:nx, :ny, :nz], vt[:nx, :ny, :nz]
     )
     compare_arrays(dfdz[:nx, :ny, :nz], dfdz_val)
 
@@ -378,14 +409,16 @@ def _test_kessler_sedimentation(data):
     )
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     # ========================================
     # test bed
     # ========================================
     dtype = grid.x.dtype
 
-    rfv = KesslerFallVelocity(domain, grid_type, backend=backend, dtype=dtype, halo=halo)
+    rfv = KesslerFallVelocity(
+        domain, grid_type, backend=backend, dtype=dtype, default_origin=default_origin
+    )
     diagnostics = rfv(state)
     state.update(diagnostics)
 

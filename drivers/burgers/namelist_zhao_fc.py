@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 8
+factor = 1
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -54,7 +54,7 @@ gt_kwargs = {
     "dtype": np.float64,
     "exec_info": None,
     "default_origin": (nb, nb, 0),
-    "rebuild": False,
+    "rebuild": True,
 }
 gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
 
@@ -65,7 +65,7 @@ flux_scheme = "fifth_order"
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 100  # 4 ** factor * 100
+niter = 4 ** factor * 100
 
 # output
 filename = None  # '../../data/burgers_fc_{}.nc'.format(gt_kwargs['backend'])
@@ -75,5 +75,5 @@ filename = None  # '../../data/burgers_fc_{}.nc'.format(gt_kwargs['backend'])
 #       nx, ny, int(timestep.total_seconds()), niter,
 #   )
 save_frequency = -1
-print_frequency = -1
+print_frequency = 1
 plot_frequency = -1

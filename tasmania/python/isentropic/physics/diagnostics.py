@@ -20,11 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicDiagnostics
-    IsentropicVelocityComponents
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -32,7 +27,7 @@ import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics as Core
-from tasmania.python.utils.storage_utils import empty, zeros
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -80,7 +75,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None
     ):
@@ -127,8 +122,8 @@ class IsentropicDiagnostics(DiagnosticComponent):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -153,20 +148,20 @@ class IsentropicDiagnostics(DiagnosticComponent):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
             storage_shape=storage_shape
         )
 
         # allocate the gt4py storages collecting the output fields calculated
         # by the stencils
-        self._out_p = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_exn = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_mtg = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_h = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_p = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_exn = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_mtg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_h = zeros(storage_shape, backend, dtype, default_origin=default_origin)
         if moist:
-            self._out_r = empty(storage_shape, backend, dtype, halo=halo)
-            self._out_t = empty(storage_shape, backend, dtype, halo=halo)
+            self._out_r = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._out_t = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
     @property
     def input_properties(self):
@@ -235,7 +230,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None
     ):
@@ -254,8 +249,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -287,8 +282,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages gathering the output fields
-        self._out_u = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_v = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_u = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_v = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
     @property
     def input_properties(self):
@@ -333,13 +328,13 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         # enforce the boundary conditions
         hb = self.horizontal_boundary
         hb.dmn_set_outermost_layers_x(
-            self._out_u[:nx+1, :ny, :nz],
+            self._out_u,
             field_name="x_velocity_at_u_locations",
             field_units="m s^-1",
             time=state["time"],
         )
         hb.dmn_set_outermost_layers_y(
-            self._out_v[:nx, :ny+1, :nz],
+            self._out_v,
             field_name="y_velocity_at_v_locations",
             field_units="m s^-1",
             time=state["time"],

@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    Smagorinsky2d
-"""
 import numpy as np
 
 import gridtools as gt
@@ -59,7 +55,7 @@ class Smagorinsky2d(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -82,7 +78,7 @@ class Smagorinsky2d(TendencyComponent):
             used within this class.
         exec_info : `dict`, optional
             TODO
-        halo : `tuple`, optional
+        default_origin : `tuple`, optional
             TODO
         rebuild : `bool`, optional
             TODO
@@ -113,8 +109,8 @@ class Smagorinsky2d(TendencyComponent):
         assert storage_shape[2] >= nz, error_msg
         self._storage_shape = storage_shape
 
-        self._out_u_tnd = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_v_tnd = zeros(storage_shape, backend, dtype, halo=halo)
+        self._out_u_tnd = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_v_tnd = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
         decorator = gt.stencil(
             backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild

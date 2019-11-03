@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from hypothesis import (
     assume,
     given,
@@ -28,23 +29,31 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 
+import gridtools as gt
 from tasmania.python.physics.turbulence import Smagorinsky2d
 from tasmania import get_dataarray_3d
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from .utils import compare_dataarrays, st_domain, st_floats, st_one_of, st_raw_field
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from utils import compare_dataarrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
 def smagorinsky2d_validation(dx, dy, cs, u, v):
-    u_tnd = np.zeros_like(u, dtype=u.dtype)
-    v_tnd = np.zeros_like(v, dtype=v.dtype)
+    u_tnd = deepcopy(u)
+    v_tnd = deepcopy(v)
 
     s00 = (u[2:, 1:-1] - u[:-2, 1:-1]) / (2.0 * dx)
     s01 = 0.5 * (
@@ -75,16 +84,23 @@ def smagorinsky2d_validation(dx, dy, cs, u, v):
 )
 @given(hyp_st.data())
 def test_smagorinsky2d(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
-    domain = data.draw(st_domain(nb=nb), label="domain")
+    domain = data.draw(
+        st_domain(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=nb
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -92,11 +108,25 @@ def test_smagorinsky2d(data):
     storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     u = data.draw(
-        st_raw_field(storage_shape, -1e3, 1e3, backend=backend, dtype=dtype, halo=halo),
+        st_raw_field(
+            storage_shape,
+            -1e3,
+            1e3,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         label="u",
     )
     v = data.draw(
-        st_raw_field(storage_shape, -1e3, 1e3, backend=backend, dtype=dtype, halo=halo),
+        st_raw_field(
+            storage_shape,
+            -1e3,
+            1e3,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         label="v",
     )
 
@@ -127,7 +157,7 @@ def test_smagorinsky2d(data):
         smagorinsky_constant=cs,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         storage_shape=storage_shape,
     )
 

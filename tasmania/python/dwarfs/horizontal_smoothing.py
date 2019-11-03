@@ -51,7 +51,7 @@ class HorizontalSmoothing(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         """
@@ -77,8 +77,8 @@ class HorizontalSmoothing(abc.ABC):
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -99,7 +99,7 @@ class HorizontalSmoothing(abc.ABC):
             gamma[:, :, :n] += (smooth_coeff_max - smooth_coeff) * pert
 
         # convert diffusivity to gt4py storage
-        self._gamma = zeros(shape, backend, dtype, halo=halo, mask=(True, True, True))
+        self._gamma = zeros(shape, backend, dtype, default_origin=default_origin, mask=(True, True, True))
         self._gamma[...] = gamma
 
         # initialize the underlying stencil
@@ -138,7 +138,7 @@ class HorizontalSmoothing(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False
     ):
         """
@@ -174,8 +174,8 @@ class HorizontalSmoothing(abc.ABC):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -196,7 +196,7 @@ class HorizontalSmoothing(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         ]
 
@@ -266,7 +266,7 @@ class FirstOrder(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
@@ -281,7 +281,7 @@ class FirstOrder(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -341,7 +341,7 @@ class FirstOrder1DX(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
@@ -356,7 +356,7 @@ class FirstOrder1DX(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -414,7 +414,7 @@ class FirstOrder1DY(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
@@ -429,7 +429,7 @@ class FirstOrder1DY(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -487,7 +487,7 @@ class SecondOrder(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
@@ -502,7 +502,7 @@ class SecondOrder(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -571,7 +571,7 @@ class SecondOrder1DX(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
@@ -586,7 +586,7 @@ class SecondOrder1DX(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -649,7 +649,7 @@ class SecondOrder1DY(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
@@ -664,7 +664,7 @@ class SecondOrder1DY(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -727,7 +727,7 @@ class ThirdOrder(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
@@ -742,7 +742,7 @@ class ThirdOrder(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -815,7 +815,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
@@ -830,7 +830,7 @@ class ThirdOrder1DX(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 
@@ -895,7 +895,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
@@ -910,7 +910,7 @@ class ThirdOrder1DY(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
         )
 

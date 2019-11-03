@@ -63,7 +63,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -107,8 +107,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -146,7 +146,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
         )
 
@@ -175,19 +175,19 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
                 build_info=build_info,
                 dtype=dtype,
                 exec_info=exec_info,
-                halo=halo,
+                default_origin=default_origin,
                 rebuild=rebuild,
             )
         else:
             self._core_moist = None
 
-        self._s_tnd = zeros(shape, backend, dtype, halo=halo)
-        self._su_tnd = zeros(shape, backend, dtype, halo=halo)
-        self._sv_tnd = zeros(shape, backend, dtype, halo=halo)
+        self._s_tnd = zeros(shape, backend, dtype, default_origin=default_origin)
+        self._su_tnd = zeros(shape, backend, dtype, default_origin=default_origin)
+        self._sv_tnd = zeros(shape, backend, dtype, default_origin=default_origin)
         if self._moist:
-            self._qv_tnd = zeros(shape, backend, dtype, halo=halo)
-            self._qc_tnd = zeros(shape, backend, dtype, halo=halo)
-            self._qr_tnd = zeros(shape, backend, dtype, halo=halo)
+            self._qv_tnd = zeros(shape, backend, dtype, default_origin=default_origin)
+            self._qc_tnd = zeros(shape, backend, dtype, default_origin=default_origin)
+            self._qr_tnd = zeros(shape, backend, dtype, default_origin=default_origin)
 
     @property
     def input_properties(self):

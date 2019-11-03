@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -37,11 +37,14 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
-from tasmania.python.utils.storage_utils import get_storage_descriptor
-from tasmania import get_dataarray_3d
+from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from .utils import (
         compare_dataarrays,
         st_domain,
@@ -50,7 +53,11 @@ try:
         st_isentropic_state_f,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from utils import (
         compare_dataarrays,
         st_domain,
@@ -75,6 +82,8 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 )
 @given(hyp_st.data())
 def test(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -86,7 +95,23 @@ def test(data):
         label="domain",
     )
     grid = domain.numerical_grid
-    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1))
     smooth_coeff_max = data.draw(st_floats(min_value=smooth_coeff, max_value=1))
@@ -97,20 +122,13 @@ def test(data):
     )
     smooth_moist_damp_depth = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz))
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
-
     # ========================================
     # test bed
     # ========================================
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-
     smooth_types = ("first_order", "second_order", "third_order")
 
-    descriptor = get_storage_descriptor((nx, ny, nz), dtype, halo=halo)
-    in_st = gt.storage.zeros(descriptor, backend=backend)
-    out_st = gt.storage.zeros(descriptor, backend=backend)
+    in_st = zeros(storage_shape, backend, dtype, default_origin)
+    out_st = zeros(storage_shape, backend, dtype, default_origin)
 
     for smooth_type in smooth_types:
         #
@@ -118,26 +136,26 @@ def test(data):
         #
         hs = HorizontalSmoothing.factory(
             smooth_type,
-            (nx, ny, nz),
+            storage_shape,
             smooth_coeff,
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=True,
         )
         hs_moist = HorizontalSmoothing.factory(
             smooth_type,
-            (nx, ny, nz),
+            storage_shape,
             smooth_moist_coeff,
             smooth_moist_coeff_max,
             smooth_moist_damp_depth,
             nb,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=False,
         )
 
@@ -150,16 +168,16 @@ def test(data):
         )
         units = ("kg m^-2 K^-1", "kg m^-1 K^-1 s^-1", "kg m^-1 K^-1 s^-1")
         for i in range(len(names)):
-            in_st.data[...] = state[names[i]].to_units(units[i]).values
+            in_st[...] = state[names[i]].to_units(units[i]).values
             hs(in_st, out_st)
-            val[names[i]] = deepcopy(out_st.data)
+            val[names[i]] = deepcopy(out_st)
 
         names = (mfwv, mfcw, mfpw)
         units = ("g g^-1",) * 3
         for i in range(len(names)):
-            in_st.data[...] = state[names[i]].to_units(units[i]).values
+            in_st[...] = state[names[i]].to_units(units[i]).values
             hs_moist(in_st, out_st)
-            val[names[i]] = deepcopy(out_st.data)
+            val[names[i]] = deepcopy(out_st)
 
         #
         # dry
@@ -172,7 +190,7 @@ def test(data):
             smooth_damp_depth=smooth_damp_depth,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         )
 
         diagnostics = ihs(state)
@@ -185,7 +203,14 @@ def test(data):
         units = ("kg m^-2 K^-1", "kg m^-1 K^-1 s^-1", "kg m^-1 K^-1 s^-1")
         for i in range(len(names)):
             assert names[i] in diagnostics
-            field_val = get_dataarray_3d(val[names[i]], grid, units[i], name=names[i])
+            field_val = get_dataarray_3d(
+                val[names[i]],
+                grid,
+                units[i],
+                name=names[i],
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            )
             compare_dataarrays(diagnostics[names[i]], field_val)
 
         assert len(diagnostics) == len(names)
@@ -205,7 +230,7 @@ def test(data):
             smooth_moist_damp_depth=smooth_moist_damp_depth,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         )
 
         diagnostics = ihs(state)
@@ -228,7 +253,14 @@ def test(data):
         )
         for i in range(len(names)):
             assert names[i] in diagnostics
-            field_val = get_dataarray_3d(val[names[i]], grid, units[i], name=names[i])
+            field_val = get_dataarray_3d(
+                val[names[i]],
+                grid,
+                units[i],
+                name=names[i],
+                grid_shape=(nx, ny, nz),
+                set_coordinates=False,
+            )
             compare_dataarrays(diagnostics[names[i]], field_val)
 
         assert len(diagnostics) == len(names)

@@ -59,7 +59,7 @@ class IsentropicDiagnostics:
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None
     ):
@@ -94,8 +94,8 @@ class IsentropicDiagnostics:
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -107,7 +107,7 @@ class IsentropicDiagnostics:
         self._backend = backend
         self._dtype = dtype
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
 
         # set the values of the physical constants
         pcs = get_physical_constants(self._d_physical_constants, physical_constants)
@@ -127,12 +127,12 @@ class IsentropicDiagnostics:
 
         # allocate auxiliary fields
         self._theta = zeros(
-            storage_shape, backend, dtype, halo=halo, mask=[True, True, True]
+            storage_shape, backend, dtype, default_origin=default_origin, mask=[True, True, True]
         )
         self._theta[:nx, :ny, : nz + 1] = grid.z_on_interface_levels.to_units("K").values[
             np.newaxis, np.newaxis, :
         ]
-        self._topo = zeros(storage_shape, backend, dtype, halo=halo)
+        self._topo = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
         # instantiate the underlying gt4py stencils
         decorator = gt.stencil(

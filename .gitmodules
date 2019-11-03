@@ -1,8 +1,8 @@
-[submodule "docker/external/gridtools4py"]
-	path = docker/external/gridtools4py
-	url = git@github.com:gronerl/gridtools4py.git
-	branch = prepare-release
 [submodule "docker/external/sympl"]
 	path = docker/external/sympl
 	url = git@github.com:stubbiali/sympl.git
 	branch = ubbiali
+[submodule "docker/external/gridtools4py"]
+	path = docker/external/gridtools4py
+	url = git@github.com:gronerl/gridtools4py.git
+	branch = prepare_release

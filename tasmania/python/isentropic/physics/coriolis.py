@@ -48,7 +48,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -77,8 +77,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -105,8 +105,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz, error_msg
 
-        self._tnd_su = zeros(storage_shape, backend, dtype, halo=halo)
-        self._tnd_sv = zeros(storage_shape, backend, dtype, halo=halo)
+        self._tnd_su = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._tnd_sv = zeros(storage_shape, backend, dtype, default_origin=default_origin)
 
         decorator = gt.stencil(
             backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild

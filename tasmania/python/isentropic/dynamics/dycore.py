@@ -86,7 +86,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -224,8 +224,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -261,7 +261,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._smooth_moist_at_every_stage = smooth_moist_at_every_stage
         self._backend = backend
         self._dtype = dtype
-        self._halo = halo
+        self._default_origin = default_origin
         self._storage_shape = storage_shape
 
         #
@@ -294,7 +294,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
             storage_shape=storage_shape,
             **kwargs
@@ -314,7 +314,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 build_info=build_info,
                 dtype=dtype,
                 exec_info=exec_info,
-                halo=halo,
+                default_origin=default_origin,
                 rebuild=rebuild,
                 storage_shape=storage_shape,
             )
@@ -335,7 +335,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 build_info=build_info,
                 dtype=dtype,
                 exec_info=exec_info,
-                halo=halo,
+                default_origin=default_origin,
                 rebuild=rebuild,
             )
             if moist and smooth_moist:
@@ -351,7 +351,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                     build_info=build_info,
                     dtype=dtype,
                     exec_info=exec_info,
-                    halo=halo,
+                    default_origin=default_origin,
                     rebuild=False,
                 )
 
@@ -387,7 +387,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         # temporary and output arrays
         #
         def allocate():
-            return empty(storage_shape, backend, dtype, halo=halo)
+            return empty(storage_shape, backend, dtype, default_origin=default_origin)
 
         if moist:
             self._sqv_now = allocate()
@@ -683,7 +683,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         nx, ny, nz = g.nx, g.ny, g.nz
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
         storage_shape = self._storage_shape
 
         out_state = {}
@@ -711,7 +711,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             )
 
             out_state[name] = get_dataarray_3d(
-                zeros(storage_shape, backend, dtype, halo=halo),
+                zeros(storage_shape, backend, dtype, default_origin=default_origin),
                 g,
                 units,
                 name=name,
@@ -888,9 +888,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._s_now = raw_state["air_isentropic_density"]
             self._su_now = raw_state["x_momentum_isentropic"]
             self._sv_now = raw_state["y_momentum_isentropic"]
-            # self._qv_now.data[:nx, :ny, :nz] = raw_state[mfwv]
-            # self._qc_now.data[:nx, :ny, :nz] = raw_state[mfcw]
-            # self._qr_now.data[:nx, :ny, :nz] = raw_state[mfpw]
+            # self._qv_now = raw_state[mfwv]
+            # self._qc_now = raw_state[mfcw]
+            # self._qr_now = raw_state[mfpw]
 
         s_now = raw_state["air_isentropic_density"]
         qv_now = raw_state[mfwv]

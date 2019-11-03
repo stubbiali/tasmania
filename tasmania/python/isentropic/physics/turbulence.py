@@ -52,7 +52,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
         **kwargs
@@ -80,8 +80,8 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -98,7 +98,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
             storage_shape=storage_shape,
             **kwargs
@@ -114,10 +114,10 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             rebuild=rebuild,
         )
 
-        self._in_u = zeros(self._storage_shape, backend, dtype, halo=halo)
-        self._in_v = zeros(self._storage_shape, backend, dtype, halo=halo)
-        self._out_su_tnd = zeros(self._storage_shape, backend, dtype, halo=halo)
-        self._out_sv_tnd = zeros(self._storage_shape, backend, dtype, halo=halo)
+        self._in_u = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
+        self._in_v = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_su_tnd = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_sv_tnd = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
 
     @property
     def input_properties(self):

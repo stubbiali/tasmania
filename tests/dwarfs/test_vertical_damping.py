@@ -38,7 +38,7 @@ from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo
+    from .conf import backend as conf_backend, default_origin as conf_dorigin
     from .utils import (
         compare_arrays,
         st_domain,
@@ -48,7 +48,7 @@ try:
         st_timedeltas,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo
+    from conf import backend as conf_backend, default_origin as conf_dorigin
     from utils import (
         compare_arrays,
         st_domain,
@@ -60,7 +60,7 @@ except (ImportError, ModuleNotFoundError):
 
 
 def assert_rayleigh(
-    grid, depth, backend, halo, dt, phi_now, phi_new, phi_ref, phi_out
+    grid, depth, backend, default_origin, dt, phi_now, phi_new, phi_ref, phi_out
 ):
     dtype = phi_now.dtype
     ni, nj, nk = phi_now.shape
@@ -73,7 +73,7 @@ def assert_rayleigh(
         time_units="s",
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
         storage_shape=phi_now.shape,
     )
@@ -110,7 +110,7 @@ def test_rayleigh(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = cgrid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
@@ -123,7 +123,7 @@ def test_rayleigh(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi_now",
     )
@@ -134,7 +134,7 @@ def test_rayleigh(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi_new",
     )
@@ -145,7 +145,7 @@ def test_rayleigh(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi_ref",
     )
@@ -160,9 +160,9 @@ def test_rayleigh(data):
     # ========================================
     # test
     # ========================================
-    phi_out = zeros(shape, backend, dtype, halo=halo)
+    phi_out = zeros(shape, backend, dtype, default_origin=default_origin)
     assert_rayleigh(
-        cgrid, depth, backend, halo, dt, phi_now, phi_new, phi_ref, phi_out
+        cgrid, depth, backend, default_origin, dt, phi_now, phi_new, phi_ref, phi_out
     )
 
 

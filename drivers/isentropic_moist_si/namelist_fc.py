@@ -40,11 +40,11 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
-    "halo": (nb, nb, 0),
+    "default_origin": (nb, nb, 0),
     "rebuild": True,
 }
 gt_kwargs["backend_opts"] = (
@@ -124,8 +124,8 @@ coriolis = True
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = True
-sedimentation = True
+precipitation = False
+sedimentation = False
 sedimentation_flux_scheme = "first_order_upwind"
 rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
@@ -135,7 +135,7 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(8 * 60 * 60 / timestep.total_seconds())
+niter = int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
 filename = (

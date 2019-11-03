@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,6 +33,7 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
+import gridtools as gt
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
     KesslerMicrophysics,
@@ -44,7 +45,11 @@ from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formul
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from .test_microphysics_utils import kessler_sedimentation_validation
     from .utils import (
         compare_arrays,
@@ -56,7 +61,11 @@ try:
         st_isentropic_state_f,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from test_microphysics_utils import kessler_sedimentation_validation
     from utils import (
         compare_arrays,
@@ -158,6 +167,8 @@ def kessler_validation_bis(
 )
 @given(hyp_st.data())
 def test_kessler_microphysics(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -166,12 +177,16 @@ def test_kessler_microphysics(data):
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+            grid,
+            moist=True,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -192,7 +207,7 @@ def test_kessler_microphysics(data):
 
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, halo=halo)
+        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -204,7 +219,7 @@ def test_kessler_microphysics(data):
         )
 
         exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
-        exn_unstg = zeros(storage_shape, backend, dtype, halo=halo)
+        exn_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -235,7 +250,7 @@ def test_kessler_microphysics(data):
         saturation_water_vapor_formula=swvf_type,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
         storage_shape=storage_shape,
     )
@@ -372,20 +387,28 @@ def kessler_saturation_adjustment_validation(p, t, qv, qc, beta, lhvw, cp):
 )
 @given(hyp_st.data())
 def test_kessler_saturation_adjustment(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+            grid,
+            moist=True,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -395,11 +418,9 @@ def test_kessler_saturation_adjustment(data):
     # ========================================
     # test bed
     # ========================================
-    dtype = grid.x.dtype
-
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, halo=halo)
+        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -496,16 +517,22 @@ def test_kessler_fall_velocity(data):
     # random data generation
     # ========================================
     domain = data.draw(st_domain(), label="domain")
-
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+            grid,
+            moist=True,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -513,8 +540,6 @@ def test_kessler_fall_velocity(data):
     # ========================================
     # test bed
     # ========================================
-    dtype = grid.x.dtype
-
     #
     # test properties
     #
@@ -523,7 +548,7 @@ def test_kessler_fall_velocity(data):
         grid_type,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=False,
         storage_shape=storage_shape,
     )
@@ -564,7 +589,7 @@ def test_kessler_fall_velocity(data):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_kessler_sedimentation(data):
+def _test_kessler_sedimentation(data):
     # ========================================
     # random data generation
     # ========================================
@@ -573,12 +598,16 @@ def test_kessler_sedimentation(data):
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=True, backend=backend, halo=halo, storage_shape=storage_shape
+            grid,
+            moist=True,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -600,7 +629,14 @@ def test_kessler_sedimentation(data):
     # ========================================
     dtype = grid.x.dtype
 
-    rfv = KesslerFallVelocity(domain, grid_type, backend=backend, dtype=dtype, halo=halo, storage_shape=storage_shape)
+    rfv = KesslerFallVelocity(
+        domain,
+        grid_type,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+        storage_shape=storage_shape,
+    )
     diagnostics = rfv(state)
     state.update(diagnostics)
 
@@ -611,9 +647,9 @@ def test_kessler_sedimentation(data):
         maxcfl,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
-        storage_shape=storage_shape
+        storage_shape=storage_shape,
     )
 
     #
@@ -636,7 +672,9 @@ def test_kessler_sedimentation(data):
     tendencies, diagnostics = sed(state, timestep)
 
     assert mfpw in tendencies
-    raw_mfpw_val = kessler_sedimentation_validation(nx, ny, nz, state, timestep, flux_type, maxcfl)
+    raw_mfpw_val = kessler_sedimentation_validation(
+        nx, ny, nz, state, timestep, flux_type, maxcfl
+    )
     compare_dataarrays(
         get_dataarray_3d(raw_mfpw_val, grid, "g g^-1 s^-1"),
         tendencies[mfpw][:nx, :ny, :nz],
@@ -649,4 +687,3 @@ def test_kessler_sedimentation(data):
 
 if __name__ == "__main__":
     pytest.main([__file__])
-    # test_kessler_microphysics()

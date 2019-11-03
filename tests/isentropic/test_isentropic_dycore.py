@@ -50,7 +50,7 @@ from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from .isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
     from .isentropic.test_isentropic_prognostic import forward_euler_step
     from .utils import (
@@ -62,7 +62,7 @@ try:
         st_isentropic_state_f,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
     from isentropic.test_isentropic_prognostic import forward_euler_step
     from utils import (
@@ -600,14 +600,14 @@ def test1(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
     moist = True  # data.draw(hyp_st.booleans(), label='moist')
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=moist, backend=backend, halo=halo, storage_shape=storage_shape
+            grid, moist=moist, backend=backend, default_origin=default_origin, storage_shape=storage_shape
         ),
         label="state",
     )
@@ -647,7 +647,7 @@ def test1(data):
         "s",
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         storage_shape=storage_shape,
     )
     hs = HorizontalSmoothing.factory(
@@ -659,7 +659,7 @@ def test1(data):
         hb.nb,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     dycore = IsentropicDynamicalCore(
@@ -694,7 +694,7 @@ def test1(data):
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
         storage_shape=storage_shape,
     )
@@ -873,7 +873,7 @@ def _test2(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     # ========================================
     # test bed
@@ -890,7 +890,7 @@ def _test2(data):
         "s",
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
     )
     hs = HorizontalSmoothing.factory(
         "second_order",
@@ -901,7 +901,7 @@ def _test2(data):
         hb.nb,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     dycore = IsentropicDynamicalCore(
@@ -936,7 +936,7 @@ def _test2(data):
         smooth_moist_at_every_stage=smooth_at_every_stage,
         backend=backend,
         dtype=dtype,
-        halo=halo,
+        default_origin=default_origin,
     )
 
     #

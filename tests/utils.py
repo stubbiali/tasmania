@@ -70,7 +70,13 @@ def compare_datetimes(td1, td2):
 def compare_arrays(field_a, field_b):
     # field_a[np.isinf(field_a)] = np.nan
     # field_b[np.isinf(field_b)] = np.nan
-    assert np.allclose(field_a, field_b, equal_nan=True)
+    try:
+        assert np.allclose(field_a, field_b, equal_nan=True)
+    except RuntimeError:
+        try:
+            assert np.allclose(field_a.data, field_b.data, equal_nan=True)
+        except AttributeError:
+            assert False
 
 
 def compare_dataarrays(da1, da2, compare_coordinate_values=True):
@@ -99,7 +105,7 @@ def compare_dataarrays(da1, da2, compare_coordinate_values=True):
 
     assert unit_registry(da1.attrs["units"]) == unit_registry(da2.attrs["units"])
 
-    assert np.allclose(da1.values, da2.values, equal_nan=True)
+    compare_arrays(da1.values, da2.values)
 
 
 def get_float_width(dtype):

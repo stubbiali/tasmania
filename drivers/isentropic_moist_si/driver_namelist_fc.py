@@ -89,7 +89,7 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     relative_humidity=nl.relative_humidity,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
-    halo=nl.gt_kwargs["halo"],
+    default_origin=nl.gt_kwargs["default_origin"],
     storage_shape=storage_shape,
 )
 domain.horizontal_boundary.reference_state = state

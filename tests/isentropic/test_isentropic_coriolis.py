@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,11 +32,16 @@ from hypothesis.extra.numpy import arrays as st_arrays
 import pytest
 from sympl import DataArray
 
+import gridtools as gt
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania import get_dataarray_3d
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_default_origin,
+        nb as conf_nb,
+    )
     from .utils import (
         compare_dataarrays,
         st_domain,
@@ -45,7 +50,11 @@ try:
         st_one_of,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_default_origin,
+        nb as conf_nb,
+    )
     from utils import (
         compare_dataarrays,
         st_domain,
@@ -65,6 +74,8 @@ except (ImportError, ModuleNotFoundError):
 )
 @given(hyp_st.data())
 def test_conservative(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -76,12 +87,17 @@ def test_conservative(data):
 
     time = data.draw(hyp_st.datetimes(), label="time")
     backend = data.draw((st_one_of(conf_backend)), label="backend")
-    halo = data.draw((st_one_of(conf_halo)), label="halo")
+    default_origin = data.draw((st_one_of(conf_default_origin)), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
-            grid, time=time, moist=False, backend=backend, halo=halo, storage_shape=storage_shape
+            grid,
+            time=time,
+            moist=False,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -99,7 +115,7 @@ def test_conservative(data):
         coriolis_parameter,
         backend=backend,
         dtype=grid.x.dtype,
-        halo=halo,
+        default_origin=default_origin,
         storage_shape=storage_shape,
     )
 
