@@ -129,8 +129,8 @@ Once done, you can:
 - `buffer/`: convenient location for files (e.g. Matplotlib figures) generated inside the container and to be moved to other host's directory.
 - `docker/`: configuration files and scripts to create the Docker images and run Docker containers.
 - `docker/external`: the GridTools4Py (`gridtools4py/`) and sympl (`sympl/`) submodules.
-- `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation.
-- `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers`) or the isentropic model (`isentropic_moist_si`).
+- `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation (out-of-date).
+- `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers/`) or the isentropic model (`isentropic_moist_si/`).
 - `notebooks/`: Jupyter notebooks.
 - `results/`: figures (`figures/`) and animations (`movies/`) generated via Matplotlib.
 - `scripts/`: bash (`bash/`), Python (`python/`), Slurm (`slurm/`) scripts for, e.g., post-processing, plotting, sharing data with a remote machine. `scratch_daint/` and `scratch_dom/` contain files which should be copy to the `$SCRATCH` folder on Piz Daint and Dom, respectively.
