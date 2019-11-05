@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -63,6 +63,7 @@ class IsentropicPrognostic(abc.ABC):
         default_origin,
         rebuild,
         storage_shape,
+        managed_memory,
     ):
         """
         Parameters
@@ -97,23 +98,26 @@ class IsentropicPrognostic(abc.ABC):
             TODO
         storage_shape : tuple
             TODO
+        managed_memory : bool
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input arguments needed at compile- and run-time
         self._grid = grid
         self._hb = hb
         self._moist = moist
         self._backend = backend
-        self._backend_opts = backend_opts
+        self._backend_opts = backend_opts or {}
         self._build_info = build_info
         self._dtype = dtype
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._rebuild = rebuild
+        self._managed_memory = managed_memory
 
         nx, ny, nz = grid.nx, grid.ny, grid.nz
-        storage_shape = (nx, ny, nz+1) if storage_shape is None else storage_shape
+        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
         error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx, ny, nz+1)
+            (nx, ny, nz + 1)
         )
         assert storage_shape[0] >= nx, error_msg
         assert storage_shape[1] >= ny, error_msg
@@ -144,7 +148,7 @@ class IsentropicPrognostic(abc.ABC):
         self._stencils_allocate_outputs()
 
         # initialize the pointers to the storages collecting the physics tendencies
-        self._s_tnd  = None
+        self._s_tnd = None
         self._su_tnd = None
         self._sv_tnd = None
         self._qv_tnd = None
@@ -205,7 +209,8 @@ class IsentropicPrognostic(abc.ABC):
         exec_info=None,
         default_origin=None,
         rebuild=False,
-            storage_shape=None,
+        storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -250,6 +255,8 @@ class IsentropicPrognostic(abc.ABC):
             TODO
         storage_shape : `tuple`, optional
             TODO
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -270,7 +277,8 @@ class IsentropicPrognostic(abc.ABC):
             exec_info,
             default_origin,
             rebuild,
-            storage_shape
+            storage_shape,
+            managed_memory,
         )
 
         available = ("forward_euler_si", "centered_si", "rk3ws_si", "sil3")
@@ -298,11 +306,36 @@ class IsentropicPrognostic(abc.ABC):
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
+        managed_memory = self._managed_memory
 
-        self._s_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._su_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._sv_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._s_new = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._su_new = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._sv_new = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
         if self._moist:
-            self._sqv_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-            self._sqc_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-            self._sqr_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._sqv_new = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            self._sqc_new = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            self._sqr_new = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )

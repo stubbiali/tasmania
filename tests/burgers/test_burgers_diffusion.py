@@ -33,6 +33,7 @@ import pytest
 from sympl import DataArray
 
 import gridtools as gt
+
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 try:
@@ -127,7 +128,7 @@ def test_second_order(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     tendencies, diagnostics = pbhd(pstate)
@@ -259,7 +260,7 @@ def test_fourth_order(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     tendencies, diagnostics = pbhd(pstate)
@@ -330,4 +331,5 @@ def test_fourth_order(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_second_order()

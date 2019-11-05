@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,7 +23,6 @@
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics as Core
@@ -77,7 +76,8 @@ class IsentropicDiagnostics(DiagnosticComponent):
         exec_info=None,
         default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+        managed_memory=False
     ):
         """
         Parameters
@@ -129,6 +129,8 @@ class IsentropicDiagnostics(DiagnosticComponent):
             `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input parameters needed at run-time
         self._moist = moist
@@ -139,7 +141,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         # instantiate the class computing the diagnostic variables
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx, ny, nz+1) if storage_shape is None else storage_shape
+        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
         self._core = Core(
             self.grid,
             physical_constants=physical_constants,
@@ -150,18 +152,39 @@ class IsentropicDiagnostics(DiagnosticComponent):
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
-            storage_shape=storage_shape
+            storage_shape=storage_shape,
+            managed_memory=managed_memory,
         )
 
         # allocate the gt4py storages collecting the output fields calculated
         # by the stencils
-        self._out_p = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_exn = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_mtg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_h = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_p = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_exn = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_mtg = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_h = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
         if moist:
-            self._out_r = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-            self._out_t = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+            self._out_r = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            self._out_t = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
 
     @property
     def input_properties(self):
@@ -193,7 +216,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     def array_call(self, state):
-        s = state['air_isentropic_density']
+        s = state["air_isentropic_density"]
         self._core.get_diagnostic_variables(
             s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
         )
@@ -232,7 +255,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         exec_info=None,
         default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+            managed_memory=False
     ):
         """
         Parameters
@@ -256,6 +280,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
             `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # call the parent's constructor
         super().__init__(domain, "numerical")
@@ -282,8 +308,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages gathering the output fields
-        self._out_u = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_v = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._out_u = zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory)
+        self._out_v = zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory)
 
     @property
     def input_properties(self):
@@ -312,18 +338,13 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     def array_call(self, state):
-        # shortcuts
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-
         # extract the required model variables from the input state
-        s  = state["air_isentropic_density"]
+        s = state["air_isentropic_density"]
         su = state["x_momentum_isentropic"]
         sv = state["y_momentum_isentropic"]
 
         # diagnose the velocity components
-        self._core.get_velocity_components(
-            s, su, sv, self._out_u, self._out_v
-        )
+        self._core.get_velocity_components(s, su, sv, self._out_u, self._out_v)
 
         # enforce the boundary conditions
         hb = self.horizontal_boundary

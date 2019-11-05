@@ -23,12 +23,16 @@
 import abc
 
 
+from gridtools import gtscript
+
+
 class BurgersAdvection(abc.ABC):
     """ A discretizer for the 2-D Burgers advection flux. """
 
     extent = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(dx, dy, u, v):
         pass
@@ -55,6 +59,7 @@ class _FirstOrder(BurgersAdvection):
     extent = 1
 
     @staticmethod
+    @gtscript.function
     def __call__(dx, dy, u, v):
         abs_u = u[0, 0, 0] * (u[0, 0, 0] > 0.0) - u[0, 0, 0] * (u[0, 0, 0] < 0)
         abs_v = v[0, 0, 0] * (v[0, 0, 0] > 0.0) - v[0, 0, 0] * (v[0, 0, 0] < 0)
@@ -79,6 +84,7 @@ class _SecondOrder(BurgersAdvection):
     extent = 1
 
     @staticmethod
+    @gtscript.function
     def __call__(dx, dy, u, v):
         adv_u_x = u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - u[-1, 0, 0])
         adv_u_y = v[0, 0, 0] / (2.0 * dy) * (u[0, +1, 0] - u[0, -1, 0])
@@ -92,6 +98,7 @@ class _ThirdOrder(BurgersAdvection):
     extent = 2
 
     @staticmethod
+    @gtscript.function
     def __call__(dx, dy, u, v):
         abs_u = u[0, 0, 0] * (u[0, 0, 0] > 0.0) - u[0, 0, 0] * (u[0, 0, 0] < 0)
         abs_v = v[0, 0, 0] * (v[0, 0, 0] > 0.0) - v[0, 0, 0] * (v[0, 0, 0] < 0)
@@ -132,6 +139,7 @@ class _FourthOrder(BurgersAdvection):
     extent = 2
 
     @staticmethod
+    @gtscript.function
     def __call__(dx, dy, u, v):
         adv_u_x = (
             u[0, 0, 0]
@@ -161,6 +169,7 @@ class _FifthOrder(BurgersAdvection):
     extent = 3
 
     @staticmethod
+    @gtscript.function
     def __call__(dx, dy, u, v):
         abs_u = u[0, 0, 0] * (u[0, 0, 0] >= 0.0) - u[0, 0, 0] * (u[0, 0, 0] < 0)
         abs_v = v[0, 0, 0] * (v[0, 0, 0] >= 0.0) - v[0, 0, 0] * (v[0, 0, 0] < 0)
@@ -213,6 +222,7 @@ class _SixthOrder(BurgersAdvection):
     extent = 3
 
     @staticmethod
+    @gtscript.function
     def __call__(dx, dy, u, v):
         adv_u_x = (
             u[0, 0, 0]

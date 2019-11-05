@@ -22,7 +22,10 @@
 #
 import numpy as np
 
-import gridtools as gt
+from gridtools import gtscript
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import zeros
 
@@ -51,6 +54,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -84,6 +88,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's constructor.
         """
@@ -105,13 +111,28 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz, error_msg
 
-        self._tnd_su = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._tnd_sv = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._tnd_su = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
-        self._stencil = decorator(self._stencil_defs)
+        self._tnd_sv = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
+        )
 
     @property
     def input_properties(self):
@@ -167,12 +188,13 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_su: gt.storage.f64_sd,
-        in_sv: gt.storage.f64_sd,
-        tnd_su: gt.storage.f64_sd,
-        tnd_sv: gt.storage.f64_sd,
+        in_su: gtscript.Field[np.float64],
+        in_sv: gtscript.Field[np.float64],
+        tnd_su: gtscript.Field[np.float64],
+        tnd_sv: gtscript.Field[np.float64],
         *,
         f: float
     ):
-        tnd_su = f * in_sv[0, 0, 0]
-        tnd_sv = -f * in_su[0, 0, 0]
+        with computation(PARALLEL), interval(...):
+            tnd_su = f * in_sv[0, 0, 0]
+            tnd_sv = -f * in_su[0, 0, 0]

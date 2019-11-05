@@ -122,9 +122,6 @@ def test_smagorinsky(data):
     v = sv / s
     u_tnd, v_tnd = smagorinsky2d_validation(dx, dy, cs, u, v)
 
-    import pdb
-    pdb.set_trace()
-
     smag = IsentropicSmagorinsky(
         domain,
         smagorinsky_constant=cs,

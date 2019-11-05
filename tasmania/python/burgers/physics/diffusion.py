@@ -52,6 +52,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         exec_info=None,
         default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -86,6 +87,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         kwargs :
             Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
         """
@@ -111,13 +114,22 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
+            managed_memory=managed_memory,
         )
 
         self._out_u_tnd = zeros(
-            (nx, ny, 1), backend, dtype, default_origin=default_origin
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_v_tnd = zeros(
-            (nx, ny, 1), backend, dtype, default_origin=default_origin
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
     @property

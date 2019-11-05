@@ -30,7 +30,7 @@ import xarray as xr
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
 from tasmania.python.grids.domain import Domain
-from tasmania.python.utils.storage_utils import get_physical_state, get_numerical_state
+from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict, get_physical_state, get_numerical_state
 from tasmania.python.utils.utils import convert_datetime64_to_datetime
 
 
@@ -121,7 +121,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             else:
                 to_save = state
 
-        to_save_cp = deepcopy(to_save)
+        to_save_cp = deepcopy_dataarray_dict(to_save)
         for name in to_save_cp:
             if name != "time":
                 to_save_cp[name].attrs.pop("gt_storage", None)

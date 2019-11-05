@@ -138,7 +138,7 @@ def test_forward_euler(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     assert isinstance(bs, _ForwardEuler)
@@ -239,7 +239,7 @@ def test_rk2(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     assert isinstance(bs, _RK2)
@@ -367,7 +367,7 @@ def test_rk3ws(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     assert isinstance(bs, _RK2)
@@ -464,4 +464,5 @@ def test_rk3ws(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_forward_euler()

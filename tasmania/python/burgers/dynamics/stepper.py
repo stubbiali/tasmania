@@ -21,10 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+import numpy as np
 
-import gridtools as gt
+from gridtools import __externals__
+from gridtools import gtscript
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.storage_utils import get_default_origin, zeros
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import nb as conf_nb
@@ -38,34 +43,39 @@ except ImportError:
 
 
 def forward_euler_step(
-    in_u: gt.storage.f64_sd,
-    in_v: gt.storage.f64_sd,
-    in_u_tmp: gt.storage.f64_sd,
-    in_v_tmp: gt.storage.f64_sd,
-    in_u_tnd: gt.storage.f64_sd,
-    in_v_tnd: gt.storage.f64_sd,
-    out_u: gt.storage.f64_sd,
-    out_v: gt.storage.f64_sd,
+    in_u: gtscript.Field[np.float64],
+    in_v: gtscript.Field[np.float64],
+    in_u_tmp: gtscript.Field[np.float64],
+    in_v_tmp: gtscript.Field[np.float64],
+    out_u: gtscript.Field[np.float64],
+    out_v: gtscript.Field[np.float64],
+    in_u_tnd: gtscript.Field[np.float64] = None,
+    in_v_tnd: gtscript.Field[np.float64] = None,
     *,
     dt: float,
     dx: float,
     dy: float
 ):
-    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp)
+    from __externals__ import advection, tnd_u, tnd_v
 
-    if tnd_u:
-        out_u = in_u[0, 0, 0] - dt * (
-            adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0] - in_u_tnd[0, 0, 0]
+    with computation(PARALLEL), interval(...):
+        adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection(
+            dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp
         )
-    else:
-        out_u = in_u[0, 0, 0] - dt * (adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0])
 
-    if tnd_v:
-        out_v = in_v[0, 0, 0] - dt * (
-            adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0] - in_v_tnd[0, 0, 0]
-        )
-    else:
-        out_v = in_v[0, 0, 0] - dt * (adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0])
+        if tnd_u:
+            out_u = in_u[0, 0, 0] - dt * (
+                adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0] - in_u_tnd[0, 0, 0]
+            )
+        else:
+            out_u = in_u[0, 0, 0] - dt * (adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0])
+
+        if tnd_v:
+            out_v = in_v[0, 0, 0] - dt * (
+                adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0] - in_v_tnd[0, 0, 0]
+            )
+        else:
+            out_v = in_v[0, 0, 0] - dt * (adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0])
 
 
 class BurgersStepper(abc.ABC):
@@ -86,6 +96,7 @@ class BurgersStepper(abc.ABC):
         exec_info,
         default_origin,
         rebuild,
+        managed_memory,
     ):
         """
         Parameters
@@ -112,6 +123,8 @@ class BurgersStepper(abc.ABC):
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._grid_xy = grid_xy
         self._backend = backend
@@ -121,6 +134,7 @@ class BurgersStepper(abc.ABC):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._rebuild = rebuild
+        self._managed_memory = managed_memory
 
         self._advection = BurgersAdvection.factory(flux_scheme)
 
@@ -182,7 +196,8 @@ class BurgersStepper(abc.ABC):
         dtype=datatype,
         exec_info=None,
         default_origin=None,
-        rebuild=False
+        rebuild=False,
+        managed_memory=False
     ):
         """
         Parameters
@@ -216,6 +231,8 @@ class BurgersStepper(abc.ABC):
             TODO
         rebuild : `bool`, optional
             TODO
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -233,6 +250,7 @@ class BurgersStepper(abc.ABC):
             exec_info,
             default_origin,
             rebuild,
+            managed_memory,
         )
         if time_integration_scheme == "forward_euler":
             return _ForwardEuler(*args)
@@ -259,6 +277,7 @@ class _ForwardEuler(BurgersStepper):
         exec_info,
         default_origin,
         rebuild,
+        managed_memory,
     ):
         super().__init__(
             grid_xy,
@@ -271,6 +290,7 @@ class _ForwardEuler(BurgersStepper):
             exec_info,
             default_origin,
             rebuild,
+            managed_memory,
         )
 
     @property
@@ -288,13 +308,14 @@ class _ForwardEuler(BurgersStepper):
         dx = self._grid_xy.dx.to_units("m").values.item()
         dy = self._grid_xy.dy.to_units("m").values.item()
 
+        stencil_args = {}
         self._stencil_args["in_u"] = state["x_velocity"]
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v"] = state["y_velocity"]
         self._stencil_args["in_v_tmp"] = state["y_velocity"]
-        if "in_u_tnd" in self._stencil_args and "x_velocity" in tendencies:
+        if "x_velocity" in tendencies:
             self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
-        if "in_v_tnd" in self._stencil_args and "y_velocity" in tendencies:
+        if "y_velocity" in tendencies:
             self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
 
         self._stencil(
@@ -318,42 +339,38 @@ class _ForwardEuler(BurgersStepper):
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
+        managed_memory = self._managed_memory
 
         self._stencil_args = {
-            "in_u": None,
-            "in_u_tmp": None,
-            "in_v": None,
-            "in_v_tmp": None,
+            "out_u": zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
+            ),
+            "out_v": zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
+            ),
         }
 
-        tnd_u = "x_velocity" in tendencies
-        if tnd_u:
-            self._stencil_args["in_u_tnd"] = None
-
-        tnd_v = "y_velocity" in tendencies
-        if tnd_v:
-            self._stencil_args["in_v_tnd"] = None
-
-        self._stencil_args["out_u"] = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin
-        )
-        self._stencil_args["out_v"] = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin
-        )
-
-        decorator = gt.stencil(
-            backend,
-            backend_opts=self._backend_opts,
+        self._stencil = gtscript.stencil(
+            definition=forward_euler_step,
+            name=self.__class__.__name__,
+            backend=backend,
             build_info=self._build_info,
             rebuild=self._rebuild,
-            min_signature=True,
             externals={
                 "advection": self._advection.__call__,
-                "tnd_u": tnd_u,
-                "tnd_v": tnd_v,
+                "tnd_u": "x_velocity" in tendencies,
+                "tnd_v": "y_velocity" in tendencies,
             },
+            **(self._backend_opts or {})
         )
-        self._stencil = decorator(forward_euler_step)
 
 
 class _RK2(BurgersStepper):
@@ -371,6 +388,7 @@ class _RK2(BurgersStepper):
         exec_info,
         default_origin,
         rebuild,
+        managed_memory,
     ):
         super().__init__(
             grid_xy,
@@ -383,6 +401,7 @@ class _RK2(BurgersStepper):
             exec_info,
             default_origin,
             rebuild,
+            managed_memory,
         )
 
     @property
@@ -408,9 +427,9 @@ class _RK2(BurgersStepper):
 
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v_tmp"] = state["y_velocity"]
-        if "in_u_tnd" in self._stencil_args and "x_velocity" in tendencies:
+        if "x_velocity" in tendencies:
             self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
-        if "in_v_tnd" in self._stencil_args and "y_velocity" in tendencies:
+        if "y_velocity" in tendencies:
             self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
 
         self._stencil(
@@ -434,42 +453,38 @@ class _RK2(BurgersStepper):
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
+        managed_memory = self._managed_memory
 
         self._stencil_args = {
-            "in_u": None,
-            "in_u_tmp": None,
-            "in_v": None,
-            "in_v_tmp": None,
+            "out_u": zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
+            ),
+            "out_v": zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
+            ),
         }
 
-        tnd_u = "x_velocity" in tendencies
-        if tnd_u:
-            self._stencil_args["in_u_tnd"] = None
-
-        tnd_v = "y_velocity" in tendencies
-        if tnd_v:
-            self._stencil_args["in_v_tnd"] = None
-
-        self._stencil_args["out_u"] = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin
-        )
-        self._stencil_args["out_v"] = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin
-        )
-
-        decorator = gt.stencil(
-            backend,
-            backend_opts=self._backend_opts,
+        self._stencil = gtscript.stencil(
+            definition=forward_euler_step,
+            name=self.__class__.__name__,
+            backend=backend,
             build_info=self._build_info,
             rebuild=self._rebuild,
-            min_signature=True,
             externals={
                 "advection": self._advection.__call__,
-                "tnd_u": tnd_u,
-                "tnd_v": tnd_v,
+                "tnd_u": "x_velocity" in tendencies,
+                "tnd_v": "y_velocity" in tendencies,
             },
+            **(self._backend_opts or {})
         )
-        self._stencil = decorator(forward_euler_step)
 
 
 class _RK3WS(_RK2):
@@ -487,6 +502,7 @@ class _RK3WS(_RK2):
         exec_info,
         default_origin,
         rebuild,
+        managed_memory,
     ):
         super().__init__(
             grid_xy,
@@ -499,6 +515,7 @@ class _RK3WS(_RK2):
             exec_info,
             default_origin,
             rebuild,
+            managed_memory,
         )
 
     @property
@@ -529,9 +546,9 @@ class _RK3WS(_RK2):
 
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v_tmp"] = state["y_velocity"]
-        if "in_u_tnd" in self._stencil_args and "x_velocity" in tendencies:
+        if "x_velocity" in tendencies:
             self._stencil_args["in_u_tnd"] = tendencies["x_velocity"]
-        if "in_v_tnd" in self._stencil_args and "y_velocity" in tendencies:
+        if "y_velocity" in tendencies:
             self._stencil_args["in_v_tnd"] = tendencies["y_velocity"]
 
         self._stencil(

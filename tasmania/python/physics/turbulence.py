@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,7 +22,9 @@
 #
 import numpy as np
 
-import gridtools as gt
+from gridtools import gtscript
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import zeros
 
@@ -58,6 +60,7 @@ class Smagorinsky2d(TendencyComponent):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -84,6 +87,8 @@ class Smagorinsky2d(TendencyComponent):
             TODO
         storage_shape : `tuple`, optional
             TODO
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`tasmania.TendencyComponent`.
@@ -101,21 +106,34 @@ class Smagorinsky2d(TendencyComponent):
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = (nx, ny, nz) if storage_shape is None else storage_shape
-        error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx, ny, nz)
-        )
+        error_msg = "storage_shape must be larger or equal than {}.".format((nx, ny, nz))
         assert storage_shape[0] >= nx, error_msg
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz, error_msg
         self._storage_shape = storage_shape
 
-        self._out_u_tnd = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_v_tnd = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._out_u_tnd = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
-        self._stencil = decorator(self._stencil_defs)
+        self._out_v_tnd = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
+        )
 
     @property
     def input_properties(self):
@@ -144,8 +162,8 @@ class Smagorinsky2d(TendencyComponent):
         dy = self.grid.dy.to_units("m").values.item()
 
         self._stencil(
-            in_u=state['x_velocity'],
-            in_v=state['y_velocity'],
+            in_u=state["x_velocity"],
+            in_v=state["y_velocity"],
             out_u_tnd=self._out_u_tnd,
             out_v_tnd=self._out_v_tnd,
             dx=dx,
@@ -156,43 +174,46 @@ class Smagorinsky2d(TendencyComponent):
             exec_info=self._exec_info,
         )
 
-        tendencies = {
-            "x_velocity": self._out_u_tnd,
-            "y_velocity": self._out_v_tnd,
-        }
+        tendencies = {"x_velocity": self._out_u_tnd, "y_velocity": self._out_v_tnd}
         diagnostics = {}
 
         return tendencies, diagnostics
 
     @staticmethod
     def _stencil_defs(
-        in_u: gt.storage.f64_ijk_sd,
-        in_v: gt.storage.f64_ijk_sd,
-        out_u_tnd: gt.storage.f64_ijk_sd,
-        out_v_tnd: gt.storage.f64_ijk_sd,
+        in_u: gtscript.Field[np.float64],
+        in_v: gtscript.Field[np.float64],
+        out_u_tnd: gtscript.Field[np.float64],
+        out_v_tnd: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float,
         cs: float
     ):
-        s00 = (in_u[+1, 0, 0] - in_u[-1, 0, 0]) / (2.0 * dx)
-        s01 = 0.5 * (
-            (in_u[0, +1, 0] - in_u[0, -1, 0]) / (2.0 * dy)
-            + (in_v[+1, 0, 0] - in_v[-1, 0, 0]) / (2.0 * dx)
-        )
-        s11 = (in_v[0, +1, 0] - in_v[0, -1, 0]) / (2.0 * dy)
-        nu = (
-            cs ** 2
-            * dx
-            * dy
-            * (2.0 * (s00[0, 0, 0] ** 2 + 2.0 * s01[0, 0, 0] ** 2 + s11[0, 0, 0] ** 2))
-            ** 0.5
-        )
-        out_u_tnd = 2.0 * (
-            (nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0]) / (2.0 * dx)
-            + (nu[0, +1, 0] * s01[0, +1, 0] - nu[0, -1, 0] * s01[0, -1, 0]) / (2.0 * dy)
-        )
-        out_v_tnd = 2.0 * (
-            (nu[+1, 0, 0] * s01[+1, 0, 0] - nu[-1, 0, 0] * s01[-1, 0, 0]) / (2.0 * dx)
-            + (nu[0, +1, 0] * s11[0, +1, 0] - nu[0, -1, 0] * s11[0, -1, 0]) / (2.0 * dy)
-        )
+        with computation(PARALLEL), interval(...):
+            s00 = (in_u[+1, 0, 0] - in_u[-1, 0, 0]) / (2.0 * dx)
+            s01 = 0.5 * (
+                (in_u[0, +1, 0] - in_u[0, -1, 0]) / (2.0 * dy)
+                + (in_v[+1, 0, 0] - in_v[-1, 0, 0]) / (2.0 * dx)
+            )
+            s11 = (in_v[0, +1, 0] - in_v[0, -1, 0]) / (2.0 * dy)
+            nu = (
+                cs ** 2
+                * dx
+                * dy
+                * (
+                    2.0
+                    * (s00[0, 0, 0] ** 2 + 2.0 * s01[0, 0, 0] ** 2 + s11[0, 0, 0] ** 2)
+                )
+                ** 0.5
+            )
+            out_u_tnd = 2.0 * (
+                (nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0]) / (2.0 * dx)
+                + (nu[0, +1, 0] * s01[0, +1, 0] - nu[0, -1, 0] * s01[0, -1, 0])
+                / (2.0 * dy)
+            )
+            out_v_tnd = 2.0 * (
+                (nu[+1, 0, 0] * s01[+1, 0, 0] - nu[-1, 0, 0] * s01[-1, 0, 0]) / (2.0 * dx)
+                + (nu[0, +1, 0] * s11[0, +1, 0] - nu[0, -1, 0] * s11[0, -1, 0])
+                / (2.0 * dy)
+            )

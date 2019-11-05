@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import copy
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -32,7 +33,10 @@ from sympl import (
 )
 from sympl._core.units import clean_units
 
-import gridtools as gt
+from gridtools import gtscript
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
@@ -44,8 +48,11 @@ from tasmania.python.utils.framework_utils import (
 from tasmania.python.utils.utils import assert_sequence
 
 
-def stencil_sum_defs(inout_a: gt.storage.f64_sd, in_b: gt.storage.f64_sd):
-    inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
+def stencil_sum_defs(
+    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
 
 
 class ConcurrentCoupling:
@@ -179,10 +186,13 @@ class ConcurrentCoupling:
 
         if gt_powered:
             # compile the underlying stencil
-            decorator = gt.stencil(
-                backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+            self._stencil_sum = gtscript.stencil(
+                definition=stencil_sum_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                **(backend_opts or {})
             )
-            self._stencil_sum = decorator(stencil_sum_defs)
 
             # store parameters needed at run-time
             self._exec_info = exec_info

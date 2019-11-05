@@ -32,7 +32,10 @@ from sympl import (
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
-import gridtools as gt
+from gridtools import gtscript
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import (
     forward_euler,
@@ -47,7 +50,7 @@ from tasmania.python.utils.dict_utils import (
     subtract,
 )
 from tasmania.python.utils.framework_utils import check_property_compatibility
-from tasmania.python.utils.storage_utils import get_default_origin, zeros
+from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import assert_sequence
 
 
@@ -57,27 +60,31 @@ class FakeComponent:
 
 
 def rk2_stage_0(
-    in_field: gt.storage.f64_sd,
-    in_field_prv: gt.storage.f64_sd,
-    in_tnd: gt.storage.f64_sd,
-    out_field: gt.storage.f64_sd,
+    in_field: gtscript.Field[np.float64],
+    in_field_prv: gtscript.Field[np.float64],
+    in_tnd: gtscript.Field[np.float64],
+    out_field: gtscript.Field[np.float64],
     *,
     dt: float
 ):
-    out_field = 0.5 * (in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0])
+    with computation(PARALLEL), interval(...):
+        out_field = 0.5 * (
+            in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0]
+        )
 
 
 def rk3ws_stage_0(
-    in_field: gt.storage.f64_sd,
-    in_field_prv: gt.storage.f64_sd,
-    in_tnd: gt.storage.f64_sd,
-    out_field: gt.storage.f64_sd,
+    in_field: gtscript.Field[np.float64],
+    in_field_prv: gtscript.Field[np.float64],
+    in_tnd: gtscript.Field[np.float64],
+    out_field: gtscript.Field[np.float64],
     *,
     dt: float
 ):
-    out_field = (
-        2.0 * in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0]
-    ) / 3.0
+    with computation(PARALLEL), interval(...):
+        out_field = (
+            2.0 * in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0]
+        ) / 3.0
 
 
 def tendencystepper_factory(scheme):
@@ -359,6 +366,7 @@ class STSTendencyStepper(abc.ABC):
     def _allocate_output_state(self, state):
         backend = getattr(self, "_backend", None)
         default_origin = getattr(self, "_default_origin", None)
+        managed_memory = getattr(self, "_managed_memory", False)
 
         out_state = self._out_state or {}
 
@@ -367,7 +375,13 @@ class STSTendencyStepper(abc.ABC):
                 storage_shape = state[name].shape
                 dtype = state[name].dtype
                 raw_buffer = (
-                    zeros(storage_shape, backend, dtype, default_origin=default_origin)
+                    zeros(
+                        storage_shape,
+                        backend,
+                        dtype,
+                        default_origin=default_origin,
+                        managed_memory=managed_memory,
+                    )
                     if backend
                     else np.zeros(storage_shape, dtype=dtype)
                 )
@@ -393,6 +407,7 @@ class ForwardEuler(STSTendencyStepper):
         enforce_horizontal_boundary=False,
         backend="numpy",
         default_origin=None,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
@@ -402,6 +417,7 @@ class ForwardEuler(STSTendencyStepper):
         )
         self._backend = backend
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -449,6 +465,7 @@ class GTForwardEuler(STSTendencyStepper):
         exec_info=None,
         default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
@@ -460,11 +477,15 @@ class GTForwardEuler(STSTendencyStepper):
         self._backend = backend
         self._exec_info = exec_info
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=forward_euler,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(forward_euler)
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -532,6 +553,7 @@ class RungeKutta2(STSTendencyStepper):
         enforce_horizontal_boundary=False,
         backend="numpy",
         default_origin=None,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
@@ -541,6 +563,7 @@ class RungeKutta2(STSTendencyStepper):
         )
         self._backend = backend
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -622,6 +645,7 @@ class GTRungeKutta2(STSTendencyStepper):
         exec_info=None,
         default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
@@ -633,12 +657,22 @@ class GTRungeKutta2(STSTendencyStepper):
         self._backend = backend
         self._exec_info = exec_info
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil_stage_0 = gtscript.stencil(
+            definition=rk2_stage_0,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil_stage_0 = decorator(rk2_stage_0)
-        self._stencil_stage_1 = decorator(forward_euler)
+        self._stencil_stage_1 = gtscript.stencil(
+            definition=forward_euler,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
+        )
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -748,6 +782,7 @@ class RungeKutta3WS(STSTendencyStepper):
         enforce_horizontal_boundary=False,
         backend="numpy",
         default_origin=None,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
@@ -757,6 +792,7 @@ class RungeKutta3WS(STSTendencyStepper):
         )
         self._backend = backend
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def _call(self, state, prv_state, timestep):
         # shortcuts
@@ -867,6 +903,7 @@ class GTRungeKutta3WS(STSTendencyStepper):
         exec_info=None,
         default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
@@ -878,13 +915,29 @@ class GTRungeKutta3WS(STSTendencyStepper):
         self._backend = backend
         self._exec_info = exec_info
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil_stage_0 = gtscript.stencil(
+            definition=rk3ws_stage_0,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil_stage_0 = decorator(rk3ws_stage_0)
-        self._stencil_stage_1 = decorator(rk2_stage_0)
-        self._stencil_stage_2 = decorator(forward_euler)
+        self._stencil_stage_1 = gtscript.stencil(
+            definition=rk2_stage_0,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
+        )
+        self._stencil_stage_2 = gtscript.stencil(
+            definition=forward_euler,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
+        )
 
     def _call(self, state, prv_state, timestep):
         # shortcuts

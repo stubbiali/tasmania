@@ -52,11 +52,16 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         ), "grid_type is {}, but either ({}) was expected.".format(
             grid_type, ",".join(allowed_grid_types)
         )
+        self._grid_type = grid_type
         self._grid = (
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__()
+
+    @property
+    def grid_type(self):
+        return self._grid_type
 
     @property
     def grid(self):
@@ -114,11 +119,16 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         ), "grid_type is {}, but either ({}) was expected.".format(
             grid_type, ",".join(allowed_grid_types)
         )
+        self._grid_type = grid_type
         self._grid = (
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__(tendencies_in_diagnostics, name)
+
+    @property
+    def grid_type(self):
+        return self._grid_type
 
     @property
     def grid(self):
@@ -176,11 +186,16 @@ class Stepper(sympl.Stepper):
         ), "grid_type is {}, but either ({}) was expected.".format(
             grid_type, ",".join(allowed_grid_types)
         )
+        self._grid_type = grid_type
         self._grid = (
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__(tendencies_in_diagnostics, name)
+
+    @property
+    def grid_type(self):
+        return self._grid_type
 
     @property
     def grid(self):
@@ -238,11 +253,16 @@ class TendencyComponent(sympl.TendencyComponent):
         ), "grid_type is {}, but either ({}) was expected.".format(
             grid_type, ",".join(allowed_grid_types)
         )
+        self._grid_type = grid_type
         self._grid = (
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
         )
         self._hb = domain.horizontal_boundary
         super().__init__(tendencies_in_diagnostics, name)
+
+    @property
+    def grid_type(self):
+        return self._grid_type
 
     @property
     def grid(self):

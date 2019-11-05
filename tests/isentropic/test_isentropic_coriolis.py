@@ -28,11 +28,11 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
 import pytest
 from sympl import DataArray
 
 import gridtools as gt
+
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania import get_dataarray_3d
 

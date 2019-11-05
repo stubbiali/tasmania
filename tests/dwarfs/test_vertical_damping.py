@@ -28,12 +28,9 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
-import numpy as np
 from pandas import Timedelta
 import pytest
 
-import gridtools as gt
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 from tasmania.python.utils.storage_utils import zeros
 
@@ -74,7 +71,7 @@ def assert_rayleigh(
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
         storage_shape=phi_now.shape,
     )
 

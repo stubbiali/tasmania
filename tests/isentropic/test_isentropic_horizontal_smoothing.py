@@ -29,10 +29,10 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 
 import gridtools as gt
+
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
@@ -144,7 +144,7 @@ def test(data):
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
-            rebuild=True,
+            rebuild=False,
         )
         hs_moist = HorizontalSmoothing.factory(
             smooth_type,

@@ -35,6 +35,7 @@ import pytest
 from sympl._core.exceptions import InvalidStateError
 
 import gridtools as gt
+
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 
 try:

@@ -24,8 +24,12 @@ import abc
 import math
 import numpy as np
 
-import gridtools as gt
-from tasmania.python.utils.storage_utils import get_storage_descriptor
+# from gridtools import __externals__
+from gridtools import gtscript
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
+
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -33,19 +37,26 @@ except ImportError:
     from numpy import float32 as datatype
 
 
-def stage_laplacian_x(dx, phi):
+# @gtscript.function
+def _stage_laplacian_x(dx, phi):
     lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
     return lap
 
 
-def stage_laplacian_y(dy, phi):
+# @gtscript.function
+def _stage_laplacian_y(dy, phi):
     lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
     return lap
 
 
-def stage_laplacian(dx, dy, phi):
-    lap_x = stage_laplacian_x(dx=dx, phi=phi)
-    lap_y = stage_laplacian_y(dy=dy, phi=phi)
+@gtscript.function
+def _stage_laplacian(dx, dy, phi):
+    # from __externals__ import stage_laplacian_x, stage_laplacian_y
+
+    # lap_x = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
+    lap_x = _stage_laplacian_x(dx=dx, phi=phi)
+    # lap_y = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
+    lap_y = _stage_laplacian_y(dy=dy, phi=phi)
     lap = lap_x[0, 0, 0] + lap_y[0, 0, 0]
     return lap
 
@@ -70,8 +81,9 @@ class HorizontalHyperDiffusion(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         """
         Parameters
@@ -100,11 +112,13 @@ class HorizontalHyperDiffusion(abc.ABC):
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -114,7 +128,9 @@ class HorizontalHyperDiffusion(abc.ABC):
         self._exec_info = exec_info
 
         # initialize the diffusion coefficient
-        gamma = diffusion_coeff
+        self._gamma = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
 
         # the diffusivity is monotonically increased towards the top of the model,
         # so to mimic the effect of a short-length wave absorber
@@ -122,28 +138,23 @@ class HorizontalHyperDiffusion(abc.ABC):
         if True:  # if n > 0:
             pert = np.sin(0.5 * math.pi * (n - np.arange(0, n, dtype=dtype)) / n) ** 2
             pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
-            gamma = diffusion_coeff * np.ones(shape, dtype=dtype)
-            gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
-
-        # convert diffusivity to gt4py storage
-        descriptor = get_storage_descriptor(
-            shape, dtype, halo, mask=(True, True, True)
-        )  # mask=(False, False, True)
-        self._gamma = gt.storage.from_array(gamma, descriptor, backend=backend)
+            self._gamma[...] = diffusion_coeff
+            self._gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
         # initialize the underlying stencil
-        decorator = gt.stencil(
-            backend,
-            backend_opts=backend_opts,
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            name=self.__class__.__name__,
+            backend=backend,
             build_info=build_info,
             rebuild=rebuild,
             externals={
-                "stage_laplacian": stage_laplacian,
-                "stage_laplacian_x": stage_laplacian_x,
-                "stage_laplacian_y": stage_laplacian_y,
+                "stage_laplacian": _stage_laplacian,
+                "stage_laplacian_x": _stage_laplacian_x,
+                "stage_laplacian_y": _stage_laplacian_y,
             },
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @abc.abstractmethod
     def __call__(self, phi, phi_tnd):
@@ -175,8 +186,9 @@ class HorizontalHyperDiffusion(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
-        rebuild=False
+        default_origin=None,
+        rebuild=False,
+        managed_memory=False
     ):
         """
         Static method returning an instance of the derived class
@@ -217,11 +229,13 @@ class HorizontalHyperDiffusion(abc.ABC):
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -241,8 +255,9 @@ class HorizontalHyperDiffusion(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         ]
 
         if diffusion_type == "first_order":
@@ -281,9 +296,9 @@ class HorizontalHyperDiffusion(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
@@ -318,8 +333,9 @@ class FirstOrder(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -335,8 +351,9 @@ class FirstOrder(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -357,15 +374,18 @@ class FirstOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
     ):
-        lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-        out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+        from __externals__ import stage_laplacian
+
+        with computation(PARALLEL), interval(...):
+            lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+            out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
 
 
 class FirstOrder1DX(HorizontalHyperDiffusion):
@@ -395,8 +415,9 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -412,8 +433,9 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -434,15 +456,18 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
     ):
-        lap = stage_laplacian_x(dx=dx, phi=in_phi)
-        out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+        from __externals__ import stage_laplacian_x
+
+        with computation(PARALLEL), interval(...):
+            lap = stage_laplacian_x(dx=dx, phi=in_phi)
+            out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
 
 
 class FirstOrder1DY(HorizontalHyperDiffusion):
@@ -472,8 +497,9 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -489,8 +515,9 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -511,15 +538,18 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
     ):
-        lap = stage_laplacian_y(dy=dy, phi=in_phi)
-        out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+        from __externals__ import stage_laplacian_y
+
+        with computation(PARALLEL), interval(...):
+            lap = stage_laplacian_y(dy=dy, phi=in_phi)
+            out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
 
 
 class SecondOrder(HorizontalHyperDiffusion):
@@ -549,8 +579,9 @@ class SecondOrder(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -566,8 +597,9 @@ class SecondOrder(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -588,9 +620,9 @@ class SecondOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
@@ -627,8 +659,9 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -644,8 +677,9 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -666,9 +700,9 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
@@ -705,8 +739,9 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -722,8 +757,9 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -744,9 +780,9 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
@@ -783,8 +819,9 @@ class ThirdOrder(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -800,8 +837,9 @@ class ThirdOrder(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -822,9 +860,9 @@ class ThirdOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
@@ -862,8 +900,9 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -879,8 +918,9 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -901,9 +941,9 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
@@ -941,8 +981,9 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -958,8 +999,9 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -980,9 +1022,9 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float

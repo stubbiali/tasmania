@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,10 +22,9 @@
 #
 import numpy as np
 
-import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
-from tasmania.python.utils.storage_utils import empty, zeros
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -55,6 +54,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -87,6 +87,8 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's constructor.
         """
@@ -101,6 +103,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             default_origin=default_origin,
             rebuild=rebuild,
             storage_shape=storage_shape,
+            managed_memory=managed_memory,
             **kwargs
         )
 
@@ -114,10 +117,34 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             rebuild=rebuild,
         )
 
-        self._in_u = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
-        self._in_v = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_su_tnd = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
-        self._out_sv_tnd = zeros(self._storage_shape, backend, dtype, default_origin=default_origin)
+        self._in_u = zeros(
+            self._storage_shape,
+            backend,
+            dtype,
+            default_origin,
+            managed_memory=managed_memory,
+        )
+        self._in_v = zeros(
+            self._storage_shape,
+            backend,
+            dtype,
+            default_origin,
+            managed_memory=managed_memory,
+        )
+        self._out_su_tnd = zeros(
+            self._storage_shape,
+            backend,
+            dtype,
+            default_origin,
+            managed_memory=managed_memory,
+        )
+        self._out_sv_tnd = zeros(
+            self._storage_shape,
+            backend,
+            dtype,
+            default_origin,
+            managed_memory=managed_memory,
+        )
 
     @property
     def input_properties(self):
@@ -166,11 +193,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
 
         self._hv.get_momenta(
-            in_s,
-            self._out_u_tnd,
-            self._out_v_tnd,
-            self._out_su_tnd,
-            self._out_sv_tnd,
+            in_s, self._out_u_tnd, self._out_v_tnd, self._out_su_tnd, self._out_sv_tnd
         )
 
         tendencies = {

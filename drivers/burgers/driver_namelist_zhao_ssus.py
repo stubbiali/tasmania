@@ -65,6 +65,7 @@ zsf = taz.ZhaoStateFactory(
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
     default_origin=nl.gt_kwargs["default_origin"],
+    managed_memory=nl.gt_kwargs["managed_memory"],
 )
 state = zsf(nl.init_time, cgrid)
 

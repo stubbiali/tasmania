@@ -22,7 +22,8 @@
 #
 import numpy as np
 
-import gridtools as gt
+from gridtools import gtscript
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
 
 try:
     from tasmania.conf import datatype
@@ -75,22 +76,29 @@ class HorizontalVelocity:
         self._exec_info = exec_info
 
         # initialize the underlying stencils
-        decorator = gt.stencil(
-            backend,
-            backend_opts=backend_opts,
+        self._stencil_diagnosing_momenta = gtscript.stencil(
+            definition=self._stencil_diagnosing_momenta_defs,
+            backend=backend,
             build_info=build_info,
             externals={"staggering": staggering},
             rebuild=rebuild,
-            module="staggered" if staggering else "collocated",
+            **(backend_opts or {})
         )
-        self._stencil_diagnosing_momenta = decorator(
-            self._stencil_diagnosing_momenta_defs
+        self._stencil_diagnosing_velocity_x = gtscript.stencil(
+            definition=self._stencil_diagnosing_velocity_x_defs,
+            backend=backend,
+            build_info=build_info,
+            externals={"staggering": staggering},
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil_diagnosing_velocity_x = decorator(
-            self._stencil_diagnosing_velocity_x_defs
-        )
-        self._stencil_diagnosing_velocity_y = decorator(
-            self._stencil_diagnosing_velocity_y_defs
+        self._stencil_diagnosing_velocity_y = gtscript.stencil(
+            definition=self._stencil_diagnosing_velocity_y_defs,
+            backend=backend,
+            build_info=build_info,
+            externals={"staggering": staggering},
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
 
     def get_momenta(self, d, u, v, du, dv):
@@ -171,36 +179,49 @@ class HorizontalVelocity:
 
     @staticmethod
     def _stencil_diagnosing_momenta_defs(
-        in_d: gt.storage.f64_sd,
-        in_u: gt.storage.f64_sd,
-        in_v: gt.storage.f64_sd,
-        out_du: gt.storage.f64_sd,
-        out_dv: gt.storage.f64_sd,
+        in_d: gtscript.Field[np.float64],
+        in_u: gtscript.Field[np.float64],
+        in_v: gtscript.Field[np.float64],
+        out_du: gtscript.Field[np.float64],
+        out_dv: gtscript.Field[np.float64],
     ):
-        if staggering:
-            out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
-            out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
-        else:
-            out_du = in_d[0, 0, 0] * in_u[0, 0, 0]
-            out_dv = in_d[0, 0, 0] * in_v[0, 0, 0]
+        from __externals__ import staggering
+
+        with computation(PARALLEL), interval(...):
+            if staggering:  # compile-time if
+                out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
+                out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
+            else:
+                out_du = in_d[0, 0, 0] * in_u[0, 0, 0]
+                out_dv = in_d[0, 0, 0] * in_v[0, 0, 0]
 
     @staticmethod
     def _stencil_diagnosing_velocity_x_defs(
-        in_d: gt.storage.f64_sd, in_du: gt.storage.f64_sd, out_u: gt.storage.f64_sd
+        in_d: gtscript.Field[np.float64],
+        in_du: gtscript.Field[np.float64],
+        out_u: gtscript.Field[np.float64],
     ):
-        if staggering:
-            out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (in_d[-1, 0, 0] + in_d[0, 0, 0])
-        else:
-            out_u = in_du[0, 0, 0] / in_d[0, 0, 0]
+        from __externals__ import staggering
+
+        with computation(PARALLEL), interval(...):
+            if staggering:  # compile-time if
+                out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (in_d[-1, 0, 0] + in_d[0, 0, 0])
+            else:
+                out_u = in_du[0, 0, 0] / in_d[0, 0, 0]
 
     @staticmethod
     def _stencil_diagnosing_velocity_y_defs(
-        in_d: gt.storage.f64_sd, in_dv: gt.storage.f64_sd, out_v: gt.storage.f64_sd
+        in_d: gtscript.Field[np.float64],
+        in_dv: gtscript.Field[np.float64],
+        out_v: gtscript.Field[np.float64],
     ):
-        if staggering:
-            out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (in_d[0, -1, 0] + in_d[0, 0, 0])
-        else:
-            out_v = in_dv[0, 0, 0] / in_d[0, 0, 0]
+        from __externals__ import staggering
+
+        with computation(PARALLEL), interval(...):
+            if staggering:  # compile-time if
+                out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (in_d[0, -1, 0] + in_d[0, 0, 0])
+            else:
+                out_v = in_dv[0, 0, 0] / in_d[0, 0, 0]
 
 
 class WaterConstituent:
@@ -246,18 +267,21 @@ class WaterConstituent:
         self._exec_info = exec_info
 
         # initialize the underlying stencils
-        decorator = gt.stencil(
-            backend,
-            backend_opts=backend_opts,
+        self._stencil_diagnosing_density = gtscript.stencil(
+            definition=self._stencil_diagnosing_density_defs,
+            backend=backend,
             build_info=build_info,
             externals={"clipping": clipping},
             rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil_diagnosing_density = decorator(
-            self._stencil_diagnosing_density_defs
-        )
-        self._stencil_diagnosing_mass_fraction = decorator(
-            self._stencil_diagnosing_mass_fraction_defs
+        self._stencil_diagnosing_mass_fraction = gtscript.stencil(
+            definition=self._stencil_diagnosing_mass_fraction_defs,
+            backend=backend,
+            build_info=build_info,
+            externals={"clipping": clipping},
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
 
     def get_density_of_water_constituent(self, d, q, dq):
@@ -317,20 +341,30 @@ class WaterConstituent:
 
     @staticmethod
     def _stencil_diagnosing_density_defs(
-        in_d: gt.storage.f64_sd, in_q: gt.storage.f64_sd, out_dq: gt.storage.f64_sd
+        in_d: gtscript.Field[np.float64],
+        in_q: gtscript.Field[np.float64],
+        out_dq: gtscript.Field[np.float64],
     ):
-        if clipping:
-            tmp_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
-            out_dq = (tmp_dq[0, 0, 0] > 0.0) * tmp_dq[0, 0, 0]
-        else:
-            out_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
+        from __externals__ import clipping
+
+        with computation(PARALLEL), interval(...):
+            if clipping:  # compile-time if
+                tmp_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
+                out_dq = (tmp_dq[0, 0, 0] > 0.0) * tmp_dq[0, 0, 0]
+            else:
+                out_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
 
     @staticmethod
     def _stencil_diagnosing_mass_fraction_defs(
-        in_d: gt.storage.f64_sd, in_dq: gt.storage.f64_sd, out_q: gt.storage.f64_sd
+        in_d: gtscript.Field[np.float64],
+        in_dq: gtscript.Field[np.float64],
+        out_q: gtscript.Field[np.float64],
     ):
-        if clipping:
-            tmp_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
-            out_q = (tmp_q[0, 0, 0] > 0.0) * tmp_q[0, 0, 0]
-        else:
-            out_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
+        from __externals__ import clipping
+
+        with computation(PARALLEL), interval(...):
+            if clipping:  # compile-time if
+                tmp_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
+                out_q = (tmp_q[0, 0, 0] > 0.0) * tmp_q[0, 0, 0]
+            else:
+                out_q = in_dq[0, 0, 0] / in_d[0, 0, 0]

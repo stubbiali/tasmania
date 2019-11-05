@@ -22,6 +22,8 @@
 #
 import abc
 
+from gridtools import gtscript
+
 
 class IsentropicHorizontalFlux(abc.ABC):
     """
@@ -37,6 +39,7 @@ class IsentropicHorizontalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(
         dt,
@@ -203,6 +206,7 @@ class IsentropicNonconservativeHorizontalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(dt, dx, dy, s, u, v, mtg, qv=None, qc=None, qr=None):
         """
@@ -301,6 +305,7 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(
         dt,
@@ -465,6 +470,7 @@ class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(
         dt,

@@ -29,11 +29,11 @@ from hypothesis import (
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
 from sympl import units_are_same
 
 import gridtools as gt
+
 from tasmania.python.framework.tendency_steppers import (
     ForwardEuler,
     GTForwardEuler,

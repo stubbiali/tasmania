@@ -29,11 +29,11 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 from sympl import DataArray
 
 import gridtools as gt
+
 from tasmania.python.isentropic.physics.horizontal_diffusion import (
     IsentropicHorizontalDiffusion,
 )
@@ -149,7 +149,7 @@ def test(data):
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
-            rebuild=True,
+            rebuild=False,
         )
         hd_moist = HorizontalDiffusion.factory(
             diff_type,

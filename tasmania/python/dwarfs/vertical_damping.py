@@ -25,7 +25,10 @@ import math
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
+from gridtools import gtscript
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
@@ -55,6 +58,7 @@ class VerticalDamping(abc.ABC):
         default_origin,
         rebuild,
         storage_shape,
+        managed_memory,
     ):
         """
         Parameters
@@ -82,6 +86,8 @@ class VerticalDamping(abc.ABC):
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # safety-guard checks
         assert damp_depth <= grid.nz, (
@@ -112,15 +118,23 @@ class VerticalDamping(abc.ABC):
         za = z[damp_depth - 1]
         r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
         self._rmat = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin, mask=(True, True, True)
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            mask=(True, True, True),
+            managed_memory=managed_memory,
         )
         self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
         # instantiate the underlying stencil
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @abc.abstractmethod
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
@@ -159,7 +173,8 @@ class VerticalDamping(abc.ABC):
         exec_info=None,
         default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+        managed_memory=False
     ):
         """
         Static method which returns an instance of the derived class
@@ -195,6 +210,8 @@ class VerticalDamping(abc.ABC):
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -214,6 +231,7 @@ class VerticalDamping(abc.ABC):
             default_origin,
             rebuild,
             storage_shape,
+            managed_memory,
         ]
         if damp_type == "rayleigh":
             return Rayleigh(*args)
@@ -223,11 +241,11 @@ class VerticalDamping(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi_now: gt.storage.f64_sd,
-        in_phi_new: gt.storage.f64_sd,
-        in_phi_ref: gt.storage.f64_sd,
-        in_rmat: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi_now: gtscript.Field[np.float64],
+        in_phi_new: gtscript.Field[np.float64],
+        in_phi_ref: gtscript.Field[np.float64],
+        in_rmat: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dt: float
     ):
@@ -254,6 +272,7 @@ class Rayleigh(VerticalDamping):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
     ):
         super().__init__(
             grid,
@@ -268,6 +287,7 @@ class Rayleigh(VerticalDamping):
             default_origin,
             rebuild,
             storage_shape,
+            managed_memory,
         )
 
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
@@ -298,14 +318,15 @@ class Rayleigh(VerticalDamping):
 
     @staticmethod
     def _stencil_defs(
-        in_phi_now: gt.storage.f64_sd,
-        in_phi_new: gt.storage.f64_sd,
-        in_phi_ref: gt.storage.f64_sd,
-        in_rmat: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi_now: gtscript.Field[np.float64],
+        in_phi_new: gtscript.Field[np.float64],
+        in_phi_ref: gtscript.Field[np.float64],
+        in_rmat: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dt: float
     ):
-        out_phi = in_phi_new[0, 0, 0] - dt * in_rmat[0, 0, 0] * (
-            in_phi_now[0, 0, 0] - in_phi_ref[0, 0, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = in_phi_new[0, 0, 0] - dt * in_rmat[0, 0, 0] * (
+                in_phi_now[0, 0, 0] - in_phi_ref[0, 0, 0]
+            )

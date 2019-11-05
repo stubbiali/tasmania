@@ -29,11 +29,8 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
-import numpy as np
 import pytest
 
-import gridtools as gt
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
 from tasmania.python.utils.storage_utils import zeros
 
@@ -122,7 +119,7 @@ def first_order_validation(phi, smooth_depth, nb, backend, default_origin):
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hs(phi, phi_new)
 
@@ -258,7 +255,7 @@ def second_order_validation(phi, smooth_depth, nb, backend, default_origin):
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hs(phi, phi_new)
 
@@ -418,7 +415,7 @@ def third_order_validation(phi, smooth_depth, nb, backend, default_origin):
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hs(phi, phi_new)
 

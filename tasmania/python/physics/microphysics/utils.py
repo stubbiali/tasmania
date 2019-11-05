@@ -24,7 +24,10 @@ import abc
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
+from gridtools import gtscript, __externals__
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
@@ -120,6 +123,7 @@ class Precipitation(ImplicitTendencyComponent):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -156,6 +160,8 @@ class Precipitation(ImplicitTendencyComponent):
             TODO
         storage_shape : `tuple`, optional
             TODO
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`~tasmania.ImplicitTendencyComponent`.
@@ -173,24 +179,50 @@ class Precipitation(ImplicitTendencyComponent):
         )
         storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
 
-        self._in_rho = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._in_qr = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-        self._in_vt = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        self._in_rho = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._in_qr = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._in_vt = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
         self._out_prec = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_accprec = zeros(
-            storage_shape, backend, dtype, default_origin=default_origin
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
-        decorator = gt.stencil(
-            backend,
-            backend_opts=backend_opts,
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
             build_info=build_info,
             externals={"rhow": pcs["density_of_liquid_water"]},
             rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @property
     def input_properties(self):
@@ -233,29 +265,6 @@ class Precipitation(ImplicitTendencyComponent):
     def array_call(self, state, timestep):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-        # try:
-        #     state["air_density"].host_to_device()
-        #     self._in_rho.data[...] = state["air_density"].data[:, :, nz - 1 : nz]
-        #     self._in_rho._sync_state.state = self._in_rho.SyncState.SYNC_DEVICE_DIRTY
-        #
-        #     state["mass_fraction_of_precipitation_water_in_air"].host_to_device()
-        #     self._in_qr.data[...] = state[
-        #         "mass_fraction_of_precipitation_water_in_air"
-        #     ].data[:, :, nz - 1 : nz]
-        #     self._in_qr._sync_state.state = self._in_qr.SyncState.SYNC_DEVICE_DIRTY
-        #
-        #     state["raindrop_fall_velocity"].host_to_device()
-        #     self._in_vt.data[...] = state["raindrop_fall_velocity"].data[
-        #         :, :, nz - 1 : nz
-        #     ]
-        #     self._in_vt._sync_state.state = self._in_vt.SyncState.SYNC_DEVICE_DIRTY
-        # except AttributeError:
-        #     self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
-        #     self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
-        #         :, :, nz - 1 : nz
-        #     ]
-        #     self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
-
         self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
         self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
             :, :, nz - 1 : nz
@@ -288,17 +297,20 @@ class Precipitation(ImplicitTendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_rho: gt.storage.f64_sd,
-        in_qr: gt.storage.f64_sd,
-        in_vt: gt.storage.f64_sd,
-        in_accprec: gt.storage.f64_sd,
-        out_prec: gt.storage.f64_sd,
-        out_accprec: gt.storage.f64_sd,
+        in_rho: gtscript.Field[np.float64],
+        in_qr: gtscript.Field[np.float64],
+        in_vt: gtscript.Field[np.float64],
+        in_accprec: gtscript.Field[np.float64],
+        out_prec: gtscript.Field[np.float64],
+        out_accprec: gtscript.Field[np.float64],
         *,
         dt: float
     ):
-        out_prec = 3.6e6 * in_rho[0, 0, 0] * in_qr[0, 0, 0] * in_vt[0, 0, 0] / rhow
-        out_accprec = in_accprec[0, 0, 0] + dt * out_prec[0, 0, 0] / 3.6e3
+        from __externals__ import rhow
+
+        with computation(PARALLEL), interval(...):
+            out_prec = 3.6e6 * in_rho[0, 0, 0] * in_qr[0, 0, 0] * in_vt[0, 0, 0] / rhow
+            out_accprec = in_accprec[0, 0, 0] + dt * out_prec[0, 0, 0] / 3.6e3
 
 
 class SedimentationFlux(abc.ABC):
@@ -312,6 +324,7 @@ class SedimentationFlux(abc.ABC):
     nb = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(rho, h, q, vt):
         """
@@ -372,6 +385,7 @@ class _FirstOrderUpwind(SedimentationFlux):
     nb = 1
 
     @staticmethod
+    @gtscript.function
     def __call__(rho, h, q, vt):
         # interpolate the geometric height at the model main levels
         tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
@@ -391,6 +405,7 @@ class _SecondOrderUpwind(SedimentationFlux):
     nb = 2
 
     @staticmethod
+    @gtscript.function
     def __call__(rho, h, q, vt):
         # interpolate the geometric height at the model main levels
         tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])

@@ -28,10 +28,14 @@ try:
 except (ImportError, ModuleNotFoundError):
     cupy = np
 
-import gridtools as gt
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.meteo_utils import convert_relative_humidity_to_water_vapor
-from tasmania.python.utils.storage_utils import get_dataarray_3d, get_storage_shape, ones, zeros
+from tasmania.python.utils.storage_utils import (
+    get_dataarray_3d,
+    get_storage_shape,
+    ones,
+    zeros,
+)
 
 try:
     from tasmania.conf import datatype
@@ -69,7 +73,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     backend="numpy",
     dtype=datatype,
     default_origin=None,
-    storage_shape=None
+    storage_shape=None,
+    managed_memory=False
 ):
     """
     Compute a valid state for the isentropic model given
@@ -134,7 +139,9 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     storage_shape = get_storage_shape(storage_shape, (nx + 1, ny + 1, nz + 1))
 
     def allocate():
-        return zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        return zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
 
     # initialize the velocity components
     u = allocate()
@@ -165,14 +172,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
     # diagnose the Montgomery potential
     mtg_s = (
-        g * h[:, :, nz:nz+1] + grid.z_on_interface_levels.to_units('K').values[-1] * exn[:, :, nz:nz+1]
+        g * h[:, :, nz : nz + 1]
+        + grid.z_on_interface_levels.to_units("K").values[-1] * exn[:, :, nz : nz + 1]
     )
     mtg = allocate()
-    mtg[:nx, :ny, nz-1] = mtg_s[:nx, :ny, 0] + 0.5 * dz * exn[:nx, :ny, nz]
+    mtg[:nx, :ny, nz - 1] = mtg_s[:nx, :ny, 0] + 0.5 * dz * exn[:nx, :ny, nz]
     for k in range(nz - 2, -1, -1):
-        mtg[:nx, :ny, k] = (
-                mtg[:nx, :ny, k+1] + dz * exn[:nx, :ny, k+1]
-        )
+        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
 
     # diagnose the isentropic density and the momenta
     s = allocate()

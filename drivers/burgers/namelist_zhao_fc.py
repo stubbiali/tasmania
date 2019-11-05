@@ -48,13 +48,13 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtcuda",
-    "backend_opts": None,
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
     "default_origin": (nb, nb, 0),
-    "rebuild": True,
+    "rebuild": False,
+    "managed_memory": False,
 }
 gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
 
@@ -68,12 +68,7 @@ timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
 niter = 4 ** factor * 100
 
 # output
-filename = None  # '../../data/burgers_fc_{}.nc'.format(gt_kwargs['backend'])
-#   \
-#   '../../data/burgers_{}_{}_{}_nx{}_ny{}_dt{}_nt{}_sus.nc'.format(
-#       time_integration_scheme, flux_scheme, physics_time_integration_scheme,
-#       nx, ny, int(timestep.total_seconds()), niter,
-#   )
-save_frequency = -1
+filename = "../../data/burgers_fc_{}.nc".format(gt_kwargs["backend"])
+save_frequency = 1
 print_frequency = 1
 plot_frequency = -1

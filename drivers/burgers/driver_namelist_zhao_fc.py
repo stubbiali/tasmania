@@ -65,6 +65,7 @@ zsf = taz.ZhaoStateFactory(
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
     default_origin=nl.gt_kwargs["default_origin"],
+    managed_memory=nl.gt_kwargs["managed_memory"],
 )
 state = zsf(nl.init_time, cgrid)
 
@@ -145,14 +146,6 @@ for i in range(nt):
                 i + 1, err_u.item(), err_v.item()
             )
         )
-
-        # umax, vmax = u[3:-3, 3:-3].max(), v[3:-3, 3:-3].max()
-        # umin, vmin = u[3:-3, 3:-3].min(), v[3:-3, 3:-3].min()
-        # print(
-        #     "Iteration {:6d}: umax = {:12.10E}, umin = {:12.10E}, vmax = {:12.10E}, vmin = {:12.10E}".format(
-        #         i + 1, umax, umin, vmax, vmin
-        #     )
-        # )
 
     # shortcuts
     to_save = (nl.filename is not None) and (

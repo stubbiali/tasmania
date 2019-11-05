@@ -40,10 +40,10 @@ from tasmania.python.dwarfs.horizontal_hyperdiffusion import (
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from .utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
@@ -90,10 +90,10 @@ def first_order_diffusion_yz(dy, phi):
     return lap
 
 
-def first_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+def first_order_validation(phi, grid, diffusion_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
+    phi_tnd = zeros((ni, nj, nk), backend, dtype, default_origin)
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -109,7 +109,7 @@ def first_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
     hhd(phi, phi_tnd)
@@ -136,6 +136,7 @@ def first_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
     deadline=None,
 )
 @given(hyp_st.data())
+@reproduce_failure('4.28.0', b'AXicY2BABYIzGDBEmFD4vJ3oKkgCAJhsAes=')
 def test_first_order(data):
     gt.storage.prepare_numpy()
 
@@ -153,7 +154,7 @@ def test_first_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -167,7 +168,7 @@ def test_first_order(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi",
     )
@@ -177,7 +178,7 @@ def test_first_order(data):
     # ========================================
     # test
     # ========================================
-    first_order_validation(phi, grid, depth, nb, backend, halo)
+    first_order_validation(phi, grid, depth, nb, backend, default_origin)
 
 
 def second_order_diffusion_xyz(dx, dy, phi):
@@ -198,10 +199,10 @@ def second_order_diffusion_yz(dy, phi):
     return lap1
 
 
-def second_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
+    phi_tnd = zeros((ni, nj, nk), backend, dtype, default_origin)
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -217,7 +218,7 @@ def second_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
     hhd(phi, phi_tnd)
@@ -261,7 +262,7 @@ def test_second_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -275,7 +276,7 @@ def test_second_order(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi",
     )
@@ -285,7 +286,7 @@ def test_second_order(data):
     # ========================================
     # test
     # ========================================
-    second_order_validation(phi, grid, depth, nb, backend, halo)
+    second_order_validation(phi, grid, depth, nb, backend, default_origin)
 
 
 def third_order_diffusion_xyz(dx, dy, phi):
@@ -309,10 +310,10 @@ def third_order_diffusion_yz(dy, phi):
     return lap2
 
 
-def third_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
+def third_order_validation(phi, grid, diffusion_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), backend, dtype, halo)
+    phi_tnd = zeros((ni, nj, nk), backend, dtype, default_origin)
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -328,7 +329,7 @@ def third_order_validation(phi, grid, diffusion_depth, nb, backend, halo):
         nb=nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
     hhd(phi, phi_tnd)
@@ -372,7 +373,7 @@ def test_third_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -386,7 +387,7 @@ def test_third_order(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi",
     )
@@ -396,8 +397,9 @@ def test_third_order(data):
     # ========================================
     # test
     # ========================================
-    third_order_validation(phi, grid, depth, nb, backend, halo)
+    third_order_validation(phi, grid, depth, nb, backend, default_origin)
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_first_order()

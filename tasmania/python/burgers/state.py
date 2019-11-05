@@ -141,7 +141,9 @@ class ZhaoSolutionFactory:
 class ZhaoStateFactory:
     """ Factory of valid states for the Zhao test case. """
 
-    def __init__(self, initial_time, eps, *, backend, dtype, default_origin):
+    def __init__(
+        self, initial_time, eps, *, backend, dtype, default_origin, managed_memory=False
+    ):
         """
         Parameters
         ----------
@@ -156,11 +158,14 @@ class ZhaoStateFactory:
             Data type of the storages.
         default_origin : tuple
             Storage default origin.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
         self._backend = backend
         self._dtype = dtype
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def __call__(self, time, grid):
         """
@@ -180,14 +185,27 @@ class ZhaoStateFactory:
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
+        managed_memory = self._managed_memory
 
-        u = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
+        u = zeros(
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
         u[...] = self._solution_factory(time, grid, field_name="x_velocity")
         u_da = get_dataarray_3d(u, grid, "m s^-1", "x_velocity", set_coordinates=False)
         u_da.attrs["backend"] = backend
         u_da.attrs["default_origin"] = default_origin
 
-        v = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
+        v = zeros(
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
         v[...] = self._solution_factory(time, grid, field_name="y_velocity")
         v_da = get_dataarray_3d(v, grid, "m s^-1", "y_velocity", set_coordinates=False)
         v_da.attrs["backend"] = backend

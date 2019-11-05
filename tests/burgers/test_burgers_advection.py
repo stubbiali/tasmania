@@ -32,7 +32,10 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import gridtools as gt
+from gridtools import __externals__
+import gridtools.gtscript as gtscript
+import gridtools.storage as gt_storage
+
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils.storage_utils import zeros
 
@@ -66,8 +69,8 @@ class WrappingStencil:
     def __init__(self, advection, nb, backend):
         assert nb >= advection.extent
         self.nb = nb
-        decorator = gt.stencil(
-            backend, rebuild=True, externals={"call_func": advection.__call__}
+        decorator = gtscript.stencil(
+            backend, rebuild=False, externals={"call_func": advection.__call__}
         )
         self.stencil = decorator(self.stencil_defs)
 
@@ -89,19 +92,22 @@ class WrappingStencil:
 
     @staticmethod
     def stencil_defs(
-        in_u: gt.storage.f64_ijk_sd,
-        in_v: gt.storage.f64_ijk_sd,
-        out_adv_u_x: gt.storage.f64_ijk_sd,
-        out_adv_u_y: gt.storage.f64_ijk_sd,
-        out_adv_v_x: gt.storage.f64_ijk_sd,
-        out_adv_v_y: gt.storage.f64_ijk_sd,
+        in_u: gtscript.Field[np.float64],
+        in_v: gtscript.Field[np.float64],
+        out_adv_u_x: gtscript.Field[np.float64],
+        out_adv_u_y: gtscript.Field[np.float64],
+        out_adv_v_x: gtscript.Field[np.float64],
+        out_adv_v_y: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
     ):
-        out_adv_u_x, out_adv_u_y, out_adv_v_x, out_adv_v_y = call_func(
-            dx=dx, dy=dy, u=in_u, v=in_v
-        )
+        from __externals__ import call_func
+
+        with computation(PARALLEL), interval(...):
+            out_adv_u_x, out_adv_u_y, out_adv_v_x, out_adv_v_y = call_func(
+                dx=dx, dy=dy, u=in_u, v=in_v
+            )
 
 
 def first_order_advection(dx, dy, u, v, phi):
@@ -126,7 +132,7 @@ def first_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_first_order(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -191,7 +197,7 @@ def second_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_second_order(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -268,7 +274,7 @@ def third_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_third_order(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -341,7 +347,7 @@ def fourth_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_fourth_order(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -424,7 +430,7 @@ def fifth_order_advection(dx, dy, u, v, phi):
 )
 @given(hyp_st.data())
 def test_fifth_order(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation

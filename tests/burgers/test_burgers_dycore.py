@@ -33,6 +33,7 @@ import numpy as np
 import pytest
 
 import gridtools as gt
+
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 
 try:
@@ -46,7 +47,7 @@ try:
         third_order_advection,
         fifth_order_advection,
     )
-    from .utils import st_burgers_state, st_domain, st_one_of, st_timedeltas
+    from .utils import compare_arrays, st_burgers_state, st_domain, st_one_of, st_timedeltas
 except (ImportError, ModuleNotFoundError):
     from conf import (
         backend as conf_backend,
@@ -58,7 +59,7 @@ except (ImportError, ModuleNotFoundError):
         third_order_advection,
         fifth_order_advection,
     )
-    from utils import st_burgers_state, st_domain, st_one_of, st_timedeltas
+    from utils import compare_arrays, st_burgers_state, st_domain, st_one_of, st_timedeltas
 
 
 @settings(
@@ -110,7 +111,7 @@ def test_forward_euler(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     domain.horizontal_boundary.reference_state = state
@@ -153,10 +154,10 @@ def test_forward_euler(data):
     )
 
     assert new_state["x_velocity"].attrs["units"] == "m s^-1"
-    assert np.allclose(u1, new_state["x_velocity"], equal_nan=True)
+    compare_arrays(u1, new_state["x_velocity"])
 
     assert new_state["y_velocity"].attrs["units"] == "m s^-1"
-    assert np.allclose(v1, new_state["y_velocity"], equal_nan=True)
+    compare_arrays(v1, new_state["y_velocity"])
 
 
 @settings(
@@ -208,7 +209,7 @@ def test_rk2(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     domain.horizontal_boundary.reference_state = state
@@ -272,10 +273,10 @@ def test_rk2(data):
     )
 
     assert new_state["x_velocity"].attrs["units"] == "m s^-1"
-    assert np.allclose(u2, new_state["x_velocity"], equal_nan=True)
+    compare_arrays(u2, new_state["x_velocity"])
 
     assert new_state["y_velocity"].attrs["units"] == "m s^-1"
-    assert np.allclose(v2, new_state["y_velocity"], equal_nan=True)
+    compare_arrays(v2, new_state["y_velocity"])
 
 
 @settings(
@@ -327,7 +328,7 @@ def test_rk3ws(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
     domain.horizontal_boundary.reference_state = state
@@ -412,10 +413,10 @@ def test_rk3ws(data):
     )
 
     assert new_state["x_velocity"].attrs["units"] == "m s^-1"
-    assert np.allclose(u3, new_state["x_velocity"], equal_nan=True)
+    compare_arrays(u3, new_state["x_velocity"])
 
     assert new_state["y_velocity"].attrs["units"] == "m s^-1"
-    assert np.allclose(v3, new_state["y_velocity"], equal_nan=True)
+    compare_arrays(v3, new_state["y_velocity"])
 
 
 if __name__ == "__main__":

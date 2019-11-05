@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 8
+factor = 1
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -48,12 +48,13 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtcuda",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
     "default_origin": (nb, nb, 0),
     "rebuild": False,
+    "managed_memory": False,
 }
 gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy" else None
 
@@ -64,15 +65,10 @@ flux_scheme = "fifth_order"
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 100  # 4 ** factor * 100
+niter = 4 ** factor * 100
 
 # output
-filename = None  # "../../data/burgers_lfc_{}.nc".format(gt_kwargs["backend"])
-#   \
-#   '../../data/burgers_{}_{}_{}_nx{}_ny{}_dt{}_nt{}_sus.nc'.format(
-#       time_integration_scheme, flux_scheme, physics_time_integration_scheme,
-#       nx, ny, int(timestep.total_seconds()), niter,
-#   )
-save_frequency = -1
-print_frequency = -1
+filename = "../../data/burgers_lfc_{}.nc".format(gt_kwargs["backend"])
+save_frequency = 1
+print_frequency = 1
 plot_frequency = -1

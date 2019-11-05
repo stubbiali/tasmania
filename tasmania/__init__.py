@@ -28,7 +28,7 @@ from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 # dwarfs
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
+# from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 
@@ -101,7 +101,7 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerSaturationAdjustment,
     KesslerSedimentation,
 )
-from tasmania.python.physics.microphysics.porz import PorzFallVelocity, PorzMicrophysics
+from spike.microphysics_porz.porz import PorzMicrophysics
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
 
@@ -184,7 +184,7 @@ __all__ = (
     HorizontalBoundary,
     HorizontalDiffusion,
     HorizontalGrid,
-    HorizontalHyperDiffusion,
+    # HorizontalHyperDiffusion,
     HorizontalSmoothing,
     HorizontalVelocity,
     HovmollerDiagram,

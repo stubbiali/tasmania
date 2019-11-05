@@ -46,7 +46,8 @@ class BurgersDynamicalCore(DynamicalCore):
         dtype=datatype,
         exec_info=None,
         default_origin=None,
-        rebuild=None
+        rebuild=None,
+        managed_memory=False
     ):
         """
         Parameters
@@ -89,10 +90,13 @@ class BurgersDynamicalCore(DynamicalCore):
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._backend = backend
         self._dtype = dtype
         self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
         super().__init__(
             domain,
@@ -121,6 +125,7 @@ class BurgersDynamicalCore(DynamicalCore):
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
+            managed_memory=managed_memory,
         )
 
     @property
@@ -175,12 +180,25 @@ class BurgersDynamicalCore(DynamicalCore):
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
+        managed_memory = self._managed_memory
 
-        u = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
+        u = zeros(
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
         u_da = get_dataarray_3d(
             u, grid, "m s^-1", name="x_velocity", set_coordinates=False
         )
-        v = zeros((nx, ny, 1), backend, dtype, default_origin=default_origin)
+        v = zeros(
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
         v_da = get_dataarray_3d(
             v, grid, "m s^-1", name="y_velocity", set_coordinates=False
         )

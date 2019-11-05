@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -63,7 +63,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         exec_info=None,
         default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+        managed_memory=False
     ):
         """
         Parameters
@@ -105,6 +106,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         storage_shape : `tuple`, optional
             Shape of the storages.
         """
@@ -115,7 +118,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self.horizontal_boundary.nb
 
-        shape = get_storage_shape(storage_shape, min_shape=(nx+1, ny+1, nz+1))
+        shape = get_storage_shape(storage_shape, min_shape=(nx + 1, ny + 1, nz + 1))
 
         self._core = HorizontalSmoothing.factory(
             smooth_type,
@@ -131,6 +134,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
+            managed_memory=managed_memory,
         )
 
         if self._moist:
@@ -157,17 +161,30 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
+                managed_memory=managed_memory,
             )
         else:
             self._core_moist = None
 
-        self._out_s = zeros(shape, backend, dtype, default_origin=default_origin)
-        self._out_su = zeros(shape, backend, dtype, default_origin=default_origin)
-        self._out_sv = zeros(shape, backend, dtype, default_origin=default_origin)
+        self._out_s = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_su = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_sv = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
         if self._moist:
-            self._out_qv = zeros(shape, backend, dtype, default_origin=default_origin)
-            self._out_qc = zeros(shape, backend, dtype, default_origin=default_origin)
-            self._out_qr = zeros(shape, backend, dtype, default_origin=default_origin)
+            self._out_qv = zeros(
+                shape, backend, dtype, default_origin, managed_memory=managed_memory
+            )
+            self._out_qc = zeros(
+                shape, backend, dtype, default_origin, managed_memory=managed_memory
+            )
+            self._out_qr = zeros(
+                shape, backend, dtype, default_origin, managed_memory=managed_memory
+            )
 
     @property
     def input_properties(self):

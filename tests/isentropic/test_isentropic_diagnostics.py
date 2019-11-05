@@ -28,7 +28,6 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
 import numpy as np
 from pint import UnitRegistry
 import pytest
@@ -69,10 +68,6 @@ except (ImportError, ModuleNotFoundError):
         st_isentropic_state_f,
         st_raw_field,
     )
-
-
-conf_backend = ("gtx86",)
-backend_opts = {"max_region_offset": 3, "verbose": False}
 
 
 @settings(
@@ -122,7 +117,6 @@ def test_diagnostic_variables(data):
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -213,7 +207,6 @@ def test_montgomery(data):
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -292,7 +285,6 @@ def test_height(data):
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -377,7 +369,6 @@ def test_density_and_temperature(data):
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -496,7 +487,6 @@ def test_isentropic_diagnostics(data):
     did = DynamicsIsentropicDiagnostics(
         grid,
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -518,7 +508,6 @@ def test_isentropic_diagnostics(data):
         moist=False,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -574,7 +563,6 @@ def test_isentropic_diagnostics(data):
         moist=True,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,
@@ -651,7 +639,6 @@ def test_horizontal_velocity(data):
     ivc = IsentropicVelocityComponents(
         domain,
         backend=backend,
-        backend_opts=backend_opts,
         dtype=dtype,
         default_origin=default_origin,
         rebuild=False,

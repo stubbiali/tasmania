@@ -34,6 +34,7 @@ import numpy as np
 import pytest
 
 import gridtools as gt
+
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion as HD
 from tasmania.python.utils.storage_utils import zeros
 
@@ -109,7 +110,7 @@ def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hd(phi, phi_tnd)
 
@@ -235,7 +236,7 @@ def fourth_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hd(phi, phi_tnd)
 

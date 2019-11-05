@@ -315,12 +315,13 @@ def get_array_dict(dataarray_dict, properties):
     return array_dict
 
 
-def get_physical_state(domain, cstate, properties, store_names=None):
+def get_physical_state(domain, cstate, store_names=None):
     """
     Given a state dictionary defined over the numerical grid, transpose that state
     over the corresponding physical grid.
     """
     pgrid = domain.physical_grid
+    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
     hb = domain.horizontal_boundary
 
     store_names = (
@@ -335,28 +336,25 @@ def get_physical_state(domain, cstate, properties, store_names=None):
     for name in store_names:
         if name != "time":
             storage_shape = cstate[name].shape
+            mx = nx + 1 if "at_u_locations" in name else nx
+            my = ny + 1 if "at_v_locations" in name else ny
+            mz = nz + 1 if "on_interface_levels" in name else nz
+            units = cstate[name].attrs["units"]
+
+            raw_cfield = cstate[name].values
+            raw_pfield = hb.get_physical_field(raw_cfield, name)
+
             if len(storage_shape) == 2:
-                grid_origin = properties[name].get("grid_origin", (0, 0))
-                grid_shape = properties[name].get("grid_shape", storage_shape)
-                xslice = slice(grid_origin[0], grid_origin[0] + grid_shape[0])
-                yslice = slice(grid_origin[1], grid_origin[1] + grid_shape[1])
-                units = cstate[name].attrs["units"]
-                raw_cfield = cstate[name].values[xslice, yslice]
-                raw_pfield = hb.get_physical_field(raw_cfield, name)
                 pstate[name] = get_dataarray_2d(
-                    raw_pfield, pgrid, units, name=name, set_coordinates=True
+                    raw_pfield[:mx, :my], pgrid, units, name=name, set_coordinates=True
                 )
             else:
-                grid_origin = properties[name].get("grid_origin", (0, 0, 0))
-                grid_shape = properties[name].get("grid_shape", storage_shape)
-                xslice = slice(grid_origin[0], grid_origin[0] + grid_shape[0])
-                yslice = slice(grid_origin[1], grid_origin[1] + grid_shape[1])
-                zslice = slice(grid_origin[2], grid_origin[2] + grid_shape[2])
-                units = cstate[name].attrs["units"]
-                raw_cfield = cstate[name].values[xslice, yslice, zslice]
-                raw_pfield = hb.get_physical_field(raw_cfield, name)
                 pstate[name] = get_dataarray_3d(
-                    raw_pfield, pgrid, units, name=name, set_coordinates=True
+                    raw_pfield[:mx, :my, :mz],
+                    pgrid,
+                    units,
+                    name=name,
+                    set_coordinates=True,
                 )
 
     return pstate
@@ -368,6 +366,8 @@ def get_numerical_state(domain, pstate, store_names=None):
     over the corresponding numerical grid.
     """
     cgrid = domain.numerical_grid
+    pgrid = domain.physical_grid
+    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
     hb = domain.horizontal_boundary
 
     store_names = (
@@ -381,16 +381,31 @@ def get_numerical_state(domain, pstate, store_names=None):
 
     for name in store_names:
         if name != "time":
+            mx = nx + 1 if "at_u_locations" in name else nx
+            my = ny + 1 if "at_v_locations" in name else ny
+            mz = nz + 1 if "on_interface_levels" in name else nz
             units = pstate[name].attrs["units"]
+
             raw_pfield = pstate[name].values
             raw_cfield = hb.get_numerical_field(raw_pfield, name)
+
             if len(raw_cfield.shape) == 2:
                 cstate[name] = get_dataarray_2d(
-                    raw_cfield, cgrid, units, name, set_coordinates=True
+                    raw_cfield,
+                    cgrid,
+                    units,
+                    name,
+                    grid_shape=(mx, my),
+                    set_coordinates=True,
                 )
             else:
                 cstate[name] = get_dataarray_3d(
-                    raw_cfield, cgrid, units, name, set_coordinates=True
+                    raw_cfield,
+                    cgrid,
+                    units,
+                    name,
+                    grid_shape=(mx, my, mz),
+                    set_coordinates=True,
                 )
 
     return cstate
@@ -451,25 +466,48 @@ def get_storage_descriptor(dtype, grid_group=None, mask=None):
     return descriptor
 
 
-def empty(storage_shape, backend, dtype, default_origin=None, mask=None):
+def empty(
+    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
+):
     default_origin = default_origin or (0, 0, 0)
     gt_storage = gt.storage.empty(
-        backend, default_origin, storage_shape, dtype, mask=mask
+        backend,
+        default_origin,
+        storage_shape,
+        dtype,
+        mask=mask,
+        managed_memory=managed_memory,
     )
     return gt_storage
 
 
-def zeros(storage_shape, backend, dtype, default_origin=None, mask=None):
+def zeros(
+    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
+):
     default_origin = default_origin or (0, 0, 0)
     gt_storage = gt.storage.zeros(
-        backend, default_origin, storage_shape, dtype, mask=mask
+        backend,
+        default_origin,
+        storage_shape,
+        dtype,
+        mask=mask,
+        managed_memory=managed_memory,
     )
     return gt_storage
 
 
-def ones(storage_shape, backend, dtype, default_origin=None, mask=None):
+def ones(
+    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
+):
     default_origin = default_origin or (0, 0, 0)
-    gt_storage = gt.storage.ones(backend, default_origin, storage_shape, dtype, mask=mask)
+    gt_storage = gt.storage.ones(
+        backend,
+        default_origin,
+        storage_shape,
+        dtype,
+        mask=mask,
+        managed_memory=managed_memory,
+    )
     return gt_storage
 
 

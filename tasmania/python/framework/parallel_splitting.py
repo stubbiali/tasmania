@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -30,7 +31,10 @@ from sympl import (
 )
 from sympl._core.units import units_are_same
 
-import gridtools as gt
+from gridtools import gtscript
+
+# from gridtools.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
@@ -45,9 +49,12 @@ from tasmania.python.utils.framework_utils import (
 
 
 def stencil_defs(
-    inout_a: gt.storage.f64_sd, in_b: gt.storage.f64_sd, in_c: gt.storage.f64_sd
+    inout_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    in_c: gtscript.Field[np.float64],
 ):
-    inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0] - in_c[0, 0, 0]
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0] - in_c[0, 0, 0]
 
 
 class ParallelSplitting:
@@ -228,7 +235,8 @@ class ParallelSplitting:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
                 kwargs = process.get(
-                    "time_integrator_kwargs", {"backend": None, "halo": None}
+                    "time_integrator_kwargs",
+                    {"backend": None, "halo": None, "managed_memory": False},
                 )
 
                 TendencyStepper = tendencystepper_factory(integrator)
@@ -294,10 +302,13 @@ class ParallelSplitting:
 
         if gt_powered:
             # compile the underlying stencil
-            decorator = gt.stencil(
-                backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+            self._stencil = gtscript.stencil(
+                definition=stencil_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                **(backend_opts or {})
             )
-            self._stencil = decorator(stencil_defs)
 
             # store parameters needed at run-time
             self._exec_info = exec_info
