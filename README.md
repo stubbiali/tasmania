@@ -48,7 +48,7 @@ Conversely, GridTools's front-end, then GridTools4Py's interface, are hardware-a
 
 To clone this repository (with submodules) on your machine and place yourself on the current branch, run
 
-	git clone -b master --recurse-submodules https://github.com/eth-cscs/tasmania.git
+	git clone -b new_calling_api --recurse-submodules https://github.com/eth-cscs/tasmania.git
 
 **Note:** both Tasmania and GridTools4Py repositories are *private*, so you should be granted access to clone them and accomplish all the actions listed below.
 	
@@ -134,7 +134,6 @@ Once done, you can:
 - `notebooks/`: Jupyter notebooks.
 - `results/`: figures (`figures/`) and animations (`movies/`) generated via Matplotlib.
 - `scripts/`: bash (`bash/`), Python (`python/`), Slurm (`slurm/`) scripts for, e.g., post-processing, plotting, sharing data with a remote machine. `scratch_daint/` and `scratch_dom/` contain files which should be copy to the `$SCRATCH` folder on Piz Daint and Dom, respectively.
-- `spike/`: miscellaneous of old (i.e. deprecated), experimental, and potentially useful stuff.
 - `tasmania/`: codebase, consisting of Python (`python/`) and C++ (`cpp/`) source files.
 - `tests/`: test suite. 
 

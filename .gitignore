@@ -33,6 +33,7 @@ result_images/
 .eggs/
 tasmania.egg-info/
 build/
+dist/
 
 # archives
 *.tar
