@@ -4,5 +4,5 @@
 	branch = ubbiali
 [submodule "docker/external/gridtools4py"]
 	path = docker/external/gridtools4py
-	url = git@github.com:egparedes/gt4py.git
-	branch = tasmania_integration
+	url = git@github.com:GridTools/gt4py.git
+	branch = dev
