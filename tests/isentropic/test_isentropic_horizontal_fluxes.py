@@ -435,7 +435,7 @@ def validation(
     sv = zeros((nx + 1, ny + 1, nz), backend, dtype, default_origin)
     sv[...] = field[1 : nx + 2, 1 : ny + 2, :nz]
     sqv = zeros((nx + 1, ny + 1, nz), backend, dtype, default_origin)
-    sqv[...] = field[: nx + 1, : nx + 1, 1 : nz + 1]
+    sqv[...] = field[: nx + 1, : ny + 1, 1 : nz + 1]
     sqc = zeros((nx + 1, ny + 1, nz), backend, dtype, default_origin)
     sqc[...] = field[1 : nx + 2, : ny + 1, 1 : nz + 1]
     sqr = zeros((nx + 1, ny + 1, nz), backend, dtype, default_origin)
@@ -531,7 +531,7 @@ def test_upwind(data):
     # test bed
     # ========================================
     validation(
-        "upwind", domain, field, timestep, backend, dtype, default_origin, rebuild=True
+        "upwind", domain, field, timestep, backend, dtype, default_origin, rebuild=False
     )
 
 
@@ -573,7 +573,7 @@ def test_centered(data):
     # test bed
     # ========================================
     validation(
-        "centered", domain, field, timestep, backend, dtype, default_origin, rebuild=True
+        "centered", domain, field, timestep, backend, dtype, default_origin, rebuild=False
     )
 
 
@@ -627,7 +627,7 @@ def test_third_order_upwind(data):
         backend,
         dtype,
         default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
 
@@ -676,7 +676,7 @@ def test_fifth_order_upwind(data):
         backend,
         dtype,
         default_origin,
-        rebuild=True,
+        rebuild=False,
     )
 
 

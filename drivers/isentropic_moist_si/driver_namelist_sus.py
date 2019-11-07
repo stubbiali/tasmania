@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
+import gridtools as gt
 import os
 import tasmania as taz
 import time
@@ -30,6 +31,8 @@ try:
 except (ImportError, ModuleNotFoundError):
     from utils import print_info
 
+
+gt.storage.prepare_numpy()
 
 # ============================================================
 # The namelist
@@ -64,6 +67,7 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
+    backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
 )
 pgrid = domain.physical_grid
@@ -84,8 +88,9 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     relative_humidity=nl.relative_humidity,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
-    halo=nl.gt_kwargs["halo"],
+    default_origin=nl.gt_kwargs["default_origin"],
     storage_shape=nl.gt_kwargs["storage_shape"],
+    managed_memory=nl.gt_kwargs["managed_memory"],
 )
 domain.horizontal_boundary.reference_state = state
 
@@ -216,7 +221,7 @@ water_species_names = (
     "mass_fraction_of_cloud_liquid_water_in_air",
     "mass_fraction_of_precipitation_water_in_air",
 )
-clp = taz.Clipping(domain, "numerical", water_species_names)
+# clp = taz.Clipping(domain, "numerical", water_species_names)
 
 # component calculating the microphysics
 ke = taz.KesslerMicrophysics(
@@ -236,7 +241,7 @@ if nl.update_frequency > 0:
     args.append(
         {
             "component": UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
-            "time_integrator": "forward_euler",
+            "time_integrator": ptis,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -263,7 +268,7 @@ if nl.rain_evaporation:
     args.append(
         {
             "component": vf,
-            "time_integrator": "rk3ws",
+            "time_integrator": "gt_rk3ws",
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -305,7 +310,7 @@ physics = taz.SequentialUpdateSplitting(*args)
 # ============================================================
 # A NetCDF monitor
 # ============================================================
-if nl.filename is not None:
+if nl.save and nl.filename is not None:
     if os.path.exists(nl.filename):
         os.remove(nl.filename)
 
@@ -313,119 +318,6 @@ if nl.filename is not None:
         nl.filename, domain, "physical", store_names=nl.store_names
     )
     netcdf_monitor.store(state)
-
-# ============================================================
-# A visualization-purpose monitor
-# ============================================================
-xlim = nl.domain_x.to_units("km").values
-ylim = nl.domain_y.to_units("km").values
-zlim = nl.domain_z.to_units("K").values
-
-# the drawers and the artist generating the left subplot
-drawer1_properties = {
-    "fontsize": 16,
-    "cmap_name": "BuRd",
-    "cbar_on": True,
-    "cbar_levels": 18,
-    "cbar_ticks_step": 4,
-    "cbar_center": 15,
-    "cbar_orientation": "horizontal",
-    "cbar_x_label": "Horizontal velocity [m s$^{-1}$]",
-    "draw_vertical_levels": False,
-}
-drawer1 = taz.Contourf(
-    cgrid,
-    "horizontal_velocity",
-    "m s^-1",
-    z=-1,
-    xaxis_units="km",
-    yaxis_units="km",
-    properties=drawer1_properties,
-)
-drawer2_properties = {
-    "fontsize": 16,
-    "x_step": 2,
-    "y_step": 2,
-    "colors": "black",
-    "draw_vertical_levels": False,
-    "alpha": 0.5,
-}
-drawer2 = taz.Quiver(
-    cgrid,
-    z=-1,
-    xaxis_units="km",
-    yaxis_units="km",
-    xcomp_name="x_velocity",
-    xcomp_units="m s^-1",
-    ycomp_name="y_velocity",
-    ycomp_units="m s^-1",
-    properties=drawer2_properties,
-)
-axes1_properties = {
-    "fontsize": 16,
-    "title_left": "$\\theta = {}$ K".format(zlim[1]),
-    "x_label": "$x$ [km]",
-    "x_lim": xlim,
-    "y_label": "$y$ [km]",
-    "y_lim": ylim,
-}
-topo_drawer = taz.Contour(
-    cgrid,
-    "topography",
-    "m",
-    z=-1,
-    xaxis_units="km",
-    yaxis_units="km",
-    properties={"colors": "darkgray"},
-)
-plot1 = taz.Plot(drawer1, drawer2, topo_drawer, axes_properties=axes1_properties)
-
-# The drawer and the artist generating the right subplot
-drawer3_properties = {
-    "fontsize": 16,
-    "cmap_name": "BuRd",
-    "cbar_on": True,
-    "cbar_levels": 18,
-    "cbar_ticks_step": 4,
-    "cbar_center": 15,
-    "cbar_orientation": "horizontal",
-    "cbar_x_label": "$x$-velocity [m s$^{-1}$]",
-    "draw_vertical_levels": True,
-}
-drawer3 = taz.Contourf(
-    cgrid,
-    "x_velocity",
-    "m s^-1",
-    y=int(nl.ny / 2),
-    xaxis_units="km",
-    zaxis_name="z",
-    zaxis_units="K",
-    properties=drawer3_properties,
-)
-axes3_properties = {
-    "fontsize": 16,
-    "title_left": "$y = {}$ km".format(0.5 * (ylim[0] + ylim[1])),
-    "x_label": "$x$ [km]",
-    "x_lim": xlim,
-    "y_label": "$\\theta$ [K]",
-    "y_lim": (zlim[1], zlim[0]),
-}
-topo_drawer = taz.LineProfile(
-    cgrid,
-    "topography",
-    "km",
-    y=int(nl.ny / 2),
-    z=-1,
-    axis_units="km",
-    properties={"linecolor": "black", "linewidth": 1.3},
-)
-plot2 = taz.Plot(drawer3, topo_drawer, axes_properties=axes3_properties)
-
-# The monitor encompassing and coordinating the two artists
-figure_properties = {"fontsize": 16, "figsize": (12, 7), "tight_layout": True}
-plot_monitor = taz.PlotComposite(
-    plot1, plot2, nrows=1, ncols=2, interactive=True, figure_properties=figure_properties
-)
 
 # ============================================================
 # Time-marching
@@ -444,9 +336,11 @@ for i in range(nt):
 
     # compute the dynamics
     state_prv = dycore(state, {}, dt)
+    extension = {key: state[key] for key in state if key not in state_prv}
+    state_prv.update(extension)
+    state_prv["time"] = nl.init_time + i * dt
 
     # ensure the provisional state is still defined at the current time level
-    state_prv["time"] = nl.init_time + i * dt
 
     # compute the physics
     physics(state_prv, dt)
@@ -461,20 +355,13 @@ for i in range(nt):
     print_info(dt, i, nl, pgrid, state)
 
     # shortcuts
-    to_save = (nl.filename is not None) and (
+    to_save = nl.save and (nl.filename is not None) and (
         ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt
     )
-    to_plot = (nl.plot_frequency > 0) and ((i + 1) % nl.plot_frequency == 0)
 
     if to_save:
         # save the solution
         netcdf_monitor.store(state)
-
-    if to_plot:
-        # plot the solution
-        plot1.axes_properties["title_right"] = str((i + 1) * dt)
-        plot2.axes_properties["title_right"] = str((i + 1) * dt)
-        fig = plot_monitor.store(((state, state, state), (state, state)), show=True)
 
 print("Simulation successfully completed. HOORAY!")
 
@@ -482,7 +369,7 @@ print("Simulation successfully completed. HOORAY!")
 # Post-processing
 # ============================================================
 # dump the solution to file
-if nl.filename is not None:
+if nl.save and nl.filename is not None:
     netcdf_monitor.write()
 
 # stop chronometer

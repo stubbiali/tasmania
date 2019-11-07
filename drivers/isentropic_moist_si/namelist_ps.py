@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -40,14 +40,17 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
-    "backend_opts": None,
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
-    "halo": (nb, nb, 0),
-    "rebuild": True,
+    "default_origin": (nb, nb, 0),
+    "rebuild": False,
+    "managed_memory": False,
 }
+gt_kwargs["backend_opts"] = (
+    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
+)
 
 # topography
 topo_type = "gaussian"
@@ -73,7 +76,7 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
-physics_time_integration_scheme = "rk2"
+physics_time_integration_scheme = "gt_rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
@@ -117,7 +120,7 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = False
+coriolis = True
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
@@ -132,12 +135,14 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(4 * 60 * 60 / timestep.total_seconds())
+niter = int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
+save = False
+save_frequency = -1
 filename = (
     "../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ps_1.nc".format(
+    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ps_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         physics_time_integration_scheme,
@@ -157,9 +162,9 @@ filename = (
         "_f" if coriolis else "",
         "_sed" if sedimentation else "",
         "_evap" if rain_evaporation else "",
+        gt_kwargs["backend"],
     )
 )
-filename = "../../data/isentropic_ps_{}.nc".format(gt_kwargs["backend"])
 store_names = (
     "accumulated_precipitation",
     "air_density",
@@ -178,7 +183,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-save_frequency = 5
-print_dry_frequency = 5
-print_moist_frequency = 5
-plot_frequency = -1
+print_dry_frequency = 1
+print_moist_frequency = 1

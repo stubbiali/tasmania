@@ -28,7 +28,7 @@ from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 # dwarfs
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
-# from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
+from tasmania.python.dwarfs.horizontal_hyperdiffusion import HorizontalHyperDiffusion
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 
@@ -124,10 +124,14 @@ from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
 from tasmania.python.utils.storage_utils import (
+    deepcopy_array_dict,
+    deepcopy_dataarray,
+    deepcopy_dataarray_dict,
     get_dataarray_3d,
     get_dataarray_dict,
     get_array_dict,
     get_dataarray_2d,
+    zeros
 )
 from tasmania.python.utils.dict_utils import (
     add as dict_add,
@@ -146,7 +150,7 @@ from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
 from tasmania.python.utils.utils import get_time_string
 
 
-__version__ = "0.4.0"
+__version__ = "0.6.0"
 
 
 __all__ = (
@@ -163,6 +167,9 @@ __all__ = (
     DiagnosticComponent,
     DiagnosticComponentComposite,
     Domain,
+    deepcopy_array_dict,
+    deepcopy_dataarray,
+    deepcopy_dataarray_dict,
     dict_add,
     dict_add_inplace,
     dict_copy,
@@ -184,7 +191,7 @@ __all__ = (
     HorizontalBoundary,
     HorizontalDiffusion,
     HorizontalGrid,
-    # HorizontalHyperDiffusion,
+    HorizontalHyperDiffusion,
     HorizontalSmoothing,
     HorizontalVelocity,
     HovmollerDiagram,
@@ -234,6 +241,7 @@ __all__ = (
     Topography,
     VerticalDamping,
     WaterConstituent,
+    zeros,
     ZhaoSolutionFactory,
     ZhaoStateFactory,
 )

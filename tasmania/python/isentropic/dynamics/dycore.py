@@ -89,6 +89,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
+            managed_memory=False,
         **kwargs
     ):
         """
@@ -231,6 +232,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             `False` to rely on the caching mechanism implemented by GT4Py.
         storage_shape : `tuple`, optional
             Shape of the storages.
+        managed_memory : bool
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             TODO
         """
@@ -263,6 +266,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._dtype = dtype
         self._default_origin = default_origin
         self._storage_shape = storage_shape
+        self._managed_memory = managed_memory
 
         #
         # parent constructor
@@ -297,6 +301,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             default_origin=default_origin,
             rebuild=rebuild,
             storage_shape=storage_shape,
+            managed_memory=managed_memory,
             **kwargs
         )
 
@@ -337,6 +342,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
+                managed_memory=managed_memory
             )
             if moist and smooth_moist:
                 self._smoother_moist = HorizontalSmoothing.factory(
@@ -352,7 +358,8 @@ class IsentropicDynamicalCore(DynamicalCore):
                     dtype=dtype,
                     exec_info=exec_info,
                     default_origin=default_origin,
-                    rebuild=False,
+                    rebuild=rebuild,
+                    managed_memory=managed_memory
                 )
 
         #
@@ -387,7 +394,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         # temporary and output arrays
         #
         def allocate():
-            return empty(storage_shape, backend, dtype, default_origin=default_origin)
+            return zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory)
 
         if moist:
             self._sqv_now = allocate()
@@ -685,6 +692,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         dtype = self._dtype
         default_origin = self._default_origin
         storage_shape = self._storage_shape
+        managed_memory = self._managed_memory
 
         out_state = {}
 
@@ -711,7 +719,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             )
 
             out_state[name] = get_dataarray_3d(
-                zeros(storage_shape, backend, dtype, default_origin=default_origin),
+                zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory),
                 g,
                 units,
                 name=name,
@@ -804,9 +812,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed[:nx, :ny, :nz],
-                "x_momentum_isentropic": self._su_smoothed[:nx, :ny, :nz],
-                "y_momentum_isentropic": self._sv_smoothed[:nx, :ny, :nz],
+                "air_isentropic_density": self._s_smoothed,
+                "x_momentum_isentropic": self._su_smoothed,
+                "y_momentum_isentropic": self._sv_smoothed,
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -976,9 +984,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed[:nx, :ny, :nz],
-                "x_momentum_isentropic": self._su_smoothed[:nx, :ny, :nz],
-                "y_momentum_isentropic": self._sv_smoothed[:nx, :ny, :nz],
+                "air_isentropic_density": self._s_smoothed,
+                "x_momentum_isentropic": self._su_smoothed,
+                "y_momentum_isentropic": self._sv_smoothed,
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -1001,9 +1009,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                mfwv: self._qv_smoothed[:nx, :ny, :nz],
-                mfcw: self._qc_smoothed[:nx, :ny, :nz],
-                mfpw: self._qr_smoothed[:nx, :ny, :nz],
+                mfwv: self._qv_smoothed,
+                mfcw: self._qc_smoothed,
+                mfpw: self._qr_smoothed,
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 

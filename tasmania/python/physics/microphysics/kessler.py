@@ -382,13 +382,13 @@ class KesslerMicrophysics(TendencyComponent):
 
         # collect the tendencies
         # >>> comment the following two lines before testing <<<
-        # self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
-        # self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
+        self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
+        self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
         if self._rain_evaporation:
             # >>> comment the following two lines before testing <<<
-            # self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
-            # self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
+            self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
+            self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
             tendencies[mfwv] = self._out_qv_tnd
             if not self._pttd:
                 tendencies["air_potential_temperature"] = self._out_theta_tnd
@@ -963,7 +963,6 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         self._exec_info = exec_info
 
         sflux = SedimentationFlux.factory(sedimentation_flux_scheme)
-        self._nb = sflux.nb
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
@@ -983,12 +982,16 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         )
 
         self._stencil = gtscript.stencil(
-            definition=self._stencil1_defs if self._nb == 1 else self._stencil2_defs,
+            definition=self._stencil_defs,
             name=self.__class__.__name__,
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
-            externals={"sflux": sflux.__call__},  # , "max_cfl": maximum_vertical_cfl},
+            externals={
+                "sflux": sflux.__call__,
+                "sflux_extent": sflux.nb,
+                # "max_cfl": maximum_vertical_cfl},
+            },
             **(backend_opts or {})
         )
 
@@ -1026,7 +1029,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
     def array_call(self, state, timestep):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        nbh = self.horizontal_boundary.nb if self.grid_type == 'numerical' else 0
+        nbh = self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
 
         in_rho = state["air_density"]
         in_h = state["height_on_interface_levels"]
@@ -1056,38 +1059,20 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         return tendencies, diagnostics
 
     @staticmethod
-    def _stencil1_defs(
+    def _stencil_defs(
         in_rho: gtscript.Field[np.float64],
         in_h: gtscript.Field[np.float64],
         in_qr: gtscript.Field[np.float64],
         in_vt: gtscript.Field[np.float64],
         out_qr: gtscript.Field[np.float64],
     ):
-        from __externals__ import sflux
+        from __externals__ import sflux, sflux_extent
 
-        with computation(PARALLEL), interval(0, 1):
+        with computation(FORWARD), interval(0, None):
+            h = 0.5 * (in_h[0, 0, 0] + in_h[0, 0, 1])
+
+        with computation(PARALLEL), interval(0, sflux_extent):
             out_qr = 0.0
-
-        with computation(PARALLEL), interval(1, None):
-            out_dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
-            out_qr = out_dfdz[0, 0, 0] / in_rho[0, 0, 0]
-
-    @staticmethod
-    def _stencil2_defs(
-            in_rho: gtscript.Field[np.float64],
-            in_h: gtscript.Field[np.float64],
-            in_qr: gtscript.Field[np.float64],
-            in_vt: gtscript.Field[np.float64],
-            # out_dfdz: gtscript.Field[np.float64],
-            out_qr: gtscript.Field[np.float64],
-            # *,
-            # dt: float = 0.0
-    ):
-        from __externals__ import sflux
-
-        with computation(PARALLEL), interval(0, 2):
-            out_qr = 0.0
-
-        with computation(PARALLEL), interval(2, None):
-            out_dfdz = sflux(rho=in_rho, h=in_h, q=in_qr, vt=in_vt)
+        with computation(PARALLEL), interval(sflux_extent, None):
+            out_dfdz = sflux(rho=in_rho, h=h, q=in_qr, vt=in_vt)
             out_qr = out_dfdz[0, 0, 0] / in_rho[0, 0, 0]

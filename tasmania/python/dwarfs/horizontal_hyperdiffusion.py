@@ -24,8 +24,7 @@ import abc
 import math
 import numpy as np
 
-# from gridtools import __externals__
-from gridtools import gtscript
+from gridtools import gtscript, __externals__
 # from gridtools.__gtscript__ import computation, interval, PARALLEL
 
 
@@ -37,26 +36,22 @@ except ImportError:
     from numpy import float32 as datatype
 
 
-# @gtscript.function
-def _stage_laplacian_x(dx, phi):
+@gtscript.function
+def stage_laplacian_x(dx, phi):
     lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
     return lap
 
 
-# @gtscript.function
-def _stage_laplacian_y(dy, phi):
+@gtscript.function
+def stage_laplacian_y(dy, phi):
     lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
     return lap
 
 
 @gtscript.function
-def _stage_laplacian(dx, dy, phi):
-    # from __externals__ import stage_laplacian_x, stage_laplacian_y
-
-    # lap_x = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
-    lap_x = _stage_laplacian_x(dx=dx, phi=phi)
-    # lap_y = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
-    lap_y = _stage_laplacian_y(dy=dy, phi=phi)
+def stage_laplacian(dx, dy, phi):
+    lap_x = stage_laplacian_x(dx=dx, phi=phi)
+    lap_y = stage_laplacian_y(dy=dy, phi=phi)
     lap = lap_x[0, 0, 0] + lap_y[0, 0, 0]
     return lap
 
@@ -149,9 +144,9 @@ class HorizontalHyperDiffusion(abc.ABC):
             build_info=build_info,
             rebuild=rebuild,
             externals={
-                "stage_laplacian": _stage_laplacian,
-                "stage_laplacian_x": _stage_laplacian_x,
-                "stage_laplacian_y": _stage_laplacian_y,
+                "stage_laplacian": stage_laplacian,
+                "stage_laplacian_x": stage_laplacian_x,
+                "stage_laplacian_y": stage_laplacian_y,
             },
             **(backend_opts or {})
         )
@@ -381,7 +376,7 @@ class FirstOrder(HorizontalHyperDiffusion):
         dx: float,
         dy: float
     ):
-        from __externals__ import stage_laplacian
+        from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
 
         with computation(PARALLEL), interval(...):
             lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
@@ -461,7 +456,7 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
         out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
-        dy: float
+        dy: float = 0.0
     ):
         from __externals__ import stage_laplacian_x
 
@@ -542,7 +537,7 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
         in_gamma: gtscript.Field[np.float64],
         out_phi: gtscript.Field[np.float64],
         *,
-        dx: float,
+        dx: float = 0.0,
         dy: float
     ):
         from __externals__ import stage_laplacian_y
@@ -627,9 +622,12 @@ class SecondOrder(HorizontalHyperDiffusion):
         dx: float,
         dy: float
     ):
-        lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-        lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
-        out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+        from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
+
+        with computation(PARALLEL), interval(...):
+            lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+            lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
+            out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
 
 
 class SecondOrder1DX(HorizontalHyperDiffusion):
@@ -705,11 +703,14 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
         out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
-        dy: float
+        dy: float = 0.0
     ):
-        lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
-        lap1 = stage_laplacian_x(dx=dx, phi=lap0)
-        out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+        from __externals__ import stage_laplacian_x
+
+        with computation(PARALLEL), interval(...):
+            lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
+            lap1 = stage_laplacian_x(dx=dx, phi=lap0)
+            out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
 
 
 class SecondOrder1DY(HorizontalHyperDiffusion):
@@ -784,12 +785,15 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
         in_gamma: gtscript.Field[np.float64],
         out_phi: gtscript.Field[np.float64],
         *,
-        dx: float,
+        dx: float = 0.0,
         dy: float
     ):
-        lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
-        lap1 = stage_laplacian_y(dy=dy, phi=lap0)
-        out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+        from __externals__ import stage_laplacian_y
+
+        with computation(PARALLEL), interval(...):
+            lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
+            lap1 = stage_laplacian_y(dy=dy, phi=lap0)
+            out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
 
 
 class ThirdOrder(HorizontalHyperDiffusion):
@@ -867,10 +871,13 @@ class ThirdOrder(HorizontalHyperDiffusion):
         dx: float,
         dy: float
     ):
-        lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-        lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
-        lap2 = stage_laplacian(dx=dx, dy=dy, phi=lap1)
-        out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+        from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
+
+        with computation(PARALLEL), interval(...):
+            lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
+            lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
+            lap2 = stage_laplacian(dx=dx, dy=dy, phi=lap1)
+            out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
 
 
 class ThirdOrder1DX(HorizontalHyperDiffusion):
@@ -946,12 +953,15 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
         out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
-        dy: float
+        dy: float = 0.0
     ):
-        lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
-        lap1 = stage_laplacian_x(dx=dx, phi=lap0)
-        lap2 = stage_laplacian_x(dx=dx, phi=lap1)
-        out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+        from __externals__ import stage_laplacian_x
+
+        with computation(PARALLEL), interval(...):
+            lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
+            lap1 = stage_laplacian_x(dx=dx, phi=lap0)
+            lap2 = stage_laplacian_x(dx=dx, phi=lap1)
+            out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
 
 
 class ThirdOrder1DY(HorizontalHyperDiffusion):
@@ -1026,10 +1036,13 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
         in_gamma: gtscript.Field[np.float64],
         out_phi: gtscript.Field[np.float64],
         *,
-        dx: float,
+        dx: float = 0.0,
         dy: float
     ):
-        lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
-        lap1 = stage_laplacian_y(dy=dy, phi=lap0)
-        lap2 = stage_laplacian_y(dy=dy, phi=lap1)
-        out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+        from __externals__ import stage_laplacian_y
+
+        with computation(PARALLEL), interval(...):
+            lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
+            lap1 = stage_laplacian_y(dy=dy, phi=lap0)
+            lap2 = stage_laplacian_y(dy=dy, phi=lap1)
+            out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]

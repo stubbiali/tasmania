@@ -387,14 +387,11 @@ class _FirstOrderUpwind(SedimentationFlux):
     @staticmethod
     @gtscript.function
     def __call__(rho, h, q, vt):
-        # interpolate the geometric height at the model main levels
-        tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
-
         # calculate the vertical derivative of the sedimentation flux
         dfdz = (
             rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1]
             - rho[0, 0, 0] * q[0, 0, 0] * vt[0, 0, 0]
-        ) / (tmp_h[0, 0, -1] - tmp_h[0, 0, 0])
+        ) / (h[0, 0, -1] - h[0, 0, 0])
 
         return dfdz
 
@@ -407,20 +404,17 @@ class _SecondOrderUpwind(SedimentationFlux):
     @staticmethod
     @gtscript.function
     def __call__(rho, h, q, vt):
-        # interpolate the geometric height at the model main levels
-        tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
-
         # evaluate the space-dependent coefficients occurring in the
         # second-order upwind finite difference approximation of the
         # vertical derivative of the flux
-        tmp_a = (2.0 * tmp_h[0, 0, 0] - tmp_h[0, 0, -1] - tmp_h[0, 0, -2]) / (
-            (tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, 0])
+        tmp_a = (2.0 * h[0, 0, 0] - h[0, 0, -1] - h[0, 0, -2]) / (
+            (h[0, 0, -1] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, 0])
         )
-        tmp_b = (tmp_h[0, 0, -2] - tmp_h[0, 0, 0]) / (
-            (tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, -1])
+        tmp_b = (h[0, 0, -2] - h[0, 0, 0]) / (
+            (h[0, 0, -1] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, -1])
         )
-        tmp_c = (tmp_h[0, 0, 0] - tmp_h[0, 0, -1]) / (
-            (tmp_h[0, 0, -2] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, -1])
+        tmp_c = (h[0, 0, 0] - h[0, 0, -1]) / (
+            (h[0, 0, -2] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, -1])
         )
 
         # calculate the vertical derivative of the sedimentation flux

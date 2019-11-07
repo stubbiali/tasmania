@@ -193,7 +193,7 @@ def test_factory(data):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_upwind_si(data):
+def test_forward_euler_si(data):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -267,7 +267,7 @@ def test_upwind_si(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
         storage_shape=(grid.nx + 1, grid.ny + 1, grid.nz + 1),
         pt=pt,
         eps=eps,
@@ -491,7 +491,7 @@ def test_rk3ws_si(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
         storage_shape=storage_shape,
         pt=pt,
         eps=eps,
@@ -1472,4 +1472,4 @@ def _test_sil3(data):
 
 if __name__ == "__main__":
     # pytest.main([__file__])
-    test_rk3ws_si()
+    test_forward_euler_si()

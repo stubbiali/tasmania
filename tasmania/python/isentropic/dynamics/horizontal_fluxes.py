@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -48,9 +48,9 @@ class IsentropicHorizontalFlux(abc.ABC):
         s,
         u,
         v,
-        mtg,
         su,
         sv,
+        mtg,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -184,7 +184,8 @@ class IsentropicHorizontalFlux(abc.ABC):
         elif scheme == "centered":
             return Centered()
         elif scheme == "maccormack":
-            return MacCormack()
+            raise NotImplementedError
+            # return MacCormack()
         elif scheme == "third_order_upwind":
             return ThirdOrderUpwind()
         elif scheme == "fifth_order_upwind":
@@ -316,6 +317,7 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         v,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,

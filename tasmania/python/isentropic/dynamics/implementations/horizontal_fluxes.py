@@ -60,9 +60,9 @@ class Upwind(IsentropicHorizontalFlux):
         s,
         u,
         v,
-        mtg,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -73,7 +73,7 @@ class Upwind(IsentropicHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
-        from __externals__ import get_upwind_flux_x, get_upwind_flux_y, moist
+        from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_upwind_flux_x(u=u, phi=s)
@@ -141,9 +141,9 @@ class Centered(IsentropicHorizontalFlux):
         s,
         u,
         v,
-        mtg,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -154,7 +154,7 @@ class Centered(IsentropicHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
-        from __externals__ import get_centered_flux_x, get_centered_flux_y, moist
+        from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_centered_flux_x(u=u, phi=s)
@@ -313,9 +313,9 @@ class MacCormack(IsentropicHorizontalFlux):
         s,
         u,
         v,
-        mtg,
         su,
         sv,
+        mtg,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -331,6 +331,10 @@ class MacCormack(IsentropicHorizontalFlux):
             get_maccormack_predicted_values_su,
             get_maccormack_predicted_values_sv,
             get_maccormack_predicted_value_sq,
+            moist,
+            qv_tnd_on,
+            qc_tnd_on,
+            qr_tnd_on,
         )
 
         # diagnose the velocity components at the mass points
@@ -470,13 +474,10 @@ def get_fourth_order_centered_flux_x(u, phi):
 
 @gtscript.function
 def get_third_order_upwind_flux_x(u, phi):
-    from __externals__ import get_fourth_order_centered_flux_x
-
     flux4 = get_fourth_order_centered_flux_x(u=u, phi=phi)
     flux = flux4[0, 0, 0] - (
         (u[1, 0, 0] > 0.0) * u[1, 0, 0] - (u[1, 0, 0] < 0.0) * u[1, 0, 0]
     ) / 12.0 * (3.0 * (phi[1, 0, 0] - phi[0, 0, 0]) - (phi[2, 0, 0] - phi[-1, 0, 0]))
-
     return flux
 
 
@@ -492,13 +493,10 @@ def get_fourth_order_centered_flux_y(v, phi):
 
 @gtscript.function
 def get_third_order_upwind_flux_y(v, phi):
-    from __externals__ import get_fourth_order_centered_flux_y
-
     flux4 = get_fourth_order_centered_flux_y(v=v, phi=phi)
     flux = flux4[0, 0, 0] - (
         (v[0, 1, 0] > 0.0) * v[0, 1, 0] - (v[0, 1, 0] < 0.0) * v[0, 1, 0]
     ) / 12.0 * (3.0 * (phi[0, 1, 0] - phi[0, 0, 0]) - (phi[0, 2, 0] - phi[0, -1, 0]))
-
     return flux
 
 
@@ -523,9 +521,9 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
         s,
         u,
         v,
-        mtg,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -536,11 +534,7 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
-        from __externals__ import (
-            get_third_order_upwind_flux_x,
-            get_third_order_upwind_flux_y,
-            moist,
-        )
+        from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_third_order_upwind_flux_x(u=u, phi=s)
@@ -593,8 +587,6 @@ def get_sixth_order_centered_flux_x(u, phi):
 
 @gtscript.function
 def get_fifth_order_upwind_flux_x(u, phi):
-    from __externals__ import get_sixth_order_centered_flux_x
-
     flux6 = get_sixth_order_centered_flux_x(u=u, phi=phi)
     flux = flux6[0, 0, 0] - (
         (u[1, 0, 0] > 0.0) * u[1, 0, 0] - (u[1, 0, 0] < 0.0) * u[1, 0, 0]
@@ -603,7 +595,6 @@ def get_fifth_order_upwind_flux_x(u, phi):
         - 5.0 * (phi[2, 0, 0] - phi[-1, 0, 0])
         + (phi[3, 0, 0] - phi[-2, 0, 0])
     )
-
     return flux
 
 
@@ -623,8 +614,6 @@ def get_sixth_order_centered_flux_y(v, phi):
 
 @gtscript.function
 def get_fifth_order_upwind_flux_y(v, phi):
-    from __externals__ import get_sixth_order_centered_flux_y
-
     flux6 = get_sixth_order_centered_flux_y(v=v, phi=phi)
     flux = flux6[0, 0, 0] - (
         (v[0, 1, 0] > 0.0) * v[0, 1, 0] - (v[0, 1, 0] < 0.0) * v[0, 1, 0]
@@ -633,7 +622,6 @@ def get_fifth_order_upwind_flux_y(v, phi):
         - 5.0 * (phi[0, 2, 0] - phi[0, -1, 0])
         + (phi[0, 3, 0] - phi[0, -2, 0])
     )
-
     return flux
 
 
@@ -658,9 +646,9 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
         s,
         u,
         v,
-        mtg,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -671,11 +659,7 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
-        from __externals__ import (
-            get_fifth_order_upwind_flux_x,
-            get_fifth_order_upwind_flux_y,
-            moist,
-        )
+        from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_fifth_order_upwind_flux_x(u=u, phi=s)

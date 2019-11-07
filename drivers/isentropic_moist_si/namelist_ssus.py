@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 161
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 161
+ny = 41
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -44,13 +44,12 @@ gt_kwargs = {
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
-    "halo": (nb, nb, 0),
+    "default_origin": (nb, nb, 0),
     "rebuild": False,
+    "managed_memory": False,
 }
 gt_kwargs["backend_opts"] = (
-    {"max_region_offset": 3, "verbose": True}
-    if gt_kwargs["backend"] in ("gtx86", "gtmc")
-    else None
+    {"verbose": True} if gt_kwargs["backend"] in ("gtx86", "gtmc", "gtcuda") else None
 )
 
 # topography
@@ -121,12 +120,12 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = False
+coriolis = True
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = False
-sedimentation = False
+precipitation = True
+sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
 rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
@@ -135,13 +134,15 @@ collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=10)
-niter = 100  # int(4 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter = int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
+save = False
+save_frequency = -1
 filename = (
     "../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_1.nc".format(
+    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         physics_time_integration_scheme,
@@ -161,9 +162,9 @@ filename = (
         "_f" if coriolis else "",
         "_sed" if sedimentation else "",
         "_evap" if rain_evaporation else "",
+        gt_kwargs['backend']
     )
 )
-filename = None  # "../../data/isentropic_ssus_{}.nc".format(gt_kwargs["backend"])
 store_names = (
     "accumulated_precipitation",
     "air_density",
@@ -182,7 +183,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-save_frequency = -1
 print_dry_frequency = 5
 print_moist_frequency = 5
-plot_frequency = -1

@@ -110,7 +110,7 @@ def first_order_validation(phi, grid, diffusion_depth, nb, backend, default_orig
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hhd(phi, phi_tnd)
 
@@ -136,7 +136,6 @@ def first_order_validation(phi, grid, diffusion_depth, nb, backend, default_orig
     deadline=None,
 )
 @given(hyp_st.data())
-@reproduce_failure('4.28.0', b'AXicY2BABYIzGDBEmFD4vJ3oKkgCAJhsAes=')
 def test_first_order(data):
     gt.storage.prepare_numpy()
 
@@ -219,7 +218,7 @@ def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hhd(phi, phi_tnd)
 
@@ -330,7 +329,7 @@ def third_order_validation(phi, grid, diffusion_depth, nb, backend, default_orig
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
     )
     hhd(phi, phi_tnd)
 
@@ -401,5 +400,4 @@ def test_third_order(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_first_order()
+    pytest.main([__file__])

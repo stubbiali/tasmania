@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -35,6 +35,8 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
+import gridtools as gt
+
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
@@ -47,11 +49,17 @@ from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
 # from tasmania.python.isentropic.physics.coriolis import \
 # 	IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
 try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from .isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
+    from .isentropic.test_isentropic_horizontal_fluxes import (
+        get_fifth_order_upwind_fluxes,
+    )
     from .isentropic.test_isentropic_prognostic import forward_euler_step
     from .utils import (
         compare_arrays,
@@ -62,7 +70,11 @@ try:
         st_isentropic_state_f,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
     from isentropic.test_isentropic_prognostic import forward_euler_step
     from utils import (
@@ -109,17 +121,16 @@ def get_montgomery_potential(grid, s, pt, mtg):
     dz = grid.dz.to_units("K").values.item()
     theta_s = grid.z_on_interface_levels.to_units("K").values[-1]
     topo = grid.topography.profile.to_units("m").values
-    dtype = s.dtype
 
     pref = rid._pcs["air_pressure_at_sea_level"]
     rd = rid._pcs["gas_constant_of_dry_air"]
     g = rid._pcs["gravitational_acceleration"]
     cp = rid._pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
-    p = np.zeros((nx, ny, nz + 1), dtype=dtype)
-    p[:, :, 0] = pt
+    p = deepcopy(s)
+    p[:nx, :ny, 0] = pt
     for k in range(1, nz + 1):
-        p[:, :, k] = p[:, :, k - 1] + g * dz * s[:nx, :ny, k - 1]
+        p[:nx, :ny, k] = p[:nx, :ny, k - 1] + g * dz * s[:nx, :ny, k - 1]
 
     exn = cp * (p / pref) ** (rd / cp)
 
@@ -277,7 +288,7 @@ def rk3wssi_stage(
         s_new,
     )
     hb.dmn_enforce_field(
-        s_new[:nx, :ny, :nz],
+        s_new,
         field_name="air_isentropic_density",
         field_units="kg m^-2 K^-1",
         time=raw_state_new["time"],
@@ -394,11 +405,7 @@ def rk3wssi_stage(
             clipping=True,
         )
 
-    raw_state_new_min = {"time": raw_state_new["time"]}
-    for key in raw_state_new:
-        if key != "time":
-            raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
-    hb.dmn_enforce_raw(raw_state_new_min, field_properties=field_properties)
+    hb.dmn_enforce_raw(raw_state_new, field_properties=field_properties)
 
     if damp:
         names = [
@@ -419,7 +426,7 @@ def rk3wssi_stage(
             phi_out = raw_state_new[name]
             apply_second_order_smoothing(hs, phi, phi_out)
             hb.dmn_enforce_field(
-                phi_out[:nx, :ny, :nz],
+                phi_out,
                 field_name=name,
                 field_units=field_properties[name]["units"],
                 time=raw_state_new["time"],
@@ -435,13 +442,13 @@ def rk3wssi_stage(
         raw_state_new["y_velocity_at_v_locations"],
     )
     hb.dmn_set_outermost_layers_x(
-        raw_state_new["x_velocity_at_u_locations"][: nx + 1, :ny, :nz],
+        raw_state_new["x_velocity_at_u_locations"],
         field_name="x_velocity_at_u_locations",
         field_units="m s^-1",
         time=raw_state_new["time"],
     )
     hb.dmn_set_outermost_layers_y(
-        raw_state_new["y_velocity_at_v_locations"][:nx, : ny + 1, :nz],
+        raw_state_new["y_velocity_at_v_locations"],
         field_name="y_velocity_at_v_locations",
         field_units="m s^-1",
         time=raw_state_new["time"],
@@ -463,24 +470,19 @@ def rk3ws_step(
     eps,
 ):
     grid, hb = domain.numerical_grid, domain.horizontal_boundary
-    nx, ny, nz, nb = grid.nx, grid.ny, grid.nz, hb.nb
     dtype = grid.x.dtype
-    storage_shape = raw_state_0["air_isentropic_density"].shape
+    s = raw_state_0["air_isentropic_density"]
+    storage_shape = s.shape
 
     if moist:
-        raw_state_0["isentropic_density_of_water_vapor"] = np.zeros(
-            storage_shape, dtype=dtype
-        )
-        raw_state_0["isentropic_density_of_cloud_liquid_water"] = np.zeros(
-            storage_shape, dtype=dtype
-        )
-        raw_state_0["isentropic_density_of_precipitation_water"] = np.zeros(
-            storage_shape, dtype=dtype
-        )
 
-    raw_state_1 = deepcopy(raw_state_0)
-    raw_state_2 = deepcopy(raw_state_0)
-    raw_state_3 = deepcopy(raw_state_0)
+        raw_state_0["isentropic_density_of_water_vapor"] = deepcopy(s)
+        raw_state_0["isentropic_density_of_cloud_liquid_water"] = deepcopy(s)
+        raw_state_0["isentropic_density_of_precipitation_water"] = deepcopy(s)
+
+    raw_state_1 = deepcopy_array_dict(raw_state_0)
+    raw_state_2 = deepcopy_array_dict(raw_state_0)
+    raw_state_3 = deepcopy_array_dict(raw_state_0)
 
     field_properties = {
         "air_isentropic_density": {"units": "kg m^-2 K^-1"},
@@ -584,6 +586,8 @@ def test1(data):
     - Intermediate diagnostics: no
     - Sub-stepping: no
     """
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -604,10 +608,14 @@ def test1(data):
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
-    moist = True  # data.draw(hyp_st.booleans(), label='moist')
+    moist = data.draw(hyp_st.booleans(), label="moist")
     state = data.draw(
         st_isentropic_state_f(
-            grid, moist=moist, backend=backend, default_origin=default_origin, storage_shape=storage_shape
+            grid,
+            moist=moist,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -695,7 +703,7 @@ def test1(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
         storage_shape=storage_shape,
     )
 

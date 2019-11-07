@@ -47,9 +47,9 @@ def step_forward_euler(
     s_new: gtscript.Field[np.float64],
     u_int: gtscript.Field[np.float64],
     v_int: gtscript.Field[np.float64],
-    mtg_int: gtscript.Field[np.float64],
-    su_int: gtscript.Field[np.float64],
-    sv_int: gtscript.Field[np.float64],
+    su_int: gtscript.Field[np.float64] = None,
+    sv_int: gtscript.Field[np.float64] = None,
+    mtg_int: gtscript.Field[np.float64] = None,
     sqv_now: gtscript.Field[np.float64] = None,
     sqv_int: gtscript.Field[np.float64] = None,
     sqv_new: gtscript.Field[np.float64] = None,
@@ -68,81 +68,41 @@ def step_forward_euler(
     dx: float,
     dy: float
 ):
-    from __externals__ import (
-        fluxer,
-        fluxer_is_isentropic_minimal_horizontal_flux,
-        moist,
-        qc_tnd_on,
-        qr_tnd_on,
-        qv_tnd_on,
-        s_tnd_on,
-    )
+    from __externals__ import fluxer, moist, qc_tnd_on, qr_tnd_on, qv_tnd_on, s_tnd_on
 
     with computation(PARALLEL), interval(...):
-        if fluxer_is_isentropic_minimal_horizontal_flux:  # compile-time if
-            if not moist:  # compile-time if
-                flux_s_x, flux_s_y, _, _, _, _ = fluxer(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s_int,
-                    u=u_int,
-                    v=v_int,
-                    su=su_int,
-                    sv=sv_int,
-                    s_tnd=s_tnd,
-                )
-            else:
-                flux_s_x, flux_s_y, _, _, _, _, flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = fluxer(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s_int,
-                    u=u_int,
-                    v=v_int,
-                    su=su_int,
-                    sv=sv_int,
-                    sqv=sqv_int,
-                    sqc=sqc_int,
-                    sqr=sqr_int,
-                    s_tnd=s_tnd,
-                    qv_tnd=qv_tnd,
-                    qc_tnd=qc_tnd,
-                    qr_tnd=qr_tnd,
-                )
+        if not moist:  # compile-time if
+            flux_s_x, flux_s_y, _, _, _, _ = fluxer(
+                s=s_int,
+                u=u_int,
+                v=v_int,
+                su=su_int,
+                sv=sv_int,
+                mtg=mtg_int,
+                s_tnd=s_tnd,
+                dt=dt,
+                dx=dx,
+                dy=dy,
+            )
         else:
-            if not moist:  # compile-time if
-                flux_s_x, flux_s_y, _, _, _, _ = fluxer(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s_int,
-                    u=u_int,
-                    v=v_int,
-                    mtg=mtg_int,
-                    su=su_int,
-                    sv=sv_int,
-                    s_tnd=s_tnd,
-                )
-            else:
-                flux_s_x, flux_s_y, _, _, _, _, flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = fluxer(
-                    dt=dt,
-                    dx=dx,
-                    dy=dy,
-                    s=s_int,
-                    u=u_int,
-                    v=v_int,
-                    mtg=mtg_int,
-                    su=su_int,
-                    sv=sv_int,
-                    sqv=sqv_int,
-                    sqc=sqc_int,
-                    sqr=sqr_int,
-                    s_tnd=s_tnd,
-                    qv_tnd=qv_tnd,
-                    qc_tnd=qc_tnd,
-                    qr_tnd=qr_tnd,
-                )
+            flux_s_x, flux_s_y, _, _, _, _, flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = fluxer(
+                s=s_int,
+                u=u_int,
+                v=v_int,
+                su=su_int,
+                sv=sv_int,
+                mtg=mtg_int,
+                sqv=sqv_int,
+                sqc=sqc_int,
+                sqr=sqr_int,
+                s_tnd=s_tnd,
+                qv_tnd=qv_tnd,
+                qc_tnd=qc_tnd,
+                qr_tnd=qr_tnd,
+                dt=dt,
+                dx=dx,
+                dy=dy,
+            )
 
         if s_tnd_on:  # compile-time if
             s_new = s_now[0, 0, 0] - dt * (
@@ -200,15 +160,15 @@ def step_forward_euler_momentum(
     s_new: gtscript.Field[np.float64],
     u_int: gtscript.Field[np.float64],
     v_int: gtscript.Field[np.float64],
-    mtg_now: gtscript.Field[np.float64],
-    mtg_int: gtscript.Field[np.float64],
-    mtg_new: gtscript.Field[np.float64],
     su_now: gtscript.Field[np.float64],
     su_int: gtscript.Field[np.float64],
     su_new: gtscript.Field[np.float64],
     sv_now: gtscript.Field[np.float64],
     sv_int: gtscript.Field[np.float64],
     sv_new: gtscript.Field[np.float64],
+    mtg_now: gtscript.Field[np.float64],
+    mtg_new: gtscript.Field[np.float64],
+    mtg_int: gtscript.Field[np.float64] = None,
     su_tnd: gtscript.Field[np.float64] = None,
     sv_tnd: gtscript.Field[np.float64] = None,
     *,
@@ -217,41 +177,22 @@ def step_forward_euler_momentum(
     dy: float,
     eps: float
 ):
-    from __externals__ import (
-        fluxer,
-        fluxer_is_isentropic_minimal_horizontal_flux,
-        su_tnd_on,
-        sv_tnd_on,
-    )
+    from __externals__ import fluxer, moist, su_tnd_on, sv_tnd_on
 
     with computation(PARALLEL), interval(...):
-        if fluxer_is_isentropic_minimal_horizontal_flux:  # compile-time if
-            _, _, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = fluxer(
-                dt=dt,
-                dx=dx,
-                dy=dy,
-                s=s_int,
-                u=u_int,
-                v=v_int,
-                su=su_int,
-                sv=sv_int,
-                su_tnd=su_tnd,
-                sv_tnd=sv_tnd,
-            )
-        else:
-            _, _, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = fluxer(
-                dt=dt,
-                dx=dx,
-                dy=dy,
-                s=s_int,
-                u=u_int,
-                v=v_int,
-                mtg=mtg_int,
-                su=su_int,
-                sv=sv_int,
-                su_tnd=su_tnd,
-                sv_tnd=sv_tnd,
-            )
+        _, _, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = fluxer(
+            dt=dt,
+            dx=dx,
+            dy=dy,
+            s=s_int,
+            u=u_int,
+            v=v_int,
+            su=su_int,
+            sv=sv_int,
+            mtg=mtg_int,
+            su_tnd=su_tnd,
+            sv_tnd=sv_tnd,
+        )
 
         if su_tnd_on:  # compile-time if
             su_new = su_now[0, 0, 0] - dt * (
@@ -413,7 +354,6 @@ class ForwardEulerSI(IsentropicPrognostic):
             "s_new": self._s_new,
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
-            "mtg_int": state["montgomery_potential"],
             "su_int": state["x_momentum_isentropic"],
             "sv_int": state["y_momentum_isentropic"],
         }
@@ -434,53 +374,6 @@ class ForwardEulerSI(IsentropicPrognostic):
                     "sqr_new": self._sqr_new,
                 }
             )
-        # else:
-        #     stencil_args.update(
-        #         {
-        #             "sqv_now": state["air_isentropic_density"],
-        #             "sqv_int": state["air_isentropic_density"],
-        #             "qv_tnd": state["air_isentropic_density"],
-        #             "sqv_new": state["air_isentropic_density"],
-        #             "sqc_now": state["air_isentropic_density"],
-        #             "sqc_int": state["air_isentropic_density"],
-        #             "qc_tnd": state["air_isentropic_density"],
-        #             "sqc_new": state["air_isentropic_density"],
-        #             "sqr_now": state["air_isentropic_density"],
-        #             "sqr_int": state["air_isentropic_density"],
-        #             "qr_tnd": state["air_isentropic_density"],
-        #             "sqr_new": state["air_isentropic_density"],
-        #         }
-        #     )
-
-        # stencil_args = {
-        #     "s_now": state["air_isentropic_density"],
-        #     "s_int": state["air_isentropic_density"],
-        #     "s_new": self._s_new,
-        #     "u_int": state["x_velocity_at_u_locations"],
-        #     "v_int": state["y_velocity_at_v_locations"],
-        #     "su_int": state["x_momentum_isentropic"],
-        #     "sv_int": state["y_momentum_isentropic"],
-        # }
-        # if self._s_tnd is not None:
-        #     stencil_args['s_tnd'] = self._s_tnd
-        # if self._moist:
-        #     stencil_args['sqv_now'] = state["isentropic_density_of_water_vapor"]
-        #     stencil_args['sqv_int'] = state["isentropic_density_of_water_vapor"]
-        #     stencil_args['sqv_new'] = self._sqv_new
-        #     if self._qv_tnd:
-        #         stencil_args['qv_tnd'] = self._qv_tnd
-        #
-        #     stencil_args['sqc_now'] = state["isentropic_density_of_cloud_liquid_water"]
-        #     stencil_args['sqc_int'] = state["isentropic_density_of_cloud_liquid_water"]
-        #     stencil_args['sqc_new'] = self._sqc_new
-        #     if self._qc_tnd:
-        #         stencil_args['qc_tnd'] = self._qc_tnd
-        #
-        #     stencil_args['sqr_now'] = state["isentropic_density_of_precipitation_water"]
-        #     stencil_args['sqr_int'] = state["isentropic_density_of_precipitation_water"]
-        #     stencil_args['sqr_new'] = self._sqr_new
-        #     if self._qr_tnd:
-        #         stencil_args['qr_tnd'] = self._qr_tnd
 
         # step the isentropic density and the water species
         self._stencil(
@@ -520,7 +413,6 @@ class ForwardEulerSI(IsentropicPrognostic):
             "u_int": state["x_velocity_at_u_locations"],
             "v_int": state["y_velocity_at_v_locations"],
             "mtg_now": state["montgomery_potential"],
-            "mtg_int": state["montgomery_potential"],
             "mtg_new": self._mtg_new,
             "su_now": state["x_momentum_isentropic"],
             "su_int": state["x_momentum_isentropic"],
@@ -578,20 +470,17 @@ class ForwardEulerSI(IsentropicPrognostic):
 
     def _stencils_initialize(self, tendencies):
         # set external symbols for the first stencil
-        externals = self._hflux.externals.copy()
-        externals.update(
-            {
-                "fluxer": self._hflux.__call__,
-                "fluxer_is_isentropic_minimal_horizontal_flux": True,
-                "moist": self._moist,
-                "s_tnd_on": "air_isentropic_density" in tendencies,
-                "su_tnd_on": False,
-                "sv_tnd_on": False,
-                "qv_tnd_on": self._moist and mfwv in tendencies,
-                "qc_tnd_on": self._moist and mfcw in tendencies,
-                "qr_tnd_on": self._moist and mfpw in tendencies,
-            }
-        )
+        # externals = self._hflux.externals.copy()
+        externals = {
+            "fluxer": self._hflux.__call__,
+            "moist": self._moist,
+            "s_tnd_on": "air_isentropic_density" in tendencies,
+            "su_tnd_on": False,
+            "sv_tnd_on": False,
+            "qv_tnd_on": self._moist and mfwv in tendencies,
+            "qc_tnd_on": self._moist and mfcw in tendencies,
+            "qr_tnd_on": self._moist and mfpw in tendencies,
+        }
 
         # compile the first stencil
         self._stencil = gtscript.stencil(
@@ -605,20 +494,17 @@ class ForwardEulerSI(IsentropicPrognostic):
         )
 
         # set external symbols for the second stencil
-        externals = self._hflux.externals.copy()
-        externals.update(
-            {
-                "fluxer": self._hflux.__call__,
-                "fluxer_is_isentropic_minimal_horizontal_flux": True,
-                "moist": False,
-                "s_tnd_on": False,
-                "su_tnd_on": "x_momentum_isentropic" in tendencies,
-                "sv_tnd_on": "y_momentum_isentropic" in tendencies,
-                "qv_tnd_on": False,
-                "qc_tnd_on": False,
-                "qr_tnd_on": False,
-            }
-        )
+        # externals = self._hflux.externals.copy()
+        externals = {
+            "fluxer": self._hflux.__call__,
+            "moist": False,
+            "s_tnd_on": False,
+            "su_tnd_on": "x_momentum_isentropic" in tendencies,
+            "sv_tnd_on": "y_momentum_isentropic" in tendencies,
+            "qv_tnd_on": False,
+            "qc_tnd_on": False,
+            "qr_tnd_on": False,
+        }
 
         # compile the second stencil
         self._stencil_momentum = gtscript.stencil(
@@ -887,20 +773,16 @@ class RK3WSSI(IsentropicPrognostic):
 
     def _stencils_initialize(self, tendencies):
         # set external symbols for the first stencil
-        externals = self._hflux.externals.copy()
-        externals.update(
-            {
-                "fluxer": self._hflux.__call__,
-                "fluxer_is_isentropic_minimal_horizontal_flux": True,
-                "moist": self._moist,
-                "s_tnd_on": "air_isentropic_density" in tendencies,
-                "su_tnd_on": False,
-                "sv_tnd_on": False,
-                "qv_tnd_on": self._moist and mfwv in tendencies,
-                "qc_tnd_on": self._moist and mfcw in tendencies,
-                "qr_tnd_on": self._moist and mfpw in tendencies,
-            }
-        )
+        externals = {
+            "fluxer": self._hflux.__call__,
+            "moist": self._moist,
+            "s_tnd_on": "air_isentropic_density" in tendencies,
+            "su_tnd_on": False,
+            "sv_tnd_on": False,
+            "qv_tnd_on": self._moist and mfwv in tendencies,
+            "qc_tnd_on": self._moist and mfcw in tendencies,
+            "qr_tnd_on": self._moist and mfpw in tendencies,
+        }
 
         # compile the first stencil
         self._stencil = gtscript.stencil(
@@ -914,20 +796,16 @@ class RK3WSSI(IsentropicPrognostic):
         )
 
         # set external symbols for the second stencil
-        externals = self._hflux.externals.copy()
-        externals.update(
-            {
-                "fluxer": self._hflux.__call__,
-                "fluxer_is_isentropic_minimal_horizontal_flux": True,
-                "moist": False,
-                "s_tnd_on": False,
-                "su_tnd_on": "x_momentum_isentropic" in tendencies,
-                "sv_tnd_on": "y_momentum_isentropic" in tendencies,
-                "qv_tnd_on": False,
-                "qc_tnd_on": False,
-                "qr_tnd_on": False,
-            }
-        )
+        externals = {
+            "fluxer": self._hflux.__call__,
+            "moist": False,
+            "s_tnd_on": False,
+            "su_tnd_on": "x_momentum_isentropic" in tendencies,
+            "sv_tnd_on": "y_momentum_isentropic" in tendencies,
+            "qv_tnd_on": False,
+            "qc_tnd_on": False,
+            "qr_tnd_on": False,
+        }
 
         # compile the second stencil
         self._stencil_momentum = gtscript.stencil(
@@ -957,7 +835,7 @@ class SIL3(IsentropicPrognostic):
         exec_info,
         default_origin,
         rebuild,
-            managed_memory,
+        managed_memory,
         **kwargs
     ):
         # call parent's constructor
@@ -974,7 +852,7 @@ class SIL3(IsentropicPrognostic):
             exec_info,
             default_origin,
             rebuild,
-            managed_memory
+            managed_memory,
         )
 
         # extract the upper boundary conditions on the pressure field and
@@ -994,7 +872,7 @@ class SIL3(IsentropicPrognostic):
             exec_info=exec_info,
             default_origin=default_origin,
             rebuild=rebuild,
-            managed_memory=managed_memory
+            managed_memory=managed_memory,
         )
 
         # initialize the pointers to the stencils

@@ -22,12 +22,7 @@
 #
 from copy import deepcopy
 from datetime import timedelta
-from hypothesis import (
-    given,
-    HealthCheck,
-    settings,
-    strategies as hyp_st,
-)
+from hypothesis import given, HealthCheck, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
@@ -192,11 +187,9 @@ class WrappingStencil:
             backend,
             name=core.__class__.__name__,
             rebuild=rebuild,
-            externals={"core": core.__call__},
+            externals={"core": core.__call__, "extent": core.nb},
         )
-        self.stencil = decorator(
-            self.stencil1_defs if core.nb == 1 else self.stencil2_defs
-        )
+        self.stencil = decorator(self.stencil_defs)
 
     def __call__(self, rho, h, qr, vt, dfdz):
         nx, ny, mk = rho.shape
@@ -207,39 +200,23 @@ class WrappingStencil:
             vt=vt,
             dfdz=dfdz,
             origin={"_all_": (0, 0, 0)},
-            domain=(nx, ny, mk-1),
+            domain=(nx, ny, mk - 1),
         )
 
     @staticmethod
-    def stencil1_defs(
+    def stencil_defs(
         rho: gtscript.Field[np.float64],
         h: gtscript.Field[np.float64],
         qr: gtscript.Field[np.float64],
         vt: gtscript.Field[np.float64],
         dfdz: gtscript.Field[np.float64],
     ):
-        from __externals__ import core
+        from __externals__ import core, extent
 
-        with computation(PARALLEL), interval(0, 1):
+        with computation(PARALLEL), interval(0, extent):
             dfdz = 0.0
 
-        with computation(PARALLEL), interval(1, None):
-            dfdz = core(rho=rho, h=h, q=qr, vt=vt)
-
-    @staticmethod
-    def stencil2_defs(
-        rho: gtscript.Field[np.float64],
-        h: gtscript.Field[np.float64],
-        qr: gtscript.Field[np.float64],
-        vt: gtscript.Field[np.float64],
-        dfdz: gtscript.Field[np.float64],
-    ):
-        from __externals__ import core
-
-        with computation(PARALLEL), interval(0, 2):
-            dfdz = 0.0
-
-        with computation(PARALLEL), interval(2, None):
+        with computation(PARALLEL), interval(extent, None):
             dfdz = core(rho=rho, h=h, q=qr, vt=vt)
 
 
@@ -302,7 +279,6 @@ flux_properties = {
     deadline=None,
 )
 @given(hyp_st.data())
-# @reproduce_failure('4.28.0', b'AXicY2RABswMjKh8JhQubycD9QEANgkAoQ==')
 def test_sedimentation_flux(data):
     gt_storage.prepare_numpy()
 

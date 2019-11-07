@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from datetime import datetime
 from hypothesis import (
     assume,
@@ -35,6 +36,7 @@ import pytest
 from sympl import DataArray
 
 import gridtools as gt
+
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
     PrescribedSurfaceHeating,
@@ -88,26 +90,29 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
-def set_lower_layers_first_order(nb, dz, w, phi, out):
-    wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
-    out[:, :, -nb:] = (
+def set_lower_layers_first_order(nb, dz, w, phi, out, staggering=False):
+    wm = deepcopy(w)
+    wm[:, :, :-1] = 0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+    out[:, :, -nb - 1 : -1] = (
         1
         / dz
         * (
-            wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
-            - wm[:, :, -nb:] * phi[:, :, -nb:]
+            wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
+            - wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
         )
     )
 
 
-def set_lower_layers_second_order(nb, dz, w, phi, out):
+def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
     wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
-    out[:, :, -nb:] = (
+    wm = deepcopy(w)
+    wm[:, :, :-1] = 0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
+    out[:, :, -nb-1:-1] = (
         0.5
         * (
-            -3.0 * wm[:, :, -nb:] * phi[:, :, -nb:]
-            + 4.0 * wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
-            - wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
+            -3.0 * wm[:, :, -nb-1:-1] * phi[:, :, -nb-1:-1]
+            + 4.0 * wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
+            - wm[:, :, -nb - 3 : -3] * phi[:, :, -nb - 3 : -3]
         )
         / dz
     )
@@ -226,45 +231,49 @@ def validation(
 
     flux = get_flux(w_hl, s)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, s, out)
+    set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
     assert "air_isentropic_density" in tendencies
     compare_arrays(
-        out[:nx, :ny, :nz], tendencies["air_isentropic_density"][:nx, :ny, :nz]
+        out[:nx, :ny, :nz], tendencies["air_isentropic_density"].values[:nx, :ny, :nz]
     )
 
     flux = get_flux(w_hl, su)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, su, out)
+    set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
     assert "x_momentum_isentropic" in tendencies
-    compare_arrays(out[:nx, :ny, :nz], tendencies["x_momentum_isentropic"][:nx, :ny, :nz])
+    compare_arrays(
+        out[:nx, :ny, :nz], tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz]
+    )
 
     flux = get_flux(w_hl, sv)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, sv, out)
+    set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
     assert "y_momentum_isentropic" in tendencies
-    compare_arrays(out[:nx, :ny, :nz], tendencies["y_momentum_isentropic"][:nx, :ny, :nz])
+    compare_arrays(
+        out[:nx, :ny, :nz], tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz]
+    )
 
     if moist:
         flux = get_flux(w_hl, sqv)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqv, out)
+        set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
         out /= s
         assert mfwv in tendencies
-        compare_arrays(out[:nx, :ny, :nz], tendencies[mfwv][:nx, :ny, :nz])
+        compare_arrays(out[:nx, :ny, :nz], tendencies[mfwv].values[:nx, :ny, :nz])
 
         flux = get_flux(w_hl, sqc)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqc, out)
+        set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
         out /= s
         assert mfcw in tendencies
-        compare_arrays(out[:nx, :ny, :nz], tendencies[mfcw][:nx, :ny, :nz])
+        compare_arrays(out[:nx, :ny, :nz], tendencies[mfcw].values[:nx, :ny, :nz])
 
         flux = get_flux(w_hl, sqr)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqr, out)
+        set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
         out /= s
         assert mfpw in tendencies
-        compare_arrays(out[:nx, :ny, :nz], tendencies[mfpw][:nx, :ny, :nz])
+        compare_arrays(out[:nx, :ny, :nz], tendencies[mfpw].values[:nx, :ny, :nz])
 
     assert len(tendencies) == len(output_names)
 
@@ -326,10 +335,10 @@ def test_upwind(data):
     # ========================================
     # test bed
     # ========================================
-    validation(domain, "upwind", False, False, backend, default_origin, True, state)
-    validation(domain, "upwind", False, True, backend, default_origin, True, state)
-    validation(domain, "upwind", True, False, backend, default_origin, True, state)
-    validation(domain, "upwind", True, True, backend, default_origin, True, state)
+    validation(domain, "upwind", False, False, backend, default_origin, False, state)
+    validation(domain, "upwind", False, True, backend, default_origin, False, state)
+    validation(domain, "upwind", True, False, backend, default_origin, False, state)
+    validation(domain, "upwind", True, True, backend, default_origin, False, state)
 
 
 @settings(
@@ -387,10 +396,10 @@ def test_centered(data):
     # ========================================
     # test bed
     # ========================================
-    validation(domain, "centered", False, False, backend, default_origin, True, state)
-    validation(domain, "centered", False, True, backend, default_origin, True, state)
-    validation(domain, "centered", True, False, backend, default_origin, True, state)
-    validation(domain, "centered", True, True, backend, default_origin, True, state)
+    validation(domain, "centered", False, False, backend, default_origin, False, state)
+    validation(domain, "centered", False, True, backend, default_origin, False, state)
+    validation(domain, "centered", True, False, backend, default_origin, False, state)
+    validation(domain, "centered", True, True, backend, default_origin, False, state)
 
 
 @settings(
@@ -402,7 +411,6 @@ def test_centered(data):
     deadline=None,
 )
 @given(hyp_st.data())
-@reproduce_failure('4.28.0', b'AXicY2BAAYIzGBhRBJiZULi8nQxDAjA2AAkA8ucBxw==')
 def test_third_order_upwind(data):
     gt.storage.prepare_numpy()
 
@@ -450,16 +458,16 @@ def test_third_order_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "third_order_upwind", False, False, backend, default_origin, True, state
+        domain, "third_order_upwind", False, False, backend, default_origin, False, state
     )
     validation(
-        domain, "third_order_upwind", False, True, backend, default_origin, True, state
+        domain, "third_order_upwind", False, True, backend, default_origin, False, state
     )
     validation(
-        domain, "third_order_upwind", True, False, backend, default_origin, True, state
+        domain, "third_order_upwind", True, False, backend, default_origin, False, state
     )
     validation(
-        domain, "third_order_upwind", True, True, backend, default_origin, True, state
+        domain, "third_order_upwind", True, True, backend, default_origin, False, state
     )
 
 
@@ -472,7 +480,7 @@ def test_third_order_upwind(data):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_fifth_order_upwind(data):
+def _test_fifth_order_upwind(data):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -519,16 +527,16 @@ def test_fifth_order_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "fifth_order_upwind", False, False, backend, default_origin, True, state
+        domain, "fifth_order_upwind", False, False, backend, default_origin, False, state
     )
     validation(
-        domain, "fifth_order_upwind", False, True, backend, default_origin, True, state
+        domain, "fifth_order_upwind", False, True, backend, default_origin, False, state
     )
     validation(
-        domain, "fifth_order_upwind", True, False, backend, default_origin, True, state
+        domain, "fifth_order_upwind", True, False, backend, default_origin, False, state
     )
     validation(
-        domain, "fifth_order_upwind", True, True, backend, default_origin, True, state
+        domain, "fifth_order_upwind", True, True, backend, default_origin, False, state
     )
 
 
@@ -919,4 +927,4 @@ def _test_prescribed_surface_heating(data):
 
 if __name__ == "__main__":
     # pytest.main([__file__])
-    test_third_order_upwind()
+    test_centered()

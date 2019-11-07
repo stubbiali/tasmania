@@ -590,7 +590,6 @@ def test_kessler_fall_velocity(data):
     deadline=None,
 )
 @given(hyp_st.data())
-# @reproduce_failure('4.28.0', b'AXicY2BAAYIzGBhRBJiZULi8nQxDDQAA+IYBRg==')
 def test_kessler_sedimentation(data):
     gt.storage.prepare_numpy()
 
@@ -652,7 +651,7 @@ def test_kessler_sedimentation(data):
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
-        rebuild=True,
+        rebuild=False,
         storage_shape=storage_shape,
     )
 
@@ -680,17 +679,17 @@ def test_kessler_sedimentation(data):
         nx, ny, nz, state, timestep, flux_type, maxcfl
     )
 
-    # compare_dataarrays(
-    #     get_dataarray_3d(
-    #         raw_mfpw_val,
-    #         grid,
-    #         "g g^-1 s^-1",
-    #         grid_shape=(nx, ny, nz),
-    #         set_coordinates=False,
-    #     ),
-    #     tendencies[mfpw][:nx, :ny, :nz],
-    #     compare_coordinate_values=False,
-    # )
+    compare_dataarrays(
+        get_dataarray_3d(
+            raw_mfpw_val,
+            grid,
+            "g g^-1 s^-1",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        ),
+        tendencies[mfpw][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
 
     assert len(tendencies) == 1
 
