@@ -382,13 +382,13 @@ class KesslerMicrophysics(TendencyComponent):
 
         # collect the tendencies
         # >>> comment the following two lines before testing <<<
-        # self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
-        # self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
+        self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
+        self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
         if self._rain_evaporation:
             # >>> comment the following two lines before testing <<<
-            # self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
-            # self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
+            self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
+            self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
             tendencies[mfwv] = self._out_qv_tnd
             if not self._pttd:
                 tendencies["air_potential_temperature"] = self._out_theta_tnd
@@ -432,12 +432,12 @@ class KesslerMicrophysics(TendencyComponent):
                 p = 0.5 * (in_p[0, 0, 0] + in_p[0, 0, 1])
                 exn = 0.5 * (in_exn[0, 0, 0] + in_exn[0, 0, 1])
             else:
-                p = in_p[0, 0, 0]
-                exn = in_exn[0, 0, 0]
+                p = in_p
+                exn = in_exn
 
             # perform units conversion
-            rho_gcm3 = 0.001 * in_rho[0, 0, 0]
-            p_mbar = 0.01 * p[0, 0, 0]
+            rho_gcm3 = 0.001 * in_rho
+            p_mbar = 0.01 * p
 
             # compute the saturation mixing ratio of water vapor
             qvs = beta * in_ps[0, 0, 0] / (p[0, 0, 0] - in_ps[0, 0, 0])

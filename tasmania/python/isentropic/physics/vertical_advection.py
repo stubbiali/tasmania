@@ -417,7 +417,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = 0.0
             out_su = 0.0
             out_sv = 0.0
-            if moist:
+            if moist:  # compile-time if
                 out_qv = 0.0
                 out_qc = 0.0
                 out_qr = 0.0
@@ -425,7 +425,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
             out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
             out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
-            if moist:
+            if moist:  # compile-time if
                 out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
@@ -433,7 +433,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
             out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
             out_sv = compute_boundary(dz=dz, w=wc, phi=in_sv)
-            if moist:
+            if moist:  # compile-time if
                 tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
                 out_qv = tmp_qv / in_s
                 tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)

@@ -28,9 +28,9 @@ import tasmania as taz
 import time
 
 try:
-    from . import namelist_zhao_fc as nl
+    from . import namelist_fc as nl
 except (ImportError, ModuleNotFoundError):
-    import namelist_zhao_fc as nl
+    import namelist_fc as nl
 
 
 gt.storage.prepare_numpy()

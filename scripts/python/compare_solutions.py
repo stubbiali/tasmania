@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,30 +27,35 @@ import tasmania as taz
 #
 # User inputs
 #
-filename1 = "../../data/burgers_ssus_reference.nc"
-filename2 = "../../data/burgers_ssus_gtmc.nc"
+filename1 = (
+    "../../data/isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_"
+    "dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_cc_numpy.nc"
+)
+filename2 = (
+    "../../data/isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_"
+    "dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_cc_gtx86.nc"
+)
 
-field_properties = {"x_velocity": {"units": "m s^-1"}, "y_velocity": {"units": "m s^-1"}}
-# field_properties = {
-# 	'accumulated_precipitation': {'units': 'mm'},
-# 	'air_density': {'units': 'kg m^-3'},
-# 	'air_isentropic_density': {'units': 'kg m^-2 K^-1'},
-# 	'air_pressure_on_interface_levels': {'units': 'Pa'},
-# 	'air_temperature': {'units': 'K'},
-# 	'exner_function_on_interface_levels': {'units': 'J K^-1 kg^-1'},
-# 	'height_on_interface_levels': {'units': 'm'},
-# 	'mass_fraction_of_cloud_liquid_water_in_air': {'units': 'g g^-1'},
-# 	'mass_fraction_of_precipitation_water_in_air': {'units': 'g g^-1'},
-# 	'mass_fraction_of_water_vapor_in_air': {'units': 'g g^-1'},
-# 	'montgomery_potential': {'units': 'm^2 s^-2'},
-# 	'x_momentum_isentropic': {'units': 'kg m^-1 K^-1 s^-1'},
-# 	'x_velocity_at_u_locations': {'units': 'm s^-1'},
-# 	'y_momentum_isentropic': {'units': 'kg m^-1 K^-1 s^-1'},
-# 	'y_velocity_at_v_locations': {'units': 'm s^-1'},
-# }
+field_properties = {
+    'accumulated_precipitation': {'units': 'mm'},
+    'air_density': {'units': 'kg m^-3'},
+    'air_isentropic_density': {'units': 'kg m^-2 K^-1'},
+    'air_pressure_on_interface_levels': {'units': 'Pa'},
+    'air_temperature': {'units': 'K'},
+    'exner_function_on_interface_levels': {'units': 'J K^-1 kg^-1'},
+    'height_on_interface_levels': {'units': 'm'},
+    'mass_fraction_of_cloud_liquid_water_in_air': {'units': 'g g^-1'},
+    'mass_fraction_of_precipitation_water_in_air': {'units': 'g g^-1'},
+    'mass_fraction_of_water_vapor_in_air': {'units': 'g g^-1'},
+    'montgomery_potential': {'units': 'm^2 s^-2'},
+    'x_momentum_isentropic': {'units': 'kg m^-1 K^-1 s^-1'},
+    'x_velocity_at_u_locations': {'units': 'm s^-1'},
+    'y_momentum_isentropic': {'units': 'kg m^-1 K^-1 s^-1'},
+    'y_velocity_at_v_locations': {'units': 'm s^-1'},
+}
 
-tlevels1 = range(0, 401)
-tlevels2 = range(0, 401)
+tlevels1 = range(0, 36)
+tlevels2 = range(0, 36)
 
 #
 # Code
@@ -95,4 +100,4 @@ if __name__ == "__main__":
             print("")
 
     if validated:
-          print("Validation successfully completed!")
+        print("Validation successfully completed!")

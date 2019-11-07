@@ -1,0 +1,37 @@
+This folder contains the scripts to simulate two convenient test cases for the 
+Burgers' equations (`burgers/`) and the isentropic model (`isentropic/`).
+
+The scripts are named `driver_namelist_{suffix}.py`. The suffix `{suffix}` denotes 
+the physics-dynamics coupling strategy which is used:
+
+  - `fc` for the full-coupling method;
+  - `lfc` for the *lazy* full-coupling method;
+  - `ps` for the parallel splitting method;
+  - `sts` for the sequential-tendency splitting method;
+  - `sus` for the sequential-update splitting method;
+  - `ssus` for the symmetrized sequential-update (or Strang) splitting method.
+  
+The user can modify the settings of the driver by editing the associated namelist
+file `namelist_{suffix}.py`. Some of the most useful namelist variables are: 
+
+  - `gt_kwargs`: dictionary collecting all GridTools4Py configs (e.g. backend, dtype,
+    default origin);
+  - `domain_x`, `domain_y`: domain boundaries along the two horizontal dimensions;
+  - `nx`, `ny`: number of grid points along the two horizontal dimensions;
+  - `domain_z` (only for the Burgers' model): domain boundaries along the vertical
+    direction;
+  - `nz` (only for the isentropic model): number of model vertical levels;
+  - `timestep`: model timestep;
+  - `niter`: number of time iterations to perform;
+  - `save`: `True` to dump the solution into the NetCDF file `filename` every 
+    `save_frequency` iterations. If `save_frequency` is negative, only the first
+    and last iteration are saved;
+  - `print_frequency`: set the frequency of printing insightful diagnostics to screen;
+    if negative, information is printed only at the end of the last iteration.
+    
+To run a driver, enter the corresponding folder and issue
+
+    python driver_namelist_{suffix}.py
+    
+To compare two solutions (e.g. solutions computed using two different backends),
+one could use the `compare_solutions.py` script in the `{REPO_ROOT}/scripts/` folder.
