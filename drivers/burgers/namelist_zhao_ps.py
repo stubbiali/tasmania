@@ -69,7 +69,7 @@ timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
 niter = 4 ** factor * 100
 
 # output
-filename = "../../data/burgers_ps_{}.nc".format(gt_kwargs["backend"])
+save = False
 save_frequency = 1
+filename = "../../data/burgers_ps_{}.nc".format(gt_kwargs["backend"])
 print_frequency = 1
-plot_frequency = -1

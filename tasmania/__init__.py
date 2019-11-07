@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -101,7 +101,6 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerSaturationAdjustment,
     KesslerSedimentation,
 )
-from spike.microphysics_porz.porz import PorzMicrophysics
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
 
@@ -131,7 +130,7 @@ from tasmania.python.utils.storage_utils import (
     get_dataarray_dict,
     get_array_dict,
     get_dataarray_2d,
-    zeros
+    zeros,
 )
 from tasmania.python.utils.dict_utils import (
     add as dict_add,
@@ -222,7 +221,6 @@ __all__ = (
     PhysicalTopography,
     Plot,
     PlotComposite,
-    PorzMicrophysics,
     Precipitation,
     PrescribedSurfaceHeating,
     Quiver,

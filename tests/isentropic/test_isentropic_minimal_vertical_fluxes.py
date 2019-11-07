@@ -32,7 +32,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,

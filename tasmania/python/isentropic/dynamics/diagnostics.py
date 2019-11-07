@@ -23,9 +23,9 @@
 import numpy as np
 from sympl import DataArray
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL, FORWARD, BACKWARD
+# from gt4py.__gtscript__ import computation, interval, PARALLEL, FORWARD, BACKWARD
 
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import zeros

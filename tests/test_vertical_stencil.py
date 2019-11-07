@@ -22,9 +22,9 @@
 #
 import numpy as np
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.utils.storage_utils import zeros
 
@@ -40,7 +40,6 @@ def get_upwind_flux(w, phi):
 @gtscript.function
 def vflux(w, s, su, sv):
     from __externals__ import get_upwind_flux
-
     flux_s = get_upwind_flux(w=w, phi=s)
     flux_su = get_upwind_flux(w=w, phi=su)
     flux_sv = get_upwind_flux(w=w, phi=sv)
@@ -64,9 +63,12 @@ def stencil_defs(
         w = 0.0
     with computation(PARALLEL), interval(1, None):  # ... interval(1, None):
         if vstaggering:
-            w = in_w[0, 0, 0]
+            w = in_w
         else:
             w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
+
+    with computation(PARALLEL), interval(1, None):
+        flux_s, flux_su, flux_sv = vflux(w=w, s=in_s, su=in_su, sv=in_sv)
 
     with computation(PARALLEL), interval(0, 1):
         out_s = 0.0
@@ -74,10 +76,9 @@ def stencil_defs(
         out_sv = 0.0
 
     with computation(PARALLEL), interval(1, -1):
-        flux_s, flux_su, flux_sv = vflux(w=w, s=in_s, su=in_su, sv=in_sv)
         out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
-        out_su = 0.0  # (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
-        out_sv = 0.0  # (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
+        out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
+        out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
 
     with computation(PARALLEL), interval(-1, None):
         out_s = 0.0
@@ -86,24 +87,27 @@ def stencil_defs(
 
 
 if __name__ == "__main__":
+    backend = "numpy"
+    vstaggering = True
+
     decorator = gtscript.stencil(
-        "numpy",
+        backend,
         externals={
             "get_upwind_flux": get_upwind_flux,
             "vflux": vflux,
-            "vstaggering": False,
+            "vstaggering": vstaggering,
         },
-        rebuild=True,
+        rebuild=False,
     )
     stencil = decorator(stencil_defs)
 
-    in_w = zeros((30, 30, 11), "numpy", np.float64)
-    in_s = zeros((30, 30, 11), "numpy", np.float64)
-    in_su = zeros((30, 30, 11), "numpy", np.float64)
-    in_sv = zeros((30, 30, 11), "numpy", np.float64)
-    out_s = zeros((30, 30, 11), "numpy", np.float64)
-    out_su = zeros((30, 30, 11), "numpy", np.float64)
-    out_sv = zeros((30, 30, 11), "numpy", np.float64)
+    in_w = zeros((30, 30, 11), backend, np.float64)
+    in_s = zeros((30, 30, 11), backend, np.float64)
+    in_su = zeros((30, 30, 11), backend, np.float64)
+    in_sv = zeros((30, 30, 11), backend, np.float64)
+    out_s = zeros((30, 30, 11), backend, np.float64)
+    out_su = zeros((30, 30, 11), backend, np.float64)
+    out_sv = zeros((30, 30, 11), backend, np.float64)
     dz = 1.0
 
     stencil(

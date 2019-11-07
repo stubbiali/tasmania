@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gridtools as gt
+import gt4py as gt
 import os
 import tasmania as taz
 import time

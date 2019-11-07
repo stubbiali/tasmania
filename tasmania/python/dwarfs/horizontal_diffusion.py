@@ -24,8 +24,9 @@ import abc
 import math
 import numpy as np
 
-from gridtools import gtscript
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.utils.storage_utils import zeros
 

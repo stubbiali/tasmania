@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHorizontalFlux
 
@@ -338,8 +338,8 @@ class MacCormack(IsentropicHorizontalFlux):
         )
 
         # diagnose the velocity components at the mass points
-        u_unstg = su[0, 0, 0] / s[0, 0, 0]
-        v_unstg = sv[0, 0, 0] / s[0, 0, 0]
+        u_unstg = su / s
+        v_unstg = sv / s
 
         # compute the predicted values for the isentropic density and the momenta
         s_prd = get_maccormack_predicted_value_s(dt=dt, dx=dx, dy=dy, s=s, su=su, sv=sv)
@@ -404,8 +404,8 @@ class MacCormack(IsentropicHorizontalFlux):
 
         # diagnose the predicted values for the velocity components
         # at the mass points
-        u_prd_unstg = su_prd[0, 0, 0] / s_prd[0, 0, 0]
-        v_prd_unstg = sv_prd[0, 0, 0] / s_prd[0, 0, 0]
+        u_prd_unstg = su_prd / s_prd
+        v_prd_unstg = sv_prd / s_prd
 
         # compute the fluxes for the isentropic density and the momenta
         flux_s_x = get_maccormack_flux_x_s(su=su, su_prd=su_prd)

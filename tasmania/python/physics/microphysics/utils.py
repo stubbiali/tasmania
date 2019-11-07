@@ -24,9 +24,9 @@ import abc
 import numpy as np
 from sympl import DataArray
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,16 +28,21 @@ This module contains:
 	Segment(Drawer)
 """
 from tasmania.python.plot.drawer import Drawer
-from tasmania.python.plot.plot_utils import \
-    add_annotation, make_circle, make_lineplot, make_rectangle
+from tasmania.python.plot.plot_utils import (
+    add_annotation,
+    make_circle,
+    make_lineplot,
+    make_rectangle,
+)
 
 
 class Annotation(Drawer):
-	"""
+    """
 	Add an annotation.
 	"""
-	def __init__(self, properties=None):
-		"""
+
+    def __init__(self, properties=None):
+        """
 		Parameters
 		----------
 		properties : `dict`, optional
@@ -45,18 +50,19 @@ class Annotation(Drawer):
 			properties, and whose values specify values for those properties.
 			See :func:`~tasmania.python.plot.plot_utils.add_annotation`.
 		"""
-		super().__init__(properties)
+        super().__init__(properties)
 
-	def __call__(self, state, fig, ax):
-		add_annotation(ax, **self.properties)
+    def __call__(self, state, fig, ax):
+        add_annotation(ax, **self.properties)
 
 
 class Circle(Drawer):
-	"""
+    """
 	Drawer plotting a circle.
 	"""
-	def __init__(self, properties=None):
-		"""
+
+    def __init__(self, properties=None):
+        """
 		Parameters
 		----------
 		properties : `dict`, optional
@@ -64,18 +70,19 @@ class Circle(Drawer):
 			properties, and whose values specify values for those properties.
 			See :func:`~tasmania.python.plot.plot_utils.make_circle`.
 		"""
-		super().__init__(properties)
+        super().__init__(properties)
 
-	def __call__(self, state, fig, ax):
-		make_circle(ax, **self.properties)
+    def __call__(self, state, fig, ax):
+        make_circle(ax, **self.properties)
 
 
 class Rectangle(Drawer):
-	"""
+    """
 	Drawer plotting a rectangle.
 	"""
-	def __init__(self, properties=None):
-		"""
+
+    def __init__(self, properties=None):
+        """
 		Parameters
 		----------
 		properties : `dict`, optional
@@ -83,18 +90,19 @@ class Rectangle(Drawer):
 			settings, and whose values specify values for those settings.
 			See :func:`~tasmania.python.plot.plot_utils.make_rectangle`.
 		"""
-		super().__init__(properties)
+        super().__init__(properties)
 
-	def __call__(self, state, fig, ax):
-		make_rectangle(ax, **self.properties)
+    def __call__(self, state, fig, ax):
+        make_rectangle(ax, **self.properties)
 
 
 class Segment(Drawer):
-	"""
+    """
 	Drawer plotting a segment.
 	"""
-	def __init__(self, x, y, properties=None):
-		"""
+
+    def __init__(self, x, y, properties=None):
+        """
 		Parameters
 		----------
 		x : array
@@ -108,8 +116,8 @@ class Segment(Drawer):
 			properties, and whose values specify values for those properties.
 			See :func:`~tasmania.python.plot.plot_utils.make_lineplot`.
 		"""
-		self.x, self.y = x, y
-		super().__init__(properties)
+        self.x, self.y = x, y
+        super().__init__(properties)
 
-	def __call__(self, state, fig, ax):
-		make_lineplot(self.x, self.y, ax, **self.properties)
+    def __call__(self, state, fig, ax):
+        make_lineplot(self.x, self.y, ax, **self.properties)

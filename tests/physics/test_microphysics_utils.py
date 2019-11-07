@@ -26,8 +26,7 @@ from hypothesis import given, HealthCheck, settings, strategies as hyp_st
 import numpy as np
 import pytest
 
-from gridtools import gtscript
-import gridtools.storage as gt_storage
+from gt4py import gtscript, storage as gt_storage
 
 from tasmania.python.physics.microphysics.kessler import KesslerFallVelocity
 from tasmania.python.physics.microphysics.utils import (

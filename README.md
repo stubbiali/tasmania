@@ -34,7 +34,7 @@ Tasmania aims to provide a high-level platform to aid the investigation of the p
 	 - symmetrized sequential-update splitting, or Strang splitting.
 	 
 	 Hybrid approaches are possible. 
- - The two-dimensional viscud Burgers' equations and a simplified hydrostatic model in isentropic coordinates have been coded as proof-of-concepts. Finite difference operators arising from the numerical discretization of the model are implemented via GridTools4Py.
+ - The two-dimensional viscous Burgers' equations and a simplified hydrostatic model in isentropic coordinates have been coded as proof-of-concepts. Finite difference operators arising from the numerical discretization of the model are implemented via GridTools4Py.
 
 ## GridTools and GridTools4Py
 
@@ -56,11 +56,11 @@ To clone this repository (with submodules) on your machine and place yourself on
 
 ### Using a virtual environment
 
-The `bootstrap_venv.sh` bash script automates the creation of an isolated Python environment for Tasmania. The [virtualenv](https://virtualenv.pypa.io/en/latest/) package is used. The procedure can be customized by means of the bash variables defined in the upper section of the script. 
+The `bootstrap_venv.sh` bash script automates the creation of an isolated Python environment for Tasmania. The [virtualenv](https://virtualenv.pypa.io/en/latest/) package is used. The procedure can be customized by means of the bash variables defined in the preamble of the script. 
 
 ### Using a Docker container on a local machine
 
-Additionally, we provide two [Docker](https://www.docker.com/) images to run a containerized version of Tasmania. The two images are based on `ubuntu:18.04` and `nvidia/cuda:latest`. Please note that the former image does not contain the CUDA toolkit, so it only supports the CPU-based backend of GridTools4Py. To create a local instance of the images (named `tasmania:cpu` and `tasmania:gpu`, respectively), from the root directory of the repository issue
+We provide two [Docker](https://www.docker.com/) images to run a containerized version of Tasmania. The two images are based on `ubuntu:18.04` and `nvidia/cuda:latest`. Please note that the former image does not contain the CUDA toolkit, so it only supports the CPU-based backends of GridTools4Py. To create a local instance of the images (named `tasmania:cpu` and `tasmania:gpu`, respectively), from the root directory of the repository issue
 
 	make docker-build-cpu
 	make docker-build-gpu

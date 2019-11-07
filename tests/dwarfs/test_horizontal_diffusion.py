@@ -33,7 +33,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion as HD
 from tasmania.python.utils.storage_utils import zeros

@@ -29,7 +29,8 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
@@ -282,7 +283,7 @@ def tetens_formula(t):
     tr = 273.16
     bw = 35.86
 
-    backend = getattr(t, 'backend', 'numpy')
+    backend = getattr(t, "backend", "numpy")
     device = gt.backend.from_name(backend).storage_info["device"]
     exp = cp.exp if device == "gpu" else np.exp
 
@@ -320,7 +321,7 @@ def goff_gratch_formula(t):
     t_st = 373.15
     e_st = 1013.25e2
 
-    backend = getattr(t, 'backend', 'numpy')
+    backend = getattr(t, "backend", "numpy")
     device = gt.backend.from_name(backend).storage_info["device"]
     log10 = cp.log10 if device == "gpu" else np.log10
 

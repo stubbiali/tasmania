@@ -24,7 +24,6 @@ from copy import deepcopy
 from sympl import DataArray
 from sympl._core.units import units_are_same
 
-import gridtools as gt
 from tasmania.python.utils.storage_utils import zeros
 
 
@@ -89,9 +88,13 @@ def add(
                     shape = state_2[key].shape
                     _backend = state_2[key].attrs.get("backend", backend)
                     dtype = state_2[key].dtype
-                    _default_origin = state_2[key].attrs.get("default_origin", default_origin)
+                    _default_origin = state_2[key].attrs.get(
+                        "default_origin", default_origin
+                    )
 
-                    out_array = zeros(shape, _backend, dtype, default_origin=_default_origin)
+                    out_array = zeros(
+                        shape, _backend, dtype, default_origin=_default_origin
+                    )
 
                     out_da = DataArray(
                         out_array,
@@ -237,9 +240,13 @@ def subtract(
                     shape = state_1[key].shape
                     _backend = state_1[key].attrs.get("backend", backend)
                     dtype = state_1[key].dtype
-                    _default_origin = state_1[key].attrs.get("default_origin", default_origin)
+                    _default_origin = state_1[key].attrs.get(
+                        "default_origin", default_origin
+                    )
 
-                    out_array = zeros(shape, _backend, dtype, default_origin=_default_origin)
+                    out_array = zeros(
+                        shape, _backend, dtype, default_origin=_default_origin
+                    )
 
                     units = {} if units is None else units
                     out_da = DataArray(

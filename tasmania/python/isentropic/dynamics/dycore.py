@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,13 +22,12 @@
 #
 import numpy as np
 
-import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils.storage_utils import empty, get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 try:
     from tasmania.conf import datatype
@@ -89,7 +88,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
-            managed_memory=False,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -342,7 +341,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 exec_info=exec_info,
                 default_origin=default_origin,
                 rebuild=rebuild,
-                managed_memory=managed_memory
+                managed_memory=managed_memory,
             )
             if moist and smooth_moist:
                 self._smoother_moist = HorizontalSmoothing.factory(
@@ -359,7 +358,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                     exec_info=exec_info,
                     default_origin=default_origin,
                     rebuild=rebuild,
-                    managed_memory=managed_memory
+                    managed_memory=managed_memory,
                 )
 
         #
@@ -394,7 +393,13 @@ class IsentropicDynamicalCore(DynamicalCore):
         # temporary and output arrays
         #
         def allocate():
-            return zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory)
+            return zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
 
         if moist:
             self._sqv_now = allocate()
@@ -719,7 +724,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             )
 
             out_state[name] = get_dataarray_3d(
-                zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory),
+                zeros(
+                    storage_shape,
+                    backend,
+                    dtype,
+                    default_origin,
+                    managed_memory=managed_memory,
+                ),
                 g,
                 units,
                 name=name,

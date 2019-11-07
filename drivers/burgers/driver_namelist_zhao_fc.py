@@ -20,7 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import gridtools as gt
+import gt4py as gt
 import numpy as np
 import os
 from sympl import DataArray
@@ -95,7 +95,7 @@ dycore = taz.BurgersDynamicalCore(
 # ============================================================
 # A NetCDF monitor
 # ============================================================
-if nl.filename is not None and nl.save_frequency > 0:
+if nl.save and nl.filename is not None:
     if os.path.exists(nl.filename):
         os.remove(nl.filename)
 
@@ -117,39 +117,32 @@ for i in range(nt):
 
     # step the solution
     taz.dict_copy(state, dycore(state, {}, dt))
-
     state["time"] = nl.init_time + (i + 1) * dt
 
     compute_time += time.time() - compute_time_start
 
-    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0):
+    if (nl.print_frequency > 0) and ((i + 1) % nl.print_frequency == 0) or i + 1 == nt:
         dx = pgrid.dx.to_units("m").values.item()
         dy = pgrid.dy.to_units("m").values.item()
 
         u = state["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
         v = state["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
 
-        # uex = zsof(state["time"], cgrid, field_name="x_velocity")[3:-3, 3:-3, :]
-        # vex = zsof(state["time"], cgrid, field_name="y_velocity")[3:-3, 3:-3, :]
-        # uex = state_ex["x_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-        # vex = state_ex["y_velocity"].to_units("m s^-1").values[3:-3, 3:-3, :]
-
-        # err_u = np.linalg.norm(u - uex) * np.sqrt(dx * dy)
-        # err_v = np.linalg.norm(v - vex) * np.sqrt(dx * dy)
-
-        err_u = u.max()
-        err_v = v.max()
+        max_u = u.max()
+        max_v = v.max()
 
         # print useful info
         print(
-            "Iteration {:6d}: ||u - uex|| = {:12.10E} m/s, ||v - vex|| = {:12.10E} m/s".format(
-                i + 1, err_u.item(), err_v.item()
+            "Iteration {:6d}: max(u) = {:12.10E} m/s, max(v) = {:12.10E} m/s".format(
+                i + 1, max_u.item(), max_v.item()
             )
         )
 
     # shortcuts
-    to_save = (nl.filename is not None) and (
-        ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt
+    to_save = (
+        nl.save
+        and nl.filename is not None
+        and ((((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
     )
 
     if to_save:
@@ -162,7 +155,7 @@ print("Simulation successfully completed. HOORAY!")
 # Post-processing
 # ============================================================
 # dump the solution to file
-if nl.filename is not None and nl.save_frequency > 0:
+if nl.save and nl.filename is not None:
     netcdf_monitor.write()
 
 # stop the timer

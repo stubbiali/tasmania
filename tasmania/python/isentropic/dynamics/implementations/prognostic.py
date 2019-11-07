@@ -22,9 +22,9 @@
 #
 import numpy as np
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (

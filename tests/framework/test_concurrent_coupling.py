@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,9 +34,10 @@ import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
 try:
     from .conf import backend as conf_backend, default_origin as conf_dorigin
@@ -71,9 +72,17 @@ def test_compatibility(
     # ========================================
     domain = data.draw(st_domain(), label="domain")
     cgrid = domain.numerical_grid
+    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
 
     state = data.draw(
-        st_isentropic_state_f(cgrid, moist=True, precipitation=True), label="state"
+        st_isentropic_state_f(
+            cgrid,
+            moist=True,
+            precipitation=True,
+            backend="numpy",
+            storage_shape=(nx + 1, ny + 1, nz + 1),
+        ),
+        label="state",
     )
 
     dt = data.draw(

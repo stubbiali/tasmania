@@ -31,9 +31,9 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicMinimalHorizontalFlux
 from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_fluxes import (

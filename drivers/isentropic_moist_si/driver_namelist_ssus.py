@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gridtools as gt
+import gt4py as gt
 import os
 import tasmania as taz
 import time
@@ -370,7 +370,7 @@ if nl.precipitation:
         cgrid,
         "m s^-1",
         grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
-        set_coordinates=False
+        set_coordinates=False,
     )
 
 iargs_before_dynamics = args_before_dynamics[::-1]

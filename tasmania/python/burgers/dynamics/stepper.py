@@ -23,10 +23,10 @@
 import abc
 import numpy as np
 
-from gridtools import __externals__
-from gridtools import gtscript
+from gt4py import __externals__
+from gt4py import gtscript
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils.storage_utils import zeros

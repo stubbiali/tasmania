@@ -5,7 +5,7 @@ MODULES=( )
 PYTHON=python3.7
 CUDA=
 VENV=venv
-FRESH_INSTALL=1
+FRESH_INSTALL=0
 
 function install()
 {
@@ -16,6 +16,12 @@ function install()
 	  python docker/external/gridtools4py/setup.py install_gt_sources && \
 	  pip install -e docker/external/sympl && \
 	  deactivate
+
+  # change matplotlib backend from macos to TkAgg
+	cat $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	  sed -e 's/^backend.*: macos/backend : TkAgg/g' > /tmp/.matplotlibrc && \
+	  cp /tmp/.matplotlibrc $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	  rm /tmp/.matplotlibrc
 }
 
 for MODULE in "${MODULES[@]}"

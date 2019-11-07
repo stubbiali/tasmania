@@ -24,7 +24,7 @@ from copy import deepcopy
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
 
 
 def get_dataarray_2d(

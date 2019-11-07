@@ -35,7 +35,8 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,

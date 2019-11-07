@@ -32,9 +32,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gridtools import __externals__
-import gridtools.gtscript as gtscript
-import gridtools.storage as gt_storage
+from gt4py import gtscript, storage as gt_storage, __externals__
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.utils.storage_utils import zeros

@@ -23,9 +23,9 @@
 import numpy as np
 from sympl import DataArray
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
@@ -382,13 +382,13 @@ class KesslerMicrophysics(TendencyComponent):
 
         # collect the tendencies
         # >>> comment the following two lines before testing <<<
-        self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
-        self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
+        # self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
+        # self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
         if self._rain_evaporation:
             # >>> comment the following two lines before testing <<<
-            self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
-            self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
+            # self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
+            # self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
             tendencies[mfwv] = self._out_qv_tnd
             if not self._pttd:
                 tendencies["air_potential_temperature"] = self._out_theta_tnd

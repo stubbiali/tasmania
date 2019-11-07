@@ -30,7 +30,7 @@ from hypothesis import (
 )
 import pytest
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.utils.storage_utils import zeros

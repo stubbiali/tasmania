@@ -127,7 +127,7 @@ coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 precipitation = True
 sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = False
+rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
@@ -162,7 +162,7 @@ filename = (
         "_f" if coriolis else "",
         "_sed" if sedimentation else "",
         "_evap" if rain_evaporation else "",
-        gt_kwargs['backend']
+        gt_kwargs["backend"],
     )
 )
 store_names = (

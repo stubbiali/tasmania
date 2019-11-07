@@ -25,9 +25,9 @@ import math
 import numpy as np
 from sympl import DataArray
 
-from gridtools import gtscript
+from gt4py import gtscript
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge

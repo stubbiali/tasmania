@@ -33,9 +33,9 @@ from sympl import (
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
-from gridtools import gtscript
+from gt4py import gtscript
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.utils.dict_utils import add, add_inplace, multiply

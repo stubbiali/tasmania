@@ -32,7 +32,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 

@@ -31,7 +31,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania import get_dataarray_3d

@@ -32,9 +32,9 @@ from sympl import (
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
-from gridtools import gtscript
+from gt4py import gtscript
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import (
@@ -69,7 +69,7 @@ def rk2_stage_0(
 ):
     with computation(PARALLEL), interval(...):
         out_field = 0.5 * (
-            in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0]
+            in_field + in_field_prv + dt * in_tnd
         )
 
 
@@ -83,7 +83,7 @@ def rk3ws_stage_0(
 ):
     with computation(PARALLEL), interval(...):
         out_field = (
-            2.0 * in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd[0, 0, 0]
+            2.0 * in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd
         ) / 3.0
 
 

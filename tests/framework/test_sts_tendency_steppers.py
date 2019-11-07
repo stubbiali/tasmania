@@ -32,7 +32,7 @@ from hypothesis import (
 import pytest
 from sympl import units_are_same
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.framework.sts_tendency_steppers import (
     ForwardEuler,

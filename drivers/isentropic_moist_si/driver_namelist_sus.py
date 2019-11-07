@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import argparse
-import gridtools as gt
+import gt4py as gt
 import os
 import tasmania as taz
 import time
@@ -355,8 +355,13 @@ for i in range(nt):
     print_info(dt, i, nl, pgrid, state)
 
     # shortcuts
-    to_save = nl.save and (nl.filename is not None) and (
-        ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0)) or i + 1 == nt
+    to_save = (
+        nl.save
+        and (nl.filename is not None)
+        and (
+            ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0))
+            or i + 1 == nt
+        )
     )
 
     if to_save:

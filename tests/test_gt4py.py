@@ -32,19 +32,23 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import gridtools as gt
+from gt4py import gtscript, storage as gt_storage
+
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import halo as conf_halo
+    from .conf import default_origin as conf_dorigin
     from .utils import compare_arrays, st_one_of, st_raw_field
 except (ImportError, ModuleNotFoundError):
-    from conf import halo as conf_halo
+    from conf import default_origin as conf_dorigin
     from utils import compare_arrays, st_one_of, st_raw_field
 
 
-def stencil_sum_defs(inout_a: gt.storage.f64_sd, in_b: gt.storage.f64_sd):
-    inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
+def stencil_sum_defs(
+    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
 
 
 @settings(
@@ -57,7 +61,7 @@ def stencil_sum_defs(inout_a: gt.storage.f64_sd, in_b: gt.storage.f64_sd):
 )
 @given(hyp_st.data())
 def test_sum(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -69,28 +73,31 @@ def test_sum(data):
 
     backend = "numpy"
     dtype = np.float64
-    halo = data.draw(st_one_of(conf_halo))
+    default_origin = data.draw(st_one_of(conf_dorigin))
 
-    a = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, halo))
-    b = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, halo))
+    a = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, default_origin))
+    b = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, default_origin))
 
     # ========================================
     # test bed
     # ========================================
-    decorator = gt.stencil(backend, rebuild=False)
+    decorator = gtscript.stencil(backend, rebuild=False)
     stencil_sum = decorator(stencil_sum_defs)
 
     a_dc = deepcopy(a)
     stencil_sum(inout_a=a, in_b=b, origin=(0, 0, 0), domain=(ni, nj, nk))
 
-    c = zeros(shape, backend, dtype, halo=halo)
+    c = zeros(shape, backend, dtype, default_origin=default_origin)
     c[...] = a_dc + b
 
     compare_arrays(c, a)
 
 
-def stencil_avg_defs(in_a: gt.storage.f64_sd, out_a: gt.storage.f64_sd):
-    out_a = 0.5 * (in_a[offi, offj, offk] + in_a[0, 0, 0])
+def stencil_avg_defs(in_a: gtscript.Field[np.float64], out_a: gtscript.Field[np.float64]):
+    from __externals__ import offi, offj
+
+    with computation(PARALLEL), interval(...):
+        out_a = 0.5 * (in_a[offi, offj, 0] + in_a[0, 0, 0])
 
 
 @settings(
@@ -103,42 +110,44 @@ def stencil_avg_defs(in_a: gt.storage.f64_sd, out_a: gt.storage.f64_sd):
 )
 @given(hyp_st.data())
 def test_avg(data):
-    gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
-    ni = data.draw(hyp_st.integers(min_value=1, max_value=30))
-    nj = data.draw(hyp_st.integers(min_value=1, max_value=30))
+    ni = data.draw(hyp_st.integers(min_value=2, max_value=30))
+    nj = data.draw(hyp_st.integers(min_value=2, max_value=30))
     nk = data.draw(hyp_st.integers(min_value=1, max_value=30))
     shape = (ni, nj, nk)
 
     offi = data.draw(hyp_st.integers(min_value=0, max_value=1))
     offj = data.draw(hyp_st.integers(min_value=0, max_value=1))
-    offk = data.draw(hyp_st.integers(min_value=0, max_value=1))
 
     backend = "numpy"
     dtype = np.float64
-    halo = data.draw(st_one_of(conf_halo))
+    default_origin = data.draw(st_one_of(conf_dorigin))
 
-    a = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, halo))
+    a = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, default_origin))
+    out_a = zeros((ni, nj, nk), backend, dtype, default_origin)
 
     # ========================================
     # test bed
     # ========================================
-    decorator = gt.stencil(
-        backend, externals={"offi": offi, "offj": offj, "offk": offk}, rebuild=True
+    decorator = gtscript.stencil(
+        backend, externals={"offi": offi, "offj": offj}, rebuild=False
     )
     stencil_avg = decorator(stencil_avg_defs)
 
-    stencil_avg(in_a=a, origin=(0, 0, 0), domain=(ni - offi, nj - offj, nk - offk))
-
-    c = zeros(shape, backend, dtype, halo=halo)
-    c[: ni - offi, : nj - offj, : nk - offj] = 0.5 * (
-        a[: ni - offi, : nj - offj, : nk - offk] + a[offi:ni, offj:nj, offk:nk]
+    stencil_avg(
+        in_a=a, out_a=out_a, origin=(0, 0, 0), domain=(ni - offi, nj - offj, nk)
     )
 
-    compare_arrays(c, a)
+    c = zeros(shape, backend, dtype, default_origin=default_origin)
+    c[: ni - offi, : nj - offj] = 0.5 * (
+        a[: ni - offi, : nj - offj] + a[offi:ni, offj:nj]
+    )
+
+    compare_arrays(c, out_a)
 
 
 if __name__ == "__main__":

@@ -32,7 +32,8 @@ import numpy as np
 from pint import UnitRegistry
 import pytest
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as DynamicsIsentropicDiagnostics,
 )

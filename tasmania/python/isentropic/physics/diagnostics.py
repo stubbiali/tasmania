@@ -256,7 +256,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
-            managed_memory=False
+        managed_memory=False
     ):
         """
         Parameters
@@ -308,8 +308,12 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages gathering the output fields
-        self._out_u = zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory)
-        self._out_v = zeros(storage_shape, backend, dtype, default_origin, managed_memory=managed_memory)
+        self._out_u = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_v = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
 
     @property
     def input_properties(self):

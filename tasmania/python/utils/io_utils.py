@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,7 +30,11 @@ import xarray as xr
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
 from tasmania.python.grids.domain import Domain
-from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict, get_physical_state, get_numerical_state
+from tasmania.python.utils.storage_utils import (
+    deepcopy_dataarray_dict,
+    get_physical_state,
+    get_numerical_state,
+)
 from tasmania.python.utils.utils import convert_datetime64_to_datetime
 
 

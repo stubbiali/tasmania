@@ -35,7 +35,7 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing

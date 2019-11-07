@@ -31,7 +31,7 @@ from hypothesis import (
 )
 import pytest
 
-import gridtools as gt
+import gt4py as gt
 from tasmania.python.burgers.dynamics.stepper import (
     BurgersStepper,
     _ForwardEuler,

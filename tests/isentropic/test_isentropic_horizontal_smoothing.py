@@ -31,7 +31,7 @@ from hypothesis import (
 )
 import pytest
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,

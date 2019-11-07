@@ -55,7 +55,7 @@ class Domain:
         horizontal_boundary_kwargs=None,
         topography_type="flat_terrain",
         topography_kwargs=None,
-            backend="numpy",
+        backend="numpy",
         dtype=datatype,
     ):
         """ 
@@ -134,7 +134,9 @@ class Domain:
             )
             else horizontal_boundary_kwargs
         )
-        self._hb = HB.factory(horizontal_boundary_type, nx, ny, nb, backend, dtype, **kwargs)
+        self._hb = HB.factory(
+            horizontal_boundary_type, nx, ny, nb, backend, dtype, **kwargs
+        )
 
         # the numerical grid
         self._cgrid = NumericalGrid(self._pgrid, self._hb)

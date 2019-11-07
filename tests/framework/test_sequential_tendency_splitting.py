@@ -32,7 +32,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,

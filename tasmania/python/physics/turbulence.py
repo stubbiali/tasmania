@@ -22,8 +22,9 @@
 #
 import numpy as np
 
-from gridtools import gtscript
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import zeros

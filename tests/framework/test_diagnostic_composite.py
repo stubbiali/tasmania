@@ -39,7 +39,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import conf
 import utils
 
-import gridtools as gt
+import gt4py as gt
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
 from tasmania.python.physics.microphysics import SaturationAdjustmentKessler
@@ -101,7 +101,7 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_serial(data):
+def _test_serial(data):
     # ========================================
     # random data generation
     # ========================================
@@ -221,7 +221,7 @@ def test_serial(data):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_asparallel(data):
+def _test_asparallel(data):
     # ========================================
     # random data generation
     # ========================================

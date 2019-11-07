@@ -22,8 +22,9 @@
 #
 import numpy as np
 
-from gridtools import gtscript
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 try:
     from tasmania.conf import datatype
@@ -205,7 +206,9 @@ class HorizontalVelocity:
 
         with computation(PARALLEL), interval(...):
             if staggering:  # compile-time if
-                out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (in_d[-1, 0, 0] + in_d[0, 0, 0])
+                out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (
+                    in_d[-1, 0, 0] + in_d[0, 0, 0]
+                )
             else:
                 out_u = in_du[0, 0, 0] / in_d[0, 0, 0]
 
@@ -219,7 +222,9 @@ class HorizontalVelocity:
 
         with computation(PARALLEL), interval(...):
             if staggering:  # compile-time if
-                out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (in_d[0, -1, 0] + in_d[0, 0, 0])
+                out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (
+                    in_d[0, -1, 0] + in_d[0, 0, 0]
+                )
             else:
                 out_v = in_dv[0, 0, 0] / in_d[0, 0, 0]
 

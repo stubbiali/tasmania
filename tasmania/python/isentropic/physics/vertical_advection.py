@@ -23,9 +23,9 @@
 import numpy as np
 from sympl import DataArray
 
-from gridtools import gtscript, __externals__
+from gt4py import gtscript, __externals__
 
-# from gridtools.__gtscript__ import computation, interval, PARALLEL
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
@@ -327,9 +327,6 @@ class IsentropicVerticalAdvection(TendencyComponent):
             exec_info=self._exec_info
         )
 
-        # set lower layers
-        # self._set_lower_layers(state)
-
         # collect the output arrays in a dictionary
         tendencies = {
             "air_isentropic_density": self._out_s,
@@ -366,35 +363,39 @@ class IsentropicVerticalAdvection(TendencyComponent):
             compute_boundary,
             moist,
             vflux,
-        vflux_end,
+            vflux_end,
             vflux_extent,
             vstaggering,
         )
 
-        with computation(FORWARD), interval(0, 1):
+        # interpolate the velocity on the interface levels
+        with computation(PARALLEL), interval(0, 1):
             w = 0.0
-        with computation(FORWARD), interval(1, None):
-            if vstaggering:
+        with computation(PARALLEL), interval(1, None):
+            if vstaggering:  # compile-time if
                 w = in_w
             else:
                 w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
-        with computation(FORWARD), interval(0, None):
+        # interpolate the velocity on the main levels
+        with computation(PARALLEL), interval(0, None):
             if vstaggering:
                 wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
             else:
                 wc = in_w
 
-        with computation(FORWARD), interval(0, None):
-            if moist:
+        # compute the isentropic density of the water species
+        with computation(PARALLEL), interval(0, None):
+            if moist:  # compile-time if
                 sqv = in_s * in_qv
                 sqc = in_s * in_qc
                 sqr = in_s * in_qr
             else:
                 sqv = 0.0  # dummy computation
 
-        with computation(FORWARD), interval(vflux_extent, vflux_end):
-            if not moist:
+        # compute the fluxes
+        with computation(PARALLEL), interval(vflux_extent, vflux_end):
+            if not moist:  # compile-time if
                 flux_s, flux_su, flux_sv = vflux(
                     dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
                 )
@@ -411,6 +412,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
                     sqr=sqr,
                 )
 
+        # calculate the tendencies
         with computation(PARALLEL), interval(0, vflux_extent):
             out_s = 0.0
             out_su = 0.0
@@ -419,7 +421,6 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 out_qv = 0.0
                 out_qc = 0.0
                 out_qr = 0.0
-
         with computation(PARALLEL), interval(vflux_extent, -vflux_extent):
             out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
             out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
@@ -428,7 +429,6 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-
         with computation(PARALLEL), interval(-vflux_extent, None):
             out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
             out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
@@ -440,129 +440,6 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 out_qc = tmp_qc / in_s
                 tmp_qr = compute_boundary(dz=dz, w=wc, phi=sqr)
                 out_qr = tmp_qr / in_s
-
-    # @staticmethod
-    # def _stencil_defs(
-    #         in_w: gtscript.Field[np.float64],
-    #         in_s: gtscript.Field[np.float64],
-    #         in_su: gtscript.Field[np.float64],
-    #         in_sv: gtscript.Field[np.float64],
-    #         out_s: gtscript.Field[np.float64],
-    #         out_su: gtscript.Field[np.float64],
-    #         out_sv: gtscript.Field[np.float64],
-    #         in_qv: gtscript.Field[np.float64] = None,
-    #         in_qc: gtscript.Field[np.float64] = None,
-    #         in_qr: gtscript.Field[np.float64] = None,
-    #         out_qv: gtscript.Field[np.float64] = None,
-    #         out_qc: gtscript.Field[np.float64] = None,
-    #         out_qr: gtscript.Field[np.float64] = None,
-    #         *,
-    #         dt: float = 0.0,
-    #         dz: float
-    # ):
-    #     from __externals__ import compute_boundary, moist, order, vflux, vstaggering
-    #
-    #     with computation(FORWARD), interval(0, 1):
-    #         w = 0.0
-    #     with computation(FORWARD), interval(1, None):  # with ..., interval(1, None)
-    #         if vstaggering:
-    #             w = in_w[0, 0, 0]
-    #         else:
-    #             w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
-    #
-    #     # with computation(PARALLEL), interval(0, 1):
-    #     #     out_s = 0.0
-    #     #     out_su = 0.0
-    #     #     out_sv = 0.0
-    #     #
-    #     # with computation(PARALLEL), interval(1, -1):
-    #     #     flux_s, flux_su, flux_sv = vflux(
-    #     #         dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
-    #     #     )
-    #     #     out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
-    #     #     out_su = 0.0  # (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
-    #     #     out_sv = 0.0  # (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
-    #     #
-    #     # with computation(PARALLEL), interval(-1, None):
-    #     #     out_s = 0.0
-    #     #     out_su = 0.0
-    #     #     out_sv = 0.0
-    #
-    #     if order > 0:  # compile-time if
-    #         with computation(FORWARD), interval(0, None):  # with ... interval(0, None)
-    #             if vstaggering:
-    #                 wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
-    #             else:
-    #                 wc = in_w[0, 0, 0]
-    #
-    #         with computation(FORWARD), interval(0, None):
-    #             if moist:
-    #                 sqv = in_s[0, 0, 0] * in_qv[0, 0, 0]
-    #                 sqc = in_s[0, 0, 0] * in_qc[0, 0, 0]
-    #                 sqr = in_s[0, 0, 0] * in_qr[0, 0, 0]
-    #             else:
-    #                 sqv = 0.0  # dummy computation
-    #     else:
-    #         with computation(PARALLEL), interval(1, None):  # with ... interval(0, None)
-    #             if vstaggering:
-    #                 wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
-    #             else:
-    #                 wc = in_w[0, 0, 0]
-    #
-    #         with computation(PARALLEL), interval(1, -1):
-    #             if moist:
-    #                 sqv = in_s[0, 0, 0] * in_qv[0, 0, 0]
-    #                 sqc = in_s[0, 0, 0] * in_qc[0, 0, 0]
-    #                 sqr = in_s[0, 0, 0] * in_qr[0, 0, 0]
-    #             else:
-    #                 sqv = 0.0  # dummy computation
-    #
-    #     with computation(PARALLEL), interval(0, 1):
-    #         out_s = 0.0
-    #         out_su = 0.0
-    #         out_sv = 0.0
-    #         if moist:
-    #             out_qv = 0.0
-    #             out_qc = 0.0
-    #             out_qr = 0.0
-    #
-    #     with computation(PARALLEL), interval(1, -1):
-    #         if not moist:
-    #             flux_s, flux_su, flux_sv = vflux(
-    #                 dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
-    #             )
-    #         else:
-    #             flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = vflux(
-    #                 dt=dt,
-    #                 dz=dz,
-    #                 w=w,
-    #                 s=in_s,
-    #                 su=in_su,
-    #                 sv=in_sv,
-    #                 sqv=sqv,
-    #                 sqc=sqc,
-    #                 sqr=sqr,
-    #             )
-    #
-    #         out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
-    #         out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
-    #         out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
-    #         if moist:
-    #             out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-    #             out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-    #             out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-    #
-    #     with computation(PARALLEL), interval(-1, None):
-    #         out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
-    #         out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
-    #         out_sv = compute_boundary(dz=dz, w=wc, phi=in_sv)
-    #         if moist:
-    #             tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
-    #             out_qv = tmp_qv[0, 0, 0] / in_s[0, 0, 0]
-    #             tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)
-    #             out_qc = tmp_qc[0, 0, 0] / in_s[0, 0, 0]
-    #             tmp_qr = compute_boundary(dz=dz, w=wc, phi=sqr)
-    #             out_qr = tmp_qr[0, 0, 0] / in_s[0, 0, 0]
 
 
 class PrescribedSurfaceHeating(TendencyComponent):

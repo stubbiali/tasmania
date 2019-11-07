@@ -22,7 +22,7 @@
 #
 import abc
 
-from gridtools import gtscript
+from gt4py import gtscript
 
 
 class IsentropicHorizontalFlux(abc.ABC):

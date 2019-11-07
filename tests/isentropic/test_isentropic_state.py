@@ -33,7 +33,7 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
 
 from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
@@ -93,7 +93,7 @@ def test_brunt_vaisala(data):
     )
     grid = domain.numerical_grid
 
-    backend = "gtcuda"  # data.draw(st_one_of(conf_backend), label="backend")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz

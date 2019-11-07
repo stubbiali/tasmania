@@ -29,7 +29,8 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
@@ -664,7 +665,7 @@ class Periodic(HorizontalBoundary):
         dtype = field.dtype
         field_name = field_name or ""
         mx = nx + 1 if "at_u_locations" in field_name else nx
-        mi = mx + 2*nb
+        mi = mx + 2 * nb
         my = ny + 1 if "at_v_locations" in field_name else ny
 
         try:
@@ -681,11 +682,11 @@ class Periodic(HorizontalBoundary):
             if mx == nx
             else cfield[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        cfield[: mi, :nb] = cfield[: mi, ny - 1 : ny - 1 + nb]
-        cfield[: mi, my + nb : my + 2 * nb] = (
-            cfield[: mi, nb + 1 : 2 * nb + 1]
+        cfield[:mi, :nb] = cfield[:mi, ny - 1 : ny - 1 + nb]
+        cfield[:mi, my + nb : my + 2 * nb] = (
+            cfield[:mi, nb + 1 : 2 * nb + 1]
             if mx == ny
-            else cfield[: mi, nb + 2 : 2 * nb + 2]
+            else cfield[:mi, nb + 2 : 2 * nb + 2]
         )
 
         return cfield
