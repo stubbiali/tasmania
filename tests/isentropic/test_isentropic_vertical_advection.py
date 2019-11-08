@@ -39,7 +39,6 @@ import gt4py as gt
 
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
-    PrescribedSurfaceHeating,
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 

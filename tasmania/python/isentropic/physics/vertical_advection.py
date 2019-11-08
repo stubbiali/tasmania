@@ -369,13 +369,14 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # interpolate the velocity on the interface levels
-        with computation(PARALLEL), interval(0, 1):
-            w = 0.0
-        with computation(PARALLEL), interval(1, None):
-            if vstaggering:  # compile-time if
-                w = in_w
-            else:
-                w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
+        with computation(PARALLEL):
+            with interval(0, 1):
+                w = 0.0
+            with interval(1, None):
+                if vstaggering:  # compile-time if
+                    w = in_w
+                else:
+                    w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
         # interpolate the velocity on the main levels
         with computation(PARALLEL), interval(0, None):
@@ -413,40 +414,49 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 )
 
         # calculate the tendencies
-        with computation(PARALLEL), interval(0, vflux_extent):
-            out_s = 0.0
-            out_su = 0.0
-            out_sv = 0.0
-            if moist:  # compile-time if
-                out_qv = 0.0
-                out_qc = 0.0
-                out_qr = 0.0
-        with computation(PARALLEL), interval(vflux_extent, -vflux_extent):
-            out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
-            out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
-            out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
-            if moist:  # compile-time if
-                out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-                out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-                out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
-        with computation(PARALLEL), interval(-vflux_extent, None):
-            out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
-            out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
-            out_sv = compute_boundary(dz=dz, w=wc, phi=in_sv)
-            if moist:  # compile-time if
-                tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
-                out_qv = tmp_qv / in_s
-                tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)
-                out_qc = tmp_qc / in_s
-                tmp_qr = compute_boundary(dz=dz, w=wc, phi=sqr)
-                out_qr = tmp_qr / in_s
+        with computation(PARALLEL):
+            with interval(0, vflux_extent):
+                out_s = 0.0
+                out_su = 0.0
+                out_sv = 0.0
+                if moist:  # compile-time if
+                    out_qv = 0.0
+                    out_qc = 0.0
+                    out_qr = 0.0
+
+            with interval(vflux_extent, -vflux_extent):
+                out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
+                out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
+                out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
+                if moist:  # compile-time if
+                    out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (
+                        in_s[0, 0, 0] * dz
+                    )
+                    out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (
+                        in_s[0, 0, 0] * dz
+                    )
+
+                    out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (
+                        in_s[0, 0, 0] * dz
+                    )
+
+            with interval(-vflux_extent, None):
+                out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
+                out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
+                out_sv = compute_boundary(dz=dz, w=wc, phi=in_sv)
+                if moist:  # compile-time if
+                    tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
+                    out_qv = tmp_qv / in_s
+                    tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)
+                    out_qc = tmp_qc / in_s
+                    tmp_qr = compute_boundary(dz=dz, w=wc, phi=sqr)
+                    out_qr = tmp_qr / in_s
 
 
 class PrescribedSurfaceHeating(TendencyComponent):
     """
     Calculate the variation in air potential temperature as prescribed
     in the reference paper, namely
-
         .. math::
             \dot{\theta} =
             \Biggl \lbrace
@@ -459,10 +469,8 @@ class PrescribedSurfaceHeating(TendencyComponent):
                 \atop
                 0 \text{otherwise}
             } .
-
     The class is always instantiated over the numerical grid of the
     underlying domain.
-
     References
     ----------
     Reisner, J. M., and P. K. Smolarkiewicz. (1994). \
@@ -504,18 +512,18 @@ class PrescribedSurfaceHeating(TendencyComponent):
         domain : tasmania.Domain
             The underlying domain.
         tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
-            `True` to place the calculated tendency of air
+            :obj:`True` to place the calculated tendency of air
             potential temperature in the ``diagnostics`` output
-            dictionary, `False` to regularly place it in the
-            `tendencies` dictionary. Defaults to `False`.
+            dictionary, :obj:`False` to regularly place it in the
+            `tendencies` dictionary. Defaults to :obj:`False`.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the tendency
+            :obj:`True` (respectively, :obj:`False`) if the tendency
             of air potential temperature should be calculated at the
-            interface (resp., main) vertical levels. Defaults to `False`.
+            interface (resp., main) vertical levels. Defaults to :obj:`False`.
         air_pressure_on_interface_levels : `bool`, optional
-            `True` (respectively, `False`) if the input
+            :obj:`True` (respectively, :obj:`False`) if the input
             air potential pressure is defined at the interface
-            (resp., main) vertical levels. Defaults to `True`.
+            (resp., main) vertical levels. Defaults to :obj:`True`.
         amplitude_at_day_sw : `sympl.DataArray`, optional
             1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at day,
             in units compatible with [W m^-2].
@@ -547,16 +555,14 @@ class PrescribedSurfaceHeating(TendencyComponent):
             The time :math:`t_0` when surface heating/cooling is triggered.
         backend : `obj`, optional
             TODO
-        physical_constants : `dict[str, sympl.DataArray]`, optional
+        physical_constants : `dict`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`~sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
-
                 * 'gas_constant_of_dry_air', in units compatible with \
                     [J K^-1 kg^-1];
                 * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
                     with [J K^-1 kg^-1].
-
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`sympl.TendencyComponent`.
@@ -751,3 +757,6 @@ class PrescribedSurfaceHeating(TendencyComponent):
                 diagnostics["tendency_of_air_potential_temperature"] = out
 
         return tendencies, diagnostics
+
+
+

@@ -93,14 +93,12 @@ def tendencystepper_factory(scheme):
         return RungeKutta3WS
     elif scheme == "gt_rk3ws":
         return GTRungeKutta3WS
-    elif scheme == "rk3":
-        return RungeKutta3
     else:
         raise ValueError(
             "Unsupported time integration scheme "
             "{}"
             ". "
-            "Available integrators: forward_euler, rk2, rk3ws, rk3.".format(scheme)
+            "Available integrators: forward_euler, rk2, rk3ws.".format(scheme)
         )
 
 

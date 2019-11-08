@@ -174,7 +174,7 @@ class IsentropicHorizontalFlux(abc.ABC):
         from .implementations.horizontal_fluxes import (
             Upwind,
             Centered,
-            MacCormack,
+            # MacCormack,
             ThirdOrderUpwind,
             FifthOrderUpwind,
         )
@@ -439,7 +439,7 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         from .implementations.minimal_horizontal_fluxes import (
             Upwind,
             Centered,
-            MacCormack,
+            # MacCormack,
             ThirdOrderUpwind,
             FifthOrderUpwind,
         )
@@ -449,7 +449,8 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         elif scheme == "centered":
             return Centered()
         elif scheme == "maccormack":
-            return MacCormack()
+            raise NotImplementedError()
+            # return MacCormack()
         elif scheme == "third_order_upwind":
             return ThirdOrderUpwind()
         elif scheme == "fifth_order_upwind":

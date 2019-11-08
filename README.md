@@ -131,12 +131,12 @@ The benchmarks for the Burgers' equations and the isentropic model are stored in
 ## Repository directory structure
 
 - `buffer/`: convenient location for files (e.g. Matplotlib figures) generated inside the container and to be moved to other host's directory.
+- `data/`: data sets;
 - `docker/`: configuration files and scripts to create the Docker images and run Docker containers.
 - `docker/external`: the GT4Py (`gridtools4py/`) and sympl (`sympl/`) submodules.
 - `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation (out-of-date).
 - `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers/`) or the isentropic model (`isentropic/`).
 - `notebooks/`: Jupyter notebooks.
-- `results/`: figures (`figures/`) and animations (`movies/`) generated via Matplotlib.
 - `scripts/`: bash (`bash/`), Python (`python/`), Slurm (`slurm/`) scripts for, e.g., post-processing, plotting, sharing data with a remote machine. `scratch_daint/` and `scratch_dom/` contain files which should be copy to the `$SCRATCH` folder on Piz Daint and Dom, respectively.
 - `tasmania/`: codebase, consisting of Python (`python/`) and C++ (`cpp/`) source files.
 - `tests/`: test suite. 

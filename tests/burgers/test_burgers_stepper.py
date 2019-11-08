@@ -34,9 +34,9 @@ import pytest
 import gt4py as gt
 from tasmania.python.burgers.dynamics.stepper import (
     BurgersStepper,
-    _ForwardEuler,
-    _RK2,
-    _RK3WS,
+    ForwardEuler,
+    RK2,
+    RK3WS,
 )
 from tasmania.python.utils.storage_utils import deepcopy_array_dict
 

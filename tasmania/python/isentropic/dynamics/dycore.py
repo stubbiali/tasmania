@@ -88,7 +88,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         default_origin=None,
         rebuild=False,
         storage_shape=None,
-        managed_memory=False,
+        managed_memory=False
     ):
         """
         Parameters
