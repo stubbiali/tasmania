@@ -61,6 +61,12 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
 
     @property
     def grid_type(self):
+        """
+        Returns
+        -------
+        str :
+            The grid type, either 'physical' or 'numerical'.
+        """
         return self._grid_type
 
     @property
@@ -128,6 +134,12 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
 
     @property
     def grid_type(self):
+        """
+        Returns
+        -------
+        str :
+            The grid type, either 'physical' or 'numerical'.
+        """
         return self._grid_type
 
     @property
@@ -195,6 +207,12 @@ class Stepper(sympl.Stepper):
 
     @property
     def grid_type(self):
+        """
+        Returns
+        -------
+        str :
+            The grid type, either 'physical' or 'numerical'.
+        """
         return self._grid_type
 
     @property
@@ -262,6 +280,12 @@ class TendencyComponent(sympl.TendencyComponent):
 
     @property
     def grid_type(self):
+        """
+        Returns
+        -------
+        str :
+            The grid type, either 'physical' or 'numerical'.
+        """
         return self._grid_type
 
     @property

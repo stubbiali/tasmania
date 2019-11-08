@@ -82,6 +82,7 @@ class Topography:
                 * 'gaussian';
                 * 'schaer';
                 * 'user_defined'.
+
         steady_profile : sympl.DataArray
             2-D :class:`sympl.DataArray` representing the steady-state height profile.
         profile : sympl.DataArray
@@ -89,44 +90,44 @@ class Topography:
 
         Keyword arguments
         -----------------
-        time : timedelta
+        time : datetime.timedelta
             The elapsed simulation time after which the topography should stop increasing.
             If not specified, a time-invariant terrain surface-height is assumed.
         max_height : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the maximum mountain height.
-            Effective when :data:`topography_type` is either 'gaussian' or 'schaer'.
+            Effective when `topography_type` is either 'gaussian' or 'schaer'.
         center_x : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the :math:`x`-coordinate
             of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when :data:`topography_type` is either
+            the center of the domain. Effective when `topography_type` is either
             'gaussian' or 'schaer'.
         center_y : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the :math:`y`-coordinate
             of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when :data:`topography_type` is either
+            the center of the domain. Effective when `topography_type` is either
             'gaussian' or 'schaer'.
         width_x : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the mountain half-width
             in the :math:`x`-direction. Defaults to 1, in the same units of the
-            :data:`x`-axis. Effective when :data:`topography_type` is either 'gaussian'
+            `x`-axis. Effective when `topography_type` is either 'gaussian'
             or 'schaer'.
         width_y : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the mountain half-width
             in the :math:`y`-direction. Defaults to 1, in the same units of the
-            :data:`y`-axis. Effective when :data:`topography_type` is either 'gaussian'
+            `y`-axis. Effective when `topography_type` is either 'gaussian'
             or 'schaer'.
         expression : str
             Terrain profile expression in the independent variables :math:`x` and
             :math:`y`. Must be fully C++-compliant. Effective only when
-            :data:`topography_type` is 'user_defined'.
+            `topography_type` is 'user_defined'.
         smooth : bool
-            :obj:`True` to smooth the topography out, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` to smooth the topography out, `False` otherwise.
+            Defaults to `False`.
 
         Raises
         ------
         ValueError :
-            If the argument :obj:`topography_type` is neither 'flat_terrain',
+            If the argument `topography_type` is neither 'flat_terrain',
             'gaussian', 'schaer', nor 'user_defined'.
         """
         if topography_type not in ["flat_terrain", "gaussian", "schaer", "user_defined"]:
@@ -194,7 +195,7 @@ class Topography:
 
         Parameters
         ----------
-        time : timedelta
+        time : datetime.timedelta
             The elapsed simulation time.
         """
         if lt(self._fact, 1.0):
@@ -223,44 +224,44 @@ class PhysicalTopography(Topography):
 
         Keyword arguments
         -----------------
-        time : timedelta
+        time : datetime.timedelta
             The elapsed simulation time after which the topography should stop increasing.
             If not specified, a time-invariant terrain surface-height is assumed.
         max_height : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the maximum mountain height.
-            Effective when :data:`topography_type` is either 'gaussian' or 'schaer'.
+            Effective when `topography_type` is either 'gaussian' or 'schaer'.
         center_x : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the :math:`x`-coordinate
             of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when :data:`topography_type` is either
+            the center of the domain. Effective when `topography_type` is either
             'gaussian' or 'schaer'.
         center_y : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the :math:`y`-coordinate
             of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when :data:`topography_type` is either
+            the center of the domain. Effective when `topography_type` is either
             'gaussian' or 'schaer'.
         width_x : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the mountain half-width
             in the :math:`x`-direction. Defaults to 1, in the same units of the
-            :data:`x`-axis. Effective when :data:`topography_type` is either 'gaussian'
+            `x`-axis. Effective when `topography_type` is either 'gaussian'
             or 'schaer'.
         width_y : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the mountain half-width
             in the :math:`y`-direction. Defaults to 1, in the same units of the
-            :data:`y`-axis. Effective when :data:`topography_type` is either 'gaussian'
+            `y`-axis. Effective when `topography_type` is either 'gaussian'
             or 'schaer'.
         expression : str
             Terrain profile expression in the independent variables :math:`x` and
             :math:`y`. Must be fully C++-compliant. Effective only when
-            :data:`topography_type` is 'user_defined'.
+            `topography_type` is 'user_defined'.
         smooth : bool
-            :obj:`True` to smooth the topography out, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` to smooth the topography out, `False` otherwise.
+            Defaults to `False`.
 
         Raises
         ------
         ValueError :
-            If the argument :obj:`topography_type` is neither 'flat_terrain',
+            If the argument `topography_type` is neither 'flat_terrain',
             'gaussian', 'schaer', nor 'user_defined'.
         ImportError :
             If :class:`tasmania.cpp.parser.parser_2d.Parser2d` cannot be

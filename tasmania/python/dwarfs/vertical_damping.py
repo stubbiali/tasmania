@@ -77,11 +77,11 @@ class VerticalDamping(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : tuple
+        default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
@@ -104,9 +104,6 @@ class VerticalDamping(abc.ABC):
         )
         assert grid.nz <= storage_shape[2] <= grid.nz + 1
         self._shape = storage_shape
-
-        # compute lower-bound of damping region
-        lb = grid.z.values[damp_depth - 1]
 
         # compute the damping matrix
         z = (
@@ -145,16 +142,16 @@ class VerticalDamping(abc.ABC):
 
         Parameters
         ----------
-        dt : timedelta
+        dt : datetime.timedelta
             The time step.
-        field_now : gridtools.storage.Storage
+        field_now : gt4py.storage.storage.Storage
             The field at the current time level.
-        field_new : gridtools.storage.Storage
+        field_new : gt4py.storage.storage.Storage
             The field at the next time level, on which the absorber will be applied.
-        field_ref : gridtools.storage.Storage
+        field_ref : gt4py.storage.storage.Storage
             A reference value for the field.
-        field_out : gridtools.storage.Storage
-            Buffer into which writing the output, vertically damped field.
+        field_out : gt4py.storage.storage.Storage
+            Buffer into which the output vertically damped field is written.
         """
         pass
 
@@ -178,7 +175,7 @@ class VerticalDamping(abc.ABC):
     ):
         """
         Static method which returns an instance of the derived class
-        implementing the damping method specified by :data:`damp_type`.
+        implementing the damping method specified by `damp_type`.
 
         Parameters
         ----------
@@ -201,11 +198,11 @@ class VerticalDamping(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
@@ -254,7 +251,7 @@ class VerticalDamping(abc.ABC):
 
 class Rayleigh(VerticalDamping):
     """
-    This class inherits	:class:`~tasmania.VerticalDamping`
+    This class inherits	:class:`tasmania.VerticalDamping`
     to implement a Rayleigh absorber.
     """
 
@@ -327,6 +324,4 @@ class Rayleigh(VerticalDamping):
         dt: float
     ):
         with computation(PARALLEL), interval(...):
-            out_phi = in_phi_new[0, 0, 0] - dt * in_rmat[0, 0, 0] * (
-                in_phi_now[0, 0, 0] - in_phi_ref[0, 0, 0]
-            )
+            out_phi = in_phi_new - dt * in_rmat * (in_phi_now - in_phi_ref)

@@ -61,7 +61,7 @@ class HorizontalSmoothing(abc.ABC):
         """
         Parameters
         ----------
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays which should be filtered.
         smooth_coeff : float
             Value for the smoothing coefficient far from the top boundary.
@@ -77,11 +77,11 @@ class HorizontalSmoothing(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : tuple
+        default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
@@ -116,7 +116,6 @@ class HorizontalSmoothing(abc.ABC):
         self._gamma[...] = gamma
 
         # initialize the underlying stencil
-        name = self.__class__.__name__
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             name=self.__class__.__name__,
@@ -135,9 +134,9 @@ class HorizontalSmoothing(abc.ABC):
 
         Parameters
         ----------
-        phi : gridtools.storage.Storage
+        phi : gt4py.storage.storage.Storage
             The 3-D field to filter.
-        phi_out : gridtools.storage.Storage
+        phi_out : gt4py.storage.storage.Storage
             The 3-D buffer into which the filtered field is written.
         """
         pass
@@ -162,18 +161,18 @@ class HorizontalSmoothing(abc.ABC):
     ):
         """
         Static method returning an instance of the derived class
-        implementing the smoothing technique specified by :data:`smooth_type`.
+        implementing the smoothing technique specified by `smooth_type`.
 
         Parameters
         ----------
-        smooth_type : string
+        smooth_type : str
             String specifying the smoothing technique to implement. Either:
 
             * 'first_order', for first-order numerical smoothing;
             * 'second_order', for second-order numerical smoothing;
             * 'third_order', for third-order numerical smoothing.
 
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays which should be filtered.
         smooth_coeff : float
             Value for the smoothing coefficient far from the top boundary.
@@ -189,11 +188,11 @@ class HorizontalSmoothing(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,

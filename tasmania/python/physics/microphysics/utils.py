@@ -137,7 +137,7 @@ class Precipitation(ImplicitTendencyComponent):
                 * 'physical';
                 * 'numerical' (default).
 
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -145,21 +145,22 @@ class Precipitation(ImplicitTendencyComponent):
                 * 'density_of_liquid_water', in units compatible with [kg m^-3].
 
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
@@ -309,8 +310,8 @@ class Precipitation(ImplicitTendencyComponent):
         from __externals__ import rhow
 
         with computation(PARALLEL), interval(...):
-            out_prec = 3.6e6 * in_rho[0, 0, 0] * in_qr[0, 0, 0] * in_vt[0, 0, 0] / rhow
-            out_accprec = in_accprec[0, 0, 0] + dt * out_prec[0, 0, 0] / 3.6e3
+            out_prec = 3.6e6 * in_rho * in_qr * in_vt / rhow
+            out_accprec = in_accprec + dt * out_prec / 3.6e3
 
 
 class SedimentationFlux(abc.ABC):
@@ -334,18 +335,18 @@ class SedimentationFlux(abc.ABC):
 
         Parameters
         ----------
-        rho : gridtools.storage.Storage
+        rho : gt4py.gtscript.Field
             The air density, in units of [kg m^-3].
-        h : gridtools.storage.Storage
+        h : gt4py.gtscript.Field
             The geometric height of the model half-levels, in units of [m].
-        q : gridtools.storage.Storage
+        q : gt4py.gtscript.Field
             The precipitating water species.
-        vt : gridtools.storage.Storage
+        vt : gt4py.gtscript.Field
             The raindrop fall velocity, in units of [m s^-1].
 
         Return
         ------
-        gridtools.storage.Storage :
+        gt4py.gtscript.Field :
             The vertical derivative of the sedimentation flux.
         """
 
@@ -362,11 +363,12 @@ class SedimentationFlux(abc.ABC):
             String specifying the method used to compute the numerical
             sedimentation flux. Available options are:
 
-            - 'first_order_upwind', for the first-order upwind scheme;
-            - 'second_order_upwind', for the second-order upwind scheme.
+                - 'first_order_upwind', for the first-order upwind scheme;
+                - 'second_order_upwind', for the second-order upwind scheme.
 
         Return
         ------
+        obj :
             Instance of the derived class implementing the desired method.
         """
         if sedimentation_flux_type == "first_order_upwind":
@@ -455,7 +457,7 @@ class Sedimentation(ImplicitTendencyComponent):
                 * 'physical';
                 * 'numerical'.
 
-        tracers : dict
+        tracers : dict[str, dict]
             Dictionary whose keys are the names of the precipitating tracers to
             consider, and whose values are dictionaries specifying 'units' and
             'velocity' for those tracers.
@@ -467,8 +469,8 @@ class Sedimentation(ImplicitTendencyComponent):
             Maximum allowed vertical CFL number. Defaults to 0.975.
         backend : `obj`, optional
             TODO
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
+        dtype : `data-type`, optional
+            The data type for any :class:`gt4py.storage.storage.Storage` instantiated and
             used within this class.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent

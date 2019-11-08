@@ -46,13 +46,11 @@ class FakeComponent:
                 self.output_properties = value
 
 
-class OfflineDiagnosticComponent:
+class OfflineDiagnosticComponent(abc.ABC):
     """
     Abstract base class whose derived classes retrieve diagnostics
     from multiple state dictionaries.
     """
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
         assert isinstance(self.input_properties, SequenceType), (
@@ -90,7 +88,7 @@ class OfflineDiagnosticComponent:
         """
         Returns
         -------
-        sequence[dict] :
+        Sequence[dict[str, dict]] :
             Sequence of dictionaries, whose keys are strings denoting
             variables which should be present in the corresponding input
             state, and whose values are dictionaries specifying fundamental
@@ -104,7 +102,7 @@ class OfflineDiagnosticComponent:
         """
         Returns
         -------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting the output diagnostics,
             and whose values are dictionaries specifying fundamental
             properties (dims, units) for those diagnostics.
@@ -117,14 +115,14 @@ class OfflineDiagnosticComponent:
 
         Parameters
         ----------
-        states : dict
+        states : Sequence[dict[str, sympl.DataArray]]
             State dictionaries whose keys are strings denoting
             model variables, and whose values are :class:`sympl.DataArray`\s
             representing values for those variables.
 
         Returns
         -------
-        dict :
+        dict[str, sympl.DataArray] :
             Dictionary whose keys are strings denoting diagnostics,
             and whose values are :class:`sympl.DataArray`\s representing
             values for those diagnostics.
@@ -164,16 +162,16 @@ class OfflineDiagnosticComponent:
 
         Parameters
         ----------
-        states : dict
+        states : Sequence[dict[str, sympl.DataArray]]
             State dictionaries whose keys are strings denoting
-            model variables, and whose values are :class:`numpy.ndarray`\s
+            model variables, and whose values are :class:`numpy.ndarray`-like arrays
             representing raw values for those variables.
 
         Returns
         -------
-        dict :
+        dict[str, array_like] :
             Dictionary whose keys are strings denoting diagnostics,
-            and whose values are :class:`numpy.ndarray`\s representing
+            and whose values are :class:`numpy.ndarray`-like arrays representing
             raw values for those diagnostics.
         """
         pass
@@ -189,25 +187,25 @@ class RMSD(OfflineDiagnosticComponent):
         """
         Parameters
         ----------
-        grid : tasmania.Grid, seq[tasmania.Grid]
+        grid : tasmania.Grid, Sequence[tasmania.Grid]
             The underlying grid(s). The two input states may be defined
             over different grids.
-        fields : dict
+        fields : dict[str, dict]
             Dictionary whose keys are strings denoting the model variables
             for which the RMSD should be computed, and whose values are
             dictionaries specifying fundamental properties (dims, units)
             for those variables
-        x : `slice`, `seq[slice]`, optional
+        x : `slice`, `Sequence[slice]`, optional
             The projection along the first coordinate axis of the slice
             of grid points to be considered for the calculation of the RMSD.
             If not specified, all grid points along the first dimension
             are considered. Different slices for different states are allowed.
-        y : `slice`, `seq[slice]`, optional
+        y : `slice`, `Sequence[slice]`, optional
             The projection along the second coordinate axis of the slice
             of grid points to be considered for the calculation of the RMSD.
             If not specified, all grid points along the second dimension
             are considered. Different slices for different states are allowed.
-        z : `slice`, `seq[slice]`, optional
+        z : `slice`, `Sequence[slice]`, optional
             The projection along the third coordinate axis of the slice
             of grid points to be considered for the calculation of the RMSD.
             If not specified, all grid points along the third dimension
@@ -291,25 +289,25 @@ class RRMSD(OfflineDiagnosticComponent):
         """
         Parameters
         ----------
-        grid : tasmania.Grid, seq[tasmania.Grid]
+        grid : tasmania.Grid, Sequence[tasmania.Grid]
             The underlying grid(s). The two input states may be defined
             over different grids.
-        fields : dict
+        fields : dict[str, dict]
             Dictionary whose keys are strings denoting the model variables
             for which the RRMSD should be computed, and whose values are
             dictionaries specifying fundamental properties (dims, units)
             for those variables
-        x : `slice`, `seq[slice]`, optional
+        x : `slice`, `Sequence[slice]`, optional
             The projection along the first coordinate axis of the slice
             of grid points to be considered for the calculation of the RRMSD.
             If not specified, all grid points along the first dimension
             are considered. Different slices for different states are allowed.
-        y : `slice`, `seq[slice]`, optional
+        y : `slice`, `Sequence[slice]`, optional
             The projection along the second coordinate axis of the slice
             of grid points to be considered for the calculation of the RRMSD.
             If not specified, all grid points along the second dimension
             are considered. Different slices for different states are allowed.
-        z : `slice`, `seq[slice]`, optional
+        z : `slice`, `Sequence[slice]`, optional
             The projection along the third coordinate axis of the slice
             of grid points to be considered for the calculation of the RRMSD.
             If not specified, all grid points along the third dimension

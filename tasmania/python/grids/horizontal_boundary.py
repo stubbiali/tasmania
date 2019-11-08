@@ -47,7 +47,7 @@ class HorizontalBoundary(abc.ABC):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         """
         self._nx = nx
@@ -153,7 +153,7 @@ class HorizontalBoundary(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, sympl.DataArray] :
             The reference model state dictionary, defined over the
             numerical grid.
         """
@@ -164,7 +164,7 @@ class HorizontalBoundary(abc.ABC):
         """
         Parameters
         ----------
-        ref_state : dict
+        ref_state : dict[str, sympl.DataArray]
             The reference model state dictionary.
         """
         for name in ref_state:
@@ -227,7 +227,7 @@ class HorizontalBoundary(abc.ABC):
         """
         Parameters
         ----------
-        field : numpy.ndarray
+        field : array_like
             A field defined over the *physical* grid.
         field_name : `str`, optional
             The field name.
@@ -285,7 +285,7 @@ class HorizontalBoundary(abc.ABC):
         """
         Parameters
         ----------
-        field : numpy.ndarray
+        field : array_like
             A raw field defined over the *numerical* grid.
         field_name : `str`, optional
             The field name.
@@ -306,7 +306,7 @@ class HorizontalBoundary(abc.ABC):
 
         Parameters
         ----------
-        field : numpy.ndarray
+        field : array_like
             The raw field.
         field_name : `str`, optional
             The field name.
@@ -325,11 +325,11 @@ class HorizontalBoundary(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, array_like]
             Dictionary whose keys are strings denoting model state
-            variables, and whose values are :class:`numpy.ndarray`\s
+            variables, and whose values are :class:`numpy.ndarray`-like arrays
             storing values for those variables.
-        field_properties : `dict`, optional
+        field_properties : `dict[str, dict]`, optional
             Dictionary whose keys are strings denoting the model variables
             on which boundary conditions should be enforced, and whose
             values are dictionaries specifying fundamental properties (units)
@@ -370,11 +370,11 @@ class HorizontalBoundary(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting model state
             variables, and whose values are :class:`sympl.DataArray`\s
             storing values for those variables.
-        field_names : `tuple`, optional
+        field_names : `tuple[str]`, optional
             Tuple of strings denoting the model variables on which
             boundary conditions should be enforced. If not specified,
             boundary conditions are enforced on all model variables
@@ -415,7 +415,7 @@ class HorizontalBoundary(abc.ABC):
 
         Parameters
         ----------
-        field : numpy.ndarray
+        field : array_like
             The raw field.
         field_name : `str`, optional
             The field name.
@@ -438,7 +438,7 @@ class HorizontalBoundary(abc.ABC):
 
         Parameters
         ----------
-        field : numpy.ndarray
+        field : array_like
             The raw field.
         field_name : `str`, optional
             The field name.
@@ -475,7 +475,7 @@ class HorizontalBoundary(abc.ABC):
             Number of boundary layers.
         backend : `str`, optional
             The GT4Py backend.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         kwargs :
             Keyword arguments to be directly forwarded to the

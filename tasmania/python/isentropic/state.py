@@ -84,7 +84,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     ----------
     grid : tasmania.Grid
         The underlying grid.
-    time : datetime
+    time : datetime.datetime
         The time instant at which the state is defined.
     x_velocity : sympl.DataArray
         1-item :class:`sympl.DataArray` representing the uniform
@@ -96,17 +96,14 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         1-item :class:`sympl.DataArray` representing the uniform
         Brunt-Vaisala frequency, in units compatible with [s^-1].
     moist : `bool`, optional
-        :obj:`True` to include some water species in the model state,
-        :obj:`False` for a fully dry configuration. Defaults to :obj:`False`.
+        `True` to include some water species in the model state,
+        `False` for a fully dry configuration. Defaults to `False`.
     precipitation : `bool`, optional
-        :obj:`True` if the model takes care of precipitation,
-        :obj:`False` otherwise. Defaults to :obj:`False`.
+        `True` if the model takes care of precipitation,
+        `False` otherwise. Defaults to `False`.
     relative_humidity : `float`, optional
         The relative humidity in decimals. Defaults to 0.5.
-    dtype : `numpy.dtype`, optional
-        The data type for any :class:`numpy.ndarray` instantiated and
-        used within this class.
-    physical_constants : `dict`, optional
+    physical_constants : `dict[str, sympl.DataArray]`, optional
         Dictionary whose keys are strings indicating physical constants used
         within this object, and whose values are :class:`sympl.DataArray`\s
         storing the values and units of those constants. The constants might be:
@@ -117,9 +114,20 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             * 'specific_heat_of_dry_air_at_constant_pressure', \
                 in units compatible with [J kg^-1 K^-1].
 
+    backend : `str`, optional
+        The GT4Py backend.
+    dtype : `data-type`, optional
+        Data type of the storages.
+    default_origin : `tuple[int]`, optional
+        Storage default origin.
+    storage_shape : `tuple[int]`, optional
+        Shape of the storages.
+    managed_memory : `bool`, optional
+        `True` to allocate the storages as managed memory, `False` otherwise.
+
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray]
         The model state dictionary.
     """
     # shortcuts
@@ -381,7 +389,7 @@ def get_isentropic_state_from_temperature(
     ----------
     grid : tasmania.Grid
         The underlying grid.
-    time : datetime
+    time : datetime.datetime
         The time instant at which the state is defined.
     x_velocity : sympl.DataArray
         1-item :class:`sympl.DataArray` representing the uniform
@@ -409,15 +417,15 @@ def get_isentropic_state_from_temperature(
         perturbation in the center of the warm/cool bubble with respect
         to the ambient conditions.
     moist : `bool`, optional
-        :obj:`True` to include some water species in the model state,
-        :obj:`False` for a fully dry configuration. Defaults to :obj:`False`.
+        `True` to include some water species in the model state,
+        `False` for a fully dry configuration. Defaults to `False`.
     precipitation : `bool`, optional
-        :obj:`True` if the model takes care of precipitation,
-        :obj:`False` otherwise. Defaults to :obj:`False`.
-    dtype : `numpy.dtype`, optional
-        The data type for any :class:`numpy.ndarray` instantiated and
+        `True` if the model takes care of precipitation,
+        `False` otherwise. Defaults to `False`.
+    dtype : `data-type`, optional
+        The data type for any :class:`gt4py.storage.storage.Storage` instantiated and
         used within this class.
-    physical_constants : `dict`, optional
+    physical_constants : `dict[str, sympl.DataArray]`, optional
         Dictionary whose keys are strings indicating physical constants used
         within this object, and whose values are :class:`sympl.DataArray`\s
         storing the values and units of those constants. The constants might be:
@@ -430,7 +438,7 @@ def get_isentropic_state_from_temperature(
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray]
         The model state dictionary.
     """
     # shortcuts

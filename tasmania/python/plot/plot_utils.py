@@ -138,7 +138,7 @@ def get_figure_and_axes(
         Font size for the output figure and axes. Defaults to 12.
         This argument is effective only if the figure is created within the function.
     projection : `str`, optional
-        The axes projection. Defaults to :obj:`None`.
+        The axes projection. Defaults to `None`.
         This argument is effective only if the figure is created within the function.
 
     Returns
@@ -237,9 +237,9 @@ def set_figure_properties(fig, **kwargs):
         Font size to use for the plot titles, and axes ticks and labels.
         Defaults to 12.
     tight_layout : bool
-        :obj:`True` to fit the whole subplots into the figure area,
-        :obj:`False` otherwise. Defaults to :obj:`True`.
-    tight_layout_rect : tuple
+        `True` to fit the whole subplots into the figure area,
+        `False` otherwise. Defaults to `True`.
+    tight_layout_rect : Sequence[float]
         A rectangle (left, bottom, right, top) in the normalized figure
         coordinate that the whole subplots area (including labels) will
         fit into. Defaults to (0, 0, 1, 1).
@@ -284,53 +284,53 @@ def set_axes_properties(ax, **kwargs):
         The x-axis label. Defaults to an empty string.
     x_labelcolor : str
         Color of the x-axis label. Defaults to 'black'.
-    x_lim : tuple
-        Data limits for the x-axis. Defaults to :obj:`None`, i.e., the data limits
+    x_lim : Sequence[int]
+        Data limits for the x-axis. Defaults to `None`, i.e., the data limits
         will be left unchanged.
     invert_xaxis : bool
-        :obj:`True` to make to invert the x-axis, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        `True` to make to invert the x-axis, `False` otherwise.
+        Defaults to `False`.
     x_scale : str
         The x-axis scale. Defaults to 'linear'.
     x_ticks : sequence[float]
-        Sequence of x-axis ticks location. Defaults to :obj:`None`.
+        Sequence of x-axis ticks location. Defaults to `None`.
     x_ticklabels : sequence[str]
-        Sequence of x-axis ticks labels. Defaults to :obj:`None`.
+        Sequence of x-axis ticks labels. Defaults to `None`.
     x_ticklabelcolor : str
         Color for the x-axis ticks labels. Defaults to 'black'.
     xaxis_minor_ticks_visible : bool
-        :obj:`True` to show all ticks, either labelled or unlabelled,
-        :obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+        `True` to show all ticks, either labelled or unlabelled,
+        `False` to show only the labelled ticks. Defaults to `False`.
     xaxis_visible : bool
-        :obj:`False` to make the x-axis invisible. Defaults to :obj:`True`.
+        `False` to make the x-axis invisible. Defaults to `True`.
     y_label : str
         The y-axis label. Defaults to an empty string.
     y_labelcolor : str
         Color of the y-axis label. Defaults to 'black'.
-    y_lim : tuple
-        Data limits for the y-axis. Defaults to :obj:`None`, i.e., the data limits
+    y_lim : Sequence[int]
+        Data limits for the y-axis. Defaults to `None`, i.e., the data limits
         will be left unchanged.
     invert_yaxis : bool
-        :obj:`True` to make to invert the y-axis, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        `True` to make to invert the y-axis, `False` otherwise.
+        Defaults to `False`.
     y_scale : str
         The y-axis scale. Defaults to 'linear'.
     y_ticks : sequence[float]
-        Sequence of y-axis ticks location. Defaults to :obj:`None`.
+        Sequence of y-axis ticks location. Defaults to `None`.
     y_ticklabels : sequence[str]
-        Sequence of y-axis ticks labels. Defaults to :obj:`None`.
+        Sequence of y-axis ticks labels. Defaults to `None`.
     y_ticklabelcolor : str
         Color for the y-axis ticks labels. Defaults to 'black'.
     yaxis_minor_ticks_visible : bool
-        :obj:`True` to show all ticks, either labelled or unlabelled,
-        :obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+        `True` to show all ticks, either labelled or unlabelled,
+        `False` to show only the labelled ticks. Defaults to :obj:`False`.
     yaxis_visible : bool
         :obj:`False` to make the y-axis invisible. Defaults to :obj:`True`.
     z_label : str
         The z-axis label. Defaults to an empty string.
     z_labelcolor : str
         Color of the z-axis label. Defaults to 'black'.
-    z_lim : tuple
+    z_lim : Sequence[int]
         Data limits for the z-axis. Defaults to :obj:`None`, i.e., the data limits
         will be left unchanged.
     invert_zaxis : bool
@@ -355,7 +355,7 @@ def set_axes_properties(ax, **kwargs):
         String specifying the location where the legend should be placed.
         Defaults to 'best'; please see :func:`matplotlib.pyplot.legend` for all
         the available options.
-    legend_bbox_to_anchor : tuple
+    legend_bbox_to_anchor : Sequence[float]
         4-items tuple defining the box used to place the legend. This is used in
         conjuction with `legend_loc` to allow arbitrary placement of the legend.
     legend_framealpha : float
@@ -806,7 +806,7 @@ def set_colorbar(
         Colorbar title. Defaults to an empty string.
     cbar_orientation : str
         Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
-    cbar_ax : tuple
+    cbar_ax : Sequence[int]
         Indices of the figure axes from which space for the colorbar axes
         is stolen. If multiple indices are given, the corresponding axes are
         all evenly resized to make room for the colorbar. If no indices are given,
@@ -848,9 +848,9 @@ def make_lineplot(x, y, ax, **kwargs):
 
     Parameters
     ----------
-    x : numpy.ndarray
+    x : gt4py.storage.storage.Storage
         1-D array gathering the x-coordinates of the points to plot.
-    y : numpy.ndarray
+    y : gt4py.storage.storage.Storage
         1-D array gathering the y-coordinates of the points to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -945,11 +945,11 @@ def make_contour(x, y, field, ax, **kwargs):
 
     Parameters
     ----------
-    x : numpy.ndarray
+    x : gt4py.storage.storage.Storage
         2-D array gathering the x-coordinates of the grid points.
-    y : numpy.ndarray
+    y : gt4py.storage.storage.Storage
         2-D array gathering the y-coordinates of the grid points.
-    field : numpy.ndarray
+    field : gt4py.storage.storage.Storage
         2-D array representing the field to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -1077,7 +1077,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
         Colorbar title. Defaults to an empty string.
     cbar_orientation : str
         Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
-    cbar_ax : tuple
+    cbar_ax : Sequence[int]
         Indices of the figure axes from which space for the colorbar axes
         is stolen. If multiple indices are given, the corresponding axes are
         all evenly resized to make room for the colorbar. If no indices are given,
@@ -1267,7 +1267,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
         Colorbar title. Defaults to an empty string.
     cbar_orientation : str
         Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
-    cbar_ax : tuple
+    cbar_ax : Sequence[int]
         Indices of the figure axes from which space for the colorbar axes
         is stolen. If multiple indices are given, the corresponding axes are
         all evenly resized to make room for the colorbar. If no indices are given,
@@ -1277,7 +1277,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
     quiverkey_on : bool
         :obj:`True` to show the quiver key box, :obj:`False` otherwise.
         Defaults to :obj:`False`.
-    quiverkey_loc : tuple
+    quiverkey_loc : Sequence[float]
         2-item tuple specifying the location in normalized figure coordinates
         of the quiver key box.
     quiverkey_length : float
@@ -1450,7 +1450,7 @@ def make_circle(ax, **kwargs):
 
     Keyword arguments
     -----------------
-    xy : tuple
+    xy : Sequence[float]
         2-item tuple storing the coordinates of the circle center.
         Defaults to (0.0, 0.0).
     radius : float
@@ -1485,7 +1485,7 @@ def make_rectangle(ax, **kwargs):
 
     Keyword arguments
     -----------------
-    xy : tuple
+    xy : Sequence[float]
         2-item tuple storing the coordinates of the bottom left
         corner of the rectangle.
     width : float

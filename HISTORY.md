@@ -1,15 +1,17 @@
 # What's New
 
-## v0.6.0 (branch: `new_calling_api`)
+## v0.6.0 (branch: `new_calling_api`, `ibm`)
 
-- Migrate to the new stencil calling API of GridTools4py.
+- Migrate to the new stencil calling API of GT4Py.
 - Support to both device and managed memory for GPU storages.
 
 ## v0.5.0 (branch: `new_storage_api`)
 
-- Migrate to the new storage API of GridTools4Py.
-- GPU storages are allocated as managed memory. Because of some bugs in the implementation of the ufuncs, 
-the isentropic model does not run with the `gtcuda` backend as the state cannot be initialized.
+- Migrate to the new storage API of GT4Py.
+- GPU storages are allocated as managed memory. Because of some bugs in the 
+    implementation of the ufuncs, 
+the isentropic model does not run with the `gtcuda` backend as the state cannot 
+    be initialized.
 
 ## v0.4.0 (branch: `gt4py_v04_2`)
 
@@ -22,10 +24,10 @@ the isentropic model does not run with the `gtcuda` backend as the state cannot 
 
 ## v0.2.0 (branch: `gt4py_v04_0`)
 
-- Upgrade to GridTools4Py-v0.4.0.
+- Upgrade to GT4Py-v0.4.0.
 - Pass dedicated storages to the stencils. The storages *do not* subclass `numpy.ndarray`.
 
 ## v0.1.0 (branch: `gt4py_v03`)
 
-- Leverage GridTools4Py-v0.3.0.
+- Leverage GT4Py-v0.3.0.
 

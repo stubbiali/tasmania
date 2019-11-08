@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import timedelta
 import netCDF4 as nc4
 import numpy as np
@@ -56,8 +55,6 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         aliases=None,
     ):
         """
-        The constructor.
-
         Parameters
         ----------
         filename : str
@@ -71,19 +68,17 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
                 * 'physical';
                 * 'numerical'.
 
-        time_units : str, optional
+        time_units : `str`, optional
             The units in which time will be
             stored in the NetCDF file. Time is stored as an integer
             number of these units. Default is seconds.
-        store_names : iterable of str, optional
-            Names of quantities to store. If not given,
-            all quantities are stored.
-        write_on_store : bool, optional
-            If True, stored changes are immediately written to file.
+        store_names : `Sequence[str]`, optional
+            Names of quantities to store. If not given, all quantities are stored.
+        write_on_store : `bool`, optional
+            If `True`, stored changes are immediately written to file.
             This can result in many file open/close operations.
-            Default is to write only when the write() method is
-            called directly.
-        aliases : dict
+            Default is to write only when the write() method is called directly.
+        aliases : `dict[str, str]`, optional
             A dictionary of string replacements to apply to state variable
             names before saving them in netCDF files.
         """
@@ -311,7 +306,7 @@ def load_netcdf_dataset(filename):
     grid_type : str
         The type of the underlying grid over which the states are defined.
         Either 'physical' or 'numerical'.
-    states : list[dict]
+    states : list[dict[str, sympl.DataArray]]
         The list of state dictionaries stored in the NetCDF file.
     """
     with xr.open_dataset(filename) as dataset:

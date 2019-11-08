@@ -1,4 +1,4 @@
-This folder contains the scripts to simulate two convenient test cases for the 
+This folder contains the scripts to simulate two benchmark test cases for the 
 Burgers' equations (`burgers/`) and the isentropic model (`isentropic/`).
 
 The scripts are named `driver_namelist_{suffix}.py`. The suffix `{suffix}` denotes 
@@ -14,7 +14,7 @@ the physics-dynamics coupling strategy which is used:
 The user can modify the settings of the driver by editing the associated namelist
 file `namelist_{suffix}.py`. Some of the most useful namelist variables are: 
 
-  - `gt_kwargs`: dictionary collecting all GridTools4Py configs (e.g. backend, dtype,
+  - `gt_kwargs`: dictionary collecting all GT4Py configs (e.g. backend, dtype,
     default origin);
   - `domain_x`, `domain_y`: domain boundaries along the two horizontal dimensions;
   - `nx`, `ny`: number of grid points along the two horizontal dimensions;
@@ -29,9 +29,15 @@ file `namelist_{suffix}.py`. Some of the most useful namelist variables are:
   - `print_frequency`: set the frequency of printing insightful diagnostics to screen;
     if negative, information is printed only at the end of the last iteration.
     
-To run a driver, enter the corresponding folder and issue
+To run a driver using the associated namelist, enter the corresponding folder and issue
 
     python driver_namelist_{suffix}.py
+    
+For the isentropic model, the namelist can be specified as command-line argument:
+
+    python <driver> -n <namelist> 
+    
+For `driver_namelist_{suffix}.py`, `<namelist>` defaults to `namelist_{suffix}.py`.
     
 To compare two solutions (e.g. solutions computed using two different backends),
 one could use the `compare_solutions.py` script in the `{REPO_ROOT}/scripts/` folder.

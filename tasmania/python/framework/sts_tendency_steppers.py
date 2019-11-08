@@ -68,9 +68,7 @@ def rk2_stage_0(
     dt: float
 ):
     with computation(PARALLEL), interval(...):
-        out_field = 0.5 * (
-            in_field + in_field_prv + dt * in_tnd
-        )
+        out_field = 0.5 * (in_field + in_field_prv + dt * in_tnd)
 
 
 def rk3ws_stage_0(
@@ -82,9 +80,7 @@ def rk3ws_stage_0(
     dt: float
 ):
     with computation(PARALLEL), interval(...):
-        out_field = (
-            2.0 * in_field[0, 0, 0] + in_field_prv[0, 0, 0] + dt * in_tnd
-        ) / 3.0
+        out_field = (2.0 * in_field + in_field_prv + dt * in_tnd) / 3.0
 
 
 def tendencystepper_factory(scheme):
@@ -146,9 +142,9 @@ class STSTendencyStepper(abc.ABC):
             String specifying the runtime mode in which parameterizations
             should be invoked. See :class:`tasmania.ConcurrentCoupling`.
         enforce_horizontal_boundary : `bool`, optional
-            :obj:`True` if the class should enforce the lateral boundary
+            `True` if the class should enforce the lateral boundary
             conditions after each stage of the time integrator,
-            :obj:`False` otherwise. Defaults to :obj:`False`.
+            `False` otherwise. Defaults to `False`.
             This argument is considered only if at least one of the wrapped
             objects is an instance of
 
@@ -210,8 +206,8 @@ class STSTendencyStepper(abc.ABC):
         """
         Return
         ------
-        obj :
-            The :class:`tasmania.ConcurrentCoupling` calculating the tendencies.
+        tasmania.ConcurrentCoupling :
+            The object calculating the tendencies.
         """
         return self._prognostic
 
@@ -219,7 +215,7 @@ class STSTendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, str] :
             Dictionary whose keys are strings denoting model variables
             which should be present in the input state dictionary, and
             whose values are dictionaries specifying fundamental properties
@@ -253,7 +249,7 @@ class STSTendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting model variables
             which should be present in the provisional input state dictionary,
             and whose values are dictionaries specifying fundamental properties
@@ -272,7 +268,7 @@ class STSTendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting diagnostics
             which are retrieved from the input state dictionary, and
             whose values are dictionaries specifying fundamental
@@ -284,7 +280,7 @@ class STSTendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting model variables
             present in the output state dictionary, and whose values are
             dictionaries specifying fundamental properties (dims, units)
@@ -298,24 +294,19 @@ class STSTendencyStepper(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             The current state dictionary.
-        prv_state : dict
+        prv_state : dict[str, sympl.DataArray]
             The provisional state dictionary.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the time step.
+        timestep : datetime.timedelta
+            The time step.
 
         Return
         ------
-        diagnostics : dict
-            Dictionary whose keys are strings denoting diagnostic
-            variables retrieved from the input state, and whose values
-            are :class:`sympl.DataArray`\s storing values for those
-            variables.
-        out_state : dict
-            Dictionary whose keys are strings denoting the output model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
+        diagnostics : dict[str, sympl.DataArray]
+            The diagnostics retrieved from the input state.
+        out_state : dict[str, sympl.DataArray]
+            The output (stepped) state.
         """
         self._input_checker.check_inputs(state)
         self._provisional_input_checker.check_inputs(prv_state)
@@ -342,24 +333,19 @@ class STSTendencyStepper(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             The current state dictionary.
-        prv_state : dict
+        prv_state : dict[str, sympl.DataArray]
             The provisional state dictionary.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the time step.
+        timestep : datetime.timedelta
+            The time step.
 
         Return
         ------
-        diagnostics : dict
-            Dictionary whose keys are strings denoting diagnostic
-            variables retrieved from the input state, and whose values
-            are :class:`sympl.DataArray`\s storing values for those
-            variables.
-        out_state : dict
-            Dictionary whose keys are strings denoting the output model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
+        diagnostics : dict[str, sympl.DataArray]
+            The diagnostics retrieved from the input state.
+        out_state : dict[str, sympl.DataArray]
+            The output (stepped) state.
         """
         pass
 

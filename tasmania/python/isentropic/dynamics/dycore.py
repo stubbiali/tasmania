@@ -89,7 +89,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         rebuild=False,
         storage_shape=None,
         managed_memory=False,
-        **kwargs
     ):
         """
         Parameters
@@ -146,27 +145,26 @@ class IsentropicDynamicalCore(DynamicalCore):
             of the dynamical core.
             This parameter is ignored if `substeps` argument is not positive.
         moist : bool
-            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` for a moist dynamical core, `False` otherwise.
+            Defaults to `False`.
         time_integration_scheme : str
             String specifying the time stepping method to implement.
-            See :class:`tasmania.IsentropicMinimalPrognostic`
+            See :class:`tasmania.IsentropiPrognostic`
             for all available options. Defaults to 'forward_euler'.
         horizontal_flux_scheme : str
             String specifying the numerical horizontal flux to use.
-            See :class:`tasmania.HorizontalIsentropicMinimalFlux`
+            See :class:`tasmania.HorizontalIsentropicFlux`
             for all available options. Defaults to 'upwind'.
         time_integration_properties : dict
             Additional properties to be passed to the constructor of
-            :class:`~tasmania.python.isentropic.dynamics.IsentropicPrognostic`
-            as keyword arguments.
+            :class:`tasmania.IsentropicPrognostic` as keyword arguments.
         damp : `bool`, optional
-            :obj:`True` to enable vertical damping, :obj:`False` otherwise.
-            Defaults to :obj:`True`.
+            `True` to enable vertical damping, `False` otherwise.
+            Defaults to `True`.
         damp_at_every_stage : `bool`, optional
-            :obj:`True` to carry out the damping at each stage of the multi-stage
-            time-integrator, :obj:`False` to carry out the damping only at the end
-            of each timestep. Defaults to :obj:`True`.
+            `True` to carry out the damping at each stage of the multi-stage
+            time-integrator, `False` to carry out the damping only at the end
+            of each timestep. Defaults to `True`.
         damp_type : `str`, optional
             String specifying the vertical damping scheme to implement.
             See :class:`tasmania.VerticalDamping` for all available options.
@@ -176,12 +174,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         damp_max : `float`, optional
             Maximum value for the damping coefficient. Defaults to 0.0002.
         smooth : `bool`, optional
-            :obj:`True` to enable horizontal numerical smoothing, :obj:`False` otherwise.
-            Defaults to :obj:`True`.
+            `True` to enable horizontal numerical smoothing, `False` otherwise.
+            Defaults to `True`.
         smooth_at_every_stage : `bool`, optional
-            :obj:`True` to apply numerical smoothing at each stage of the time-
-            integrator, :obj:`False` to apply numerical smoothing only at the end
-            of each timestep. Defaults to :obj:`True`.
+            `True` to apply numerical smoothing at each stage of the time-
+            integrator, `False` to apply numerical smoothing only at the end
+            of each timestep. Defaults to `True`.
         smooth_type: `str`, optional
             String specifying the smoothing technique to implement.
             See :class:`tasmania.HorizontalSmoothing` for all available options.
@@ -195,12 +193,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region. Defaults to 10.
         smooth_moist : `bool`, optional
-            :obj:`True` to enable horizontal numerical smoothing on the water constituents,
-            :obj:`False` otherwise. Defaults to :obj:`True`.
+            `True` to enable horizontal numerical smoothing on the water constituents,
+            `False` otherwise. Defaults to `True`.
         smooth_moist_at_every_stage : `bool`, optional
-            :obj:`True` to apply numerical smoothing on the water constituents
-            at each stage of the time-integrator, :obj:`False` to apply numerical
-            smoothing only at the end of each timestep. Defaults to :obj:`True`.
+            `True` to apply numerical smoothing on the water constituents
+            at each stage of the time-integrator, `False` to apply numerical
+            smoothing only at the end of each timestep. Defaults to `True`.
         smooth_moist_type: `str`, optional
             String specifying the smoothing technique to apply on the water constituents.
             See :class:`tasmania.HorizontalSmoothing` for all available options.
@@ -220,21 +218,19 @@ class IsentropicDynamicalCore(DynamicalCore):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
-        managed_memory : bool
+        managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
-        **kwargs :
-            TODO
         """
         #
         # set storage shape
@@ -953,12 +949,6 @@ class IsentropicDynamicalCore(DynamicalCore):
             s_new, sqr_new, self._qr_new
         )
         raw_state_new[mfpw] = self._qr_new
-
-        # restrict the state onto the numerical grid
-        # raw_state_new_min = {"time": raw_state_new["time"]}
-        # for key in raw_state_new:
-        #     if key != "time":
-        #         raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
 
         # apply the lateral boundary conditions
         hb.dmn_enforce_raw(raw_state_new, out_properties)

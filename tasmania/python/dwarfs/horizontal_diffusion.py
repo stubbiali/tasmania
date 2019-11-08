@@ -63,7 +63,7 @@ class HorizontalDiffusion(abc.ABC):
         """
         Parameters
         ----------
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays for which tendencies should be computed.
         dx : float
             The grid spacing along the first horizontal dimension.
@@ -83,11 +83,11 @@ class HorizontalDiffusion(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : tuple
+        default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
@@ -103,10 +103,6 @@ class HorizontalDiffusion(abc.ABC):
         self._exec_info = exec_info
 
         # initialize the diffusivity
-        # gamma = diffusion_coeff * ones(
-        #     (shape[0], shape[1], shape[2]), backend, dtype, default_origin, mask=[True, True, True]
-        #     # (1, 1, shape[2]), backend, dtype, default_origin, mask=[False, False, True]
-        # )
         gamma = zeros(
             (shape[0], shape[1], shape[2]),
             backend,
@@ -129,7 +125,6 @@ class HorizontalDiffusion(abc.ABC):
             )
 
         # initialize the underlying stencil
-        name = self.__class__.__name__
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             name=self.__class__.__name__,
@@ -146,10 +141,10 @@ class HorizontalDiffusion(abc.ABC):
 
         Parameters
         ----------
-        phi : gridtools.storage.Storage
+        phi : gt4py.storage.storage.Storage
             The 3-D prognostic field.
-        phi_tnd : gridtools.storage.Storage
-            Buffer where the calculated tendency will be written.
+        phi_tnd : gt4py.storage.storage.Storage
+            Buffer into which the calculated tendency is written.
         """
         pass
 
@@ -176,13 +171,13 @@ class HorizontalDiffusion(abc.ABC):
         """
         Parameters
         ----------
-        diffusion_type : string
+        diffusion_type : str
             String specifying the diffusion technique to implement. Either:
 
             * 'second_order', for second-order computational diffusion;
             * 'fourth_order', for fourth-order computational diffusion.
 
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays for which tendencies should be computed.
         dx : float
             The grid spacing along the first horizontal dimension.
@@ -203,11 +198,11 @@ class HorizontalDiffusion(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,

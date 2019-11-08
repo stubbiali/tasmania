@@ -48,12 +48,12 @@ class SequentialUpdateSplitting:
 
     Attributes
     ----------
-    input_properties : dict
+    input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables
         which should be present in the input state, and whose values
         are dictionaries specifying fundamental properties (dims, units)
         of those variables.
-    output_properties : dict
+    output_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables
         which will be present in the input state when the call operator
         returns, and whose values are dictionaries specifying fundamental
@@ -102,6 +102,7 @@ class SequentialUpdateSplitting:
                         - :class:`tasmania.ConcurrentCoupling`
 
                     representing the process;
+
                 * if 'component' is a
 
                         - :class:`sympl.TendencyComponent`,
@@ -117,8 +118,7 @@ class SequentialUpdateSplitting:
                         - 'rk2', for the two-stage second-order Runge-Kutta (RK) scheme;
                         - 'rk3ws', for the three-stage RK scheme as used in the
                             `COSMO model <http://www.cosmo-model.org>`_; this method is
-                            nominally second-order, and third-order for linear problems;
-                        - 'rk3', for the three-stages, third-order RK scheme.
+                            nominally second-order, and third-order for linear problems.
 
                 * if 'component' is a
 
@@ -135,7 +135,7 @@ class SequentialUpdateSplitting:
                         - backend (str): The GT4Py backend;
                         - backend_opts (dict): Dictionary of backend-specific options;
                         - build_info (dict): Dictionary of building options;
-                        - dtype (numpy.dtype): Data type of the storages;
+                        - dtype (data-type): Data type of the storages;
                         - exec_info (dict): Dictionary which will store statistics
                             and diagnostics gathered at run time;
                         - default_origin (tuple): Storage default origin;
@@ -149,10 +149,11 @@ class SequentialUpdateSplitting:
                         - :class:`tasmania.ImplicitTendencyComponent`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'enforce_horizontal_boundary' is either :obj:`True` if the
+                    'enforce_horizontal_boundary' is either `True` if the
                     boundary conditions should be enforced after each stage of
-                    the time integrator, or :obj:`False` not to apply the boundary
-                    constraints at all. Defaults to :obj:`False`;
+                    the time integrator, or `False` not to apply the boundary
+                    constraints at all. Defaults to `False`;
+
                 * if 'component' is a
 
                         - :class:`sympl.TendencyComponent`,
@@ -230,16 +231,16 @@ class SequentialUpdateSplitting:
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             Model state dictionary representing the model state to integrate.
             Its keys are strings denoting the model variables, and its values
             are :class:`sympl.DataArray`\s storing data for those variables.
-        timestep : timedelta
+        timestep : datetime.timedelta
             :class:`datetime.timedelta` representing the timestep size.
 
         Note
         ----
-        :obj:`state` is modified in-place to represent the final model state.
+        `state` is modified in-place to represent the final model state.
         """
         current_time = state["time"]
 

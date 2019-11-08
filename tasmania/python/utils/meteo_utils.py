@@ -69,21 +69,21 @@ def get_isothermal_isentropic_analytical_solution(
     grid : obj
         :class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
         It must consist of only one points in the :math:`y`-direction.
-    x_velocity_initial : dataarray_like
+    x_velocity_initial : sympl.DataArray
         One-item :class:`sympl.DataArray` representing the initial :math:`x`-velocity.
-    temperature : dataarray_like
+    temperature : sympl.DataArray
         One-item :class:`sympl.DataArray` representing the uniform air temperature.
-    mountain_height : dataarray_like
+    mountain_height : sympl.DataArray
         One-item :class:`sympl.DataArray` representing the maximum mountain height.
-    mountain_width : dataarray_like
+    mountain_width : sympl.DataArray
         One-item :class:`sympl.DataArray` representing the mountain half-width
         at half-height.
     x_staggered : `bool`, optional
-        :obj:`True` if the solution should be staggered in the :math:`x`-direction,
-        :obj:`False` otherwise. Default is :obj:`True`.
+        `True` if the solution should be staggered in the :math:`x`-direction,
+        `False` otherwise. Default is `True`.
     z_staggered : `bool`, optional
-        :obj:`True` if the solution should be staggered in the vertical direction,
-        :obj:`False` otherwise. Default is :obj:`False`.
+        `True` if the solution should be staggered in the vertical direction,
+        `False` otherwise. Default is `False`.
     physical_constants : `dict_like`, optional
         Dictionary whose keys are strings indicating physical constants used
         within this object, and whose values are :class:`sympl.DataArray`\s
@@ -103,9 +103,9 @@ def get_isothermal_isentropic_analytical_solution(
 
     Returns
     -------
-    u : dataarray_like
+    u : sympl.DataArray
         :class:`sympl.DataArray` representing the :math:`x`-velocity.
-    w : dataarray_like
+    w : sympl.DataArray
         :class:`sympl.DataArray` representing the vertical velocity.
 
     References
@@ -198,7 +198,7 @@ def get_isothermal_isentropic_analytical_solution(
     return u, w
 
 
-def convert_relative_humidity_to_water_vapor(method, p, T, rh):
+def convert_relative_humidity_to_water_vapor(method, p, t, rh):
     """
     Convert relative humidity to water vapor mixing ratio.
 
@@ -211,17 +211,17 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
             * 'teten', for the Teten's formula;
             * 'goff_gratch', for the Goff-Gratch formula.
 
-    p : dataarray_like
-        :class:`sympl.DataArray` representing the pressure.
-    T : dataarray_like
-        :class:`sympl.DataArray` representing the temperature.
-    rh : dataarray_like
-        :class:`sympl.DataArray` representing the relative humidity.
+    p : sympl.DataArray
+        The pressure.
+    T : sympl.DataArray
+        The temperature.
+    rh : sympl.DataArray
+        The relative humidity.
 
     Return
     ------
     array_like :
-        :class:`numpy.ndarray` representing the mass fraction of water vapor,
+        :class:`gt4py.storage.storage.Storage` representing the mass fraction of water vapor,
         in units of ([:math:`g \, g^{-1}`]).
 
     References
@@ -231,14 +231,14 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
     """
     # Extract the raw arrays
     p_ = p.to_units("Pa").values
-    T_ = T.to_units("K").values
+    t_ = t.to_units("K").values
     rh_ = rh.to_units("1").values
 
     # Get the saturation water vapor pressure
     if method == "tetens":
-        p_sat = tetens_formula(T_)
+        p_sat = tetens_formula(t_)
     elif method == "goff_gratch":
-        p_sat = goff_gratch_formula(T_)
+        p_sat = goff_gratch_formula(t_)
     else:
         raise ValueError(
             "Unknown formula to compute the saturation water vapor pressure. "
@@ -250,7 +250,7 @@ def convert_relative_humidity_to_water_vapor(method, p, T, rh):
 
     # Compute the mixing ratio of water vapor
     B = 0.62198
-    qv = deepcopy(T_)
+    qv = deepcopy(t_)
     for i in range(qv.shape[0]):
         for j in range(qv.shape[1]):
             for k in range(qv.shape[2]):
@@ -270,12 +270,12 @@ def tetens_formula(t):
 
     Parameters
     ----------
-    t : numpy.ndarray
+    t : array_like
         The temperature in [K].
 
     Return
     ------
-    numpy.ndarray :
+    array_like :
         The saturation water vapor pressure in [Pa].
     """
     pw = 610.78
@@ -299,12 +299,12 @@ def goff_gratch_formula(t):
 
     Parameters
     ----------
-    t : numpy.ndarray
+    t : array_like
         The temperature in [K].
 
     Return
     ------
-    numpy.ndarray :
+    array_like :
         The saturation water vapor pressure in [Pa].
 
     References

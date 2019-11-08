@@ -81,10 +81,10 @@ class TimeSeries(Drawer):
 			is defined is assumed to be the initial time of the simulation.
 		time_units : `str`, optional
 			Units for time. Defaults to 's' (seconds).
-			Only effective if :obj:`time_mode` set on 'elapsed'.
+			Only effective if `time_mode` set on 'elapsed'.
 		time_on_xaxis : `bool`, optional
-			:obj:`True` to place time on the plot x-axis, :obj:`False` otherwise.
-			Defaults to :obj:`True`.
+			`True` to place time on the plot x-axis, `False` otherwise.
+			Defaults to `True`.
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			settings, and whose values specify values for those settings.

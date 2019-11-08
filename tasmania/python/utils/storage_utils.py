@@ -31,7 +31,7 @@ def get_dataarray_2d(
     array, grid, units, name=None, grid_origin=None, grid_shape=None, set_coordinates=True
 ):
     """
-    Create a DataArray out of a 2-D ndarray-like storage.
+    Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
 
     Parameters
     ----------
@@ -43,19 +43,19 @@ def get_dataarray_2d(
         The variable units.
     name : `str`, optional
         The variable name. Defaults to `None`.
-    grid_origin : `sequence`, optional
+    grid_origin : `Sequence[int]`, optional
         The index of the element in the buffer associated with the (0, 0)
         grid point. If not specified, it is assumed that `grid_origin = (0, 0)`.
-    grid_shape : `sequence`, optional
+    grid_shape : `Sequence[int]`, optional
         The shape of grid underlying the field. It cannot exceed the shape
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        TODO
+        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
-    dataarray-like :
+    sympl.DataArray :
         The :class:`sympl.DataArray` whose value array is `array`,
         whose coordinates and dimensions are retrieved from `grid`,
         and whose units are `units`.
@@ -120,19 +120,19 @@ def get_dataarray_3d(
         The variable units.
     name : `str`, optional
         The variable name. Defaults to `None`.
-    grid_origin : `sequence`, optional
+    grid_origin : `Sequence[int]`, optional
         The index of the element in the buffer associated with the (0, 0, 0)
         grid point. If not specified, it is assumed that `grid_origin = (0, 0, 0)`.
-    grid_shape : `sequence`, optional
+    grid_shape : `Sequence[int]`, optional
         The shape of grid underlying the field. It cannot exceed the shape
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        TODO
+        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
-    dataarray-like :
+    sympl.DataArray :
         The :class:`sympl.DataArray` whose value array is `array`,
         whose coordinates and dimensions are retrieved from `grid`,
         and whose units are `units`.
@@ -228,22 +228,22 @@ def get_dataarray_dict(array_dict, grid, properties, set_coordinates=True):
     """
     Parameters
     ----------
-    array_dict : dict
+    array_dict[str, array_like] dict
         Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`numpy.ndarray`\s
-        containing the data for those variables.
+        included in the model state, and values are :class:`numpy.ndarray`-like
+        arrays containing the data for those variables.
     grid : tasmania.Grid
         The underlying grid.
-    properties : dict
+    properties : dict[str, str]
         Dictionary whose keys are strings indicating the variables
         included in the model state, and values are strings indicating
         the units in which those variables should be expressed.
     set_coordinates : `bool`, optional
-        TODO
+        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating the variables
         included in the model state, and values are :class:`sympl.DataArray`\s
         containing the data for those variables.
@@ -286,18 +286,19 @@ def get_array_dict(dataarray_dict, properties):
     """
     Parameters
     ----------
-    dataarray_dict : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`sympl.DataArray`\s
-        containing the data for those variables.
-    properties : dict
-        TODO
+    dataarray_dict : dict[str, sympl.DataArray]
+        Dictionary whose keys are strings indicating variable names, and values
+        are :class:`sympl.DataArray`\s containing the data for those variables.
+    properties : dict[str, dict]
+        Dictionary whose keys are strings indicating the variable names in
+        `dataarray_dict`, and values are dictionaries storing fundamental
+        properties (units) for those variables.
 
     Return
     ------
-    dict :
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`numpy.ndarray`\s
+    dict[str, array_like] :
+        Dictionary whose keys are strings indicating the variable names in
+        `dataarray_dict`,  and values are :class:`numpy.ndarray`-like arrays
         containing the data for those variables.
     """
     try:

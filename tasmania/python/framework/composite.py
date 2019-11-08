@@ -32,17 +32,17 @@ class DiagnosticComponentComposite:
 
     Attributes
     ----------
-    input_properties : dict
+    input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables
         which should be present in the input state dictionary, and
         whose values are dictionaries specifying fundamental properties
         (dims, units) of those variables.
-    diagnostic_properties : dict
+    diagnostic_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables
         retrieved from the input state dictionary, and whose values
         are dictionaries specifying fundamental properties (dims, units)
         of those variables.
-    output_properties : dict
+    output_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables which
         will be present in the input state dictionary when the call operator
         returns, and whose values are dictionaries specifying fundamental
@@ -53,7 +53,7 @@ class DiagnosticComponentComposite:
         """
         Parameters
         ----------
-        *args :
+        *args : sympl.Diagnostic
             The :class:`sympl.Diagnostic`\s to wrap and chain.
         execution_policy : `str`, optional
             String specifying the runtime policy according to which parameterizations
@@ -91,14 +91,14 @@ class DiagnosticComponentComposite:
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             The input model state as a dictionary whose keys are strings denoting
             model variables, and whose values are :class:`sympl.DataArray`\s storing
             data for those variables.
 
         Return
         ------
-        dict :
+        dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting diagnostic variables,
             and whose values are :class:`sympl.DataArray`\s storing data for
             those variables.

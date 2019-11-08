@@ -21,7 +21,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # burgers
+from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
+from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
@@ -154,8 +156,10 @@ __version__ = "0.6.0"
 
 __all__ = (
     Animation,
+    BurgersAdvection,
     BurgersDynamicalCore,
     BurgersHorizontalDiffusion,
+    BurgersStepper,
     CDF,
     Circle,
     Clipping,

@@ -117,16 +117,16 @@ class KesslerMicrophysics(TendencyComponent):
                 * 'numerical' (default).
 
         air_pressure_on_interface_levels : `bool`, optional
-            :obj:`True` (respectively, :obj:`False`) if the input pressure
+            `True` (respectively, `False`) if the input pressure
             field is defined at the interface (resp., main) levels.
-            Defaults to :obj:`True`.
+            Defaults to `True`.
         tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
-            :obj:`True` to include the tendency for the potential
+            `True` to include the tendency for the potential
             temperature in the output dictionary collecting the diagnostics,
-            :obj:`False` otherwise. Defaults to :obj:`False`.
+            `False` otherwise. Defaults to `False`.
         rain_evaporation : `bool`, optional
-            :obj:`True` if the evaporation of raindrops should be taken
-            into account, :obj:`False` otherwise. Defaults to :obj:`True`.
+            `True` if the evaporation of raindrops should be taken
+            into account, `False` otherwise. Defaults to `True`.
         autoconversion_threshold : `sympl.DataArray`, optional
             Autoconversion threshold, in units compatible with [g g^-1].
         autoconversion_rate : `sympl.DataArray`, optional
@@ -139,7 +139,7 @@ class KesslerMicrophysics(TendencyComponent):
                 * 'tetens' (default) for the Tetens' equation;
                 * 'goff_gratch' for the Goff-Gratch equation.
 
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -152,21 +152,22 @@ class KesslerMicrophysics(TendencyComponent):
                     [J kg^-1].
 
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
@@ -440,39 +441,36 @@ class KesslerMicrophysics(TendencyComponent):
             p_mbar = 0.01 * p
 
             # compute the saturation mixing ratio of water vapor
-            qvs = beta * in_ps[0, 0, 0] / (p[0, 0, 0] - in_ps[0, 0, 0])
+            qvs = beta * in_ps / (p - in_ps)
 
             # compute the contribution of autoconversion to rain development
-            ar = k1 * (in_qc[0, 0, 0] > a) * (in_qc[0, 0, 0] - a)
+            ar = k1 * (in_qc > a) * (in_qc - a)
 
             # compute the contribution of accretion to rain development
-            cr = k2 * in_qc[0, 0, 0] * (in_qr[0, 0, 0] ** 0.875)
+            cr = k2 * in_qc * (in_qr ** 0.875)
 
             if rain_evaporation:  # compile-time if
                 # compute the contribution of evaporation to rain development
-                c = 1.6 + 124.9 * ((rho_gcm3[0, 0, 0] * in_qr[0, 0, 0]) ** 0.2046)
+                c = 1.6 + 124.9 * ((rho_gcm3 * in_qr) ** 0.2046)
                 er = (
-                    (1.0 - in_qv[0, 0, 0] / qvs[0, 0, 0])
-                    * c[0, 0, 0]
-                    * ((rho_gcm3[0, 0, 0] * in_qr[0, 0, 0]) ** 0.525)
-                    / (
-                        rho_gcm3[0, 0, 0]
-                        * (5.4e5 + 2.55e6 / (p_mbar[0, 0, 0] * qvs[0, 0, 0]))
-                    )
+                    (1.0 - in_qv / qvs)
+                    * c
+                    * ((rho_gcm3 * in_qr) ** 0.525)
+                    / (rho_gcm3 * (5.4e5 + 2.55e6 / (p_mbar * qvs)))
                 )
 
             # calculate the tendencies
             if not rain_evaporation:  # compile-time if
-                out_qc_tnd = -(ar[0, 0, 0] + cr[0, 0, 0])
-                out_qr_tnd = ar[0, 0, 0] + cr[0, 0, 0]
+                out_qc_tnd = -(ar + cr)
+                out_qr_tnd = ar + cr
             else:
-                out_qv_tnd = er[0, 0, 0]
-                out_qc_tnd = -(ar[0, 0, 0] + cr[0, 0, 0])
-                out_qr_tnd = ar[0, 0, 0] + cr[0, 0, 0] - er[0, 0, 0]
+                out_qv_tnd = er
+                out_qc_tnd = -(ar + cr)
+                out_qr_tnd = ar + cr - er
 
             # compute the change over time in potential temperature
             if rain_evaporation:  # compile-time if
-                out_theta_tnd = -lhvw / exn[0, 0, 0] * er[0, 0, 0]
+                out_theta_tnd = -lhvw / exn * er
 
 
 class KesslerSaturationAdjustment(DiagnosticComponent):
@@ -531,15 +529,10 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
                 * 'numerical' (default).
 
         air_pressure_on_interface_levels : `bool`, optional
-            :obj:`True` (respectively, :obj:`False`) if the input pressure
+            `True` (respectively, `False`) if the input pressure
             field is defined at the interface (resp., main) levels.
-            Defaults to :obj:`True`.
-        backend : `obj`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
-        physical_constants : `dict`, optional
+            Defaults to `True`.
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -554,21 +547,22 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
                     with [J K^-1 kg^-1].
 
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         """
@@ -727,24 +721,20 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             if air_pressure_on_interface_levels:  # compile-time if
                 p = 0.5 * (in_p[0, 0, 0] + in_p[0, 0, 1])
             else:
-                p = in_p[0, 0, 0]
+                p = in_p
 
             # compute the saturation mixing ratio of water vapor
-            qvs = beta * in_ps[0, 0, 0] / (p[0, 0, 0] - in_ps[0, 0, 0])
+            qvs = beta * in_ps / (p - in_ps)
 
             # compute the amount of latent heat released by the condensation of cloud liquid water
-            sat = (qvs[0, 0, 0] - in_qv[0, 0, 0]) / (
-                1.0 + qvs[0, 0, 0] * 4093.0 * lhvw / (cp * (in_t[0, 0, 0] - 36) ** 2.0)
-            )
+            sat = (qvs - in_qv) / (1.0 + qvs * 4093.0 * lhvw / (cp * (in_t - 36) ** 2.0))
 
             # compute the source term representing the evaporation of cloud liquid water
-            dlt = (sat[0, 0, 0] <= in_qc[0, 0, 0]) * sat[0, 0, 0] + (
-                sat[0, 0, 0] > in_qc[0, 0, 0]
-            ) * in_qc[0, 0, 0]
+            dlt = (sat <= in_qc) * sat + (sat > in_qc) * in_qc
 
             # perform the adjustment
-            out_qv = in_qv[0, 0, 0] + dlt[0, 0, 0]
-            out_qc = in_qc[0, 0, 0] - dlt[0, 0, 0]
+            out_qv = in_qv + dlt
+            out_qc = in_qc - dlt
 
 
 class KesslerFallVelocity(DiagnosticComponent):
@@ -786,21 +776,22 @@ class KesslerFallVelocity(DiagnosticComponent):
                 * 'numerical' (default).
 
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         """
@@ -889,9 +880,8 @@ class KesslerFallVelocity(DiagnosticComponent):
         with computation(PARALLEL), interval(...):
             out_vt = (
                 36.34
-                * (1.0e-3 * in_rho[0, 0, 0] * (in_qr[0, 0, 0] > 0.0) * in_qr[0, 0, 0])
-                ** 0.1346
-                * (in_rho_s[0, 0, 0] / in_rho[0, 0, 0]) ** 0.5
+                * (1.0e-3 * in_rho * (in_qr > 0.0) * in_qr) ** 0.1346
+                * (in_rho_s / in_rho) ** 0.5
             )
 
 
@@ -937,26 +927,26 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         maximum_vertical_cfl : `float`, optional
             Maximum allowed vertical CFL number. Defaults to 0.975.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent
-            :class:`~tasmania.ImplicitTendencyComponent`.
+            Additional keyword arguments to be directly forwarded to the parent class.
         """
         super().__init__(domain, grid_type, **kwargs)
 
@@ -1075,4 +1065,4 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             out_qr = 0.0
         with computation(PARALLEL), interval(sflux_extent, None):
             out_dfdz = sflux(rho=in_rho, h=h, q=in_qr, vt=in_vt)
-            out_qr = out_dfdz[0, 0, 0] / in_rho[0, 0, 0]
+            out_qr = out_dfdz / in_rho

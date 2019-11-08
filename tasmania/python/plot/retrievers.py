@@ -75,7 +75,7 @@ class DataRetriever:
 
 		Parameters
 		----------
-		state : dict
+		state : dict[str, sympl.DataArray]
 			The state dictionary from which pulling the field out.
 
 		Returns

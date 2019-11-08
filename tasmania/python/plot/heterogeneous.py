@@ -52,7 +52,7 @@ class Line(Drawer):
         """
 		Parameters
 		----------
-		grids : tuple[tasmania.Grid]
+		grids : Sequence[tasmania.Grid]
 			The :class:`tasmania.Grid`s underlying the states.
 		field_name : str
 			The state quantity to visualize.
