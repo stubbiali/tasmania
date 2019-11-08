@@ -133,7 +133,7 @@ The benchmarks for the Burgers' equations and the isentropic model are stored in
 - `buffer/`: convenient location for files (e.g. Matplotlib figures) generated inside the container and to be moved to other host's directory.
 - `data/`: data sets;
 - `docker/`: configuration files and scripts to create the Docker images and run Docker containers.
-- `docker/external`: the GT4Py (`gridtools4py/`) and sympl (`sympl/`) submodules.
+- `docker/external`: the GT4Py (`gt4py/`) and sympl (`sympl/`) submodules.
 - `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation (out-of-date).
 - `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers/`) or the isentropic model (`isentropic/`).
 - `notebooks/`: Jupyter notebooks.

@@ -5,19 +5,19 @@ MODULES=( )
 PYTHON=python3.7
 CUDA=
 VENV=venv
-FRESH_INSTALL=1
+FRESH_INSTALL=0
 
 function install()
 {
   source $VENV/bin/activate && \
 	  pip install -e . && \
-	  pip install -e docker/external/gridtools4py[$CUDA] || \
-	    pip install -e docker/external/gridtools4py && \
-	  python docker/external/gridtools4py/setup.py install_gt_sources && \
+	  pip install -e docker/external/gt4py[$CUDA] || \
+	    pip install -e docker/external/gt4py && \
+	  python docker/external/gt4py/setup.py install_gt_sources && \
 	  pip install -e docker/external/sympl && \
 	  deactivate
 
-  # change matplotlib backend from macos to TkAgg
+  # change matplotlib backend from macosx to TkAgg
 	cat $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc | \
 	  sed -e 's/^backend.*: macosx/backend : TkAgg/g' > /tmp/.matplotlibrc && \
 	  cp /tmp/.matplotlibrc $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc && \
