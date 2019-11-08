@@ -1,6 +1,6 @@
 # What's New
 
-## v0.6.0 (branch: `new_calling_api`, `ibm`)
+## v0.6.0 (branch: `new_calling_api`, `benchmarking`)
 
 - Migrate to the new stencil calling API of GT4Py.
 - Support to both device and managed memory for GPU storages.
