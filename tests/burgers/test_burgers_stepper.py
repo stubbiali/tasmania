@@ -141,7 +141,7 @@ def test_forward_euler(data):
         rebuild=False,
     )
 
-    assert isinstance(bs, _ForwardEuler)
+    assert isinstance(bs, ForwardEuler)
 
     raw_state = {
         "time": state["time"],
@@ -242,7 +242,7 @@ def test_rk2(data):
         rebuild=False,
     )
 
-    assert isinstance(bs, _RK2)
+    assert isinstance(bs, RK2)
 
     raw_state_0 = {
         "time": state["time"],
@@ -370,8 +370,8 @@ def test_rk3ws(data):
         rebuild=False,
     )
 
-    assert isinstance(bs, _RK2)
-    assert isinstance(bs, _RK3WS)
+    assert isinstance(bs, RK2)
+    assert isinstance(bs, RK3WS)
 
     raw_state_0 = {
         "time": state["time"],
@@ -464,5 +464,4 @@ def test_rk3ws(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_forward_euler()
+    pytest.main([__file__])

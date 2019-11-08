@@ -19,7 +19,7 @@ function install()
 
   # change matplotlib backend from macos to TkAgg
 	cat $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc | \
-	  sed -e 's/^backend.*: macos/backend : TkAgg/g' > /tmp/.matplotlibrc && \
+	  sed -e 's/^backend.*: macosx/backend : TkAgg/g' > /tmp/.matplotlibrc && \
 	  cp /tmp/.matplotlibrc $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc && \
 	  rm /tmp/.matplotlibrc
 }
