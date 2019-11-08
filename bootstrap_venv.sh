@@ -5,7 +5,7 @@ MODULES=( )
 PYTHON=python3.7
 CUDA=
 VENV=venv
-FRESH_INSTALL=0
+FRESH_INSTALL=1
 
 function install()
 {

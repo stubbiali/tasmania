@@ -48,7 +48,7 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,

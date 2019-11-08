@@ -181,5 +181,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
-print_moist_frequency = 1
+print_dry_frequency = 5
+print_moist_frequency = 5

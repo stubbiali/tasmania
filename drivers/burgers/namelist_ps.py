@@ -48,7 +48,7 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -70,6 +70,6 @@ niter = 4 ** factor * 100
 
 # output
 save = False
-save_frequency = 1
+save_frequency = -1
 filename = "../../data/burgers_ps_{}.nc".format(gt_kwargs["backend"])
 print_frequency = 1

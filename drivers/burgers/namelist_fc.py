@@ -71,4 +71,4 @@ niter = 4 ** factor * 100
 save = False
 save_frequency = -1
 filename = "../../data/burgers_fc_{}.nc".format(gt_kwargs["backend"])
-print_frequency = -1
+print_frequency = 1
