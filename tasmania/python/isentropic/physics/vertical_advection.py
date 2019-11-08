@@ -102,33 +102,33 @@ class IsentropicVerticalAdvection(TendencyComponent):
             See :class:`~tasmania.IsentropicMinimalVerticalFlux` for all
             available options.
         moist : `bool`, optional
-            :obj:`True` if water species are included in the model,
-            :obj:`False` otherwise. Defaults to :obj:`False`.
+            `True` if water species are included in the model,
+            `False` otherwise. Defaults to `False`.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            :obj:`True` if the input tendency of air potential temperature
-            is defined at the interface levels, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` if the input tendency of air potential temperature
+            is defined at the interface levels, `False` otherwise.
+            Defaults to `False`.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent
-            :class:`~tasmania.TendencyComponent`.
+            Additional keyword arguments to be directly forwarded to the parent class.
         """
         # keep track of the input arguments needed at run-time
         self._moist = moist
@@ -504,18 +504,18 @@ class PrescribedSurfaceHeating(TendencyComponent):
         domain : tasmania.Domain
             The underlying domain.
         tendency_of_air_potential_temperature_in_diagnostics : `bool`, optional
-            :obj:`True` to place the calculated tendency of air
+            `True` to place the calculated tendency of air
             potential temperature in the ``diagnostics`` output
-            dictionary, :obj:`False` to regularly place it in the
-            `tendencies` dictionary. Defaults to :obj:`False`.
+            dictionary, `False` to regularly place it in the
+            `tendencies` dictionary. Defaults to `False`.
         tendency_of_air_potential_temperature_on_interface_levels : `bool`, optional
-            :obj:`True` (respectively, :obj:`False`) if the tendency
+            `True` (respectively, `False`) if the tendency
             of air potential temperature should be calculated at the
-            interface (resp., main) vertical levels. Defaults to :obj:`False`.
+            interface (resp., main) vertical levels. Defaults to `False`.
         air_pressure_on_interface_levels : `bool`, optional
-            :obj:`True` (respectively, :obj:`False`) if the input
+            `True` (respectively, `False`) if the input
             air potential pressure is defined at the interface
-            (resp., main) vertical levels. Defaults to :obj:`True`.
+            (resp., main) vertical levels. Defaults to `True`.
         amplitude_at_day_sw : `sympl.DataArray`, optional
             1-item :class:`~sympl.DataArray` representing :math:`F_0^{sw}` at day,
             in units compatible with [W m^-2].
@@ -547,7 +547,7 @@ class PrescribedSurfaceHeating(TendencyComponent):
             The time :math:`t_0` when surface heating/cooling is triggered.
         backend : `obj`, optional
             TODO
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`~sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:

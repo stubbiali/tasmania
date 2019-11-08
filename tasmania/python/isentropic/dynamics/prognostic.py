@@ -81,23 +81,24 @@ class IsentropicPrognostic(abc.ABC):
         hb : tasmania.HorizontalBoundary
             The object handling the lateral boundary conditions.
         moist : bool
-            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+            `True` for a moist dynamical core, `False` otherwise.
         backend : str
-            TODO
+            The GT4Py backend.
         backend_opts : dict
-            TODO
+            Dictionary of backend-specific options.
         build_info : dict
-            TODO
-        dtype : numpy.dtype
-            TODO
+            Dictionary of building options.
+        dtype : data-type
+            Data type of the storages.
         exec_info : dict
-            TODO
-        default_origin : tuple
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]
+            Storage default origin.
         rebuild : bool
-            TODO
-        storage_shape : tuple
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : tuple[int]
+            Shape of the storages.
         managed_memory : bool
             `True` to allocate the storages as managed memory, `False` otherwise.
         """
@@ -174,23 +175,17 @@ class IsentropicPrognostic(abc.ABC):
         ----------
         stage : int
             The stage to perform.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the time step.
-        state : dict
-            Dictionary whose keys are strings indicating model variables,
-            and values are :class:`numpy.ndarray`\s representing the values
-            for those variables.
-        tendencies : dict
-            Dictionary whose keys are strings indicating model variables,
-            and values are :class:`numpy.ndarray`\s representing (slow and
-            intermediate) physical tendencies for those variables.
+        timestep : datetime.timedelta
+            The time step.
+        state : dict[str, gt4py.storage.storage.Storage]
+            The (raw) state at the current stage.
+        tendencies : dict[str, gt4py.storage.storage.Storage]
+            The (raw) tendencies for the prognostic model variables.
 
         Return
         ------
-        dict :
-            Dictionary whose keys are strings indicating the conservative
-            prognostic model variables, and values are :class:`numpy.ndarray`\s
-            containing new values for those variables.
+        dict[str, gt4py.storage.storage.Storage] :
+            The (raw) state at the next stage.
         """
         pass
 
@@ -215,7 +210,7 @@ class IsentropicPrognostic(abc.ABC):
     ):
         """
         Static method returning an instance of the derived class implementing
-        the time stepping scheme specified by ``time_scheme``.
+        the time stepping scheme specified by `time_scheme`.
 
         Parameters
         ----------
@@ -237,24 +232,25 @@ class IsentropicPrognostic(abc.ABC):
         hb : tasmania.HorizontalBoundary
             The object handling the lateral boundary conditions.
         moist : `bool`, optional
-            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` for a moist dynamical core, `False` otherwise.
+            Defaults to `False`.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
 

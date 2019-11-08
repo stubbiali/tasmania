@@ -322,14 +322,14 @@ class PhysicalGrid(Grid):
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated within
+        dtype : `data-type`, optional
+            The data type for any :class:`gt4py.storage.storage.Storage` instantiated within
             this class.
 
         Raises
         ------
         ValueError :
-            If :obj:`interface` lays outside the domain.
+            If `interface` lays outside the domain.
         """
         # xy-grid
         grid_xy = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)

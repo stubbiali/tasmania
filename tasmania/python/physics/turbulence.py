@@ -72,27 +72,26 @@ class Smagorinsky2d(TendencyComponent):
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
-            Additional keyword arguments to be directly forwarded to the parent
-            :class:`tasmania.TendencyComponent`.
+            Additional keyword arguments to be directly forwarded to the parent class.
         """
         super().__init__(domain, "numerical", **kwargs)
 
@@ -198,16 +197,7 @@ class Smagorinsky2d(TendencyComponent):
                 + (in_v[+1, 0, 0] - in_v[-1, 0, 0]) / (2.0 * dx)
             )
             s11 = (in_v[0, +1, 0] - in_v[0, -1, 0]) / (2.0 * dy)
-            nu = (
-                cs ** 2
-                * dx
-                * dy
-                * (
-                    2.0
-                    * (s00[0, 0, 0] ** 2 + 2.0 * s01[0, 0, 0] ** 2 + s11[0, 0, 0] ** 2)
-                )
-                ** 0.5
-            )
+            nu = cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
             out_u_tnd = 2.0 * (
                 (nu[+1, 0, 0] * s00[+1, 0, 0] - nu[-1, 0, 0] * s00[-1, 0, 0]) / (2.0 * dx)
                 + (nu[0, +1, 0] * s01[0, +1, 0] - nu[0, -1, 0] * s01[0, -1, 0])

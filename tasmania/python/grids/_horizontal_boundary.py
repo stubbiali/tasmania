@@ -83,7 +83,7 @@ class Relaxed(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
@@ -287,7 +287,7 @@ class Relaxed1DX(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
@@ -452,7 +452,7 @@ class Relaxed1DY(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
@@ -1026,7 +1026,7 @@ class Dirichlet(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.
@@ -1175,7 +1175,7 @@ class Dirichlet1DX(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.
@@ -1320,7 +1320,7 @@ class Dirichlet1DY(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.

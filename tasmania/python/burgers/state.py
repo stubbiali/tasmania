@@ -147,16 +147,16 @@ class ZhaoStateFactory:
         """
         Parameters
         ----------
-        initial_time : datetime
+        initial_time : datetime.datetime
             The initial time of the simulation.
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
             The units should be compatible with 'm s^-2'.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
-        default_origin : tuple
+        default_origin : tuple[int]
             Storage default origin.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
@@ -178,7 +178,7 @@ class ZhaoStateFactory:
 
         Return
         ------
-        dict :
+        dict[str, sympl.DataArray]
             The computed model state dictionary.
         """
         nx, ny = grid.nx, grid.ny

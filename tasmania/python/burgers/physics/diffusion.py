@@ -59,7 +59,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         Parameters
         ----------
         domain : tasmania.Domain
-            The domain.
+            The underlying domain.
         grid_type : str
             The type of grid over which instantiating the class. Either:
 
@@ -78,11 +78,11 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,

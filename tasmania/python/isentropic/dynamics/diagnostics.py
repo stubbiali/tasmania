@@ -72,7 +72,7 @@ class IsentropicDiagnostics:
         ----------
         grid : tasmania.Grid
             The underlying grid.
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -94,16 +94,16 @@ class IsentropicDiagnostics:
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
@@ -201,20 +201,21 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gridtools.storage.StorageDescriptor
+        s : gt4py.storage.storage.Storage
             The isentropic density, in units of [kg m^-2 K^-1].
         pt : float
             The upper boundary condition on the pressure distribution,
             in units of [Pa].
-        p : gridtools.storage.StorageDescriptor
+        p : gt4py.storage.storage.Storage
             The buffer for the pressure at the interface levels, in units of [Pa].
-        exn : gridtools.storage.StorageDescriptor
+        exn : gt4py.storage.storage.Storage
             The buffer for the Exner function at the interface levels,
             in units of [J K^-1 kg^-1].
-        mtg : gridtools.storage.StorageDescriptor
+        mtg : gt4py.storage.storage.Storage
             The buffer for the Montgomery potential, in units of [J kg^-1].
-        h : gridtools.storage.StorageDescriptor
-            The buffer for the geometric height of the interface levels, in units of [m].
+        h : gt4py.storage.storage.Storage
+            The buffer for the geometric height of the interface levels,
+            in units of [m].
         """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -247,12 +248,12 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gridtools.storage.StorageDescriptor
+        s : gt4py.storage.storage.Storage
             The isentropic density, in units of [kg m^-2 K^-1].
         pt : float
             The upper boundary condition on the pressure distribution,
             in units of [Pa].
-        mtg : gridtools.storage.StorageDescriptor
+        mtg : gt4py.storage.storage.Storage
             The buffer for the Montgomery potential, in units of [J kg^-1].
         """
         # shortcuts
@@ -284,13 +285,14 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gridtools.storage.StorageDescriptor
+        s : gt4py.storage.storage.Storage
             The isentropic density, in units of [kg m^-2 K^-1].
         pt : float
             The upper boundary condition on the pressure distribution,
             in units of [Pa].
-        h : gridtools.storage.StorageDescriptor
-            The buffer for the geometric height of the interface levels, in units of [m].
+        h : gt4py.storage.storage.Storage
+            The buffer for the geometric height of the interface levels,
+            in units of [m].
         """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
@@ -319,12 +321,17 @@ class IsentropicDiagnostics:
 
         Parameters
         ----------
-        s : gridtools.storage.StorageDescriptor
+        s : gt4py.storage.storage.Storage
             The isentropic density, in units of [kg m^-2 K^-1].
-        h : gridtools.storage.StorageDescriptor
+        exn : gt4py.storage.storage.Storage
+            The buffer for the Exner function at the interface levels,
+            in units of [J K^-1 kg^-1].
+        h : gt4py.storage.storage.Storage
             The geometric height of the interface levels, in units of [m].
-        rho : gridtools.storage.StorageDescriptor
+        rho : gt4py.storage.storage.Storage
             The buffer for the air density, in units of [kg m^-3].
+        t : gt4py.storage.storage.Storage
+            The buffer for the air temperature, in units of [K].
         """
         # shortcuts
         nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz

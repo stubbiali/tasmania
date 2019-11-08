@@ -34,15 +34,15 @@ Tasmania aims to provide a high-level platform to aid the investigation of the p
 	 - symmetrized sequential-update splitting, or Strang splitting.
 	 
 	 Hybrid approaches are possible. 
- - The two-dimensional viscous Burgers' equations and a simplified hydrostatic model in isentropic coordinates have been coded as proof-of-concepts. Finite difference operators arising from the numerical discretization of the model are implemented via GridTools4Py.
+ - The two-dimensional viscous Burgers' equations and a simplified hydrostatic model in isentropic coordinates have been coded as proof-of-concepts. Finite difference operators arising from the numerical discretization of the model are implemented via GT4Py.
 
-## GridTools and GridTools4Py
+## GridTools and GT4Py
 
-[GridTools4Py](https://github.com/eth-cscs/gridtools4py) is a domain specific language (DSL) for stencil-based codes. It offers a high-level entry point to the C++ template library [GridTools](https://github.com/eth-cscs/gridtools). Both tools have been developed at ETH/CSCS in collaboration with MeteoSwiss. 
+[GT4Py](https://github.com/GridTools/gt4py) is a domain specific language (DSL) for stencil-based codes. It offers a high-level entry point to the C++ template library [GridTools](https://github.com/eth-cscs/gridtools). Both tools have been developed at ETH/CSCS in collaboration with MeteoSwiss. 
 
-GridTools furnishes a wide gamma of tools to implement stencil-based operations, thus finding a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a specific architecture, e.g., x86, MIC, and GPU. In addition to these, GridTools4Py supplies some Pythonic back-ends suitable for debugging and research purposes. 
+GridTools furnishes a wide gamma of tools to implement stencil-based operations, thus finding a natural application in finite difference codes. It ships with different lower-level and high-performance backends, each one designed for a specific architecture, e.g., x86, MIC, and GPU. In addition to these, GT4Py supplies some Pythonic back-ends suitable for debugging and research purposes. 
 
-Conversely, GridTools's front-end, then GridTools4Py's interface, are hardware-agnostic, so that the user's code can be left unchanged when porting it to different architectures. This enables a complete separation of concerns between domain scientists - who can work in a familiar and powerful development environment like Python - and computer scientists - who oversee the translation, compilation and execution stage. 
+Conversely, GridTools's front-end, then GT4Py's interface, are hardware-agnostic, so that the user's code can be left unchanged when porting it to different architectures. This enables a complete separation of concerns between domain scientists - who can work in a familiar and powerful development environment like Python - and computer scientists - who oversee the translation, compilation and execution stage. 
 
 ## Installation
 
@@ -50,7 +50,7 @@ To clone this repository (with submodules) on your machine and place yourself on
 
 	git clone -b new_calling_api --recurse-submodules https://github.com/eth-cscs/tasmania.git
 
-**Note:** both Tasmania and GridTools4Py repositories are *private*, so you should be granted access to clone them and accomplish all the actions listed below.
+**Note:** both Tasmania and GT4Py repositories are *private*, so you should be granted access to clone them and accomplish all the actions listed below.
 	
 ## Running Tasmania
 
@@ -60,7 +60,7 @@ The `bootstrap_venv.sh` bash script automates the creation of an isolated Python
 
 ### Using a Docker container on a local machine
 
-We provide two [Docker](https://www.docker.com/) images to run a containerized version of Tasmania. The two images are based on `ubuntu:18.04` and `nvidia/cuda:latest`. Please note that the former image does not contain the CUDA toolkit, so it only supports the CPU-based backends of GridTools4Py. To create a local instance of the images (named `tasmania:cpu` and `tasmania:gpu`, respectively), from the root directory of the repository issue
+We provide two [Docker](https://www.docker.com/) images to run a containerized version of Tasmania. The two images are based on `ubuntu:18.04` and `nvidia/cuda:latest`. Please note that the former image does not contain the CUDA toolkit, so it only supports the CPU-based backends of GT4Py. To create a local instance of the images (named `tasmania:cpu` and `tasmania:gpu`, respectively), from the root directory of the repository issue
 
 	make docker-build-cpu
 	make docker-build-gpu
@@ -132,7 +132,7 @@ The benchmarks for the Burgers' equations and the isentropic model are stored in
 
 - `buffer/`: convenient location for files (e.g. Matplotlib figures) generated inside the container and to be moved to other host's directory.
 - `docker/`: configuration files and scripts to create the Docker images and run Docker containers.
-- `docker/external`: the GridTools4Py (`gridtools4py/`) and sympl (`sympl/`) submodules.
+- `docker/external`: the GT4Py (`gridtools4py/`) and sympl (`sympl/`) submodules.
 - `docs/`: [Sphinx](http://www.sphinx-doc.org/en/master/) documentation (out-of-date).
 - `drivers/`: drivers and associated namelist files to run the Burgers' model (`burgers/`) or the isentropic model (`isentropic/`).
 - `notebooks/`: Jupyter notebooks.

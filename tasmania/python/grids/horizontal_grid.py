@@ -228,8 +228,8 @@ class PhysicalHorizontalGrid(HorizontalGrid):
         ny : int
             Number of mass points featured by the grid along the second
             horizontal dimension.
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated within this class.
+        dtype : `data-type`, optional
+            The data type for any array instantiated within this class.
 
         Note
         ----

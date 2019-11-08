@@ -82,8 +82,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_damp_depth : int
             Depth of the damping region.
         moist : `bool`, optional
-            :obj:`True` if water species are included in the model and should
-            be smoothed, :obj:`False` otherwise. Defaults to :obj:`False`.
+            `True` if water species are included in the model and should
+            be smoothed, `False` otherwise. Defaults to `False`.
         smooth_moist_coeff : `float`, optional
             The smoothing coefficient for the water species.
         smooth_moist_coeff_max : `float`, optional
@@ -97,18 +97,18 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
         """
         self._moist = moist and smooth_moist_coeff is not None

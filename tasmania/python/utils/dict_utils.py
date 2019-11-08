@@ -42,13 +42,13 @@ def add(
 
     Parameters
     ----------
-    state_1 : dict
+    state_1 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    state_2 : dict
+    state_2 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    units : `dict`, optional
+    units : `dict[str, str]`, optional
         Dictionary whose keys are strings indicating the variables
         included in the output dictionary, and values are strings indicating
         the units in which those variables should be expressed.
@@ -56,13 +56,13 @@ def add(
         in the same units used in the first input dictionary, or the second
         dictionary if the variable is not present in the first one.
     unshared_variables_in_output : `bool`, optional
-        :obj:`True` if the output dictionary should contain those variables
-        included in only one of the two input dictionaries, :obj:`False` otherwise.
-        Defaults to :obj:`True`.
+        `True` if the output dictionary should contain those variables
+        included in only one of the two input dictionaries, `False` otherwise.
+        Defaults to `True`.
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray] :
         The sum of the two input dictionaries.
     """
     units = {} if units is None else units
@@ -133,13 +133,13 @@ def add_inplace(state_1, state_2, units=None, unshared_variables_in_output=True)
 
     Parameters
     ----------
-    state_1 : dict
+    state_1 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    state_2 : dict
+    state_2 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    units : `dict`, optional
+    units : `dict[str, str]`, optional
         Dictionary whose keys are strings indicating the variables
         included in the output dictionary, and values are strings indicating
         the units in which those variables should be expressed.
@@ -147,9 +147,9 @@ def add_inplace(state_1, state_2, units=None, unshared_variables_in_output=True)
         in the same units used in the first input dictionary, or the second
         dictionary if the variable is not present in the first one.
     unshared_variables_in_output : `bool`, optional
-        :obj:`True` if the output dictionary should contain those variables
-        included in only one of the two input dictionaries, :obj:`False` otherwise.
-        Defaults to :obj:`True`.
+        `True` if the output dictionary should contain those variables
+        included in only one of the two input dictionaries, `False` otherwise.
+        Defaults to `True`.
     """
     units = {} if units is None else units
 
@@ -193,13 +193,13 @@ def subtract(
 
     Parameters
     ----------
-    state_1 : dict
+    state_1 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    state_2 : dict
+    state_2 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    units : `dict`, optional
+    units : `dict[str, str]`, optional
         Dictionary whose keys are strings indicating the variables
         included in the output state, and values are strings indicating
         the units in which those variables should be expressed.
@@ -207,14 +207,14 @@ def subtract(
         in the same units used in the second dictionary, or the first dictionary
         if the variable is not present in the first one.
     unshared_variables_in_output : `bool`, optional
-        :obj:`True` if the output state should include those variables included
+        `True` if the output state should include those variables included
         in only one of the two input dictionaries (unchanged if present	in the
         first dictionary, with opposite sign if present in the second dictionary),
-        :obj:`False` otherwise. Defaults to :obj:`True`.
+        `False` otherwise. Defaults to `True`.
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray] :
         The subtraction of the two input dictionaries.
     """
     units = {} if units is None else units
@@ -286,13 +286,13 @@ def subtract_inplace(state_1, state_2, units=None, unshared_variables_in_output=
 
     Parameters
     ----------
-    state_1 : dict
+    state_1 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    state_2 : dict
+    state_2 : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    units : `dict`, optional
+    units : `dict[str, str]`, optional
         Dictionary whose keys are strings indicating the variables
         included in the output state, and values are strings indicating
         the units in which those variables should be expressed.
@@ -300,10 +300,10 @@ def subtract_inplace(state_1, state_2, units=None, unshared_variables_in_output=
         in the same units used in the second dictionary, or the first dictionary
         if the variable is not present in the first one.
     unshared_variables_in_output : `bool`, optional
-        :obj:`True` if the output state should include those variables included
+        `True` if the output state should include those variables included
         in only one of the two input dictionaries (unchanged if present	in the
         first dictionary, with opposite sign if present in the second dictionary),
-        :obj:`False` otherwise. Defaults to :obj:`True`.
+        `False` otherwise. Defaults to `True`.
     """
     units = {} if units is None else units
 
@@ -339,12 +339,12 @@ def multiply(factor, state, out=None, units=None):
     ----------
     factor : float
         The factor.
-    state : dict
+    state : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    out : `dict`, optional
-        TODO
-    units : `dict`, optional
+    out : `dict[str, sympl.DataArray]`, optional
+        Dictionary of buffers into which the scaled fields are written.
+    units : `dict[str, str]`, optional
         Dictionary whose keys are strings indicating the variables included in
         the input dictionary, and values are strings indicating the units in
         which those variables should be expressed. If not specified, variables
@@ -353,7 +353,7 @@ def multiply(factor, state, out=None, units=None):
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray] :
         The scaled input dictionary.
     """
     units = {} if units is None else units
@@ -385,10 +385,10 @@ def multiply_inplace(factor, state, units=None):
     ----------
     factor : float
         The factor.
-    state : dict
+    state : dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating variable names, and values
         are :class:`sympl.DataArray`\s containing the data for those variables.
-    units : `dict`, optional
+    units : `dict[str, str]`, optional
         Dictionary whose keys are strings indicating the variables included in
         the input dictionary, and values are strings indicating the units in
         which those variables should be expressed. If not specified, variables
@@ -397,7 +397,7 @@ def multiply_inplace(factor, state, units=None):
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray]
         The scaled input dictionary.
     """
     units = {} if units is None else units
@@ -420,9 +420,9 @@ def copy(state_1, state_2):
 
     Parameters
     ----------
-    state_1 : dict
+    state_1 : dict[str, sympl.DataArray]
         The destination dictionary.
-    state_2 : dict
+    state_2 : dict[str, sympl.DataArray]
         The source dictionary.
     """
     if "time" in state_2:

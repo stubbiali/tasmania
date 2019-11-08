@@ -56,8 +56,8 @@ class HorizontalVelocity:
         grid : tasmania.Grid
             The underlying grid.
         staggering : `bool`, optional
-            :obj:`True` if the velocity components should be computed
-            on the staggered grid, :obj:`False` to collocate the velocity
+            `True` if the velocity components should be computed
+            on the staggered grid, `False` to collocate the velocity
             components in the mass points.
         backend : `str`, optional
             The GT4Py backend.
@@ -108,15 +108,15 @@ class HorizontalVelocity:
 
         Parameters
         ----------
-        d : gridtools.storage.Storage
+        d : gt4py.storage.storage.Storage
             The air density.
-        u : gridtools.storage.Storage
+        u : gt4py.storage.storage.Storage
             The x-velocity field.
-        v : gridtools.storage.Storage
+        v : gt4py.storage.storage.Storage
             The y-velocity field.
-        du : gridtools.storage.Storage
+        du : gt4py.storage.storage.Storage
             The buffer where the x-momentum will be written.
-        dv : gridtools.storage.Storage
+        dv : gt4py.storage.storage.Storage
             The buffer where the y-momentum will be written.
         """
         # shortcuts
@@ -140,15 +140,15 @@ class HorizontalVelocity:
 
         Parameters
         ----------
-        d : gridtools.storage.Storage
+        d : gt4py.storage.storage.Storage
             The air density.
-        du : gridtools.storage.Storage
+        du : gt4py.storage.storage.Storage
             The x-momentum.
-        dv : gridtools.storage.Storage
+        dv : gt4py.storage.storage.Storage
             The y-momentum.
-        u : gridtools.storage.Storage
+        u : gt4py.storage.storage.Storage
             The buffer where the x-velocity will be written.
-        v : gridtools.storage.Storage
+        v : gt4py.storage.storage.Storage
             The buffer where the y-velocity will be written.
 
         Note
@@ -193,8 +193,8 @@ class HorizontalVelocity:
                 out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
                 out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
             else:
-                out_du = in_d[0, 0, 0] * in_u[0, 0, 0]
-                out_dv = in_d[0, 0, 0] * in_v[0, 0, 0]
+                out_du = in_d * in_u
+                out_dv = in_d * in_v
 
     @staticmethod
     def _stencil_diagnosing_velocity_x_defs(
@@ -210,7 +210,7 @@ class HorizontalVelocity:
                     in_d[-1, 0, 0] + in_d[0, 0, 0]
                 )
             else:
-                out_u = in_du[0, 0, 0] / in_d[0, 0, 0]
+                out_u = in_du / in_d
 
     @staticmethod
     def _stencil_diagnosing_velocity_y_defs(
@@ -226,7 +226,7 @@ class HorizontalVelocity:
                     in_d[0, -1, 0] + in_d[0, 0, 0]
                 )
             else:
-                out_v = in_dv[0, 0, 0] / in_d[0, 0, 0]
+                out_v = in_dv / in_d
 
 
 class WaterConstituent:
@@ -253,8 +253,8 @@ class WaterConstituent:
         grid : tasmania.Grid
             The underlying grid.
         clipping : `bool`, optional
-            :obj:`True` to clip the negative values of the output fields,
-            :obj:`False` otherwise. Defaults to :obj:`False`.
+            `True` to clip the negative values of the output fields,
+            `False` otherwise. Defaults to `False`.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -295,11 +295,11 @@ class WaterConstituent:
 
         Parameters
         ----------
-        d : gridtools.storage.Storage
+        d : gt4py.storage.storage.Storage
             The air density.
-        q : gridtools.storage.Storage
+        q : gt4py.storage.storage.Storage
             The mass fraction of the water constituent, in units of [g g^-1].
-        dq : gridtools.storage.Storage
+        dq : gt4py.storage.storage.Storage
             Buffer which will store the output density of the water constituent,
             in the same units of the input air density.
         """
@@ -322,12 +322,12 @@ class WaterConstituent:
 
         Parameters
         ----------
-        d : gridtools.storage.Storage
+        d : gt4py.storage.storage.Storage
             The air density.
-        dq : gridtools.storage.Storage
+        dq : gt4py.storage.storage.Storage
             The density of the water constituent, in the same units of the input
             air density.
-        q : gridtools.storage.Storage
+        q : gt4py.storage.storage.Storage
             Buffer which will store the output mass fraction of the water constituent,
             in the same units of the input air density.
         """
@@ -354,10 +354,10 @@ class WaterConstituent:
 
         with computation(PARALLEL), interval(...):
             if clipping:  # compile-time if
-                tmp_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
-                out_dq = (tmp_dq[0, 0, 0] > 0.0) * tmp_dq[0, 0, 0]
+                tmp_dq = in_d * in_q
+                out_dq = (tmp_dq > 0.0) * tmp_dq
             else:
-                out_dq = in_d[0, 0, 0] * in_q[0, 0, 0]
+                out_dq = in_d * in_q
 
     @staticmethod
     def _stencil_diagnosing_mass_fraction_defs(
@@ -369,7 +369,7 @@ class WaterConstituent:
 
         with computation(PARALLEL), interval(...):
             if clipping:  # compile-time if
-                tmp_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
-                out_q = (tmp_q[0, 0, 0] > 0.0) * tmp_q[0, 0, 0]
+                tmp_q = in_dq / in_d
+                out_q = (tmp_q > 0.0) * tmp_q
             else:
-                out_q = in_dq[0, 0, 0] / in_d[0, 0, 0]
+                out_q = in_dq / in_d

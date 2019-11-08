@@ -91,12 +91,12 @@ class IsentropicDiagnostics(DiagnosticComponent):
                 * 'numerical'.
 
         moist : bool
-            :obj:`True` if water species are included in the model,
-            :obj:`False` otherwise.
+            `True` if water species are included in the model,
+            `False` otherwise.
         pt : sympl.DataArray
             One-item :class:`sympl.DataArray` representing the air pressure
             at the top edge of the domain.
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -118,16 +118,16 @@ class IsentropicDiagnostics(DiagnosticComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
@@ -269,16 +269,16 @@ class IsentropicVelocityComponents(DiagnosticComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.

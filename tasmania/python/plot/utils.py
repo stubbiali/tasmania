@@ -56,7 +56,7 @@ def equal_to(a, b, tol=d_tol):
 	Return
 	------
 	bool :
-		:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`,
+		:obj:`True` if `a` is equal to `b` up to `tol`,
 		:obj:`False` otherwise.
 	"""
     return math.fabs(a - b) <= tol
@@ -79,7 +79,7 @@ def smaller_than(a, b, tol=d_tol):
 	Return
 	------
 	bool :
-		:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`,
+		:obj:`True` if `a` is smaller than `b` up to `tol`,
 		:obj:`False` otherwise.
 	"""
     return a < (b - tol)
@@ -102,8 +102,8 @@ def smaller_or_equal_than(a, b, tol=d_tol):
 	Return
 	------
 	bool :
-		:obj:`True` if :data:`a` is smaller than or equal to :data:`b`
-		up to :data:`tol`, :obj:`False` otherwise.
+		:obj:`True` if `a` is smaller than or equal to `b`
+		up to `tol`, :obj:`False` otherwise.
 	"""
     return a <= (b + tol)
 
@@ -125,7 +125,7 @@ def greater_than(a, b, tol=d_tol):
 	Return
 	------
 	bool :
-		:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`,
+		:obj:`True` if `a` is greater than `b` up to `tol`,
 		:obj:`False` otherwise.
 	"""
     return a > (b + tol)
@@ -148,8 +148,8 @@ def greater_or_equal_than(a, b, tol=d_tol):
 	Return
 	------
 	bool :
-		:obj:`True` if :data:`a` is greater than or equal to :data:`b`
-		up to :data:`tol`, :obj:`False` otherwise.
+		:obj:`True` if `a` is greater than or equal to `b`
+		up to `tol`, :obj:`False` otherwise.
 	"""
     return a >= (b - tol)
 

@@ -23,8 +23,7 @@
 import abc
 import numpy as np
 
-from gt4py import __externals__
-from gt4py import gtscript
+from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
@@ -108,22 +107,22 @@ class BurgersStepper(abc.ABC):
         flux_scheme : str
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
-        backend : `str`, optional
+        backend : str
             The GT4Py backend.
-        backend_opts : `dict`, optional
+        backend_opts : dict
             Dictionary of backend-specific options.
-        build_info : `dict`, optional
+        build_info : dict
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : data-type
             Data type of the storages.
-        exec_info : `dict`, optional
+        exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : tuple[int]
             Storage default origin.
-        rebuild : `bool`, optional
+        rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        managed_memory : `bool`, optional
+        managed_memory : bool
             `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._grid_xy = grid_xy
@@ -163,23 +162,23 @@ class BurgersStepper(abc.ABC):
         ----------
         stage : int
             The stage to be performed.
-        state : dict
+        state : dict[str, gt4py.storage.storage.Storage]
             Dictionary whose keys are strings denoting model variables,
-            and whose values are :class:`numpy.ndarray`\s storing values
-            for those variables.
-        tendencies : dict
+            and whose values are :class:`gt4py.storage.storage.Storage`\s
+            storing values for those variables.
+        tendencies : dict[str, gt4py.storage.storage.Storage]
             Dictionary whose keys are strings denoting model variables,
-            and whose values are :class:`numpy.ndarray`\s storing tendencies
-            for those variables.
-        timestep : timedelta
+            and whose values are :class:`gt4py.storage.storage.Storage`\s
+            storing tendencies for those variables.
+        timestep : datetime.timedelta
             The time step size.
 
         Return
         ------
-        dict :
+        dict[str, gt4py.storage.storage.Storage]
             Dictionary whose keys are strings denoting model variables,
-            and whose values are :class:`numpy.ndarray`\s storing new values
-            for those variables.
+            and whose values are :class:`gt4py.storage.storage.Storage`\s
+            storing new values for those variables.
         """
         pass
 
@@ -210,6 +209,7 @@ class BurgersStepper(abc.ABC):
                     Runge-Kutta (RK) method;
                 * 'rk3ws' for the explicit, three-stages, second-order \
                     RK method by Wicker & Skamarock.
+
         grid_xy : tasmania.HorizontalGrid
             The underlying horizontal grid.
         nb : int
@@ -218,19 +218,20 @@ class BurgersStepper(abc.ABC):
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        default_origin : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
 
@@ -253,16 +254,16 @@ class BurgersStepper(abc.ABC):
             managed_memory,
         )
         if time_integration_scheme == "forward_euler":
-            return _ForwardEuler(*args)
+            return ForwardEuler(*args)
         elif time_integration_scheme == "rk2":
-            return _RK2(*args)
+            return RK2(*args)
         elif time_integration_scheme == "rk3ws":
-            return _RK3WS(*args)
+            return RK3WS(*args)
         else:
             raise RuntimeError()
 
 
-class _ForwardEuler(BurgersStepper):
+class ForwardEuler(BurgersStepper):
     """ The forward Euler time integrator. """
 
     def __init__(
@@ -373,7 +374,7 @@ class _ForwardEuler(BurgersStepper):
         )
 
 
-class _RK2(BurgersStepper):
+class RK2(BurgersStepper):
     """ A two-stages Runge-Kutta time integrator. """
 
     def __init__(
@@ -487,7 +488,7 @@ class _RK2(BurgersStepper):
         )
 
 
-class _RK3WS(_RK2):
+class RK3WS(RK2):
     """ A three-stages Runge-Kutta time integrator. """
 
     def __init__(

@@ -22,6 +22,6 @@ The following people have contributed to the development of the isentropic model
  
 * Christian Zeman (2016): Object-oriented Python version;
 
-* Stefano Ubbiali (2018): Python version using GridTools4Py. 
+* Stefano Ubbiali (2018): Python version using GT4Py. 
 
 

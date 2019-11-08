@@ -103,7 +103,7 @@ class Domain:
             :class:`tasmania.Topography`.
         backend : `str`, optional
             The GT4Py backend.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         """
         # the physical grid

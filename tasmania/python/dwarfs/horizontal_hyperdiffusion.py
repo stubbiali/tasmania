@@ -53,7 +53,7 @@ def stage_laplacian_y(dy, phi):
 def stage_laplacian(dx, dy, phi):
     lap_x = stage_laplacian_x(dx=dx, phi=phi)
     lap_y = stage_laplacian_y(dy=dy, phi=phi)
-    lap = lap_x[0, 0, 0] + lap_y[0, 0, 0]
+    lap = lap_x + lap_y
     return lap
 
 
@@ -84,7 +84,7 @@ class HorizontalHyperDiffusion(abc.ABC):
         """
         Parameters
         ----------
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays for which tendencies should be computed.
         dx : float
             The grid spacing along the first horizontal dimension.
@@ -104,11 +104,11 @@ class HorizontalHyperDiffusion(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : tuple
+        default_origin : tuple[int]
             Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
@@ -159,10 +159,10 @@ class HorizontalHyperDiffusion(abc.ABC):
 
         Parameters
         ----------
-        phi : gridtools.storage.Storage
+        phi : gt4py.storage.storage.Storage
             The 3-D prognostic field.
-        phi_tnd : gridtools.storage.Storage
-            Buffer where the calculated tendency will be written.
+        phi_tnd : gt4py.storage.storage.Storage
+            Buffer into which the calculated tendency is written.
         """
         pass
 
@@ -189,18 +189,18 @@ class HorizontalHyperDiffusion(abc.ABC):
         """
         Static method returning an instance of the derived class
         calculating the tendency due to horizontal hyper-diffusion of type
-        :data:`diffusion_type`.
+        `diffusion_type`.
 
         Parameters
         ----------
-        diffusion_type : string
+        diffusion_type : str
             String specifying the diffusion technique to implement. Either:
 
             * 'first_order', for first-order numerical hyper-diffusion;
             * 'second_order', for second-order numerical hyper-diffusion;
             * 'third_order', for third-order numerical hyper-diffusion.
 
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays for which tendencies should be computed.
         dx : float
             The grid spacing along the first horizontal dimension.
@@ -221,11 +221,11 @@ class HorizontalHyperDiffusion(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        default_origin : `tuple`, optional
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
@@ -381,7 +381,7 @@ class FirstOrder(HorizontalHyperDiffusion):
 
         with computation(PARALLEL), interval(...):
             lap = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
-            out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+            out_phi = in_gamma * lap
 
 
 class FirstOrder1DX(HorizontalHyperDiffusion):
@@ -463,7 +463,7 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
 
         with computation(PARALLEL), interval(...):
             lap = stage_laplacian_x(dx=dx, phi=in_phi)
-            out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+            out_phi = in_gamma * lap
 
 
 class FirstOrder1DY(HorizontalHyperDiffusion):
@@ -545,7 +545,7 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
 
         with computation(PARALLEL), interval(...):
             lap = stage_laplacian_y(dy=dy, phi=in_phi)
-            out_phi = in_gamma[0, 0, 0] * lap[0, 0, 0]
+            out_phi = in_gamma * lap
 
 
 class SecondOrder(HorizontalHyperDiffusion):
@@ -628,7 +628,7 @@ class SecondOrder(HorizontalHyperDiffusion):
         with computation(PARALLEL), interval(...):
             lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
             lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
-            out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+            out_phi = in_gamma * lap1
 
 
 class SecondOrder1DX(HorizontalHyperDiffusion):
@@ -711,7 +711,7 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
         with computation(PARALLEL), interval(...):
             lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
             lap1 = stage_laplacian_x(dx=dx, phi=lap0)
-            out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+            out_phi = in_gamma * lap1
 
 
 class SecondOrder1DY(HorizontalHyperDiffusion):
@@ -794,7 +794,7 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
         with computation(PARALLEL), interval(...):
             lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
             lap1 = stage_laplacian_y(dy=dy, phi=lap0)
-            out_phi = in_gamma[0, 0, 0] * lap1[0, 0, 0]
+            out_phi = in_gamma * lap1
 
 
 class ThirdOrder(HorizontalHyperDiffusion):
@@ -878,7 +878,7 @@ class ThirdOrder(HorizontalHyperDiffusion):
             lap0 = stage_laplacian(dx=dx, dy=dy, phi=in_phi)
             lap1 = stage_laplacian(dx=dx, dy=dy, phi=lap0)
             lap2 = stage_laplacian(dx=dx, dy=dy, phi=lap1)
-            out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+            out_phi = in_gamma * lap2
 
 
 class ThirdOrder1DX(HorizontalHyperDiffusion):
@@ -962,7 +962,7 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
             lap0 = stage_laplacian_x(dx=dx, phi=in_phi)
             lap1 = stage_laplacian_x(dx=dx, phi=lap0)
             lap2 = stage_laplacian_x(dx=dx, phi=lap1)
-            out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+            out_phi = in_gamma * lap2
 
 
 class ThirdOrder1DY(HorizontalHyperDiffusion):
@@ -1046,4 +1046,4 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
             lap0 = stage_laplacian_y(dy=dy, phi=in_phi)
             lap1 = stage_laplacian_y(dy=dy, phi=lap0)
             lap2 = stage_laplacian_y(dy=dy, phi=lap1)
-            out_phi = in_gamma[0, 0, 0] * lap2[0, 0, 0]
+            out_phi = in_gamma * lap2

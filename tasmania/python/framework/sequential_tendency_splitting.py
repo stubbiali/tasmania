@@ -51,23 +51,23 @@ class SequentialTendencySplitting:
 
     Attributes
     ----------
-    input_properties : dict
+    input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables
         which should be present in the input state, and whose values
         are dictionaries specifying fundamental properties (dims, units)
         of those variables.
-    provisional_input_properties : dict
+    provisional_input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         should be present in the input model dictionary representing
         the provisional state, and whose values are dictionaries specifying
         fundamental properties (dims, units) of those variables.
-    output_properties : dict
+    output_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         will be present in the input model dictionary representing
         the current state when the call operator returns, and
         whose values are dictionaries specifying fundamental properties
         (dims, units) of those variables.
-    provisional_output_properties : dict
+    provisional_output_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         will be present in the input model dictionary representing
         the provisional state when the call operator returns, and
@@ -132,8 +132,7 @@ class SequentialTendencySplitting:
                         - 'rk2', for the two-stage second-order Runge-Kutta (RK) scheme;
                         - 'rk3ws', for the three-stage RK scheme as used in the
                             `COSMO model <http://www.cosmo-model.org>`_; this method is
-                            nominally second-order, and third-order for linear problems;
-                        - 'rk3', for the three-stages, third-order RK scheme.
+                            nominally second-order, and third-order for linear problems.
 
                 * if 'component' is a
 
@@ -150,7 +149,7 @@ class SequentialTendencySplitting:
                         - backend (str): The GT4Py backend;
                         - backend_opts (dict): Dictionary of backend-specific options;
                         - build_info (dict): Dictionary of building options;
-                        - dtype (numpy.dtype): Data type of the storages;
+                        - dtype (data-type): Data type of the storages;
                         - exec_info (dict): Dictionary which will store statistics
                             and diagnostics gathered at run time;
                         - default_origin (tuple): Storage default origin;
@@ -164,10 +163,11 @@ class SequentialTendencySplitting:
                         - :class:`tasmania.ImplicitTendencyComponent`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'enforce_horizontal_boundary' is either :obj:`True` if the
+                    'enforce_horizontal_boundary' is either `True` if the
                     boundary conditions should be enforced after each stage of
-                    the time integrator, or :obj:`False` not to apply the boundary
-                    constraints at all. Defaults to :obj:`False`;
+                    the time integrator, or `False` not to apply the boundary
+                    constraints at all. Defaults to `False`;
+
                 * if 'component' is a
 
                         - :class:`sympl.TendencyComponent`,
@@ -298,16 +298,16 @@ class SequentialTendencySplitting:
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             The current state.
-        state_prv : dict
+        state_prv : dict[str, sympl.DataArray]
             The provisional state.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the timestep size.
+        timestep : datetime.timedelta
+            The timestep size.
 
         Note
         ----
-        :obj:`state_prv` is modified in-place to represent the final model state.
+        `state_prv` is modified in-place to represent the final model state.
         """
         current_time = state["time"]
 
