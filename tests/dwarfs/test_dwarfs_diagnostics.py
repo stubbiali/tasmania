@@ -28,19 +28,18 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
-import numpy as np
 import pytest
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from .utils import compare_arrays, st_floats, st_one_of, st_domain, st_raw_field
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from utils import compare_arrays, st_floats, st_one_of, st_domain, st_raw_field
 
 
@@ -68,7 +67,7 @@ def test_horizontal_velocity_staggered(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     r = data.draw(
         st_raw_field(
@@ -77,7 +76,7 @@ def test_horizontal_velocity_staggered(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -88,7 +87,7 @@ def test_horizontal_velocity_staggered(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -99,7 +98,7 @@ def test_horizontal_velocity_staggered(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -107,10 +106,10 @@ def test_horizontal_velocity_staggered(data):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
-    rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
+    ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
-    hv = HorizontalVelocity(grid, True, backend=backend, rebuild=True)
+    hv = HorizontalVelocity(grid, True, backend=backend, rebuild=False)
 
     hv.get_momenta(r, u, v, ru, rv)
 
@@ -119,8 +118,8 @@ def test_horizontal_velocity_staggered(data):
     rv_val = r[:-1, :-1, :-1] * 0.5 * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
-    v_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
+    u_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    v_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
@@ -154,7 +153,7 @@ def test_horizontal_velocity(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     r = data.draw(
         st_raw_field(
@@ -163,7 +162,7 @@ def test_horizontal_velocity(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -174,7 +173,7 @@ def test_horizontal_velocity(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -185,7 +184,7 @@ def test_horizontal_velocity(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -193,10 +192,10 @@ def test_horizontal_velocity(data):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
-    rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
+    ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
-    hv = HorizontalVelocity(grid, False, backend=backend, rebuild=True)
+    hv = HorizontalVelocity(grid, False, backend=backend, rebuild=False)
 
     hv.get_momenta(r, u, v, ru, rv)
 
@@ -205,8 +204,8 @@ def test_horizontal_velocity(data):
     rv_val = r[:-1, :-1, :-1] * v[:-1, :-1, :-1]
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
-    v_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, halo)
+    u_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    v_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
@@ -240,7 +239,7 @@ def test_water_constituent(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     r = data.draw(
         st_raw_field(
@@ -249,7 +248,7 @@ def test_water_constituent(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -260,7 +259,7 @@ def test_water_constituent(data):
             max_value=1e4,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="r",
     )
@@ -268,13 +267,13 @@ def test_water_constituent(data):
     # ========================================
     # test bed
     # ========================================
-    rq = zeros((nx+1, ny+1, nz+1), backend, dtype, halo)
-    q_new = zeros((nx+1, ny+1, nz+1), backend, dtype, halo)
+    rq = zeros((nx+1, ny+1, nz+1), backend, dtype, default_origin)
+    q_new = zeros((nx+1, ny+1, nz+1), backend, dtype, default_origin)
 
     #
     # clipping off
     #
-    wc = WaterConstituent(grid, False, backend=backend, rebuild=True)
+    wc = WaterConstituent(grid, False, backend=backend, rebuild=False)
 
     wc.get_density_of_water_constituent(r, q, rq)
     rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
@@ -282,12 +281,12 @@ def test_water_constituent(data):
 
     wc.get_mass_fraction_of_water_constituent_in_air(r, rq, q_new)
     q_new_val = rq[:-1, :-1, :-1] / r[:-1, :-1, :-1]
-    # compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
+    compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
 
     #
     # clipping on
     #
-    wc = WaterConstituent(grid, True, backend=backend, rebuild=True)
+    wc = WaterConstituent(grid, True, backend=backend, rebuild=False)
 
     wc.get_density_of_water_constituent(r, q, rq)
     rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
@@ -297,7 +296,7 @@ def test_water_constituent(data):
     wc.get_mass_fraction_of_water_constituent_in_air(r, rq, q_new)
     q_new_val = rq[:-1, :-1, :-1] / r[:-1, :-1, :-1]
     q_new_val[q_new_val < 0.0] = 0.0
-    # compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
+    compare_arrays(q_new[:-1, :-1, :-1], q_new_val)
 
 
 if __name__ == "__main__":

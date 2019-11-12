@@ -24,14 +24,14 @@ from copy import deepcopy
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
 
 
 def get_dataarray_2d(
     array, grid, units, name=None, grid_origin=None, grid_shape=None, set_coordinates=True
 ):
     """
-    Create a DataArray out of a 2-D ndarray-like storage.
+    Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
 
     Parameters
     ----------
@@ -43,19 +43,19 @@ def get_dataarray_2d(
         The variable units.
     name : `str`, optional
         The variable name. Defaults to `None`.
-    grid_origin : `sequence`, optional
+    grid_origin : `Sequence[int]`, optional
         The index of the element in the buffer associated with the (0, 0)
         grid point. If not specified, it is assumed that `grid_origin = (0, 0)`.
-    grid_shape : `sequence`, optional
+    grid_shape : `Sequence[int]`, optional
         The shape of grid underlying the field. It cannot exceed the shape
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        TODO
+        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
-    dataarray-like :
+    sympl.DataArray :
         The :class:`sympl.DataArray` whose value array is `array`,
         whose coordinates and dimensions are retrieved from `grid`,
         and whose units are `units`.
@@ -120,19 +120,19 @@ def get_dataarray_3d(
         The variable units.
     name : `str`, optional
         The variable name. Defaults to `None`.
-    grid_origin : `sequence`, optional
+    grid_origin : `Sequence[int]`, optional
         The index of the element in the buffer associated with the (0, 0, 0)
         grid point. If not specified, it is assumed that `grid_origin = (0, 0, 0)`.
-    grid_shape : `sequence`, optional
+    grid_shape : `Sequence[int]`, optional
         The shape of grid underlying the field. It cannot exceed the shape
         of the passed buffer. If not specified, it is assumed that it coincides
         with the shape of the buffer.
     set_coordinates : `bool`, optional
-        TODO
+        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
-    dataarray-like :
+    sympl.DataArray :
         The :class:`sympl.DataArray` whose value array is `array`,
         whose coordinates and dimensions are retrieved from `grid`,
         and whose units are `units`.
@@ -228,22 +228,22 @@ def get_dataarray_dict(array_dict, grid, properties, set_coordinates=True):
     """
     Parameters
     ----------
-    array_dict : dict
+    array_dict[str, array_like] dict
         Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`numpy.ndarray`\s
-        containing the data for those variables.
+        included in the model state, and values are :class:`numpy.ndarray`-like
+        arrays containing the data for those variables.
     grid : tasmania.Grid
         The underlying grid.
-    properties : dict
+    properties : dict[str, str]
         Dictionary whose keys are strings indicating the variables
         included in the model state, and values are strings indicating
         the units in which those variables should be expressed.
     set_coordinates : `bool`, optional
-        TODO
+        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
-    dict :
+    dict[str, sympl.DataArray]
         Dictionary whose keys are strings indicating the variables
         included in the model state, and values are :class:`sympl.DataArray`\s
         containing the data for those variables.
@@ -286,18 +286,19 @@ def get_array_dict(dataarray_dict, properties):
     """
     Parameters
     ----------
-    dataarray_dict : dict
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`sympl.DataArray`\s
-        containing the data for those variables.
-    properties : dict
-        TODO
+    dataarray_dict : dict[str, sympl.DataArray]
+        Dictionary whose keys are strings indicating variable names, and values
+        are :class:`sympl.DataArray`\s containing the data for those variables.
+    properties : dict[str, dict]
+        Dictionary whose keys are strings indicating the variable names in
+        `dataarray_dict`, and values are dictionaries storing fundamental
+        properties (units) for those variables.
 
     Return
     ------
-    dict :
-        Dictionary whose keys are strings indicating the variables
-        included in the model state, and values are :class:`numpy.ndarray`\s
+    dict[str, array_like] :
+        Dictionary whose keys are strings indicating the variable names in
+        `dataarray_dict`,  and values are :class:`numpy.ndarray`-like arrays
         containing the data for those variables.
     """
     try:
@@ -315,12 +316,13 @@ def get_array_dict(dataarray_dict, properties):
     return array_dict
 
 
-def get_physical_state(domain, cstate, properties, store_names=None):
+def get_physical_state(domain, cstate, store_names=None):
     """
     Given a state dictionary defined over the numerical grid, transpose that state
     over the corresponding physical grid.
     """
     pgrid = domain.physical_grid
+    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
     hb = domain.horizontal_boundary
 
     store_names = (
@@ -335,28 +337,25 @@ def get_physical_state(domain, cstate, properties, store_names=None):
     for name in store_names:
         if name != "time":
             storage_shape = cstate[name].shape
+            mx = nx + 1 if "at_u_locations" in name else nx
+            my = ny + 1 if "at_v_locations" in name else ny
+            mz = nz + 1 if "on_interface_levels" in name else nz
+            units = cstate[name].attrs["units"]
+
+            raw_cfield = cstate[name].values
+            raw_pfield = hb.get_physical_field(raw_cfield, name)
+
             if len(storage_shape) == 2:
-                grid_origin = properties[name].get("grid_origin", (0, 0))
-                grid_shape = properties[name].get("grid_shape", storage_shape)
-                xslice = slice(grid_origin[0], grid_origin[0] + grid_shape[0])
-                yslice = slice(grid_origin[1], grid_origin[1] + grid_shape[1])
-                units = cstate[name].attrs["units"]
-                raw_cfield = cstate[name].values[xslice, yslice]
-                raw_pfield = hb.get_physical_field(raw_cfield, name)
                 pstate[name] = get_dataarray_2d(
-                    raw_pfield, pgrid, units, name=name, set_coordinates=True
+                    raw_pfield[:mx, :my], pgrid, units, name=name, set_coordinates=True
                 )
             else:
-                grid_origin = properties[name].get("grid_origin", (0, 0, 0))
-                grid_shape = properties[name].get("grid_shape", storage_shape)
-                xslice = slice(grid_origin[0], grid_origin[0] + grid_shape[0])
-                yslice = slice(grid_origin[1], grid_origin[1] + grid_shape[1])
-                zslice = slice(grid_origin[2], grid_origin[2] + grid_shape[2])
-                units = cstate[name].attrs["units"]
-                raw_cfield = cstate[name].values[xslice, yslice, zslice]
-                raw_pfield = hb.get_physical_field(raw_cfield, name)
                 pstate[name] = get_dataarray_3d(
-                    raw_pfield, pgrid, units, name=name, set_coordinates=True
+                    raw_pfield[:mx, :my, :mz],
+                    pgrid,
+                    units,
+                    name=name,
+                    set_coordinates=True,
                 )
 
     return pstate
@@ -368,6 +367,8 @@ def get_numerical_state(domain, pstate, store_names=None):
     over the corresponding numerical grid.
     """
     cgrid = domain.numerical_grid
+    pgrid = domain.physical_grid
+    nx, ny, nz = pgrid.nx, pgrid.ny, pgrid.nz
     hb = domain.horizontal_boundary
 
     store_names = (
@@ -381,29 +382,34 @@ def get_numerical_state(domain, pstate, store_names=None):
 
     for name in store_names:
         if name != "time":
+            mx = nx + 1 if "at_u_locations" in name else nx
+            my = ny + 1 if "at_v_locations" in name else ny
+            mz = nz + 1 if "on_interface_levels" in name else nz
             units = pstate[name].attrs["units"]
+
             raw_pfield = pstate[name].values
             raw_cfield = hb.get_numerical_field(raw_pfield, name)
+
             if len(raw_cfield.shape) == 2:
                 cstate[name] = get_dataarray_2d(
-                    raw_cfield, cgrid, units, name, set_coordinates=True
+                    raw_cfield,
+                    cgrid,
+                    units,
+                    name,
+                    grid_shape=(mx, my),
+                    set_coordinates=True,
                 )
             else:
                 cstate[name] = get_dataarray_3d(
-                    raw_cfield, cgrid, units, name, set_coordinates=True
+                    raw_cfield,
+                    cgrid,
+                    units,
+                    name,
+                    grid_shape=(mx, my, mz),
+                    set_coordinates=True,
                 )
 
     return cstate
-
-
-def get_storage_descriptor(storage_shape, dtype, halo=None, mask=(True, True, True)):
-    halo = (0, 0, 0) if halo is None else halo
-    halo = tuple(halo[i] if storage_shape[i] > 2 * halo[i] else 0 for i in range(3))
-    domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
-    descriptor = gt.storage.StorageDescriptor(
-        dtype=dtype, mask=mask, halo=halo, iteration_domain=domain
-    )
-    return descriptor
 
 
 def get_storage_shape(in_shape, min_shape, max_shape=None):
@@ -426,28 +432,90 @@ def get_storage_shape(in_shape, min_shape, max_shape=None):
     return out_shape
 
 
-def empty(storage_shape, backend, dtype, halo=None, mask=None):
-    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
-    gt_storage = gt.storage.empty(descriptor=descriptor, backend=backend)
+def get_default_origin(
+    default_origin, storage_shape, min_default_origin=None, max_default_origin=None
+):
+    default_origin = default_origin or (0, 0, 0)
+
+    max_default_origin = max_default_origin or default_origin
+    max_default_origin = tuple(
+        max_default_origin[i] if storage_shape[i] > 2 * max_default_origin[i] else 0
+        for i in range(3)
+    )
+
+    min_default_origin = min_default_origin or max_default_origin
+    min_default_origin = tuple(
+        min_default_origin[i]
+        if min_default_origin[i] <= max_default_origin[i]
+        else max_default_origin[i]
+        for i in range(3)
+    )
+
+    out = tuple(
+        default_origin[i]
+        if min_default_origin[i] <= default_origin[i] <= max_default_origin[i]
+        else min_default_origin[i]
+        for i in range(3)
+    )
+
+    return out
+
+
+def get_storage_descriptor(dtype, grid_group=None, mask=None):
+    grid_group = grid_group or "default_grid_group"
+    descriptor = gt.storage.StorageDescriptor(dtype, grid_group, mask=mask)
+    return descriptor
+
+
+def empty(
+    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
+):
+    default_origin = default_origin or (0, 0, 0)
+    gt_storage = gt.storage.empty(
+        backend,
+        default_origin,
+        storage_shape,
+        dtype,
+        mask=mask,
+        managed_memory=managed_memory,
+    )
     return gt_storage
 
 
-def zeros(storage_shape, backend, dtype, halo=None, mask=None):
-    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
-    gt_storage = gt.storage.zeros(descriptor=descriptor, backend=backend)
+def zeros(
+    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
+):
+    default_origin = default_origin or (0, 0, 0)
+    gt_storage = gt.storage.zeros(
+        backend,
+        default_origin,
+        storage_shape,
+        dtype,
+        mask=mask,
+        managed_memory=managed_memory,
+    )
     return gt_storage
 
 
-def ones(storage_shape, backend, dtype, halo=None, mask=None):
-    descriptor = get_storage_descriptor(storage_shape, dtype, halo=halo, mask=mask)
-    gt_storage = gt.storage.ones(descriptor=descriptor, backend=backend)
+def ones(
+    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
+):
+    default_origin = default_origin or (0, 0, 0)
+    gt_storage = gt.storage.ones(
+        backend,
+        default_origin,
+        storage_shape,
+        dtype,
+        mask=mask,
+        managed_memory=managed_memory,
+    )
     return gt_storage
 
 
 def deepcopy_array_dict(src):
-    dst = {'time': src['time']} if 'time' in src else {}
+    dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
-        if name != 'time':
+        if name != "time":
             dst[name] = deepcopy(src[name])
     return dst
 
@@ -463,8 +531,8 @@ def deepcopy_dataarray(src):
 
 
 def deepcopy_dataarray_dict(src):
-    dst = {'time': src['time']} if 'time' in src else {}
+    dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
-        if name != 'time':
+        if name != "time":
             dst[name] = deepcopy_dataarray(src[name])
     return dst

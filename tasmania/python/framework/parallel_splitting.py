@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -28,18 +29,32 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
+from sympl._core.units import units_are_same
+
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import tendencystepper_factory
-from tasmania.python.utils.dict_utils import add, add_inplace, subtract, subtract_inplace
+from tasmania.python.utils.dict_utils import add_inplace, subtract_inplace
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
     get_output_properties,
 )
+
+
+def stencil_defs(
+    inout_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    in_c: gtscript.Field[np.float64],
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a + in_b - in_c
 
 
 class ParallelSplitting:
@@ -49,23 +64,23 @@ class ParallelSplitting:
 
     Attributes
     ----------
-    input_properties : dict
+    input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         should be present in the input model dictionary representing
         the current state, and whose values are dictionaries specifying
         fundamental properties (dims, units) of those variables.
-    provisional_input_properties : dict
+    provisional_input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         should be present in the input model dictionary representing
         the provisional state, and whose values are dictionaries specifying
         fundamental properties (dims, units) of those variables.
-    output_properties : dict
+    output_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         will be present in the input model dictionary representing
         the current state when the call operator returns, and
         whose values are dictionaries specifying fundamental properties
         (dims, units) of those variables.
-    provisional_output_properties : dict
+    provisional_output_properties : dict[str, dict]
         Dictionary whose keys are strings denoting variables which
         will be present in the input model dictionary representing
         the provisional state when the call operator returns, and
@@ -98,7 +113,14 @@ class ParallelSplitting:
         self,
         *args,
         execution_policy="serial",
-        retrieve_diagnostics_from_provisional_state=False
+        retrieve_diagnostics_from_provisional_state=False,
+        gt_powered=False,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        exec_info=None,
+        rebuild=False,
+        **kwargs
     ):
         """
         Parameters
@@ -119,6 +141,7 @@ class ParallelSplitting:
                         - :class:`tasmania.ConcurrentCoupling`
 
                     representing the process;
+
                 * if 'component' is an instance of
 
                         - :class:`sympl.TendencyComponent`,
@@ -137,16 +160,40 @@ class ParallelSplitting:
                             nominally second-order, and third-order for linear problems;
                         - 'rk3', for the three-stages, third-order RK scheme.
 
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'time_integrator_kwargs' is a dictionary of configuration
+                    options for 'time_integrator'. The dictionary may include
+                    the following keys:
+
+                        - backend (str): The GT4Py backend;
+                        - backend_opts (dict): Dictionary of backend-specific options;
+                        - build_info (dict): Dictionary of building options;
+                        - dtype (data-type): Data type of the storages;
+                        - exec_info (dict): Dictionary which will store statistics
+                            and diagnostics gathered at run time;
+                        - default_origin (tuple): Storage default origin;
+                        - rebuild (bool): `True` to trigger the stencils compilation
+                            at any class instantiation, `False` to rely on the caching
+                            mechanism implemented by GT4Py.
+
                 * if 'component' is either an instance of or wraps objects of class
 
                         - :class:`tasmania.TendencyComponent`,
                         - :class:`tasmania.ImplicitTendencyComponent`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
-                    'enforce_horizontal_boundary' is either :obj:`True` if the
+                    'enforce_horizontal_boundary' is either `True` if the
                     boundary conditions should be enforced after each stage of
-                    the time integrator, or :obj:`False` not to apply the boundary
-                    constraints at all. Defaults to :obj:`False`;
+                    the time integrator, or `False` not to apply the boundary
+                    constraints at all. Defaults to `False`;
+
                 * if 'component' is a
 
                         - :class:`sympl.TendencyComponent`,
@@ -157,8 +204,6 @@ class ParallelSplitting:
 
                     'substeps' represents the number of substeps to carry out
                     to integrate the process. Defaults to 1.
-                * 'backend' TODO
-                * 'halo' TODO
 
         execution_policy : `str`, optional
             String specifying the runtime mode in which parameterizations
@@ -174,15 +219,27 @@ class ParallelSplitting:
                     to the current state in a single step just before returning.
 
         retrieve_diagnostics_from_provisional_state : `bool`, optional
-            :obj:`True` (respectively, :obj:`False`) to feed the
+            `True` (respectively, `False`) to feed the
             :class:`sympl.DiagnosticComponent` objects with the provisional
             (resp., current) state, and add the so-retrieved diagnostics
             to the provisional (resp., current) state dictionary.
-            Defaults to :obj:`False`.
+            Defaults to `False`.
+        gt_powered : `bool`, optional
+            `True` to perform additions and subtractions using GT4Py (leveraging
+            field versioning), `False` to perform the operations in plain Python.
         backend : `str`, optional
-            TODO
-        halo : `tuple`, optional
-            TODO
+            The GT4Py backend.
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
+        exec_info : `dict`, optional
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        rebuild : `bool`, optional
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        **kwargs:
+            Catch-all for unused keyword arguments.
         """
         self._component_list = []
         self._substeps = []
@@ -205,16 +262,15 @@ class ParallelSplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                backend = process.get("backend", None)
-                halo = process.get("halo", None)
+                kwargs = process.get(
+                    "time_integrator_kwargs",
+                    {"backend": None, "halo": None, "managed_memory": False},
+                )
 
                 TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(
                     TendencyStepper(
-                        bare_component,
-                        enforce_horizontal_boundary=enforce_hb,
-                        backend=backend,
-                        halo=halo,
+                        bare_component, enforce_horizontal_boundary=enforce_hb, **kwargs
                     )
                 )
 
@@ -224,9 +280,9 @@ class ParallelSplitting:
 
         self._policy = execution_policy
         if execution_policy == "serial":
-            self._call = self._call_serial
+            self._call = self._call_serial_gt if gt_powered else self._call_serial
         else:
-            self._call = self._call_asparallel
+            self._call = self._call_asparallel_gt if gt_powered else self._call_asparallel
 
         if (
             execution_policy == "as_parallel"
@@ -271,6 +327,19 @@ class ParallelSplitting:
             properties1_name="provisional_input_properties",
             properties2_name="provisional_output_properties",
         )
+
+        if gt_powered:
+            # compile the underlying stencil
+            self._stencil = gtscript.stencil(
+                definition=stencil_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+
+            # store parameters needed at run-time
+            self._exec_info = exec_info
 
     def _init_input_properties(self):
         if not self._diagnostics_from_provisional:
@@ -366,39 +435,34 @@ class ParallelSplitting:
 
         Parameters
         ----------
-        state : dict
-            Model state dictionary representing the model state at the
-            current time level, i.e., at the beginning of the current
-            timestep. Its keys are strings denoting the model variables,
-            and its values are :class:`sympl.DataArray`\s storing data
-            for those variables.
-        state_prv :
-            Model state dictionary representing a provisional model state.
-            Ideally, this should be the state output by the dynamical core,
-            i.e., the outcome of a one-timestep time integration which
-            takes only the dynamical processes into consideration.
-            Its keys are strings denoting the model variables, and its values
-            are :class:`sympl.DataArray`\s storing data for those variables.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the timestep size.
+        state : dict[str, sympl.DataArray]
+            The model state at the current time level, i.e., at the beginning
+            of the current timestep.
+        state_prv : dict[str, sympl.DataArray]
+            A provisional model state. Ideally, this should be the state output
+            by the dynamical core, i.e., the outcome of a one-timestep time
+            integration which takes only the dynamical processes into consideration.
+        timestep : datetime.timedelta
+            The time step.
 
         Note
         ----
-        :obj:`state` may be modified in-place with the diagnostics retrieved
-        from :obj:`state` itself.
-        :obj:`state_prv` is modified in-place with the temporary states provided
-        by each process. In other words, when this method returns, :obj:`state_prv`
+        `state` may be modified in-place with the diagnostics retrieved
+        from `state` itself.
+        `state_prv` is modified in-place with the temporary states provided
+        by each process. In other words, when this method returns, `state_prv`
         will represent the state at the next time level.
         """
+        # TODO: add safety checks on input parameters
+
+        # step the solution
         self._call(state, state_prv, timestep)
 
         # Ensure the provisional state is now defined at the next time level
         state_prv["time"] = state["time"] + timestep
 
     def _call_serial(self, state, state_prv, timestep):
-        """
-        Process the components in 'serial' runtime mode.
-        """
+        """ Process the components in 'serial' runtime mode. """
         out_units = {
             name: properties["units"]
             for name, properties in self.provisional_output_properties.items()
@@ -438,10 +502,62 @@ class ParallelSplitting:
                     diagnostics = component(state)
                     state.update(diagnostics)
 
+    def _call_serial_gt(self, state, state_prv, timestep):
+        """ GT4Py-powered version of _call_serial. """
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.provisional_output_properties.items()
+        }
+
+        for component, substeps in zip(self._component_list, self._substeps):
+            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics, state_tmp = component(state, timestep / substeps)
+
+                if substeps > 1:
+                    state_tmp.update(
+                        {
+                            key: value
+                            for key, value in state.items()
+                            if key not in state_tmp
+                        }
+                    )
+
+                    for _ in range(1, substeps):
+                        _, state_aux = component(state_tmp, timestep / substeps)
+                        state_tmp.update(state_aux)
+
+                for name in state_tmp:
+                    if name != "time":
+                        field = state[name].to_units(out_units[name]).values
+                        field_prv = state_prv[name].to_units(out_units[name]).values
+                        field_tmp = state_tmp[name].to_units(out_units[name]).values
+
+                        self._stencil(
+                            inout_a=field_prv,
+                            in_b=field_tmp,
+                            in_c=field,
+                            origin=(0, 0, 0),
+                            domain=field.shape,
+                            exec_info=self._exec_info,
+                        )
+
+                        if not units_are_same(
+                            state_prv[name].attrs["units"], out_units[name]
+                        ):
+                            state_prv[name].values[...] = field_prv
+                            state_prv[name].attrs["units"] = out_units[name]
+
+                state.update(diagnostics)
+            else:
+                if self._diagnostics_from_provisional:
+                    diagnostics = component(state_prv)
+                    state_prv.update(diagnostics)
+                else:
+                    diagnostics = component(state)
+                    state.update(diagnostics)
+
     def _call_asparallel(self, state, state_prv, timestep):
-        """
-        Process the components in 'as_parallel' runtime mode.
-        """
+        """ Process the components in 'as_parallel' runtime mode. """
         agg_diagnostics = {}
         out_units = {
             name: properties["units"]
@@ -472,6 +588,59 @@ class ParallelSplitting:
                     units=out_units,
                     unshared_variables_in_output=True,
                 )
+
+                agg_diagnostics.update(diagnostics)
+            else:
+                diagnostics = component(state)
+                agg_diagnostics.update(diagnostics)
+
+        state.update(agg_diagnostics)
+
+    def _call_asparallel_gt(self, state, state_prv, timestep):
+        """ GT4Py-powered version of _call_asparallel. """
+        agg_diagnostics = {}
+        out_units = {
+            name: properties["units"]
+            for name, properties in self.provisional_output_properties.items()
+        }
+
+        for component, substeps in zip(self._component_list, self._substeps):
+            if not isinstance(component, self.__class__.allowed_diagnostic_type):
+                diagnostics, state_tmp = component(state, timestep / substeps)
+
+                if substeps > 1:
+                    state_tmp.update(
+                        {
+                            key: value
+                            for key, value in state.items()
+                            if key not in state_tmp
+                        }
+                    )
+
+                    for _ in range(1, substeps):
+                        _, state_aux = component(state_tmp, timestep / substeps)
+                        state_tmp.update(state_aux)
+
+                for name in state_tmp:
+                    if name != "time":
+                        field = state[name].to_units(out_units[name]).values
+                        field_prv = state_prv[name].to_units(out_units[name]).values
+                        field_tmp = state_tmp[name].to_units(out_units[name]).values
+
+                        self._stencil(
+                            inout_a=field_prv,
+                            in_b=field_tmp,
+                            in_c=field,
+                            origin=(0, 0, 0),
+                            domain=field.shape,
+                            exec_info=self._exec_info,
+                        )
+
+                        if not units_are_same(
+                            state_prv[name].attrs["units"], out_units[name]
+                        ):
+                            state_prv[name].values[...] = field_prv
+                            state_prv[name].attrs["units"] = out_units[name]
 
                 agg_diagnostics.update(diagnostics)
             else:

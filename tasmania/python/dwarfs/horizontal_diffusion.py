@@ -24,8 +24,11 @@ import abc
 import math
 import numpy as np
 
-import gridtools as gt
-from tasmania.python.utils.storage_utils import ones, zeros
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -53,13 +56,14 @@ class HorizontalDiffusion(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         """
         Parameters
         ----------
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays for which tendencies should be computed.
         dx : float
             The grid spacing along the first horizontal dimension.
@@ -79,15 +83,17 @@ class HorizontalDiffusion(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple[int]
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -97,17 +103,14 @@ class HorizontalDiffusion(abc.ABC):
         self._exec_info = exec_info
 
         # initialize the diffusivity
-        # gamma = diffusion_coeff * ones(
-        #     (shape[0], shape[1], shape[2]), backend, dtype, halo, mask=[True, True, True]
-        #     # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
-        # )
         gamma = zeros(
             (shape[0], shape[1], shape[2]),
             backend,
             dtype,
-            halo,
-            mask=[True, True, True]
-            # (1, 1, shape[2]), backend, dtype, halo, mask=[False, False, True]
+            default_origin,
+            mask=[True, True, True],
+            managed_memory=managed_memory
+            # (1, 1, shape[2]), backend, dtype, default_origin, mask=[False, False, True]
         )
         gamma[...] = diffusion_coeff
         self._gamma = gamma
@@ -122,10 +125,14 @@ class HorizontalDiffusion(abc.ABC):
             )
 
         # initialize the underlying stencil
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            name=self.__class__.__name__,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @abc.abstractmethod
     def __call__(self, phi, phi_tnd):
@@ -134,10 +141,10 @@ class HorizontalDiffusion(abc.ABC):
 
         Parameters
         ----------
-        phi : gridtools.storage.Storage
+        phi : gt4py.storage.storage.Storage
             The 3-D prognostic field.
-        phi_tnd : gridtools.storage.Storage
-            Buffer where the calculated tendency will be written.
+        phi_tnd : gt4py.storage.storage.Storage
+            Buffer into which the calculated tendency is written.
         """
         pass
 
@@ -157,19 +164,20 @@ class HorizontalDiffusion(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
-        rebuild=False
+        default_origin=None,
+        rebuild=False,
+        managed_memory=False
     ):
         """
         Parameters
         ----------
-        diffusion_type : string
+        diffusion_type : str
             String specifying the diffusion technique to implement. Either:
 
             * 'second_order', for second-order computational diffusion;
             * 'fourth_order', for fourth-order computational diffusion.
 
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays for which tendencies should be computed.
         dx : float
             The grid spacing along the first horizontal dimension.
@@ -190,15 +198,17 @@ class HorizontalDiffusion(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -218,8 +228,9 @@ class HorizontalDiffusion(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         ]
 
         if diffusion_type == "second_order":
@@ -279,8 +290,9 @@ class SecondOrder(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -296,8 +308,9 @@ class SecondOrder(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -312,24 +325,25 @@ class SecondOrder(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
     ):
-        out_phi = in_gamma[0, 0, 0] * (
-            (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx * dx)
-            + (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy * dy)
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = in_gamma[0, 0, 0] * (
+                (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0]) / (dx * dx)
+                + (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0]) / (dy * dy)
+            )
 
 
 class SecondOrder1DX(HorizontalDiffusion):
@@ -359,8 +373,9 @@ class SecondOrder1DX(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -376,8 +391,9 @@ class SecondOrder1DX(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -392,25 +408,26 @@ class SecondOrder1DX(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, 0, 0)},
+            origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
         )
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
-        dy: float
+        dy: float = 0.0
     ):
-        out_phi = (
-            in_gamma[0, 0, 0]
-            * (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
-            / (dx * dx)
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (
+                in_gamma[0, 0, 0]
+                * (in_phi[-1, 0, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[1, 0, 0])
+                / (dx * dx)
+            )
 
 
 class SecondOrder1DY(HorizontalDiffusion):
@@ -440,8 +457,9 @@ class SecondOrder1DY(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -457,8 +475,9 @@ class SecondOrder1DY(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -473,25 +492,26 @@ class SecondOrder1DY(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
-            origin={"in_phi": (0, nb, 0), "in_gamma": (0, nb, 0), "out_phi": (0, nb, 0)},
+            origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
-        dx: float,
+        dx: float = 0.0,
         dy: float
     ):
-        out_phi = (
-            in_gamma[0, 0, 0]
-            * (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
-            / (dy * dy)
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (
+                in_gamma[0, 0, 0]
+                * (in_phi[0, -1, 0] - 2.0 * in_phi[0, 0, 0] + in_phi[0, 1, 0])
+                / (dy * dy)
+            )
 
 
 class FourthOrder(HorizontalDiffusion):
@@ -521,8 +541,9 @@ class FourthOrder(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -538,8 +559,9 @@ class FourthOrder(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -554,38 +576,39 @@ class FourthOrder(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
         dy: float
     ):
-        out_phi = in_gamma[0, 0, 0] * (
-            (
-                -in_phi[-2, 0, 0]
-                + 16.0 * in_phi[-1, 0, 0]
-                - 30.0 * in_phi[0, 0, 0]
-                + 16.0 * in_phi[1, 0, 0]
-                - in_phi[2, 0, 0]
+        with computation(PARALLEL), interval(...):
+            out_phi = in_gamma[0, 0, 0] * (
+                (
+                    -in_phi[-2, 0, 0]
+                    + 16.0 * in_phi[-1, 0, 0]
+                    - 30.0 * in_phi[0, 0, 0]
+                    + 16.0 * in_phi[1, 0, 0]
+                    - in_phi[2, 0, 0]
+                )
+                / (12.0 * dx * dx)
+                + (
+                    -in_phi[0, -2, 0]
+                    + 16.0 * in_phi[0, -1, 0]
+                    - 30.0 * in_phi[0, 0, 0]
+                    + 16.0 * in_phi[0, 1, 0]
+                    - in_phi[0, 2, 0]
+                )
+                / (12.0 * dy * dy)
             )
-            / (12.0 * dx * dx)
-            + (
-                -in_phi[0, -2, 0]
-                + 16.0 * in_phi[0, -1, 0]
-                - 30.0 * in_phi[0, 0, 0]
-                + 16.0 * in_phi[0, 1, 0]
-                - in_phi[0, 2, 0]
-            )
-            / (12.0 * dy * dy)
-        )
 
 
 class FourthOrder1DX(HorizontalDiffusion):
@@ -615,8 +638,9 @@ class FourthOrder1DX(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -632,8 +656,9 @@ class FourthOrder1DX(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -648,31 +673,32 @@ class FourthOrder1DX(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, 0, 0)},
+            origin=(nb, 0, 0),
             domain=(nx - 2 * nb, ny, nz),
             exec_info=self._exec_info,
         )
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dx: float,
-        dy: float
+        dy: float = 0.0
     ):
-        out_phi = (
-            in_gamma[0, 0, 0]
-            * (
-                -in_phi[-2, 0, 0]
-                + 16.0 * in_phi[-1, 0, 0]
-                - 30.0 * in_phi[0, 0, 0]
-                + 16.0 * in_phi[1, 0, 0]
-                - in_phi[2, 0, 0]
+        with computation(PARALLEL), interval(...):
+            out_phi = (
+                in_gamma[0, 0, 0]
+                * (
+                    -in_phi[-2, 0, 0]
+                    + 16.0 * in_phi[-1, 0, 0]
+                    - 30.0 * in_phi[0, 0, 0]
+                    + 16.0 * in_phi[1, 0, 0]
+                    - in_phi[2, 0, 0]
+                )
+                / (12.0 * dx * dx)
             )
-            / (12.0 * dx * dx)
-        )
 
 
 class FourthOrder1DY(HorizontalDiffusion):
@@ -702,8 +728,9 @@ class FourthOrder1DY(HorizontalDiffusion):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -719,8 +746,9 @@ class FourthOrder1DY(HorizontalDiffusion):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_tnd):
@@ -735,28 +763,29 @@ class FourthOrder1DY(HorizontalDiffusion):
             out_phi=phi_tnd,
             dx=dx,
             dy=dy,
-            origin={"_all_": (0, nb, 0)},
+            origin=(0, nb, 0),
             domain=(nx, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd,
-        in_gamma: gt.storage.f64_k_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
-        dx: float,
+        dx: float = 0.0,
         dy: float
     ):
-        out_phi = (
-            in_gamma[0, 0, 0]
-            * (
-                -in_phi[0, -2, 0]
-                + 16.0 * in_phi[0, -1, 0]
-                - 30.0 * in_phi[0, 0, 0]
-                + 16.0 * in_phi[0, 1, 0]
-                - in_phi[0, 2, 0]
+        with computation(PARALLEL), interval(...):
+            out_phi = (
+                in_gamma[0, 0, 0]
+                * (
+                    -in_phi[0, -2, 0]
+                    + 16.0 * in_phi[0, -1, 0]
+                    - 30.0 * in_phi[0, 0, 0]
+                    + 16.0 * in_phi[0, 1, 0]
+                    - in_phi[0, 2, 0]
+                )
+                / (12.0 * dy * dy)
             )
-            / (12.0 * dy * dy)
-        )

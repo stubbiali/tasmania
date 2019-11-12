@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,11 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from gt4py import gtscript, __externals__
+
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
 
 
+@gtscript.function
 def get_upwind_flux(w, phi):
     flux = w[0, 0, 0] * (
         (w[0, 0, 0] > 0.0) * phi[0, 0, 0] + (w[0, 0, 0] < 0.0) * phi[0, 0, -1]
@@ -40,13 +43,15 @@ class Upwind(IsentropicMinimalVerticalFlux):
     externals = {"get_upwind_flux": get_upwind_flux}
 
     @staticmethod
+    @gtscript.function
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        from __externals__ import moist
+
         flux_s = get_upwind_flux(w=w, phi=s)
         flux_su = get_upwind_flux(w=w, phi=su)
         flux_sv = get_upwind_flux(w=w, phi=sv)
 
-        if not moist:
+        if not moist:  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_upwind_flux(w=w, phi=sqv)
@@ -56,6 +61,7 @@ class Upwind(IsentropicMinimalVerticalFlux):
             return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
 
 
+@gtscript.function
 def get_centered_flux(w, phi):
     flux = w[0, 0, 0] * 0.5 * (phi[0, 0, 0] + phi[0, 0, -1])
     return flux
@@ -69,13 +75,15 @@ class Centered(IsentropicMinimalVerticalFlux):
     externals = {"get_centered_flux": get_centered_flux}
 
     @staticmethod
+    @gtscript.function
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        from __externals__ import moist
+
         flux_s = get_centered_flux(w=w, phi=s)
         flux_su = get_centered_flux(w=w, phi=su)
         flux_sv = get_centered_flux(w=w, phi=sv)
 
-        if not moist:
+        if not moist:  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_centered_flux(w=w, phi=sqv)
@@ -85,6 +93,7 @@ class Centered(IsentropicMinimalVerticalFlux):
             return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
 
 
+@gtscript.function
 def get_third_order_upwind_flux(w, phi):
     flux = w[0, 0, 0] / 12.0 * (
         7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] + phi[0, 0, 1])
@@ -102,13 +111,15 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
     externals = {"get_third_order_upwind_flux": get_third_order_upwind_flux}
 
     @staticmethod
+    @gtscript.function
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        from __externals__ import moist
+
         flux_s = get_third_order_upwind_flux(w=w, phi=s)
         flux_su = get_third_order_upwind_flux(w=w, phi=su)
         flux_sv = get_third_order_upwind_flux(w=w, phi=sv)
 
-        if not moist:
+        if not moist:  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_third_order_upwind_flux(w=w, phi=sqv)
@@ -118,6 +129,7 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
             return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
 
 
+@gtscript.function
 def get_fifth_order_upwind_flux(w, phi):
     flux = w[0, 0, 0] / 60.0 * (
         37.0 * (phi[0, 0, -1] + phi[0, 0, 0])
@@ -139,13 +151,15 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
     externals = {"get_fifth_order_upwind_flux": get_fifth_order_upwind_flux}
 
     @staticmethod
+    @gtscript.function
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
-    # def __call__(dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+        from __externals__ import moist
+
         flux_s = get_fifth_order_upwind_flux(w=w, phi=s)
         flux_su = get_fifth_order_upwind_flux(w=w, phi=su)
         flux_sv = get_fifth_order_upwind_flux(w=w, phi=sv)
 
-        if not moist:
+        if not moist:  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_fifth_order_upwind_flux(w=w, phi=sqv)

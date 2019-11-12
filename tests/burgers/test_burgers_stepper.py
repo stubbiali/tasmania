@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,7 +31,7 @@ from hypothesis import (
 )
 import pytest
 
-import gridtools as gt
+import gt4py as gt
 from tasmania.python.burgers.dynamics.stepper import (
     BurgersStepper,
     _ForwardEuler,
@@ -41,7 +41,11 @@ from tasmania.python.burgers.dynamics.stepper import (
 from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from .test_burgers_advection import (
         first_order_advection,
         third_order_advection,
@@ -57,7 +61,11 @@ try:
         st_timedeltas,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from test_burgers_advection import (
         first_order_advection,
         third_order_advection,
@@ -92,10 +100,13 @@ def test_forward_euler(data):
     )
     grid = domain.numerical_grid
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     state = data.draw(
         st_burgers_state(
-            grid, time=datetime(year=1992, month=2, day=20), backend=backend, halo=halo
+            grid,
+            time=datetime(year=1992, month=2, day=20),
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -104,7 +115,9 @@ def test_forward_euler(data):
         {}
         if not if_tendency
         else data.draw(
-            st_burgers_tendency(grid, time=state["time"], backend=backend, halo=halo),
+            st_burgers_tendency(
+                grid, time=state["time"], backend=backend, default_origin=default_origin
+            ),
             label="tendency",
         )
     )
@@ -124,8 +137,8 @@ def test_forward_euler(data):
         "first_order",
         backend=backend,
         dtype=dtype,
-        halo=halo,
-        rebuild=True,
+        default_origin=default_origin,
+        rebuild=False,
     )
 
     assert isinstance(bs, _ForwardEuler)
@@ -187,10 +200,13 @@ def test_rk2(data):
     )
     grid = domain.numerical_grid
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     state = data.draw(
         st_burgers_state(
-            grid, time=datetime(year=1992, month=2, day=20), backend=backend, halo=halo
+            grid,
+            time=datetime(year=1992, month=2, day=20),
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -199,7 +215,9 @@ def test_rk2(data):
         {}
         if not if_tendency
         else data.draw(
-            st_burgers_tendency(grid, time=state["time"], backend=backend, halo=halo),
+            st_burgers_tendency(
+                grid, time=state["time"], backend=backend, default_origin=default_origin
+            ),
             label="tendency",
         )
     )
@@ -220,8 +238,8 @@ def test_rk2(data):
         "third_order",
         backend=backend,
         dtype=dtype,
-        halo=halo,
-        rebuild=True,
+        default_origin=default_origin,
+        rebuild=False,
     )
 
     assert isinstance(bs, _RK2)
@@ -310,10 +328,13 @@ def test_rk3ws(data):
     )
     grid = domain.numerical_grid
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     state = data.draw(
         st_burgers_state(
-            grid, time=datetime(year=1992, month=2, day=20), backend=backend, halo=halo
+            grid,
+            time=datetime(year=1992, month=2, day=20),
+            backend=backend,
+            default_origin=default_origin,
         ),
         label="state",
     )
@@ -322,7 +343,9 @@ def test_rk3ws(data):
         {}
         if not if_tendency
         else data.draw(
-            st_burgers_tendency(grid, time=state["time"], backend=backend, halo=halo),
+            st_burgers_tendency(
+                grid, time=state["time"], backend=backend, default_origin=default_origin
+            ),
             label="tendency",
         )
     )
@@ -343,8 +366,8 @@ def test_rk3ws(data):
         "fifth_order",
         backend=backend,
         dtype=dtype,
-        halo=halo,
-        rebuild=True,
+        default_origin=default_origin,
+        rebuild=False,
     )
 
     assert isinstance(bs, _RK2)
@@ -441,4 +464,5 @@ def test_rk3ws(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_forward_euler()

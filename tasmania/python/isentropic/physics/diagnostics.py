@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,19 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    IsentropicDiagnostics
-    IsentropicVelocityComponents
-"""
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics as Core
-from tasmania.python.utils.storage_utils import empty, zeros
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -80,9 +74,10 @@ class IsentropicDiagnostics(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+        managed_memory=False
     ):
         """
         Parameters
@@ -96,12 +91,12 @@ class IsentropicDiagnostics(DiagnosticComponent):
                 * 'numerical'.
 
         moist : bool
-            :obj:`True` if water species are included in the model,
-            :obj:`False` otherwise.
+            `True` if water species are included in the model,
+            `False` otherwise.
         pt : sympl.DataArray
             One-item :class:`sympl.DataArray` representing the air pressure
             at the top edge of the domain.
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -123,17 +118,19 @@ class IsentropicDiagnostics(DiagnosticComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input parameters needed at run-time
         self._moist = moist
@@ -144,7 +141,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         # instantiate the class computing the diagnostic variables
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        storage_shape = (nx, ny, nz+1) if storage_shape is None else storage_shape
+        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
         self._core = Core(
             self.grid,
             physical_constants=physical_constants,
@@ -153,20 +150,41 @@ class IsentropicDiagnostics(DiagnosticComponent):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
-            storage_shape=storage_shape
+            storage_shape=storage_shape,
+            managed_memory=managed_memory,
         )
 
         # allocate the gt4py storages collecting the output fields calculated
         # by the stencils
-        self._out_p = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_exn = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_mtg = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_h = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_p = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_exn = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_mtg = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_h = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
         if moist:
-            self._out_r = empty(storage_shape, backend, dtype, halo=halo)
-            self._out_t = empty(storage_shape, backend, dtype, halo=halo)
+            self._out_r = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            self._out_t = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
 
     @property
     def input_properties(self):
@@ -198,7 +216,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     def array_call(self, state):
-        s = state['air_isentropic_density']
+        s = state["air_isentropic_density"]
         self._core.get_diagnostic_variables(
             s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
         )
@@ -235,9 +253,10 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+        managed_memory=False
     ):
         """
         Parameters
@@ -250,17 +269,19 @@ class IsentropicVelocityComponents(DiagnosticComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # call the parent's constructor
         super().__init__(domain, "numerical")
@@ -287,8 +308,12 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         assert storage_shape[2] >= nz + 1, error_msg
 
         # allocate the gt4py storages gathering the output fields
-        self._out_u = empty(storage_shape, backend, dtype, halo=halo)
-        self._out_v = empty(storage_shape, backend, dtype, halo=halo)
+        self._out_u = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._out_v = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
 
     @property
     def input_properties(self):
@@ -317,29 +342,24 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     def array_call(self, state):
-        # shortcuts
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-
         # extract the required model variables from the input state
-        s  = state["air_isentropic_density"]
+        s = state["air_isentropic_density"]
         su = state["x_momentum_isentropic"]
         sv = state["y_momentum_isentropic"]
 
         # diagnose the velocity components
-        self._core.get_velocity_components(
-            s, su, sv, self._out_u, self._out_v
-        )
+        self._core.get_velocity_components(s, su, sv, self._out_u, self._out_v)
 
         # enforce the boundary conditions
         hb = self.horizontal_boundary
         hb.dmn_set_outermost_layers_x(
-            self._out_u[:nx+1, :ny, :nz],
+            self._out_u,
             field_name="x_velocity_at_u_locations",
             field_units="m s^-1",
             time=state["time"],
         )
         hb.dmn_set_outermost_layers_y(
-            self._out_v[:nx, :ny+1, :nz],
+            self._out_v,
             field_name="y_velocity_at_v_locations",
             field_units="m s^-1",
             time=state["time"],

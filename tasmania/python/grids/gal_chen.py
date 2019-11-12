@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -66,18 +66,18 @@ class GalChen3d(Grid):
 
     Attributes
     ----------
-    height : dataarray_like
+    height : sympl.DataArray
         3-D :class:`sympl.DataArray` representing the geometric height
         of the main levels (in [m]).
-    height_on_interface_levels : dataarray_like
+    height_on_interface_levels : sympl.DataArray
         3-D :class:`sympl.DataArray` representing the geometric height
         of the half levels (in [m]).
-    height_interface : dataarray_like
+    height_interface : sympl.DataArray
         Geometric height corresponding to :math:`\mu = \mu_F` (in [m]).
-    reference_pressure : dataarray_like
+    reference_pressure : sympl.DataArray
         3-D :class:`sympl.DataArray` representing the reference pressure
         at the main levels (in [m]).
-    reference_pressure_on_interface_levels : dataarray_like
+    reference_pressure_on_interface_levels : sympl.DataArray
         3-D :class:`sympl.DataArray` representing the reference pressure
         at the half levels (in [m]).
     """
@@ -102,26 +102,26 @@ class GalChen3d(Grid):
 
         Parameters
         ----------
-        domain_x : dataarray_like
+        domain_x : sympl.DataArray
             2-items :class:`sympl.DataArray` storing the end-points of the interval
             which the domain includes along the :math:`x`-axis, as well as the axis
             dimension and units.
         nx : int
             Number of mass points in the :math:`x`-direction.
-        domain_y : dataarray_like
+        domain_y : sympl.DataArray
             2-items :class:`sympl.DataArray` storing the end-points of the interval
             which the domain includes along the :math:`y`-axis, as well as the axis
             dimension and units.
         ny : int
             Number of mass points in the :math:`y`-direction.
-        domain_z : dataarray_like
+        domain_z : sympl.DataArray
             2-items :class:`sympl.DataArray` storing the end-points of the interval
             which the domain includes along the :math:`z`-axis, as well as the axis
             dimension and units. The interval should be specified in the form
             :math:`(z_{top}, ~ z_{surface})`.
         nz : int
             Number of vertical main levels.
-        z_interface : `dataarray_like`, optional
+        z_interface : `sympl.DataArray`, optional
             Interface value :math:`z_F`. If not specified, it is assumed that
             :math:`z_F = z_T`, with :math:`z_T` the value of :math:`z` at the
             top of the domain. In other words, the coordinate system is supposed
@@ -137,7 +137,7 @@ class GalChen3d(Grid):
         topo_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`~tasmania.grids.topography.Topography1d`.
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -156,8 +156,8 @@ class GalChen3d(Grid):
             :obj:`tasmania.grids.gal_chen._d_physical_constants`
             for the default values.
         dtype : `obj`, optional
-            Instance of :class:`numpy.dtype` specifying the data type for
-            any :class:`numpy.ndarray` used within this class.
+            Instance of :class:`data-type` specifying the data type for
+            any :class:`gt4py.storage.storage.Storage` used within this class.
             Defaults to :obj:`~tasmania.namelist.datatype`.
 
         Raises
@@ -166,7 +166,7 @@ class GalChen3d(Grid):
             If the vertical coordinate either assumes negative values, or
             does not vanish at the terrain surface.
         ValueError :
-            If :obj:`z_interface` is outside the domain.
+            If `z_interface` is outside the domain.
         """
         # Ensure th vertical axis is expressed in meters
         domain_z_conv = sympl.DataArray(
@@ -214,7 +214,7 @@ class GalChen3d(Grid):
 
         Parameters
         ----------
-        time : timedelta
+        time : datetime.timedelta
             :class:`datetime.timedelta` representing the elapsed simulation time.
         """
         super().update_topography(time)

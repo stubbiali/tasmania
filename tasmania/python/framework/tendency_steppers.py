@@ -33,7 +33,10 @@ from sympl import (
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
 
-import gridtools as gt
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.utils.dict_utils import add, add_inplace, multiply
 from tasmania.python.utils.framework_utils import check_property_compatibility
@@ -67,13 +70,14 @@ def restore_tendency_units(tendencies):
 
 
 def forward_euler(
-    in_field: gt.storage.f64_sd,
-    in_tnd: gt.storage.f64_sd,
-    out_field: gt.storage.f64_sd,
+    in_field: gtscript.Field[np.float64],
+    in_tnd: gtscript.Field[np.float64],
+    out_field: gtscript.Field[np.float64],
     *,
     dt: float
 ):
-    out_field = in_field[0, 0, 0] + dt * in_tnd[0, 0, 0]
+    with computation(PARALLEL), interval(...):
+        out_field = in_field + dt * in_tnd
 
 
 def tendencystepper_factory(scheme):
@@ -134,9 +138,9 @@ class TendencyStepper(abc.ABC):
             String specifying the runtime mode in which parameterizations
             should be invoked. See :class:`tasmania.ConcurrentCoupling`.
         enforce_horizontal_boundary : `bool`, optional
-            :obj:`True` if the class should enforce the lateral boundary
+            `True` if the class should enforce the lateral boundary
             conditions after each stage of the time integrator,
-            :obj:`False` otherwise. Defaults to :obj:`False`.
+            `False` otherwise. Defaults to `False`.
             This argument is considered only if at least one of the wrapped
             objects is an instance of
 
@@ -191,8 +195,8 @@ class TendencyStepper(abc.ABC):
         """
         Return
         ------
-        obj :
-            The :class:`tasmania.ConcurrentCoupling` calculating the tendencies.
+        tasmania.ConcurrentCoupling :
+            The object calculating the tendencies.
         """
         return self._prognostic
 
@@ -201,7 +205,7 @@ class TendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting model variables
             which should be present in the input state dictionary, and
             whose values are dictionaries specifying fundamental properties
@@ -236,7 +240,7 @@ class TendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting diagnostics
             which are retrieved from the input state dictionary, and
             whose values are dictionaries specifying fundamental
@@ -249,7 +253,7 @@ class TendencyStepper(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting model variables
             present in the output state dictionary, and whose values are
             dictionaries specifying fundamental properties (dims, units)
@@ -260,9 +264,7 @@ class TendencyStepper(abc.ABC):
         for key, val in self._prognostic.tendency_properties.items():
             return_dict[key] = deepcopy(val)
             if "units" in return_dict[key]:
-                return_dict[key]["units"] = clean_units(
-                    return_dict[key]["units"] + " s"
-                )
+                return_dict[key]["units"] = clean_units(return_dict[key]["units"] + " s")
 
         return return_dict
 
@@ -272,24 +274,19 @@ class TendencyStepper(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting the input model
             variables, and whose values are :class:`sympl.DataArray`\s
             storing values for those variables.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the time step.
+        timestep : datetime.timedelta
+            The time step.
 
         Return
         ------
-        diagnostics : dict
-            Dictionary whose keys are strings denoting diagnostic
-            variables retrieved from the input state, and whose values
-            are :class:`sympl.DataArray`\s storing values for those
-            variables.
-        out_state : dict
-            Dictionary whose keys are strings denoting the output model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
+        diagnostics : dict[str, sympl.DataArray]
+            The diagnostics retrieved from the input state.
+        out_state : dict[str, sympl.DataArray]
+            The output (stepped) state.
         """
         self._input_checker.check_inputs(state)
 
@@ -315,30 +312,26 @@ class TendencyStepper(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting the input model
             variables, and whose values are :class:`sympl.DataArray`\s
             storing values for those variables.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the time step.
+        timestep : datetime.timedelta
+            The time step.
 
         Return
         ------
-        diagnostics : dict
-            Dictionary whose keys are strings denoting diagnostic
-            variables retrieved from the input state, and whose values
-            are :class:`sympl.DataArray`\s storing values for those
-            variables.
-        out_state : dict
-            Dictionary whose keys are strings denoting the output model
-            variables, and whose values are :class:`sympl.DataArray`\s
-            storing values for those variables.
+        diagnostics : dict[str, sympl.DataArray]
+            The diagnostics retrieved from the input state.
+        out_state : dict[str, sympl.DataArray]
+            The output (stepped) state.
         """
         pass
 
     def _allocate_output_state(self, state):
         backend = getattr(self, "_backend", None)
-        halo = getattr(self, "_halo", None)
+        default_origin = getattr(self, "_default_origin", None)
+        managed_memory = getattr(self, "_managed_memory", False)
 
         out_state = self._out_state or {}
 
@@ -347,12 +340,16 @@ class TendencyStepper(abc.ABC):
                 storage_shape = state[name].shape
                 dtype = state[name].dtype
                 raw_buffer = (
-                    zeros(storage_shape, backend, dtype, halo=halo)
+                    zeros(
+                        storage_shape,
+                        backend,
+                        dtype,
+                        default_origin=default_origin,
+                        managed_memory=managed_memory,
+                    )
                     if backend
                     else np.zeros(storage_shape, dtype=dtype)
                 )
-                if backend == "gtcuda":
-                    raw_buffer.synchronize()
 
                 dims = state[name].dims
                 coords = state[name].coords
@@ -374,16 +371,18 @@ class ForwardEuler(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        halo=None,
+        default_origin=None,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
-        self._halo = halo
+        self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def _call(self, state, timestep):
         # shortcuts
@@ -427,24 +426,29 @@ class GTForwardEuler(TendencyStepper):
         backend_opts=None,
         build_info=None,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=forward_euler,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(forward_euler)
 
     def _call(self, state, timestep):
         # shortcuts
@@ -467,10 +471,9 @@ class GTForwardEuler(TendencyStepper):
         raw_out_state = {name: out_state[name].values for name in names}
 
         # step the solution
-        halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
-        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        origin = (self._hb.nb, self._hb.nb, 0) if self._enforce_hb else (0, 0, 0)
+        iteration_domain = tuple(storage_shape[i] - 2 * origin[i] for i in range(3))
         for name in raw_out_state:
             self._stencil(
                 in_field=raw_state[name],
@@ -510,16 +513,18 @@ class RungeKutta2(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        halo=None,
+        default_origin=None,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
-        self._halo = halo
+        self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def _call(self, state, timestep):
         # shortcuts
@@ -591,24 +596,29 @@ class GTRungeKutta2(TendencyStepper):
         backend_opts=None,
         build_info=None,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=forward_euler,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(forward_euler)
 
     def _call(self, state, timestep):
         # shortcuts
@@ -631,10 +641,9 @@ class GTRungeKutta2(TendencyStepper):
         raw_out_state = {name: out_state[name].values for name in names}
 
         # update the solution
-        halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
-        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        origin = (self._hb.nb, self._hb.nb, 0) if self._enforce_hb else (0, 0, 0)
+        iteration_domain = tuple(storage_shape[i] - 2 * origin[i] for i in range(3))
         for name in raw_out_state:
             self._stencil(
                 in_field=raw_state[name],
@@ -714,16 +723,18 @@ class RungeKutta3WS(TendencyStepper):
         execution_policy="serial",
         enforce_horizontal_boundary=False,
         backend="numpy",
-        halo=None,
+        default_origin=None,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
         self._backend = backend
-        self._halo = halo
+        self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
     def _call(self, state, timestep):
         # shortcuts
@@ -818,24 +829,29 @@ class GTRungeKutta3WS(TendencyStepper):
         backend_opts=None,
         build_info=None,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         super().__init__(
             *args,
             execution_policy=execution_policy,
-            enforce_horizontal_boundary=enforce_horizontal_boundary,
+            enforce_horizontal_boundary=enforce_horizontal_boundary
         )
 
         self._backend = backend
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
+        self._managed_memory = managed_memory
 
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=forward_euler,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(forward_euler)
 
     def _call(self, state, timestep):
         # shortcuts
@@ -858,10 +874,9 @@ class GTRungeKutta3WS(TendencyStepper):
         raw_out_state = {name: out_state[name].values for name in names}
 
         # update the solution
-        halo = (0, 0, 0) or self._halo
-        origin = halo if self._enforce_hb else (0, 0, 0)
         storage_shape = raw_state[names[0]].shape
-        iteration_domain = tuple(storage_shape[i] - 2 * halo[i] for i in range(3))
+        origin = (self._hb.nb, self._hb.nb, 0) if self._enforce_hb else (0, 0, 0)
+        iteration_domain = tuple(storage_shape[i] - 2 * origin[i] for i in range(3))
         for name in raw_out_state:
             self._stencil(
                 in_field=raw_state[name],

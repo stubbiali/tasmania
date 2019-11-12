@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,11 +34,13 @@ import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo
+    from .conf import backend as conf_backend, default_origin as conf_dorigin
     from .utils import (
         compare_arrays,
         st_domain,
@@ -47,7 +49,7 @@ try:
         st_timedeltas,
     )
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo
+    from conf import backend as conf_backend, default_origin as conf_dorigin
     from utils import (
         compare_arrays,
         st_domain,
@@ -70,9 +72,17 @@ def test_compatibility(
     # ========================================
     domain = data.draw(st_domain(), label="domain")
     cgrid = domain.numerical_grid
+    nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
 
     state = data.draw(
-        st_isentropic_state_f(cgrid, moist=True, precipitation=True), label="state"
+        st_isentropic_state_f(
+            cgrid,
+            moist=True,
+            precipitation=True,
+            backend="numpy",
+            storage_shape=(nx + 1, ny + 1, nz + 1),
+        ),
+        label="state",
     )
 
     dt = data.draw(
@@ -200,7 +210,7 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
 
     state = data.draw(
@@ -209,7 +219,7 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
             moist=False,
             precipitation=False,
             backend=backend,
-            halo=halo,
+            default_origin=default_origin,
             storage_shape=storage_shape,
         ),
         label="state",

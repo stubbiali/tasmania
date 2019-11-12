@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,8 +23,7 @@
 import abc
 import numpy as np
 
-import gridtools as gt
-from tasmania.python.utils.storage_utils import empty, zeros
+from tasmania.python.utils.storage_utils import zeros
 
 try:
     from tasmania.conf import datatype
@@ -61,9 +60,10 @@ class IsentropicPrognostic(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         storage_shape,
+        managed_memory,
     ):
         """
         Parameters
@@ -81,40 +81,44 @@ class IsentropicPrognostic(abc.ABC):
         hb : tasmania.HorizontalBoundary
             The object handling the lateral boundary conditions.
         moist : bool
-            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
+            `True` for a moist dynamical core, `False` otherwise.
         backend : str
-            TODO
+            The GT4Py backend.
         backend_opts : dict
-            TODO
+            Dictionary of backend-specific options.
         build_info : dict
-            TODO
-        dtype : numpy.dtype
-            TODO
+            Dictionary of building options.
+        dtype : data-type
+            Data type of the storages.
         exec_info : dict
-            TODO
-        halo : tuple
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]
+            Storage default origin.
         rebuild : bool
-            TODO
-        storage_shape : tuple
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : tuple[int]
+            Shape of the storages.
+        managed_memory : bool
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input arguments needed at compile- and run-time
         self._grid = grid
         self._hb = hb
         self._moist = moist
         self._backend = backend
-        self._backend_opts = backend_opts
+        self._backend_opts = backend_opts or {}
         self._build_info = build_info
         self._dtype = dtype
         self._exec_info = exec_info
-        self._halo = halo
+        self._default_origin = default_origin
         self._rebuild = rebuild
+        self._managed_memory = managed_memory
 
         nx, ny, nz = grid.nx, grid.ny, grid.nz
-        storage_shape = (nx, ny, nz+1) if storage_shape is None else storage_shape
+        storage_shape = (nx, ny, nz + 1) if storage_shape is None else storage_shape
         error_msg = "storage_shape must be larger or equal than {}.".format(
-            (nx, ny, nz+1)
+            (nx, ny, nz + 1)
         )
         assert storage_shape[0] >= nx, error_msg
         assert storage_shape[1] >= ny, error_msg
@@ -145,7 +149,7 @@ class IsentropicPrognostic(abc.ABC):
         self._stencils_allocate_outputs()
 
         # initialize the pointers to the storages collecting the physics tendencies
-        self._s_tnd  = None
+        self._s_tnd = None
         self._su_tnd = None
         self._sv_tnd = None
         self._qv_tnd = None
@@ -171,23 +175,17 @@ class IsentropicPrognostic(abc.ABC):
         ----------
         stage : int
             The stage to perform.
-        timestep : timedelta
-            :class:`datetime.timedelta` representing the time step.
-        state : dict
-            Dictionary whose keys are strings indicating model variables,
-            and values are :class:`numpy.ndarray`\s representing the values
-            for those variables.
-        tendencies : dict
-            Dictionary whose keys are strings indicating model variables,
-            and values are :class:`numpy.ndarray`\s representing (slow and
-            intermediate) physical tendencies for those variables.
+        timestep : datetime.timedelta
+            The time step.
+        state : dict[str, gt4py.storage.storage.Storage]
+            The (raw) state at the current stage.
+        tendencies : dict[str, gt4py.storage.storage.Storage]
+            The (raw) tendencies for the prognostic model variables.
 
         Return
         ------
-        dict :
-            Dictionary whose keys are strings indicating the conservative
-            prognostic model variables, and values are :class:`numpy.ndarray`\s
-            containing new values for those variables.
+        dict[str, gt4py.storage.storage.Storage] :
+            The (raw) state at the next stage.
         """
         pass
 
@@ -204,14 +202,15 @@ class IsentropicPrognostic(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
-            storage_shape=None,
+        storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
         Static method returning an instance of the derived class implementing
-        the time stepping scheme specified by ``time_scheme``.
+        the time stepping scheme specified by `time_scheme`.
 
         Parameters
         ----------
@@ -233,24 +232,27 @@ class IsentropicPrognostic(abc.ABC):
         hb : tasmania.HorizontalBoundary
             The object handling the lateral boundary conditions.
         moist : `bool`, optional
-            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` for a moist dynamical core, `False` otherwise.
+            Defaults to `False`.
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        halo : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -269,9 +271,10 @@ class IsentropicPrognostic(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
-            storage_shape
+            storage_shape,
+            managed_memory,
         )
 
         available = ("forward_euler_si", "centered_si", "rk3ws_si", "sil3")
@@ -298,12 +301,37 @@ class IsentropicPrognostic(abc.ABC):
         storage_shape = self._storage_shape
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
+        managed_memory = self._managed_memory
 
-        self._s_new = empty(storage_shape, backend, dtype, halo=halo)
-        self._su_new = empty(storage_shape, backend, dtype, halo=halo)
-        self._sv_new = empty(storage_shape, backend, dtype, halo=halo)
+        self._s_new = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._su_new = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._sv_new = zeros(
+            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
         if self._moist:
-            self._sqv_new = empty(storage_shape, backend, dtype, halo=halo)
-            self._sqc_new = empty(storage_shape, backend, dtype, halo=halo)
-            self._sqr_new = empty(storage_shape, backend, dtype, halo=halo)
+            self._sqv_new = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            self._sqc_new = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            self._sqr_new = zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )

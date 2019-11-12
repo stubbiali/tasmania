@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,13 +22,12 @@
 #
 import numpy as np
 
-import gridtools as gt
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils.storage_utils import empty, get_dataarray_3d, zeros
+from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 try:
     from tasmania.conf import datatype
@@ -86,10 +85,10 @@ class IsentropicDynamicalCore(DynamicalCore):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
-        **kwargs
+        managed_memory=False,
     ):
         """
         Parameters
@@ -146,27 +145,26 @@ class IsentropicDynamicalCore(DynamicalCore):
             of the dynamical core.
             This parameter is ignored if `substeps` argument is not positive.
         moist : bool
-            :obj:`True` for a moist dynamical core, :obj:`False` otherwise.
-            Defaults to :obj:`False`.
+            `True` for a moist dynamical core, `False` otherwise.
+            Defaults to `False`.
         time_integration_scheme : str
             String specifying the time stepping method to implement.
-            See :class:`tasmania.IsentropicMinimalPrognostic`
+            See :class:`tasmania.IsentropiPrognostic`
             for all available options. Defaults to 'forward_euler'.
         horizontal_flux_scheme : str
             String specifying the numerical horizontal flux to use.
-            See :class:`tasmania.HorizontalIsentropicMinimalFlux`
+            See :class:`tasmania.HorizontalIsentropicFlux`
             for all available options. Defaults to 'upwind'.
         time_integration_properties : dict
             Additional properties to be passed to the constructor of
-            :class:`~tasmania.python.isentropic.dynamics.IsentropicPrognostic`
-            as keyword arguments.
+            :class:`tasmania.IsentropicPrognostic` as keyword arguments.
         damp : `bool`, optional
-            :obj:`True` to enable vertical damping, :obj:`False` otherwise.
-            Defaults to :obj:`True`.
+            `True` to enable vertical damping, `False` otherwise.
+            Defaults to `True`.
         damp_at_every_stage : `bool`, optional
-            :obj:`True` to carry out the damping at each stage of the multi-stage
-            time-integrator, :obj:`False` to carry out the damping only at the end
-            of each timestep. Defaults to :obj:`True`.
+            `True` to carry out the damping at each stage of the multi-stage
+            time-integrator, `False` to carry out the damping only at the end
+            of each timestep. Defaults to `True`.
         damp_type : `str`, optional
             String specifying the vertical damping scheme to implement.
             See :class:`tasmania.VerticalDamping` for all available options.
@@ -176,12 +174,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         damp_max : `float`, optional
             Maximum value for the damping coefficient. Defaults to 0.0002.
         smooth : `bool`, optional
-            :obj:`True` to enable horizontal numerical smoothing, :obj:`False` otherwise.
-            Defaults to :obj:`True`.
+            `True` to enable horizontal numerical smoothing, `False` otherwise.
+            Defaults to `True`.
         smooth_at_every_stage : `bool`, optional
-            :obj:`True` to apply numerical smoothing at each stage of the time-
-            integrator, :obj:`False` to apply numerical smoothing only at the end
-            of each timestep. Defaults to :obj:`True`.
+            `True` to apply numerical smoothing at each stage of the time-
+            integrator, `False` to apply numerical smoothing only at the end
+            of each timestep. Defaults to `True`.
         smooth_type: `str`, optional
             String specifying the smoothing technique to implement.
             See :class:`tasmania.HorizontalSmoothing` for all available options.
@@ -195,12 +193,12 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region. Defaults to 10.
         smooth_moist : `bool`, optional
-            :obj:`True` to enable horizontal numerical smoothing on the water constituents,
-            :obj:`False` otherwise. Defaults to :obj:`True`.
+            `True` to enable horizontal numerical smoothing on the water constituents,
+            `False` otherwise. Defaults to `True`.
         smooth_moist_at_every_stage : `bool`, optional
-            :obj:`True` to apply numerical smoothing on the water constituents
-            at each stage of the time-integrator, :obj:`False` to apply numerical
-            smoothing only at the end of each timestep. Defaults to :obj:`True`.
+            `True` to apply numerical smoothing on the water constituents
+            at each stage of the time-integrator, `False` to apply numerical
+            smoothing only at the end of each timestep. Defaults to `True`.
         smooth_moist_type: `str`, optional
             String specifying the smoothing technique to apply on the water constituents.
             See :class:`tasmania.HorizontalSmoothing` for all available options.
@@ -220,19 +218,19 @@ class IsentropicDynamicalCore(DynamicalCore):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
-        **kwargs :
-            TODO
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         #
         # set storage shape
@@ -261,8 +259,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._smooth_moist_at_every_stage = smooth_moist_at_every_stage
         self._backend = backend
         self._dtype = dtype
-        self._halo = halo
+        self._default_origin = default_origin
         self._storage_shape = storage_shape
+        self._managed_memory = managed_memory
 
         #
         # parent constructor
@@ -294,9 +293,10 @@ class IsentropicDynamicalCore(DynamicalCore):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
             storage_shape=storage_shape,
+            managed_memory=managed_memory,
             **kwargs
         )
 
@@ -314,7 +314,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 build_info=build_info,
                 dtype=dtype,
                 exec_info=exec_info,
-                halo=halo,
+                default_origin=default_origin,
                 rebuild=rebuild,
                 storage_shape=storage_shape,
             )
@@ -335,8 +335,9 @@ class IsentropicDynamicalCore(DynamicalCore):
                 build_info=build_info,
                 dtype=dtype,
                 exec_info=exec_info,
-                halo=halo,
+                default_origin=default_origin,
                 rebuild=rebuild,
+                managed_memory=managed_memory,
             )
             if moist and smooth_moist:
                 self._smoother_moist = HorizontalSmoothing.factory(
@@ -351,8 +352,9 @@ class IsentropicDynamicalCore(DynamicalCore):
                     build_info=build_info,
                     dtype=dtype,
                     exec_info=exec_info,
-                    halo=halo,
-                    rebuild=False,
+                    default_origin=default_origin,
+                    rebuild=rebuild,
+                    managed_memory=managed_memory,
                 )
 
         #
@@ -387,7 +389,13 @@ class IsentropicDynamicalCore(DynamicalCore):
         # temporary and output arrays
         #
         def allocate():
-            return empty(storage_shape, backend, dtype, halo=halo)
+            return zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
 
         if moist:
             self._sqv_now = allocate()
@@ -683,8 +691,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         nx, ny, nz = g.nx, g.ny, g.nz
         backend = self._backend
         dtype = self._dtype
-        halo = self._halo
+        default_origin = self._default_origin
         storage_shape = self._storage_shape
+        managed_memory = self._managed_memory
 
         out_state = {}
 
@@ -711,7 +720,13 @@ class IsentropicDynamicalCore(DynamicalCore):
             )
 
             out_state[name] = get_dataarray_3d(
-                zeros(storage_shape, backend, dtype, halo=halo),
+                zeros(
+                    storage_shape,
+                    backend,
+                    dtype,
+                    default_origin,
+                    managed_memory=managed_memory,
+                ),
                 g,
                 units,
                 name=name,
@@ -804,9 +819,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed[:nx, :ny, :nz],
-                "x_momentum_isentropic": self._su_smoothed[:nx, :ny, :nz],
-                "y_momentum_isentropic": self._sv_smoothed[:nx, :ny, :nz],
+                "air_isentropic_density": self._s_smoothed,
+                "x_momentum_isentropic": self._su_smoothed,
+                "y_momentum_isentropic": self._sv_smoothed,
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -888,9 +903,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._s_now = raw_state["air_isentropic_density"]
             self._su_now = raw_state["x_momentum_isentropic"]
             self._sv_now = raw_state["y_momentum_isentropic"]
-            # self._qv_now.data[:nx, :ny, :nz] = raw_state[mfwv]
-            # self._qc_now.data[:nx, :ny, :nz] = raw_state[mfcw]
-            # self._qr_now.data[:nx, :ny, :nz] = raw_state[mfpw]
+            # self._qv_now = raw_state[mfwv]
+            # self._qc_now = raw_state[mfcw]
+            # self._qr_now = raw_state[mfpw]
 
         s_now = raw_state["air_isentropic_density"]
         qv_now = raw_state[mfwv]
@@ -935,12 +950,6 @@ class IsentropicDynamicalCore(DynamicalCore):
         )
         raw_state_new[mfpw] = self._qr_new
 
-        # restrict the state onto the numerical grid
-        # raw_state_new_min = {"time": raw_state_new["time"]}
-        # for key in raw_state_new:
-        #     if key != "time":
-        #         raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
-
         # apply the lateral boundary conditions
         hb.dmn_enforce_raw(raw_state_new, out_properties)
 
@@ -976,9 +985,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                "air_isentropic_density": self._s_smoothed[:nx, :ny, :nz],
-                "x_momentum_isentropic": self._su_smoothed[:nx, :ny, :nz],
-                "y_momentum_isentropic": self._sv_smoothed[:nx, :ny, :nz],
+                "air_isentropic_density": self._s_smoothed,
+                "x_momentum_isentropic": self._su_smoothed,
+                "y_momentum_isentropic": self._sv_smoothed,
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 
@@ -1001,9 +1010,9 @@ class IsentropicDynamicalCore(DynamicalCore):
             # apply horizontal boundary conditions
             raw_state_smoothed = {
                 "time": raw_state_new["time"],
-                mfwv: self._qv_smoothed[:nx, :ny, :nz],
-                mfcw: self._qc_smoothed[:nx, :ny, :nz],
-                mfpw: self._qr_smoothed[:nx, :ny, :nz],
+                mfwv: self._qv_smoothed,
+                mfcw: self._qc_smoothed,
+                mfpw: self._qr_smoothed,
             }
             hb.dmn_enforce_raw(raw_state_smoothed, out_properties)
 

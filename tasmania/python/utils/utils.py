@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -58,8 +58,8 @@ def equal_to(a, b, tol=d_tol):
 	Return
 	------
 	bool : 
-		:obj:`True` if :data:`a` is equal to :data:`b` up to :data:`tol`,
-		:obj:`False` otherwise.
+		`True` if `a` is equal to `b` up to `tol`,
+		`False` otherwise.
 	"""
     return math.fabs(a - b) <= tol
 
@@ -81,8 +81,8 @@ def smaller_than(a, b, tol=d_tol):
 	Return
 	------
 	bool : 
-		:obj:`True` if :data:`a` is smaller than :data:`b` up to :data:`tol`,
-		:obj:`False` otherwise.
+		`True` if `a` is smaller than `b` up to `tol`,
+		`False` otherwise.
 	"""
     return a < (b - tol)
 
@@ -104,8 +104,8 @@ def smaller_or_equal_than(a, b, tol=d_tol):
 	Return
 	------
 	bool : 
-		:obj:`True` if :data:`a` is smaller than or equal to :data:`b`
-		up to :data:`tol`, :obj:`False` otherwise.
+		`True` if `a` is smaller than or equal to `b`
+		up to `tol`, `False` otherwise.
 	"""
     return a <= (b + tol)
 
@@ -127,8 +127,8 @@ def greater_than(a, b, tol=d_tol):
 	Return
 	------
 	bool :  
-		:obj:`True` if :data:`a` is greater than :data:`b` up to :data:`tol`,
-		:obj:`False` otherwise.
+		`True` if `a` is greater than `b` up to `tol`,
+		`False` otherwise.
 	"""
     return a > (b + tol)
 
@@ -150,8 +150,8 @@ def greater_or_equal_than(a, b, tol=d_tol):
 	Return
 	------
 	bool : 
-		:obj:`True` if :data:`a` is greater than or equal to :data:`b`
-		up to :data:`tol`, :obj:`False` otherwise.
+		`True` if `a` is greater than or equal to `b`
+		up to `tol`, `False` otherwise.
 	"""
     return a >= (b - tol)
 

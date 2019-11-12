@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,7 +21,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # burgers
+from tasmania.python.burgers.dynamics.advection import BurgersAdvection
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
+from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
@@ -101,7 +103,6 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerSaturationAdjustment,
     KesslerSedimentation,
 )
-from tasmania.python.physics.microphysics.porz import PorzFallVelocity, PorzMicrophysics
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
 
@@ -124,10 +125,14 @@ from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
 from tasmania.python.utils.storage_utils import (
+    deepcopy_array_dict,
+    deepcopy_dataarray,
+    deepcopy_dataarray_dict,
     get_dataarray_3d,
     get_dataarray_dict,
     get_array_dict,
     get_dataarray_2d,
+    zeros,
 )
 from tasmania.python.utils.dict_utils import (
     add as dict_add,
@@ -146,13 +151,15 @@ from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
 from tasmania.python.utils.utils import get_time_string
 
 
-__version__ = "0.4.0"
+__version__ = "0.6.0"
 
 
 __all__ = (
     Animation,
+    BurgersAdvection,
     BurgersDynamicalCore,
     BurgersHorizontalDiffusion,
+    BurgersStepper,
     CDF,
     Circle,
     Clipping,
@@ -163,6 +170,9 @@ __all__ = (
     DiagnosticComponent,
     DiagnosticComponentComposite,
     Domain,
+    deepcopy_array_dict,
+    deepcopy_dataarray,
+    deepcopy_dataarray_dict,
     dict_add,
     dict_add_inplace,
     dict_copy,
@@ -215,7 +225,6 @@ __all__ = (
     PhysicalTopography,
     Plot,
     PlotComposite,
-    PorzMicrophysics,
     Precipitation,
     PrescribedSurfaceHeating,
     Quiver,
@@ -234,6 +243,7 @@ __all__ = (
     Topography,
     VerticalDamping,
     WaterConstituent,
+    zeros,
     ZhaoSolutionFactory,
     ZhaoStateFactory,
 )

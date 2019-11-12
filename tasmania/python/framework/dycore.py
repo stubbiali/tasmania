@@ -155,9 +155,8 @@ class DynamicalCore(abc.ABC):
             retrieving diagnostics at the end of each sub-step of any stage
             of the dynamical core.
             This parameter is ignored if `substeps` argument is not positive.
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
-            used within this class.
+        dtype : `data-type`, optional
+            The data type for any array instantiated and used within this class.
         """
         self._grid = (
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
@@ -530,7 +529,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting variables which
             should be included in the input state, and whose values
             are fundamental properties (dims, units) of those variables.
@@ -538,7 +537,7 @@ class DynamicalCore(abc.ABC):
             specified by the user via
             :meth:`tasmania.DynamicalCore._input_properties` and
             :meth:`tasmania.DynamicalCore._substep_input_properties`,
-            with the :obj:`input_properties` and :obj:`output_properties`
+            with the `input_properties` and `output_properties`
             dictionaries of the internal attributes representing the
             intermediate and fast tendency components (if set).
         """
@@ -599,7 +598,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting variables which
             should be included in any state passed to the stages, and
             whose values are fundamental properties (dims, units, alias)
@@ -612,7 +611,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting variables which
             should be included in any state passed to the substeps
             carrying out the sub-stepping routine, and whose values are
@@ -623,14 +622,14 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting (slow) tendencies which
             may (or may not) be passed to the call operator, and whose
             values are fundamental properties (dims, units) of those
             tendencies. This dictionary results from fusing the requirements
             specified by the user via
             :meth:`tasmania.DynamicalCore._tendency_properties`
-            with the :obj:`tendency_properties` dictionary of the internal
+            with the `tendency_properties` dictionary of the internal
             attribute representing the intermediate tendency component (if set).
         """
         return_dict = {}
@@ -658,7 +657,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting (intermediate
             and slow) tendencies which may (or may not) be passed to
             the stages, and whose values are fundamental properties
@@ -671,7 +670,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting (intermediate
             and slow) tendencies which may (or may not) be passed to
             the substeps, and whose values are fundamental properties
@@ -682,7 +681,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting variables which are
             included in the output state, and whose values are fundamental
             properties (dims, units) of those variables. This dictionary
@@ -727,7 +726,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting variables which are
             included in the output state returned by any stage,	and whose
             values are fundamental properties (dims, units) of those variables.
@@ -739,7 +738,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        dict :
+        dict[str, dict] :
             Dictionary whose keys are strings denoting variables which are
             included in the output state returned by any sub-step, and whose
             values are fundamental properties (dims, units) of those variables.
@@ -761,7 +760,7 @@ class DynamicalCore(abc.ABC):
         """
         Return
         ------
-        float or tuple :
+        float or tuple[float] :
             For each stage, fraction of the total number of sub-steps
             (specified at instantiation) to carry out.
         """
@@ -778,20 +777,20 @@ class DynamicalCore(abc.ABC):
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting input model variables,
             and whose values are :class:`sympl.DataArray`\s storing values
             for those variables.
-        tendencies : dict
+        tendencies : dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting input (slow) tendencies,
             and whose values are :class:`sympl.DataArray`\s storing values
             for those tendencies.
-        timestep : timedelta
+        timestep : datetime.timedelta
             The timestep size, i.e., the amount of time to step forward.
 
         Return
         ------
-        dict :
+        dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting output model variables,
             and whose values are :class:`sympl.DataArray`\s storing values
             for those variables.
@@ -816,6 +815,30 @@ class DynamicalCore(abc.ABC):
         return return_state
 
     def _call(self, stage, timestep, state, tmp_state, tendencies, out_state):
+        """
+        Perform a single stage of the time integration algorithm.
+
+        Parameters
+        ----------
+        stage : int
+            The stage.
+        timestep : datetime.timedelta
+            The timestep size, i.e., the amount of time to step forward.
+        state : dict[str, sympl.DataArray]
+            The state at the current time level.
+        tmp_state : dict[str, sympl.DataArray]
+            The state from the previous stage.
+            It coincides with `state` for the first stage.
+        tendencies : dict[str, sympl.DataArray]
+            The physics tendencies for the prognostic model variables.
+        out_state : dict[str, sympl.DataArray]
+            The :class:`sympl.DataArray`\s into which the state at the next time
+            level is written.
+
+        Note
+        ----
+        Currently, variable aliasing is not supported.
+        """
         tends = {}
 
         # ============================================================
@@ -875,6 +898,8 @@ class DynamicalCore(abc.ABC):
             # out_state.update(stage_state)
         else:
             # TODO: deprecated!
+            raise NotImplementedError()
+
             # ============================================================
             # Stage: post-processing, sub-stepping enabled
             # ============================================================
@@ -1009,24 +1034,18 @@ class DynamicalCore(abc.ABC):
         Parameters
         ----------
         stage : int
-            The stage we are in.
-        raw_state : dict
-            Dictionary whose keys are strings denoting input model
-            variables, and whose values are :class:`numpy.ndarray`\s
-            storing values for those variables.
-        raw_tendencies : dict
-            Dictionary whose keys are strings denoting input
-            tendencies, and whose values are :class:`numpy.ndarray`\s
-            storing values for those tendencies.
-        timestep : timedelta
+            The stage.
+        raw_state : dict[str, array_like]
+            The (raw) state at the current stage.
+        raw_tendencies : dict[str, array_like]
+            The (raw) tendencies for the model prognostic variables.
+        timestep : datetime.timedelta
             The timestep size.
 
         Return
         ------
-        dict :
-            Dictionary whose keys are strings denoting output model
-            variables, and whose values are :class:`numpy.ndarray`\s
-            storing values for those variables.
+        dict[str, array_like]
+            The (raw) state at the next stage.
         """
 
     @abc.abstractmethod
@@ -1044,29 +1063,25 @@ class DynamicalCore(abc.ABC):
         Parameters
         ----------
         stage : int
-            The stage we are in.
+            The stage.
         substep : int
-            The sub-step we are in.
-        raw_state : dict
+            The sub-step.
+        raw_state : dict[str, array_like]
             The raw state at the current *main* time level, i.e.,
             the raw version of the state dictionary passed to the call operator.
-        raw_stage_state : dict
+        raw_stage_state : dict[str, array_like]
             The (raw) state dictionary returned by the latest stage.
-        raw_tmp_state : dict
+        raw_tmp_state : dict[str, array_like]
             The raw state to sub-step.
-        raw_tendencies : dict
-            Dictionary whose keys are strings denoting input
-            tendencies, and whose values are :class:`numpy.ndarray`\s
-            storing values for those tendencies.
-        timestep : timedelta
+        raw_tendencies : dict[str, array_like]
+            The (raw) tendencies for the model prognostic variables.
+        timestep : datetime.timedelta
             The timestep size.
 
         Return
         ------
-        dict :
-            Dictionary whose keys are strings denoting output model
-            variables, and whose values are :class:`numpy.ndarray`\s
-            storing values for those variables.
+        dict[str, array_like]
+            The sub-stepped (raw) state.
         """
 
     def update_topography(self, time):
@@ -1075,7 +1090,7 @@ class DynamicalCore(abc.ABC):
 
         Parameters
         ----------
-        time : timedelta
+        time : datetime.timedelta
             The elapsed simulation time.
         """
         self._grid.update_topography(time)

@@ -22,7 +22,6 @@
 #
 import numpy as np
 
-import gridtools as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
@@ -63,9 +62,10 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -86,8 +86,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diffusion_damp_depth : int
             Depth of the damping region.
         moist : `bool`, optional
-            :obj:`True` if water species are included in the model and should
-            be diffused, :obj:`False` otherwise. Defaults to :obj:`False`.
+            `True` if water species are included in the model and should
+            be diffused, `False` otherwise. Defaults to `False`.
         diffusion_moist_coeff : `sympl.DataArray`, optional
             1-item array representing the diffusion coefficient for the
             water species; in units compatible with [s^-1].
@@ -103,17 +103,19 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's constructor.
         """
@@ -146,8 +148,9 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
+            managed_memory=managed_memory,
         )
 
         if self._moist:
@@ -175,19 +178,32 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
                 build_info=build_info,
                 dtype=dtype,
                 exec_info=exec_info,
-                halo=halo,
+                default_origin=default_origin,
                 rebuild=rebuild,
+                managed_memory=managed_memory,
             )
         else:
             self._core_moist = None
 
-        self._s_tnd = zeros(shape, backend, dtype, halo=halo)
-        self._su_tnd = zeros(shape, backend, dtype, halo=halo)
-        self._sv_tnd = zeros(shape, backend, dtype, halo=halo)
+        self._s_tnd = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._su_tnd = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
+        self._sv_tnd = zeros(
+            shape, backend, dtype, default_origin, managed_memory=managed_memory
+        )
         if self._moist:
-            self._qv_tnd = zeros(shape, backend, dtype, halo=halo)
-            self._qc_tnd = zeros(shape, backend, dtype, halo=halo)
-            self._qr_tnd = zeros(shape, backend, dtype, halo=halo)
+            self._qv_tnd = zeros(
+                shape, backend, dtype, default_origin, managed_memory=managed_memory
+            )
+            self._qc_tnd = zeros(
+                shape, backend, dtype, default_origin, managed_memory=managed_memory
+            )
+            self._qr_tnd = zeros(
+                shape, backend, dtype, default_origin, managed_memory=managed_memory
+            )
 
     @property
     def input_properties(self):

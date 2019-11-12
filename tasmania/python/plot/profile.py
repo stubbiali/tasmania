@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -164,7 +164,7 @@ class LineProfile(Drawer):
 
 		Parameters
 		----------
-		state : dict
+		state : dict[str, sympl.DataArray]
 			The model state from which retrieving the data used to draw the plot.
 		fig : matplotlib.figure.Figure
 			The figure encapsulating the plot.
@@ -173,9 +173,9 @@ class LineProfile(Drawer):
 
 		Returns
 		-------
-		x : numpy.ndarray
+		x : gt4py.storage.storage.Storage
 			1-D array gathering the x-coordinates of the plotted points.
-		y : numpy.ndarray
+		y : gt4py.storage.storage.Storage
 			1-D array gathering the y-coordinates of the plotted points.
 		"""
         return self._slave(state, ax)

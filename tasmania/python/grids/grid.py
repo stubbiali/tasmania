@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -322,14 +322,14 @@ class PhysicalGrid(Grid):
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated within
+        dtype : `data-type`, optional
+            The data type for any :class:`gt4py.storage.storage.Storage` instantiated within
             this class.
 
         Raises
         ------
         ValueError :
-            If :obj:`interface` lays outside the domain.
+            If `interface` lays outside the domain.
         """
         # xy-grid
         grid_xy = PhysicalHorizontalGrid(domain_x, nx, domain_y, ny, dtype=dtype)

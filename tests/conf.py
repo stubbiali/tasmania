@@ -26,8 +26,8 @@ import numpy as np
 
 # backend settings
 backend = ("numpy",)
-datatype = (np.float64,)  # TODO: datatype = (np.float32, no.float64)
-halo = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
+datatype = (np.float64,)  # TODO: datatype = (np.float32, np.float64)
+default_origin = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
 # x-axis
 axis_x = {

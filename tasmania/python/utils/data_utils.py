@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,19 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    get_constant
-    get_physical_constants
-"""
-
-
 def get_constant(name, units, default_value=None):
     """
     Get the value of a physical constant in the desired units.
     The function first looks for the constant in :mod:`tasmania.namelist`.
-    If not found, it then searches in :obj:`sympl._core.constants.constants`.
-    If still not found, the function reverts to :obj:`default_value`, which is
+    If not found, it then searches in `sympl._core.constants.constants`.
+    If still not found, the function reverts to `default_value`, which is
     added to :obj:`sympl._core.constants.constants` before returning.
 
     Parameters
@@ -41,7 +34,7 @@ def get_constant(name, units, default_value=None):
         Name of the physical constant.
     units : str
         Units in which the constant should be expressed.
-    default_value : `dataarray_like`, optional
+    default_value : `sympl.DataArray`, optional
         1-item :class:`sympl.DataArray` representing the default value for the
         physical constant.
 
@@ -82,26 +75,26 @@ def get_physical_constants(default_physical_constants, physical_constants=None):
     """
     Parameters
     ----------
-    default_physical_constants : dict
+    default_physical_constants : dict[str, sympl.DataArray]
         Dictionary whose keys are names of some physical constants,
         and whose values are :class:`sympl.DataArray`\s storing the
         default values and units of those constants.
-    physical_constants : `dict`, optional
+    physical_constants : `dict[str, sympl.DataArray]`, optional
         Dictionary whose keys are names of some physical constants,
         and whose values are :class:`sympl.DataArray`\s storing the
         values and units of those constants.
 
     Return
     ------
-    dict :
+    dict[str, float] :
         Dictionary whose keys are the names of the physical constants
-        contained in :obj:`default_physical_constants`, and whose values
+        contained in `default_physical_constants`, and whose values
         are the values of those constants in the default units.
         The function first looks for the value of each constant in
-        :obj:`physical_constants`. If this is not given, or it does not
+        `physical_constants`. If this is not given, or it does not
         contain that constant, the value is retrieved via
         :func:`tasmania.utils.data_utils.get_constant`, using the corresponding
-        value of :obj:`default_physical_constants` as default.
+        value of `default_physical_constants` as default.
     """
     raw_physical_constants = {}
 

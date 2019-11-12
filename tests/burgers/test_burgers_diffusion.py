@@ -32,11 +32,12 @@ from hypothesis import (
 import pytest
 from sympl import DataArray
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from .dwarfs.test_horizontal_diffusion import (
         second_order_diffusion_xyz,
         second_order_diffusion_xz,
@@ -50,7 +51,7 @@ try:
     )
     from .utils import st_burgers_state, st_domain, st_floats, st_one_of
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from dwarfs.test_horizontal_diffusion import (
         second_order_diffusion_xyz,
         second_order_diffusion_xz,
@@ -102,13 +103,13 @@ def test_second_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = pgrid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, halo=halo), label="pstate"
+        st_burgers_state(pgrid, backend=backend, default_origin=default_origin), label="pstate"
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, halo=halo), label="cstate"
+        st_burgers_state(cgrid, backend=backend, default_origin=default_origin), label="cstate"
     )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
@@ -125,9 +126,9 @@ def test_second_order(data):
         "second_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
-        dtype=pgrid.x.dtype,
-        halo=halo,
-        rebuild=True,
+        dtype=dtype,
+        default_origin=default_origin,
+        rebuild=False,
     )
 
     tendencies, diagnostics = pbhd(pstate)
@@ -166,7 +167,7 @@ def test_second_order(data):
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
         dtype=cgrid.x.dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
 
@@ -234,13 +235,13 @@ def test_fourth_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = pgrid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, halo=halo), label="pstate"
+        st_burgers_state(pgrid, backend=backend, default_origin=default_origin), label="pstate"
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, halo=halo), label="cstate"
+        st_burgers_state(cgrid, backend=backend, default_origin=default_origin), label="cstate"
     )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
@@ -257,9 +258,9 @@ def test_fourth_order(data):
         "fourth_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
-        dtype=pgrid.x.dtype,
-        halo=halo,
-        rebuild=True,
+        dtype=dtype,
+        default_origin=default_origin,
+        rebuild=False,
     )
 
     tendencies, diagnostics = pbhd(pstate)
@@ -298,7 +299,7 @@ def test_fourth_order(data):
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
         backend=backend,
         dtype=cgrid.x.dtype,
-        halo=halo,
+        default_origin=default_origin,
         rebuild=True,
     )
 
@@ -330,4 +331,5 @@ def test_fourth_order(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_second_order()

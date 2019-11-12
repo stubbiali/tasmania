@@ -24,7 +24,10 @@ import abc
 import math
 import numpy as np
 
-import gridtools as gt
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -51,13 +54,14 @@ class HorizontalSmoothing(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         """
         Parameters
         ----------
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays which should be filtered.
         smooth_coeff : float
             Value for the smoothing coefficient far from the top boundary.
@@ -73,15 +77,17 @@ class HorizontalSmoothing(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple[int]
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # store input arguments needed at run-time
         self._shape = shape
@@ -99,14 +105,25 @@ class HorizontalSmoothing(abc.ABC):
             gamma[:, :, :n] += (smooth_coeff_max - smooth_coeff) * pert
 
         # convert diffusivity to gt4py storage
-        self._gamma = zeros(shape, backend, dtype, halo=halo, mask=(True, True, True))
+        self._gamma = zeros(
+            shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            mask=(True, True, True),
+            managed_memory=managed_memory,
+        )
         self._gamma[...] = gamma
 
         # initialize the underlying stencil
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            name=self.__class__.__name__,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @abc.abstractmethod
     def __call__(self, phi, phi_out):
@@ -117,9 +134,9 @@ class HorizontalSmoothing(abc.ABC):
 
         Parameters
         ----------
-        phi : gridtools.storage.Storage
+        phi : gt4py.storage.storage.Storage
             The 3-D field to filter.
-        phi_out : gridtools.storage.Storage
+        phi_out : gt4py.storage.storage.Storage
             The 3-D buffer into which the filtered field is written.
         """
         pass
@@ -138,23 +155,24 @@ class HorizontalSmoothing(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
-        rebuild=False
+        default_origin=None,
+        rebuild=False,
+        managed_memory=False
     ):
         """
         Static method returning an instance of the derived class
-        implementing the smoothing technique specified by :data:`smooth_type`.
+        implementing the smoothing technique specified by `smooth_type`.
 
         Parameters
         ----------
-        smooth_type : string
+        smooth_type : str
             String specifying the smoothing technique to implement. Either:
 
             * 'first_order', for first-order numerical smoothing;
             * 'second_order', for second-order numerical smoothing;
             * 'third_order', for third-order numerical smoothing.
 
-        shape : tuple
+        shape : tuple[int]
             Shape of the 3-D arrays which should be filtered.
         smooth_coeff : float
             Value for the smoothing coefficient far from the top boundary.
@@ -170,15 +188,17 @@ class HorizontalSmoothing(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -196,8 +216,9 @@ class HorizontalSmoothing(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         ]
 
         if smooth_type == "first_order":
@@ -236,7 +257,9 @@ class HorizontalSmoothing(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
         pass
 
@@ -266,8 +289,9 @@ class FirstOrder(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -281,8 +305,9 @@ class FirstOrder(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -309,11 +334,14 @@ class FirstOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
-            0, 0, 0
-        ] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0] + in_phi[0, -1, 0] + in_phi[0, 1, 0])
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
+                0, 0, 0
+            ] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0] + in_phi[0, -1, 0] + in_phi[0, 1, 0])
 
 
 class FirstOrder1DX(HorizontalSmoothing):
@@ -341,8 +369,9 @@ class FirstOrder1DX(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -356,8 +385,9 @@ class FirstOrder1DX(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -382,11 +412,14 @@ class FirstOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
-            0, 0, 0
-        ] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0])
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
+                0, 0, 0
+            ] * (in_phi[-1, 0, 0] + in_phi[1, 0, 0])
 
 
 class FirstOrder1DY(HorizontalSmoothing):
@@ -414,8 +447,9 @@ class FirstOrder1DY(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 1 if (nb is None or nb < 1) else nb
         super().__init__(
@@ -429,8 +463,9 @@ class FirstOrder1DY(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -455,11 +490,14 @@ class FirstOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
-            0, 0, 0
-        ] * (in_phi[0, -1, 0] + in_phi[0, 1, 0])
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
+                0, 0, 0
+            ] * (in_phi[0, -1, 0] + in_phi[0, 1, 0])
 
 
 class SecondOrder(HorizontalSmoothing):
@@ -487,8 +525,9 @@ class SecondOrder(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -502,8 +541,9 @@ class SecondOrder(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -530,20 +570,23 @@ class SecondOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.75 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
-            0, 0, 0
-        ] * (
-            -in_phi[-2, 0, 0]
-            + 4.0 * in_phi[-1, 0, 0]
-            - in_phi[+2, 0, 0]
-            + 4.0 * in_phi[+1, 0, 0]
-            - in_phi[0, -2, 0]
-            + 4.0 * in_phi[0, -1, 0]
-            - in_phi[0, +2, 0]
-            + 4.0 * in_phi[0, +1, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.75 * in_gamma[0, 0, 0]) * in_phi[
+                0, 0, 0
+            ] + 0.0625 * in_gamma[0, 0, 0] * (
+                -in_phi[-2, 0, 0]
+                + 4.0 * in_phi[-1, 0, 0]
+                - in_phi[+2, 0, 0]
+                + 4.0 * in_phi[+1, 0, 0]
+                - in_phi[0, -2, 0]
+                + 4.0 * in_phi[0, -1, 0]
+                - in_phi[0, +2, 0]
+                + 4.0 * in_phi[0, +1, 0]
+            )
 
 
 class SecondOrder1DX(HorizontalSmoothing):
@@ -571,8 +614,9 @@ class SecondOrder1DX(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -586,8 +630,9 @@ class SecondOrder1DX(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -612,16 +657,19 @@ class SecondOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
-            0, 0, 0
-        ] * (
-            -in_phi[-2, 0, 0]
-            + 4.0 * in_phi[-1, 0, 0]
-            - in_phi[+2, 0, 0]
-            + 4.0 * in_phi[+1, 0, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[
+                0, 0, 0
+            ] + 0.0625 * in_gamma[0, 0, 0] * (
+                -in_phi[-2, 0, 0]
+                + 4.0 * in_phi[-1, 0, 0]
+                - in_phi[+2, 0, 0]
+                + 4.0 * in_phi[+1, 0, 0]
+            )
 
 
 class SecondOrder1DY(HorizontalSmoothing):
@@ -649,8 +697,9 @@ class SecondOrder1DY(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 2 if (nb is None or nb < 2) else nb
         super().__init__(
@@ -664,8 +713,9 @@ class SecondOrder1DY(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -690,16 +740,19 @@ class SecondOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.0625 * in_gamma[
-            0, 0, 0
-        ] * (
-            -in_phi[0, -2, 0]
-            + 4.0 * in_phi[0, -1, 0]
-            - in_phi[0, +2, 0]
-            + 4.0 * in_phi[0, +1, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[
+                0, 0, 0
+            ] + 0.0625 * in_gamma[0, 0, 0] * (
+                -in_phi[0, -2, 0]
+                + 4.0 * in_phi[0, -1, 0]
+                - in_phi[0, +2, 0]
+                + 4.0 * in_phi[0, +1, 0]
+            )
 
 
 class ThirdOrder(HorizontalSmoothing):
@@ -727,8 +780,9 @@ class ThirdOrder(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -742,8 +796,9 @@ class ThirdOrder(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -770,24 +825,27 @@ class ThirdOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.625 * in_gamma[0, 0, 0]) * in_phi[
-            0, 0, 0
-        ] + 0.015625 * in_gamma[0, 0, 0] * (
-            in_phi[-3, 0, 0]
-            - 6.0 * in_phi[-2, 0, 0]
-            + 15.0 * in_phi[-1, 0, 0]
-            + in_phi[+3, 0, 0]
-            - 6.0 * in_phi[+2, 0, 0]
-            + 15.0 * in_phi[+1, 0, 0]
-            + in_phi[0, -3, 0]
-            - 6.0 * in_phi[0, -2, 0]
-            + 15.0 * in_phi[0, -1, 0]
-            + in_phi[0, +3, 0]
-            - 6.0 * in_phi[0, +2, 0]
-            + 15.0 * in_phi[0, +1, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.625 * in_gamma[0, 0, 0]) * in_phi[
+                0, 0, 0
+            ] + 0.015625 * in_gamma[0, 0, 0] * (
+                in_phi[-3, 0, 0]
+                - 6.0 * in_phi[-2, 0, 0]
+                + 15.0 * in_phi[-1, 0, 0]
+                + in_phi[+3, 0, 0]
+                - 6.0 * in_phi[+2, 0, 0]
+                + 15.0 * in_phi[+1, 0, 0]
+                + in_phi[0, -3, 0]
+                - 6.0 * in_phi[0, -2, 0]
+                + 15.0 * in_phi[0, -1, 0]
+                + in_phi[0, +3, 0]
+                - 6.0 * in_phi[0, +2, 0]
+                + 15.0 * in_phi[0, +1, 0]
+            )
 
 
 class ThirdOrder1DX(HorizontalSmoothing):
@@ -815,8 +873,9 @@ class ThirdOrder1DX(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -830,8 +889,9 @@ class ThirdOrder1DX(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -856,18 +916,21 @@ class ThirdOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
-            0, 0, 0
-        ] + 0.015625 * in_gamma[0, 0, 0] * (
-            in_phi[-3, 0, 0]
-            - 6.0 * in_phi[-2, 0, 0]
-            + 15.0 * in_phi[-1, 0, 0]
-            + in_phi[+3, 0, 0]
-            - 6.0 * in_phi[+2, 0, 0]
-            + 15.0 * in_phi[+1, 0, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
+                0, 0, 0
+            ] + 0.015625 * in_gamma[0, 0, 0] * (
+                in_phi[-3, 0, 0]
+                - 6.0 * in_phi[-2, 0, 0]
+                + 15.0 * in_phi[-1, 0, 0]
+                + in_phi[+3, 0, 0]
+                - 6.0 * in_phi[+2, 0, 0]
+                + 15.0 * in_phi[+1, 0, 0]
+            )
 
 
 class ThirdOrder1DY(HorizontalSmoothing):
@@ -895,8 +958,9 @@ class ThirdOrder1DY(HorizontalSmoothing):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
+        managed_memory,
     ):
         nb = 3 if (nb is None or nb < 3) else nb
         super().__init__(
@@ -910,8 +974,9 @@ class ThirdOrder1DY(HorizontalSmoothing):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
+            managed_memory,
         )
 
     def __call__(self, phi, phi_out):
@@ -936,15 +1001,18 @@ class ThirdOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gt.storage.f64_sd, in_gamma: gt.storage.f64_sd, out_phi: gt.storage.f64_sd
+        in_phi: gtscript.Field[np.float64],
+        in_gamma: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
     ):
-        out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
-            0, 0, 0
-        ] + 0.015625 * in_gamma[0, 0, 0] * (
-            in_phi[0, -3, 0]
-            - 6.0 * in_phi[0, -2, 0]
-            + 15.0 * in_phi[0, -1, 0]
-            + in_phi[0, +3, 0]
-            - 6.0 * in_phi[0, +2, 0]
-            + 15.0 * in_phi[0, +1, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
+                0, 0, 0
+            ] + 0.015625 * in_gamma[0, 0, 0] * (
+                in_phi[0, -3, 0]
+                - 6.0 * in_phi[0, -2, 0]
+                + 15.0 * in_phi[0, -1, 0]
+                + in_phi[0, +3, 0]
+                - 6.0 * in_phi[0, +2, 0]
+                + 15.0 * in_phi[0, +1, 0]
+            )

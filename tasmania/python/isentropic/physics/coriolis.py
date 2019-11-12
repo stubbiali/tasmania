@@ -22,7 +22,10 @@
 #
 import numpy as np
 
-import gridtools as gt
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.utils.storage_utils import zeros
 
@@ -48,9 +51,10 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -73,17 +77,19 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
-        storage_shape : `tuple`, optional
+        storage_shape : `tuple[int]`, optional
             Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Keyword arguments to be directly forwarded to the parent's constructor.
         """
@@ -105,13 +111,28 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz, error_msg
 
-        self._tnd_su = zeros(storage_shape, backend, dtype, halo=halo)
-        self._tnd_sv = zeros(storage_shape, backend, dtype, halo=halo)
-
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._tnd_su = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
-        self._stencil = decorator(self._stencil_defs)
+        self._tnd_sv = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
+        )
 
     @property
     def input_properties(self):
@@ -167,12 +188,13 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_su: gt.storage.f64_sd,
-        in_sv: gt.storage.f64_sd,
-        tnd_su: gt.storage.f64_sd,
-        tnd_sv: gt.storage.f64_sd,
+        in_su: gtscript.Field[np.float64],
+        in_sv: gtscript.Field[np.float64],
+        tnd_su: gtscript.Field[np.float64],
+        tnd_sv: gtscript.Field[np.float64],
         *,
         f: float
     ):
-        tnd_su = f * in_sv[0, 0, 0]
-        tnd_sv = -f * in_su[0, 0, 0]
+        with computation(PARALLEL), interval(...):
+            tnd_su = f * in_sv
+            tnd_sv = -f * in_su

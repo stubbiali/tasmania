@@ -25,7 +25,10 @@ import math
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import greater_or_equal_than as ge
 
@@ -52,9 +55,10 @@ class VerticalDamping(abc.ABC):
         build_info,
         dtype,
         exec_info,
-        halo,
+        default_origin,
         rebuild,
         storage_shape,
+        managed_memory,
     ):
         """
         Parameters
@@ -73,15 +77,17 @@ class VerticalDamping(abc.ABC):
             Dictionary of backend-specific options.
         build_info : dict
             Dictionary of building options.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         exec_info : dict
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : tuple
-            Storage halo.
+        default_origin : tuple[int]
+            Storage default origin.
         rebuild : bool
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         # safety-guard checks
         assert damp_depth <= grid.nz, (
@@ -99,9 +105,6 @@ class VerticalDamping(abc.ABC):
         assert grid.nz <= storage_shape[2] <= grid.nz + 1
         self._shape = storage_shape
 
-        # compute lower-bound of damping region
-        lb = grid.z.values[damp_depth - 1]
-
         # compute the damping matrix
         z = (
             np.concatenate((grid.z.values, np.array([0])), axis=0)
@@ -112,15 +115,23 @@ class VerticalDamping(abc.ABC):
         za = z[damp_depth - 1]
         r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
         self._rmat = zeros(
-            storage_shape, backend, dtype, halo=halo, mask=(True, True, True)
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            mask=(True, True, True),
+            managed_memory=managed_memory,
         )
         self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
         # instantiate the underlying stencil
-        decorator = gt.stencil(
-            backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
+            build_info=build_info,
+            rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @abc.abstractmethod
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
@@ -131,16 +142,16 @@ class VerticalDamping(abc.ABC):
 
         Parameters
         ----------
-        dt : timedelta
+        dt : datetime.timedelta
             The time step.
-        field_now : gridtools.storage.Storage
+        field_now : gt4py.storage.storage.Storage
             The field at the current time level.
-        field_new : gridtools.storage.Storage
+        field_new : gt4py.storage.storage.Storage
             The field at the next time level, on which the absorber will be applied.
-        field_ref : gridtools.storage.Storage
+        field_ref : gt4py.storage.storage.Storage
             A reference value for the field.
-        field_out : gridtools.storage.Storage
-            Buffer into which writing the output, vertically damped field.
+        field_out : gt4py.storage.storage.Storage
+            Buffer into which the output vertically damped field is written.
         """
         pass
 
@@ -157,13 +168,14 @@ class VerticalDamping(abc.ABC):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
-        storage_shape=None
+        storage_shape=None,
+        managed_memory=False
     ):
         """
         Static method which returns an instance of the derived class
-        implementing the damping method specified by :data:`damp_type`.
+        implementing the damping method specified by `damp_type`.
 
         Parameters
         ----------
@@ -186,15 +198,17 @@ class VerticalDamping(abc.ABC):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
 
         Return
         ------
@@ -211,9 +225,10 @@ class VerticalDamping(abc.ABC):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape,
+            managed_memory,
         ]
         if damp_type == "rayleigh":
             return Rayleigh(*args)
@@ -223,11 +238,11 @@ class VerticalDamping(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi_now: gt.storage.f64_sd,
-        in_phi_new: gt.storage.f64_sd,
-        in_phi_ref: gt.storage.f64_sd,
-        in_rmat: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi_now: gtscript.Field[np.float64],
+        in_phi_new: gtscript.Field[np.float64],
+        in_phi_ref: gtscript.Field[np.float64],
+        in_rmat: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dt: float
     ):
@@ -236,7 +251,7 @@ class VerticalDamping(abc.ABC):
 
 class Rayleigh(VerticalDamping):
     """
-    This class inherits	:class:`~tasmania.VerticalDamping`
+    This class inherits	:class:`tasmania.VerticalDamping`
     to implement a Rayleigh absorber.
     """
 
@@ -251,9 +266,10 @@ class Rayleigh(VerticalDamping):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
     ):
         super().__init__(
             grid,
@@ -265,9 +281,10 @@ class Rayleigh(VerticalDamping):
             build_info,
             dtype,
             exec_info,
-            halo,
+            default_origin,
             rebuild,
             storage_shape,
+            managed_memory,
         )
 
     def __call__(self, dt, field_now, field_new, field_ref, field_out):
@@ -294,18 +311,17 @@ class Rayleigh(VerticalDamping):
             )
 
         # set the lowermost layers, outside of the damping region
-        field_out.data[:, :, dnk:] = field_new.data[:, :, dnk:]
+        field_out[:, :, dnk:] = field_new[:, :, dnk:]
 
     @staticmethod
     def _stencil_defs(
-        in_phi_now: gt.storage.f64_sd,
-        in_phi_new: gt.storage.f64_sd,
-        in_phi_ref: gt.storage.f64_sd,
-        in_rmat: gt.storage.f64_sd,
-        out_phi: gt.storage.f64_sd,
+        in_phi_now: gtscript.Field[np.float64],
+        in_phi_new: gtscript.Field[np.float64],
+        in_phi_ref: gtscript.Field[np.float64],
+        in_rmat: gtscript.Field[np.float64],
+        out_phi: gtscript.Field[np.float64],
         *,
         dt: float
     ):
-        out_phi = in_phi_new[0, 0, 0] - dt * in_rmat[0, 0, 0] * (
-            in_phi_now[0, 0, 0] - in_phi_ref[0, 0, 0]
-        )
+        with computation(PARALLEL), interval(...):
+            out_phi = in_phi_new - dt * in_rmat * (in_phi_now - in_phi_ref)

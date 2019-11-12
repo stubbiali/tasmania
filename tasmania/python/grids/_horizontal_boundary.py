@@ -29,7 +29,8 @@ try:
 except (ImportError, ModuleNotFoundError):
     cp = np
 
-import gridtools as gt
+import gt4py as gt
+
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
@@ -82,7 +83,7 @@ class Relaxed(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
@@ -172,7 +173,7 @@ class Relaxed(HorizontalBoundary):
         return self.get_numerical_xaxis(paxis, dims)
 
     def get_numerical_field(self, field, field_name=None):
-        return field
+        return np.asarray(field)
 
     def get_physical_xaxis(self, caxis, dims=None):
         pdims = dims if dims is not None else caxis.dims[0]
@@ -193,7 +194,7 @@ class Relaxed(HorizontalBoundary):
         )
 
     def get_physical_field(self, field, field_name=None):
-        return field
+        return np.asarray(field)
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -216,52 +217,34 @@ class Relaxed(HorizontalBoundary):
         # ypos = np.repeat(field_ref[:, -1:], nr, axis=1)
 
         # set the outermost layers
-        field.data[:nb, :] = field_ref.data[:nb, :]
-        field.data[mi - nb : mi, :] = field_ref.data[mi - nb : mi, :]
-        field.data[nb : mi - nb, :nb] = field_ref.data[nb : mi - nb, :nb]
-        field.data[nb : mi - nb, mj - nb : mj] = field_ref.data[
-            nb : mi - nb, mj - nb : mj
-        ]
+        field[:nb, :] = field_ref[:nb, :]
+        field[mi - nb : mi, :] = field_ref[mi - nb : mi, :]
+        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+        field[nb : mi - nb, mj - nb : mj] = field_ref[nb : mi - nb, mj - nb : mj]
 
         # apply the relaxed boundary conditions in the negative x-direction
         i, j = slice(nb, nr), slice(nr, mj - nr)
-        field.data[i, j] -= self._xneg[nb:, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
         i, j = slice(nb, nr), slice(nb, nr)
-        field.data[i, j] -= self._xnegyneg[nb:, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xnegyneg[nb:, nb:] * (field[i, j] - field_ref[i, j])
         i, j = slice(nb, nr), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._xnegypos[nb:, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xnegypos[nb:, :-nb] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive x-direction
         i, j = slice(mi - nr, mi - nb), slice(nr, mj - nr)
-        field.data[i, j] -= self._xpos[:-nb, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
         i, j = slice(mi - nr, mi - nb), slice(nb, nr)
-        field.data[i, j] -= self._xposyneg[:-nb, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xposyneg[:-nb, :-nb] * (field[i, j] - field_ref[i, j])
         i, j = slice(mi - nr, mi - nb), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._xposypos[:-nb, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xposypos[:-nb, nb:] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the negative y-direction
         i, j = slice(nr, mi - nr), slice(nb, nr)
-        field.data[i, j] -= self._yneg[:mi_int, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._yneg[:mi_int, nb:] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive y-direction
         i, j = slice(nr, mi - nr), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._ypos[:mi_int, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._ypos[:mi_int, :-nb] * (field[i, j] - field_ref[i, j])
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -270,8 +253,8 @@ class Relaxed(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[0, :mj] = field_ref.data[0, :mj]
-        field.data[mi - 1, :mj] = field_ref.data[mi - 1, :mj]
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -280,8 +263,8 @@ class Relaxed(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[:mi, 0] = field_ref.data[:mi, 0]
-        field.data[:mi, mj - 1] = field_ref.data[:mi, mj - 1]
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Relaxed1DX(HorizontalBoundary):
@@ -304,7 +287,7 @@ class Relaxed1DX(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
@@ -349,10 +332,7 @@ class Relaxed1DX(HorizontalBoundary):
         # inspect the backend properties to load the proper asarray function
         backend = backend or "numpy"
         device = gt.backend.from_name(backend).storage_info["device"]
-        if device == "gpu":
-            from cupy import asarray
-        else:
-            from numpy import asarray
+        asarray = cp.asarray if device == "gpu" else np.asarray
 
         # made all matrices three-dimensional to harness array broadcasting
         self._xneg = asarray(xneg[:, :, np.newaxis])
@@ -379,8 +359,8 @@ class Relaxed1DX(HorizontalBoundary):
         return repeat_axis(paxis, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
-        padneg = np.repeat(field[:, 0:1], self.nb, axis=1)
-        padpos = np.repeat(field[:, -1:], self.nb, axis=1)
+        padneg = np.repeat(np.asarray(field[:, 0:1]), self.nb, axis=1)
+        padpos = np.repeat(np.asarray(field[:, -1:]), self.nb, axis=1)
         return np.concatenate((padneg, field, padpos), axis=1)
 
     def get_physical_xaxis(self, caxis, dims=None):
@@ -396,7 +376,7 @@ class Relaxed1DX(HorizontalBoundary):
         return shrink_axis(caxis, self.nb, dims)
 
     def get_physical_field(self, field, field_name=None):
-        return field[:, self.nb : -self.nb]
+        return np.asarray(field[:, self.nb : -self.nb])
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -416,26 +396,20 @@ class Relaxed1DX(HorizontalBoundary):
         # xpos = np.repeat(field_ref[-1:, nb:-nb], nr, axis=0)
 
         # set the outermost layers
-        field.data[:nb, nb : mj - nb] = field_ref.data[:nb, nb : mj - nb]
-        field.data[mi - nb : mi, nb : mj - nb] = field_ref.data[
-            mi - nb : mi, nb : mj - nb
-        ]
+        field[:nb, nb : mj - nb] = field_ref[:nb, nb : mj - nb]
+        field[mi - nb : mi, nb : mj - nb] = field_ref[mi - nb : mi, nb : mj - nb]
 
         # apply the relaxed boundary conditions in the negative x-direction
         i, j = slice(nb, nr), slice(nb, mj - nb)
-        field.data[i, j] -= self._xneg[nb:, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive x-direction
         i, j = slice(mi - nr, mi - nb), slice(nb, mj - nb)
-        field.data[i, j] -= self._xpos[:-nb, :mj_int] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
 
         # repeat the innermost column(s) along the y-direction
-        field.data[:mi, :nb] = field.data[:mi, nb : nb + 1]
-        field.data[:mi, mj - nb : mj] = field.data[:mi, mj - nb - 1 : mj - nb]
+        field[:mi, :nb] = field[:mi, nb : nb + 1]
+        field[:mi, mj - nb : mj] = field[:mi, mj - nb - 1 : mj - nb]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -444,8 +418,8 @@ class Relaxed1DX(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[0, :mj] = field_ref.data[0, :mj]
-        field.data[mi - 1, :mj] = field_ref.data[mi - 1, :mj]
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -454,8 +428,8 @@ class Relaxed1DX(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[:mi, 0] = field_ref.data[:mi, 0]
-        field.data[:mi, mj - 1] = field_ref.data[:mi, mj - 1]
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Relaxed1DY(HorizontalBoundary):
@@ -478,7 +452,7 @@ class Relaxed1DY(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         nr : `int`, optional
             Depth of the each relaxation region close to the
@@ -521,10 +495,7 @@ class Relaxed1DY(HorizontalBoundary):
         # inspect the backend properties to load the proper asarray function
         backend = backend or "numpy"
         device = gt.backend.from_name(backend).storage_info["device"]
-        if device == "gpu":
-            from cupy import asarray
-        else:
-            from numpy import asarray
+        asarray = cp.asarray if device == "gpu" else np.asarray
 
         # made all matrices three-dimensional to harness array broadcasting
         self._yneg = asarray(yneg[:, :, np.newaxis])
@@ -551,8 +522,8 @@ class Relaxed1DY(HorizontalBoundary):
         )
 
     def get_numerical_field(self, field, field_name=None):
-        padneg = np.repeat(field[0:1, :], self.nb, axis=0)
-        padpos = np.repeat(field[-1:, :], self.nb, axis=0)
+        padneg = np.repeat(np.asarray(field[0:1, :]), self.nb, axis=0)
+        padpos = np.repeat(np.asarray(field[-1:, :]), self.nb, axis=0)
         return np.concatenate((padneg, field, padpos), axis=0)
 
     def get_physical_xaxis(self, caxis, dims=None):
@@ -568,7 +539,7 @@ class Relaxed1DY(HorizontalBoundary):
         )
 
     def get_physical_field(self, field, field_name=None):
-        return field[self.nb : -self.nb, :]
+        return np.asarray(field[self.nb : -self.nb, :])
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -588,26 +559,20 @@ class Relaxed1DY(HorizontalBoundary):
         # ypos = np.repeat(field_ref[nb:-nb, -1:], nr, axis=1)
 
         # set the outermost layers
-        field.data[nb : mi - nb, :nb] = field_ref.data[nb : mi - nb, :nb]
-        field.data[nb : mi - nb, mj - nb : mj] = field_ref.data[
-            nb : mi - nb, mj - nb : mj
-        ]
+        field[nb : mi - nb, :nb] = field_ref[nb : mi - nb, :nb]
+        field[nb : mi - nb, mj - nb : mj] = field_ref[nb : mi - nb, mj - nb : mj]
 
         # apply the relaxed boundary conditions in the negative y-direction
         i, j = slice(nb, mi - nb), slice(nb, nr)
-        field.data[i, j] -= self._yneg[:mi_int, nb:] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._yneg[:mi_int, nb:] * (field[i, j] - field_ref[i, j])
 
         # apply the relaxed boundary conditions in the positive y-direction
         i, j = slice(nb, mi - nb), slice(mj - nr, mj - nb)
-        field.data[i, j] -= self._ypos[:mi_int, :-nb] * (
-            field.data[i, j] - field_ref.data[i, j]
-        )
+        field[i, j] -= self._ypos[:mi_int, :-nb] * (field[i, j] - field_ref[i, j])
 
         # repeat the innermost row(s) along the x-direction
-        field.data[:nb, :mj] = field.data[nb : nb + 1, :mj]
-        field.data[mi - nb : mi, :mj] = field.data[mi - nb - 1 : mi - nb, :mj]
+        field[:nb, :mj] = field[nb : nb + 1, :mj]
+        field[mi - nb : mi, :mj] = field[mi - nb - 1 : mi - nb, :mj]
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -616,8 +581,8 @@ class Relaxed1DY(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[0, :mj] = field_ref.data[0, :mj]
-        field.data[mi - 1, :mj] = field_ref.data[mi - 1, :mj]
+        field[0, :mj] = field_ref[0, :mj]
+        field[mi - 1, :mj] = field_ref[mi - 1, :mj]
 
     def set_outermost_layers_y(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -626,8 +591,8 @@ class Relaxed1DY(HorizontalBoundary):
         mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
         mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
         field_ref = self.reference_state[field_name].to_units(field_units).values
-        field.data[:mi, 0] = field_ref.data[:mi, 0]
-        field.data[:mi, mj - 1] = field_ref.data[:mi, mj - 1]
+        field[:mi, 0] = field_ref[:mi, 0]
+        field[:mi, mj - 1] = field_ref[:mi, mj - 1]
 
 
 class Periodic(HorizontalBoundary):
@@ -698,24 +663,30 @@ class Periodic(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         nx, ny, nb = self.nx, self.ny, self.nb
         dtype = field.dtype
+        field_name = field_name or ""
+        mx = nx + 1 if "at_u_locations" in field_name else nx
+        mi = mx + 2 * nb
+        my = ny + 1 if "at_v_locations" in field_name else ny
 
         try:
-            mi, mj, mk = field.shape
-            cfield = np.zeros((mi + 2 * nb, mj + 2 * nb, mk), dtype=dtype)
+            li, lj, lk = field.shape
+            cfield = np.zeros((li + 2 * nb, lj + 2 * nb, lk), dtype=dtype)
         except ValueError:
-            mi, mj = field.shape
-            cfield = np.zeros((mi + 2 * nb, mj + 2 * nb), dtype=dtype)
+            li, lj = field.shape
+            cfield = np.zeros((li + 2 * nb, lj + 2 * nb), dtype=dtype)
 
-        cfield[nb:-nb, nb:-nb] = field[:, :]
-        cfield[:nb, nb:-nb] = cfield[nx - 1 : nx - 1 + nb, nb:-nb]
-        cfield[-nb:, nb:-nb] = (
-            cfield[nb + 1 : 2 * nb + 1, nb:-nb]
-            if mi == nx
-            else cfield[nb + 2 : 2 * nb + 2, nb:-nb]
+        cfield[nb : mx + nb, nb : my + nb] = np.asarray(field[:mx, :my])
+        cfield[:nb, nb : my + nb] = cfield[nx - 1 : nx - 1 + nb, nb : my + nb]
+        cfield[mx + nb : mx + 2 * nb, nb : my + nb] = (
+            cfield[nb + 1 : 2 * nb + 1, nb : my + nb]
+            if mx == nx
+            else cfield[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        cfield[:, :nb] = cfield[:, ny - 1 : ny - 1 + nb]
-        cfield[:, -nb:] = (
-            cfield[:, nb + 1 : 2 * nb + 1] if mj == ny else cfield[:, nb + 2 : 2 * nb + 2]
+        cfield[:mi, :nb] = cfield[:mi, ny - 1 : ny - 1 + nb]
+        cfield[:mi, my + nb : my + 2 * nb] = (
+            cfield[:mi, nb + 1 : 2 * nb + 1]
+            if mx == ny
+            else cfield[:mi, nb + 2 : 2 * nb + 2]
         )
 
         return cfield
@@ -734,22 +705,21 @@ class Periodic(HorizontalBoundary):
     ):
         nx, ny, nb = self.nx, self.ny, self.nb
         field_name = field_name or ""
-        mi = self.ni + 1 if "at_u_locations" in field_name else self.ni
-        mi_int = mi - 2 * nb
-        mj = self.nj + 1 if "at_v_locations" in field_name else self.nj
-        mj_int = mj - 2 * nb
+        mx = nx + 1 if "at_u_locations" in field_name else nx
+        mi = mx + 2 * nb
+        my = ny + 1 if "at_v_locations" in field_name else ny
 
-        field[:nb, :mj] = field[nx - 1 : nx - 1 + nb, :mj]
-        field[mi - nb : mi, :mj] = (
-            field[nb + 1 : 2 * nb + 1, :mj]
-            if mi == self.ni
-            else field[nb + 2 : 2 * nb + 2, :mj]
+        field[:nb, nb : my + nb] = field[nx - 1 : nx - 1 + nb, nb : my + nb]
+        field[mx + nb : mx + 2 * nb, nb : my + nb] = (
+            field[nb + 1 : 2 * nb + 1, nb : my + nb]
+            if mx == nx
+            else field[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        field[nb : mi - nb, :nb] = field[nb : mi - nb, ny - 1 : ny - 1 + nb]
-        field[nb : mi - nb, mj - nb : mj] = (
-            field[nb : mi - nb, nb + 1 : 2 * nb + 1]
-            if mj == self.nj
-            else field[nb : mi - nb, nb + 2 : 2 * nb + 2]
+        field[:mi, :nb] = field[:mi, ny - 1 : ny - 1 + nb]
+        field[:mi, my : my + nb] = (
+            field[:mi, nb + 1 : 2 * nb + 1]
+            if my == ny
+            else field[:mi, nb + 2 : 2 * nb + 2]
         )
 
     def set_outermost_layers_x(
@@ -831,23 +801,29 @@ class Periodic1DX(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         nx, nb = self.nx, self.nb
         dtype = field.dtype
+        field_name = field_name or ""
+        mx = nx + 1 if "at_u_locations" in field_name else nx
+        mi = mx + 2 * nb
+        my = 2 if "at_v_locations" in field_name else 1
 
         try:
-            mi, mj, mk = field.shape
-            cfield = np.zeros((mi + 2 * nb, mj + 2 * nb, mk), dtype=dtype)
+            li, lj, lk = field.shape
+            cfield = np.zeros((li + 2 * nb, lj + 2 * nb, lk), dtype=dtype)
         except ValueError:
-            mi, mj = field.shape
-            cfield = np.zeros((mi + 2 * nb, mj + 2 * nb), dtype=dtype)
+            li, lj = field.shape
+            cfield = np.zeros((li + 2 * nb, lj + 2 * nb), dtype=dtype)
 
-        cfield[nb:-nb, nb:-nb] = field[:, :]
-        cfield[:nb, nb:-nb] = cfield[nx - 1 : nx - 1 + nb, nb:-nb]
-        cfield[-nb:, nb:-nb] = (
-            cfield[nb + 1 : 2 * nb + 1, nb:-nb]
-            if mi == nx
-            else cfield[nb + 2 : 2 * nb + 2, nb:-nb]
+        cfield[nb : mx + nb, nb : my + nb] = np.asarray(field[:mx, :my])
+        cfield[:nb, nb : my + nb] = cfield[nx - 1 : nx - 1 + nb, nb : my + nb]
+        cfield[mx + nb : mx + 2 * nb, nb : my + nb] = (
+            cfield[nb + 1 : 2 * nb + 1, nb : my + nb]
+            if mx == nx
+            else cfield[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        cfield[:, :nb] = cfield[:, nb : nb + 1]
-        cfield[:, -nb:] = cfield[:, -nb - 1 : -nb]
+        cfield[:mi, :nb] = cfield[:mi, nb : nb + 1]
+        cfield[:mi, my + nb : my + 2 * nb] = (
+            cfield[:mi, nb : nb + 1] if my == 1 else cfield[:mi, nb + 1 : nb + 2]
+        )
 
         return cfield
 
@@ -864,16 +840,21 @@ class Periodic1DX(HorizontalBoundary):
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
         nx, ny, nb = self.nx, self.ny, self.nb
-        mi = field.shape[0] - 2 * nb
+        field_name = field_name or ""
+        mx = nx + 1 if "at_u_locations" in field_name else nx
+        mi = mx + 2 * nb
+        my = 2 if "at_v_locations" in field_name else 1
 
-        field[:nb, nb:-nb] = field[nx - 1 : nx - 1 + nb, nb:-nb]
-        field[-nb:, nb:-nb] = (
-            field[nb + 1 : 2 * nb + 1, nb:-nb]
-            if mi == nx
-            else field[nb + 2 : 2 * nb + 2, nb:-nb]
+        field[:nb, nb : my + nb] = field[nx - 1 : nx - 1 + nb, nb : my + nb]
+        field[mx + nb : mx + 2 * nb, nb : my + nb] = (
+            field[nb + 1 : 2 * nb + 1, nb : my + nb]
+            if mx == nx
+            else field[nb + 2 : 2 * nb + 2, nb : my + nb]
         )
-        field[:, :nb] = field[:, nb : nb + 1]
-        field[:, -nb:] = field[:, -nb - 1 : -nb]
+        field[:mi, :nb] = field[:mi, nb : nb + 1]
+        field[:mi, my + nb : my + 2 * nb] = (
+            field[:mi, nb : nb + 1] if my == 1 else field[:mi, nb + 1 : nb + 2]
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -954,23 +935,29 @@ class Periodic1DY(HorizontalBoundary):
     def get_numerical_field(self, field, field_name=None):
         ny, nb = self.ny, self.nb
         dtype = field.dtype
+        field_name = field_name or ""
+        mx = 2 if "at_u_locations" in field_name else 1
+        my = ny + 1 if "at_v_locations" in field_name else ny
+        mj = my + 2 * nb
 
         try:
-            mi, mj, mk = field.shape
-            cfield = np.zeros((mi + 2 * nb, mj + 2 * nb, mk), dtype=dtype)
+            li, lj, lk = field.shape
+            cfield = np.zeros((li + 2 * nb, lj + 2 * nb, lk), dtype=dtype)
         except ValueError:
-            mi, mj = field.shape
-            cfield = np.zeros((mi + 2 * nb, mj + 2 * nb), dtype=dtype)
+            li, lj = field.shape
+            cfield = np.zeros((li + 2 * nb, lj + 2 * nb), dtype=dtype)
 
-        cfield[nb:-nb, nb:-nb] = field[:, :]
-        cfield[nb:-nb, :nb] = cfield[nb:-nb, ny - 1 : ny - 1 + nb]
-        cfield[nb:-nb, -nb:] = (
-            cfield[nb:-nb, nb + 1 : 2 * nb + 1]
-            if mj == ny
-            else cfield[nb:-nb, nb + 2 : 2 * nb + 2]
+        cfield[nb : mx + nb, nb : my + nb] = np.asarray(field[:mx, :my])
+        cfield[nb : mx + nb, :nb] = cfield[nb : mx + nb, ny - 1 : ny - 1 + nb]
+        cfield[nb : mx + nb, my + nb : my + 2 * nb] = (
+            cfield[nb : mx + nb, nb + 1 : 2 * nb + 1]
+            if my == ny
+            else cfield[nb : mx + nb, nb + 2 : 2 * nb + 2]
         )
-        cfield[:nb, :] = cfield[nb : nb + 1, :]
-        cfield[-nb:, :] = cfield[-nb - 1 : -nb, :]
+        cfield[:nb, :mj] = cfield[nb : nb + 1, :mj]
+        cfield[mx + nb : mx + 2 * nb, :mj] = (
+            cfield[nb : nb + 1, :mj] if mx == 1 else cfield[nb + 1 : nb + 2, :mj]
+        )
 
         return cfield
 
@@ -986,17 +973,22 @@ class Periodic1DY(HorizontalBoundary):
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        nx, ny, nb = self.nx, self.ny, self.nb
-        mj = field.shape[1] - 2 * nb
+        ny, nb = self.ny, self.nb
+        field_name = field_name or ""
+        mx = 2 if "at_u_locations" in field_name else 1
+        my = ny + 1 if "at_v_locations" in field_name else ny
+        mj = my + 2 * nb
 
-        field[nb:-nb, :nb] = field[nb:-nb, ny - 1 : ny - 1 + nb]
-        field[nb:-nb, -nb:] = (
-            field[nb:-nb, nb + 1 : 2 * nb + 1]
-            if mj == ny
-            else field[nb:-nb, nb + 2 : 2 * nb + 2]
+        field[nb : mx + nb, :nb] = field[nb : mx + nb, ny - 1 : ny - 1 + nb]
+        field[nb : mx + nb, my + nb : my + 2 * nb] = (
+            field[nb : mx + nb, nb + 1 : 2 * nb + 1]
+            if my == ny
+            else field[nb : mx + nb, nb + 2 : 2 * nb + 2]
         )
-        field[:nb, :] = field[nb : nb + 1, :]
-        field[-nb:, :] = field[-nb - 1 : -nb, :]
+        field[:nb, mj] = field[nb : nb + 1, :mj]
+        field[mx + nb : mx + 2 * nb, :mj] = (
+            field[nb : nb + 1, :mj] if mx == 1 else field[nb + 1 : nb + 2, :mj]
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1034,7 +1026,7 @@ class Dirichlet(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.
@@ -1078,7 +1070,7 @@ class Dirichlet(HorizontalBoundary):
         return paxis
 
     def get_numerical_field(self, field, field_name=None):
-        return field
+        return np.asarray(field)
 
     def get_physical_xaxis(self, caxis, dims=None):
         return caxis
@@ -1087,7 +1079,7 @@ class Dirichlet(HorizontalBoundary):
         return caxis
 
     def get_physical_field(self, field, field_name=None):
-        return field
+        return np.asarray(field)
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1183,7 +1175,7 @@ class Dirichlet1DX(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.
@@ -1224,8 +1216,8 @@ class Dirichlet1DX(HorizontalBoundary):
         return repeat_axis(paxis, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
-        padneg = np.repeat(field[:, 0:1], self.nb, axis=1)
-        padpos = np.repeat(field[:, -1:], self.nb, axis=1)
+        padneg = np.repeat(np.asarray(field[:, 0:1]), self.nb, axis=1)
+        padpos = np.repeat(np.asarray(field[:, -1:]), self.nb, axis=1)
         return np.concatenate((padneg, field, padpos), axis=1)
 
     def get_physical_xaxis(self, caxis, dims=None):
@@ -1235,7 +1227,7 @@ class Dirichlet1DX(HorizontalBoundary):
         return shrink_axis(caxis, self.nb, dims)
 
     def get_physical_field(self, field, field_name=None):
-        return field[:, self.nb : -self.nb]
+        return np.asarray(field[:, self.nb : -self.nb])
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1328,7 +1320,7 @@ class Dirichlet1DY(HorizontalBoundary):
             Number of boundary layers.
         backend : str
             The GT4Py backend.
-        dtype : numpy.dtype
+        dtype : data-type
             Data type of the storages.
         core : `callable`, optional
             Callable object actually providing the boundary layers values.
@@ -1369,8 +1361,8 @@ class Dirichlet1DY(HorizontalBoundary):
         return paxis
 
     def get_numerical_field(self, field, field_name=None):
-        padneg = np.repeat(field[0:1, :], self.nb, axis=0)
-        padpos = np.repeat(field[-1:, :], self.nb, axis=0)
+        padneg = np.repeat(np.asarray(field[0:1, :]), self.nb, axis=0)
+        padpos = np.repeat(np.asarray(field[-1:, :]), self.nb, axis=0)
         return np.concatenate((padneg, field, padpos), axis=0)
 
     def get_physical_xaxis(self, caxis, dims=None):
@@ -1380,7 +1372,7 @@ class Dirichlet1DY(HorizontalBoundary):
         return caxis
 
     def get_physical_field(self, field, field_name=None):
-        return field[self.nb : -self.nb, :]
+        return np.asarray(field[self.nb : -self.nb, :])
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1497,7 +1489,7 @@ class Identity(HorizontalBoundary):
         return paxis
 
     def get_numerical_field(self, field, field_name=None):
-        return field
+        return np.asarray(field)
 
     def get_physical_xaxis(self, caxis, dims=None):
         return caxis
@@ -1506,7 +1498,7 @@ class Identity(HorizontalBoundary):
         return caxis
 
     def get_physical_field(self, field, field_name=None):
-        return field
+        return np.asarray(field)
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1566,8 +1558,8 @@ class Identity1DX(HorizontalBoundary):
         return repeat_axis(paxis, self.nb, dims)
 
     def get_numerical_field(self, field, field_name=None):
-        padneg = np.repeat(field[:, 0:1], self.nb, axis=1)
-        padpos = np.repeat(field[:, -1:], self.nb, axis=1)
+        padneg = np.repeat(np.asarray(field[:, 0:1]), self.nb, axis=1)
+        padpos = np.repeat(np.asarray(field[:, -1:]), self.nb, axis=1)
         return np.concatenate((padneg, field, padpos), axis=1)
 
     def get_physical_xaxis(self, caxis, dims=None):
@@ -1577,14 +1569,18 @@ class Identity1DX(HorizontalBoundary):
         return shrink_axis(caxis, self.nb, dims)
 
     def get_physical_field(self, field, field_name=None):
-        return field[:, self.nb : -self.nb]
+        return np.asarray(field[:, self.nb : -self.nb])
 
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        nb = self.nb
+        ny, nb = self.ny, self.nb
+        field_name = field_name or ""
+        my = 2 if "at_v_locations" in field_name else 1
         field[:, :nb] = field[:, nb : nb + 1]
-        field[:, -nb:] = field[:, -nb - 1 : -nb]
+        field[:, my + nb : my + 2 * nb] = (
+            field[:, nb : nb + 1] if my == 1 else field[:, nb + 1 : nb + 2]
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None
@@ -1655,9 +1651,13 @@ class Identity1DY(HorizontalBoundary):
     def enforce_field(
         self, field, field_name=None, field_units=None, time=None, grid=None
     ):
-        nb = self.nb
+        nx, nb = self.nx, self.nb
+        field_name = field_name or ""
+        mx = 2 if "at_u_locations" in field_name else 1
         field[:nb, :] = field[nb : nb + 1, :]
-        field[-nb:, :] = field[-nb - 1 : -nb, :]
+        field[mx + nb : mx + 2 * nb, :] = (
+            field[nb : nb + 1, :] if mx == 1 else field[nb + 1 : nb + 2, :]
+        )
 
     def set_outermost_layers_x(
         self, field, field_name=None, field_units=None, time=None, grid=None

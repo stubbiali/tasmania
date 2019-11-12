@@ -24,7 +24,10 @@ import abc
 import numpy as np
 from sympl import DataArray
 
-import gridtools as gt
+from gt4py import gtscript, __externals__
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.base_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
@@ -117,9 +120,10 @@ class Precipitation(ImplicitTendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
         storage_shape=None,
+        managed_memory=False,
         **kwargs
     ):
         """
@@ -133,7 +137,7 @@ class Precipitation(ImplicitTendencyComponent):
                 * 'physical';
                 * 'numerical' (default).
 
-        physical_constants : `dict`, optional
+        physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
             storing the values and units of those constants. The constants might be:
@@ -141,21 +145,24 @@ class Precipitation(ImplicitTendencyComponent):
                 * 'density_of_liquid_water', in units compatible with [kg m^-3].
 
         backend : `str`, optional
-            TODO
+            The GT4Py backend.
         backend_opts : `dict`, optional
-            TODO
+            Dictionary of backend-specific options.
         build_info : `dict`, optional
-            TODO
-        dtype : `numpy.dtype`, optional
-            TODO
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
         exec_info : `dict`, optional
-            TODO
-        halo : `tuple`, optional
-            TODO
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
-            TODO
-        storage_shape : `tuple`, optional
-            TODO
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent
             :class:`~tasmania.ImplicitTendencyComponent`.
@@ -173,20 +180,50 @@ class Precipitation(ImplicitTendencyComponent):
         )
         storage_shape = get_storage_shape(in_shape, (nx, ny, 1))
 
-        self._in_rho = zeros(storage_shape, backend, dtype, halo=halo)
-        self._in_qr = zeros(storage_shape, backend, dtype, halo=halo)
-        self._in_vt = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_prec = zeros(storage_shape, backend, dtype, halo=halo)
-        self._out_accprec = zeros(storage_shape, backend, dtype, halo=halo)
-
-        decorator = gt.stencil(
+        self._in_rho = zeros(
+            storage_shape,
             backend,
-            backend_opts=backend_opts,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._in_qr = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._in_vt = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._out_prec = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._out_accprec = zeros(
+            storage_shape,
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+
+        self._stencil = gtscript.stencil(
+            definition=self._stencil_defs,
+            backend=backend,
             build_info=build_info,
             externals={"rhow": pcs["density_of_liquid_water"]},
             rebuild=rebuild,
+            **(backend_opts or {})
         )
-        self._stencil = decorator(self._stencil_defs)
 
     @property
     def input_properties(self):
@@ -229,29 +266,11 @@ class Precipitation(ImplicitTendencyComponent):
     def array_call(self, state, timestep):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
-        try:
-            state["air_density"].host_to_device()
-            self._in_rho.data[...] = state["air_density"].data[:, :, nz - 1 : nz]
-            self._in_rho._sync_state.state = self._in_rho.SyncState.SYNC_DEVICE_DIRTY
-
-            state["mass_fraction_of_precipitation_water_in_air"].host_to_device()
-            self._in_qr.data[...] = state[
-                "mass_fraction_of_precipitation_water_in_air"
-            ].data[:, :, nz - 1 : nz]
-            self._in_qr._sync_state.state = self._in_qr.SyncState.SYNC_DEVICE_DIRTY
-
-            state["raindrop_fall_velocity"].host_to_device()
-            self._in_vt.data[...] = state["raindrop_fall_velocity"].data[
-                :, :, nz - 1 : nz
-            ]
-            self._in_vt._sync_state.state = self._in_vt.SyncState.SYNC_DEVICE_DIRTY
-        except AttributeError:
-            self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
-            self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
-                :, :, nz - 1 : nz
-            ]
-            self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
-
+        self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
+        self._in_qr[...] = state["mass_fraction_of_precipitation_water_in_air"][
+            :, :, nz - 1 : nz
+        ]
+        self._in_vt[...] = state["raindrop_fall_velocity"][:, :, nz - 1 : nz]
         in_accprec = state["accumulated_precipitation"]
 
         dt = timestep.total_seconds()
@@ -279,17 +298,20 @@ class Precipitation(ImplicitTendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_rho: gt.storage.f64_sd,
-        in_qr: gt.storage.f64_sd,
-        in_vt: gt.storage.f64_sd,
-        in_accprec: gt.storage.f64_sd,
-        out_prec: gt.storage.f64_sd,
-        out_accprec: gt.storage.f64_sd,
+        in_rho: gtscript.Field[np.float64],
+        in_qr: gtscript.Field[np.float64],
+        in_vt: gtscript.Field[np.float64],
+        in_accprec: gtscript.Field[np.float64],
+        out_prec: gtscript.Field[np.float64],
+        out_accprec: gtscript.Field[np.float64],
         *,
         dt: float
     ):
-        out_prec = 3.6e6 * in_rho[0, 0, 0] * in_qr[0, 0, 0] * in_vt[0, 0, 0] / rhow
-        out_accprec = in_accprec[0, 0, 0] + dt * out_prec[0, 0, 0] / 3.6e3
+        from __externals__ import rhow
+
+        with computation(PARALLEL), interval(...):
+            out_prec = 3.6e6 * in_rho * in_qr * in_vt / rhow
+            out_accprec = in_accprec + dt * out_prec / 3.6e3
 
 
 class SedimentationFlux(abc.ABC):
@@ -303,6 +325,7 @@ class SedimentationFlux(abc.ABC):
     nb = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(rho, h, q, vt):
         """
@@ -312,18 +335,18 @@ class SedimentationFlux(abc.ABC):
 
         Parameters
         ----------
-        rho : gridtools.storage.Storage
+        rho : gt4py.gtscript.Field
             The air density, in units of [kg m^-3].
-        h : gridtools.storage.Storage
+        h : gt4py.gtscript.Field
             The geometric height of the model half-levels, in units of [m].
-        q : gridtools.storage.Storage
+        q : gt4py.gtscript.Field
             The precipitating water species.
-        vt : gridtools.storage.Storage
+        vt : gt4py.gtscript.Field
             The raindrop fall velocity, in units of [m s^-1].
 
         Return
         ------
-        gridtools.storage.Storage :
+        gt4py.gtscript.Field :
             The vertical derivative of the sedimentation flux.
         """
 
@@ -340,11 +363,12 @@ class SedimentationFlux(abc.ABC):
             String specifying the method used to compute the numerical
             sedimentation flux. Available options are:
 
-            - 'first_order_upwind', for the first-order upwind scheme;
-            - 'second_order_upwind', for the second-order upwind scheme.
+                - 'first_order_upwind', for the first-order upwind scheme;
+                - 'second_order_upwind', for the second-order upwind scheme.
 
         Return
         ------
+        obj :
             Instance of the derived class implementing the desired method.
         """
         if sedimentation_flux_type == "first_order_upwind":
@@ -363,15 +387,13 @@ class _FirstOrderUpwind(SedimentationFlux):
     nb = 1
 
     @staticmethod
+    @gtscript.function
     def __call__(rho, h, q, vt):
-        # interpolate the geometric height at the model main levels
-        tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
-
         # calculate the vertical derivative of the sedimentation flux
         dfdz = (
             rho[0, 0, -1] * q[0, 0, -1] * vt[0, 0, -1]
             - rho[0, 0, 0] * q[0, 0, 0] * vt[0, 0, 0]
-        ) / (tmp_h[0, 0, -1] - tmp_h[0, 0, 0])
+        ) / (h[0, 0, -1] - h[0, 0, 0])
 
         return dfdz
 
@@ -382,21 +404,19 @@ class _SecondOrderUpwind(SedimentationFlux):
     nb = 2
 
     @staticmethod
+    @gtscript.function
     def __call__(rho, h, q, vt):
-        # interpolate the geometric height at the model main levels
-        tmp_h = 0.5 * (h[0, 0, 0] + h[0, 0, 1])
-
         # evaluate the space-dependent coefficients occurring in the
         # second-order upwind finite difference approximation of the
         # vertical derivative of the flux
-        tmp_a = (2.0 * tmp_h[0, 0, 0] - tmp_h[0, 0, -1] - tmp_h[0, 0, -2]) / (
-            (tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, 0])
+        tmp_a = (2.0 * h[0, 0, 0] - h[0, 0, -1] - h[0, 0, -2]) / (
+            (h[0, 0, -1] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, 0])
         )
-        tmp_b = (tmp_h[0, 0, -2] - tmp_h[0, 0, 0]) / (
-            (tmp_h[0, 0, -1] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, -1])
+        tmp_b = (h[0, 0, -2] - h[0, 0, 0]) / (
+            (h[0, 0, -1] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, -1])
         )
-        tmp_c = (tmp_h[0, 0, 0] - tmp_h[0, 0, -1]) / (
-            (tmp_h[0, 0, -2] - tmp_h[0, 0, 0]) * (tmp_h[0, 0, -2] - tmp_h[0, 0, -1])
+        tmp_c = (h[0, 0, 0] - h[0, 0, -1]) / (
+            (h[0, 0, -2] - h[0, 0, 0]) * (h[0, 0, -2] - h[0, 0, -1])
         )
 
         # calculate the vertical derivative of the sedimentation flux
@@ -437,7 +457,7 @@ class Sedimentation(ImplicitTendencyComponent):
                 * 'physical';
                 * 'numerical'.
 
-        tracers : dict
+        tracers : dict[str, dict]
             Dictionary whose keys are the names of the precipitating tracers to
             consider, and whose values are dictionaries specifying 'units' and
             'velocity' for those tracers.
@@ -449,8 +469,8 @@ class Sedimentation(ImplicitTendencyComponent):
             Maximum allowed vertical CFL number. Defaults to 0.975.
         backend : `obj`, optional
             TODO
-        dtype : `numpy.dtype`, optional
-            The data type for any :class:`numpy.ndarray` instantiated and
+        dtype : `data-type`, optional
+            The data type for any :class:`gt4py.storage.storage.Storage` instantiated and
             used within this class.
         **kwargs :
             Additional keyword arguments to be directly forwarded to the parent

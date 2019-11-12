@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -72,8 +72,8 @@ class Plot(Monitor):
 	Attributes
 	----------
 	interactive : bool
-		:obj:`True` if interactive plotting is enabled,
-		:obj:`False` otherwise.
+		`True` if interactive plotting is enabled,
+		`False` otherwise.
 	figure_properties : dict
 		Keyword arguments specifying settings for the
 		:class:`~matplotlib.figure.Figure` containing the plot.
@@ -97,8 +97,8 @@ class Plot(Monitor):
 		drawers : tasmania.Drawer
 			The drawer(s) actually drawing the plot(s).
 		interactive : `bool`, optional
-			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
-			Defaults to :obj:`True`.
+			`True` to enable interactive plotting, `False` otherwise.
+			Defaults to `True`.
 		print_time : `str`, optional
 			String specifying if time should be printed above the plot,
 			flush with the right edge. Available options are:
@@ -107,7 +107,7 @@ class Plot(Monitor):
 				* 'absolute', to print the absolute time of the snapshot;
 				* anything else, not to print anything.
 
-			Defaults to :obj:`None`.
+			Defaults to `None`.
 		init_time : `datetime`, optional
 			The initial time of the simulation. Only effective if `print_time`
 			is 'elapsed'. If not specified, the elapsed time is calculated
@@ -176,11 +176,11 @@ class Plot(Monitor):
 		save_dest : `str`, optional
 			Path under which the figure should be saved.
 			The path should include the extension of the figure.
-			If :obj:`None` or empty, the plot will not be saved.
+			If `None` or empty, the plot will not be saved.
 		show : `bool`, optional
 			When the non-interactive mode is switched on,
-			:obj:`True` to show the figure, :obj:`False` otherwise.
-			Defaults to :obj:`False`.
+			`True` to show the figure, `False` otherwise.
+			Defaults to `False`.
 
 		Return
 		------
@@ -314,7 +314,7 @@ class PlotComposite:
 		ncols : `int`, optional
 			Number of columns of the subplot grid. Defaults to 1.
 		interactive : `bool`, optional
-			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+			`True` to enable interactive plotting, :obj:`False` otherwise.
 			Defaults to :obj:`True`.
 		print_time : `str`, optional
 			String specifying if time should be printed as suptitle.

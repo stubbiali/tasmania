@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import copy
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -32,7 +33,10 @@ from sympl import (
 )
 from sympl._core.units import clean_units
 
-import gridtools as gt
+from gt4py import gtscript
+
+# from gt4py.__gtscript__ import computation, interval, PARALLEL
+
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
@@ -44,8 +48,11 @@ from tasmania.python.utils.framework_utils import (
 from tasmania.python.utils.utils import assert_sequence
 
 
-def stencil_sum_defs(inout_a: gt.storage.f64_sd, in_b: gt.storage.f64_sd):
-    inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
+def stencil_sum_defs(
+    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a + in_b
 
 
 class ConcurrentCoupling:
@@ -55,17 +62,17 @@ class ConcurrentCoupling:
 
     Attributes
     ----------
-    input_properties : dict
+    input_properties : dict[str, dict]
         Dictionary whose keys are strings denoting model variables
         which should be present in the input state dictionary, and
         whose values are dictionaries specifying fundamental properties
         (dims, units) of those variables.
-    tendency_properties : dict
+    tendency_properties : dict[str, dict]
         Dictionary whose keys are strings denoting the model variables
         for	which tendencies are computed, and whose values are
         dictionaries specifying fundamental properties (dims, units)
         of those variables.
-    diagnostics_properties : dict
+    diagnostics_properties : dict[str, dict]
         Dictionary whose keys are strings denoting the diagnostics
         which are retrieved, and whose values are dictionaries
         specifying fundamental properties (dims, units) of those variables.
@@ -131,6 +138,7 @@ class ConcurrentCoupling:
                     we do not rely on the order in which parameterizations
                     are passed to this object, and diagnostics computed by
                     a component are not usable by any other component.
+
         gt_powered : `bool`, optional
             `True` to add the tendencies using GT4Py (leveraging field versioning),
             `False` to perform the summation in plain Python.
@@ -146,7 +154,7 @@ class ConcurrentCoupling:
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
         **kwargs:
-            Unused keyword arguments.
+            Catch-all for unused keyword arguments.
         """
         assert_sequence(args, reftype=self.__class__.allowed_component_type)
         self._component_list = args
@@ -179,10 +187,13 @@ class ConcurrentCoupling:
 
         if gt_powered:
             # compile the underlying stencil
-            decorator = gt.stencil(
-                backend, backend_opts=backend_opts, build_info=build_info, rebuild=rebuild
+            self._stencil_sum = gtscript.stencil(
+                definition=stencil_sum_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                **(backend_opts or {})
             )
-            self._stencil_sum = decorator(stencil_sum_defs)
 
             # store parameters needed at run-time
             self._exec_info = exec_info
@@ -219,7 +230,7 @@ class ConcurrentCoupling:
 
         Parameters
         ----------
-        state : dict
+        state : dict[str, sympl.DataArray]
             The input model state as a dictionary whose keys are strings denoting
             model variables, and whose values are :class:`sympl.DataArray`\s storing
             data for those variables.
@@ -228,7 +239,7 @@ class ConcurrentCoupling:
 
         Return
         ------
-        dict :
+        dict[str, sympl.DataArray]
             Dictionary whose keys are strings denoting the model variables for which
             tendencies have been computed, and whose values are :class:`sympl.DataArray`\s
             storing the tendencies for those variables.
@@ -244,9 +255,7 @@ class ConcurrentCoupling:
         return tendencies, diagnostics
 
     def _call_serial(self, state, timestep):
-        """
-        Process the components in 'serial' runtime mode.
-        """
+        """ Process the components in 'serial' runtime mode. """
         aux_state = {}
         aux_state.update(state)
 
@@ -281,10 +290,7 @@ class ConcurrentCoupling:
         return out_tendencies, out_diagnostics
 
     def _call_serial_gt(self, state, timestep):
-        """
-        Process the components in 'serial' runtime mode;
-        summations are performed using GT4Py.
-        """
+        """ GT4Py-powered version of _call_serial. """
         aux_state = {}
         aux_state.update(state)
 
@@ -330,9 +336,7 @@ class ConcurrentCoupling:
         return out_tendencies, out_diagnostics
 
     def _call_asparallel(self, state, timestep):
-        """
-        Process the components in 'as_parallel' runtime mode.
-        """
+        """ Process the components in 'as_parallel' runtime mode. """
         out_tendencies = {}
         tendency_units = {
             tendency: properties["units"]
@@ -362,10 +366,7 @@ class ConcurrentCoupling:
         return out_tendencies, out_diagnostics
 
     def _call_asparallel_gt(self, state, timestep):
-        """
-        Process the components in 'as_parallel' runtime mode;
-        summations are performed using GT4Py.
-        """
+        """ GT4Py-powered version of _call_asparallel. """
         out_tendencies = {}
         tendency_units = {
             tendency: properties["units"]

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -81,10 +81,10 @@ class TimeSeries(Drawer):
 			is defined is assumed to be the initial time of the simulation.
 		time_units : `str`, optional
 			Units for time. Defaults to 's' (seconds).
-			Only effective if :obj:`time_mode` set on 'elapsed'.
+			Only effective if `time_mode` set on 'elapsed'.
 		time_on_xaxis : `bool`, optional
-			:obj:`True` to place time on the plot x-axis, :obj:`False` otherwise.
-			Defaults to :obj:`True`.
+			`True` to place time on the plot x-axis, `False` otherwise.
+			Defaults to `True`.
 		properties : `dict`, optional
 			Dictionary whose keys are strings denoting plot-specific
 			settings, and whose values specify values for those settings.

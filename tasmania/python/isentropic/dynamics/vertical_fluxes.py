@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+
+from gt4py import gtscript
 
 
 class IsentropicVerticalFlux(abc.ABC):
@@ -36,6 +38,7 @@ class IsentropicVerticalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(
         dt,
@@ -55,7 +58,7 @@ class IsentropicVerticalFlux(abc.ABC):
         sqr_prv=None,
     ):
         """
-        This method returns the :class:`gridtools.storage.Storage`\s representing
+        This method returns the :class:`gt4py.gtscript.Field`\s representing
         the vertical fluxes for all the conservative model variables.
         As this method is marked as abstract, its implementation is delegated
         to the derived classes.
@@ -66,56 +69,56 @@ class IsentropicVerticalFlux(abc.ABC):
             The time step, in seconds.
         dz : float
             The grid spacing in the vertical direction, in units of [K].
-        w : gridtools.storage.Storage
+        w : gt4py.gtscript.Field
             The vertical velocity, i.e., the change over time in potential temperature,
             in units of [K s^-1].
-        s : gridtools.storage.Storage
+        s : gt4py.gtscript.Field
             The current isentropic density, in units of [kg m^-2 K^-1].
-        s_prv : gridtools.storage.Storage
+        s_prv : gt4py.gtscript.Field
             The provisional isentropic density, i.e., the isentropic density stepped
             disregarding the vertical advection, in units of [kg m^-2 K^-1].
-        su : gridtools.storage.Storage
+        su : gt4py.gtscript.Field
             The current x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        su_prv : gridtools.storage.Storage
+        su_prv : gt4py.gtscript.Field
             The provisional x-momentum, i.e., the isentropic density stepped
             disregarding the vertical advection, in units of [kg m^-1 K^-1 s^-1].
-        sv : gridtools.storage.Storage
+        sv : gt4py.gtscript.Field
             The current y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv_prv : gridtools.storage.Storage
+        sv_prv : gt4py.gtscript.Field
             The provisional y-momentum, i.e., the isentropic density stepped
             disregarding the vertical advection, in units of [kg m^-1 K^-1 s^-1].
-        sqv : `gridtools.storage.Storage`, optional
+        sqv : `gt4py.gtscript.Field`, optional
             The current isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqv_prv : `gridtools.storage.Storage`, optional
+        sqv_prv : `gt4py.gtscript.Field`, optional
             The provisional isentropic density of water vapor, i.e., the isentropic
             density of water vapor stepped disregarding the vertical advection,
             in units of [kg m^-2 K^-1].
-        sqc : `gridtools.storage.Storage`, optional
+        sqc : `gt4py.gtscript.Field`, optional
             The current isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqc_prv : `gridtools.storage.Storage`, optional
+        sqc_prv : `gt4py.gtscript.Field`, optional
             The provisional isentropic density of cloud liquid water, i.e., the isentropic
             density of water vapor stepped disregarding the vertical advection,
             in units of [kg m^-2 K^-1].
-        sqr : `gridtools.storage.Storage`, optional
+        sqr : `gt4py.gtscript.Field`, optional
             The current isentropic density of precipitation water, in units of [kg m^-2 K^-1].
-        sqr_prv : `gridtools.storage.Storage`, optional
+        sqr_prv : `gt4py.gtscript.Field`, optional
             The provisional isentropic density of precipitation water, i.e., the isentropic
             density of water vapor stepped disregarding the vertical advection,
             in units of [kg m^-2 K^-1].
 
         Returns
         -------
-        flux_s_z : gridtools.storage.Storage
+        flux_s_z : gt4py.gtscript.Field
             The vertical flux for the isentropic density.
-        flux_su_z : gridtools.storage.Storage
+        flux_su_z : gt4py.gtscript.Field
             The vertical flux for the x-momentum.
-        flux_sv_z : gridtools.storage.Storage
+        flux_sv_z : gt4py.gtscript.Field
             The vertical flux for the y-momentum.
-        flux_sqv_z : `gridtools.storage.Storage`, optional
+        flux_sqv_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gridtools.storage.Storage`, optional
+        flux_sqc_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gridtools.storage.Storage`, optional
+        flux_sqr_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of precipitation water.
         """
 
@@ -123,7 +126,7 @@ class IsentropicVerticalFlux(abc.ABC):
     def factory(scheme):
         """
         Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by :data:`scheme`.
+        implementing the numerical scheme specified by `scheme`.
 
         Parameters
         ----------
@@ -138,7 +141,7 @@ class IsentropicVerticalFlux(abc.ABC):
         ------
         obj :
             Instance of the derived class implementing the scheme
-            specified by :data:`scheme`.
+            specified by `scheme`.
         """
         from .implementations.vertical_fluxes import Upwind, Centered, MacCormack
 
@@ -163,6 +166,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(
         dt,
@@ -182,7 +186,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
         qr_prv=None,
     ):
         """
-        Method returning the :class:`gridtools.storage.Storage`\s representing
+        Method returning the :class:`gt4py.gtscript.Field`\s representing
         the vertical flux for all the prognostic model variables.
         As this method is marked as abstract, its implementation is delegated
         to the derived classes.
@@ -193,56 +197,56 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
             The time step, in seconds.
         dz : float
             The grid spacing in the vertical direction, in units of [K].
-        w : gridtools.storage.Storage
+        w : gt4py.gtscript.Field
             The vertical velocity, i.e., the change over time in potential temperature,
             in units of [K s^-1].
-        s : gridtools.storage.Storage
+        s : gt4py.gtscript.Field
             The current isentropic density, in units of [kg m^-2 K^-1].
-        s_prv : gridtools.storage.Storage
+        s_prv : gt4py.gtscript.Field
             The provisional isentropic density, i.e., the isentropic density stepped
             disregarding the vertical advection, in units of [kg m^-2 K^-1].
-        u : gridtools.storage.Storage
+        u : gt4py.gtscript.Field
             The current x-velocity, in units of [m s^-1].
-        u_prv : gridtools.storage.Storage
+        u_prv : gt4py.gtscript.Field
             The provisional x-velocity, i.e., the isentropic density stepped
             disregarding the vertical advection, in units of [m s^-1].
-        v : gridtools.storage.Storage
+        v : gt4py.gtscript.Field
             The current y-velocity, in units of [m s^-1].
-        v_prv : gridtools.storage.Storage
+        v_prv : gt4py.gtscript.Field
             The provisional y-velocity, i.e., the isentropic density stepped
             disregarding the vertical advection, in units of [m s^-1].
-        qv : `gridtools.storage.Storage`, optional
+        qv : `gt4py.gtscript.Field`, optional
             The current mass fraction of water vapor, in units of [g g^-1].
-        qv_prv : `gridtools.storage.Storage`, optional
+        qv_prv : `gt4py.gtscript.Field`, optional
             The provisional mass fraction of water vapor, i.e., the isentropic
             density of water vapor stepped disregarding the vertical advection,
             in units of [g g^-1].
-        qc : `gridtools.storage.Storage`, optional
+        qc : `gt4py.gtscript.Field`, optional
             The current mass fraction of cloud liquid water, in units of [g g^-1].
-        qc_prv : `gridtools.storage.Storage`, optional
+        qc_prv : `gt4py.gtscript.Field`, optional
             The provisional mass fraction of cloud liquid water, i.e., the isentropic
             density of water vapor stepped disregarding the vertical advection,
             in units of [g g^-1].
-        qr : `gridtools.storage.Storage`, optional
+        qr : `gt4py.gtscript.Field`, optional
             The current mass fraction of precipitation water, in units of [g g^-1].
-        qr_prv : `gridtools.storage.Storage`, optional
+        qr_prv : `gt4py.gtscript.Field`, optional
             The provisional mass fraction of precipitation water, i.e., the isentropic
             density of water vapor stepped disregarding the vertical advection,
             in units of [g g^-1].
 
         Returns
         -------
-        flux_s_z : gridtools.storage.Storage
+        flux_s_z : gt4py.gtscript.Field
             The vertical flux for the isentropic density.
-        flux_u_z : gridtools.storage.Storage
+        flux_u_z : gt4py.gtscript.Field
             The vertical flux for the x-velocity.
-        flux_v_z : gridtools.storage.Storage
+        flux_v_z : gt4py.gtscript.Field
             The vertical flux for the y-velocity.
-        flux_qv_z : `gridtools.storage.Storage`, optional
+        flux_qv_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the mass fraction of water vapor.
-        flux_qc_z : `gridtools.storage.Storage`, optional
+        flux_qc_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the mass fraction of cloud liquid water.
-        flux_qr_z : `gridtools.storage.Storage`, optional
+        flux_qr_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the mass fraction of precipitation water.
         """
 
@@ -250,7 +254,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
     def factory(scheme):
         """
         Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by :data:`scheme`.
+        implementing the numerical scheme specified by `scheme`.
 
         Parameters
         ----------
@@ -263,7 +267,7 @@ class IsentropicNonconservativeVerticalFlux(abc.ABC):
         ------
         obj :
             Instance of the derived class implementing the scheme
-            specified by :data:`scheme`.
+            specified by `scheme`.
         """
         from .implementations.nonconservative_vertical_fluxes import Centered
 
@@ -285,10 +289,11 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
         """
-        This method returns the :class:`gridtools.storage.Storage`\s representing
+        This method returns the :class:`gt4py.gtscript.Field`\s representing
         the vertical flux for all the conservative model variables.
         As this method is marked as abstract, its implementation is delegated
         to the derived classes.
@@ -299,35 +304,35 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
             The time step, in seconds.
         dz : float
             The grid spacing in the vertical direction, in units of [K].
-        w : gridtools.storage.Storage
+        w : gt4py.gtscript.Field
             The vertical velocity, i.e., the change over time in potential temperature,
             defined at the vertical interface levels, in units of [K s^-1].
-        s : gridtools.storage.Storage
+        s : gt4py.gtscript.Field
             The isentropic density, in units of [kg m^-2 K^-1].
-        su : gridtools.storage.Storage
+        su : gt4py.gtscript.Field
             The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv : gridtools.storage.Storage
+        sv : gt4py.gtscript.Field
             The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sqv : `gridtools.storage.Storage`, optional
+        sqv : `gt4py.gtscript.Field`, optional
             The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqc : `gridtools.storage.Storage`, optional
+        sqc : `gt4py.gtscript.Field`, optional
             The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqr : `gridtools.storage.Storage`, optional
+        sqr : `gt4py.gtscript.Field`, optional
             The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
 
         Returns
         -------
-        flux_s_z : gridtools.storage.Storage
+        flux_s_z : gt4py.gtscript.Field
             The vertical flux for the isentropic density.
-        flux_su_z : gridtools.storage.Storage
+        flux_su_z : gt4py.gtscript.Field
             The vertical flux for the x-momentum.
-        flux_sv_z : gridtools.storage.Storage
+        flux_sv_z : gt4py.gtscript.Field
             The vertical flux for the y-momentum.
-        flux_sqv_z : `gridtools.storage.Storage`, optional
+        flux_sqv_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gridtools.storage.Storage`, optional
+        flux_sqc_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gridtools.storage.Storage`, optional
+        flux_sqr_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of precipitation water.
         """
 
@@ -335,7 +340,7 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     def factory(scheme):
         """
         Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by :data:`scheme`.
+        implementing the numerical scheme specified by `scheme`.
 
         Parameters
         ----------
@@ -351,7 +356,7 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         ------
         obj :
             Instance of the derived class implementing the scheme
-            specified by :data:`scheme`.
+            specified by `scheme`.
 
         References
         ----------
@@ -394,10 +399,11 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
     externals = None
 
     @staticmethod
+    @gtscript.function
     @abc.abstractmethod
     def __call__(dt, dz, w, s, su, sv, ddmtg, sqv=None, sqc=None, sqr=None):
         """
-        This method returns the :class:`gridtools.storage.Storage`\s representing
+        This method returns the :class:`gt4py.gtscript.Field`\s representing
         the vertical flux for all the conservative model variables.
         As this method is marked as abstract, its implementation is delegated
         to the derived classes.
@@ -408,41 +414,41 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
             The time step, in seconds.
         dz : float
             The grid spacing in the vertical direction, in units of [K].
-        w : gridtools.storage.Storage
+        w : gt4py.gtscript.Field
             The vertical velocity, i.e., the change over time in potential temperature,
             defined at the vertical interface levels, in units of [K s^-1].
-        s : gridtools.storage.Storage
+        s : gt4py.gtscript.Field
             The isentropic density, in units of [kg m^-2 K^-1].
-        su : gridtools.storage.Storage
+        su : gt4py.gtscript.Field
             The x-momentum, in units of [kg m^-1 K^-1 s^-1].
-        sv : gridtools.storage.Storage
+        sv : gt4py.gtscript.Field
             The y-momentum, in units of [kg m^-1 K^-1 s^-1].
-        ddmtg : gridtools.storage.Storage
+        ddmtg : gt4py.gtscript.Field
             Second derivative with respect to the potential temperature
             of the Montgomery potential, in units of [m^2 K^-2 s^-2].
-        sqv : `gridtools.storage.Storage`, optional
+        sqv : `gt4py.gtscript.Field`, optional
             The isentropic density of water vapor, in units of [kg m^-2 K^-1].
-        sqc : `gridtools.storage.Storage`, optional
+        sqc : `gt4py.gtscript.Field`, optional
             The isentropic density of cloud liquid water, in units of [kg m^-2 K^-1].
-        sqr : `gridtools.storage.Storage`, optional
+        sqr : `gt4py.gtscript.Field`, optional
             The isentropic density of precipitation water, in units of [kg m^-2 K^-1].
 
         Returns
         -------
-        flux_s_z : gridtools.storage.Storage
+        flux_s_z : gt4py.gtscript.Field
             The vertical flux for the isentropic density.
-        flux_su_z : gridtools.storage.Storage
+        flux_su_z : gt4py.gtscript.Field
             The vertical flux for the x-momentum.
-        flux_sv_z : gridtools.storage.Storage
+        flux_sv_z : gt4py.gtscript.Field
             The vertical flux for the y-momentum.
-        flux_ddmtg_z : gridtools.storage.Storage
+        flux_ddmtg_z : gt4py.gtscript.Field
             The vertical flux for the second derivative with respect to
             the potential temperature of the Montgomery potential.
-        flux_sqv_z : `gridtools.storage.Storage`, optional
+        flux_sqv_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of water vapor.
-        flux_sqc_z : `gridtools.storage.Storage`, optional
+        flux_sqc_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of cloud liquid water.
-        flux_sqr_z : `gridtools.storage.Storage`, optional
+        flux_sqr_z : `gt4py.gtscript.Field`, optional
             The vertical flux for the isentropic density of precipitation water.
         """
 
@@ -450,7 +456,7 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
     def factory(scheme):
         """
         Static method which returns an instance of the derived class
-        implementing the numerical scheme specified by :data:`scheme`.
+        implementing the numerical scheme specified by `scheme`.
 
         Parameters
         ----------
@@ -466,7 +472,7 @@ class IsentropicBoussinesqMinimalVerticalFlux(abc.ABC):
         ------
         obj :
             Instance of the derived class implementing the scheme
-            specified by :data:`scheme`.
+            specified by `scheme`.
 
         References
         ----------

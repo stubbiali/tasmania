@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -50,15 +50,16 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         build_info=None,
         dtype=datatype,
         exec_info=None,
-        halo=None,
+        default_origin=None,
         rebuild=False,
+        managed_memory=False,
         **kwargs
     ):
         """
         Parameters
         ----------
         domain : tasmania.Domain
-            The domain.
+            The underlying domain.
         grid_type : str
             The type of grid over which instantiating the class. Either:
 
@@ -77,15 +78,17 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
-        dtype : `numpy.dtype`, optional
+        dtype : `data-type`, optional
             Data type of the storages.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
-        halo : `tuple`, optional
-            Storage halo.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         kwargs :
             Keyword arguments to be broadcast to :class:`sympl.TendencyComponent`.
         """
@@ -109,12 +112,25 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             build_info=build_info,
             dtype=dtype,
             exec_info=exec_info,
-            halo=halo,
+            default_origin=default_origin,
             rebuild=rebuild,
+            managed_memory=managed_memory,
         )
 
-        self._out_u_tnd = zeros((nx, ny, 1), backend, dtype, halo=halo)
-        self._out_v_tnd = zeros((nx, ny, 1), backend, dtype, halo=halo)
+        self._out_u_tnd = zeros(
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
+        self._out_v_tnd = zeros(
+            (nx, ny, 1),
+            backend,
+            dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
+        )
 
     @property
     def input_properties(self):

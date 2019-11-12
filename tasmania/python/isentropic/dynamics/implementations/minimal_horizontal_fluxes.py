@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from gt4py import gtscript, __externals__
+
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
@@ -56,6 +58,7 @@ class Upwind(IsentropicMinimalHorizontalFlux):
     }
 
     @staticmethod
+    @gtscript.function
     def __call__(
         dt,
         dx,
@@ -65,6 +68,7 @@ class Upwind(IsentropicMinimalHorizontalFlux):
         v,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -75,6 +79,8 @@ class Upwind(IsentropicMinimalHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
+        from __externals__ import moist
+
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_upwind_flux_x(u=u, phi=s)
         flux_s_y = get_upwind_flux_y(v=v, phi=s)
@@ -121,6 +127,7 @@ class Centered(IsentropicMinimalHorizontalFlux):
     }
 
     @staticmethod
+    @gtscript.function
     def __call__(
         dt,
         dx,
@@ -130,6 +137,7 @@ class Centered(IsentropicMinimalHorizontalFlux):
         v,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -140,6 +148,8 @@ class Centered(IsentropicMinimalHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
+        from __externals__ import moist
+
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_centered_flux_x(u=u, phi=s)
         flux_s_y = get_centered_flux_y(v=v, phi=s)
@@ -175,7 +185,10 @@ class Centered(IsentropicMinimalHorizontalFlux):
             )
 
 
+@gtscript.function
 def get_maccormack_predicted_value_su(dt, dx, dy, s, u_unstg, v_unstg, su, su_tnd):
+    from __externals__ import su_tnd_on
+
     if su_tnd_on:
         su_prd = su[0, 0, 0] - dt * (
             (u_unstg[1, 0, 0] * su[1, 0, 0] - u_unstg[0, 0, 0] * su[0, 0, 0]) / dx
@@ -187,10 +200,14 @@ def get_maccormack_predicted_value_su(dt, dx, dy, s, u_unstg, v_unstg, su, su_tn
             + (v_unstg[0, 1, 0] * su[0, 1, 0] - v_unstg[0, 0, 0] * su[0, 0, 0]) / dy
             + su_tnd[0, 0, 0]
         )
+
     return su_prd
 
 
+@gtscript.function
 def get_maccormack_predicted_value_sv(dt, dx, dy, s, u_unstg, v_unstg, sv, sv_tnd):
+    from __externals__ import sv_tnd_on
+
     if sv_tnd_on is None:
         sv_prd = sv[0, 0, 0] - dt * (
             (u_unstg[1, 0, 0] * sv[1, 0, 0] - u_unstg[0, 0, 0] * sv[0, 0, 0]) / dx
@@ -202,6 +219,7 @@ def get_maccormack_predicted_value_sv(dt, dx, dy, s, u_unstg, v_unstg, sv, sv_tn
             + (v_unstg[0, 1, 0] * sv[0, 1, 0] - v_unstg[0, 0, 0] * sv[0, 0, 0]) / dy
             + sv_tnd[0, 0, 0]
         )
+
     return sv_prd
 
 
@@ -225,6 +243,7 @@ class MacCormack(IsentropicMinimalHorizontalFlux):
         super().__init__(grid, moist)
 
     @staticmethod
+    @gtscript.function
     def __call__(
         dt,
         dx,
@@ -234,6 +253,7 @@ class MacCormack(IsentropicMinimalHorizontalFlux):
         v,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -244,6 +264,8 @@ class MacCormack(IsentropicMinimalHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
+        from __externals__ import moist, qv_tnd_on, qc_tnd_on, qr_tnd_on
+
         # diagnose the velocity components at the mass points
         u_unstg = su[0, 0, 0] / s[0, 0, 0]
         v_unstg = sv[0, 0, 0] / s[0, 0, 0]
@@ -380,6 +402,7 @@ class ThirdOrderUpwind(IsentropicMinimalHorizontalFlux):
     }
 
     @staticmethod
+    @gtscript.function
     def __call__(
         dt,
         dx,
@@ -389,6 +412,7 @@ class ThirdOrderUpwind(IsentropicMinimalHorizontalFlux):
         v,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -399,6 +423,8 @@ class ThirdOrderUpwind(IsentropicMinimalHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
+        from __externals__ import moist
+
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_third_order_upwind_flux_x(u=u, phi=s)
         flux_s_y = get_third_order_upwind_flux_y(v=v, phi=s)
@@ -447,6 +473,7 @@ class FifthOrderUpwind(IsentropicMinimalHorizontalFlux):
     }
 
     @staticmethod
+    @gtscript.function
     def __call__(
         dt,
         dx,
@@ -456,6 +483,7 @@ class FifthOrderUpwind(IsentropicMinimalHorizontalFlux):
         v,
         su,
         sv,
+        mtg=None,
         sqv=None,
         sqc=None,
         sqr=None,
@@ -466,6 +494,8 @@ class FifthOrderUpwind(IsentropicMinimalHorizontalFlux):
         qc_tnd=None,
         qr_tnd=None,
     ):
+        from __externals__ import moist
+
         # compute fluxes for the isentropic density and the momenta
         flux_s_x = get_fifth_order_upwind_flux_x(u=u, phi=s)
         flux_s_y = get_fifth_order_upwind_flux_y(v=v, phi=s)

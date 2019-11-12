@@ -29,19 +29,16 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-from hypothesis.extra.numpy import arrays as st_arrays
-import numpy as np
 import pytest
 
-import gridtools as gt
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from .utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, halo as conf_halo, nb as conf_nb
+    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
     from utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
@@ -108,9 +105,9 @@ def first_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def first_order_validation(phi, smooth_depth, nb, backend, halo):
+def first_order_validation(phi, smooth_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
-    phi_new = zeros(phi.shape, backend, phi.dtype, halo=halo)
+    phi_new = zeros(phi.shape, backend, phi.dtype, default_origin=default_origin)
 
     hs = HS.factory(
         "first_order",
@@ -121,8 +118,8 @@ def first_order_validation(phi, smooth_depth, nb, backend, halo):
         nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo,
-        rebuild=True,
+        default_origin=default_origin,
+        rebuild=False,
     )
     hs(phi, phi_new)
 
@@ -163,7 +160,7 @@ def test_first_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -177,7 +174,7 @@ def test_first_order(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi",
     )
@@ -187,7 +184,7 @@ def test_first_order(data):
     # ========================================
     # test
     # ========================================
-    first_order_validation(phi, depth, nb, backend, halo)
+    first_order_validation(phi, depth, nb, backend, default_origin)
 
 
 def second_order_smoothing_xyz(phi, g):
@@ -244,9 +241,9 @@ def second_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def second_order_validation(phi, smooth_depth, nb, backend, halo):
+def second_order_validation(phi, smooth_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
-    phi_new = zeros(phi.shape, backend, phi.dtype, halo=halo)
+    phi_new = zeros(phi.shape, backend, phi.dtype, default_origin=default_origin)
 
     hs = HS.factory(
         "second_order",
@@ -257,8 +254,8 @@ def second_order_validation(phi, smooth_depth, nb, backend, halo):
         nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo,
-        rebuild=True,
+        default_origin=default_origin,
+        rebuild=False,
     )
     hs(phi, phi_new)
 
@@ -299,7 +296,7 @@ def test_second_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -313,7 +310,7 @@ def test_second_order(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi",
     )
@@ -323,7 +320,7 @@ def test_second_order(data):
     # ========================================
     # test
     # ========================================
-    second_order_validation(phi, depth, nb, backend, halo)
+    second_order_validation(phi, depth, nb, backend, default_origin)
 
 
 def third_order_smoothing_xyz(phi, g):
@@ -404,9 +401,9 @@ def third_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def third_order_validation(phi, smooth_depth, nb, backend, halo):
+def third_order_validation(phi, smooth_depth, nb, backend, default_origin):
     ni, nj, nk = phi.shape
-    phi_new = zeros(phi.shape, backend, phi.dtype, halo=halo)
+    phi_new = zeros(phi.shape, backend, phi.dtype, default_origin=default_origin)
 
     hs = HS.factory(
         "third_order",
@@ -417,8 +414,8 @@ def third_order_validation(phi, smooth_depth, nb, backend, halo):
         nb,
         backend=backend,
         dtype=phi.dtype,
-        halo=halo,
-        rebuild=True,
+        default_origin=default_origin,
+        rebuild=False,
     )
     hs(phi, phi_new)
 
@@ -459,7 +456,7 @@ def test_third_order(data):
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
-    halo = data.draw(st_one_of(conf_halo), label="halo")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -473,7 +470,7 @@ def test_third_order(data):
             max_value=1e10,
             backend=backend,
             dtype=dtype,
-            halo=halo,
+            default_origin=default_origin,
         ),
         label="phi",
     )
@@ -483,7 +480,7 @@ def test_third_order(data):
     # ========================================
     # test
     # ========================================
-    third_order_validation(phi, depth, nb, backend, halo)
+    third_order_validation(phi, depth, nb, backend, default_origin)
 
 
 if __name__ == "__main__":

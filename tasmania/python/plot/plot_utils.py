@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -82,7 +82,7 @@ linestyle_dict = {
 
 
 def get_figure_and_axes(
-        fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
+    fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
 ):
     """
     Get a :class:`matplotlib.figure.Figure` object and a :class:`matplotlib.axes.Axes`
@@ -138,7 +138,7 @@ def get_figure_and_axes(
         Font size for the output figure and axes. Defaults to 12.
         This argument is effective only if the figure is created within the function.
     projection : `str`, optional
-        The axes projection. Defaults to :obj:`None`.
+        The axes projection. Defaults to `None`.
         This argument is effective only if the figure is created within the function.
 
     Returns
@@ -182,8 +182,7 @@ def get_figure_and_axes(
     if (fig is not None) and (ax is None):
         try:
             out_fig = fig
-            out_ax = out_fig.add_subplot(nrows, ncols, index,
-                                         projection=projection)
+            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
         except AttributeError:
             import warnings
 
@@ -194,8 +193,7 @@ def get_figure_and_axes(
             )
 
             out_fig = plt.figure(figsize=figsize)
-            out_ax = out_fig.add_subplot(nrows, ncols, index,
-                                         projection=projection)
+            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 
     if (fig is None) and (ax is not None):
         out_fig, out_ax = ax.get_figure(), ax
@@ -203,13 +201,11 @@ def get_figure_and_axes(
     if (fig is None) and (ax is None):
         if default_fig is None:
             out_fig = plt.figure(figsize=figsize)
-            out_ax = out_fig.add_subplot(nrows, ncols, index,
-                                         projection=projection)
+            out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
         else:
             try:
                 out_fig = default_fig
-                out_ax = out_fig.add_subplot(nrows, ncols, index,
-                                             projection=projection)
+                out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
             except AttributeError:
                 import warnings
 
@@ -221,8 +217,7 @@ def get_figure_and_axes(
                 )
 
                 out_fig = plt.figure(figsize=figsize)
-                out_ax = out_fig.add_subplot(nrows, ncols, index,
-                                             projection=projection)
+                out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
 
     return out_fig, out_ax
 
@@ -242,9 +237,9 @@ def set_figure_properties(fig, **kwargs):
         Font size to use for the plot titles, and axes ticks and labels.
         Defaults to 12.
     tight_layout : bool
-        :obj:`True` to fit the whole subplots into the figure area,
-        :obj:`False` otherwise. Defaults to :obj:`True`.
-    tight_layout_rect : tuple
+        `True` to fit the whole subplots into the figure area,
+        `False` otherwise. Defaults to `True`.
+    tight_layout_rect : Sequence[float]
         A rectangle (left, bottom, right, top) in the normalized figure
         coordinate that the whole subplots area (including labels) will
         fit into. Defaults to (0, 0, 1, 1).
@@ -289,53 +284,53 @@ def set_axes_properties(ax, **kwargs):
         The x-axis label. Defaults to an empty string.
     x_labelcolor : str
         Color of the x-axis label. Defaults to 'black'.
-    x_lim : tuple
-        Data limits for the x-axis. Defaults to :obj:`None`, i.e., the data limits
+    x_lim : Sequence[int]
+        Data limits for the x-axis. Defaults to `None`, i.e., the data limits
         will be left unchanged.
     invert_xaxis : bool
-        :obj:`True` to make to invert the x-axis, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        `True` to make to invert the x-axis, `False` otherwise.
+        Defaults to `False`.
     x_scale : str
         The x-axis scale. Defaults to 'linear'.
     x_ticks : sequence[float]
-        Sequence of x-axis ticks location. Defaults to :obj:`None`.
+        Sequence of x-axis ticks location. Defaults to `None`.
     x_ticklabels : sequence[str]
-        Sequence of x-axis ticks labels. Defaults to :obj:`None`.
+        Sequence of x-axis ticks labels. Defaults to `None`.
     x_ticklabelcolor : str
         Color for the x-axis ticks labels. Defaults to 'black'.
     xaxis_minor_ticks_visible : bool
-        :obj:`True` to show all ticks, either labelled or unlabelled,
-        :obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+        `True` to show all ticks, either labelled or unlabelled,
+        `False` to show only the labelled ticks. Defaults to `False`.
     xaxis_visible : bool
-        :obj:`False` to make the x-axis invisible. Defaults to :obj:`True`.
+        `False` to make the x-axis invisible. Defaults to `True`.
     y_label : str
         The y-axis label. Defaults to an empty string.
     y_labelcolor : str
         Color of the y-axis label. Defaults to 'black'.
-    y_lim : tuple
-        Data limits for the y-axis. Defaults to :obj:`None`, i.e., the data limits
+    y_lim : Sequence[int]
+        Data limits for the y-axis. Defaults to `None`, i.e., the data limits
         will be left unchanged.
     invert_yaxis : bool
-        :obj:`True` to make to invert the y-axis, :obj:`False` otherwise.
-        Defaults to :obj:`False`.
+        `True` to make to invert the y-axis, `False` otherwise.
+        Defaults to `False`.
     y_scale : str
         The y-axis scale. Defaults to 'linear'.
     y_ticks : sequence[float]
-        Sequence of y-axis ticks location. Defaults to :obj:`None`.
+        Sequence of y-axis ticks location. Defaults to `None`.
     y_ticklabels : sequence[str]
-        Sequence of y-axis ticks labels. Defaults to :obj:`None`.
+        Sequence of y-axis ticks labels. Defaults to `None`.
     y_ticklabelcolor : str
         Color for the y-axis ticks labels. Defaults to 'black'.
     yaxis_minor_ticks_visible : bool
-        :obj:`True` to show all ticks, either labelled or unlabelled,
-        :obj:`False` to show only the labelled ticks. Defaults to :obj:`False`.
+        `True` to show all ticks, either labelled or unlabelled,
+        `False` to show only the labelled ticks. Defaults to :obj:`False`.
     yaxis_visible : bool
         :obj:`False` to make the y-axis invisible. Defaults to :obj:`True`.
     z_label : str
         The z-axis label. Defaults to an empty string.
     z_labelcolor : str
         Color of the z-axis label. Defaults to 'black'.
-    z_lim : tuple
+    z_lim : Sequence[int]
         Data limits for the z-axis. Defaults to :obj:`None`, i.e., the data limits
         will be left unchanged.
     invert_zaxis : bool
@@ -360,7 +355,7 @@ def set_axes_properties(ax, **kwargs):
         String specifying the location where the legend should be placed.
         Defaults to 'best'; please see :func:`matplotlib.pyplot.legend` for all
         the available options.
-    legend_bbox_to_anchor : tuple
+    legend_bbox_to_anchor : Sequence[float]
         4-items tuple defining the box used to place the legend. This is used in
         conjuction with `legend_loc` to allow arbitrary placement of the legend.
     legend_framealpha : float
@@ -464,13 +459,11 @@ def set_axes_properties(ax, **kwargs):
 
     # plot titles
     if ax.get_title(loc="center") == "":
-        ax.set_title(title_center, loc="center",
-                     fontsize=rcParams["font.size"] - 1)
+        ax.set_title(title_center, loc="center", fontsize=rcParams["font.size"] - 1)
     if ax.get_title(loc="left") == "":
         ax.set_title(title_left, loc="left", fontsize=rcParams["font.size"] - 1)
     if ax.get_title(loc="right") == "":
-        ax.set_title(title_right, loc="right",
-                     fontsize=rcParams["font.size"] - 1)
+        ax.set_title(title_right, loc="right", fontsize=rcParams["font.size"] - 1)
 
     # axes labels
     if ax.get_xlabel() == "":
@@ -654,8 +647,7 @@ def set_axes_properties(ax, **kwargs):
     # legend
     if legend_on:
         if legend_bbox_to_anchor is None:
-            ax.legend(loc=legend_loc, framealpha=legend_framealpha,
-                      ncol=legend_ncol)
+            ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
         else:
             ax.legend(
                 loc=legend_loc,
@@ -721,12 +713,16 @@ def set_axes_properties(ax, **kwargs):
             ax2.get_yaxis().set_visible(False)
 
         # plot titles
-        if ax2.get_title(loc='center') == '':
-            ax2.set_title(ax2_title_center, loc='center', fontsize=rcParams['font.size']-1)
-        if ax2.get_title(loc='left') == '':
-            ax2.set_title(ax2_title_left, loc='left', fontsize=rcParams['font.size']-1)
-        if ax2.get_title(loc='right') == '':
-            ax2.set_title(ax2_title_right, loc='right', fontsize=rcParams['font.size']-1)
+        if ax2.get_title(loc="center") == "":
+            ax2.set_title(
+                ax2_title_center, loc="center", fontsize=rcParams["font.size"] - 1
+            )
+        if ax2.get_title(loc="left") == "":
+            ax2.set_title(ax2_title_left, loc="left", fontsize=rcParams["font.size"] - 1)
+        if ax2.get_title(loc="right") == "":
+            ax2.set_title(
+                ax2_title_right, loc="right", fontsize=rcParams["font.size"] - 1
+            )
 
 
 def reverse_colormap(cmap, name=None):
@@ -772,18 +768,18 @@ def reverse_colormap(cmap, name=None):
 
 
 def set_colorbar(
-        fig,
-        mappable,
-        color_levels,
-        *,
-        cbar_ticks_step=1,
-        cbar_ticks_pos="center",
-        cbar_title="",
-        cbar_x_label="",
-        cbar_y_label="",
-        cbar_orientation="vertical",
-        cbar_ax=None,
-        cbar_format=None
+    fig,
+    mappable,
+    color_levels,
+    *,
+    cbar_ticks_step=1,
+    cbar_ticks_pos="center",
+    cbar_title="",
+    cbar_x_label="",
+    cbar_y_label="",
+    cbar_orientation="vertical",
+    cbar_ax=None,
+    cbar_format=None
 ):
     """
     Ease the configuration of the colorbar in Matplotlib plots.
@@ -810,7 +806,7 @@ def set_colorbar(
         Colorbar title. Defaults to an empty string.
     cbar_orientation : str
         Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
-    cbar_ax : tuple
+    cbar_ax : Sequence[int]
         Indices of the figure axes from which space for the colorbar axes
         is stolen. If multiple indices are given, the corresponding axes are
         all evenly resized to make room for the colorbar. If no indices are given,
@@ -819,8 +815,7 @@ def set_colorbar(
         Format for colorbar tick labels.
     """
     if cbar_ax is None:
-        cb = plt.colorbar(mappable, orientation=cbar_orientation,
-                          format=cbar_format)
+        cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
     else:
         try:
             axes = fig.get_axes()
@@ -832,20 +827,17 @@ def set_colorbar(
             )
         except TypeError:
             # cbar_ax is not iterable
-            cb = plt.colorbar(mappable, orientation=cbar_orientation,
-                              format=cbar_format)
+            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
         except IndexError:
             # cbar_ax contains an index which exceeds the number of axes in the figure
-            cb = plt.colorbar(mappable, orientation=cbar_orientation,
-                              format=cbar_format)
+            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 
     cb.ax.set_title(cbar_title)
     cb.ax.set_xlabel(cbar_x_label)
     cb.ax.set_ylabel(cbar_y_label)
 
     if cbar_ticks_pos == "center":
-        cb.set_ticks(
-            0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step])
+        cb.set_ticks(0.5 * (color_levels[:-1] + color_levels[1:])[::cbar_ticks_step])
     else:
         cb.set_ticks(color_levels[::cbar_ticks_step])
 
@@ -856,9 +848,9 @@ def make_lineplot(x, y, ax, **kwargs):
 
     Parameters
     ----------
-    x : numpy.ndarray
+    x : gt4py.storage.storage.Storage
         1-D array gathering the x-coordinates of the points to plot.
-    y : numpy.ndarray
+    y : gt4py.storage.storage.Storage
         1-D array gathering the y-coordinates of the points to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -953,11 +945,11 @@ def make_contour(x, y, field, ax, **kwargs):
 
     Parameters
     ----------
-    x : numpy.ndarray
+    x : gt4py.storage.storage.Storage
         2-D array gathering the x-coordinates of the grid points.
-    y : numpy.ndarray
+    y : gt4py.storage.storage.Storage
         2-D array gathering the y-coordinates of the grid points.
-    field : numpy.ndarray
+    field : gt4py.storage.storage.Storage
         2-D array representing the field to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -1085,7 +1077,7 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
         Colorbar title. Defaults to an empty string.
     cbar_orientation : str
         Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
-    cbar_ax : tuple
+    cbar_ax : Sequence[int]
         Indices of the figure axes from which space for the colorbar axes
         is stolen. If multiple indices are given, the corresponding axes are
         all evenly resized to make room for the colorbar. If no indices are given,
@@ -1275,7 +1267,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
         Colorbar title. Defaults to an empty string.
     cbar_orientation : str
         Colorbar orientation. Either 'vertical' (default) or 'horizontal'.
-    cbar_ax : tuple
+    cbar_ax : Sequence[int]
         Indices of the figure axes from which space for the colorbar axes
         is stolen. If multiple indices are given, the corresponding axes are
         all evenly resized to make room for the colorbar. If no indices are given,
@@ -1285,7 +1277,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
     quiverkey_on : bool
         :obj:`True` to show the quiver key box, :obj:`False` otherwise.
         Defaults to :obj:`False`.
-    quiverkey_loc : tuple
+    quiverkey_loc : Sequence[float]
         2-item tuple specifying the location in normalized figure coordinates
         of the quiver key box.
     quiverkey_length : float
@@ -1351,7 +1343,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
             scalar = np.sqrt(vx ** 2 + vy ** 2)
         scalar_min, scalar_max = np.amin(scalar), np.amax(scalar)
         if cbar_center is None or not (
-                lt(scalar_min, cbar_center) and lt(cbar_center, scalar_max)
+            lt(scalar_min, cbar_center) and lt(cbar_center, scalar_max)
         ):
             cbar_lb, cbar_ub = scalar_min, scalar_max
         else:
@@ -1458,7 +1450,7 @@ def make_circle(ax, **kwargs):
 
     Keyword arguments
     -----------------
-    xy : tuple
+    xy : Sequence[float]
         2-item tuple storing the coordinates of the circle center.
         Defaults to (0.0, 0.0).
     radius : float
@@ -1477,8 +1469,7 @@ def make_circle(ax, **kwargs):
     facecolor = kwargs.get("facecolor", "white")
 
     circ = patches.Circle(
-        xy, radius, linewidth=linewidth, edgecolor=edgecolor,
-        facecolor=facecolor
+        xy, radius, linewidth=linewidth, edgecolor=edgecolor, facecolor=facecolor
     )
     ax.add_patch(circ)
 
@@ -1494,7 +1485,7 @@ def make_rectangle(ax, **kwargs):
 
     Keyword arguments
     -----------------
-    xy : tuple
+    xy : Sequence[float]
         2-item tuple storing the coordinates of the bottom left
         corner of the rectangle.
     width : float
@@ -1589,18 +1580,21 @@ def make_cdf(data, ax, **kwargs):
 
 
 def add_annotation(ax, **kwargs):
-	"""
+    """
 	Add a text annotation to a plot.
 	"""
-	# get keyword arguments
-	fontsize     		 = kwargs.get('fontsize', 16)
-	text   				 = kwargs.get('text', '')
-	location			 = kwargs.get('location', (0, 0))
-	horizontal_alignment = kwargs.get('horizontal_alignment', 'left')
-	vertical_alignment   = kwargs.get('vertical_alignment', 'center')
- 
-	# add annotation
-	ax.annotate(
-    	text, location, horizontalalignment=horizontal_alignment,
-    	verticalalignment=vertical_alignment, fontsize=fontsize
-	)
+    # get keyword arguments
+    fontsize = kwargs.get("fontsize", 16)
+    text = kwargs.get("text", "")
+    location = kwargs.get("location", (0, 0))
+    horizontal_alignment = kwargs.get("horizontal_alignment", "left")
+    vertical_alignment = kwargs.get("vertical_alignment", "center")
+
+    # add annotation
+    ax.annotate(
+        text,
+        location,
+        horizontalalignment=horizontal_alignment,
+        verticalalignment=vertical_alignment,
+        fontsize=fontsize,
+    )
