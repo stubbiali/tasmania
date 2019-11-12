@@ -369,37 +369,43 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # interpolate the velocity on the interface levels
-        with computation(PARALLEL), interval(0, 1):
-            w = 0.0
-        with computation(PARALLEL), interval(1, None):
-            if vstaggering:  # compile-time if
+        if vstaggering:  # compile-time if
+            with computation(PARALLEL), interval(0, 1):
+                w = 0.0
+            with computation(PARALLEL), interval(1, None):
                 w = in_w
-            else:
+        else:
+            with computation(PARALLEL), interval(0, 1):
+                w = 0.0
+            with computation(PARALLEL), interval(1, None):
                 w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
         # interpolate the velocity on the main levels
-        with computation(PARALLEL), interval(0, None):
-            if vstaggering:
+        if vstaggering:
+            with computation(PARALLEL), interval(0, None):
                 wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
-            else:
+        else:
+            with computation(PARALLEL), interval(0, None):
                 wc = in_w
 
         # compute the isentropic density of the water species
-        with computation(PARALLEL), interval(0, None):
-            if moist:  # compile-time if
+        if moist:  # compile-time if
+            with computation(PARALLEL), interval(0, None):
                 sqv = in_s * in_qv
                 sqc = in_s * in_qc
                 sqr = in_s * in_qr
-            else:
+        else:
+            with computation(PARALLEL), interval(0, None):
                 sqv = 0.0  # dummy computation
 
         # compute the fluxes
-        with computation(PARALLEL), interval(vflux_extent, vflux_end):
-            if not moist:  # compile-time if
+        if not moist:  # compile-time if
+            with computation(PARALLEL), interval(vflux_extent, vflux_end):
                 flux_s, flux_su, flux_sv = vflux(
                     dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
                 )
-            else:
+        else:
+            with computation(PARALLEL), interval(vflux_extent, vflux_end):
                 flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = vflux(
                     dt=dt,
                     dz=dz,

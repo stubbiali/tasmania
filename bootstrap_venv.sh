@@ -2,7 +2,7 @@
 
 MODULES=( )
 # MODULES=( python_virtualenv/15.0.3 cray-python/3.6.5.7 cudatoolkit )
-PYTHON=python3   # use 'python3.7' when possible
+PYTHON=python3.7   # use 'python3.7' when possible
 CUDA=
 VENV=venv
 FRESH_INSTALL=1

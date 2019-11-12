@@ -188,11 +188,12 @@ class HorizontalVelocity:
     ):
         from __externals__ import staggering
 
-        with computation(PARALLEL), interval(...):
-            if staggering:  # compile-time if
+        if staggering:  # compile-time if
+            with computation(PARALLEL), interval(...):
                 out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
                 out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
-            else:
+        else:
+            with computation(PARALLEL), interval(...):
                 out_du = in_d * in_u
                 out_dv = in_d * in_v
 
@@ -204,12 +205,13 @@ class HorizontalVelocity:
     ):
         from __externals__ import staggering
 
-        with computation(PARALLEL), interval(...):
-            if staggering:  # compile-time if
+        if staggering:  # compile-time if
+            with computation(PARALLEL), interval(...):
                 out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (
                     in_d[-1, 0, 0] + in_d[0, 0, 0]
                 )
-            else:
+        else:
+            with computation(PARALLEL), interval(...):
                 out_u = in_du / in_d
 
     @staticmethod
@@ -220,12 +222,13 @@ class HorizontalVelocity:
     ):
         from __externals__ import staggering
 
-        with computation(PARALLEL), interval(...):
-            if staggering:  # compile-time if
+        if staggering:  # compile-time if
+            with computation(PARALLEL), interval(...):
                 out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (
                     in_d[0, -1, 0] + in_d[0, 0, 0]
                 )
-            else:
+        else:
+            with computation(PARALLEL), interval(...):
                 out_v = in_dv / in_d
 
 
@@ -352,11 +355,12 @@ class WaterConstituent:
     ):
         from __externals__ import clipping
 
-        with computation(PARALLEL), interval(...):
-            if clipping:  # compile-time if
+        if clipping:  # compile-time if
+            with computation(PARALLEL), interval(...):
                 tmp_dq = in_d * in_q
                 out_dq = (tmp_dq > 0.0) * tmp_dq
-            else:
+        else:
+            with computation(PARALLEL), interval(...):
                 out_dq = in_d * in_q
 
     @staticmethod
@@ -367,9 +371,10 @@ class WaterConstituent:
     ):
         from __externals__ import clipping
 
-        with computation(PARALLEL), interval(...):
-            if clipping:  # compile-time if
+        if clipping:  # compile-time if
+            with computation(PARALLEL), interval(...):
                 tmp_q = in_dq / in_d
                 out_q = (tmp_q > 0.0) * tmp_q
-            else:
+        else:
+            with computation(PARALLEL), interval(...):
                 out_q = in_dq / in_d
