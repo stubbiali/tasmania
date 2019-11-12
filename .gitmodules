@@ -2,7 +2,7 @@
 	path = docker/external/sympl
 	url = git@github.com:stubbiali/sympl.git
 	branch = ubbiali
-[submodule "docker/external/gridtools4py"]
-	path = docker/external/gridtools4py
-	url = git@github.com:egparedes/gt4py.git
-	branch = tasmania_integration
+[submodule "docker/external/gt4py"]
+	path = docker/external/gt4py
+	url = git@github.com:GridTools/gt4py.git
+	branch = dev

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- Makefile -*-
 #
 # Tasmania
 #
@@ -20,12 +20,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-function_str = """
-def print_foo():
-    print("I am #### generated from a string!")
-"""
+all: clean prepare run
 
-if __name__ == "__main__":
-    function_str = function_str.replace("####", "the best function")
-    exec(function_str)
-    print_foo()
+clean:
+	$(RM) -r .gt_cache .hypothesis .pytest_cache
+
+prepare:
+	. prepare_tests.sh
+	. prepare_matplotlib.sh
+
+run: prepare
+	pytest --mpl --cov=../tasmania/python .

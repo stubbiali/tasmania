@@ -1,0 +1,29 @@
+The tests rely on `conf.py` and `utils.py`. To create a soft link to these two modules
+in any subdirectory:
+
+    . prepare_tests.sh
+    
+To generate the baseline images needed by the Matplotlib tests in `plot/`:
+    
+    . prepare_matplotlib.sh
+    
+To run the entire test suite:
+
+    pytest
+    
+To run only the tests contained in a subfolder:
+
+    pytest <subfolder>
+    
+To run a specific test, *do not* enter the corresponding subfolder. Rather, from
+this directory issue
+
+    pytest <subfolder>/<test>
+    
+A makefile is provided to automate all these tasks:
+
+  - `make clean` deletes all the temporary and auxiliary files;
+  - `make prepare` prepares the tests;
+  - `make run` runs the test suite;
+  - `make all` deletes all the temporary and auxiliary files, and prepares and runs
+    all the tests.
