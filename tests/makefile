@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 TMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
+TMP_FILES += $(shell find $(shell pwd) -name '.coverage')
 TMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')

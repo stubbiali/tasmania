@@ -25,6 +25,7 @@ projectFilesBackup/
 # tests
 result_images/
 .hypothesis/
+.coverage
 
 # gt4py
 .gt_cache/
