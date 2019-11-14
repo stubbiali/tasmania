@@ -32,6 +32,7 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 
@@ -482,6 +483,9 @@ class ForwardEulerSI(IsentropicPrognostic):
             "qr_tnd_on": self._moist and mfpw in tendencies,
         }
 
+        # update the annotations for the field arguments of the first stencil
+        set_annotations(step_forward_euler, self._dtype)
+
         # compile the first stencil
         self._stencil = gtscript.stencil(
             definition=step_forward_euler,
@@ -505,6 +509,9 @@ class ForwardEulerSI(IsentropicPrognostic):
             "qc_tnd_on": False,
             "qr_tnd_on": False,
         }
+
+        # update the annotations for the field arguments of the second stencil
+        set_annotations(step_forward_euler_momentum, self._dtype)
 
         # compile the second stencil
         self._stencil_momentum = gtscript.stencil(
@@ -784,6 +791,9 @@ class RK3WSSI(IsentropicPrognostic):
             "qr_tnd_on": self._moist and mfpw in tendencies,
         }
 
+        # update the annotations for the field arguments of the first stencil
+        set_annotations(step_forward_euler, self._dtype)
+
         # compile the first stencil
         self._stencil = gtscript.stencil(
             definition=step_forward_euler,
@@ -806,6 +816,9 @@ class RK3WSSI(IsentropicPrognostic):
             "qc_tnd_on": False,
             "qr_tnd_on": False,
         }
+
+        # update the annotations for the field arguments of the second stencil
+        set_annotations(step_forward_euler_momentum, self._dtype)
 
         # compile the second stencil
         self._stencil_momentum = gtscript.stencil(

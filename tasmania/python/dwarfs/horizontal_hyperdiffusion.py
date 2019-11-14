@@ -28,7 +28,7 @@ from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -136,6 +136,9 @@ class HorizontalHyperDiffusion(abc.ABC):
             pert = np.tile(pert[np.newaxis, np.newaxis, :], (shape[0], shape[1], 1))
             self._gamma[...] = diffusion_coeff
             self._gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
+
+        # update annotations for the field arguments of the definition function
+        set_annotations(self._stencil_defs, dtype)
 
         # initialize the underlying stencil
         self._stencil = gtscript.stencil(

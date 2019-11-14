@@ -42,6 +42,7 @@ from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_flux
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -176,6 +177,8 @@ class WrappingStencil:
             externals.update(
                 {"qv_tnd_on": qv_tnd_on, "qc_tnd_on": qc_tnd_on, "qr_tnd_on": qr_tnd_on}
             )
+
+        set_annotations(self.stencil_defs, self.dtype)
 
         decorator = gtscript.stencil(
             self.backend, externals=externals, rebuild=self.rebuild

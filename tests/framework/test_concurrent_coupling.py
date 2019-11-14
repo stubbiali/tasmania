@@ -210,6 +210,7 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
 
@@ -236,7 +237,7 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
     tc2 = make_fake_tendency_component_2(domain, "numerical")
 
     cc = ConcurrentCoupling(
-        tc1, tc2, execution_policy="serial", gt_powered=True, backend=backend
+        tc1, tc2, execution_policy="serial", gt_powered=True, backend=backend, dtype=dtype
     )
     tendencies, diagnostics = cc(state, dt)
 

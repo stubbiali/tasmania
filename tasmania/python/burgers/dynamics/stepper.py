@@ -28,6 +28,7 @@ from gt4py import gtscript, __externals__
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -359,6 +360,8 @@ class ForwardEuler(BurgersStepper):
             ),
         }
 
+        set_annotations(forward_euler_step, dtype)
+
         self._stencil = gtscript.stencil(
             definition=forward_euler_step,
             name=self.__class__.__name__,
@@ -472,6 +475,8 @@ class RK2(BurgersStepper):
                 managed_memory=managed_memory,
             ),
         }
+
+        set_annotations(forward_euler_step, dtype)
 
         self._stencil = gtscript.stencil(
             definition=forward_euler_step,

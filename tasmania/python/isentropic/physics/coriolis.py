@@ -27,6 +27,7 @@ from gt4py import gtscript
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -125,6 +126,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
+
+        set_annotations(self._stencil_defs, dtype)
 
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,

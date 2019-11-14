@@ -28,6 +28,7 @@ from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -114,6 +115,9 @@ class HorizontalSmoothing(abc.ABC):
             managed_memory=managed_memory,
         )
         self._gamma[...] = gamma
+
+        # update annotations for the field arguments of the definition function
+        set_annotations(self._stencil_defs, dtype)
 
         # initialize the underlying stencil
         self._stencil = gtscript.stencil(
