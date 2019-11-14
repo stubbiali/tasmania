@@ -152,13 +152,13 @@ class WrappingStencil:
             flux_s = 0.0
             flux_su = 0.0
             flux_sv = 0.0
-            if moist:
+            if __INLINED(moist):
                 flux_sqv = 0.0
                 flux_sqc = 0.0
                 flux_sqr = 0.0
 
         with computation(PARALLEL), interval(extent, -extent):
-            if not moist:
+            if __INLINED(not moist):
                 flux_s, flux_su, flux_sv = core(dt=dt, dz=dz, w=w, s=s, su=su, sv=sv)
             else:
                 flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = core(
@@ -169,7 +169,7 @@ class WrappingStencil:
             flux_s = 0.0
             flux_su = 0.0
             flux_sv = 0.0
-            if moist:
+            if __INLINED(moist):
                 flux_sqv = 0.0
                 flux_sqc = 0.0
                 flux_sqr = 0.0

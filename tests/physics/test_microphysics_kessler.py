@@ -97,7 +97,9 @@ def kessler_validation(
     cr = k2 * qc * qr ** 0.875
 
     tnd_qc = -ar - cr
+    # tnd_qc[np.isnan(tnd_qc)] = 0.0
     tnd_qr = ar + cr
+    # tnd_qr[np.isnan(tnd_qr)] = 0.0
 
     if rain_evaporation:
         ps = swvf(t)
@@ -110,47 +112,11 @@ def kessler_validation(
             / (rho_gcm3 * (5.4e5 + 2.55e6 / (p_mbar * qvs)))
         )
         tnd_qv = er
+        # tnd_qv[np.isnan(tnd_qv)] = 0.0
         tnd_qr -= er
+        # tnd_qr[np.isnan(tnd_qr)] = 0.0
         tnd_theta = -lhvw * er / exn
-    else:
-        tnd_qv = 0.0
-        tnd_theta = 0.0
-
-    return tnd_qv, tnd_qc, tnd_qr, tnd_theta
-
-
-def kessler_validation_bis(
-    rho, p, t, exn, qv, qc, qr, a, k1, k2, swvf, beta, lhvw, rain_evaporation
-):
-    p = p if p.shape[2] == rho.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
-    exn = exn if exn.shape[2] == rho.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
-
-    p_mbar = 0.01 * p
-    rho_gcm3 = 0.001 * rho
-
-    ar = k1 * (qc - a) * (qc > a)
-    cr = np.zeros_like(qv, dtype=qv.dtype)
-    k = qr > 0.0
-    cr[k] = k2 * qc[k] * qr[k] ** 0.875
-
-    tnd_qc = -ar - cr
-    tnd_qr = ar + cr
-
-    if rain_evaporation:
-        ps = swvf(t)
-        qvs = beta * ps / (p - ps)
-        c = np.zeros_like(qv, dtype=qv.dtype)
-        c[k] = 1.6 + 124.9 * (rho_gcm3[k] * qr[k]) ** 0.2046
-        er = np.zeros_like(qv, dtype=qv.dtype)
-        er[k] = (
-            (1.0 - qv[k] / qvs[k])
-            * c[k]
-            * (rho_gcm3[k] * qr[k]) ** 0.525
-            / (rho_gcm3[k] * (5.4e5 + 2.55e6 / (p_mbar[k] * qvs[k])))
-        )
-        tnd_qv = er
-        tnd_qr -= er
-        tnd_theta = -lhvw * er / exn
+        # tnd_theta[np.isnan(tnd_theta)] = 0.0
     else:
         tnd_qv = 0.0
         tnd_theta = 0.0

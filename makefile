@@ -85,50 +85,14 @@ uml:
 	@echo "OK."
 
 tests:
-	@cd $(TEST_DIR) && pytest --mpl --cov=$(SRC_DIR) .
+	@cd $(TEST_DIR) && make
 
-prepare-tests-py35:
-	@cd $(TEST_DIR) && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_contour 			test_contour.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_contourf 			test_contourf.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_patches			test_patches.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_plot				test_plot.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_profile 			test_profile.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_quiver 			test_quiver.py && \
-	 pytest --mpl-generate-path=baseline_images/py35/test_timeseries 		test_timeseries.py
-
-prepare-tests-py36:
-	@cd $(TEST_DIR) && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_contour 			test_contour.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_contourf 			test_contourf.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_patches			test_patches.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_plot				test_plot.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_profile 			test_profile.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_quiver 			test_quiver.py && \
-	 pytest --mpl-generate-path=baseline_images/py36/test_timeseries 		test_timeseries.py
-
-prepare-tests-py37:
-	@cd $(TEST_DIR) && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_contour 			test_contour.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_contourf 			test_contourf.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_hovmoller 		test_hovmoller.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_patches			test_patches.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_plot				test_plot.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_plot_composite	test_plot_composite.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_profile 			test_profile.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_quiver 			test_quiver.py && \
-	 pytest --mpl-generate-path=baseline_images/py37/test_timeseries 		test_timeseries.py
-	
 clean:
 	@$(RM) $(TMP_FILES) > /dev/null
 	@$(RM) -r $(TMP_FOLDERS) > /dev/null
 	@$(RM) -r $(HYPOTHESIS_DIR) > /dev/null
 	@find . -type f -name "*.sw[klmnop]" -delete
-	@$(RM) $(TEST_DIR)/.hypothesis
+	@$(CD) $(TEST_DIR) && make clean
 
 distclean: clean
 	@cd $(PARSER_DIR) && $(MAKE) clean > /dev/null

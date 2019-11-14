@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- Makefile -*-
 #
 # Tasmania
 #
@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version.
+# either version 3 of the License, or any later version. 
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,12 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-function_str = """
-def print_foo():
-    print("I am #### generated from a string!")
-"""
+TMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
+TMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__') 
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
+GTCACHE := $(shell find $(shell pwd) -name '.gt_cache')
 
-if __name__ == "__main__":
-    function_str = function_str.replace("####", "the best function")
-    exec(function_str)
-    print_foo()
+.PHONY: clean distclean
+
+clean:
+	@$(RM) $(TMP_FILES)
+	@$(RM) -r $(TMP_FOLDERS)
+
+distclean: clean
+	@$(RM) -r $(GTCACHE)

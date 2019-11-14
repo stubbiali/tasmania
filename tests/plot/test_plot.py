@@ -30,13 +30,16 @@ from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.quiver import Quiver
 
 
-baseline_dir = "baseline_images/py{}{}/test_plot".format(
-    sys.version_info.major, sys.version_info.minor
+baseline_dir = os.path.join(
+    os.getcwd(),
+    "baseline_images/py{}{}/test_plot".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile_x(validation_data):
+def test_profile_x(isentropic_data):
     # make sure the baseline directory does exist
     if not os.path.exists(baseline_dir):
         os.makedirs(baseline_dir)
@@ -47,7 +50,7 @@ def test_profile_x(validation_data):
         os.remove(save_dest)
 
     # load data
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
@@ -148,7 +151,7 @@ def test_profile_x(validation_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_profile_z(validation_data):
+def test_profile_z(isentropic_data):
     # make sure the baseline directory does exist
     if not os.path.exists(baseline_dir):
         os.makedirs(baseline_dir)
@@ -159,7 +162,7 @@ def test_profile_z(validation_data):
         os.remove(save_dest)
 
     # load data
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
@@ -258,7 +261,7 @@ def test_profile_z(validation_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_plot_2d(validation_data, drawer_topography_2d):
+def test_plot_2d(isentropic_data, drawer_topography_2d):
     # make sure the baseline directory does exist
     if not os.path.exists(baseline_dir):
         os.makedirs(baseline_dir)
@@ -269,7 +272,7 @@ def test_plot_2d(validation_data, drawer_topography_2d):
         os.remove(save_dest)
 
     # load data
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]

@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	Line(Drawer)
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -34,9 +30,9 @@ from tasmania.python.plot.plot_utils import make_lineplot
 
 class Line(Drawer):
     """
-	Draw a line by retrieving a scalar value from multiple states which might
- 	be defined over different grids.
-	"""
+    Draw a line by retrieving a scalar value from multiple states which might
+    be defined over different grids.
+    """
 
     def __init__(
         self,
@@ -51,39 +47,39 @@ class Line(Drawer):
         properties=None,
     ):
         """
-		Parameters
-		----------
-		grids : Sequence[tasmania.Grid]
-			The :class:`tasmania.Grid`s underlying the states.
-		field_name : str
-			The state quantity to visualize.
-		field_units : str
-			The units for the quantity to visualize.
-		x : `int` or `tuple[int]`
-			For each state, the index along the first dimension of the field array
-			identifying the grid point to consider. If the same index applies to
-			all states, it can be specified as an integer.
-		y : `int` or `tuple[int]`
-			For each state, the index along the second dimension of the field array
-			identifying the grid point to consider. If the same index applies to
-			all states, it can be specified as an integer.
-		z : `int` or `tuple[int]`
-			For each state, the index along the third dimension of the field array
-			identifying the grid point to consider. If the same index applies to
-			all states, it can be specified as an integer.
-		xdata : `np.ndarray`, optional
-			The data to be placed on the horizontal axis of the plot. If specified,
-			the data retrieved from the states will be placed on the vertical axis
-			of the plot. Only allowed if ``ydata`` is not given.
-		ydata : `np.ndarray`, optional
-			The data to be placed on the vertical axis of the plot. If specified,
-			the data retrieved from the states will be placed on the horizontal axis
-			of the plot. Only allowed if ``xdata`` is not given.
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			settings, and whose values specify values for those settings.
-			See :func:`tasmania.python.plot.utils.make_lineplot`.
-		"""
+        Parameters
+        ----------
+        grids : Sequence[tasmania.Grid]
+            The :class:`tasmania.Grid`s underlying the states.
+        field_name : str
+            The state quantity to visualize.
+        field_units : str
+            The units for the quantity to visualize.
+        x : `int` or `tuple[int]`
+            For each state, the index along the first dimension of the field array
+            identifying the grid point to consider. If the same index applies to
+            all states, it can be specified as an integer.
+        y : `int` or `tuple[int]`
+            For each state, the index along the second dimension of the field array
+            identifying the grid point to consider. If the same index applies to
+            all states, it can be specified as an integer.
+        z : `int` or `tuple[int]`
+            For each state, the index along the third dimension of the field array
+            identifying the grid point to consider. If the same index applies to
+            all states, it can be specified as an integer.
+        xdata : `np.ndarray`, optional
+            The data to be placed on the horizontal axis of the plot. If specified,
+            the data retrieved from the states will be placed on the vertical axis
+            of the plot. Only allowed if ``ydata`` is not given.
+        ydata : `np.ndarray`, optional
+            The data to be placed on the vertical axis of the plot. If specified,
+            the data retrieved from the states will be placed on the horizontal axis
+            of the plot. Only allowed if ``xdata`` is not given.
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            settings, and whose values specify values for those settings.
+            See :func:`tasmania.python.plot.utils.make_lineplot`.
+        """
         super().__init__(properties)
 
         x = [x] * len(grids) if isinstance(x, int) else x

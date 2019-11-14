@@ -20,11 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	DataRetriever
-	DataRetrieverComposite
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -34,34 +29,34 @@ from tasmania.python.plot.utils import to_units
 
 class DataRetriever:
     """
-	Functor retrieving a raw scalar field from a state dictionary.
-	"""
+    Functor retrieving a raw scalar field from a state dictionary.
+    """
 
     def __init__(self, grid, field_name, field_units=None, x=None, y=None, z=None):
         """
-		Parameters
-		----------
-		grids : tasmania.Grid
-			The underlying grid.
-		field_name : str
-			The field to retrieve.
-		field_units : `str`, optional
-			The units of the field to retrieve. If not specified, the
-			field will be returned in the same units as it appears in
-			the model state dictionary.
-		x : `slice`, optional
-			The slice of indices to be selected along the first array
-			dimension. If not given, all indices along the first array
-			dimension will be considered.
-		y : `slice`, optional
-			The slice of indices to be selected along the second array
-			dimension. If not given, all indices along the second array
-			dimension will be considered.
-		z : `slice`, optional
-			The slice of indices to be selected along the third array
-			dimension. If not given, all indices along the third array
-			dimension will be considered.
-		"""
+        Parameters
+        ----------
+        grids : tasmania.Grid
+            The underlying grid.
+        field_name : str
+            The field to retrieve.
+        field_units : `str`, optional
+            The units of the field to retrieve. If not specified, the
+            field will be returned in the same units as it appears in
+            the model state dictionary.
+        x : `slice`, optional
+            The slice of indices to be selected along the first array
+            dimension. If not given, all indices along the first array
+            dimension will be considered.
+        y : `slice`, optional
+            The slice of indices to be selected along the second array
+            dimension. If not given, all indices along the second array
+            dimension will be considered.
+        z : `slice`, optional
+            The slice of indices to be selected along the third array
+            dimension. If not given, all indices along the third array
+            dimension will be considered.
+        """
         self._grid = grid
         self._fname = field_name
         self._funits = field_units
@@ -71,18 +66,18 @@ class DataRetriever:
 
     def __call__(self, state):
         """
-		Retrieve the field.
+        Retrieve the field.
 
-		Parameters
-		----------
-		state : dict[str, sympl.DataArray]
-			The state dictionary from which pulling the field out.
+        Parameters
+        ----------
+        state : dict[str, sympl.DataArray]
+            The state dictionary from which pulling the field out.
 
-		Returns
-		-------
-		numpy.ndarray :
-			The raw field.
-		"""
+        Returns
+        -------
+        numpy.ndarray :
+            The raw field.
+        """
         grid = self._grid
         field_name, field_units = self._fname, self._funits
         x, y, z = self.x, self.y, self.z
@@ -280,32 +275,32 @@ class DataRetriever:
 
 class DataRetrieverComposite:
     """
-	Functor retrieving multiple raw fields from multiple states.
-	"""
+    Functor retrieving multiple raw fields from multiple states.
+    """
 
     def __init__(self, grid, field_name, field_units=None, x=None, y=None, z=None):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid, sequence[tasmania.Grid]
-			The underlying grid(s).
-		field_name : str, sequence[str], sequence[sequence[str]]
-			The name(s) of the field(s) to retrieve.
-		field_units : `str, sequence[str], sequence[sequence[str]]`, optional
-			The units for the field(s) to retrieve.
-		x : `slice, sequence[slice], sequence[sequence[slice]]`, optional
-			The slice(s) of indices to be selected along the first array
-			dimension. If not given, all indices along the first array
-			dimension will be considered.
-		y : `slice, sequence[slice], sequence[sequence[slice]]`, optional
-			The slice(s) of indices to be selected along the second array
-			dimension. If not given, all indices along the second array
-			dimension will be considered.
-		z : `slice, sequence[slice], sequence[sequence[slice]]`, optional
-			The slice(s) of indices to be selected along the third array
-			dimension. If not given, all indices along the third array
-			dimension will be considered.
-		"""
+        Parameters
+        ----------
+        grid : tasmania.Grid, sequence[tasmania.Grid]
+            The underlying grid(s).
+        field_name : str, sequence[str], sequence[sequence[str]]
+            The name(s) of the field(s) to retrieve.
+        field_units : `str, sequence[str], sequence[sequence[str]]`, optional
+            The units for the field(s) to retrieve.
+        x : `slice, sequence[slice], sequence[sequence[slice]]`, optional
+            The slice(s) of indices to be selected along the first array
+            dimension. If not given, all indices along the first array
+            dimension will be considered.
+        y : `slice, sequence[slice], sequence[sequence[slice]]`, optional
+            The slice(s) of indices to be selected along the second array
+            dimension. If not given, all indices along the second array
+            dimension will be considered.
+        z : `slice, sequence[slice], sequence[sequence[slice]]`, optional
+            The slice(s) of indices to be selected along the third array
+            dimension. If not given, all indices along the third array
+            dimension will be considered.
+        """
         SequenceType = (tuple, list)
 
         if isinstance(field_name, str):
@@ -460,19 +455,19 @@ class DataRetrieverComposite:
 
     def __call__(self, *args):
         """
-		Retrieve the field(s).
+        Retrieve the field(s).
 
-		Parameters
-		----------
-		state : dict, sequence[dict]
-			The model state dictionary, or the sequence of model state
-			dictionaries, from which retrieving the data.
+        Parameters
+        ----------
+        state : dict, sequence[dict]
+            The model state dictionary, or the sequence of model state
+            dictionaries, from which retrieving the data.
 
-		Returns
-		-------
-		list[numpy.ndarray] :
-			The list of raw fields retrieved from each input model state.
-		"""
+        Returns
+        -------
+        list[numpy.ndarray] :
+            The list of raw fields retrieved from each input model state.
+        """
         got, expected = len(args), len(self._retrievers)
         if got != expected:
             raise RuntimeError("Expected {} input states, got {}.".format(expected, got))

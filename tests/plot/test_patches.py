@@ -28,8 +28,11 @@ from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.patches import Circle, Rectangle
 
 
-baseline_dir = "baseline_images/py{}{}/test_patches".format(
-    sys.version_info.major, sys.version_info.minor
+baseline_dir = os.path.join(
+    os.getcwd(),
+    "baseline_images/py{}{}/test_patches".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
 
 

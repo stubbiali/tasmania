@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,13 +28,16 @@ from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot
 
 
-baseline_dir = "baseline_images/py{}{}/test_contourf".format(
-    sys.version_info.major, sys.version_info.minor
+baseline_dir = os.path.join(
+    os.getcwd(),
+    "baseline_images/py{}{}/test_contourf".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contourf_xy_velocity(validation_data, drawer_topography_2d):
+def test_contourf_xy_velocity(isentropic_data, drawer_topography_2d):
     # field to plot
     field_name = "horizontal_velocity"
     field_units = "m s^-1"
@@ -49,7 +52,7 @@ def test_contourf_xy_velocity(validation_data, drawer_topography_2d):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
@@ -113,7 +116,7 @@ def test_contourf_xy_velocity(validation_data, drawer_topography_2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contourf_xy_pressure(validation_data, drawer_topography_2d):
+def test_contourf_xy_pressure(isentropic_data, drawer_topography_2d):
     # field to plot
     field_name = "air_pressure_on_interface_levels"
     field_units = "hPa"
@@ -128,7 +131,7 @@ def test_contourf_xy_pressure(validation_data, drawer_topography_2d):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
@@ -190,7 +193,7 @@ def test_contourf_xy_pressure(validation_data, drawer_topography_2d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contourf_xz_velocity(validation_data, drawer_topography_1d):
+def test_contourf_xz_velocity(isentropic_data, drawer_topography_1d):
     # field to plot
     field_name = "x_velocity_at_u_locations"
     field_units = "m s^-1"
@@ -205,7 +208,7 @@ def test_contourf_xz_velocity(validation_data, drawer_topography_1d):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]
@@ -273,7 +276,7 @@ def test_contourf_xz_velocity(validation_data, drawer_topography_1d):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_contourf_yz_velocity(validation_data, drawer_topography_1d):
+def test_contourf_yz_velocity(isentropic_data, drawer_topography_1d):
     # field to plot
     field_name = "y_velocity_at_v_locations"
     field_units = "km hr^-1"
@@ -288,7 +291,7 @@ def test_contourf_yz_velocity(validation_data, drawer_topography_1d):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     grid.update_topography(states[-1]["time"] - states[0]["time"])
     state = states[-1]

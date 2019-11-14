@@ -148,7 +148,7 @@ The benchmarks for the Burgers' equations and the isentropic model are stored in
 - `docker-run-cpu`: runs and connects to a container spawn from the image `tasmania:cpu`.
 - `docker-run-gpu`: runs and connects to a container spawn from the image `tasmania:gpu`.
 - `docs`: builds the documentation for Tasmania via Sphinx in HTML, LaTeX and LaTeX-pdf format.  
-- `tests`: runs the tests.
+- `tests`: prepares and runs the tests.
 - `clean`: deletes temporary, unnecessary files.
 - `distclean`: as `clean`, but deletes *necessary* binary files and the built documentation as well. Use it carefully!
 - `gitignore`: adds too large files to `.gitignore`.

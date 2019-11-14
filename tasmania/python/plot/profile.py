@@ -20,14 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	LineProfile(Drawer)
-	make_xplot
-	make_yplot
-	make_zplot
-	make_hplot
-"""
 import numpy as np
 
 from tasmania.python.plot.drawer import Drawer
@@ -38,12 +30,12 @@ from tasmania.python.plot.utils import to_units
 
 class LineProfile(Drawer):
     """
-	Drawer which plots the profile of a given quantity along a line
-	perpendicular to a coordinate plane.
-	If the line is horizontal (respectively, vertical), the spatial
-	coordinate is on the plot x-axis (resp., y-axis) and the quantity
-	is on the plot y-axis (resp., x-axis).
-	"""
+    Drawer which plots the profile of a given quantity along a line
+    perpendicular to a coordinate plane.
+    If the line is horizontal (respectively, vertical), the spatial
+    coordinate is on the plot x-axis (resp., y-axis) and the quantity
+    is on the plot y-axis (resp., x-axis).
+    """
 
     def __init__(
         self,
@@ -61,54 +53,54 @@ class LineProfile(Drawer):
         properties=None,
     ):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		field_name : str
-			The state quantity to visualize.
-		field_units : str
-			The units for the quantity to visualize.
-		x : `int`, optional
-			Index along the first dimension of the field array identifying the
-			line to visualize. Not to be specified if both `y` and `z` are given.
-		y : `int`, optional
-			Index along the first dimension of the field array identifying the
-			line to visualize. Not to be specified if both `x` and `z` are given.
-		z : `int`, optional
-			Index along the first dimension of the field array identifying the
-			line to visualize. Not to be specified if both `x` and `y` are given.
-		axis_name : `str`, optional
-			The name of the spatial axis. Options are:
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        field_name : str
+            The state quantity to visualize.
+        field_units : str
+            The units for the quantity to visualize.
+        x : `int`, optional
+            Index along the first dimension of the field array identifying the
+            line to visualize. Not to be specified if both `y` and `z` are given.
+        y : `int`, optional
+            Index along the first dimension of the field array identifying the
+            line to visualize. Not to be specified if both `x` and `z` are given.
+        z : `int`, optional
+            Index along the first dimension of the field array identifying the
+            line to visualize. Not to be specified if both `x` and `y` are given.
+        axis_name : `str`, optional
+            The name of the spatial axis. Options are:
 
-				* 'x' (default and only effective if `x` is not given);
-				* 'y' (default and only effective if `y` is not given);
-				* 'z' (default and only effective if `z` is not given);
-				* 'height' (only effective if `z` is not given);
-				* 'height_on_interface_levels' (only effective if `z` is not given);
-				* 'air_pressure' (only effective if `z` is not given).
-				* 'air_pressure_on_interface_levels' (only effective if `z` is not given).
+                * 'x' (default and only effective if `x` is not given);
+                * 'y' (default and only effective if `y` is not given);
+                * 'z' (default and only effective if `z` is not given);
+                * 'height' (only effective if `z` is not given);
+                * 'height_on_interface_levels' (only effective if `z` is not given);
+                * 'air_pressure' (only effective if `z` is not given).
+                * 'air_pressure_on_interface_levels' (only effective if `z` is not given).
 
-		axis_units : `str`, optional
-			Units for the spatial axis. If not specified, the native units of
-			the axis are used.
-		axis_x : `int`, optional
-			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to `x`. Only effective if `axis_name` is 'height' or
-			'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
-		axis_y : `int`, optional
-			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to `y`. Only effective if :`axis_name` is 'height' or
-			'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
-		axis_z : `int`, optional
-			Index along the first dimension of the axis array identifying the line
-			to visualize. Defaults to `z`. Only effective if :`axis_name` is 'height' or
-			'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific settings
-			and whose values specify values for those settings.
-			See :func:`tasmania.python.plot.plot_utils.make_lineplot`.
-		"""
+        axis_units : `str`, optional
+            Units for the spatial axis. If not specified, the native units of
+            the axis are used.
+        axis_x : `int`, optional
+            Index along the first dimension of the axis array identifying the line
+            to visualize. Defaults to `x`. Only effective if `axis_name` is 'height' or
+            'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
+        axis_y : `int`, optional
+            Index along the first dimension of the axis array identifying the line
+            to visualize. Defaults to `y`. Only effective if :`axis_name` is 'height' or
+            'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
+        axis_z : `int`, optional
+            Index along the first dimension of the axis array identifying the line
+            to visualize. Defaults to `z`. Only effective if :`axis_name` is 'height' or
+            'air_pressure'. Not to be specified if both `axis_y` and `axis_z` are given.
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific settings
+            and whose values specify values for those settings.
+            See :func:`tasmania.python.plot.plot_utils.make_lineplot`.
+        """
         super().__init__(properties)
 
         flag_x = 0 if x is None else 1
@@ -160,24 +152,24 @@ class LineProfile(Drawer):
 
     def __call__(self, state, fig=None, ax=None):
         """
-		Call operator generating the plot.
+        Call operator generating the plot.
 
-		Parameters
-		----------
-		state : dict[str, sympl.DataArray]
-			The model state from which retrieving the data used to draw the plot.
-		fig : matplotlib.figure.Figure
-			The figure encapsulating the plot.
-		ax : matplotlib.axes.Axes
-			The axes encapsulating the plot
+        Parameters
+        ----------
+        state : dict[str, sympl.DataArray]
+            The model state from which retrieving the data used to draw the plot.
+        fig : matplotlib.figure.Figure
+            The figure encapsulating the plot.
+        ax : matplotlib.axes.Axes
+            The axes encapsulating the plot
 
-		Returns
-		-------
-		x : gt4py.storage.storage.Storage
-			1-D array gathering the x-coordinates of the plotted points.
-		y : gt4py.storage.storage.Storage
-			1-D array gathering the y-coordinates of the plotted points.
-		"""
+        Returns
+        -------
+        x : gt4py.storage.storage.Storage
+            1-D array gathering the x-coordinates of the plotted points.
+        y : gt4py.storage.storage.Storage
+            1-D array gathering the y-coordinates of the plotted points.
+        """
         return self._slave(state, ax)
 
 

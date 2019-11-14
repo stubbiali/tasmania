@@ -28,13 +28,16 @@ from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.trackers import HovmollerDiagram
 
 
-baseline_dir = "baseline_images/py{}{}/test_hovmoller".format(
-    sys.version_info.major, sys.version_info.minor
+baseline_dir = os.path.join(
+    os.getcwd(),
+    "baseline_images/py{}{}/test_hovmoller".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_x(validation_data):
+def test_x(isentropic_data):
     # field to plot
     field_name = "horizontal_velocity"
     field_units = "km hr^-1"
@@ -49,7 +52,7 @@ def test_x(validation_data):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # indices identifying the line to visualize
@@ -109,7 +112,7 @@ def test_x(validation_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_z(validation_data):
+def test_z(isentropic_data):
     # field to plot
     field_name = "x_velocity_at_u_locations"
     field_units = "m s^-1"
@@ -124,7 +127,7 @@ def test_z(validation_data):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # indices identifying the line to visualize
@@ -185,7 +188,7 @@ def test_z(validation_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_pressure(validation_data):
+def test_pressure(isentropic_data):
     # field to plot
     field_name = "x_velocity_at_u_locations"
     field_units = "m s^-1"
@@ -200,7 +203,7 @@ def test_pressure(validation_data):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # indices identifying the line to visualize
@@ -263,7 +266,7 @@ def test_pressure(validation_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_height(validation_data):
+def test_height(isentropic_data):
     # field to plot
     field_name = "x_velocity_at_u_locations"
     field_units = "m s^-1"
@@ -278,7 +281,7 @@ def test_height(validation_data):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # indices identifying the line to visualize

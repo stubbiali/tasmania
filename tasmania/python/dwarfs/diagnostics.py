@@ -189,7 +189,7 @@ class HorizontalVelocity:
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
-            if staggering:  # compile-time if
+            if __INLINED(staggering):  # compile-time if
                 out_du = 0.5 * in_d[0, 0, 0] * (in_u[0, 0, 0] + in_u[1, 0, 0])
                 out_dv = 0.5 * in_d[0, 0, 0] * (in_v[0, 0, 0] + in_v[0, 1, 0])
             else:
@@ -205,7 +205,7 @@ class HorizontalVelocity:
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
-            if staggering:  # compile-time if
+            if __INLINED(staggering):  # compile-time if
                 out_u = (in_du[-1, 0, 0] + in_du[0, 0, 0]) / (
                     in_d[-1, 0, 0] + in_d[0, 0, 0]
                 )
@@ -221,7 +221,7 @@ class HorizontalVelocity:
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
-            if staggering:  # compile-time if
+            if __INLINED(staggering):  # compile-time if
                 out_v = (in_dv[0, -1, 0] + in_dv[0, 0, 0]) / (
                     in_d[0, -1, 0] + in_d[0, 0, 0]
                 )
@@ -353,7 +353,7 @@ class WaterConstituent:
         from __externals__ import clipping
 
         with computation(PARALLEL), interval(...):
-            if clipping:  # compile-time if
+            if __INLINED(clipping):  # compile-time if
                 tmp_dq = in_d * in_q
                 out_dq = (tmp_dq > 0.0) * tmp_dq
             else:
@@ -368,7 +368,7 @@ class WaterConstituent:
         from __externals__ import clipping
 
         with computation(PARALLEL), interval(...):
-            if clipping:  # compile-time if
+            if __INLINED(clipping):  # compile-time if
                 tmp_q = in_dq / in_d
                 out_q = (tmp_q > 0.0) * tmp_q
             else:
