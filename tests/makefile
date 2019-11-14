@@ -20,10 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+TMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
+TMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
+TMP_FOLDERS += $(shell find $(shell pwd) -name '.hypothesis')
+GTCACHE := $(shell find $(shell pwd) -name '.gt_cache')
+MPL_FOLDERS := baseline_images result_images
+
 all: clean prepare run
 
 clean:
-	$(RM) -r .gt_cache .hypothesis .pytest_cache
+	@$(RM) $(TMP_FILES)
+	@$(RM) -r $(TMP_FOLDERS)
 
 prepare:
 	. prepare_tests.sh
@@ -31,3 +41,9 @@ prepare:
 
 run: prepare
 	pytest --mpl --cov=../tasmania/python .
+
+gtclean: clean
+	@$(RM) -r $(GTCACHE)
+
+distclean: gtclean
+	@$(RM) -rf $(MPL_FOLDERS)

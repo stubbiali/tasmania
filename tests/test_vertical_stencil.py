@@ -62,7 +62,7 @@ def stencil_defs(
     with computation(PARALLEL), interval(0, 1):
         w = 0.0
     with computation(PARALLEL), interval(1, None):  # ... interval(1, None):
-        if vstaggering:
+        if __INLINED(vstaggering):
             w = in_w
         else:
             w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])

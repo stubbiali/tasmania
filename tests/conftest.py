@@ -32,30 +32,8 @@ from tasmania.python.utils.storage_utils import zeros
 
 
 @pytest.fixture(scope="module")
-def isentropic_dry_data():
-    return load_netcdf_dataset("baseline_datasets/isentropic_dry.nc")
-
-
-@pytest.fixture(scope="module")
-def isentropic_moist_data():
-    return load_netcdf_dataset("baseline_datasets/isentropic_moist.nc")
-
-
-@pytest.fixture(scope="module")
-def isentropic_moist_sedimentation_data():
-    return load_netcdf_dataset("baseline_datasets/isentropic_moist_sedimentation.nc")
-
-
-@pytest.fixture(scope="module")
-def isentropic_moist_sedimentation_evaporation_data():
-    return load_netcdf_dataset(
-        "baseline_datasets/isentropic_moist_sedimentation_evaporation.nc"
-    )
-
-
-@pytest.fixture(scope="module")
-def validation_data():
-    return load_netcdf_dataset("baseline_datasets/validation.nc")
+def isentropic_data():
+    return load_netcdf_dataset("baseline_datasets/isentropic.nc")
 
 
 @pytest.fixture(scope="module")

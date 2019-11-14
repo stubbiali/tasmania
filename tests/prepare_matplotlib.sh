@@ -20,13 +20,20 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+#
+PYTHON=$(python --version)
+MAJOR=${PYTHON:7:1}
+MINOR=${PYTHON:9:1}
+DIR=py$MAJOR$MINOR
+
 rm -rf baseline_images
-pytest --mpl-generate-path=baseline_images/test_contour         plot/test_contour.py
-pytest --mpl-generate-path=baseline_images/test_contourf 	      plot/test_contourf.py
-pytest --mpl-generate-path=baseline_images/test_hovmoller 	    plot/test_hovmoller.py
-pytest --mpl-generate-path=baseline_images/test_patches			    plot/test_patches.py
-pytest --mpl-generate-path=baseline_images/test_plot				    plot/test_plot.py
-pytest --mpl-generate-path=baseline_images/test_plot_composite	plot/test_plot_composite.py
-pytest --mpl-generate-path=baseline_images/test_profile 			  plot/test_profile.py
-pytest --mpl-generate-path=baseline_images/test_quiver 			    plot/test_quiver.py
-pytest --mpl-generate-path=baseline_images/test_timeseries 		  plot/test_timeseries.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_contour        plot/test_contour.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_contourf 	    plot/test_contourf.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_hovmoller 	    plot/test_hovmoller.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_patches			  plot/test_patches.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_plot				    plot/test_plot.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_plot_composite	plot/test_plot_composite.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_profile 			  plot/test_profile.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_quiver 			  plot/test_quiver.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_spectral 		  plot/test_spectral.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_timeseries 		plot/test_timeseries.py

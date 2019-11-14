@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     assume,
@@ -98,7 +97,7 @@ def test_compatibility(
     #
     # failing
     #
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
     cc1 = ConcurrentCoupling(tc1, tc2, execution_policy="as_parallel")
     try:
         cc1(state_dc, dt)
@@ -109,7 +108,7 @@ def test_compatibility(
     #
     # failing
     #
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
     cc2 = ConcurrentCoupling(tc2, tc1, execution_policy="serial")
     try:
         cc2(state_dc, dt)
@@ -120,7 +119,7 @@ def test_compatibility(
     #
     # successful
     #
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
     cc3 = ConcurrentCoupling(tc1, tc2, execution_policy="serial")
     try:
         cc3(state_dc, dt)

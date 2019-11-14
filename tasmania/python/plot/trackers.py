@@ -20,11 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	TimeSeries(Drawer)
-	HovmollerDiagram(Drawer)
-"""
 import numpy as np
 from sympl import DataArray
 
@@ -36,8 +31,8 @@ from tasmania.python.plot.plot_utils import make_contourf, make_lineplot
 
 class TimeSeries(Drawer):
     """
-	Drawer which visualizes a time series.
-	"""
+    Drawer which visualizes a time series.
+    """
 
     def __init__(
         self,
@@ -54,42 +49,42 @@ class TimeSeries(Drawer):
         properties=None,
     ):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		field_name : str
-			The state quantity to visualize.
-		field_units : str
-			The units for the quantity to visualize.
-		x : `int`, optional
-			Index along the first dimension of the field array identifying the line
-			to visualize. Defaults to 0.
-		y : `int`, optional
-			Index along the second dimension of the field array identifying the line
-			to visualize. Defaults to 0.
-		z : `int`, optional
-			Index along the third dimension of the field array identifying the line
-			to visualize. Defaults to 0.
-		time_mode : `str`, optional
-			Either 'elapsed' - to plot data against the elapsed time, or
-			'absolute' - to plot data against the absolute time. Defaults to 'elapsed'.
-		init_time : `datetime`, optional
-			Initial time of the simulation.
-			Only effective if ``time_mode`` set on 'elapsed'.
-			If not specified, the time at which the first given state
-			is defined is assumed to be the initial time of the simulation.
-		time_units : `str`, optional
-			Units for time. Defaults to 's' (seconds).
-			Only effective if `time_mode` set on 'elapsed'.
-		time_on_xaxis : `bool`, optional
-			`True` to place time on the plot x-axis, `False` otherwise.
-			Defaults to `True`.
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			settings, and whose values specify values for those settings.
-			See :func:`tasmania.python.plot.utils.make_lineplot`.
-		"""
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        field_name : str
+            The state quantity to visualize.
+        field_units : str
+            The units for the quantity to visualize.
+        x : `int`, optional
+            Index along the first dimension of the field array identifying the line
+            to visualize. Defaults to 0.
+        y : `int`, optional
+            Index along the second dimension of the field array identifying the line
+            to visualize. Defaults to 0.
+        z : `int`, optional
+            Index along the third dimension of the field array identifying the line
+            to visualize. Defaults to 0.
+        time_mode : `str`, optional
+            Either 'elapsed' - to plot data against the elapsed time, or
+            'absolute' - to plot data against the absolute time. Defaults to 'elapsed'.
+        init_time : `datetime`, optional
+            Initial time of the simulation.
+            Only effective if ``time_mode`` set on 'elapsed'.
+            If not specified, the time at which the first given state
+            is defined is assumed to be the initial time of the simulation.
+        time_units : `str`, optional
+            Units for time. Defaults to 's' (seconds).
+            Only effective if `time_mode` set on 'elapsed'.
+        time_on_xaxis : `bool`, optional
+            `True` to place time on the plot x-axis, `False` otherwise.
+            Defaults to `True`.
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            settings, and whose values specify values for those settings.
+            See :func:`tasmania.python.plot.utils.make_lineplot`.
+        """
         super().__init__(properties)
 
         slice_x = slice(x, x + 1 if x != -1 else None)
@@ -118,8 +113,8 @@ class TimeSeries(Drawer):
 
     def __call__(self, state, fig=None, ax=None):
         """
-		Call operator updating and visualizing the time series.
-		"""
+        Call operator updating and visualizing the time series.
+        """
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(
@@ -140,8 +135,8 @@ class TimeSeries(Drawer):
 
 class HovmollerDiagram(Drawer):
     """
-	Drawer which generates a Hovmoller diagram.
-	"""
+    Drawer which generates a Hovmoller diagram.
+    """
 
     def __init__(
         self,
@@ -162,86 +157,86 @@ class HovmollerDiagram(Drawer):
         properties=None,
     ):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		field_name : str
-			The state quantity to visualize.
-		field_units : str
-			The units for the quantity to visualize.
-		x : `int`, optional
-			Index along the first dimension of the field array identifying the line
-			to visualize. Not to be specified if both ``y`` and ``z`` are given.
-		y : `int`, optional
-			Index along the second dimension of the field array identifying the line
-			to visualize. Not to be specified if both ``x`` and ``z`` are given.
-		z : `int`, optional
-			Index along the third dimension of the field array identifying the line
-			to visualize. Not to be specified if both ``x`` and ``y`` are given.
-		axis_name : `str`, optional
-			The name of the spatial axis. Options are:
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        field_name : str
+            The state quantity to visualize.
+        field_units : str
+            The units for the quantity to visualize.
+        x : `int`, optional
+            Index along the first dimension of the field array identifying the line
+            to visualize. Not to be specified if both ``y`` and ``z`` are given.
+        y : `int`, optional
+            Index along the second dimension of the field array identifying the line
+            to visualize. Not to be specified if both ``x`` and ``z`` are given.
+        z : `int`, optional
+            Index along the third dimension of the field array identifying the line
+            to visualize. Not to be specified if both ``x`` and ``y`` are given.
+        axis_name : `str`, optional
+            The name of the spatial axis. Options are:
 
-				* 'x' (default and only effective if ``x`` is not given);
-				* 'y' (default and only effective if ``y`` is not given);
-				* 'z' (default and only effective if ``z`` is not given);
-				* 'height' (only effective if ``z`` is not given);
-				* 'height_on_interface_levels' (only effective if ``z`` is not given);
-				* 'air_pressure' (only effective if ``z`` is not given).
-				* 'air_pressure_on_interface_levels' (only effective if ``z`` is not given).
+                * 'x' (default and only effective if ``x`` is not given);
+                * 'y' (default and only effective if ``y`` is not given);
+                * 'z' (default and only effective if ``z`` is not given);
+                * 'height' (only effective if ``z`` is not given);
+                * 'height_on_interface_levels' (only effective if ``z`` is not given);
+                * 'air_pressure' (only effective if ``z`` is not given).
+                * 'air_pressure_on_interface_levels' (only effective if ``z`` is not given).
 
-		axis_units : `str`, optional
-			Units for the spatial axis. If not specified, the native units of
-			the axis are used
-		axis_x : `int`, optional
-			Index along the first dimension of the coordinates array identifying
-			the line to visualize. Defaults to ``x``.
-			Only effective if ``axis_name`` is either
+        axis_units : `str`, optional
+            Units for the spatial axis. If not specified, the native units of
+            the axis are used
+        axis_x : `int`, optional
+            Index along the first dimension of the coordinates array identifying
+            the line to visualize. Defaults to ``x``.
+            Only effective if ``axis_name`` is either
 
-				* 'height',
-				* 'height_on_interface_levels',
-				* 'air_pressure', or
-				* 'air_pressure_on_interface_levels'.
+                * 'height',
+                * 'height_on_interface_levels',
+                * 'air_pressure', or
+                * 'air_pressure_on_interface_levels'.
 
-			Not to be specified if both ``axis_y`` and ``axis_z`` are given.
-		axis_y : `int`, optional
-			Index along the second dimension of the coordinates array identifying
-			the line to visualize. Defaults to ``y``.
-			Only effective if ``axis_name`` is either
+            Not to be specified if both ``axis_y`` and ``axis_z`` are given.
+        axis_y : `int`, optional
+            Index along the second dimension of the coordinates array identifying
+            the line to visualize. Defaults to ``y``.
+            Only effective if ``axis_name`` is either
 
-				* 'height',
-				* 'height_on_interface_levels',
-				* 'air_pressure', or
-				* 'air_pressure_on_interface_levels'.
+                * 'height',
+                * 'height_on_interface_levels',
+                * 'air_pressure', or
+                * 'air_pressure_on_interface_levels'.
 
-			Not to be specified if both ``axis_x`` and ``axis_z`` are given.
-		axis_z : `int`, optional
-			Index along the third dimension of the coordinates array identifying
-			the line to visualize. Defaults to ``z``.
-			Only effective if ``axis_name`` is either
+            Not to be specified if both ``axis_x`` and ``axis_z`` are given.
+        axis_z : `int`, optional
+            Index along the third dimension of the coordinates array identifying
+            the line to visualize. Defaults to ``z``.
+            Only effective if ``axis_name`` is either
 
-				* 'height',
-				* 'height_on_interface_levels',
-				* 'air_pressure', or
-				* 'air_pressure_on_interface_levels'.
+                * 'height',
+                * 'height_on_interface_levels',
+                * 'air_pressure', or
+                * 'air_pressure_on_interface_levels'.
 
-			Not to be specified if both ``axis_x`` and ``axis_y`` are given.
-		time_mode : `str`, optional
-			Either 'elapsed' - to plot data against the elapsed time, or
-			'absolute' - to plot data against the absolute time. Defaults to 'elapsed'.
-		init_time : `datetime`, optional
-			Initial time of the simulation.
-			Only effective if ``time_mode`` set on 'elapsed'.
-			If not specified, the time at which the first given state
-			is defined is assumed to be the initial time of the simulation.
-		time_units : `str`, optional
-			Units for time. Defaults to 's' (seconds).
-			Only effective if ``time_mode`` set on 'elapsed'.
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			settings, and whose values specify values for those settings.
-			See :func:`tasmania.python.plot.utils.make_contourf`.
-		"""
+            Not to be specified if both ``axis_x`` and ``axis_y`` are given.
+        time_mode : `str`, optional
+            Either 'elapsed' - to plot data against the elapsed time, or
+            'absolute' - to plot data against the absolute time. Defaults to 'elapsed'.
+        init_time : `datetime`, optional
+            Initial time of the simulation.
+            Only effective if ``time_mode`` set on 'elapsed'.
+            If not specified, the time at which the first given state
+            is defined is assumed to be the initial time of the simulation.
+        time_units : `str`, optional
+            Units for time. Defaults to 's' (seconds).
+            Only effective if ``time_mode`` set on 'elapsed'.
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            settings, and whose values specify values for those settings.
+            See :func:`tasmania.python.plot.utils.make_contourf`.
+        """
         super().__init__(properties)
 
         self._retriever = LineProfile(
@@ -278,8 +273,8 @@ class HovmollerDiagram(Drawer):
 
     def __call__(self, state, fig=None, ax=None):
         """
-		Call operator generating the plot.
-		"""
+        Call operator generating the plot.
+        """
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(

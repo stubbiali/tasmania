@@ -20,10 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	Animation
-"""
 import matplotlib.animation as manimation
 
 from tasmania.python.plot.monitors import PlotComposite
@@ -31,20 +27,20 @@ from tasmania.python.plot.monitors import PlotComposite
 
 class Animation:
     """
-	This class creates an animation by leveraging a wrapped
-	:class:`~tasmania.Plot` or :class:`~tasmania.PlotComposite`
-	to generate the frames.
-	"""
+    This class creates an animation by leveraging a wrapped
+    :class:`~tasmania.Plot` or :class:`~tasmania.PlotComposite`
+    to generate the frames.
+    """
 
     def __init__(self, artist, fps=15):
         """
-		Parameters
-		----------
-		artist : `tasmania.Plot, tasmania.PlotComposite`
-			The *artist* actually generating the frames.
-		fps : `int`, optional
-			Frames per second. Defaults to 15.
-		"""
+        Parameters
+        ----------
+        artist : `tasmania.Plot, tasmania.PlotComposite`
+            The *artist* actually generating the frames.
+        fps : `int`, optional
+            Frames per second. Defaults to 15.
+        """
         # store input arguments as private attributes
         self._artist = artist
         self._fps = fps
@@ -57,32 +53,32 @@ class Animation:
 
     def store(self, *states):
         """
-		Append a new state (respectively, a list of states), to the list of
-		states (resp., lists of states) stored in this object.
+        Append a new state (respectively, a list of states), to the list of
+        states (resp., lists of states) stored in this object.
 
-		Parameters
-		----------
-		states : dict or list
-			A model state dictionary, or a list of model state dictionaries.
-		"""
+        Parameters
+        ----------
+        states : dict or list
+            A model state dictionary, or a list of model state dictionaries.
+        """
         self._states.append(states)
 
     def reset(self):
         """
-		Empty the list of stored states.
-		"""
+        Empty the list of stored states.
+        """
         self._states = []
 
     def run(self, save_dest):
         """
-		Generate the animation based on the list of states stored in this object.
+        Generate the animation based on the list of states stored in this object.
 
-		Parameters
-		----------
-		save_dest : str
-			Path to the location where the movie should be saved.
-			The path should include the format extension.
-		"""
+        Parameters
+        ----------
+        save_dest : str
+            Path to the location where the movie should be saved.
+            The path should include the format extension.
+        """
         nt = len(self._states)
         if nt == 0:
             import warnings

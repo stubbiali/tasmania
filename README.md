@@ -48,7 +48,7 @@ Conversely, GridTools's front-end, then GT4Py's interface, are hardware-agnostic
 
 To clone this repository (with submodules) on your machine and place yourself on the current branch, run
 
-	git clone -b new_calling_api --recurse-submodules https://github.com/eth-cscs/tasmania.git
+	git clone -b master --recurse-submodules https://github.com/eth-cscs/tasmania.git
 
 **Note:** both Tasmania and GT4Py repositories are *private*, so you should be granted access to clone them and accomplish all the actions listed below.
 	

@@ -20,12 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contain:
-	get_time
-	Plot(Monitor)
-	PlotComposite
-"""
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import os
@@ -58,29 +52,29 @@ def get_time(states):
 
 class Plot(Monitor):
     """
-	A :class:`sympl.Monitor` for visualization purposes, generating a
-	plot by nicely overlapping distinct plots drawn by one or multiple
-	:class:`tasmania.Drawer`\s.
+    A :class:`sympl.Monitor` for visualization purposes, generating a
+    plot by nicely overlapping distinct plots drawn by one or multiple
+    :class:`tasmania.Drawer`\s.
 
-	Warning
-	-------
-	No consistency/coherency controls are performed on the list of artists.
-	For instance, the composer does not check that all the artists use
-	the same units for the axes. Ultimately, it is up to the user to ensure
-	that everything is coherent.
+    Warning
+    -------
+    No consistency/coherency controls are performed on the list of artists.
+    For instance, the composer does not check that all the artists use
+    the same units for the axes. Ultimately, it is up to the user to ensure
+    that everything is coherent.
 
-	Attributes
-	----------
-	interactive : bool
-		`True` if interactive plotting is enabled,
-		`False` otherwise.
-	figure_properties : dict
-		Keyword arguments specifying settings for the
-		:class:`~matplotlib.figure.Figure` containing the plot.
-	axes_properties : dict
-		Keyword arguments specifying settings for the
-		:class:`~matplotlib.axes.Axes` enclosing the plot.
-	"""
+    Attributes
+    ----------
+    interactive : bool
+        `True` if interactive plotting is enabled,
+        `False` otherwise.
+    figure_properties : dict
+        Keyword arguments specifying settings for the
+        :class:`~matplotlib.figure.Figure` containing the plot.
+    axes_properties : dict
+        Keyword arguments specifying settings for the
+        :class:`~matplotlib.axes.Axes` enclosing the plot.
+    """
 
     def __init__(
         self,
@@ -92,37 +86,37 @@ class Plot(Monitor):
         axes_properties=None
     ):
         """
-		Parameters
-		----------
-		drawers : tasmania.Drawer
-			The drawer(s) actually drawing the plot(s).
-		interactive : `bool`, optional
-			`True` to enable interactive plotting, `False` otherwise.
-			Defaults to `True`.
-		print_time : `str`, optional
-			String specifying if time should be printed above the plot,
-			flush with the right edge. Available options are:
+        Parameters
+        ----------
+        drawers : tasmania.Drawer
+            The drawer(s) actually drawing the plot(s).
+        interactive : `bool`, optional
+            `True` to enable interactive plotting, `False` otherwise.
+            Defaults to `True`.
+        print_time : `str`, optional
+            String specifying if time should be printed above the plot,
+            flush with the right edge. Available options are:
 
-				* 'elapsed', to print the time elapsed since `init_time`;
-				* 'absolute', to print the absolute time of the snapshot;
-				* anything else, not to print anything.
+                * 'elapsed', to print the time elapsed since `init_time`;
+                * 'absolute', to print the absolute time of the snapshot;
+                * anything else, not to print anything.
 
-			Defaults to `None`.
-		init_time : `datetime`, optional
-			The initial time of the simulation. Only effective if `print_time`
-			is 'elapsed'. If not specified, the elapsed time is calculated
-			with respect to the first passed state.
-		figure_properties : `dict`, optional
-			Keyword arguments specifying settings for the figure containing
-			the plot. To be broadcast to
-			:func:`~tasmania.get_figure_and_axes_properties`
-			and :func:`~tasmania.set_figure_properties`.
-		axes_properties : `dict`, optional
-			Keyword arguments specifying settings for the axes enclosing
-			the plot. To be broadcast to
-			:func:`~tasmania.get_figure_and_axes_properties`
-			and :func:`~tasmania.set_axes_properties`.
-		"""
+            Defaults to `None`.
+        init_time : `datetime`, optional
+            The initial time of the simulation. Only effective if `print_time`
+            is 'elapsed'. If not specified, the elapsed time is calculated
+            with respect to the first passed state.
+        figure_properties : `dict`, optional
+            Keyword arguments specifying settings for the figure containing
+            the plot. To be broadcast to
+            :func:`~tasmania.get_figure_and_axes_properties`
+            and :func:`~tasmania.set_figure_properties`.
+        axes_properties : `dict`, optional
+            Keyword arguments specifying settings for the axes enclosing
+            the plot. To be broadcast to
+            :func:`~tasmania.get_figure_and_axes_properties`
+            and :func:`~tasmania.set_axes_properties`.
+        """
         assert_sequence(drawers, reftype=Drawer)
         self._artists = drawers
 
@@ -139,56 +133,56 @@ class Plot(Monitor):
     @property
     def artists(self):
         """
-		Returns
-		-------
-		tuple :
-			The artists.
-		"""
+        Returns
+        -------
+        tuple :
+            The artists.
+        """
         return self._artists
 
     @property
     def figure(self):
         """
-		Returns
-		-------
-		matplotlib.figure.Figure :
-			The figure used and *owned* by this object.
-		"""
+        Returns
+        -------
+        matplotlib.figure.Figure :
+            The figure used and *owned* by this object.
+        """
         self._set_figure()
         return self._figure
 
     def store(self, *states, fig=None, ax=None, save_dest=None, show=False):
         """
-		Use the input state(s) to update the plot.
+        Use the input state(s) to update the plot.
 
-		Parameters
-		----------
-		states : dict, sequence[dict]
-			A model state dictionary, or a sequence of model state
-			dictionaries, feeding the artists. This means that the
-			i-th item in the sequence will be forwarded to the i-th artist.
-		fig : `matplotlib.figure.Figure`, optional
-			The figure which should contain the plot.
-			If not given, the internal figure is used.
-		ax : `matplotlib.axes.Axes`, optional
-			The axes which should enclose the plot.
-			If not given, the internal axes are used.
-		save_dest : `str`, optional
-			Path under which the figure should be saved.
-			The path should include the extension of the figure.
-			If `None` or empty, the plot will not be saved.
-		show : `bool`, optional
-			When the non-interactive mode is switched on,
-			`True` to show the figure, `False` otherwise.
-			Defaults to `False`.
+        Parameters
+        ----------
+        states : dict, sequence[dict]
+            A model state dictionary, or a sequence of model state
+            dictionaries, feeding the artists. This means that the
+            i-th item in the sequence will be forwarded to the i-th artist.
+        fig : `matplotlib.figure.Figure`, optional
+            The figure which should contain the plot.
+            If not given, the internal figure is used.
+        ax : `matplotlib.axes.Axes`, optional
+            The axes which should enclose the plot.
+            If not given, the internal axes are used.
+        save_dest : `str`, optional
+            Path under which the figure should be saved.
+            The path should include the extension of the figure.
+            If `None` or empty, the plot will not be saved.
+        show : `bool`, optional
+            When the non-interactive mode is switched on,
+            `True` to show the figure, `False` otherwise.
+            Defaults to `False`.
 
-		Return
-		------
-		out_fig : matplotlib.figure.Figure
-			The figure containing the plot.
-		out_ax : matplotlib.axes.Axes
-			The axes enclosing the plot.
-		"""
+        Return
+        ------
+        out_fig : matplotlib.figure.Figure
+            The figure containing the plot.
+        out_ax : matplotlib.axes.Axes
+            The axes enclosing the plot.
+        """
         assert_sequence(states, reflen=len(self._artists), reftype=dict)
 
         # set the private _figure attribute
@@ -256,9 +250,9 @@ class Plot(Monitor):
 
     def _set_figure(self, fig=None):
         """
-		Set the private attribute representing the figure
-		*owned* by this object.
-		"""
+        Set the private attribute representing the figure
+        *owned* by this object.
+        """
         if fig is not None:
             self._figure = None
             return
@@ -281,17 +275,17 @@ class Plot(Monitor):
 
 class PlotComposite:
     """
-	This class creates a visualization consisting of different subplots,
-	with each subplot generated by a :class:`~tasmania.Plot`.
+    This class creates a visualization consisting of different subplots,
+    with each subplot generated by a :class:`~tasmania.Plot`.
 
-	Attributes
-	----------
+    Attributes
+    ----------
     figure_properties : dict
-		Keyword arguments specifying settings for the figure containing
-		the plot. To be broadcast to
-		:func:`~tasmania.get_figure_and_axes_properties`
-		and :func:`~tasmania.set_figure_properties`.
-	"""
+        Keyword arguments specifying settings for the figure containing
+        the plot. To be broadcast to
+        :func:`~tasmania.get_figure_and_axes_properties`
+        and :func:`~tasmania.set_figure_properties`.
+    """
 
     def __init__(
         self,
@@ -304,37 +298,37 @@ class PlotComposite:
         figure_properties=None
     ):
         """
-		Parameters
-		----------
-		artists : sequence
-			The artists, each generating a single subplot.
-			With respect to the subplot grid, row-major ordering is assumed.
-		nrows : `int`, optional
-			Number of rows of the subplot grid. Defaults to 1.
-		ncols : `int`, optional
-			Number of columns of the subplot grid. Defaults to 1.
-		interactive : `bool`, optional
-			`True` to enable interactive plotting, :obj:`False` otherwise.
-			Defaults to :obj:`True`.
-		print_time : `str`, optional
-			String specifying if time should be printed as suptitle.
-			Available options are:
+        Parameters
+        ----------
+        artists : sequence
+            The artists, each generating a single subplot.
+            With respect to the subplot grid, row-major ordering is assumed.
+        nrows : `int`, optional
+            Number of rows of the subplot grid. Defaults to 1.
+        ncols : `int`, optional
+            Number of columns of the subplot grid. Defaults to 1.
+        interactive : `bool`, optional
+            `True` to enable interactive plotting, :obj:`False` otherwise.
+            Defaults to :obj:`True`.
+        print_time : `str`, optional
+            String specifying if time should be printed as suptitle.
+            Available options are:
 
-				* 'elapsed', to print the time elapsed since `init_time`;
-				* 'absolute', to print the absolute time of the snapshot;
-				* anything else, not to print anything.
+                * 'elapsed', to print the time elapsed since `init_time`;
+                * 'absolute', to print the absolute time of the snapshot;
+                * anything else, not to print anything.
 
-			Defaults to :obj:`None`.
-		init_time : `datetime`, optional
-			The initial time of the simulation. Only effective if `print_time`
-			is 'elapsed'. If not specified, the elapsed time is calculated
-			with respect to the first passed state.
-    	figure_properties : `dict`, optional
-			Keyword arguments specifying settings for the figure containing
-			the plot. To be broadcast to
-			:func:`~tasmania.get_figure_and_axes_properties`
-			and :func:`~tasmania.set_figure_properties`.
-		"""
+            Defaults to :obj:`None`.
+        init_time : `datetime`, optional
+            The initial time of the simulation. Only effective if `print_time`
+            is 'elapsed'. If not specified, the elapsed time is calculated
+            with respect to the first passed state.
+        figure_properties : `dict`, optional
+            Keyword arguments specifying settings for the figure containing
+            the plot. To be broadcast to
+            :func:`~tasmania.get_figure_and_axes_properties`
+            and :func:`~tasmania.set_figure_properties`.
+        """
         # check input artists list
         assert_sequence(artists, reftype=Plot)
 
@@ -355,77 +349,77 @@ class PlotComposite:
     @property
     def artists(self):
         """
-		Returns
-		-------
-		tuple :
-			The artists.
-		"""
+        Returns
+        -------
+        tuple :
+            The artists.
+        """
         return self._artists
 
     @property
     def figure(self):
         """
-		Returns
-		-------
-		matplotlib.figure.Figure :
-			The figure used and *owned* by this object.
-		"""
+        Returns
+        -------
+        matplotlib.figure.Figure :
+            The figure used and *owned* by this object.
+        """
         self._set_figure()
         return self._figure
 
     @property
     def interactive(self):
         """
-		Returns
-		-------
-		bool :
-			:obj:`True` if interactive model is enabled, :obj:`False` otherwise.
-		"""
+        Returns
+        -------
+        bool :
+            :obj:`True` if interactive model is enabled, :obj:`False` otherwise.
+        """
         return self._interactive
 
     @interactive.setter
     def interactive(self, value):
         """
-		Switch interactive mode on/off.
+        Switch interactive mode on/off.
 
-		Parameters
-		----------
-		value : bool
-			:obj:`True` to enable interactive plotting, :obj:`False` otherwise.
-		"""
+        Parameters
+        ----------
+        value : bool
+            :obj:`True` to enable interactive plotting, :obj:`False` otherwise.
+        """
         self._interactive = value
         for artist in self.artists:
             artist.interactive = value
 
     def store(self, *states, fig=None, save_dest=None, show=False):
         """
-		Use the input states to update the plot.
+        Use the input states to update the plot.
 
-		Parameters
-		----------
-		states : sequence
-			Sequence whose items can be:
+        Parameters
+        ----------
+        states : sequence
+            Sequence whose items can be:
 
-			 	* dictionary states, or
-			 	* a sequence of dictionary states.
+                * dictionary states, or
+                * a sequence of dictionary states.
 
-			The i-th item will be forwarded to the i-th artist.
-		fig : `matplotlib.figure.Figure`, optional
-			The figure encapsulating all the subplots.
-		save_dest : `str`, optional
-			Path to the location where the figure should be saved.
-			The path should include the extension of the figure.
-			If :obj:`None` or empty, the plot will not be saved.
-		show : `bool`, optional
-			When the non-interactive mode is switched on,
-			:obj:`True` to show the figure, :obj:`False` otherwise.
-			Defaults :obj:`False`.
+            The i-th item will be forwarded to the i-th artist.
+        fig : `matplotlib.figure.Figure`, optional
+            The figure encapsulating all the subplots.
+        save_dest : `str`, optional
+            Path to the location where the figure should be saved.
+            The path should include the extension of the figure.
+            If :obj:`None` or empty, the plot will not be saved.
+        show : `bool`, optional
+            When the non-interactive mode is switched on,
+            :obj:`True` to show the figure, :obj:`False` otherwise.
+            Defaults :obj:`False`.
 
-		Return
-		------
-		matplotlib.figure.Figure
-			The figure encapsulating all the subplots.
-		"""
+        Return
+        ------
+        matplotlib.figure.Figure
+            The figure encapsulating all the subplots.
+        """
         # assert the list of states
         assert_sequence(states, reflen=len(self.artists), reftype=SequenceType + (dict,))
 
@@ -502,9 +496,9 @@ class PlotComposite:
 
     def _set_figure(self, fig=None):
         """
-		Set the private attribute representing the figure
-		*owned* by this object.
-		"""
+        Set the private attribute representing the figure
+        *owned* by this object.
+        """
         if fig is not None:
             self._figure = None
             return

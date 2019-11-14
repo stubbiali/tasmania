@@ -20,13 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	Annotation(Drawer)
-	Circle(Drawer)
-	Rectangle(Drawer)
-	Segment(Drawer)
-"""
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import (
     add_annotation,
@@ -38,18 +31,18 @@ from tasmania.python.plot.plot_utils import (
 
 class Annotation(Drawer):
     """
-	Add an annotation.
-	"""
+    Add an annotation.
+    """
 
     def __init__(self, properties=None):
         """
-		Parameters
-		----------
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
-			See :func:`~tasmania.python.plot.plot_utils.add_annotation`.
-		"""
+        Parameters
+        ----------
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            properties, and whose values specify values for those properties.
+            See :func:`~tasmania.python.plot.plot_utils.add_annotation`.
+        """
         super().__init__(properties)
 
     def __call__(self, state, fig, ax):
@@ -58,18 +51,18 @@ class Annotation(Drawer):
 
 class Circle(Drawer):
     """
-	Drawer plotting a circle.
-	"""
+    Drawer plotting a circle.
+    """
 
     def __init__(self, properties=None):
         """
-		Parameters
-		----------
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
-			See :func:`~tasmania.python.plot.plot_utils.make_circle`.
-		"""
+        Parameters
+        ----------
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            properties, and whose values specify values for those properties.
+            See :func:`~tasmania.python.plot.plot_utils.make_circle`.
+        """
         super().__init__(properties)
 
     def __call__(self, state, fig, ax):
@@ -78,18 +71,18 @@ class Circle(Drawer):
 
 class Rectangle(Drawer):
     """
-	Drawer plotting a rectangle.
-	"""
+    Drawer plotting a rectangle.
+    """
 
     def __init__(self, properties=None):
         """
-		Parameters
-		----------
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			settings, and whose values specify values for those settings.
-			See :func:`~tasmania.python.plot.plot_utils.make_rectangle`.
-		"""
+        Parameters
+        ----------
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            settings, and whose values specify values for those settings.
+            See :func:`~tasmania.python.plot.plot_utils.make_rectangle`.
+        """
         super().__init__(properties)
 
     def __call__(self, state, fig, ax):
@@ -98,24 +91,24 @@ class Rectangle(Drawer):
 
 class Segment(Drawer):
     """
-	Drawer plotting a segment.
-	"""
+    Drawer plotting a segment.
+    """
 
     def __init__(self, x, y, properties=None):
         """
-		Parameters
-		----------
-		x : array
-			2-items :class:`numpy.array` storing the x-coordinates of the 
-			line end-points.
-		y : array
-			2-items :class:`numpy.array` storing the y-coordinates of the 
-			line end-points.
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			properties, and whose values specify values for those properties.
-			See :func:`~tasmania.python.plot.plot_utils.make_lineplot`.
-		"""
+        Parameters
+        ----------
+        x : array
+            2-items :class:`numpy.array` storing the x-coordinates of the
+            line end-points.
+        y : array
+            2-items :class:`numpy.array` storing the y-coordinates of the
+            line end-points.
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            properties, and whose values specify values for those properties.
+            See :func:`~tasmania.python.plot.plot_utils.make_lineplot`.
+        """
         self.x, self.y = x, y
         super().__init__(properties)
 

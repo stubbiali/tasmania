@@ -240,8 +240,8 @@ class WrappingStencil:
     ):
         from __externals__ import core, moist
 
-        if not moist:
-            with computation(PARALLEL), interval(...):
+        with computation(PARALLEL), interval(...):
+            if __INLINED(not moist):
                 flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = core(
                     dt=dt,
                     dx=dx,
@@ -256,8 +256,7 @@ class WrappingStencil:
                     su_tnd=su_tnd,
                     sv_tnd=sv_tnd,
                 )
-        else:
-            with computation(PARALLEL), interval(...):
+            else:
                 flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y, flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = core(
                     dt=dt,
                     dx=dx,
@@ -682,4 +681,5 @@ def test_fifth_order_upwind(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_upwind()

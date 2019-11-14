@@ -29,13 +29,16 @@ from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.spectral import CDF
 
 
-baseline_dir = "baseline_images/py{}{}/test_spectral".format(
-    sys.version_info.major, sys.version_info.minor
+baseline_dir = os.path.join(
+    os.getcwd(),
+    "baseline_images/py{}{}/test_spectral".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_cdf_u(validation_data):
+def test_cdf_u(isentropic_data):
     # field to plot
     field_name = "x_velocity_at_u_locations"
     field_units = "m s^-1"
@@ -50,7 +53,7 @@ def test_cdf_u(validation_data):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # drawer properties
@@ -93,7 +96,7 @@ def test_cdf_u(validation_data):
 
 
 @pytest.mark.mpl_image_compare(baseline_dir=baseline_dir)
-def test_cdf_qc(validation_data):
+def test_cdf_qc(isentropic_data):
     # field to plot
     field_name = "mass_fraction_of_cloud_liquid_water_in_air"
     field_units = "g kg^-1"
@@ -108,7 +111,7 @@ def test_cdf_qc(validation_data):
         os.remove(save_dest)
 
     # grab data from dataset
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # drawer properties

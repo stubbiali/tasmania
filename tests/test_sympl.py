@@ -78,7 +78,7 @@ def test_constants():
     reset_constants()
 
 
-def test_diagnostics(isentropic_dry_data):
+def test_diagnostics(isentropic_data):
     from sympl import DiagnosticComponent
 
     class TestDiagnostic(DiagnosticComponent):
@@ -104,7 +104,7 @@ def test_diagnostics(isentropic_dry_data):
             maxy = np.max(state["air_isentropic_density"], axis=1)
             return {"maxy_air_isentropic_density": maxy}
 
-    domain, grid_type, states = isentropic_dry_data
+    domain, grid_type, states = isentropic_data
     state = states[-1]
     grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
     grid.update_topography(state["time"] - states[0]["time"])

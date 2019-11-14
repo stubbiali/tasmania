@@ -20,15 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	Contour(Drawer)
-	make_contour_xy
-	make_contour_xz
-	make_contour_xh
-	make_contour_yz
-	make_contour_yh
-"""
 import numpy as np
 
 from tasmania.python.plot.drawer import Drawer
@@ -39,9 +30,9 @@ from tasmania.python.plot.utils import to_units
 
 class Contour(Drawer):
     """
-	Drawer which generates a contour plot of a state quantity
-	at a cross-section parallel to one coordinate plane.
-	"""
+    Drawer which generates a contour plot of a state quantity
+    at a cross-section parallel to one coordinate plane.
+    """
 
     def __init__(
         self,
@@ -66,86 +57,86 @@ class Contour(Drawer):
         properties=None,
     ):
         """
-		Parameters
-		----------
-		grid : tasmania.Grid
-			The underlying grid.
-		field_name : str
-			The state quantity to visualize.
-		field_units : str
-			The units for the quantity to visualize.
-		x : `int`, optional
-			Index along the first dimension of the field array identifying
-			the cross-section to visualize. To be specified only if both
-			`y` and `z` are not given.
-		y : `int`, optional
-			Index along the second dimension of the field array identifying
-			the cross-section to visualize. To be specified only if both
-			`x` and `z` are not given.
-		z : `int`, optional
-			Index along the third dimension of the field array identifying
-			the cross-section to visualize. To be specified only if both
-			`x` and `y` are not given.
-		xaxis_name : `str`, optional
-			If either `y` or `z` is given, the name of the grid	axis to
-			place on the plot x-axis. Options are:
+        Parameters
+        ----------
+        grid : tasmania.Grid
+            The underlying grid.
+        field_name : str
+            The state quantity to visualize.
+        field_units : str
+            The units for the quantity to visualize.
+        x : `int`, optional
+            Index along the first dimension of the field array identifying
+            the cross-section to visualize. To be specified only if both
+            `y` and `z` are not given.
+        y : `int`, optional
+            Index along the second dimension of the field array identifying
+            the cross-section to visualize. To be specified only if both
+            `x` and `z` are not given.
+        z : `int`, optional
+            Index along the third dimension of the field array identifying
+            the cross-section to visualize. To be specified only if both
+            `x` and `y` are not given.
+        xaxis_name : `str`, optional
+            If either `y` or `z` is given, the name of the grid	axis to
+            place on the plot x-axis. Options are:
 
-				* 'x' (default).
+                * 'x' (default).
 
-		xaxis_units : `str`, optional
-			If either `y` or `z` is given, units for the `xaxis_name` axis.
-			If not specified, the native units of the grid axis are used.
-		xaxis_y : `int`, optional
-			Index along the second dimension of the `xaxis_name` grid axis
-			array identifying the cross-section to visualize. Defaults to `y`.
-			Only effective if `xaxis_name` is not 'x' and `y` is given.
-		xaxis_z : `int`, optional
-			Index along the third dimension of the `xaxis_name` grid axis
-			array identifying the cross-section to visualize. Defaults to `z`.
-			Only effective if `xaxis_name` is not 'x' and `z` is given.
-		yaxis_name : `str`, optional
-			The name of the grid axis to place either on the plot x-axis
-			if `x` is given, or on the plot y-axis if `z` is given. Options are:
+        xaxis_units : `str`, optional
+            If either `y` or `z` is given, units for the `xaxis_name` axis.
+            If not specified, the native units of the grid axis are used.
+        xaxis_y : `int`, optional
+            Index along the second dimension of the `xaxis_name` grid axis
+            array identifying the cross-section to visualize. Defaults to `y`.
+            Only effective if `xaxis_name` is not 'x' and `y` is given.
+        xaxis_z : `int`, optional
+            Index along the third dimension of the `xaxis_name` grid axis
+            array identifying the cross-section to visualize. Defaults to `z`.
+            Only effective if `xaxis_name` is not 'x' and `z` is given.
+        yaxis_name : `str`, optional
+            The name of the grid axis to place either on the plot x-axis
+            if `x` is given, or on the plot y-axis if `z` is given. Options are:
 
-				* 'y' (default).
+                * 'y' (default).
 
-		yaxis_units : `str`, optional
-			If either `x` or `z` is given, units for the `yaxis_name` grid axis.
-			If not specified, the native units of the grid axis are used.
-		yaxis_x : `int`, optional
-			Index along the first dimension of the `yaxis_name` grid axis
-			array identifying the cross-section to visualize. Defaults to `x`.
-			Only effective if `yaxis_name` is not 'y' and `x` is given.
-		yaxis_z : `int`, optional
-			Index along the third dimension of the `yaxis_name` grid axis
-			array identifying the cross-section to visualize. Defaults to `z`.
-			Only effective if `yaxis_name` is not 'y' and `z` is given.
-		zaxis_name : `str`, optional
-			If either `x` or `y` is given, the name of the grid axis to
-			place on the plot y-axis. Options are:
+        yaxis_units : `str`, optional
+            If either `x` or `z` is given, units for the `yaxis_name` grid axis.
+            If not specified, the native units of the grid axis are used.
+        yaxis_x : `int`, optional
+            Index along the first dimension of the `yaxis_name` grid axis
+            array identifying the cross-section to visualize. Defaults to `x`.
+            Only effective if `yaxis_name` is not 'y' and `x` is given.
+        yaxis_z : `int`, optional
+            Index along the third dimension of the `yaxis_name` grid axis
+            array identifying the cross-section to visualize. Defaults to `z`.
+            Only effective if `yaxis_name` is not 'y' and `z` is given.
+        zaxis_name : `str`, optional
+            If either `x` or `y` is given, the name of the grid axis to
+            place on the plot y-axis. Options are:
 
-				* 'z' (default);
-				* 'height';
-				* 'height_on_interface_levels';
-				* 'air_pressure';
-				* 'air_pressure_on_interface_levels'.
+                * 'z' (default);
+                * 'height';
+                * 'height_on_interface_levels';
+                * 'air_pressure';
+                * 'air_pressure_on_interface_levels'.
 
-		zaxis_units : `str`, optional
-			If either `x` or `y` is given, units for the `zaxis_name` grid axis.
-			If not specified, the native units of the grid axis are used.
-		zaxis_x : `int`, optional
-			Index along the first dimension of the `zaxis_name` grid axis
-			array identifying the cross-section to visualize. Defaults to `x`.
-			Only effective if `zaxis_name` is not 'z' and `x` is given.
-		zaxis_y : `int`, optional
-			Index along the second dimension of the `zaxis_name` grid axis
-			array identifying the cross-section to visualize. Defaults to `y`.
-			Only effective if `zaxis_name` is not 'z' and `y` is given.
-		properties : `dict`, optional
-			Dictionary whose keys are strings denoting plot-specific
-			settings, and whose values specify values for those settings.
-			See :func:`~tasmania.python.plot.plot_utils.make_contour`.
-		"""
+        zaxis_units : `str`, optional
+            If either `x` or `y` is given, units for the `zaxis_name` grid axis.
+            If not specified, the native units of the grid axis are used.
+        zaxis_x : `int`, optional
+            Index along the first dimension of the `zaxis_name` grid axis
+            array identifying the cross-section to visualize. Defaults to `x`.
+            Only effective if `zaxis_name` is not 'z' and `x` is given.
+        zaxis_y : `int`, optional
+            Index along the second dimension of the `zaxis_name` grid axis
+            array identifying the cross-section to visualize. Defaults to `y`.
+            Only effective if `zaxis_name` is not 'z' and `y` is given.
+        properties : `dict`, optional
+            Dictionary whose keys are strings denoting plot-specific
+            settings, and whose values specify values for those settings.
+            See :func:`~tasmania.python.plot.plot_utils.make_contour`.
+        """
         super().__init__(properties)
 
         self.grid = grid
@@ -237,8 +228,8 @@ class Contour(Drawer):
 
     def __call__(self, state, fig, ax):
         """
-		Call operator generating the contour plot.
-		"""
+        Call operator generating the contour plot.
+        """
         self._slave(state, ax)
 
 

@@ -29,15 +29,21 @@ from tasmania.python.plot.monitors import Plot
 from tasmania.python.plot.profile import LineProfile
 
 
-baseline_dir = "baseline_images/py{}{}/test_animation".format(
-    sys.version_info.major, sys.version_info.minor
+baseline_dir = os.path.join(
+    os.getcwd(),
+    "baseline_images/py{}{}/test_animation".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
-result_dir = "result_images/py{}{}/test_animation".format(
-    sys.version_info.major, sys.version_info.minor
+result_dir = os.path.join(
+    os.getcwd(),
+    "result_images/py{}{}/test_animation".format(
+        sys.version_info.major, sys.version_info.minor
+    ),
 )
 
 
-def test(validation_data):
+def test(isentropic_data):
     # make sure the baseline directory does exist
     if not os.path.exists(baseline_dir):
         os.makedirs(baseline_dir)
@@ -57,7 +63,7 @@ def test(validation_data):
     field_units = "km hr^-1"
 
     # grab data
-    domain, grid_type, states = validation_data
+    domain, grid_type, states = isentropic_data
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
 
     # indices identifying the cross-line to visualize

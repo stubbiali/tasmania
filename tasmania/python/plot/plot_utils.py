@@ -20,20 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-    get_figure_and_axes
-    set_figure_properties
-    set_axes_properties
-    reverse_colormap
-    set_colorbar
-    make_lineplot
-    make_contour
-    make_contourf
-    make_quiver
-    make_rectangle
-    make_cdf
-"""
 from matplotlib import rc, rcParams
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
@@ -68,7 +54,6 @@ linestyle_dict = {
     "dotted": "dotted",
     "dashdot": "dashdot",
     "loosely dotted": (0, (1, 10)),
-    "dotted": (0, (1, 1)),
     "densely dotted": (0, (1, 1)),
     "loosely dashed": (0, (5, 10)),
     "densely dashed": (0, (5, 1)),
@@ -889,6 +874,7 @@ def make_lineplot(x, y, ax, **kwargs):
     x_factor = kwargs.get("x_factor", 1.0)
     y_factor = kwargs.get("y_factor", 1.0)
     linestyle = kwargs.get("linestyle", "solid")
+    linestyle = linestyle or "solid"
     linewidth = kwargs.get("linewidth", 1.5)
     linecolor = kwargs.get("linecolor", "blue")
     marker = kwargs.get("marker", None)
@@ -1580,9 +1566,7 @@ def make_cdf(data, ax, **kwargs):
 
 
 def add_annotation(ax, **kwargs):
-    """
-	Add a text annotation to a plot.
-	"""
+    """ Add a text annotation to a plot. """
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)
     text = kwargs.get("text", "")
