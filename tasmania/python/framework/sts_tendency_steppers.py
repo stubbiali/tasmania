@@ -50,6 +50,7 @@ from tasmania.python.utils.dict_utils import (
     subtract,
 )
 from tasmania.python.utils.framework_utils import check_property_compatibility
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import assert_sequence
 
@@ -448,6 +449,7 @@ class GTForwardEuler(STSTendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=np.float32,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -464,6 +466,8 @@ class GTForwardEuler(STSTendencyStepper):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._managed_memory = managed_memory
+
+        set_annotations(forward_euler, dtype)
 
         self._stencil = gtscript.stencil(
             definition=forward_euler,
@@ -628,6 +632,7 @@ class GTRungeKutta2(STSTendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=np.float32,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -644,6 +649,9 @@ class GTRungeKutta2(STSTendencyStepper):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._managed_memory = managed_memory
+
+        set_annotations(rk2_stage_0, dtype)
+        set_annotations(forward_euler, dtype)
 
         self._stencil_stage_0 = gtscript.stencil(
             definition=rk2_stage_0,
@@ -886,6 +894,7 @@ class GTRungeKutta3WS(STSTendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=np.float32,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -902,6 +911,10 @@ class GTRungeKutta3WS(STSTendencyStepper):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._managed_memory = managed_memory
+
+        set_annotations(rk3ws_stage_0, dtype)
+        set_annotations(rk2_stage_0, dtype)
+        set_annotations(forward_euler, dtype)
 
         self._stencil_stage_0 = gtscript.stencil(
             definition=rk3ws_stage_0,

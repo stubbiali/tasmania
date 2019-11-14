@@ -269,15 +269,21 @@ def test_gt_forward_euler(
         ),
         label="domain",
     )
+    grid = domain.numerical_grid
 
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "default_origin": default_origin, "rebuild": False}
+    gt_kwargs = {
+        "backend": backend,
+        "dtype": dtype,
+        "default_origin": default_origin,
+        "rebuild": False,
+    }
 
-    grid = domain.numerical_grid
     state = data.draw(
         st_isentropic_state_f(
             grid,
@@ -470,15 +476,21 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
         ),
         label="domain",
     )
+    grid = domain.numerical_grid
 
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "default_origin": default_origin, "rebuild": False}
+    gt_kwargs = {
+        "backend": backend,
+        "dtype": dtype,
+        "default_origin": default_origin,
+        "rebuild": False,
+    }
 
-    grid = domain.numerical_grid
     state = data.draw(
         st_isentropic_state_f(
             grid,

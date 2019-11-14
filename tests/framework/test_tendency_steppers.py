@@ -286,6 +286,7 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
@@ -311,7 +312,11 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     fe = GTForwardEuler(
-        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+        tc1,
+        execution_policy="serial",
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in fe.output_properties
@@ -377,6 +382,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
@@ -407,6 +413,7 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
+        dtype=dtype,
         default_origin=default_origin,
     )
 
@@ -769,6 +776,7 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
@@ -795,7 +803,11 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk2 = GTRungeKutta2(
-        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+        tc1,
+        execution_policy="serial",
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in rk2.output_properties
@@ -888,6 +900,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
@@ -919,6 +932,7 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
+        dtype=dtype,
         default_origin=default_origin,
     )
 
@@ -1386,6 +1400,7 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
     cgrid = domain.numerical_grid
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
@@ -1412,7 +1427,11 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk3 = GTRungeKutta3WS(
-        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+        tc1,
+        execution_policy="serial",
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
     )
 
     assert "air_isentropic_density" in rk3.output_properties
@@ -1522,6 +1541,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
     assume(hb.type != "dirichlet")
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
@@ -1553,6 +1573,7 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
         execution_policy="serial",
         enforce_horizontal_boundary=True,
         backend=backend,
+        dtype=dtype,
         default_origin=default_origin,
     )
 

@@ -34,7 +34,8 @@ from tasmania.python.framework.base_components import (
 )
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.storage_utils import empty, get_storage_shape, zeros
+from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
 
 try:
@@ -243,6 +244,9 @@ class KesslerMicrophysics(TendencyComponent):
                 managed_memory=managed_memory,
             )
 
+        # update the annotations for the field arguments of the definition function
+        set_annotations(self._stencil_defs, dtype)
+
         # initialize the underlying gt4py stencil object
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
@@ -383,13 +387,13 @@ class KesslerMicrophysics(TendencyComponent):
 
         # collect the tendencies
         # >>> comment the following two lines before testing <<<
-        self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
-        self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
+        # self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
+        # self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
         if self._rain_evaporation:
             # >>> comment the following two lines before testing <<<
-            self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
-            self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
+            # self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
+            # self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
             tendencies[mfwv] = self._out_qv_tnd
             if not self._pttd:
                 tendencies["air_potential_temperature"] = self._out_theta_tnd
@@ -610,6 +614,9 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             managed_memory=managed_memory,
         )
 
+        # update the annotations for the field arguments of the definition function
+        set_annotations(self._stencil_defs, dtype)
+
         # initialize the underlying gt4py stencil object
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
@@ -817,6 +824,8 @@ class KesslerFallVelocity(DiagnosticComponent):
             managed_memory=managed_memory,
         )
 
+        set_annotations(self._stencil_defs, dtype)
+
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             name=self.__class__.__name__,
@@ -970,6 +979,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
+
+        set_annotations(self._stencil_defs, dtype)
 
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 MODULES=( )
-# MODULES=( python_virtualenv/15.0.3 cray-python/3.6.5.7 cudatoolkit )
+# MODULES=( cray-python/3.6.5.7 cudatoolkit )
 PYTHON=python3.7   # use 'python3.7' when possible
 CUDA=
 VENV=venv
-FRESH_INSTALL=1
+FRESH_INSTALL=0
 
 function install()
 {
@@ -19,10 +19,13 @@ function install()
 
   # On OSX only:
   # change matplotlib backend from macosx to TkAgg
-  # cat $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc | \
-  #   sed -e 's/^backend.*: macosx/backend : TkAgg/g' > /tmp/.matplotlibrc && \
-  #   cp /tmp/.matplotlibrc $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc && \
-  #   rm /tmp/.matplotlibrc
+  if [[ "$OSTYPE" == "darwin"* ]]
+  then
+    cat $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc | \
+      sed -e 's/^backend.*: macosx/backend : TkAgg/g' > /tmp/.matplotlibrc && \
+      cp /tmp/.matplotlibrc $VENV/lib/$PYTHON/site-packages/matplotlib/mpl-data/matplotlibrc && \
+      rm /tmp/.matplotlibrc
+  fi
 }
 
 for MODULE in "${MODULES[@]}"

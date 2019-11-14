@@ -136,7 +136,8 @@ def first_order_validation(phi, grid, diffusion_depth, nb, backend, default_orig
 )
 @given(hyp_st.data())
 def test_first_order(data):
-    gt.storage.prepare_numpy()
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -244,7 +245,8 @@ def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
 )
 @given(hyp_st.data())
 def test_second_order(data):
-    gt.storage.prepare_numpy()
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -355,7 +357,8 @@ def third_order_validation(phi, grid, diffusion_depth, nb, backend, default_orig
 )
 @given(hyp_st.data())
 def test_third_order(data):
-    gt.storage.prepare_numpy()
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation

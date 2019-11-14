@@ -49,7 +49,7 @@ from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
 # from tasmania.python.isentropic.physics.coriolis import \
 # 	IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
-from tasmania.python.utils.storage_utils import deepcopy_array_dict
+from tasmania.python.utils.storage_utils import deepcopy_array_dict, deepcopy_dataarray_dict
 
 try:
     from .conf import (
@@ -134,10 +134,10 @@ def get_montgomery_potential(grid, s, pt, mtg):
 
     exn = cp * (p / pref) ** (rd / cp)
 
-    mtg_s = theta_s * exn[:, :, -1] + g * topo
-    mtg[:nx, :ny, -2] = mtg_s + 0.5 * dz * exn[:, :, -1]
+    mtg_s = theta_s * exn[:nx, :ny, -1] + g * topo
+    mtg[:nx, :ny, -2] = mtg_s + 0.5 * dz * exn[:nx, :ny, -1]
     for k in range(nz - 2, -1, -1):
-        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:, :, k + 1]
+        mtg[:nx, :ny, k] = mtg[:nx, :ny, k + 1] + dz * exn[:nx, :ny, k + 1]
 
 
 def get_velocity_components(nx, ny, s, su, sv, u, v):
@@ -579,7 +579,7 @@ def rk3ws_step(
     deadline=None,
 )
 @given(hyp_st.data())
-def test1(data):
+def test(data):
     """
     - Slow tendencies: no
     - Intermediate tendencies: no
@@ -751,7 +751,7 @@ def test1(data):
     #
     # test numerics
     #
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
     state_new = dycore(state, {}, timestep)
 

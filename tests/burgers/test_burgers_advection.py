@@ -35,6 +35,7 @@ import pytest
 from gt4py import gtscript, storage as gt_storage, __externals__
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -64,9 +65,10 @@ except (ImportError, ModuleNotFoundError):
 
 
 class WrappingStencil:
-    def __init__(self, advection, nb, backend):
+    def __init__(self, advection, nb, backend, dtype):
         assert nb >= advection.extent
         self.nb = nb
+        set_annotations(self.stencil_defs, dtype)
         decorator = gtscript.stencil(
             backend, rebuild=False, externals={"call_func": advection.__call__}
         )
@@ -168,7 +170,7 @@ def test_first_order(data):
 
     advection = BurgersAdvection.factory("first_order")
 
-    ws = WrappingStencil(advection, nb, backend)
+    ws = WrappingStencil(advection, nb, backend, dtype)
 
     ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 
@@ -233,7 +235,7 @@ def test_second_order(data):
 
     advection = BurgersAdvection.factory("second_order")
 
-    ws = WrappingStencil(advection, nb, backend)
+    ws = WrappingStencil(advection, nb, backend, dtype)
 
     ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 
@@ -310,7 +312,7 @@ def test_third_order(data):
 
     advection = BurgersAdvection.factory("third_order")
 
-    ws = WrappingStencil(advection, nb, backend)
+    ws = WrappingStencil(advection, nb, backend, dtype)
 
     ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 
@@ -383,7 +385,7 @@ def test_fourth_order(data):
 
     advection = BurgersAdvection.factory("fourth_order")
 
-    ws = WrappingStencil(advection, nb, backend)
+    ws = WrappingStencil(advection, nb, backend, dtype)
 
     ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 
@@ -466,7 +468,7 @@ def test_fifth_order(data):
 
     advection = BurgersAdvection.factory("fifth_order")
 
-    ws = WrappingStencil(advection, nb, backend)
+    ws = WrappingStencil(advection, nb, backend, dtype)
 
     ws(dx, dy, u, v, adv_u_x, adv_u_y, adv_v_x, adv_v_y)
 

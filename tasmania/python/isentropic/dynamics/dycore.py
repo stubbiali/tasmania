@@ -366,6 +366,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
+            dtype=dtype,
             exec_info=exec_info,
             rebuild=rebuild,
         )
@@ -376,6 +377,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
+                dtype=dtype,
                 exec_info=exec_info,
                 rebuild=rebuild,
             )
@@ -779,14 +781,8 @@ class IsentropicDynamicalCore(DynamicalCore):
             stage, timestep, raw_state, raw_tendencies
         )
 
-        # restrict the state onto the numerical grid
-        raw_state_new_min = {"time": raw_state_new["time"]}
-        for key in raw_state_new:
-            if key != "time":
-                raw_state_new_min[key] = raw_state_new[key][:nx, :ny, :nz]
-
         # apply the lateral boundary conditions
-        hb.dmn_enforce_raw(raw_state_new_min, out_properties)
+        hb.dmn_enforce_raw(raw_state_new, out_properties)
 
         # extract the stepped prognostic model variables
         s_new = raw_state_new["air_isentropic_density"]
