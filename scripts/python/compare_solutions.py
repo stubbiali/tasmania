@@ -20,53 +20,107 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import argparse
 import numpy as np
 import tasmania as taz
 
 
 #
-# User inputs
+# Inputs
 #
 filename1 = (
-    "../../data/isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_"
-    "dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_cc_numpy.nc"
+    "../../data/isentropic_validation/isentropic_moist_rk3ws_si_fifth_order_upwind_gt_rk2_"
+    "nx41_ny41_nz60_dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_numpy.nc"
 )
 filename2 = (
-    "../../data/isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_"
-    "dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_cc_gtx86.nc"
+    "../../data/isentropic_validation/isentropic_moist_rk3ws_si_fifth_order_upwind_gt_rk2_"
+    "nx41_ny41_nz60_dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_gtx86.nc"
 )
 
+# field_properties = {"x_velocity": {"units": "m s^-1"}, "y_velocity": {"units": "m s^-1"}}
 field_properties = {
-    'accumulated_precipitation': {'units': 'mm'},
-    'air_density': {'units': 'kg m^-3'},
-    'air_isentropic_density': {'units': 'kg m^-2 K^-1'},
-    'air_pressure_on_interface_levels': {'units': 'Pa'},
-    'air_temperature': {'units': 'K'},
-    'exner_function_on_interface_levels': {'units': 'J K^-1 kg^-1'},
-    'height_on_interface_levels': {'units': 'm'},
-    'mass_fraction_of_cloud_liquid_water_in_air': {'units': 'g g^-1'},
-    'mass_fraction_of_precipitation_water_in_air': {'units': 'g g^-1'},
-    'mass_fraction_of_water_vapor_in_air': {'units': 'g g^-1'},
-    'montgomery_potential': {'units': 'm^2 s^-2'},
-    'x_momentum_isentropic': {'units': 'kg m^-1 K^-1 s^-1'},
-    'x_velocity_at_u_locations': {'units': 'm s^-1'},
-    'y_momentum_isentropic': {'units': 'kg m^-1 K^-1 s^-1'},
-    'y_velocity_at_v_locations': {'units': 'm s^-1'},
+    "accumulated_precipitation": {"units": "mm"},
+    "air_density": {"units": "kg m^-3"},
+    "air_isentropic_density": {"units": "kg m^-2 K^-1"},
+    "air_pressure_on_interface_levels": {"units": "Pa"},
+    "air_temperature": {"units": "K"},
+    "exner_function_on_interface_levels": {"units": "J K^-1 kg^-1"},
+    "height_on_interface_levels": {"units": "m"},
+    "mass_fraction_of_cloud_liquid_water_in_air": {"units": "g g^-1"},
+    "mass_fraction_of_precipitation_water_in_air": {"units": "g g^-1"},
+    "mass_fraction_of_water_vapor_in_air": {"units": "g g^-1"},
+    "montgomery_potential": {"units": "m^2 s^-2"},
+    "x_momentum_isentropic": {"units": "kg m^-1 K^-1 s^-1"},
+    "x_velocity_at_u_locations": {"units": "m s^-1"},
+    "y_momentum_isentropic": {"units": "kg m^-1 K^-1 s^-1"},
+    "y_velocity_at_v_locations": {"units": "m s^-1"},
 }
 
-tlevels1 = range(0, 36)
-tlevels2 = range(0, 36)
+tlevels1 = range(0, 37)
+tlevels2 = range(0, 37)
+
 
 #
 # Code
 #
+def get_range(x, y=None, z=None):
+    z = z or 1
+    return range(x, y, z) if y is not None else range(0, x, z)
+
+
 if __name__ == "__main__":
-    _, _, states1 = taz.load_netcdf_dataset(filename1)
-    _, _, states2 = taz.load_netcdf_dataset(filename2)
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-f1",
+        metavar="filename",
+        type=str,
+        default=filename1,
+        help="Path to the first data set.",
+        dest="filename1",
+    )
+    parser.add_argument(
+        "-f2",
+        metavar="filename",
+        type=str,
+        default=filename2,
+        help="Path to the second data set.",
+        dest="filename2",
+    )
+    parser.add_argument(
+        "-t1",
+        metavar=("start", "stop", "step"),
+        type=int,
+        nargs=3,
+        default=(tlevels1.start, tlevels1.stop, tlevels1.step),
+        help="Time levels to be considered from the first data set.",
+        dest="t1",
+    )
+    parser.add_argument(
+        "-t2",
+        metavar=("start", "stop", "step"),
+        type=int,
+        nargs=3,
+        default=(tlevels2.start, tlevels2.stop, tlevels2.step),
+        help="Time levels to be considered from the second data set.",
+        dest="t2",
+    )
+    parser.add_argument("-v", help="Verbose output.", dest="verbose", action="store_true")
+
+    args = parser.parse_args()
+    fname1 = args.filename1
+    fname2 = args.filename2
+    verbose = args.verbose
+
+    _, _, states1 = taz.load_netcdf_dataset(fname1)
+    _, _, states2 = taz.load_netcdf_dataset(fname2)
+
+    t1s = get_range(*args.t1)
+    t2s = get_range(*args.t2)
 
     validated = True
 
-    for t1, t2 in zip(tlevels1, tlevels2):
+    for t1, t2 in zip(t1s, t2s):
         state1 = states1[t1]
         state2 = states2[t2]
 
@@ -98,6 +152,8 @@ if __name__ == "__main__":
 
         if not iteration_validated:
             print("")
+        elif verbose:
+            print("Iteration ({:4d}, {:4d}) validated!".format(t1, t2))
 
     if validated:
-        print("Validation successfully completed!")
+        print("Solutions validated!")
