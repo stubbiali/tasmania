@@ -32,6 +32,7 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -195,6 +196,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             "vflux_extent": self._vflux.extent,
             "vstaggering": self._stgz,
         }
+        set_annotations(self._stencil_defs, dtype)
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             backend=backend,

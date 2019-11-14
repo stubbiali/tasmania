@@ -41,6 +41,7 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.utils.dict_utils import add_inplace
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
@@ -105,6 +106,7 @@ class ConcurrentCoupling:
         backend="numpy",
         backend_opts=None,
         build_info=None,
+            dtype=np.float32,
         exec_info=None,
         rebuild=False,
         **kwargs
@@ -148,6 +150,8 @@ class ConcurrentCoupling:
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages passed to the stencil.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
@@ -186,6 +190,9 @@ class ConcurrentCoupling:
         )
 
         if gt_powered:
+            # update annotations for the field arguments of the definition function
+            set_annotations(stencil_sum_defs, dtype)
+
             # compile the underlying stencil
             self._stencil_sum = gtscript.stencil(
                 definition=stencil_sum_defs,

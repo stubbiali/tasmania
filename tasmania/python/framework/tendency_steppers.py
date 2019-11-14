@@ -40,6 +40,7 @@ from gt4py import gtscript
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.utils.dict_utils import add, add_inplace, multiply
 from tasmania.python.utils.framework_utils import check_property_compatibility
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import assert_sequence
 
@@ -423,6 +424,7 @@ class GTForwardEuler(TendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=np.float32,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -439,6 +441,8 @@ class GTForwardEuler(TendencyStepper):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._managed_memory = managed_memory
+
+        set_annotations(forward_euler, dtype)
 
         self._stencil = gtscript.stencil(
             definition=forward_euler,
@@ -593,6 +597,7 @@ class GTRungeKutta2(TendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=np.float32,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -609,6 +614,8 @@ class GTRungeKutta2(TendencyStepper):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._managed_memory = managed_memory
+
+        set_annotations(forward_euler, dtype)
 
         self._stencil = gtscript.stencil(
             definition=forward_euler,
@@ -826,6 +833,7 @@ class GTRungeKutta3WS(TendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=np.float32,
         exec_info=None,
         default_origin=None,
         rebuild=False,
@@ -842,6 +850,8 @@ class GTRungeKutta3WS(TendencyStepper):
         self._exec_info = exec_info
         self._default_origin = default_origin
         self._managed_memory = managed_memory
+
+        set_annotations(forward_euler, dtype)
 
         self._stencil = gtscript.stencil(
             definition=forward_euler,

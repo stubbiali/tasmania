@@ -333,7 +333,7 @@ def test_gt_forward_euler(
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -458,7 +458,7 @@ def test_gtgt_forward_euler(
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -508,6 +508,7 @@ def test_gtgt_forward_euler(
         execution_policy="serial",
         gt_powered=True,
         backend=backend,
+        dtype=dtype,
         rebuild=False,
     )
 
@@ -702,7 +703,7 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -803,9 +804,9 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -831,7 +832,7 @@ def test_gtgt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compo
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -883,7 +884,8 @@ def test_gtgt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compo
         execution_policy="serial",
         gt_powered=True,
         backend=backend,
-        rebuild=False
+        dtype=dtype,
+        rebuild=False,
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -927,7 +929,7 @@ def test_gtgt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compo
     sv1 = state_prv_dc["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
     sv3 = zeros(storage_shape, backend, dtype, default_origin)
     sv3[:, :-1] = sv[:, :-1] + timestep.total_seconds() * 0.5 * s3b[:, :-1] * (
-            v[:, :-1] + v[:, 1:]
+        v[:, :-1] + v[:, 1:]
     )
     sv_out = sv1 + (sv3 - sv)
     compare_arrays(state_prv["y_momentum_isentropic"].values, sv_out)

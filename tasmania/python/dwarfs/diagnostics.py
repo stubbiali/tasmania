@@ -26,6 +26,8 @@ from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
+from tasmania.python.utils.gtscript_utils import set_annotations
+
 try:
     from tasmania.conf import datatype
 except ImportError:
@@ -47,6 +49,7 @@ class HorizontalVelocity:
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=datatype,
         exec_info=None,
         rebuild=False
     ):
@@ -65,6 +68,8 @@ class HorizontalVelocity:
             Dictionary of backend-specific options.
         build_info : `dict`, optional
             Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages passed to the call operator.
         exec_info : `dict`, optional
             Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
@@ -75,6 +80,11 @@ class HorizontalVelocity:
         self._grid = grid
         self._staggering = staggering
         self._exec_info = exec_info
+
+        # update annotations for the field arguments of the definition functions
+        set_annotations(self._stencil_diagnosing_momenta_defs, dtype)
+        set_annotations(self._stencil_diagnosing_velocity_x_defs, dtype)
+        set_annotations(self._stencil_diagnosing_velocity_y_defs, dtype)
 
         # initialize the underlying stencils
         self._stencil_diagnosing_momenta = gtscript.stencil(
@@ -244,6 +254,7 @@ class WaterConstituent:
         backend="numpy",
         backend_opts=None,
         build_info=None,
+        dtype=datatype,
         exec_info=None,
         rebuild=False
     ):
@@ -270,6 +281,10 @@ class WaterConstituent:
         # store input arguments needed at run-time
         self._grid = grid
         self._exec_info = exec_info
+
+        # update annotations for the field arguments of the definition functions
+        set_annotations(self._stencil_diagnosing_density_defs, dtype)
+        set_annotations(self._stencil_diagnosing_mass_fraction_defs, dtype)
 
         # initialize the underlying stencils
         self._stencil_diagnosing_density = gtscript.stencil(

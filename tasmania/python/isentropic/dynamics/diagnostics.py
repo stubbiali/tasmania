@@ -28,6 +28,7 @@ from gt4py import gtscript, __externals__
 # from gt4py.__gtscript__ import computation, interval, PARALLEL, FORWARD, BACKWARD
 
 from tasmania.python.utils.data_utils import get_physical_constants
+from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -157,6 +158,12 @@ class IsentropicDiagnostics:
             "g": pcs["gravitational_acceleration"],
             "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
         }
+
+        # update the annotations for the field arguments of the definition functions
+        set_annotations(self._stencil_diagnostic_variables_defs, dtype)
+        set_annotations(self._stencil_density_and_temperature_defs, dtype)
+        set_annotations(self._stencil_montgomery_defs, dtype)
+        set_annotations(self._stencil_height_defs, dtype)
 
         # instantiate the underlying gt4py stencils
         self._stencil_diagnostic_variables = gtscript.stencil(

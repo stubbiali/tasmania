@@ -36,10 +36,18 @@ from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstitu
 from tasmania.python.utils.storage_utils import zeros
 
 try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
+    from .conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from .utils import compare_arrays, st_floats, st_one_of, st_domain, st_raw_field
 except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
+    from conf import (
+        backend as conf_backend,
+        default_origin as conf_dorigin,
+        nb as conf_nb,
+    )
     from utils import compare_arrays, st_floats, st_one_of, st_domain, st_raw_field
 
 
@@ -53,7 +61,8 @@ except (ImportError, ModuleNotFoundError):
 )
 @given(hyp_st.data())
 def test_horizontal_velocity_staggered(data):
-    gt.storage.prepare_numpy()
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -109,7 +118,7 @@ def test_horizontal_velocity_staggered(data):
     ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
     rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
-    hv = HorizontalVelocity(grid, True, backend=backend, rebuild=False)
+    hv = HorizontalVelocity(grid, True, backend=backend, dtype=dtype, rebuild=False)
 
     hv.get_momenta(r, u, v, ru, rv)
 
@@ -139,7 +148,8 @@ def test_horizontal_velocity_staggered(data):
 )
 @given(hyp_st.data())
 def test_horizontal_velocity(data):
-    gt.storage.prepare_numpy()
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -195,7 +205,7 @@ def test_horizontal_velocity(data):
     ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
     rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
-    hv = HorizontalVelocity(grid, False, backend=backend, rebuild=False)
+    hv = HorizontalVelocity(grid, False, backend=backend, dtype=dtype, rebuild=False)
 
     hv.get_momenta(r, u, v, ru, rv)
 
@@ -225,7 +235,8 @@ def test_horizontal_velocity(data):
 )
 @given(hyp_st.data())
 def test_water_constituent(data):
-    gt.storage.prepare_numpy()
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -244,7 +255,7 @@ def test_water_constituent(data):
     r = data.draw(
         st_raw_field(
             shape=(nx + 1, ny + 1, nz + 1),
-            min_value=-1e4,
+            min_value=1,
             max_value=1e4,
             backend=backend,
             dtype=dtype,
@@ -267,13 +278,13 @@ def test_water_constituent(data):
     # ========================================
     # test bed
     # ========================================
-    rq = zeros((nx+1, ny+1, nz+1), backend, dtype, default_origin)
-    q_new = zeros((nx+1, ny+1, nz+1), backend, dtype, default_origin)
+    rq = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    q_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
 
     #
     # clipping off
     #
-    wc = WaterConstituent(grid, False, backend=backend, rebuild=False)
+    wc = WaterConstituent(grid, False, backend=backend, dtype=dtype, rebuild=False)
 
     wc.get_density_of_water_constituent(r, q, rq)
     rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
@@ -286,7 +297,7 @@ def test_water_constituent(data):
     #
     # clipping on
     #
-    wc = WaterConstituent(grid, True, backend=backend, rebuild=False)
+    wc = WaterConstituent(grid, True, backend=backend, dtype=dtype, rebuild=False)
 
     wc.get_density_of_water_constituent(r, q, rq)
     rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
