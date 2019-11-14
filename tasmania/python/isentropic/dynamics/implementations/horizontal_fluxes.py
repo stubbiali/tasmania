@@ -83,7 +83,7 @@ class Upwind(IsentropicHorizontalFlux):
         flux_sv_x = get_upwind_flux_x(u=u, phi=sv)
         flux_sv_y = get_upwind_flux_y(v=v, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents
@@ -164,7 +164,7 @@ class Centered(IsentropicHorizontalFlux):
         flux_sv_x = get_centered_flux_x(u=u, phi=sv)
         flux_sv_y = get_centered_flux_y(v=v, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents
@@ -203,7 +203,7 @@ def get_maccormack_predicted_value_s(dt, dx, dy, s, su, sv):
 def get_maccormack_predicted_value_su(dt, dx, dy, s, u_unstg, v_unstg, mtg, su, su_tnd):
     from __externals__ import su_tnd_on
 
-    if su_tnd_on:  # compile-time if
+    if __INLINED(su_tnd_on):  # compile-time if
         su_prd = su[0, 0, 0] - dt * (
             (u_unstg[1, 0, 0] * su[1, 0, 0] - u_unstg[0, 0, 0] * su[0, 0, 0]) / dx
             + (v_unstg[0, 1, 0] * su[0, 1, 0] - v_unstg[0, 0, 0] * su[0, 0, 0]) / dy
@@ -224,7 +224,7 @@ def get_maccormack_predicted_value_su(dt, dx, dy, s, u_unstg, v_unstg, mtg, su, 
 def get_maccormack_predicted_value_sv(dt, dx, dy, s, u_unstg, v_unstg, mtg, sv, sv_tnd):
     from __externals__ import sv_tnd_on
 
-    if sv_tnd_on is None:  # compile-time if
+    if __INLINED(sv_tnd_on) is None:  # compile-time if
         sv_prd = sv[0, 0, 0] - dt * (
             (u_unstg[1, 0, 0] * sv[1, 0, 0] - u_unstg[0, 0, 0] * sv[0, 0, 0]) / dx
             + (v_unstg[0, 1, 0] * sv[0, 1, 0] - v_unstg[0, 0, 0] * sv[0, 0, 0]) / dy
@@ -245,7 +245,7 @@ def get_maccormack_predicted_value_sv(dt, dx, dy, s, u_unstg, v_unstg, mtg, sv, 
 def get_maccormack_predicted_value_sq(
     dt, dx, dy, s, u_unstg, v_unstg, sq, q_tnd_on, q_tnd
 ):
-    if q_tnd_on is None:  # compile-time if
+    if __INLINED(q_tnd_on) is None:  # compile-time if
         sq_prd = sq[0, 0, 0] - dt * (
             (u_unstg[1, 0, 0] * sq[1, 0, 0] - u_unstg[0, 0, 0] * sq[0, 0, 0]) / dx
             + (v_unstg[0, 1, 0] * sq[0, 1, 0] - v_unstg[0, 0, 0] * sq[0, 0, 0]) / dy
@@ -366,7 +366,7 @@ class MacCormack(IsentropicHorizontalFlux):
             sv_tnd=sv_tnd,
         )
 
-        if moist:  # compile-time if
+        if __INLINED(moist):  # compile-time if
             # compute the predicted values for the water constituents
             sqv_prd = get_maccormack_predicted_value_sq(
                 dt=dt,
@@ -423,9 +423,9 @@ class MacCormack(IsentropicHorizontalFlux):
             v_unstg=v_unstg, phi=sv, v_prd_unstg=v_prd_unstg, phi_prd=sv_prd
         )
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
-        if moist:  # compile-time if
+        else:
             # compute the fluxes for the water constituents
             flux_sqv_x = get_maccormack_flux_x(
                 u_unstg=u_unstg, phi=sqv, u_prd_unstg=u_prd_unstg, phi_prd=sqv_prd
@@ -544,7 +544,7 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
         flux_sv_x = get_third_order_upwind_flux_x(u=u, phi=sv)
         flux_sv_y = get_third_order_upwind_flux_y(v=v, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents
@@ -669,7 +669,7 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
         flux_sv_x = get_fifth_order_upwind_flux_x(u=u, phi=sv)
         flux_sv_y = get_fifth_order_upwind_flux_y(v=v, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents

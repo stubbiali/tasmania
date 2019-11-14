@@ -62,14 +62,14 @@ def forward_euler_step(
             dx=dx, dy=dy, u=in_u_tmp, v=in_v_tmp
         )
 
-        if tnd_u:
+        if __INLINED(tnd_u):
             out_u = in_u[0, 0, 0] - dt * (
                 adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0] - in_u_tnd[0, 0, 0]
             )
         else:
             out_u = in_u[0, 0, 0] - dt * (adv_u_x[0, 0, 0] + adv_u_y[0, 0, 0])
 
-        if tnd_v:
+        if __INLINED(tnd_v):
             out_v = in_v[0, 0, 0] - dt * (
                 adv_v_x[0, 0, 0] + adv_v_y[0, 0, 0] - in_v_tnd[0, 0, 0]
             )

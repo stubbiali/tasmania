@@ -383,13 +383,13 @@ class KesslerMicrophysics(TendencyComponent):
 
         # collect the tendencies
         # >>> comment the following two lines before testing <<<
-        # self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
-        # self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
+        self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
+        self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
         if self._rain_evaporation:
             # >>> comment the following two lines before testing <<<
-            # self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
-            # self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
+            self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
+            self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
             tendencies[mfwv] = self._out_qv_tnd
             if not self._pttd:
                 tendencies["air_potential_temperature"] = self._out_theta_tnd
@@ -429,7 +429,7 @@ class KesslerMicrophysics(TendencyComponent):
 
         with computation(PARALLEL), interval(...):
             # interpolate the pressure and the Exner function at the vertical main levels
-            if air_pressure_on_interface_levels:  # compile-time if
+            if __INLINED(air_pressure_on_interface_levels):  # compile-time if
                 p = 0.5 * (in_p[0, 0, 0] + in_p[0, 0, 1])
                 exn = 0.5 * (in_exn[0, 0, 0] + in_exn[0, 0, 1])
             else:
@@ -449,7 +449,7 @@ class KesslerMicrophysics(TendencyComponent):
             # compute the contribution of accretion to rain development
             cr = k2 * in_qc * (in_qr ** 0.875)
 
-            if rain_evaporation:  # compile-time if
+            if __INLINED(rain_evaporation):  # compile-time if
                 # compute the contribution of evaporation to rain development
                 c = 1.6 + 124.9 * ((rho_gcm3 * in_qr) ** 0.2046)
                 er = (
@@ -460,7 +460,7 @@ class KesslerMicrophysics(TendencyComponent):
                 )
 
             # calculate the tendencies
-            if not rain_evaporation:  # compile-time if
+            if __INLINED(not rain_evaporation):  # compile-time if
                 out_qc_tnd = -(ar + cr)
                 out_qr_tnd = ar + cr
             else:
@@ -469,7 +469,7 @@ class KesslerMicrophysics(TendencyComponent):
                 out_qr_tnd = ar + cr - er
 
             # compute the change over time in potential temperature
-            if rain_evaporation:  # compile-time if
+            if __INLINED(rain_evaporation):  # compile-time if
                 out_theta_tnd = -lhvw / exn * er
 
 
@@ -718,7 +718,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
 
         with computation(PARALLEL), interval(...):
             # interpolate the pressure at the vertical main levels
-            if air_pressure_on_interface_levels:  # compile-time if
+            if __INLINED(air_pressure_on_interface_levels):  # compile-time if
                 p = 0.5 * (in_p[0, 0, 0] + in_p[0, 0, 1])
             else:
                 p = in_p

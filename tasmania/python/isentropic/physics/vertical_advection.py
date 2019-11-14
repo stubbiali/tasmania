@@ -369,43 +369,37 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # interpolate the velocity on the interface levels
-        if vstaggering:  # compile-time if
-            with computation(PARALLEL), interval(0, 1):
+        with computation(PARALLEL), interval(0, 1):
                 w = 0.0
-            with computation(PARALLEL), interval(1, None):
+        with computation(PARALLEL), interval(1, None):
+            if __INLINED(vstaggering):  # compile-time if
                 w = in_w
-        else:
-            with computation(PARALLEL), interval(0, 1):
-                w = 0.0
-            with computation(PARALLEL), interval(1, None):
+            else:
                 w = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, -1])
 
         # interpolate the velocity on the main levels
-        if vstaggering:
-            with computation(PARALLEL), interval(0, None):
+        with computation(PARALLEL), interval(0, None):
+            if __INLINED(vstaggering):
                 wc = 0.5 * (in_w[0, 0, 0] + in_w[0, 0, 1])
-        else:
-            with computation(PARALLEL), interval(0, None):
+            else:
                 wc = in_w
 
         # compute the isentropic density of the water species
-        if moist:  # compile-time if
-            with computation(PARALLEL), interval(0, None):
+        with computation(PARALLEL), interval(0, None):
+            if __INLINED(moist):  # compile-time if
                 sqv = in_s * in_qv
                 sqc = in_s * in_qc
                 sqr = in_s * in_qr
-        else:
-            with computation(PARALLEL), interval(0, None):
+            else:
                 sqv = 0.0  # dummy computation
 
         # compute the fluxes
-        if not moist:  # compile-time if
-            with computation(PARALLEL), interval(vflux_extent, vflux_end):
+        with computation(PARALLEL), interval(vflux_extent, vflux_end):
+            if __INLINED(not moist):  # compile-time if
                 flux_s, flux_su, flux_sv = vflux(
                     dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv
                 )
-        else:
-            with computation(PARALLEL), interval(vflux_extent, vflux_end):
+            else:
                 flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr = vflux(
                     dt=dt,
                     dz=dz,
@@ -423,7 +417,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = 0.0
             out_su = 0.0
             out_sv = 0.0
-            if moist:  # compile-time if
+            if __INLINED(moist):  # compile-time if
                 out_qv = 0.0
                 out_qc = 0.0
                 out_qr = 0.0
@@ -431,7 +425,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = (flux_s[0, 0, 1] - flux_s[0, 0, 0]) / dz
             out_su = (flux_su[0, 0, 1] - flux_su[0, 0, 0]) / dz
             out_sv = (flux_sv[0, 0, 1] - flux_sv[0, 0, 0]) / dz
-            if moist:  # compile-time if
+            if __INLINED(moist):  # compile-time if
                 out_qv = (flux_sqv[0, 0, 1] - flux_sqv[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
@@ -439,7 +433,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
             out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
             out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
             out_sv = compute_boundary(dz=dz, w=wc, phi=in_sv)
-            if moist:  # compile-time if
+            if __INLINED(moist):  # compile-time if
                 tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
                 out_qv = tmp_qv / in_s
                 tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)

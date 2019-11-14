@@ -51,7 +51,7 @@ class Upwind(IsentropicMinimalVerticalFlux):
         flux_su = get_upwind_flux(w=w, phi=su)
         flux_sv = get_upwind_flux(w=w, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_upwind_flux(w=w, phi=sqv)
@@ -83,7 +83,7 @@ class Centered(IsentropicMinimalVerticalFlux):
         flux_su = get_centered_flux(w=w, phi=su)
         flux_sv = get_centered_flux(w=w, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_centered_flux(w=w, phi=sqv)
@@ -119,7 +119,7 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
         flux_su = get_third_order_upwind_flux(w=w, phi=su)
         flux_sv = get_third_order_upwind_flux(w=w, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_third_order_upwind_flux(w=w, phi=sqv)
@@ -159,7 +159,7 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
         flux_su = get_fifth_order_upwind_flux(w=w, phi=su)
         flux_sv = get_fifth_order_upwind_flux(w=w, phi=sv)
 
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             return flux_s, flux_su, flux_sv
         else:
             flux_sqv = get_fifth_order_upwind_flux(w=w, phi=sqv)

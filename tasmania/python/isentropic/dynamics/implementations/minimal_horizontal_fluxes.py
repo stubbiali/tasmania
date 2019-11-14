@@ -89,7 +89,7 @@ class Upwind(IsentropicMinimalHorizontalFlux):
         flux_sv_x = get_upwind_flux_x(u=u, phi=sv)
         flux_sv_y = get_upwind_flux_y(v=v, phi=sv)
 
-        if not moist:
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents
@@ -158,7 +158,7 @@ class Centered(IsentropicMinimalHorizontalFlux):
         flux_sv_x = get_centered_flux_x(u=u, phi=sv)
         flux_sv_y = get_centered_flux_y(v=v, phi=sv)
 
-        if not moist:
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents
@@ -350,7 +350,7 @@ class MacCormack(IsentropicMinimalHorizontalFlux):
             v_unstg=v_unstg, phi=sv, v_prd_unstg=v_prd_unstg, phi_prd=sv_prd
         )
 
-        if not moist:
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         if moist:
             # compute the fluxes for the water constituents
@@ -433,7 +433,7 @@ class ThirdOrderUpwind(IsentropicMinimalHorizontalFlux):
         flux_sv_x = get_third_order_upwind_flux_x(u=u, phi=sv)
         flux_sv_y = get_third_order_upwind_flux_y(v=v, phi=sv)
 
-        if not moist:
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents
@@ -504,7 +504,7 @@ class FifthOrderUpwind(IsentropicMinimalHorizontalFlux):
         flux_sv_x = get_fifth_order_upwind_flux_x(u=u, phi=sv)
         flux_sv_y = get_fifth_order_upwind_flux_y(v=v, phi=sv)
 
-        if not moist:
+        if __INLINED(not moist):  # compile-time if
             return flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y
         else:
             # compute fluxes for the water constituents

@@ -71,7 +71,7 @@ def step_forward_euler(
     from __externals__ import fluxer, moist, qc_tnd_on, qr_tnd_on, qv_tnd_on, s_tnd_on
 
     with computation(PARALLEL), interval(...):
-        if not moist:  # compile-time if
+        if __INLINED(not moist):  # compile-time if
             flux_s_x, flux_s_y, _, _, _, _ = fluxer(
                 s=s_int,
                 u=u_int,
@@ -104,7 +104,7 @@ def step_forward_euler(
                 dy=dy,
             )
 
-        if s_tnd_on:  # compile-time if
+        if __INLINED(s_tnd_on):  # compile-time if
             s_new = s_now[0, 0, 0] - dt * (
                 (flux_s_x[0, 0, 0] - flux_s_x[-1, 0, 0]) / dx
                 + (flux_s_y[0, 0, 0] - flux_s_y[0, -1, 0]) / dy
@@ -116,8 +116,8 @@ def step_forward_euler(
                 + (flux_s_y[0, 0, 0] - flux_s_y[0, -1, 0]) / dy
             )
 
-        if moist:  # compile-time if
-            if qv_tnd_on:  # compile-time if
+        if __INLINED(moist):  # compile-time if
+            if __INLINED(qv_tnd_on):  # compile-time if
                 sqv_new = sqv_now[0, 0, 0] - dt * (
                     (flux_sqv_x[0, 0, 0] - flux_sqv_x[-1, 0, 0]) / dx
                     + (flux_sqv_y[0, 0, 0] - flux_sqv_y[0, -1, 0]) / dy
@@ -129,7 +129,7 @@ def step_forward_euler(
                     + (flux_sqv_y[0, 0, 0] - flux_sqv_y[0, -1, 0]) / dy
                 )
 
-            if qc_tnd_on:  # compile-time if
+            if __INLINED(qc_tnd_on):  # compile-time if
                 sqc_new = sqc_now[0, 0, 0] - dt * (
                     (flux_sqc_x[0, 0, 0] - flux_sqc_x[-1, 0, 0]) / dx
                     + (flux_sqc_y[0, 0, 0] - flux_sqc_y[0, -1, 0]) / dy
@@ -141,7 +141,7 @@ def step_forward_euler(
                     + (flux_sqc_y[0, 0, 0] - flux_sqc_y[0, -1, 0]) / dy
                 )
 
-            if qr_tnd_on:  # compile-time if
+            if __INLINED(qr_tnd_on):  # compile-time if
                 sqr_new = sqr_now[0, 0, 0] - dt * (
                     (flux_sqr_x[0, 0, 0] - flux_sqr_x[-1, 0, 0]) / dx
                     + (flux_sqr_y[0, 0, 0] - flux_sqr_y[0, -1, 0]) / dy
@@ -194,7 +194,7 @@ def step_forward_euler_momentum(
             sv_tnd=sv_tnd,
         )
 
-        if su_tnd_on:  # compile-time if
+        if __INLINED(su_tnd_on):  # compile-time if
             su_new = su_now[0, 0, 0] - dt * (
                 (flux_su_x[0, 0, 0] - flux_su_x[-1, 0, 0]) / dx
                 + (flux_su_y[0, 0, 0] - flux_su_y[0, -1, 0]) / dy
@@ -222,7 +222,7 @@ def step_forward_euler_momentum(
                 / (2.0 * dx)
             )
 
-        if sv_tnd_on:  # compile-time if
+        if __INLINED(sv_tnd_on):  # compile-time if
             sv_new = sv_now[0, 0, 0] - dt * (
                 (flux_sv_x[0, 0, 0] - flux_sv_x[-1, 0, 0]) / dx
                 + (flux_sv_y[0, 0, 0] - flux_sv_y[0, -1, 0]) / dy
