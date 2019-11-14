@@ -151,7 +151,7 @@ from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
 from tasmania.python.utils.utils import get_time_string
 
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 
 __all__ = (

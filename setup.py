@@ -49,7 +49,7 @@ def read_file(fname):
 
 setup(
     name="tasmania",
-    version="0.6.0",
+    version="0.6.1",
     author="Stefano Ubbiali",
     author_email="subbiali@phys.ethz.ch",
     description="A Python library to ease the composition, configuration, "
