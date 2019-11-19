@@ -1,11 +1,11 @@
 #!/bin/bash
 
-MODULES=( )
-# MODULES=( cray-python/3.6.5.7 cudatoolkit )
-PYTHON=python3.7   # use 'python3.7' when possible
-CUDA=
+#MODULES=( )
+MODULES=( cray-python/3.6.5.7 cudatoolkit )
+PYTHON=python3.6   # use 'python3.7' when possible
+CUDA=cuda101
 VENV=venv
-FRESH_INSTALL=0
+FRESH_INSTALL=1
 
 function install()
 {
@@ -15,7 +15,10 @@ function install()
     pip install -e docker/external/gt4py[$CUDA] || \
       pip install -e docker/external/gt4py && \
     python docker/external/gt4py/setup.py install_gt_sources && \
-    pip install -e docker/external/sympl
+    pip install -e docker/external/sympl && \
+    pre-commit install && \
+    pre-commit && \
+    deactivate
 
   # On OSX only:
   # change matplotlib backend from macosx to TkAgg
