@@ -22,6 +22,9 @@
 #
 import abc
 import sympl
+from sympl._core.units import clean_units
+
+from tasmania.python.framework.tendency_checkers import SupersetTendencyChecker
 
 
 allowed_grid_types = ("physical", "numerical")
@@ -307,3 +310,67 @@ class TendencyComponent(sympl.TendencyComponent):
             The object handling the lateral boundary conditions.
         """
         return self._hb
+
+
+class TendencyPromoter(abc.ABC):
+    """ Promote a tendency to a state variable. """
+
+    def __init__(self, domain, grid_type):
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
+
+                * 'physical';
+                * 'numerical' (default).
+
+        """
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid_type = grid_type
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+
+        # needed by sympl's TendencyChecker
+        self.input_properties = {}
+        for name, props in self.tendency_properties.items():
+            assert "dims" in props
+            assert "units" in props
+            self.input_properties[name] = {
+                "dims": props["dims"],
+                "units": clean_units(props["units"] + " s"),
+            }
+
+        self._tendency_checker = SupersetTendencyChecker(self)
+
+    @property
+    @abc.abstractmethod
+    def tendency_properties(self):
+        pass
+
+    def __call__(self, state, tendencies):
+        """
+        Parameters
+        ----------
+        state : dict[str, sympl.DataArray]
+            The dictionary of model variables.
+        tendencies : dict[str, sympl.DataArray]
+            The dictionary of tendencies.
+        """
+        self._tendency_checker.check_tendencies(tendencies)
+
+        for name, props in self.tendency_properties.items():
+            dims = props["dims"]
+            units = props["units"]
+
+            if any(src != trg for src, trg in zip(tendencies[name].dims, dims)):
+                state[name] = tendencies[name].transpose(*dims).to_units(units)
+            else:
+                state[name] = tendencies[name].to_units(units)

@@ -31,7 +31,6 @@ from sympl import (
 )
 from sympl._core.base_components import (
     InputChecker,
-    TendencyChecker as _TendencyChecker,
     OutputChecker,
 )
 
@@ -39,6 +38,7 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
 from tasmania.python.utils.storage_utils import get_array_dict, get_dataarray_dict
 from tasmania.python.utils.dict_utils import add, copy
 from tasmania.python.utils.framework_utils import (
@@ -50,17 +50,6 @@ try:
     from tasmania.conf import datatype
 except ImportError:
     from numpy import float32 as datatype
-
-
-class TendencyChecker(_TendencyChecker):
-    def __init__(self, component):
-        super().__init__(component)
-
-    def check_tendencies(self, tendency_dict):
-        __tendency_dict = {
-            key: value for key, value in tendency_dict.items() if key != "time"
-        }
-        self._check_extra_tendencies(__tendency_dict)
 
 
 class DynamicalCore(abc.ABC):
@@ -214,7 +203,7 @@ class DynamicalCore(abc.ABC):
 
         # Instantiate checkers
         self._input_checker = InputChecker(self)
-        self._tendency_checker = TendencyChecker(self)
+        self._tendency_checker = SubsetTendencyChecker(self)
         self._output_checker = OutputChecker(self)
 
         # Allocate the output state
