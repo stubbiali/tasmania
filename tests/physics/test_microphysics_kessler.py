@@ -336,12 +336,19 @@ def test_kessler_microphysics(data):
         )
 
 
-def kessler_saturation_adjustment_validation(p, t, qv, qc, beta, lhvw, cp):
+def kessler_saturation_adjustment_validation(
+    timestep, p, t, exn, qv, qc, swvf, beta, lhvw, cp, rv
+):
     p = p if p.shape[2] == t.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
-    pvs = tetens_formula(t)
-    qvs = beta * pvs / (p - pvs)
-    d = np.minimum((qvs - qv) / (1.0 + qvs * 4093 * lhvw / (cp * (t - 36) ** 2)), qc)
-    return qv + d, qc - d
+    exn = exn if exn.shape[2] == t.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
+
+    ps = swvf(t)
+    qvs = beta * ps / p
+    dq = np.minimum((qvs - qv) / (1.0 + qvs * (lhvw ** 2) / (cp * rv * (t ** 2))), qc)
+    dt = -lhvw * dq / cp
+    cv = -dq / timestep
+
+    return qv + dq, qc - dq, t + dt, lhvw / exn * cv
 
 
 @settings(
@@ -381,6 +388,9 @@ def test_kessler_saturation_adjustment(data):
     )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
+    swvf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="swvf_type")
+
+    timestep = data.draw(st_floats(min_value=1e-6, max_value=3600), label="timestep")
 
     # ========================================
     # test bed
@@ -398,6 +408,18 @@ def test_kessler_saturation_adjustment(data):
             set_coordinates=False,
         )
 
+        exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
+        exn_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
+        state["exner_function"] = get_dataarray_3d(
+            exn_unstg,
+            grid,
+            "J kg^-1 K^-1",
+            name="exner_function",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        )
+
     rd = 287.0
     rv = 461.5
     cp = 1004.0
@@ -411,6 +433,7 @@ def test_kessler_saturation_adjustment(data):
         domain,
         grid_type,
         air_pressure_on_interface_levels=apoif,
+        saturation_water_vapor_formula=swvf_type,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -422,22 +445,34 @@ def test_kessler_saturation_adjustment(data):
     assert mfcw in sak.input_properties
     if apoif:
         assert "air_pressure_on_interface_levels" in sak.input_properties
+        assert "exner_function_on_interface_levels" in sak.input_properties
     else:
         assert "air_pressure" in sak.input_properties
-    assert len(sak.input_properties) == 4
+        assert "exner_function" in sak.input_properties
+    assert len(sak.input_properties) == 5
+
+    assert "air_potential_temperature" in sak.tendency_properties
+    assert len(sak.tendency_properties) == 1
 
     assert mfwv in sak.diagnostic_properties
     assert mfcw in sak.diagnostic_properties
-    assert len(sak.diagnostic_properties) == 2
+    assert "air_temperature" in sak.diagnostic_properties
+    assert len(sak.diagnostic_properties) == 3
 
     #
     # test numerics
     #
-    diagnostics = sak(state)
+    dt = timedelta(seconds=timestep)
 
+    tendencies, diagnostics = sak(state, dt)
+
+    assert "air_potential_temperature" in tendencies
+    assert len(tendencies) == 1
+
+    assert "air_temperature" in diagnostics
     assert mfwv in diagnostics
     assert mfcw in diagnostics
-    assert len(diagnostics) == 2
+    assert len(diagnostics) == 3
 
     p = (
         state["air_pressure_on_interface_levels"]
@@ -447,13 +482,33 @@ def test_kessler_saturation_adjustment(data):
         else state["air_pressure"].to_units("Pa").values[:nx, :ny, :nz]
     )
     t = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
+    exn = (
+        state["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
+        if apoif
+        else state["exner_function"].to_units("J kg^-1 K^-1").values[:nx, :ny, :nz]
+    )
     qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
     qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
 
-    out_qv, out_qc = kessler_saturation_adjustment_validation(
-        p, t, qv, qc, beta, lhvw, cp
+    swvf = goff_gratch_formula if swvf_type == "goff_gratch" else tetens_formula
+
+    out_qv, out_qc, out_t, out_theta_tnd = kessler_saturation_adjustment_validation(
+        dt.total_seconds(), p, t, exn, qv, qc, swvf, beta, lhvw, cp, rv
     )
 
+    compare_dataarrays(
+        get_dataarray_3d(out_theta_tnd, grid, "K s^-1"),
+        tendencies['air_potential_temperature'][:nx, :ny, :nz],
+        compare_coordinate_values=False
+    )
+
+    compare_dataarrays(
+        get_dataarray_3d(out_t, grid, "K"),
+        diagnostics['air_temperature'][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
     compare_dataarrays(
         get_dataarray_3d(out_qv, grid, "g g^-1"),
         diagnostics[mfwv][:nx, :ny, :nz],
@@ -645,17 +700,20 @@ def test_kessler_sedimentation(data):
         nx, ny, nz, state, timestep, flux_type, maxcfl
     )
 
-    # compare_dataarrays(
-    #     get_dataarray_3d(
-    #         raw_mfpw_val,
-    #         grid,
-    #         "g g^-1 s^-1",
-    #         grid_shape=(nx, ny, nz),
-    #         set_coordinates=False,
-    #     ),
-    #     tendencies[mfpw][:nx, :ny, :nz],
-    #     compare_coordinate_values=False,
-    # )
+    # to prevent any segfault
+    gt.storage.restore_numpy()
+
+    compare_dataarrays(
+        get_dataarray_3d(
+            raw_mfpw_val,
+            grid,
+            "g g^-1 s^-1",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        ),
+        tendencies[mfpw][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
 
     assert len(tendencies) == 1
 

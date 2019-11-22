@@ -157,7 +157,7 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
     tc1 = make_fake_tendency_component_1(domain, "numerical")
     tc2 = make_fake_tendency_component_2(domain, "numerical")
 
-    cc = ConcurrentCoupling(tc1, tc2, execution_policy="serial")
+    cc = ConcurrentCoupling(tc1, tc2, execution_policy="serial", gt_powered=False)
     tendencies, diagnostics = cc(state, dt)
 
     assert "fake_variable" in diagnostics
@@ -196,7 +196,7 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+def test_gt_serial(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -236,7 +236,13 @@ def test_serial_gt(data, make_fake_tendency_component_1, make_fake_tendency_comp
     tc2 = make_fake_tendency_component_2(domain, "numerical")
 
     cc = ConcurrentCoupling(
-        tc1, tc2, execution_policy="serial", gt_powered=True, backend=backend, dtype=dtype
+        tc1,
+        tc2,
+        execution_policy="serial",
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        rebuild=False,
     )
     tendencies, diagnostics = cc(state, dt)
 

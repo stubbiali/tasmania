@@ -29,10 +29,7 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.base_components import (
-    InputChecker,
-    OutputChecker,
-)
+from sympl._core.base_components import InputChecker, OutputChecker
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
@@ -40,7 +37,7 @@ from tasmania.python.framework.composite import (
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
 from tasmania.python.utils.storage_utils import get_array_dict, get_dataarray_dict
-from tasmania.python.utils.dict_utils import add, copy
+from tasmania.python.utils.dict_operator import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     check_missing_properties,
@@ -67,7 +64,7 @@ class DynamicalCore(abc.ABC):
         ImplicitTendencyComponentComposite,
         ConcurrentCoupling,
     )
-    allowed_diagnostic_type = (
+    allowed_diagnostic_type = allowed_tendency_type + (
         DiagnosticComponent,
         SymplDiagnosticComponentComposite,
         TasmaniaDiagnosticComponentComposite,
@@ -82,7 +79,13 @@ class DynamicalCore(abc.ABC):
         substeps=0,
         fast_tendencies=None,
         fast_diagnostics=None,
+        gt_powered=False,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
         dtype=datatype,
+        rebuild=False
     ):
         """
         Parameters
@@ -144,8 +147,19 @@ class DynamicalCore(abc.ABC):
             retrieving diagnostics at the end of each sub-step of any stage
             of the dynamical core.
             This parameter is ignored if `substeps` argument is not positive.
+        gt_powered : `bool`, optional
+            `True` to perform all the intensive math operations harnessing GT4Py.
+        backend : `str`, optional
+            The GT4Py backend.
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
         dtype : `data-type`, optional
-            The data type for any array instantiated and used within this class.
+            Data type of the storages.
+        rebuild : `bool`, optional
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
         """
         self._grid = (
             domain.physical_grid if grid_type == "physical" else domain.numerical_grid
@@ -155,21 +169,21 @@ class DynamicalCore(abc.ABC):
 
         self._inter_tends = intermediate_tendencies
         if self._inter_tends is not None:
-            ttype = self.__class__.allowed_tendency_type
-            assert isinstance(self._inter_tends, ttype), (
+            tend_type = self.__class__.allowed_tendency_type
+            assert isinstance(self._inter_tends, tend_type), (
                 "The input argument ''intermediate_tendencies'' "
                 "should be an instance of either {}.".format(
-                    ", ".join(str(item) for item in ttype)
+                    ", ".join(str(item) for item in tend_type)
                 )
             )
 
         self._inter_diags = intermediate_diagnostics
         if self._inter_diags is not None:
-            dtype = self.__class__.allowed_diagnostic_type
-            assert isinstance(self._inter_diags, dtype), (
+            diag_type = self.__class__.allowed_diagnostic_type
+            assert isinstance(self._inter_diags, diag_type), (
                 "The input argument ''intermediate_diagnostics'' "
                 "should be an instance of either {}.".format(
-                    ", ".join(str(item) for item in dtype)
+                    ", ".join(str(item) for item in diag_type)
                 )
             )
 
@@ -178,35 +192,45 @@ class DynamicalCore(abc.ABC):
         if self._substeps >= 0:
             self._fast_tends = fast_tendencies
             if self._fast_tends is not None:
-                ttype = self.__class__.allowed_tendency_type
-                assert isinstance(self._fast_tends, ttype), (
+                tend_type = self.__class__.allowed_tendency_type
+                assert isinstance(self._fast_tends, tend_type), (
                     "The input argument ''fast_tendencies'' "
                     "should be an instance of either {}.".format(
-                        ", ".join(str(item) for item in ttype)
+                        ", ".join(str(item) for item in tend_type)
                     )
                 )
 
             self._fast_diags = fast_diagnostics
             if self._fast_diags is not None:
-                dtype = self.__class__.allowed_diagnostic_type
-                assert isinstance(self._fast_diags, dtype), (
+                diag_type = self.__class__.allowed_diagnostic_type
+                assert isinstance(self._fast_diags, diag_type), (
                     "The input argument ''fast_diagnostics'' "
                     "should be an instance of either {}.".format(
-                        ", ".join(str(item) for item in dtype)
+                        ", ".join(str(item) for item in diag_type)
                     )
                 )
 
-        # Initialize properties
+        # initialize properties
         self.input_properties = self._init_input_properties()
         self.tendency_properties = self._init_tendency_properties()
         self.output_properties = self._init_output_properties()
 
-        # Instantiate checkers
+        # instantiate checkers
         self._input_checker = InputChecker(self)
         self._tendency_checker = SubsetTendencyChecker(self)
         self._output_checker = OutputChecker(self)
 
-        # Allocate the output state
+        # instantiate the dictionary operator
+        self._dict_op = DataArrayDictOperator(
+            gt_powered,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=self._dtype,
+            rebuild=rebuild,
+        )
+
+        # allocate the output state
         self._out_state = self._allocate_output_state()
 
     @property
@@ -793,9 +817,9 @@ class DynamicalCore(abc.ABC):
 
         out_state = self._out_state
 
-        self._call(0, timestep, state, state, tendencies, out_state)
+        self._call(0, timestep, state, state, tendencies, {}, out_state)
         for stage in range(1, self.stages):
-            self._call(stage, timestep, state, out_state, tendencies, out_state)
+            self._call(stage, timestep, state, out_state, tendencies, {}, out_state)
 
         return_state = {"time": out_state["time"]}
         for name in self.output_properties:
@@ -803,7 +827,16 @@ class DynamicalCore(abc.ABC):
 
         return return_state
 
-    def _call(self, stage, timestep, state, tmp_state, tendencies, out_state):
+    def _call(
+        self,
+        stage,
+        timestep,
+        state,
+        tmp_state,
+        slow_tendencies,
+        inter_tendencies,
+        out_state,
+    ):
         """
         Perform a single stage of the time integration algorithm.
 
@@ -818,8 +851,10 @@ class DynamicalCore(abc.ABC):
         tmp_state : dict[str, sympl.DataArray]
             The state from the previous stage.
             It coincides with `state` for the first stage.
-        tendencies : dict[str, sympl.DataArray]
-            The physics tendencies for the prognostic model variables.
+        slow_tendencies : dict[str, sympl.DataArray]
+            The *slow* physics tendencies for the prognostic model variables.
+        inter_tendencies : dict[str, sympl.DataArray]
+            The *intermediate* physics tendencies coming from the previous stage.
         out_state : dict[str, sympl.DataArray]
             The :class:`sympl.DataArray`\s into which the state at the next time
             level is written.
@@ -828,37 +863,52 @@ class DynamicalCore(abc.ABC):
         ----
         Currently, variable aliasing is not supported.
         """
-        tends = {}
-
         # ============================================================
         # Calculating the intermediate tendencies
         # ============================================================
+        # add the slow and intermediate tendencies up
+        self._dict_op.iadd(
+            inter_tendencies,
+            slow_tendencies,
+            field_properties=self.tendency_properties,
+            unshared_variables_in_output=True,
+        )
+
         if self._inter_tends is None and stage == 0:
-            # Collect the slow tendencies
-            tends.update(tendencies)
+            # collect the slow tendencies, and possibly the intermediate
+            # tendencies from the previous stage
+            tends = {}
+            tends.update(inter_tendencies)
         elif self._inter_tends is not None:
-            # Calculate the intermediate tendencies
+            # calculate the intermediate tendencies
             try:
-                inter_tends, diags = self._inter_tends(tmp_state)
+                tends, diags = self._inter_tends(tmp_state)
             except TypeError:
-                inter_tends, diags = self._inter_tends(tmp_state, timestep)
+                tends, diags = self._inter_tends(tmp_state, timestep)
 
-            # Sum up the slow and intermediate tendencies
-            tends.update(add(inter_tends, tendencies, unshared_variables_in_output=True))
+            # sum up all the slow and intermediate tendencies
+            self._dict_op.iadd(
+                tends,
+                inter_tendencies,
+                field_properties=self.tendency_properties,
+                unshared_variables_in_output=True,
+            )
 
-            # Update the state with the just computed diagnostics
+            # update the state with the just computed diagnostics
             tmp_state.update(diags)
+        else:
+            tends = {}
 
         # ============================================================
         # Stage: pre-processing
         # ============================================================
-        # Extract numpy arrays from state
+        # Extract raw storages from state
         tmp_state_properties = {
             name: self._input_properties[name] for name in self._input_properties
         }
         raw_tmp_state = get_array_dict(tmp_state, tmp_state_properties)
 
-        # Extract numpy arrays from tendencies
+        # Extract raw storages from tendencies
         tendency_properties = {
             name: self._tendency_properties[name] for name in self._tendency_properties
         }
@@ -883,110 +933,110 @@ class DynamicalCore(abc.ABC):
             )
 
             # Update the latest state
-            copy(out_state, stage_state)
+            self._dict_op.copy(out_state, stage_state)
             # out_state.update(stage_state)
         else:
             # TODO: deprecated!
             raise NotImplementedError()
 
-            # ============================================================
-            # Stage: post-processing, sub-stepping enabled
-            # ============================================================
-            # Create dataarrays out of the numpy arrays contained in the stepped state
-            # which represent variables which will not be affected by the sub-stepping
-            raw_nosubstep_stage_state = {
-                name: raw_stage_state[name]
-                for name in raw_stage_state
-                if name not in self._substep_output_properties
-            }
-            nosubstep_stage_state_units = {
-                name: self._output_properties[name]["units"]
-                for name in self._output_properties
-                if name not in self._substep_output_properties
-            }
-            nosubstep_stage_state = get_dataarray_dict(
-                raw_nosubstep_stage_state, self._grid, units=nosubstep_stage_state_units
-            )
-
-            substep_frac = 1.0 if self.stages == 1 else self.substep_fractions[stage]
-            substeps = int(substep_frac * self._substeps)
-            for substep in range(substeps):
-                # ============================================================
-                # Calculating the fast tendencies
-                # ============================================================
-                if self._fast_tends is None:
-                    tends = {}
-                else:
-                    try:
-                        tends, diags = self._fast_tends(out_state)
-                    except TypeError:
-                        tends, diags = self._fast_tends(
-                            out_state, timestep / self._substeps
-                        )
-
-                    out_state.update(diags)
-
-                # ============================================================
-                # Sub-step: pre-processing
-                # ============================================================
-                # Extract numpy arrays from the latest state
-                out_state_units = {
-                    name: self._substep_input_properties[name]["units"]
-                    for name in self._substep_input_properties.keys()
-                }
-                raw_out_state = get_array_dict(out_state, units=out_state_units)
-
-                # Extract numpy arrays from fast tendencies
-                tends_units = {
-                    name: self._substep_tendency_properties[name]["units"]
-                    for name in self._substep_tendency_properties.keys()
-                }
-                raw_tends = get_array_dict(tends, units=tends_units)
-
-                # ============================================================
-                # Sub-step: computing
-                # ============================================================
-                # Carry out the sub-step
-                raw_substep_state = self.substep_array_call(
-                    stage,
-                    substep,
-                    state,
-                    raw_stage_state,
-                    raw_out_state,
-                    raw_tends,
-                    timestep,
-                )
-
-                # ============================================================
-                # Sub-step: post-processing
-                # ============================================================
-                # Create dataarrays out of the numpy arrays contained in sub-stepped state
-                substep_state_units = {
-                    name: self._substep_output_properties[name]["units"]
-                    for name in self._substep_output_properties
-                }
-                substep_state = get_dataarray_dict(
-                    raw_substep_state, self._grid, units=substep_state_units
-                )
-
-                # ============================================================
-                # Retrieving the fast diagnostics
-                # ============================================================
-                if self._fast_diags is not None:
-                    fast_diags = self._fast_diags(substep_state)
-                    substep_state.update(fast_diags)
-
-                # Update the output state
-                if substep < substeps - 1:
-                    out_state.update(substep_state)
-                else:
-                    out_state = {}
-                    out_state.update(substep_state)
-
-            # ============================================================
-            # Including the non-sub-stepped variables
-            # ============================================================
-            out_state.update(nosubstep_stage_state)
+            # # ============================================================
+            # # Stage: post-processing, sub-stepping enabled
+            # # ============================================================
+            # # Create dataarrays out of the numpy arrays contained in the stepped state
+            # # which represent variables which will not be affected by the sub-stepping
+            # raw_nosubstep_stage_state = {
+            #     name: raw_stage_state[name]
+            #     for name in raw_stage_state
+            #     if name not in self._substep_output_properties
+            # }
+            # nosubstep_stage_state_units = {
+            #     name: self._output_properties[name]["units"]
+            #     for name in self._output_properties
+            #     if name not in self._substep_output_properties
+            # }
+            # nosubstep_stage_state = get_dataarray_dict(
+            #     raw_nosubstep_stage_state, self._grid, units=nosubstep_stage_state_units
+            # )
+            #
+            # substep_frac = 1.0 if self.stages == 1 else self.substep_fractions[stage]
+            # substeps = int(substep_frac * self._substeps)
+            # for substep in range(substeps):
+            #     # ============================================================
+            #     # Calculating the fast tendencies
+            #     # ============================================================
+            #     if self._fast_tends is None:
+            #         tends = {}
+            #     else:
+            #         try:
+            #             tends, diags = self._fast_tends(out_state)
+            #         except TypeError:
+            #             tends, diags = self._fast_tends(
+            #                 out_state, timestep / self._substeps
+            #             )
+            #
+            #         out_state.update(diags)
+            #
+            #     # ============================================================
+            #     # Sub-step: pre-processing
+            #     # ============================================================
+            #     # Extract numpy arrays from the latest state
+            #     out_state_units = {
+            #         name: self._substep_input_properties[name]["units"]
+            #         for name in self._substep_input_properties.keys()
+            #     }
+            #     raw_out_state = get_array_dict(out_state, units=out_state_units)
+            #
+            #     # Extract numpy arrays from fast tendencies
+            #     tends_units = {
+            #         name: self._substep_tendency_properties[name]["units"]
+            #         for name in self._substep_tendency_properties.keys()
+            #     }
+            #     raw_tends = get_array_dict(tends, units=tends_units)
+            #
+            #     # ============================================================
+            #     # Sub-step: computing
+            #     # ============================================================
+            #     # Carry out the sub-step
+            #     raw_substep_state = self.substep_array_call(
+            #         stage,
+            #         substep,
+            #         state,
+            #         raw_stage_state,
+            #         raw_out_state,
+            #         raw_tends,
+            #         timestep,
+            #     )
+            #
+            #     # ============================================================
+            #     # Sub-step: post-processing
+            #     # ============================================================
+            #     # Create dataarrays out of the numpy arrays contained in sub-stepped state
+            #     substep_state_units = {
+            #         name: self._substep_output_properties[name]["units"]
+            #         for name in self._substep_output_properties
+            #     }
+            #     substep_state = get_dataarray_dict(
+            #         raw_substep_state, self._grid, units=substep_state_units
+            #     )
+            #
+            #     # ============================================================
+            #     # Retrieving the fast diagnostics
+            #     # ============================================================
+            #     if self._fast_diags is not None:
+            #         fast_diags = self._fast_diags(substep_state)
+            #         substep_state.update(fast_diags)
+            #
+            #     # Update the output state
+            #     if substep < substeps - 1:
+            #         out_state.update(substep_state)
+            #     else:
+            #         out_state = {}
+            #         out_state.update(substep_state)
+            #
+            # # ============================================================
+            # # Including the non-sub-stepped variables
+            # # ============================================================
+            # out_state.update(nosubstep_stage_state)
 
         # ============================================================
         # Retrieving the intermediate diagnostics
@@ -999,7 +1049,7 @@ class DynamicalCore(abc.ABC):
                 if name != "time" and name not in self._output_properties:
                     diagnostic_fields[name] = inter_diags[name]
 
-            copy(out_state, inter_diags)
+            self._dict_op.copy(out_state, inter_diags)
             out_state.update(diagnostic_fields)
 
         # Ensure the time specified in the output state is correct

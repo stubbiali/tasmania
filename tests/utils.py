@@ -67,14 +67,16 @@ def compare_datetimes(td1, td2):
     assert abs(td1 - td2).total_seconds() <= 1e-6
 
 
-def compare_arrays(field_a, field_b):
+def compare_arrays(field_a, field_b, atol=1e-8, rtol=1e-5):
     # field_a[np.isinf(field_a)] = np.nan
     # field_b[np.isinf(field_b)] = np.nan
     try:
-        assert np.allclose(field_a, field_b, equal_nan=True)
+        assert np.allclose(field_a, field_b, equal_nan=True, atol=atol, rtol=rtol)
     except RuntimeError:
         try:
-            assert np.allclose(field_a.data, field_b.data, equal_nan=True)
+            assert np.allclose(
+                field_a.data, field_b.data, equal_nan=True, atol=atol, rtol=rtol
+            )
         except AttributeError:
             assert False
 

@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -35,7 +36,6 @@ from tasmania.python.framework.composite import (
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.sts_tendency_steppers import (
     STSTendencyStepper,
-    tendencystepper_factory,
 )
 from tasmania.python.utils.framework_utils import (
     check_property_compatibility,
@@ -142,6 +142,18 @@ class SequentialTendencySplitting:
                         - :class:`sympl.ImplicitTendencyComponentComposite`, or
                         - :class:`tasmania.ConcurrentCoupling`,
 
+                    'gt_powered' specifies if all the time-intensive math
+                    operations performed inside 'time_integrator' should harness
+                    GT4Py. Defaults to `False`.
+
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
                     'time_integrator_kwargs' is a dictionary of configuration
                     options for 'time_integrator'. The dictionary may include
                     the following keys:
@@ -200,18 +212,20 @@ class SequentialTendencySplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                kwargs = process.get(
+                gt_powered = process.get("gt_powered", False)
+                integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": None, "default_origin": None, "managed_memory": False},
+                    {"backend": None, "dtype": np.float32, "rebuild": False},
                 )
 
-                TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(
-                    TendencyStepper(
+                    STSTendencyStepper.factory(
+                        integrator,
                         bare_component,
                         execution_policy="serial",
                         enforce_horizontal_boundary=enforce_hb,
-                        **kwargs
+                        gt_powered=gt_powered,
+                        **integrator_kwargs
                     )
                 )
 

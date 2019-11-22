@@ -253,9 +253,10 @@ def test_forward_euler(
     tendency2 = make_fake_tendency_component_2(domain, "numerical")
 
     ps = ParallelSplitting(
-        {"component": tendency1, "time_integrator": "forward_euler"},
-        {"component": tendency2, "time_integrator": "forward_euler"},
+        {"component": tendency1, "time_integrator": "forward_euler", "gt_powered": False},
+        {"component": tendency2, "time_integrator": "forward_euler", "gt_powered": False},
         execution_policy="serial",
+        gt_powered=False
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -333,7 +334,7 @@ def test_gt_forward_euler(
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "rebuild": False}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -372,15 +373,18 @@ def test_gt_forward_euler(
     ps = ParallelSplitting(
         {
             "component": tendency1,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         execution_policy="serial",
+        gt_powered=False
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -458,7 +462,7 @@ def test_gtgt_forward_euler(
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "rebuild": False}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -497,12 +501,14 @@ def test_gtgt_forward_euler(
     ps = ParallelSplitting(
         {
             "component": tendency1,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         execution_policy="serial",
@@ -621,9 +627,10 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
     tendency2 = make_fake_tendency_component_2(domain, "numerical")
 
     ps = ParallelSplitting(
-        {"component": tendency1, "time_integrator": "rk2"},
-        {"component": tendency2, "time_integrator": "rk2"},
+        {"component": tendency1, "time_integrator": "rk2", "gt_powered": False},
+        {"component": tendency2, "time_integrator": "rk2", "gt_powered": False},
         execution_policy="serial",
+        gt_powered=False
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -703,7 +710,7 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "rebuild": False}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -744,15 +751,18 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     ps = ParallelSplitting(
         {
             "component": tendency1,
-            "time_integrator": "gt_rk2",
+            "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
-            "time_integrator": "gt_rk2",
+            "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         execution_policy="serial",
+        gt_powered=False
     )
 
     state_dc = deepcopy_dataarray_dict(state)
@@ -832,7 +842,7 @@ def test_gtgt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compo
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "rebuild": False}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -873,12 +883,14 @@ def test_gtgt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compo
     ps = ParallelSplitting(
         {
             "component": tendency1,
-            "time_integrator": "gt_rk2",
+            "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
-            "time_integrator": "gt_rk2",
+            "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         execution_policy="serial",

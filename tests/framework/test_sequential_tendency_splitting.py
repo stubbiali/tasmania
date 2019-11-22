@@ -214,7 +214,6 @@ def test_forward_euler(
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
 
     grid = domain.numerical_grid
     state = data.draw(
@@ -250,12 +249,12 @@ def test_forward_euler(
         {
             "component": tendency1,
             "time_integrator": "forward_euler",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False
         },
         {
             "component": tendency2,
             "time_integrator": "forward_euler",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False
         },
     )
     sts(state, state_prv, timestep)
@@ -324,7 +323,7 @@ def test_gt_forward_euler(
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "rebuild": False}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -367,11 +366,13 @@ def test_gt_forward_euler(
         {
             "component": tendency1,
             "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
             "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
     )
@@ -437,7 +438,6 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
 
     grid = domain.numerical_grid
     state = data.draw(
@@ -473,12 +473,12 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
         {
             "component": tendency1,
             "time_integrator": "rk2",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False
         },
         {
             "component": tendency2,
             "time_integrator": "rk2",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False
         },
     )
 
@@ -553,7 +553,7 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     backend = data.draw(st_one_of(conf_backend), label="backend")
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "dtype": dtype, "default_origin": default_origin}
+    gt_kwargs = {"backend": backend, "dtype": dtype, "rebuild": False}
 
     state = data.draw(
         st_isentropic_state_f(
@@ -596,11 +596,13 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
         {
             "component": tendency1,
             "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
             "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
     )

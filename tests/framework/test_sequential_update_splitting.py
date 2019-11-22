@@ -178,7 +178,6 @@ def test_forward_euler(
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
 
     grid = domain.numerical_grid
     state = data.draw(
@@ -205,12 +204,12 @@ def test_forward_euler(
         {
             "component": tendency1,
             "time_integrator": "forward_euler",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False,
         },
         {
             "component": tendency2,
             "time_integrator": "forward_euler",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False,
         },
     )
 
@@ -280,7 +279,6 @@ def test_gt_forward_euler(
     gt_kwargs = {
         "backend": backend,
         "dtype": dtype,
-        "default_origin": default_origin,
         "rebuild": False,
     }
 
@@ -311,12 +309,14 @@ def test_gt_forward_euler(
     sus = SequentialUpdateSplitting(
         {
             "component": tendency1,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
-            "time_integrator": "gt_forward_euler",
+            "time_integrator": "forward_euler",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
     )
@@ -383,7 +383,6 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    gt_kwargs = {"backend": backend, "default_origin": default_origin}
 
     grid = domain.numerical_grid
     state = data.draw(
@@ -410,12 +409,12 @@ def test_rk2(data, make_fake_tendency_component_1, make_fake_tendency_component_
         {
             "component": tendency1,
             "time_integrator": "rk2",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False
         },
         {
             "component": tendency2,
             "time_integrator": "rk2",
-            "time_integrator_kwargs": gt_kwargs,
+            "gt_powered": False
         },
     )
 
@@ -487,7 +486,6 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     gt_kwargs = {
         "backend": backend,
         "dtype": dtype,
-        "default_origin": default_origin,
         "rebuild": False,
     }
 
@@ -518,12 +516,14 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     sus = SequentialUpdateSplitting(
         {
             "component": tendency1,
-            "time_integrator": "gt_rk2",
+            "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
         {
             "component": tendency2,
-            "time_integrator": "gt_rk2",
+            "time_integrator": "rk2",
+            "gt_powered": True,
             "time_integrator_kwargs": gt_kwargs,
         },
     )
@@ -563,7 +563,6 @@ def test_gt_rk2(data, make_fake_tendency_component_1, make_fake_tendency_compone
     sv3[:, :-1] = sv1[:, :-1] + timestep.total_seconds() * 0.5 * s3b[:, :-1] * (
         v1[:, :-1] + v1[:, 1:]
     )
-
     compare_arrays(state["y_momentum_isentropic"].values, sv3)
 
 

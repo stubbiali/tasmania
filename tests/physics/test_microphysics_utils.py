@@ -223,6 +223,7 @@ def first_order_flux_validation(rho, h, qr, vt):
     tmp_h = 0.5 * (h[:, :, :-1] + h[:, :, 1:])
 
     out = deepcopy(rho)
+    out[:, :, :1] = 0.
     out[:, :, 1:] = (
         rho[:, :, :-1] * qr[:, :, :-1] * vt[:, :, :-1]
         - rho[:, :, 1:] * qr[:, :, 1:] * vt[:, :, 1:]
@@ -248,6 +249,7 @@ def second_order_flux_validation(rho, h, qr, vt):
     )
 
     out = deepcopy(rho)
+    out[:, :, :2] = 0.
     out[:, :, 2:] = (
         a[:, :, 2:] * rho[:, :, 2:] * qr[:, :, 2:] * vt[:, :, 2:]
         + b[:, :, 2:] * rho[:, :, 1:-1] * qr[:, :, 1:-1] * vt[:, :, 1:-1]

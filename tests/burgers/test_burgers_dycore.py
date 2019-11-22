@@ -100,6 +100,8 @@ def test_forward_euler(data):
         label="timestep",
     )
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+
     # ========================================
     # test
     # ========================================
@@ -108,6 +110,7 @@ def test_forward_euler(data):
         intermediate_tendencies=None,
         time_integration_scheme="forward_euler",
         flux_scheme="first_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -198,6 +201,8 @@ def test_rk2(data):
         label="timestep",
     )
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+
     # ========================================
     # test
     # ========================================
@@ -206,6 +211,7 @@ def test_rk2(data):
         intermediate_tendencies=None,
         time_integration_scheme="rk2",
         flux_scheme="third_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -317,6 +323,8 @@ def test_rk3ws(data):
         label="timestep",
     )
 
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+
     # ========================================
     # test
     # ========================================
@@ -325,6 +333,7 @@ def test_rk3ws(data):
         intermediate_tendencies=None,
         time_integration_scheme="rk3ws",
         flux_scheme="fifth_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

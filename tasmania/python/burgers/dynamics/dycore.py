@@ -39,6 +39,7 @@ class BurgersDynamicalCore(DynamicalCore):
         intermediate_tendencies=None,
         time_integration_scheme="forward_euler",
         flux_scheme="upwind",
+        gt_powered=False,
         *,
         backend="numpy",
         backend_opts=None,
@@ -75,6 +76,8 @@ class BurgersDynamicalCore(DynamicalCore):
             String specifying the advective flux scheme to be used.
             Defaults to 'upwind'. See :class:`tasmania.BurgersAdvection`
             for all available options.
+        gt_powered : `bool`, optional
+            `True` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -106,7 +109,12 @@ class BurgersDynamicalCore(DynamicalCore):
             substeps=0,
             fast_tendencies=None,
             fast_diagnostics=None,
+            gt_powered=gt_powered,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
             dtype=dtype,
+            rebuild=rebuild,
         )
 
         assert (

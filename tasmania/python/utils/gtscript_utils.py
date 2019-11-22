@@ -20,12 +20,140 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import gt4py as gt
+import numpy as np
+
+from gt4py import gtscript
 
 
 def set_annotations(func_handle, dtype):
     annotations = getattr(func_handle, "__annotations__", {})
     for arg in annotations:
-        if isinstance(annotations[arg], gt.gtscript._FieldDescriptor):
-            annotations[arg] = gt.gtscript.Field[dtype]
+        if isinstance(annotations[arg], gtscript._FieldDescriptor):
+            annotations[arg] = gtscript.Field[dtype]
     return func_handle
+
+
+def stencil_copy_defs(src: gtscript.Field[np.float64], dst: gtscript.Field[np.float64]):
+    with computation(PARALLEL), interval(...):
+        dst = src
+
+
+def stencil_copychange_defs(
+    src: gtscript.Field[np.float64], dst: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        dst = -src
+
+
+def stencil_add_defs(
+    in_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    out_c: gtscript.Field[np.float64],
+):
+    with computation(PARALLEL), interval(...):
+        out_c = in_a + in_b
+
+
+def stencil_iadd_defs(
+    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a + in_b
+
+
+def stencil_sub_defs(
+    in_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    out_c: gtscript.Field[np.float64],
+):
+    with computation(PARALLEL), interval(...):
+        out_c = in_a - in_b
+
+
+def stencil_isub_defs(
+    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a - in_b
+
+
+def stencil_mul_defs(
+    in_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    out_c: gtscript.Field[np.float64],
+):
+    with computation(PARALLEL), interval(...):
+        out_c = in_a * in_b
+
+
+def stencil_imul_defs(
+    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a * in_b
+
+
+def stencil_scale_defs(
+    in_a: gtscript.Field[np.float64], out_a: gtscript.Field[np.float64], *, f: float
+):
+    with computation(PARALLEL), interval(...):
+        out_a = f * in_a
+
+
+def stencil_iscale_defs(inout_a: gtscript.Field[np.float64], *, f: float):
+    with computation(PARALLEL), interval(...):
+        inout_a = f * inout_a
+
+
+def stencil_addsub_defs(
+    in_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    in_c: gtscript.Field[np.float64],
+    out_d: gtscript.Field[np.float64],
+):
+    with computation(PARALLEL), interval(...):
+        out_d = in_a + in_b - in_c
+
+
+def stencil_iaddsub_defs(
+    inout_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    in_c: gtscript.Field[np.float64],
+):
+    with computation(PARALLEL), interval(...):
+        inout_a = inout_a + in_b - in_c
+
+
+def stencil_fma_defs(
+    in_a: gtscript.Field[np.float64],
+    in_b: gtscript.Field[np.float64],
+    out_c: gtscript.Field[np.float64],
+    *,
+    f: float
+):
+    with computation(PARALLEL), interval(...):
+        out_c = in_a + f * in_b
+
+
+def stencil_sts_rk2_0_defs(
+    in_field: gtscript.Field[np.float64],
+    in_field_prv: gtscript.Field[np.float64],
+    in_tnd: gtscript.Field[np.float64],
+    out_field: gtscript.Field[np.float64],
+    *,
+    dt: float
+):
+    with computation(PARALLEL), interval(...):
+        out_field = 0.5 * (in_field + in_field_prv + dt * in_tnd)
+
+
+def stencil_sts_rk3ws_0_defs(
+    in_field: gtscript.Field[np.float64],
+    in_field_prv: gtscript.Field[np.float64],
+    in_tnd: gtscript.Field[np.float64],
+    out_field: gtscript.Field[np.float64],
+    *,
+    dt: float
+):
+    with computation(PARALLEL), interval(...):
+        out_field = (2.0 * in_field + in_field_prv + dt * in_tnd) / 3.0

@@ -419,7 +419,7 @@ class IsentropicDiagnostics:
 
         # compute the Exner function
         with computation(PARALLEL), interval(...):
-            out_exn = cp * (inout_p[0, 0, 0] / pref) ** (rd / cp)
+            out_exn = cp * (inout_p / pref) ** (rd / cp)
 
         # compute the Montgomery potential
         with computation(BACKWARD), interval(-2, -1):

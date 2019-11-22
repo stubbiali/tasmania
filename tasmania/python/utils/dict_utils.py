@@ -24,7 +24,7 @@ from copy import deepcopy
 from sympl import DataArray
 from sympl._core.units import units_are_same
 
-from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.storage_utils import deepcopy_dataarray, zeros
 
 
 def add(
@@ -34,6 +34,7 @@ def add(
     units=None,
     unshared_variables_in_output=True,
     *,
+        gt_powered=False,
     backend="numpy",
     default_origin=None
 ):
@@ -83,7 +84,7 @@ def add(
                     out_da.values[...] = state_2[key].to_units(_units).values
                     out_da.attrs["units"] = _units
                 elif units_are_same(state_2[key].attrs["units"], _units):
-                    out_da = deepcopy(state_2[key])
+                    out_da = deepcopy_dataarray(state_2[key])
                 else:
                     shape = state_2[key].shape
                     _backend = state_2[key].attrs.get("backend", backend)
@@ -235,7 +236,7 @@ def subtract(
                     out_da.values[...] = state_1[key].to_units(_units).values
                     out_da.attrs["units"] = _units
                 elif units_are_same(state_1[key].attrs["units"], _units):
-                    out_da = deepcopy(state_1[key])
+                    out_da = deepcopy_dataarray(state_1[key])
                 else:
                     shape = state_1[key].shape
                     _backend = state_1[key].attrs.get("backend", backend)

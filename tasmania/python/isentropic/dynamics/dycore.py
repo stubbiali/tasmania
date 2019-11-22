@@ -79,6 +79,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_coeff=0.03,
         smooth_moist_coeff_max=0.24,
         smooth_moist_damp_depth=10,
+        gt_powered=False,
         *,
         backend="numpy",
         backend_opts=None,
@@ -212,6 +213,8 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_damp_depth : `int`, optional
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
+        gt_powered : `bool`, optional
+            `True` to perform all the intensive math operations harnessing GT4Py.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -274,7 +277,12 @@ class IsentropicDynamicalCore(DynamicalCore):
             substeps,
             fast_tendencies,
             fast_diagnostics,
-            dtype,
+            gt_powered,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=dtype,
+            rebuild=rebuild
         )
         hb = self.horizontal_boundary
 
@@ -744,7 +752,6 @@ class IsentropicDynamicalCore(DynamicalCore):
     def _array_call_dry(self, stage, raw_state, raw_tendencies, timestep):
         """ Perform a stage of the dry dynamical core. """
         # shortcuts
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         hb = self.horizontal_boundary
         out_properties = self.output_properties
 
@@ -858,7 +865,6 @@ class IsentropicDynamicalCore(DynamicalCore):
     def _array_call_moist(self, stage, raw_state, raw_tendencies, timestep):
         """	Perform a stage of the moist dynamical core. """
         # shortcuts
-        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         hb = self.horizontal_boundary
         out_properties = self.output_properties
 

@@ -310,7 +310,6 @@ class ForwardEuler(BurgersStepper):
         dx = self._grid_xy.dx.to_units("m").values.item()
         dy = self._grid_xy.dy.to_units("m").values.item()
 
-        stencil_args = {}
         self._stencil_args["in_u"] = state["x_velocity"]
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v"] = state["y_velocity"]

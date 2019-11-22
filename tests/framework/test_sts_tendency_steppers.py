@@ -36,12 +36,8 @@ import gt4py as gt
 
 from tasmania.python.framework.sts_tendency_steppers import (
     ForwardEuler,
-    GTForwardEuler,
     RungeKutta2,
-    GTRungeKutta2,
     RungeKutta3WS,
-    GTRungeKutta3WS,
-    RungeKutta3,
 )
 from tasmania import get_dataarray_dict
 
@@ -116,7 +112,7 @@ def test_forward_euler(data, make_fake_tendency_component_1):
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     fe = ForwardEuler(
-        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+        tc1, execution_policy="serial", gt_powered=False
     )
 
     assert "air_isentropic_density" in fe.provisional_input_properties
@@ -231,8 +227,7 @@ def test_forward_euler_hb(data, make_fake_tendency_component_1):
         tc1,
         execution_policy="serial",
         enforce_horizontal_boundary=True,
-        backend=backend,
-        default_origin=default_origin,
+        gt_powered=False
     )
 
     out_diagnostics, out_state = fe(state, prv_state, dt)
@@ -337,12 +332,13 @@ def test_gt_forward_euler(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    fe = GTForwardEuler(
+    fe = ForwardEuler(
         tc1,
         execution_policy="serial",
+        gt_powered=True,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        rebuild=False
     )
 
     assert "air_isentropic_density" in fe.provisional_input_properties
@@ -458,13 +454,14 @@ def test_gt_forward_euler_hb(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    fe = GTForwardEuler(
+    fe = ForwardEuler(
         tc1,
         execution_policy="serial",
         enforce_horizontal_boundary=True,
+        gt_powered=True,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        rebuild=False
     )
 
     out_diagnostics, out_state = fe(state, prv_state, dt)
@@ -572,7 +569,7 @@ def test_rk2(data, make_fake_tendency_component_1):
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk2 = RungeKutta2(
-        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+        tc1, execution_policy="serial", gt_powered=False
     )
 
     assert "air_isentropic_density" in rk2.output_properties
@@ -700,8 +697,7 @@ def test_rk2_hb(data, make_fake_tendency_component_1):
         tc1,
         execution_policy="serial",
         enforce_horizontal_boundary=True,
-        backend=backend,
-        default_origin=default_origin,
+        gt_powered=False
     )
 
     out_diagnostics, out_state = rk2(state, prv_state, dt)
@@ -856,12 +852,13 @@ def test_gt_rk2(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk2 = GTRungeKutta2(
+    rk2 = RungeKutta2(
         tc1,
         execution_policy="serial",
+        gt_powered=True,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        rebuild=False
     )
 
     assert "air_isentropic_density" in rk2.output_properties
@@ -999,13 +996,14 @@ def test_gt_rk2_hb(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk2 = GTRungeKutta2(
+    rk2 = RungeKutta2(
         tc1,
         execution_policy="serial",
         enforce_horizontal_boundary=True,
+        gt_powered=True,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        rebuild=False
     )
 
     out_diagnostics, out_state = rk2(state, prv_state, dt)
@@ -1173,7 +1171,7 @@ def test_rk3ws(data, make_fake_tendency_component_1):
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
     rk3 = RungeKutta3WS(
-        tc1, execution_policy="serial", backend=backend, default_origin=default_origin
+        tc1, execution_policy="serial", gt_powered=False
     )
 
     out_diagnostics, out_state = rk3(state, prv_state, dt)
@@ -1306,8 +1304,7 @@ def test_rk3ws_hb(data, make_fake_tendency_component_1):
         tc1,
         execution_policy="serial",
         enforce_horizontal_boundary=True,
-        backend=backend,
-        default_origin=default_origin,
+        gt_powered=False
     )
 
     out_diagnostics, out_state = rk3(state, prv_state, dt)
@@ -1501,12 +1498,13 @@ def test_gt_rk3ws(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk3 = GTRungeKutta3WS(
+    rk3 = RungeKutta3WS(
         tc1,
         execution_policy="serial",
+        gt_powered=True,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        rebuild=False
     )
 
     out_diagnostics, out_state = rk3(state, prv_state, dt)
@@ -1649,13 +1647,14 @@ def test_gt_rk3ws_hb(data, make_fake_tendency_component_1):
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
 
-    rk3 = GTRungeKutta3WS(
+    rk3 = RungeKutta3WS(
         tc1,
         execution_policy="serial",
         enforce_horizontal_boundary=True,
+        gt_powered=True,
         backend=backend,
         dtype=dtype,
-        default_origin=default_origin,
+        rebuild=False
     )
 
     out_diagnostics, out_state = rk3(state, prv_state, dt)
