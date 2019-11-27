@@ -151,86 +151,94 @@ def _replace_aliases(data_dict, name_to_alias):
     return return_dict
 
 
-def get_input_properties(
-    components_list,
-    component_attribute_name="input_properties",
-    consider_diagnostics=True,
-    return_dict=None,
-):
+def get_input_properties(components_list, return_dict=None):
     # Initialize the return dictionary, i.e., the list of requirements
-    return_dict = {} if return_dict is None else return_dict
+    return_dict = return_dict or {}
 
     # Initialize the properties of the variables which the input state
     # should include
     output_properties = {}
 
-    for component in components_list:
-        # Extract the desired property dictionary from the component
-        component_dict = getattr(component, component_attribute_name)
+    for component_properties in components_list:
+        component = component_properties.get("component", None)
+        attribute_name = component_properties.get("attribute_name", None)
+        consider_diagnostics = component_properties.get("consider_diagnostics", True)
 
-        # Ensure the requirements of the component are compatible
-        # with the variables already at disposal
-        check_properties_compatibility(
-            output_properties,
-            component_dict,
-            properties1_name="{} of {}".format(
-                component_attribute_name,
-                getattr(component, "name", str(component.__class__)),
-            ),
-            properties2_name="output_properties",
-        )
+        if component is not None:
+            # Extract the desired property dictionary from the component
+            component_dict = (
+                getattr(component, attribute_name) if attribute_name is not None else {}
+            )
 
-        # Check if there exists any variable which the component
-        # requires but which is not yet at disposal
-        not_at_disposal = set(component_dict.keys()).difference(output_properties.keys())
+            # Ensure the requirements of the component are compatible
+            # with the variables already at disposal
+            check_properties_compatibility(
+                output_properties,
+                component_dict,
+                properties1_name="{} of {}".format(
+                    attribute_name, getattr(component, "name", str(component.__class__))
+                ),
+                properties2_name="output_properties",
+            )
 
-        for name in not_at_disposal:
-            # Add the missing variable to the requirements and
-            # to the output state
-            return_dict[name] = {}
-            return_dict[name].update(component_dict[name])
-            output_properties[name] = {}
-            output_properties[name].update(component_dict[name])
+            # Check if there exists any variable which the component
+            # requires but which is not yet at disposal
+            not_at_disposal = set(component_dict.keys()).difference(
+                output_properties.keys()
+            )
 
-        if consider_diagnostics:
-            # Use the diagnostics calculated by the component to update
-            # the properties of the output variables
-            for name, properties in component.diagnostic_properties.items():
-                if name not in output_properties.keys():
-                    output_properties[name] = {}
-                else:
-                    check_property_compatibility(
-                        output_properties[name],
-                        properties,
-                        property_name=name,
-                        origin1_name="output_properties",
-                        origin2_name="diagnostic_properties of {}".format(
-                            getattr(component, "name", str(component.__class__))
-                        ),
-                    )
+            for name in not_at_disposal:
+                # Add the missing variable to the requirements and
+                # to the output state
+                return_dict[name] = {}
+                return_dict[name].update(component_dict[name])
+                output_properties[name] = {}
+                output_properties[name].update(component_dict[name])
 
-                output_properties[name].update(properties)
+            if consider_diagnostics:
+                # Use the diagnostics calculated by the component to update
+                # the properties of the output variables
+                for name, properties in component.diagnostic_properties.items():
+                    if name not in output_properties.keys():
+                        output_properties[name] = {}
+                    else:
+                        check_property_compatibility(
+                            output_properties[name],
+                            properties,
+                            property_name=name,
+                            origin1_name="output_properties",
+                            origin2_name="diagnostic_properties of {}".format(
+                                getattr(component, "name", str(component.__class__))
+                            ),
+                        )
+
+                    output_properties[name].update(properties)
 
     return return_dict
 
 
 def get_output_properties(
     components_list,
-    component_attribute_name="input_properties",
-    consider_diagnostics=True,
     return_dict=None,
 ):
     """
-	Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
-	component is a subset of its input property component.
-	"""
+    Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
+    component is a subset of its input property component.
+    """
     # Initialize the return dictionary
     return_dict = {} if return_dict is None else return_dict
 
-    for component in components_list:
-        component_dict = getattr(component, component_attribute_name, None)
+    for component_properties in components_list:
+        component = component_properties.get("component", None)
+        attribute_name = component_properties.get("attribute_name", None)
+        consider_diagnostics = component_properties.get("consider_diagnostics", True)
 
-        if component_dict is not None:
+        if component is not None:
+            # Extract the desired property dictionary from the component
+            component_dict = (
+                getattr(component, attribute_name) if attribute_name is not None else {}
+            )
+
             # Ensure the requirements of the component are compatible
             # with the variables already at disposal
             check_properties_compatibility(
@@ -238,7 +246,7 @@ def get_output_properties(
                 component_dict,
                 properties1_name="return_dict",
                 properties2_name="{} of {}".format(
-                    component_attribute_name,
+                    attribute_name,
                     getattr(component, "name", str(component.__class__)),
                 ),
             )
@@ -252,23 +260,23 @@ def get_output_properties(
                 return_dict[name] = {}
                 return_dict[name].update(component_dict[name])
 
-        # Consider the diagnostics calculated by the component to update
-        # the return dictionary
-        if consider_diagnostics:
-            for name, properties in component.diagnostic_properties.items():
-                if name not in return_dict.keys():
-                    return_dict[name] = {}
-                else:
-                    check_property_compatibility(
-                        return_dict[name],
-                        properties,
-                        property_name=name,
-                        origin1_name="return_dict",
-                        origin2_name="diagnostic_properties of {}".format(
-                            getattr(component, "name", str(component.__class__))
-                        ),
-                    )
+            # Consider the diagnostics calculated by the component to update
+            # the return dictionary
+            if consider_diagnostics:
+                for name, properties in component.diagnostic_properties.items():
+                    if name not in return_dict.keys():
+                        return_dict[name] = {}
+                    else:
+                        check_property_compatibility(
+                            return_dict[name],
+                            properties,
+                            property_name=name,
+                            origin1_name="return_dict",
+                            origin2_name="diagnostic_properties of {}".format(
+                                getattr(component, "name", str(component.__class__))
+                            ),
+                        )
 
-                return_dict[name].update(properties)
+                    return_dict[name].update(properties)
 
     return return_dict

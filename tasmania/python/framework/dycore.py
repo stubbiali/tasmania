@@ -37,7 +37,7 @@ from tasmania.python.framework.composite import (
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
 from tasmania.python.utils.storage_utils import get_array_dict, get_dataarray_dict
-from tasmania.python.utils.dict_operator import DataArrayDictOperator
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     check_missing_properties,

@@ -35,7 +35,7 @@ from tasmania.python.framework.composite import (
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import TendencyStepper
-from tasmania.python.utils.dict_operator import DataArrayDictOperator
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
@@ -90,10 +90,9 @@ class ParallelSplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        ConcurrentCoupling,
     )
-    allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
-    )
+    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
     def __init__(
         self,
@@ -341,44 +340,56 @@ class ParallelSplitting:
 
     def _init_input_properties(self):
         if not self._diagnostics_from_provisional:
-            flag = self._policy == "serial"
-            return get_input_properties(self._component_list, consider_diagnostics=flag)
-        else:
-            tendencystepper_components = tuple(
-                component
-                for component in self._component_list
-                if not isinstance(component, self.__class__.allowed_diagnostic_type)
-            )
             return get_input_properties(
-                tendencystepper_components, consider_diagnostics=True
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": self._policy == "serial",
+                    }
+                    for component in self.component_list
+                )
+            )
+        else:
+            return get_input_properties(
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": True,
+                    }
+                    for component in self.component_list
+                    if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                )
             )
 
     def _init_provisional_input_properties(self):
         # We require that all prognostic variables affected by the
         # parameterizations are included in the provisional state
-        tendencystepper_components = tuple(
-            component
-            for component in self._component_list
-            if not isinstance(component, self.__class__.allowed_diagnostic_type)
-        )
         return_dict = get_input_properties(
-            tendencystepper_components,
-            component_attribute_name="output_properties",
-            consider_diagnostics=False,
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "output_properties",
+                    "consider_diagnostics": False,
+                }
+                for component in self.component_list
+                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+            )
         )
 
         if self._diagnostics_from_provisional:
-            diagnostic_components = (
-                component
-                for component in self._component_list
-                if isinstance(component, self.__class__.allowed_diagnostic_type)
-            )
-
             return_dict.update(
                 get_input_properties(
-                    diagnostic_components,
-                    consider_diagnostics=True,
-                    return_dict=return_dict,
+                    tuple(
+                        {
+                            "component": component,
+                            "attribute_name": "input_properties",
+                            "consider_diagnostics": True,
+                        }
+                        for component in self.component_list
+                        if isinstance(component, self.__class__.allowed_diagnostic_type)
+                    )
                 )
             )
 
@@ -386,31 +397,44 @@ class ParallelSplitting:
 
     def _init_output_properties(self):
         if not self._diagnostics_from_provisional:
-            return get_output_properties(self._component_list)
-        else:
-            tendencystepper_components = tuple(
-                component
-                for component in self._component_list
-                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+            return get_output_properties(
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": True,
+                    }
+                    for component in self.component_list
+                )
             )
-            return get_output_properties(tendencystepper_components)
+        else:
+            return get_output_properties(
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": True,
+                    }
+                    for component in self.component_list
+                    if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                )
+            )
 
     def _init_provisional_output_properties(self):
         return_dict = self.provisional_input_properties
 
         if self._diagnostics_from_provisional:
-            diagnostic_components = (
-                component
-                for component in self._component_list
-                if isinstance(component, self.__class__.allowed_diagnostic_type)
-            )
-
             return_dict.update(
                 get_output_properties(
-                    diagnostic_components,
-                    component_attribute_name="",
-                    consider_diagnostics=True,
-                    return_dict=return_dict,
+                    tuple(
+                        {
+                            "component": component,
+                            "attribute_name": None,
+                            "consider_diagnostics": True,
+                        }
+                        for component in self.component_list
+                        if isinstance(component, self.__class__.allowed_diagnostic_type)
+                    )
                 )
             )
 
@@ -497,7 +521,7 @@ class ParallelSplitting:
         """ Process the components in 'as_parallel' runtime mode. """
         agg_diagnostics = {}
 
-        for component, substeps in zip(self._component_list, self._substeps):
+        for component, substeps in zip(self.component_list, self._substeps):
             if not isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 

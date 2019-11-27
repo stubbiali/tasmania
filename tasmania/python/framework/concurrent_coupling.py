@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import abc
 import copy
 import numpy as np
 from sympl import (
@@ -33,10 +34,11 @@ from sympl import (
 )
 from sympl._core.units import clean_units
 
+from tasmania.python.framework.base_components import TendencyPromoter
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
-from tasmania.python.utils.dict_operator import DataArrayDictOperator
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
@@ -44,7 +46,11 @@ from tasmania.python.utils.framework_utils import (
 from tasmania.python.utils.utils import assert_sequence
 
 
-class ConcurrentCoupling:
+class _BaseConcurrentCoupling(abc.ABC):
+    pass
+
+
+class ConcurrentCoupling(_BaseConcurrentCoupling):
     """
     Callable class which automates the execution of a bundle of physical
     parameterizations pursuing the *explicit* concurrent coupling strategy.
@@ -83,8 +89,14 @@ class ConcurrentCoupling:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        _BaseConcurrentCoupling
     )
-    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type + (__name__,)
+    allowed_tendency_promoter_type = (TendencyPromoter,)
+    allowed_component_type = (
+        allowed_diagnostic_type
+        + allowed_tendency_type
+        + allowed_tendency_promoter_type
+    )
 
     def __init__(
         self,
@@ -110,8 +122,9 @@ class ConcurrentCoupling:
                 * :class:`sympl.TendencyComponent`,
                 * :class:`sympl.TendencyComponentComposite`,
                 * :class:`sympl.ImplicitTendencyComponent`,
-                * :class:`sympl.ImplicitTendencyComponentComposite`, or
-                * :class:`tasmania.ConcurrentCoupling`
+                * :class:`sympl.ImplicitTendencyComponentComposite`,
+                * :class:`tasmania.ConcurrentCoupling`, or
+                * :class:`tasmania.TendencyPromoter`
 
             representing the components to wrap.
         execution_policy : `str`, optional
@@ -183,19 +196,27 @@ class ConcurrentCoupling:
         )
 
     def _init_input_properties(self):
-        flag = self._policy == "serial"
-        return get_input_properties(self._component_list, consider_diagnostics=flag)
+        promoter_type = self.__class__.allowed_tendency_promoter_type
+        components_list = []
+        for component in self.component_list:
+            components_list.append(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties"
+                    if not isinstance(component, promoter_type)
+                    else None,
+                    "consider_diagnostics": self._policy == "serial",
+                }
+            )
+        return get_input_properties(components_list)
 
     def _init_tendency_properties(self):
-        tendency_list = tuple(
-            c
-            for c in self._component_list
-            if isinstance(c, self.__class__.allowed_tendency_type + (self.__class__,))
-        )
-        return combine_component_properties(tendency_list, "tendency_properties")
+        tends_type = self.__class__.allowed_tendency_type
+        tends_list = tuple(c for c in self.component_list if isinstance(c, tends_type))
+        return combine_component_properties(tends_list, "tendency_properties")
 
     def _init_diagnostic_properties(self):
-        return combine_component_properties(self._component_list, "diagnostic_properties")
+        return combine_component_properties(self.component_list, "diagnostic_properties")
 
     @property
     def component_list(self):
@@ -251,7 +272,7 @@ class ConcurrentCoupling:
                 diagnostics = component(aux_state)
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
-            else:
+            elif isinstance(component, self.__class__.allowed_tendency_type):
                 try:
                     tendencies, diagnostics = component(aux_state)
                 except TypeError:
@@ -263,6 +284,10 @@ class ConcurrentCoupling:
                     field_properties=self.tendency_properties,
                     unshared_variables_in_output=True,
                 )
+                aux_state.update(diagnostics)
+                out_diagnostics.update(diagnostics)
+            else:  # tendency promoter
+                diagnostics = component(out_tendencies)
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
 
@@ -277,7 +302,7 @@ class ConcurrentCoupling:
             if isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics = component(state)
                 out_diagnostics.update(diagnostics)
-            else:
+            elif isinstance(component, self.__class__.allowed_tendency_type):
                 try:
                     tendencies, diagnostics = component(state)
                 except TypeError:
@@ -290,5 +315,7 @@ class ConcurrentCoupling:
                     unshared_variables_in_output=True,
                 )
                 out_diagnostics.update(diagnostics)
+            else:  # tendency promoter: do nothing
+                pass
 
         return out_tendencies, out_diagnostics

@@ -81,6 +81,7 @@ dycore = taz.BurgersDynamicalCore(
     intermediate_tendencies=None,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
+    gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
 
@@ -96,9 +97,10 @@ diff = taz.BurgersHorizontalDiffusion(
 physics = taz.SequentialUpdateSplitting(
     {
         "component": diff,
-        "time_integrator": nl.physics_time_integration_scheme,
-        "time_integrator_kwargs": nl.gt_kwargs,
         "enforce_horizontal_boundary": True,
+        "time_integrator": nl.physics_time_integration_scheme,
+        "gt_powered": nl.gt_powered,
+        "time_integrator_kwargs": nl.gt_kwargs,
         "substeps": 1,
     }
 )
@@ -122,6 +124,9 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# dict operator
+dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+
 for i in range(nt):
     compute_time_start = time.time()
 
@@ -130,7 +135,7 @@ for i in range(nt):
 
     # calculate the physics
     physics(state_aux, 0.5 * dt)
-    taz.dict_copy(state, state_aux)
+    dict_op.copy(state, state_aux)
 
     # calculate the dynamics
     state["time"] = nl.init_time + i * dt
@@ -141,7 +146,7 @@ for i in range(nt):
     physics(state_prv, 0.5 * dt)
 
     # update the state
-    taz.dict_copy(state, state_prv)
+    dict_op.copy(state, state_prv)
     state["time"] = nl.init_time + (i + 1) * dt
 
     compute_time += time.time() - compute_time_start

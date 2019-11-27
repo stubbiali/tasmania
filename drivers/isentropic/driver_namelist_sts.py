@@ -127,6 +127,7 @@ dycore = taz.IsentropicDynamicalCore(
     smooth=False,
     smooth_moist=False,
     # backend settings
+    gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
 
@@ -154,6 +155,7 @@ if nl.coriolis:
         {
             "component": cf,
             "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -193,6 +195,7 @@ if nl.diff:
         {
             "component": hd,
             "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -205,6 +208,7 @@ if nl.turbulence:
         {
             "component": turb,
             "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -216,7 +220,7 @@ if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
     args.append({"component": ivc})
 
 # component calculating the microphysics
-ke = taz.KesslerMicrophysics(
+ke = taz.OldKesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
@@ -234,6 +238,7 @@ if nl.update_frequency > 0:
         {
             "component": UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
             "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -243,6 +248,7 @@ else:
         {
             "component": ke,
             "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -275,7 +281,8 @@ if nl.rain_evaporation:
     args.append(
         {
             "component": vf,
-            "time_integrator": "gt_rk3ws",
+            "time_integrator": "rk3ws",
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -296,6 +303,7 @@ if nl.precipitation:
         {
             "component": taz.ConcurrentCoupling(rfv, sd),
             "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
@@ -315,7 +323,7 @@ clp = taz.Clipping(domain, "numerical", water_species_names)
 # args.append({"component": clp})
 
 # component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
+sa = taz.OldKesslerSaturationAdjustment(
     domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
 )
 args.append({"component": sa})
@@ -344,6 +352,9 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# dict operator
+dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+
 for i in range(nt):
     compute_time_start = time.time()
 
@@ -357,7 +368,7 @@ for i in range(nt):
     physics(state, state_prv, dt)
 
     # update the state
-    taz.dict_copy(state, state_prv)
+    dict_op.copy(state, state_prv)
 
     compute_time += time.time() - compute_time_start
 

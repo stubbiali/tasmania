@@ -48,7 +48,7 @@ hb_kwargs = {"core": zsof}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -62,6 +62,9 @@ gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy"
 time_integration_scheme = "rk3ws"
 flux_scheme = "fifth_order"
 
+# dict operator
+gt_powered = True
+
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
@@ -71,4 +74,4 @@ niter = 4 ** factor * 100
 save = False
 save_frequency = -1
 filename = "../../data/burgers_fc_{}.nc".format(gt_kwargs["backend"])
-print_frequency = -1
+print_frequency = 1

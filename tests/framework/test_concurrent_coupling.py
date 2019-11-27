@@ -35,6 +35,7 @@ from sympl._core.exceptions import InvalidStateError
 
 import gt4py as gt
 
+from tasmania.python.framework.base_components import TendencyPromoter
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
@@ -279,6 +280,131 @@ def test_gt_serial(data, make_fake_tendency_component_1, make_fake_tendency_comp
     compare_arrays(
         tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
     )
+
+
+class FakeTendencyPromoter(TendencyPromoter):
+    def __init__(self, domain):
+        super().__init__(domain, "numerical")
+
+    @property
+    def input_properties(self):
+        g = self.grid
+        dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
+        dims_stgx = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
+
+        return_dict = {
+            'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1 s^-1'},
+            'x_velocity_at_u_locations': {'dims': dims_stgx, 'units': 'm s^-2', 'prefix': 'tnd_of_'}
+        }
+
+        return return_dict
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(data=hyp_st.data())
+def test_tendency_promoter(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+    gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(
+        st_domain(xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(1, 20)),
+        label="domain",
+    )
+    cgrid = domain.numerical_grid
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = cgrid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            cgrid,
+            moist=False,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+
+    dt = data.draw(
+        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(minutes=60))
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    tc1 = make_fake_tendency_component_1(domain, "numerical")
+    tc2 = make_fake_tendency_component_2(domain, "numerical")
+    tp = FakeTendencyPromoter(domain)
+
+    cc = ConcurrentCoupling(
+        tc1,
+        tc2,
+        tp,
+        execution_policy="serial",
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        rebuild=False,
+    )
+    tendencies, diagnostics = cc(state, dt)
+
+    assert "fake_variable" in diagnostics
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
+    f = diagnostics["fake_variable"].to_units("kg m^-2 K^-1").values
+    compare_arrays(f, 2 * s)
+
+    assert "air_isentropic_density" in tendencies
+    compare_arrays(
+        tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
+        1e-3 * s + 1e-2 * f,
+        )
+
+    assert "tendency_of_air_isentropic_density" in diagnostics
+    compare_arrays(
+        diagnostics["tendency_of_air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
+        1e-3 * s + 1e-2 * f,
+        )
+
+    assert "x_momentum_isentropic" in tendencies
+    su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
+    compare_arrays(
+        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values, 300 * su
+    )
+
+    assert "y_momentum_isentropic" in tendencies
+    v = state["y_velocity_at_v_locations"].to_units("m s^-1").values
+    v_val = np.zeros(storage_shape, dtype=cgrid.x.dtype)
+    v_val[:-1, :-1, :-1] = 0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
+    compare_arrays(
+        tendencies["y_momentum_isentropic"]
+            .to_units("kg m^-1 K^-1 s^-2")
+            .values[:-1, :-1, :-1],
+        v_val[:-1, :-1, :-1],
+            )
+
+    assert "x_velocity_at_u_locations" in tendencies
+    u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
+    compare_arrays(
+        tendencies["x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
+    )
+
+    assert "tnd_of_x_velocity_at_u_locations" in diagnostics
+    u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
+    compare_arrays(
+        diagnostics["tnd_of_x_velocity_at_u_locations"].to_units("m s^-2").values, 50 * u
+    )
+
+    assert len(tendencies) == 5
+    assert len(diagnostics) == 4
 
 
 if __name__ == "__main__":

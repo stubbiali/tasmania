@@ -24,7 +24,6 @@ import abc
 from copy import deepcopy
 import numpy as np
 from sympl import (
-    DataArray,
     TendencyComponent,
     TendencyComponentComposite,
     ImplicitTendencyComponent,
@@ -34,8 +33,7 @@ from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputC
 from sympl._core.units import clean_units
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.utils.dict_operator import DataArrayDictOperator
-from tasmania.python.utils.dict_utils import add, add_inplace, multiply
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
@@ -715,95 +713,95 @@ class RungeKutta3WS(TendencyStepper):
         return diagnostics, out_state
 
 
-class RungeKutta3(TendencyStepper):
-    """
-    The three-stages, third-order Runge-Kutta scheme.
-
-    References
-    ----------
-    Gear, C. W. (1971). *Numerical initial value problems in \
-        ordinary differential equations.* Prentice Hall PTR.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # free parameters for RK3
-        self._alpha1 = 1.0 / 2.0
-        self._alpha2 = 3.0 / 4.0
-
-        # set the other parameters yielding a third-order method
-        self._gamma1 = (3.0 * self._alpha2 - 2.0) / (
-            6.0 * self._alpha1 * (self._alpha2 - self._alpha1)
-        )
-        self._gamma2 = (3.0 * self._alpha1 - 2.0) / (
-            6.0 * self._alpha2 * (self._alpha1 - self._alpha2)
-        )
-        self._gamma0 = 1.0 - self._gamma1 - self._gamma2
-        self._beta21 = self._alpha2 - 1.0 / (6.0 * self._alpha1 * self._gamma2)
-
-    def _call(self, state, timestep):
-        # shortcuts
-        out_units = {
-            name: properties["units"]
-            for name, properties in self.output_properties.items()
-        }
-        a1, a2 = self._alpha1, self._alpha2
-        b21 = self._beta21
-        g0, g1, g2 = self._gamma0, self._gamma1, self._gamma2
-        dt = timestep.total_seconds()
-
-        # initialize the output state
-        if self._out_state is None:
-            self._out_state = self._allocate_output_state(state)
-        out_state = self._out_state
-
-        # first stage
-        k0, diagnostics = get_increment(state, timestep, self.prognostic)
-        multiply(a1 * dt, k0, out=out_state, units=out_units)
-        add_inplace(out_state, state, units=out_units, unshared_variables_in_output=True)
-        out_state["time"] = state["time"] + a1 * timestep
-
-        if self._enforce_hb:
-            # enforce the boundary conditions on each prognostic variable
-            self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(), grid=self._grid
-            )
-
-        # second stage
-        k1, _ = get_increment(out_state, timestep, self.prognostic)
-        state_2 = add(
-            state,
-            add(multiply(b21 * dt, k0), multiply((a2 - b21) * dt, k1)),
-            units=out_units,
-            unshared_variables_in_output=True,
-        )
-        state_2["time"] = state["time"] + a2 * timestep
-
-        if self._enforce_hb:
-            # enforce the boundary conditions on each prognostic variable
-            self._hb.enforce(
-                state_2, field_names=self.output_properties.keys(), grid=self._grid
-            )
-
-        # third stage
-        k2, _ = get_increment(state_2, timestep, self.prognostic)
-        k1k2 = add(multiply(g1 * dt, k1), multiply(g2 * dt, k2))
-        k0k1k2 = add(multiply(g0 * dt, k0), k1k2)
-        out_state = add(
-            state, k0k1k2, units=out_units, unshared_variables_in_output=False
-        )
-        out_state["time"] = state["time"] + timestep
-
-        if self._enforce_hb:
-            # enforce the boundary conditions on each prognostic variable
-            self._hb.enforce(
-                out_state, field_names=self.output_properties.keys(), grid=self._grid
-            )
-
-        # restore original units for the tendencies
-        restore_tendency_units(k0)
-        restore_tendency_units(k1)
-        restore_tendency_units(k2)
-
-        return diagnostics, out_state
+# class RungeKutta3(TendencyStepper):
+#     """
+#     The three-stages, third-order Runge-Kutta scheme.
+#
+#     References
+#     ----------
+#     Gear, C. W. (1971). *Numerical initial value problems in \
+#         ordinary differential equations.* Prentice Hall PTR.
+#     """
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#
+#         # free parameters for RK3
+#         self._alpha1 = 1.0 / 2.0
+#         self._alpha2 = 3.0 / 4.0
+#
+#         # set the other parameters yielding a third-order method
+#         self._gamma1 = (3.0 * self._alpha2 - 2.0) / (
+#             6.0 * self._alpha1 * (self._alpha2 - self._alpha1)
+#         )
+#         self._gamma2 = (3.0 * self._alpha1 - 2.0) / (
+#             6.0 * self._alpha2 * (self._alpha1 - self._alpha2)
+#         )
+#         self._gamma0 = 1.0 - self._gamma1 - self._gamma2
+#         self._beta21 = self._alpha2 - 1.0 / (6.0 * self._alpha1 * self._gamma2)
+#
+#     def _call(self, state, timestep):
+#         # shortcuts
+#         out_units = {
+#             name: properties["units"]
+#             for name, properties in self.output_properties.items()
+#         }
+#         a1, a2 = self._alpha1, self._alpha2
+#         b21 = self._beta21
+#         g0, g1, g2 = self._gamma0, self._gamma1, self._gamma2
+#         dt = timestep.total_seconds()
+#
+#         # initialize the output state
+#         if self._out_state is None:
+#             self._out_state = self._allocate_output_state(state)
+#         out_state = self._out_state
+#
+#         # first stage
+#         k0, diagnostics = get_increment(state, timestep, self.prognostic)
+#         multiply(a1 * dt, k0, out=out_state, units=out_units)
+#         add_inplace(out_state, state, units=out_units, unshared_variables_in_output=True)
+#         out_state["time"] = state["time"] + a1 * timestep
+#
+#         if self._enforce_hb:
+#             # enforce the boundary conditions on each prognostic variable
+#             self._hb.enforce(
+#                 out_state, field_names=self.output_properties.keys(), grid=self._grid
+#             )
+#
+#         # second stage
+#         k1, _ = get_increment(out_state, timestep, self.prognostic)
+#         state_2 = add(
+#             state,
+#             add(multiply(b21 * dt, k0), multiply((a2 - b21) * dt, k1)),
+#             units=out_units,
+#             unshared_variables_in_output=True,
+#         )
+#         state_2["time"] = state["time"] + a2 * timestep
+#
+#         if self._enforce_hb:
+#             # enforce the boundary conditions on each prognostic variable
+#             self._hb.enforce(
+#                 state_2, field_names=self.output_properties.keys(), grid=self._grid
+#             )
+#
+#         # third stage
+#         k2, _ = get_increment(state_2, timestep, self.prognostic)
+#         k1k2 = add(multiply(g1 * dt, k1), multiply(g2 * dt, k2))
+#         k0k1k2 = add(multiply(g0 * dt, k0), k1k2)
+#         out_state = add(
+#             state, k0k1k2, units=out_units, unshared_variables_in_output=False
+#         )
+#         out_state["time"] = state["time"] + timestep
+#
+#         if self._enforce_hb:
+#             # enforce the boundary conditions on each prognostic variable
+#             self._hb.enforce(
+#                 out_state, field_names=self.output_properties.keys(), grid=self._grid
+#             )
+#
+#         # restore original units for the tendencies
+#         restore_tendency_units(k0)
+#         restore_tendency_units(k1)
+#         restore_tendency_units(k2)
+#
+#         return diagnostics, out_state

@@ -62,6 +62,9 @@ gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy"
 time_integration_scheme = "rk3ws"
 flux_scheme = "fifth_order"
 
+# dict operator
+gt_powered = True
+
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")

@@ -34,9 +34,7 @@ from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.sts_tendency_steppers import (
-    STSTendencyStepper,
-)
+from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
 from tasmania.python.utils.framework_utils import (
     check_property_compatibility,
     get_input_properties,
@@ -239,12 +237,17 @@ class SequentialTendencySplitting:
         self.provisional_output_properties = self._get_provisional_output_properties()
 
     def _get_input_properties(self):
-        sts_list = tuple(
-            component
-            for component in self._component_list
-            if isinstance(component, STSTendencyStepper)
+        return get_input_properties(
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": True,
+                }
+                for component in self._component_list
+                if isinstance(component, STSTendencyStepper)
+            )
         )
-        return get_input_properties(sts_list, consider_diagnostics=True)
 
     def _get_provisional_input_properties(self):
         at_disposal = {}
@@ -275,16 +278,17 @@ class SequentialTendencySplitting:
 
     def _get_output_properties(self):
         return_dict = self._get_input_properties()
-        sts_list = tuple(
-            component
-            for component in self._component_list
-            if isinstance(component, STSTendencyStepper)
-        )
         get_output_properties(
-            sts_list,
-            component_attribute_name="diagnostic_properties",
-            return_dict=return_dict,
-            consider_diagnostics=False,
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "diagnostic_properties",
+                    "consider_diagnostics": False,
+                }
+                for component in self._component_list
+                if isinstance(component, STSTendencyStepper)
+            ),
+            return_dict=return_dict
         )
         return return_dict
 

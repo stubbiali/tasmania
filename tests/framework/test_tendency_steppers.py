@@ -38,7 +38,7 @@ from tasmania.python.framework.tendency_steppers import (
     ForwardEuler,
     RungeKutta2,
     RungeKutta3WS,
-    RungeKutta3,
+    # RungeKutta3,
 )
 from tasmania import get_dataarray_dict
 

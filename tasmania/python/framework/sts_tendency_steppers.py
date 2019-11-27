@@ -36,7 +36,7 @@ from tasmania.python.framework.tendency_steppers import (
     get_increment,
     restore_tendency_units,
 )
-from tasmania.python.utils.dict_operator import DataArrayDictOperator
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence

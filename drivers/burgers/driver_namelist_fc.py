@@ -89,6 +89,7 @@ dycore = taz.BurgersDynamicalCore(
     intermediate_tendencies=diff,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
+    gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
 
@@ -112,11 +113,14 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# dict operator
+dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+
 for i in range(nt):
     compute_time_start = time.time()
 
     # step the solution
-    taz.dict_copy(state, dycore(state, {}, dt))
+    dict_op.copy(state, dycore(state, {}, dt))
     state["time"] = nl.init_time + (i + 1) * dt
 
     compute_time += time.time() - compute_time_start

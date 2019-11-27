@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 41
+nx = 321
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
+ny = 321
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -88,6 +88,9 @@ damp_depth = 15
 damp_max = 0.0002
 damp_at_every_stage = False
 
+# dict operator
+gt_powered = True
+
 # horizontal diffusion
 diff = False
 diff_type = "second_order"
@@ -133,8 +136,8 @@ collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
-niter = int(2 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=5)
+niter = 25  # int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -181,5 +184,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
-print_moist_frequency = 1
+print_dry_frequency = -1
+print_moist_frequency = -1

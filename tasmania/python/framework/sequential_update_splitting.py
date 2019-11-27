@@ -234,10 +234,28 @@ class SequentialUpdateSplitting:
         )
 
     def _init_input_properties(self):
-        return get_input_properties(self._component_list, consider_diagnostics=True)
+        return get_input_properties(
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": True,
+                }
+                for component in self._component_list
+            )
+        )
 
     def _init_output_properties(self):
-        return get_output_properties(self._component_list, consider_diagnostics=True)
+        return get_output_properties(
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": True,
+                }
+                for component in self._component_list
+            )
+        )
 
     def __call__(self, state, timestep):
         """

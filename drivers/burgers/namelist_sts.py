@@ -61,7 +61,10 @@ gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy"
 # numerical scheme
 time_integration_scheme = "rk3ws"
 flux_scheme = "fifth_order"
-physics_time_integration_scheme = "gt_rk2"
+physics_time_integration_scheme = "rk2"
+
+# dict operator
+gt_powered = True
 
 # simulation time
 cfl = 1.0

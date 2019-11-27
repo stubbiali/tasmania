@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -87,6 +87,9 @@ damp_type = "rayleigh"
 damp_depth = 15
 damp_max = 0.0002
 damp_at_every_stage = False
+
+# dict operator
+gt_powered = True
 
 # horizontal diffusion
 diff = False
@@ -181,5 +184,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
-print_moist_frequency = 1
+print_dry_frequency = 5
+print_moist_frequency = 5

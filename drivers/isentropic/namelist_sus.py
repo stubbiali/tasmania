@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -76,7 +76,7 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
-physics_time_integration_scheme = "gt_rk2"
+physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
@@ -88,6 +88,9 @@ damp_type = "rayleigh"
 damp_depth = 15
 damp_max = 0.0002
 damp_at_every_stage = False
+
+# dict operator
+gt_powered = True
 
 # horizontal diffusion
 diff = False

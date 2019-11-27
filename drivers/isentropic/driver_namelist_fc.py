@@ -129,7 +129,7 @@ if nl.turbulence:
     args.append(turb)
 
 # component calculating the microphysics
-ke = taz.KesslerMicrophysics(
+ke = taz.OldKesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
@@ -174,7 +174,7 @@ if nl.precipitation and nl.sedimentation:
 
 # wrap the components in a ConcurrentCoupling object
 inter_tends = taz.ConcurrentCoupling(
-    *args, execution_policy="serial", gt_powered=True, **nl.gt_kwargs
+    *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
 )
 
 # ============================================================
@@ -187,7 +187,7 @@ dv = taz.IsentropicDiagnostics(
 )
 
 # component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
+sa = taz.OldKesslerSaturationAdjustment(
     domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
 )
 
@@ -263,6 +263,7 @@ dycore = taz.IsentropicDynamicalCore(
     smooth=False,
     smooth_moist=False,
     # gt4py settings
+    gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
 
@@ -287,6 +288,9 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# dict operator
+dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+
 for i in range(nt):
     compute_time_start = time.time()
 
@@ -297,7 +301,7 @@ for i in range(nt):
     state_new = dycore(state, {}, dt)
 
     # update the state
-    taz.dict_copy(state, state_new)
+    dict_op.copy(state, state_new)
 
     # calculate the slow physics
     if slow_diags is not None:

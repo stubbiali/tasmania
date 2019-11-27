@@ -73,7 +73,14 @@ class DiagnosticComponentComposite:
         self._components_list = args
 
         self.input_properties = get_input_properties(
-            self._components_list, consider_diagnostics=execution_policy == "serial"
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": execution_policy == "serial",
+                }
+                for component in self._components_list
+            )
         )
         self.diagnostic_properties = combine_component_properties(
             self._components_list, "diagnostic_properties"

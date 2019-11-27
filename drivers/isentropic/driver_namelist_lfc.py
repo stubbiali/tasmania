@@ -130,7 +130,7 @@ if nl.turbulence:
     args.append(turb)
 
 # component calculating the microphysics
-ke = taz.KesslerMicrophysics(
+ke = taz.OldKesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
@@ -191,7 +191,7 @@ idv = taz.IsentropicDiagnostics(
 args.append(idv)
 
 # component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
+sa = taz.OldKesslerSaturationAdjustment(
     domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
 )
 args.append(sa)
@@ -252,6 +252,7 @@ dycore = taz.IsentropicDynamicalCore(
     smooth=False,
     smooth_moist=False,
     # gt4py settings
+    gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
 
@@ -276,6 +277,9 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# dict operator
+dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+
 for i in range(nt):
     compute_time_start = time.time()
 
@@ -290,7 +294,7 @@ for i in range(nt):
     state_new = dycore(state, slow_tendencies, dt)
 
     # update the state
-    taz.dict_copy(state, state_new)
+    dict_op.copy(state, state_new)
 
     # retrieve the slow diagnostics
     _, diagnostics = slow_diags(state, dt)

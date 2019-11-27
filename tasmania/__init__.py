@@ -40,6 +40,7 @@ from tasmania.python.framework.base_components import (
     ImplicitTendencyComponent,
     Stepper,
     TendencyComponent,
+    TendencyPromoter,
 )
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
@@ -102,6 +103,8 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerMicrophysics,
     KesslerSaturationAdjustment,
     KesslerSedimentation,
+    OldKesslerMicrophysics,
+    OldKesslerSaturationAdjustment,
 )
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
@@ -134,15 +137,7 @@ from tasmania.python.utils.storage_utils import (
     get_dataarray_2d,
     zeros,
 )
-from tasmania.python.utils.dict_utils import (
-    add as dict_add,
-    add_inplace as dict_add_inplace,
-    copy as dict_copy,
-    multiply as dict_scale,
-    multiply_inplace as dict_scale_inplace,
-    subtract as dict_subtract,
-    subtract_inplace as dict_subtract_inplace,
-)
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.meteo_utils import (
     get_isothermal_isentropic_analytical_solution,
 )
@@ -167,19 +162,13 @@ __all__ = (
     ConstantNotFoundError,
     Contour,
     Contourf,
+    DataArrayDictOperator,
     DiagnosticComponent,
     DiagnosticComponentComposite,
     Domain,
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,
-    dict_add,
-    dict_add_inplace,
-    dict_copy,
-    dict_scale,
-    dict_scale_inplace,
-    dict_subtract,
-    dict_subtract_inplace,
     DynamicalCore,
     get_array_dict,
     get_dataarray_2d,
@@ -219,6 +208,8 @@ __all__ = (
     NumericalHorizontalGrid,
     NumericalTopography,
     OfflineDiagnosticComponent,
+    OldKesslerMicrophysics,
+    OldKesslerSaturationAdjustment,
     ParallelSplitting,
     PhysicalGrid,
     PhysicalHorizontalGrid,
@@ -238,6 +229,7 @@ __all__ = (
     Smagorinsky2d,
     Stepper,
     TendencyComponent,
+    TendencyPromoter,
     TimeInconsistencyError,
     TimeSeries,
     Topography,

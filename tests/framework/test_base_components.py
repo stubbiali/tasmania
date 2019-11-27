@@ -167,13 +167,21 @@ def test_tendency_component(data):
 
 class FakeTendencyPromoter(TendencyPromoter):
     @property
-    def tendency_properties(self):
+    def input_properties(self):
         g = self._grid
         dim0, dim1, dim2 = g.x.dims[0], g.y.dims[0], g.z.dims[0]
         return_dict = {
             "air_pressure": {"dims": (dim2, dim0, dim1), "units": "hPa"},
-            "x_velocity": {"dims": (dim0, dim1, dim2), "units": "m s^-1"},
-            "y_velocity": {"dims": (dim1, dim0, dim2), "units": "km hr^-1"},
+            "x_velocity": {
+                "dims": (dim0, dim1, dim2),
+                "units": "m s^-1",
+                "prefix": "tnd_of_",
+            },
+            "y_velocity": {
+                "dims": (dim1, dim0, dim2),
+                "units": "km hr^-1",
+                "suffix": "_abcde",
+            },
         }
         return return_dict
 
@@ -213,44 +221,73 @@ def test_tendency_promoter(data):
     w = get_dataarray_3d(field, grid, "m s^-1", set_coordinates=False)
     tendencies = {"air_pressure": p, "x_velocity": u, "y_velocity": v, "z_velocity": w}
 
-    state = {}
-
     promoter = FakeTendencyPromoter(domain, grid_type)
+
     assert isinstance(promoter, TendencyPromoter)
 
-    promoter(state, tendencies)
+    assert "air_pressure" in promoter.input_properties
+    ref = promoter.input_properties["air_pressure"]
+    assert "tendency_of_air_pressure" in promoter.diagnostic_properties
+    check = promoter.diagnostic_properties['tendency_of_air_pressure']
+    assert check['dims'] == ref['dims']
+    assert check['units'] == ref['units']
 
-    assert "air_pressure" in state
-    assert all(
-        src == trg for src, trg in zip(state["air_pressure"].dims, (dim2, dim0, dim1))
-    )
-    assert state["air_pressure"].attrs["units"] == "hPa"
+    assert "x_velocity" in promoter.input_properties
+    ref = promoter.input_properties["x_velocity"]
+    assert "tnd_of_x_velocity" in promoter.diagnostic_properties
+    check = promoter.diagnostic_properties['tnd_of_x_velocity']
+    assert check['dims'] == ref['dims']
+    assert check['units'] == ref['units']
+
+    assert "y_velocity" in promoter.input_properties
+    ref = promoter.input_properties["y_velocity"]
+    assert "tendency_of_y_velocity_abcde" in promoter.diagnostic_properties
+    check = promoter.diagnostic_properties['tendency_of_y_velocity_abcde']
+    assert check['dims'] == ref['dims']
+    assert check['units'] == ref['units']
+
+    assert len(promoter.input_properties) == 3
+    assert len(promoter.diagnostic_properties) == 3
+
+    out = promoter(tendencies)
+
+    assert "tendency_of_air_pressure" in out
     assert all(
         src == trg
-        for src, trg in zip(state["air_pressure"].shape, (grid.nz, grid.nx, grid.ny))
+        for src, trg in zip(out["tendency_of_air_pressure"].dims, (dim2, dim0, dim1))
     )
-
-    assert "x_velocity" in state
-    assert all(
-        src == trg for src, trg in zip(state["x_velocity"].dims, (dim0, dim1, dim2))
-    )
-    assert state["x_velocity"].attrs["units"] == "m s^-1"
+    assert out["tendency_of_air_pressure"].attrs["units"] == "hPa"
     assert all(
         src == trg
-        for src, trg in zip(state["x_velocity"].shape, (grid.nx, grid.ny, grid.nz))
+        for src, trg in zip(
+            out["tendency_of_air_pressure"].shape, (grid.nz, grid.nx, grid.ny)
+        )
     )
 
-    assert "y_velocity" in state
+    assert "tnd_of_x_velocity" in out
     assert all(
-        src == trg for src, trg in zip(state["y_velocity"].dims, (dim1, dim0, dim2))
+        src == trg for src, trg in zip(out["tnd_of_x_velocity"].dims, (dim0, dim1, dim2))
     )
-    assert state["y_velocity"].attrs["units"] == "km hr^-1"
+    assert out["tnd_of_x_velocity"].attrs["units"] == "m s^-1"
     assert all(
         src == trg
-        for src, trg in zip(state["y_velocity"].shape, (grid.ny, grid.nx, grid.nz))
+        for src, trg in zip(out["tnd_of_x_velocity"].shape, (grid.nx, grid.ny, grid.nz))
     )
 
-    assert len(state) == 3
+    assert "tendency_of_y_velocity_abcde" in out
+    assert all(
+        src == trg
+        for src, trg in zip(out["tendency_of_y_velocity_abcde"].dims, (dim1, dim0, dim2))
+    )
+    assert out["tendency_of_y_velocity_abcde"].attrs["units"] == "km hr^-1"
+    assert all(
+        src == trg
+        for src, trg in zip(
+            out["tendency_of_y_velocity_abcde"].shape, (grid.ny, grid.nx, grid.nz)
+        )
+    )
+
+    assert len(out) == 3
 
 
 if __name__ == "__main__":

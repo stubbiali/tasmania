@@ -33,7 +33,7 @@ import pytest
 
 from gt4py import storage as gt_storage
 
-from tasmania.python.utils.dict_operator import DataArrayDictOperator
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict, get_dataarray_3d
 
 try:
