@@ -852,9 +852,6 @@ def test1(data):
         eps,
     )
 
-    # to prevent any segfault
-    gt.storage.restore_numpy()
-
     for name in state_new:
         if name != "time":
             compare_arrays(
@@ -1123,9 +1120,6 @@ def test2(data):
         hs,
         eps,
     )
-
-    # to prevent any segfault
-    gt.storage.restore_numpy()
 
     for name in state_new:
         if name != "time":
@@ -1542,9 +1536,6 @@ def test3(data):
         hs,
         eps,
     )
-
-    # to prevent any segfault
-    gt.storage.restore_numpy()
 
     for name in state_new:
         if name != "time":
@@ -2040,9 +2031,6 @@ def test4(data):
             raw_state_3["air_temperature"],
         )
 
-    # to prevent any segfault
-    gt.storage.restore_numpy()
-
     for name in state_new:
         if name != "time":
             compare_arrays(
@@ -2503,9 +2491,6 @@ def test5(data):
         eps,
     )
 
-    # to prevent any segfault
-    gt.storage.restore_numpy()
-
     for name in state_new:
         if name != "time":
             compare_arrays(
@@ -2636,9 +2621,6 @@ def test5(data):
         hs,
         eps,
     )
-
-    # to prevent any segfault
-    gt.storage.restore_numpy()
 
     for name in state_new:
         if name != "time":

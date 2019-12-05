@@ -32,7 +32,7 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gt4py import gtscript
+from gt4py import gtscript, storage as gt_storage
 
 from tasmania.python.isentropic.dynamics.implementations.prognostic import (
     step_forward_euler,
@@ -149,8 +149,7 @@ def test_set_annotations():
 )
 @given(hyp_st.data())
 def test_absolute(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -218,8 +217,7 @@ def test_absolute(data):
 )
 @given(hyp_st.data())
 def test_positive(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -287,8 +285,7 @@ def test_positive(data):
 )
 @given(hyp_st.data())
 def test_negative(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -356,8 +353,7 @@ def test_negative(data):
 )
 @given(hyp_st.data())
 def test_copy(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -411,8 +407,7 @@ def test_copy(data):
 )
 @given(hyp_st.data())
 def test_copychange(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -466,8 +461,7 @@ def test_copychange(data):
 )
 @given(hyp_st.data())
 def test_abs(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -524,8 +518,7 @@ def test_abs(data):
 )
 @given(hyp_st.data())
 def test_iabs(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -582,8 +575,7 @@ def test_iabs(data):
 )
 @given(hyp_st.data())
 def test_add(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -651,8 +643,7 @@ def test_add(data):
 )
 @given(hyp_st.data())
 def test_iadd(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -719,8 +710,7 @@ def test_iadd(data):
 )
 @given(hyp_st.data())
 def test_sub(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -788,8 +778,7 @@ def test_sub(data):
 )
 @given(hyp_st.data())
 def test_isub(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -856,8 +845,7 @@ def test_isub(data):
 )
 @given(hyp_st.data())
 def test_mul(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -925,8 +913,7 @@ def test_mul(data):
 )
 @given(hyp_st.data())
 def test_imul(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -993,8 +980,7 @@ def test_imul(data):
 )
 @given(hyp_st.data())
 def test_scale(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1052,8 +1038,7 @@ def test_scale(data):
 )
 @given(hyp_st.data())
 def test_iscale(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1110,8 +1095,7 @@ def test_iscale(data):
 )
 @given(hyp_st.data())
 def test_addsub(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1190,8 +1174,7 @@ def test_addsub(data):
 )
 @given(hyp_st.data())
 def test_iaddsub(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1269,8 +1252,7 @@ def test_iaddsub(data):
 )
 @given(hyp_st.data())
 def test_fma(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1339,8 +1321,7 @@ def test_fma(data):
 )
 @given(hyp_st.data())
 def test_sts_rk2_0(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1428,8 +1409,7 @@ def test_sts_rk2_0(data):
 )
 @given(hyp_st.data())
 def test_sts_rk3ws_0(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1517,8 +1497,7 @@ def test_sts_rk3ws_0(data):
 )
 @given(hyp_st.data())
 def test_clip(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation
@@ -1575,8 +1554,7 @@ def test_clip(data):
 )
 @given(hyp_st.data())
 def test_iclip(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt_storage.prepare_numpy()
 
     # ========================================
     # random data generation

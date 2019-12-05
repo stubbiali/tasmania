@@ -28,6 +28,8 @@ from pint import UnitRegistry
 from sympl import DataArray
 from sympl._core.units import clean_units
 
+import gt4py as gt
+
 import os
 import sys
 
@@ -68,8 +70,12 @@ def compare_datetimes(td1, td2):
 
 
 def compare_arrays(field_a, field_b, atol=1e-8, rtol=1e-5):
+    # to prevent segfaults
+    gt.storage.restore_numpy()
+
     # field_a[np.isinf(field_a)] = np.nan
     # field_b[np.isinf(field_b)] = np.nan
+
     try:
         assert np.allclose(field_a, field_b, equal_nan=True, atol=atol, rtol=rtol)
     except RuntimeError:
@@ -79,6 +85,8 @@ def compare_arrays(field_a, field_b, atol=1e-8, rtol=1e-5):
             )
         except AttributeError:
             assert False
+
+    gt.storage.prepare_numpy()
 
 
 def compare_dataarrays(da1, da2, compare_coordinate_values=True):

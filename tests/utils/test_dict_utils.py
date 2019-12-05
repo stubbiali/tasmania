@@ -94,6 +94,7 @@ def get_grid_shape(name, nx, ny, nz):
     deadline=None,
 )
 @given(hyp_st.data())
+@reproduce_failure('4.28.0', b'AXicY2BAAYIzYCyOM4xQmglFBW8nw6AGjGRoAQCgKwLt')
 def test_copy(data):
     gt_storage.prepare_numpy()
 
@@ -1363,4 +1364,5 @@ def test_sts_rk3ws_0(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_copy()

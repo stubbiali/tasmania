@@ -291,9 +291,6 @@ def test_kessler_microphysics(data):
 
     svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
 
-    # uncomment the following line to prevent any segfault
-    # gt.storage.restore_numpy()
-
     tnd_qv, tnd_qc, tnd_qr, tnd_theta = kessler_validation(
         rho, p, t, exn, qv, qc, qr, a, k1, k2 / 3600.0, svpf, beta, lhvw, re
     )
@@ -690,9 +687,6 @@ def test_kessler_sedimentation(data):
     raw_mfpw_val = kessler_sedimentation_validation(
         nx, ny, nz, state, timestep, flux_type, maxcfl
     )
-
-    # to prevent any segfault
-    gt.storage.restore_numpy()
 
     compare_dataarrays(
         get_dataarray_3d(
