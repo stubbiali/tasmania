@@ -34,7 +34,7 @@ from tasmania.python.utils.storage_utils import zeros
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 class IsentropicDiagnostics:

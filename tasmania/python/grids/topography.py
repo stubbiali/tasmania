@@ -31,7 +31,7 @@ from tasmania.python.utils.utils import smaller_than as lt
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 class Topography:

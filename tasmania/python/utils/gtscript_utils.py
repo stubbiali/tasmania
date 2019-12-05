@@ -33,6 +33,21 @@ def set_annotations(func_handle, dtype):
     return func_handle
 
 
+@gtscript.function
+def absolute(phi):
+    return phi if phi > 0 else -phi
+
+
+@gtscript.function
+def positive(phi):
+    return phi if phi > 0 else 0
+
+
+@gtscript.function
+def negative(phi):
+    return -phi if phi < 0 else 0
+
+
 def stencil_copy_defs(src: gtscript.Field[np.float64], dst: gtscript.Field[np.float64]):
     with computation(PARALLEL), interval(...):
         dst = src
@@ -43,6 +58,18 @@ def stencil_copychange_defs(
 ):
     with computation(PARALLEL), interval(...):
         dst = -src
+
+
+def stencil_abs_defs(
+    in_field: gtscript.Field[np.float64], out_field: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        out_field = in_field if in_field > 0 else -in_field
+
+
+def stencil_iabs_defs(inout_field: gtscript.Field[np.float64]):
+    with computation(PARALLEL), interval(...):
+        inout_field = inout_field if inout_field > 0 else -inout_field
 
 
 def stencil_add_defs(
@@ -157,3 +184,15 @@ def stencil_sts_rk3ws_0_defs(
 ):
     with computation(PARALLEL), interval(...):
         out_field = (2.0 * in_field + in_field_prv + dt * in_tnd) / 3.0
+
+
+def stencil_clip_defs(
+    in_field: gtscript.Field[np.float64], out_field: gtscript.Field[np.float64]
+):
+    with computation(PARALLEL), interval(...):
+        out_field = positive(in_field)
+
+
+def stencil_iclip_defs(inout_field: gtscript.Field[np.float64]):
+    with computation(PARALLEL), interval(...):
+        inout_field = positive(inout_field)

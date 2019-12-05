@@ -24,7 +24,7 @@ import numpy as np
 
 
 # backend settings
-datatype = np.float32
+datatype = np.float64
 
 # horizontal boundary
 nb = 3

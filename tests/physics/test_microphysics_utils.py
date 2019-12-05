@@ -30,6 +30,7 @@ from gt4py import gtscript, storage as gt_storage
 
 from tasmania.python.physics.microphysics.kessler import KesslerFallVelocity
 from tasmania.python.physics.microphysics.utils import (
+    Clipping,
     SedimentationFlux,
     _FirstOrderUpwind,
     _SecondOrderUpwind,
@@ -83,6 +84,87 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
     vt[ids] = maxcfl * dh[ids] / dt
 
     return 3.6e6 * rho * qr * vt / rhow
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_clipping(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    domain = data.draw(st_domain(zaxis_length=(2, 20)), label="domain")
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
+    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            precipitation=False,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+
+    names = []
+    if data.draw(hyp_st.booleans(), label="if_qv"):
+        names.append(mfwv)
+    if data.draw(hyp_st.booleans(), label="if_qc"):
+        names.append(mfcw)
+    if data.draw(hyp_st.booleans(), label="if_qr"):
+        names.append(mfpw)
+
+    # ========================================
+    # test bed
+    # ========================================
+    clip = Clipping(
+        domain,
+        grid_type,
+        names,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+        storage_shape=storage_shape,
+        rebuild=False,
+    )
+
+    diagnostics = clip(state)
+
+    for name in names:
+        assert name in clip.input_properties
+        assert name in clip.diagnostic_properties
+    assert len(clip.input_properties) == len(names)
+    assert len(clip.diagnostic_properties) == len(names)
+
+    for name in names:
+        q = state[name].to_units('g g^-1').values
+        q[q < 0] = 0
+
+        assert name in diagnostics
+        compare_dataarrays(
+            get_dataarray_3d(q[:nx, :ny, :nz], grid, "g g^-1"),
+            diagnostics[name][:nx, :ny, :nz],
+            compare_coordinate_values=False,
+        )
+
+    assert len(diagnostics) == len(names)
 
 
 @settings(
@@ -223,7 +305,7 @@ def first_order_flux_validation(rho, h, qr, vt):
     tmp_h = 0.5 * (h[:, :, :-1] + h[:, :, 1:])
 
     out = deepcopy(rho)
-    out[:, :, :1] = 0.
+    out[:, :, :1] = 0.0
     out[:, :, 1:] = (
         rho[:, :, :-1] * qr[:, :, :-1] * vt[:, :, :-1]
         - rho[:, :, 1:] * qr[:, :, 1:] * vt[:, :, 1:]
@@ -249,7 +331,7 @@ def second_order_flux_validation(rho, h, qr, vt):
     )
 
     out = deepcopy(rho)
-    out[:, :, :2] = 0.
+    out[:, :, :2] = 0.0
     out[:, :, 2:] = (
         a[:, :, 2:] * rho[:, :, 2:] * qr[:, :, 2:] * vt[:, :, 2:]
         + b[:, :, 2:] * rho[:, :, 1:-1] * qr[:, :, 1:-1] * vt[:, :, 1:-1]

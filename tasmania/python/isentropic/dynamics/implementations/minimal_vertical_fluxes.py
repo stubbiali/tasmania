@@ -25,13 +25,12 @@ from gt4py import gtscript, __externals__
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
+from tasmania.python.utils.gtscript_utils import absolute
 
 
 @gtscript.function
 def get_upwind_flux(w, phi):
-    flux = w[0, 0, 0] * (
-        (w[0, 0, 0] > 0.0) * phi[0, 0, 0] + (w[0, 0, 0] < 0.0) * phi[0, 0, -1]
-    )
+    flux = w[0, 0, 0] * (phi[0, 0, 0] if w[0, 0, 0] > 0 else phi[0, 0, -1])
     return flux
 
 
@@ -97,7 +96,7 @@ class Centered(IsentropicMinimalVerticalFlux):
 def get_third_order_upwind_flux(w, phi):
     flux = w[0, 0, 0] / 12.0 * (
         7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] + phi[0, 0, 1])
-    ) - (w[0, 0, 0] * (w[0, 0, 0] > 0.0) - w[0, 0, 0] * (w[0, 0, 0] < 0.0)) / 12.0 * (
+    ) - absolute(w)[0, 0, 0] / 12.0 * (
         3.0 * (phi[0, 0, -1] - phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] - phi[0, 0, 1])
     )
     return flux
@@ -108,7 +107,10 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
 
     extent = 2
     order = 3
-    externals = {"get_third_order_upwind_flux": get_third_order_upwind_flux}
+    externals = {
+        "get_third_order_upwind_flux": get_third_order_upwind_flux,
+        "absolute": absolute,
+    }
 
     @staticmethod
     @gtscript.function
@@ -135,7 +137,7 @@ def get_fifth_order_upwind_flux(w, phi):
         37.0 * (phi[0, 0, -1] + phi[0, 0, 0])
         - 8.0 * (phi[0, 0, -2] + phi[0, 0, 1])
         + 1.0 * (phi[0, 0, -3] + phi[0, 0, 2])
-    ) - (w[0, 0, 0] * (w[0, 0, 0] > 0.0) - w[0, 0, 0] * (w[0, 0, 0] < 0.0)) / 60.0 * (
+    ) - absolute(w)[0, 0, 0] / 60.0 * (
         10.0 * (phi[0, 0, -1] - phi[0, 0, 0])
         - 5.0 * (phi[0, 0, -2] - phi[0, 0, 1])
         + 1.0 * (phi[0, 0, -3] - phi[0, 0, 2])
@@ -148,7 +150,10 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
 
     extent = 3
     order = 5
-    externals = {"get_fifth_order_upwind_flux": get_fifth_order_upwind_flux}
+    externals = {
+        "get_fifth_order_upwind_flux": get_fifth_order_upwind_flux,
+        "absolute": absolute,
+    }
 
     @staticmethod
     @gtscript.function

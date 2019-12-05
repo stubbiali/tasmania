@@ -32,7 +32,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 # convenient shortcuts

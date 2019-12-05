@@ -75,8 +75,8 @@ class _FirstOrder(BurgersAdvection):
     @staticmethod
     @gtscript.function
     def __call__(dx, dy, u, v):
-        abs_u = u * (u > 0.0) - u * (u < 0)
-        abs_v = v * (v > 0.0) - v * (v < 0)
+        abs_u = u if u > 0 else -u
+        abs_v = v if v > 0 else -v
 
         adv_u_x = u[0, 0, 0] / (2.0 * dx) * (u[+1, 0, 0] - u[-1, 0, 0]) - abs_u[
             0, 0, 0
@@ -114,8 +114,8 @@ class _ThirdOrder(BurgersAdvection):
     @staticmethod
     @gtscript.function
     def __call__(dx, dy, u, v):
-        abs_u = u * (u > 0.0) - u * (u < 0)
-        abs_v = v * (v > 0.0) - v * (v < 0)
+        abs_u = u if u > 0 else -u
+        abs_v = v if v > 0 else -v
 
         adv_u_x = u[0, 0, 0] / (12.0 * dx) * (
             8.0 * (u[+1, 0, 0] - u[-1, 0, 0]) - (u[+2, 0, 0] - u[-2, 0, 0])
@@ -189,8 +189,8 @@ class _FifthOrder(BurgersAdvection):
     @staticmethod
     @gtscript.function
     def __call__(dx, dy, u, v):
-        abs_u = u * (u >= 0.0) - u * (u < 0)
-        abs_v = v * (v >= 0.0) - v * (v < 0)
+        abs_u = u if u > 0 else -u
+        abs_v = v if v > 0 else -v
 
         adv_u_x = u[0, 0, 0] / (60.0 * dx) * (
             +45.0 * (u[+1, 0, 0] - u[-1, 0, 0])

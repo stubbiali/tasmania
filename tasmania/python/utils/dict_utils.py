@@ -49,7 +49,7 @@ class DataArrayDictOperator:
     def __init__(
         self,
         gt_powered=False,
-            *,
+        *,
         backend="numpy",
         backend_opts=None,
         build_info=None,
@@ -251,7 +251,12 @@ class DataArrayDictOperator:
         return out
 
     def iadd(
-        self, dict1, dict2, field_properties=None, unshared_variables_in_output=False
+        self,
+        dict1,
+        dict2,
+        field_properties=None,
+        unshared_variables_in_output=False,
+        deepcopy_unshared_variables=False,
     ):
         """
         In-place variant of `add`.
@@ -274,6 +279,7 @@ class DataArrayDictOperator:
         unshared_variables_in_output : `bool`, optional
             `True` if the output dictionary should contain those variables
             included in only one of the two input dictionaries.
+        deepcopy_unshared_variables : `bool`, optional
         """
         field_properties = field_properties or {}
 
@@ -281,6 +287,9 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
         unshared_keys = set(dict1.keys()).symmetric_difference(dict2.keys())
         unshared_keys = unshared_keys.difference(("time",))
+        # shared_keys = tuple(key for key in dict1 if key in dict2 and key != "time")
+        # unshared_keys = list(key for key in dict1 if key not in dict2 and key != "time")
+        # unshared_keys += list(key for key in dict2 if key not in dict1 and key != "time")
 
         if self._gt_powered and self._stencil_iadd is None:
             set_annotations(stencil_iadd_defs, self._dtype)
@@ -307,7 +316,11 @@ class DataArrayDictOperator:
                 _dict = dict1 if key in dict1 else dict2
                 props = field_properties.get(key, {})
                 units = props.get("units", _dict[key].attrs["units"])
-                dict1[key] = _dict[key].to_units(units)
+                dict1[key] = (
+                    deepcopy_dataarray(_dict[key].to_units(units))
+                    if deepcopy_unshared_variables
+                    else _dict[key].to_units(units)
+                )
 
     def sub(
         self,
@@ -576,7 +589,7 @@ class DataArrayDictOperator:
             )
 
         for key in dictionary:
-            if key != 'time':
+            if key != "time":
                 props = field_properties.get(key, {})
                 units = props.get("units", dictionary[key].attrs["units"])
                 dictionary[key] = dictionary[key].to_units(units)
@@ -584,10 +597,7 @@ class DataArrayDictOperator:
 
                 if self._gt_powered:
                     self._stencil_iscale(
-                        inout_a=rfield,
-                        f=factor,
-                        origin=(0, 0, 0),
-                        domain=rfield.shape,
+                        inout_a=rfield, f=factor, origin=(0, 0, 0), domain=rfield.shape
                     )
                 else:
                     rfield[...] *= factor
@@ -599,7 +609,7 @@ class DataArrayDictOperator:
 
         out = out or {}
         if "time" in dict1 or "time" in dict2 or "time" in dict3:
-            out["time"] = dict1.get("time", dict2.get("time", dict3.get('time', None)))
+            out["time"] = dict1.get("time", dict2.get("time", dict3.get("time", None)))
 
         shared_keys = set(dict1.keys()).intersection(dict2.keys())
         shared_keys = shared_keys.intersection(dict3.keys())
@@ -773,9 +783,7 @@ class DataArrayDictOperator:
 
         return out
 
-    def sts_rk3ws_0(
-        self, dt, state, state_prv, tnd, out=None, field_properties=None
-    ):
+    def sts_rk3ws_0(self, dt, state, state_prv, tnd, out=None, field_properties=None):
         """ TODO """
 
         field_properties = field_properties or {}

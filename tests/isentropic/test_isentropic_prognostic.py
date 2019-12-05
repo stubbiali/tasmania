@@ -108,6 +108,62 @@ def forward_euler_step(
     )
 
 
+def forward_euler_step_momentum_x(
+    get_fluxes,
+    mode,
+    eps,
+    dx,
+    dy,
+    dt,
+    s,
+    s_new,
+    u_tmp,
+    v_tmp,
+    mtg,
+    mtg_new,
+    su,
+    su_tmp,
+    su_tnd,
+    su_out,
+):
+    flux_x, flux_y = get_fluxes(u_tmp, v_tmp, su_tmp)
+    su_out[1:-1, 1:-1] = su[1:-1, 1:-1] - dt * (
+        ((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != "y" else 0.0)
+        + ((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != "x" else 0.0)
+        + (1 - eps) * s[1:-1, 1:-1] * (mtg[2:, 1:-1] - mtg[:-2, 1:-1]) / (2.0 * dx)
+        + eps * s_new[1:-1, 1:-1] * (mtg_new[2:, 1:-1] - mtg_new[:-2, 1:-1]) / (2.0 * dx)
+        - (su_tnd[1:-1, 1:-1] if su_tnd is not None else 0.0)
+    )
+
+
+def forward_euler_step_momentum_y(
+        get_fluxes,
+        mode,
+        eps,
+        dx,
+        dy,
+        dt,
+        s,
+        s_new,
+        u_tmp,
+        v_tmp,
+        mtg,
+        mtg_new,
+        sv,
+        sv_tmp,
+        sv_tnd,
+        sv_out,
+):
+    flux_x, flux_y = get_fluxes(u_tmp, v_tmp, sv_tmp)
+    sv_out[1:-1, 1:-1] = sv[1:-1, 1:-1] - dt * (
+            ((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != "y" else 0.0)
+            + ((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != "x" else 0.0)
+            + (1 - eps) * s[1:-1, 1:-1] * (mtg[1:-1, 2:] - mtg[1:-1, :-2]) / (2.0 * dy)
+            + eps * s_new[1:-1, 1:-1] * (mtg_new[1:-1, 2:] - mtg_new[1:-1, :-2]) / (2.0 * dy)
+            - (sv_tnd[1:-1, 1:-1] if sv_tnd is not None else 0.0)
+    )
+
+
 @settings(
     suppress_health_check=(
         HealthCheck.too_slow,
@@ -684,10 +740,7 @@ def test_rk3ws_si(data):
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, s0, s1, s_tnd, s2
     )
     hb.dmn_enforce_field(
-        s2,
-        "air_isentropic_density",
-        "kg m^-2 K^-1",
-        time=state["time"] + 0.5 * timestep,
+        s2, "air_isentropic_density", "kg m^-2 K^-1", time=state["time"] + 0.5 * timestep
     )
     assert "air_isentropic_density" in raw_state_2
     compare_arrays(
@@ -802,10 +855,7 @@ def test_rk3ws_si(data):
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, s0, s2, s_tnd, s3
     )
     hb.dmn_enforce_field(
-        s3,
-        "air_isentropic_density",
-        "kg m^-2 K^-1",
-        time=state["time"] + timestep,
+        s3, "air_isentropic_density", "kg m^-2 K^-1", time=state["time"] + timestep
     )
     assert "air_isentropic_density" in raw_state_3
     compare_arrays(

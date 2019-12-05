@@ -33,7 +33,7 @@ from tasmania.python.framework.base_components import (
     ImplicitTendencyComponent,
 )
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils.gtscript_utils import set_annotations, stencil_clip_defs
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
 try:
@@ -52,7 +52,22 @@ class Clipping(DiagnosticComponent):
     Clipping negative values of water species.
     """
 
-    def __init__(self, domain, grid_type, water_species_names=None):
+    def __init__(
+        self,
+        domain,
+        grid_type,
+        water_species_names=None,
+        *,
+        backend="numpy",
+        backend_opts=None,
+        build_info=None,
+        dtype=datatype,
+        exec_info=None,
+        default_origin=None,
+        rebuild=False,
+        storage_shape=None,
+        managed_memory=False
+    ):
         """
         Parameters
         ----------
@@ -66,9 +81,51 @@ class Clipping(DiagnosticComponent):
 
         water_species_names : `tuple`, optional
             The names of the water species to clip.
+        backend : `str`, optional
+            The GT4Py backend.
+        backend_opts : `dict`, optional
+            Dictionary of backend-specific options.
+        build_info : `dict`, optional
+            Dictionary of building options.
+        dtype : `data-type`, optional
+            Data type of the storages.
+        exec_info : `dict`, optional
+            Dictionary which will store statistics and diagnostics gathered at run time.
+        default_origin : `tuple[int]`, optional
+            Storage default origin.
+        rebuild : `bool`, optional
+            `True` to trigger the stencils compilation at any class instantiation,
+            `False` to rely on the caching mechanism implemented by GT4Py.
+        storage_shape : `tuple[int]`, optional
+            Shape of the storages.
+        managed_memory : `bool`, optional
+            `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._names = water_species_names
         super().__init__(domain, grid_type)
+
+        nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
+        in_shape = storage_shape or None
+        storage_shape = get_storage_shape(in_shape, (nx, ny, nz))
+        self._outs = {
+            name: zeros(
+                storage_shape,
+                backend,
+                dtype,
+                default_origin,
+                managed_memory=managed_memory,
+            )
+            for name in water_species_names
+        }
+
+        set_annotations(stencil_clip_defs, dtype)
+        self._stencil = gtscript.stencil(
+            backend=backend,
+            definition=stencil_clip_defs,
+            rebuild=rebuild,
+            build_info=build_info,
+            **(backend_opts or {})
+        )
 
     @property
     def input_properties(self):
@@ -94,9 +151,12 @@ class Clipping(DiagnosticComponent):
         diagnostics = {}
 
         for name in self._names:
-            q = state[name]
-            q[q < 0.0] = 0.0
-            diagnostics[name] = q
+            in_q = state[name]
+            out_q = self._outs[name]
+            self._stencil(
+                in_field=in_q, out_field=out_q, origin=(0, 0, 0), domain=out_q.shape
+            )
+            diagnostics[name] = out_q
 
         return diagnostics
 

@@ -20,15 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	check_properties_compatibility
-	check_property_compatibility
-	check_missing_properties
-	resolve_aliases
-	get_input_properties
-	get_output_properties
-"""
 from sympl._core.combine_properties import (
     combine_dims,
     units_are_compatible,

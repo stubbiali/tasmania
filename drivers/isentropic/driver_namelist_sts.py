@@ -220,7 +220,7 @@ if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
     args.append({"component": ivc})
 
 # component calculating the microphysics
-ke = taz.OldKesslerMicrophysics(
+ke = taz.KesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
@@ -229,6 +229,7 @@ ke = taz.OldKesslerMicrophysics(
     autoconversion_threshold=nl.autoconversion_threshold,
     autoconversion_rate=nl.autoconversion_rate,
     collection_rate=nl.collection_rate,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     **nl.gt_kwargs
 )
 if nl.update_frequency > 0:

@@ -85,32 +85,24 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 def kessler_validation(
-    rho, p, t, exn, qv, qc, qr, a, k1, k2, swvf, beta, lhvw, rain_evaporation
+    rho, p, t, exn, qv, qc, qr, a, k1, k2, svpf, beta, lhvw, rain_evaporation
 ):
     p = p if p.shape[2] == rho.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
     exn = exn if exn.shape[2] == rho.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
-
-    p_mbar = 0.01 * p
-    rho_gcm3 = 0.001 * rho
 
     ar = k1 * (qc - a) * (qc > a)
     cr = k2 * qc * qr ** 0.875
 
     tnd_qc = -ar - cr
-    # tnd_qc[np.isnan(tnd_qc)] = 0.0
+    tnd_qc[np.isnan(tnd_qc)] = 0.0
     tnd_qr = ar + cr
-    # tnd_qr[np.isnan(tnd_qr)] = 0.0
+    tnd_qr[np.isnan(tnd_qr)] = 0.0
 
     if rain_evaporation:
-        ps = swvf(t)
-        qvs = beta * ps / (p - ps)
-        c = 1.6 + 124.9 * (rho_gcm3 * qr) ** 0.2046
-        er = (
-            (1.0 - qv / qvs)
-            * c
-            * (rho_gcm3 * qr) ** 0.525
-            / (rho_gcm3 * (5.4e5 + 2.55e6 / (p_mbar * qvs)))
-        )
+        ps = svpf(t)
+        qvs = beta * ps / p
+        er = 0.0484794 * (qvs - qv) * (rho * qr) ** (13.0 / 20.0)
+        er[np.isnan(er)] = 0.0
         tnd_qv = er
         # tnd_qv[np.isnan(tnd_qv)] = 0.0
         tnd_qr -= er
@@ -161,7 +153,7 @@ def test_kessler_microphysics(data):
     apoif = data.draw(hyp_st.booleans(), label="apoif")
     toaptid = data.draw(hyp_st.booleans(), label="toaptid")
     re = data.draw(hyp_st.booleans(), label="re")
-    swvf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="swvf_type")
+    svpf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="svpf_type")
 
     a = data.draw(hyp_st.floats(min_value=0, max_value=10), label="a")
     k1 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k1")
@@ -214,7 +206,7 @@ def test_kessler_microphysics(data):
         autoconversion_threshold=DataArray(a, attrs={"units": "g g^-1"}),
         autoconversion_rate=DataArray(k1, attrs={"units": "s^-1"}),
         collection_rate=DataArray(k2, attrs={"units": "hr^-1"}),
-        saturation_water_vapor_formula=swvf_type,
+        saturation_vapor_pressure_formula=svpf_type,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -297,15 +289,14 @@ def test_kessler_microphysics(data):
     # assert kessler._k1 == k1
     # assert np.isclose(kessler._k2, k2/3600.0)
 
-    swvf = goff_gratch_formula if swvf_type == "goff_gratch" else tetens_formula
+    svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
+
+    # uncomment the following line to prevent any segfault
+    # gt.storage.restore_numpy()
 
     tnd_qv, tnd_qc, tnd_qr, tnd_theta = kessler_validation(
-        rho, p, t, exn, qv, qc, qr, a, k1, k2 / 3600.0, swvf, beta, lhvw, re
+        rho, p, t, exn, qv, qc, qr, a, k1, k2 / 3600.0, svpf, beta, lhvw, re
     )
-    # tnd_qv, tnd_qc, tnd_qr, tnd_theta = kessler_validation_bis(
-    # 	rho, p, t, exn, qv, qc, qr, a, k1, k2/3600.0, swvf, beta, lhvw, re
-    # )
-
     compare_dataarrays(
         get_dataarray_3d(tnd_qc, grid, "g g^-1 s^-1"),
         tendencies[mfcw][:nx, :ny, :nz],
@@ -337,12 +328,12 @@ def test_kessler_microphysics(data):
 
 
 def kessler_saturation_adjustment_validation(
-    timestep, p, t, exn, qv, qc, swvf, beta, lhvw, cp, rv
+    timestep, p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv
 ):
     p = p if p.shape[2] == t.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
     exn = exn if exn.shape[2] == t.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
 
-    ps = swvf(t)
+    ps = svpf(t)
     qvs = beta * ps / p
     dq = np.minimum((qvs - qv) / (1.0 + qvs * (lhvw ** 2) / (cp * rv * (t ** 2))), qc)
     dt = -lhvw * dq / cp
@@ -388,7 +379,7 @@ def test_kessler_saturation_adjustment(data):
     )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
-    swvf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="swvf_type")
+    svpf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="svpf_type")
 
     timestep = data.draw(st_floats(min_value=1e-6, max_value=3600), label="timestep")
 
@@ -433,7 +424,7 @@ def test_kessler_saturation_adjustment(data):
         domain,
         grid_type,
         air_pressure_on_interface_levels=apoif,
-        saturation_water_vapor_formula=swvf_type,
+        saturation_vapor_pressure_formula=svpf_type,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -492,10 +483,10 @@ def test_kessler_saturation_adjustment(data):
     qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
     qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
 
-    swvf = goff_gratch_formula if swvf_type == "goff_gratch" else tetens_formula
+    svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
 
     out_qv, out_qc, out_t, out_theta_tnd = kessler_saturation_adjustment_validation(
-        dt.total_seconds(), p, t, exn, qv, qc, swvf, beta, lhvw, cp, rv
+        dt.total_seconds(), p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv
     )
 
     compare_dataarrays(

@@ -24,8 +24,6 @@ import abc
 import sympl
 from sympl._core.base_components import InputChecker
 
-from tasmania.python.framework.tendency_checkers import SupersetTendencyChecker
-
 
 allowed_grid_types = ("physical", "numerical")
 
@@ -311,96 +309,3 @@ class TendencyComponent(sympl.TendencyComponent):
         """
         return self._hb
 
-
-class TendencyPromoter(abc.ABC):
-    """ Promote a tendency to a state variable. """
-
-    def __init__(self, domain, grid_type):
-        """
-        Parameters
-        ----------
-        domain : tasmania.Domain
-            The underlying domain.
-        grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
-        """
-        assert (
-            grid_type in allowed_grid_types
-        ), "grid_type is {}, but either ({}) was expected.".format(
-            grid_type, ",".join(allowed_grid_types)
-        )
-        self._grid_type = grid_type
-        self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-        )
-
-        self.diagnostic_properties = {}
-        for name, props in self.input_properties.items():
-            prefix = props.get("prefix", "tendency_of_")
-            suffix = props.get("suffix", "")
-            self.diagnostic_properties[prefix + name + suffix] = {
-                "dims": props["dims"],
-                "units": props["units"],
-            }
-
-        self._input_checker = InputChecker(self)
-
-    @property
-    def grid_type(self):
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
-        return self._grid_type
-
-    @property
-    def grid(self):
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
-        return self._grid
-
-    @property
-    @abc.abstractmethod
-    def input_properties(self):
-        pass
-
-    def __call__(self, tendencies):
-        """
-        Parameters
-        ----------
-        tendencies : dict[str, sympl.DataArray]
-            The dictionary of tendencies.
-
-        Return
-        ------
-        dict[str, sympl.DataArray] :
-            The dictionary of promoted tendencies.
-        """
-        self._input_checker.check_inputs(tendencies)
-
-        diagnostics = {}
-
-        for name, props in self.input_properties.items():
-            dims = props["dims"]
-            units = props["units"]
-            prefix = props.get("prefix", "tendency_of_")
-            suffix = props.get("suffix", "")
-
-            if any(src != trg for src, trg in zip(tendencies[name].dims, dims)):
-                diagnostics[prefix + name + suffix] = (
-                    tendencies[name].transpose(*dims).to_units(units)
-                )
-            else:
-                diagnostics[prefix + name + suffix] = tendencies[name].to_units(units)
-
-        return diagnostics

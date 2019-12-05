@@ -135,7 +135,7 @@ class KesslerMicrophysics(TendencyComponent):
         collection_rate : `sympl.DataArray`, optional
             Rate of collection, in units compatible with [s^-1].
         saturation_vapor_pressure_formula : `str`, optional
-            The formula giving the saturation water vapor pressure. Available options are:
+            The formula giving the saturation water vapor. Available options are:
 
                 * 'tetens' (default) for the Tetens' equation;
                 * 'goff_gratch' for the Goff-Gratch equation.
@@ -386,8 +386,14 @@ class KesslerMicrophysics(TendencyComponent):
         self._stencil(**stencil_args, origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz))
 
         # collect the tendencies
+        # >>> comment the following two lines before testing <<<
+        self._out_qc_tnd[np.isnan(self._out_qc_tnd)] = 0.0
+        self._out_qr_tnd[np.isnan(self._out_qr_tnd)] = 0.0
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
         if self._rain_evaporation:
+            # >>> comment the following two lines before testing <<<
+            self._out_qv_tnd[np.isnan(self._out_qv_tnd)] = 0.0
+            self._out_theta_tnd[np.isnan(self._out_theta_tnd)] = 0.0
             tendencies[mfwv] = self._out_qv_tnd
             if not self._pttd:
                 tendencies["air_potential_temperature"] = self._out_theta_tnd
@@ -434,21 +440,27 @@ class KesslerMicrophysics(TendencyComponent):
                 p = in_p
                 exn = in_exn
 
+            # perform units conversion
+            rho_gcm3 = 0.001 * in_rho
+            p_mbar = 0.01 * p
+
             # compute the saturation mixing ratio of water vapor
-            qvs = beta * in_ps / p
+            qvs = beta * in_ps / (p - in_ps)
 
             # compute the contribution of autoconversion to rain development
             ar = k1 * (in_qc > a) * (in_qc - a)
 
             # compute the contribution of accretion to rain development
-            cr = k2 * in_qc * (in_qr ** 0.875) if in_qr > 0 else 0
+            cr = k2 * in_qc * (in_qr ** 0.875)
 
             if __INLINED(rain_evaporation):  # compile-time if
                 # compute the contribution of evaporation to rain development
+                c = 1.6 + 124.9 * ((rho_gcm3 * in_qr) ** 0.2046)
                 er = (
-                    0.0484794 * (qvs - in_qv) * (in_rho * in_qr) ** (13.0 / 20.0)
-                    if in_qr > 0
-                    else 0
+                    (1.0 - in_qv / qvs)
+                    * c
+                    * ((rho_gcm3 * in_qr) ** 0.525)
+                    / (rho_gcm3 * (5.4e5 + 2.55e6 / (p_mbar * qvs)))
                 )
 
             # calculate the tendencies
@@ -465,7 +477,7 @@ class KesslerMicrophysics(TendencyComponent):
                 out_theta_tnd = -lhvw / exn * er
 
 
-class KesslerSaturationAdjustment(ImplicitTendencyComponent):
+class KesslerSaturationAdjustment(DiagnosticComponent):
     """
     The saturation adjustment as predicted by the WRF implementation
     of the Kessler microphysics scheme.
@@ -497,7 +509,6 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
         domain,
         grid_type="numerical",
         air_pressure_on_interface_levels=True,
-        saturation_vapor_pressure_formula="tetens",
         physical_constants=None,
         *,
         backend="numpy",
@@ -525,12 +536,6 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
             `True` (respectively, `False`) if the input pressure
             field is defined at the interface (resp., main) levels.
             Defaults to `True`.
-        saturation_vapor_pressure_formula : `str`, optional
-            The formula giving the saturation water vapor pressure. Available options are:
-
-                * 'tetens' (default) for the Tetens' equation;
-                * 'goff_gratch' for the Goff-Gratch equation.
-
         physical_constants : `dict[str, sympl.DataArray]`, optional
             Dictionary whose keys are strings indicating physical constants used
             within this object, and whose values are :class:`sympl.DataArray`\s
@@ -572,13 +577,6 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
         # call parent's constructor
         super().__init__(domain, grid_type)
 
-        # set the formula calculating the saturation water vapor pressure
-        self._swvf = (
-            goff_gratch_formula
-            if saturation_vapor_pressure_formula == "goff_gratch"
-            else tetens_formula
-        )
-
         # set physical parameters values
         pcs = get_physical_constants(self._d_physical_constants, physical_constants)
 
@@ -615,20 +613,6 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
-        self._out_t = zeros(
-            storage_shape,
-            backend,
-            dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_theta_tnd = zeros(
-            storage_shape,
-            backend,
-            dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
 
         # update the annotations for the field arguments of the definition function
         set_annotations(self._stencil_defs, dtype)
@@ -645,7 +629,6 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
                 "beta": beta,
                 "lhvw": lhvw,
                 "cp": cp,
-                "rv": rv,
             },
             **(backend_opts or {})
         )
@@ -674,22 +657,8 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
                 "dims": dims_on_interface_levels,
                 "units": "Pa",
             }
-            return_dict["exner_function_on_interface_levels"] = {
-                "dims": dims_on_interface_levels,
-                "units": "J kg^-1 K^-1",
-            }
         else:
             return_dict["air_pressure"] = {"dims": dims, "units": "Pa"}
-            return_dict["exner_function"] = {"dims": dims, "units": "J kg^-1 K^-1"}
-
-        return return_dict
-
-    @property
-    def tendency_properties(self):
-        grid = self.grid
-        dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
-
-        return_dict = {"air_potential_temperature": {"dims": dims, "units": "K s^-1"}}
 
         return return_dict
 
@@ -699,7 +668,6 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
         return_dict = {
-            "air_temperature": {"dims": dims, "units": "K"},
             "mass_fraction_of_water_vapor_in_air": {"dims": dims, "units": "g g^-1"},
             "mass_fraction_of_cloud_liquid_water_in_air": {
                 "dims": dims,
@@ -709,7 +677,7 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
 
         return return_dict
 
-    def array_call(self, state, timestep):
+    def array_call(self, state):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -718,86 +686,62 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
         in_qc = state["mass_fraction_of_cloud_liquid_water_in_air"]
         if self._apoil:
             in_p = state["air_pressure_on_interface_levels"]
-            in_exn = state["exner_function_on_interface_levels"]
         else:
             in_p = state["air_pressure"]
-            in_exn = state["exner_function"]
 
         # compute the saturation water vapor pressure
-        self._in_ps[...] = self._swvf(in_t)
+        self._in_ps[...] = tetens_formula(in_t)
 
         # run the stencil
         self._stencil(
             in_p=in_p,
             in_ps=self._in_ps,
             in_t=in_t,
-            in_exn=in_exn,
             in_qv=in_qv,
             in_qc=in_qc,
             out_qv=self._out_qv,
             out_qc=self._out_qc,
-            out_t=self._out_t,
-            tnd_theta=self._out_theta_tnd,
-            dt=timestep.total_seconds(),
             origin={"_all_": (0, 0, 0)},
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
 
-        # collect the tendencies and the diagnostics
-        tendencies = {"air_potential_temperature": self._out_theta_tnd}
-        diagnostics = {
-            "air_temperature": self._out_t,
-            mfwv: self._out_qv,
-            mfcw: self._out_qc,
-        }
+        # collect the diagnostics
+        diagnostics = {mfwv: self._out_qv, mfcw: self._out_qc}
 
-        return tendencies, diagnostics
+        return diagnostics
 
     @staticmethod
     def _stencil_defs(
         in_p: gtscript.Field[np.float64],
         in_ps: gtscript.Field[np.float64],
         in_t: gtscript.Field[np.float64],
-        in_exn: gtscript.Field[np.float64],
         in_qv: gtscript.Field[np.float64],
         in_qc: gtscript.Field[np.float64],
         out_qv: gtscript.Field[np.float64],
         out_qc: gtscript.Field[np.float64],
-        out_t: gtscript.Field[np.float64],
-        tnd_theta: gtscript.Field[np.float64],
-        *,
-        dt: float
     ):
-        from __externals__ import air_pressure_on_interface_levels, beta, cp, lhvw, rv
+        from __externals__ import air_pressure_on_interface_levels, beta, cp, lhvw
 
         with computation(PARALLEL), interval(...):
             # interpolate the pressure at the vertical main levels
             if __INLINED(air_pressure_on_interface_levels):  # compile-time if
                 p = 0.5 * (in_p[0, 0, 0] + in_p[0, 0, 1])
-                exn = 0.5 * (in_exn[0, 0, 0] + in_exn[0, 0, 1])
             else:
                 p = in_p
-                exn = in_exn
 
             # compute the saturation mixing ratio of water vapor
-            qvs = beta * in_ps / p
+            qvs = beta * in_ps / (p - in_ps)
 
-            # compute the amount of latent heat released by the condensation of
-            # cloud liquid water
-            sat = (qvs - in_qv) / (1.0 + qvs * (lhvw ** 2.0) / (cp * rv * (in_t ** 2.0)))
+            # compute the amount of latent heat released by the condensation of cloud liquid water
+            sat = (qvs - in_qv) / (1.0 + qvs * 4093.0 * lhvw / (cp * (in_t - 36) ** 2.0))
 
-            # compute the source term representing the evaporation of
-            # cloud liquid water
-            dq = (sat <= in_qc) * sat + (sat > in_qc) * in_qc
+            # compute the source term representing the evaporation of cloud liquid water
+            dlt = (sat <= in_qc) * sat + (sat > in_qc) * in_qc
 
             # perform the adjustment
-            out_qv = in_qv + dq
-            out_qc = in_qc - dq
-            out_t = in_t - dq * lhvw / cp
-
-            # calculate the tendency of air potential temperature
-            tnd_theta = (lhvw / exn) * (-dq / dt)
+            out_qv = in_qv + dlt
+            out_qc = in_qc - dlt
 
 
 class KesslerFallVelocity(DiagnosticComponent):
@@ -1086,7 +1030,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
     def array_call(self, state, timestep):
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
-        nbh = 0  # self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
+        nbh = self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
 
         in_rho = state["air_density"]
         in_h = state["height_on_interface_levels"]
@@ -1125,7 +1069,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
     ):
         from __externals__ import sflux, sflux_extent
 
-        with computation(PARALLEL), interval(0, None):
+        with computation(FORWARD), interval(0, None):
             h = 0.5 * (in_h[0, 0, 0] + in_h[0, 0, 1])
 
         with computation(PARALLEL), interval(0, sflux_extent):

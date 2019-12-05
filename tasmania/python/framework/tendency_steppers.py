@@ -87,7 +87,7 @@ class TendencyStepper(abc.ABC):
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False
     ):
         """
@@ -305,7 +305,7 @@ class TendencyStepper(abc.ABC):
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False,
         **kwargs
     ):
@@ -441,7 +441,7 @@ class ForwardEuler(TendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False,
         **kwargs
     ):
@@ -505,7 +505,7 @@ class RungeKutta2(TendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False,
         **kwargs
     ):
@@ -600,7 +600,7 @@ class RungeKutta3WS(TendencyStepper):
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False,
         **kwargs
     ):

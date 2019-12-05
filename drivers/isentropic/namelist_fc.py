@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 321
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 321
+ny = 41
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -133,11 +133,12 @@ rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
+saturation_vapor_pressure_formula = "tetens"
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=5)
-niter = 25  # int(2 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter = int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -184,5 +185,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_dry_frequency = -1
-print_moist_frequency = -1
+print_dry_frequency = 5
+print_moist_frequency = 5

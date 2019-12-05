@@ -37,7 +37,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 _d_physical_constants = {

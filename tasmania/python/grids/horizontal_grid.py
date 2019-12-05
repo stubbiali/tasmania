@@ -26,7 +26,7 @@ import sympl
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 class HorizontalGrid:

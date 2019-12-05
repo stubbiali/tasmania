@@ -64,7 +64,7 @@ class DynamicalCore(abc.ABC):
         ImplicitTendencyComponentComposite,
         ConcurrentCoupling,
     )
-    allowed_diagnostic_type = allowed_tendency_type + (
+    allowed_diagnostic_type = (
         DiagnosticComponent,
         SymplDiagnosticComponentComposite,
         TasmaniaDiagnosticComponentComposite,
@@ -114,6 +114,11 @@ class DynamicalCore(abc.ABC):
         intermediate_diagnostics : `obj`, optional
             An instance of either
 
+                * :class:`sympl.TendencyComponent`,
+                * :class:`sympl.TendencyComponentComposite`,
+                * :class:`sympl.ImplicitTendencyComponent`,
+                * :class:`sympl.ImplicitTendencyComponentComposite`,
+                * :class:`tasmania.ConcurrentCoupling`,
                 * :class:`sympl.DiagnosticComponent`,
                 * :class:`sympl.DiagnosticComponentComposite`, or
                 * :class:`tasmania.DiagnosticComponentComposite`
@@ -179,7 +184,10 @@ class DynamicalCore(abc.ABC):
 
         self._inter_diags = intermediate_diagnostics
         if self._inter_diags is not None:
-            diag_type = self.__class__.allowed_diagnostic_type
+            diag_type = (
+                self.__class__.allowed_diagnostic_type
+                + self.__class__.allowed_tendency_type
+            )
             assert isinstance(self._inter_diags, diag_type), (
                 "The input argument ''intermediate_diagnostics'' "
                 "should be an instance of either {}.".format(
@@ -232,6 +240,9 @@ class DynamicalCore(abc.ABC):
 
         # allocate the output state
         self._out_state = self._allocate_output_state()
+
+        # initialize the dictionary of intermediate tendencies
+        self._inter_tendencies = {}
 
     @property
     def grid(self):
@@ -299,6 +310,8 @@ class DynamicalCore(abc.ABC):
                 should be present either in `_output_properties` or
                 `_substep_output_properties`, with compatible dimensions
                 and units.
+            * #13: the prognostic step should be able to handle any tendency
+                computed by the intermediate diagnostic components
         """
         # ============================================================
         # Check #1
@@ -493,6 +506,27 @@ class DynamicalCore(abc.ABC):
                 fused_output_properties,
                 properties1_name="intermediate_diagnostics.input_properties",
                 properties2_name="fused_output_properties",
+            )
+
+        # ============================================================
+        # Check #13
+        # ============================================================
+        if self._inter_diags is not None:
+            src = getattr(self._inter_diags, "tendency_properties", {})
+            trg = self._tendency_properties
+
+            check_properties_compatibility(
+                src,
+                trg,
+                properties1_name="intermediate_diagnostics.tendency_properties",
+                properties2_name="_tendency_properties",
+            )
+
+            check_missing_properties(
+                src,
+                trg,
+                properties1_name="intermediate_diagnostics.tendency_properties",
+                properties2_name="_tendency_properties",
             )
 
     def ensure_input_output_consistency(self):
@@ -817,13 +851,19 @@ class DynamicalCore(abc.ABC):
 
         out_state = self._out_state
 
-        self._call(0, timestep, state, state, tendencies, {}, out_state)
+        inter_tends = self._call(
+            0, timestep, state, state, tendencies, self._inter_tendencies, out_state
+        )
         for stage in range(1, self.stages):
-            self._call(stage, timestep, state, out_state, tendencies, {}, out_state)
+            inter_tends = self._call(
+                stage, timestep, state, out_state, tendencies, inter_tends, out_state
+            )
 
         return_state = {"time": out_state["time"]}
         for name in self.output_properties:
             return_state[name] = out_state[name]
+
+        self._inter_tendencies = inter_tends
 
         return return_state
 
@@ -1042,7 +1082,14 @@ class DynamicalCore(abc.ABC):
         # Retrieving the intermediate diagnostics
         # ============================================================
         if self._inter_diags is not None:
-            inter_diags = self._inter_diags(out_state)
+            if isinstance(self._inter_diags, self.__class__.allowed_diagnostic_type):
+                inter_tends = {}
+                inter_diags = self._inter_diags(out_state)
+            else:  # tendency component
+                try:
+                    inter_tends, inter_diags = self._inter_diags(out_state)
+                except TypeError:
+                    inter_tends, inter_diags = self._inter_diags(out_state, timestep)
 
             diagnostic_fields = {}
             for name in inter_diags:
@@ -1051,6 +1098,8 @@ class DynamicalCore(abc.ABC):
 
             self._dict_op.copy(out_state, inter_diags)
             out_state.update(diagnostic_fields)
+        else:
+            inter_tends = {}
 
         # Ensure the time specified in the output state is correct
         if stage == self.stages - 1:
@@ -1066,6 +1115,8 @@ class DynamicalCore(abc.ABC):
                 if (name != "time" and name in self.output_properties)
             }
         )
+
+        return inter_tends
 
     @abc.abstractmethod
     def array_call(self, stage, raw_state, raw_tendencies, timestep):

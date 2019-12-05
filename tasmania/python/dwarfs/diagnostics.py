@@ -26,12 +26,12 @@ from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils.gtscript_utils import set_annotations, positive
 
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 class HorizontalVelocity:
@@ -291,7 +291,7 @@ class WaterConstituent:
             definition=self._stencil_diagnosing_density_defs,
             backend=backend,
             build_info=build_info,
-            externals={"clipping": clipping},
+            externals={"clipping": clipping, "positive": positive},
             rebuild=rebuild,
             **(backend_opts or {})
         )
@@ -299,7 +299,7 @@ class WaterConstituent:
             definition=self._stencil_diagnosing_mass_fraction_defs,
             backend=backend,
             build_info=build_info,
-            externals={"clipping": clipping},
+            externals={"clipping": clipping, "positive": positive},
             rebuild=rebuild,
             **(backend_opts or {})
         )
@@ -365,12 +365,12 @@ class WaterConstituent:
         in_q: gtscript.Field[np.float64],
         out_dq: gtscript.Field[np.float64],
     ):
-        from __externals__ import clipping
+        from __externals__ import clipping, positive
 
         with computation(PARALLEL), interval(...):
             if __INLINED(clipping):  # compile-time if
                 tmp_dq = in_d * in_q
-                out_dq = (tmp_dq > 0.0) * tmp_dq
+                out_dq = positive(tmp_dq)
             else:
                 out_dq = in_d * in_q
 
@@ -380,11 +380,11 @@ class WaterConstituent:
         in_dq: gtscript.Field[np.float64],
         out_q: gtscript.Field[np.float64],
     ):
-        from __externals__ import clipping
+        from __externals__ import clipping, positive
 
         with computation(PARALLEL), interval(...):
             if __INLINED(clipping):  # compile-time if
                 tmp_q = in_dq / in_d
-                out_q = (tmp_q > 0.0) * tmp_q
+                out_q = positive(tmp_q)
             else:
                 out_q = in_dq / in_d

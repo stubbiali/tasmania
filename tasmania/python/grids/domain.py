@@ -28,7 +28,7 @@ from tasmania.python.grids.grid import PhysicalGrid, NumericalGrid
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 class Domain:

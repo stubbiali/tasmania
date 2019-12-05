@@ -103,7 +103,7 @@ class ParallelSplitting:
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False,
         **kwargs
     ):

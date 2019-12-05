@@ -134,6 +134,7 @@ rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
+saturation_vapor_pressure_formula = "tetens"
 update_frequency = 0
 
 # simulation length

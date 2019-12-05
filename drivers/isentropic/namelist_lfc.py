@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -133,6 +133,7 @@ rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
+saturation_vapor_pressure_formula = "tetens"
 update_frequency = 0
 
 # simulation length

@@ -34,10 +34,10 @@ from sympl import (
 )
 from sympl._core.units import clean_units
 
-from tasmania.python.framework.base_components import TendencyPromoter
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
+from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
@@ -89,13 +89,11 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
-        _BaseConcurrentCoupling
+        _BaseConcurrentCoupling,
     )
-    allowed_tendency_promoter_type = (TendencyPromoter,)
+    allowed_promoter_type = (Diagnostic2Tendency, Tendency2Diagnostic)
     allowed_component_type = (
-        allowed_diagnostic_type
-        + allowed_tendency_type
-        + allowed_tendency_promoter_type
+        allowed_diagnostic_type + allowed_tendency_type + allowed_promoter_type
     )
 
     def __init__(
@@ -106,7 +104,7 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
         backend="numpy",
         backend_opts=None,
         build_info=None,
-        dtype=np.float32,
+        dtype=np.float64,
         rebuild=False,
         **kwargs
     ):
@@ -196,14 +194,14 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
         )
 
     def _init_input_properties(self):
-        promoter_type = self.__class__.allowed_tendency_promoter_type
+        t2d_type = Tendency2Diagnostic
         components_list = []
         for component in self.component_list:
             components_list.append(
                 {
                     "component": component,
                     "attribute_name": "input_properties"
-                    if not isinstance(component, promoter_type)
+                    if not isinstance(component, t2d_type)
                     else None,
                     "consider_diagnostics": self._policy == "serial",
                 }
@@ -286,10 +284,18 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
                 )
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
-            else:  # tendency promoter
+            elif isinstance(component, Tendency2Diagnostic):
                 diagnostics = component(out_tendencies)
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
+            else:  # diagnostic to tendency
+                tendencies = component(aux_state)
+                self._dict_op.iadd(
+                    out_tendencies,
+                    tendencies,
+                    field_properties=self.tendency_properties,
+                    unshared_variables_in_output=True,
+                )
 
         return out_tendencies, out_diagnostics
 
@@ -315,7 +321,16 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
                     unshared_variables_in_output=True,
                 )
                 out_diagnostics.update(diagnostics)
-            else:  # tendency promoter: do nothing
+            elif isinstance(component, Tendency2Diagnostic):
+                # do nothing
                 pass
+            else:  # diagnostics to tendencies
+                tendencies = component(state)
+                self._dict_op.iadd(
+                    out_tendencies,
+                    tendencies,
+                    field_properties=self.tendency_properties,
+                    unshared_variables_in_output=True,
+                )
 
         return out_tendencies, out_diagnostics

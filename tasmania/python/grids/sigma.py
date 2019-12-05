@@ -35,7 +35,7 @@ from tasmania.python.utils.utils import (
 try:
     from tasmania.conf import datatype
 except ImportError:
-    datatype = np.float32
+    datatype = np.float64
 
 
 # Default values for the physical constants used in the module

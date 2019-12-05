@@ -27,17 +27,13 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHori
 
 @gtscript.function
 def get_upwind_flux_x(u, phi):
-    flux = u[1, 0, 0] * (
-        (u[1, 0, 0] > 0.0) * phi[0, 0, 0] + (u[1, 0, 0] < 0.0) * phi[1, 0, 0]
-    )
+    flux = u[1, 0, 0] * (phi[0, 0, 0] if u[1, 0, 0] > 0 else phi[1, 0, 0])
     return flux
 
 
 @gtscript.function
 def get_upwind_flux_y(v, phi):
-    flux = v[0, 1, 0] * (
-        (v[0, 1, 0] > 0.0) * phi[0, 0, 0] + (v[0, 1, 0] < 0.0) * phi[0, 1, 0]
-    )
+    flux = v[0, 1, 0] * (phi[0, 0, 0] if v[0, 1, 0] > 0 else phi[0, 1, 0])
     return flux
 
 
@@ -475,9 +471,9 @@ def get_fourth_order_centered_flux_x(u, phi):
 @gtscript.function
 def get_third_order_upwind_flux_x(u, phi):
     flux4 = get_fourth_order_centered_flux_x(u=u, phi=phi)
-    flux = flux4[0, 0, 0] - (
-        (u[1, 0, 0] > 0.0) * u[1, 0, 0] - (u[1, 0, 0] < 0.0) * u[1, 0, 0]
-    ) / 12.0 * (3.0 * (phi[1, 0, 0] - phi[0, 0, 0]) - (phi[2, 0, 0] - phi[-1, 0, 0]))
+    flux = flux4[0, 0, 0] - (u[1, 0, 0] if u[1, 0, 0] > 0 else -u[1, 0, 0]) / 12.0 * (
+        3.0 * (phi[1, 0, 0] - phi[0, 0, 0]) - (phi[2, 0, 0] - phi[-1, 0, 0])
+    )
     return flux
 
 
@@ -494,9 +490,9 @@ def get_fourth_order_centered_flux_y(v, phi):
 @gtscript.function
 def get_third_order_upwind_flux_y(v, phi):
     flux4 = get_fourth_order_centered_flux_y(v=v, phi=phi)
-    flux = flux4[0, 0, 0] - (
-        (v[0, 1, 0] > 0.0) * v[0, 1, 0] - (v[0, 1, 0] < 0.0) * v[0, 1, 0]
-    ) / 12.0 * (3.0 * (phi[0, 1, 0] - phi[0, 0, 0]) - (phi[0, 2, 0] - phi[0, -1, 0]))
+    flux = flux4[0, 0, 0] - (v[0, 1, 0] if v[0, 1, 0] > 0 else -v[0, 1, 0]) / 12.0 * (
+        3.0 * (phi[0, 1, 0] - phi[0, 0, 0]) - (phi[0, 2, 0] - phi[0, -1, 0])
+    )
     return flux
 
 
@@ -588,9 +584,7 @@ def get_sixth_order_centered_flux_x(u, phi):
 @gtscript.function
 def get_fifth_order_upwind_flux_x(u, phi):
     flux6 = get_sixth_order_centered_flux_x(u=u, phi=phi)
-    flux = flux6[0, 0, 0] - (
-        (u[1, 0, 0] > 0.0) * u[1, 0, 0] - (u[1, 0, 0] < 0.0) * u[1, 0, 0]
-    ) / 60.0 * (
+    flux = flux6[0, 0, 0] - (u[1, 0, 0] if u[1, 0, 0] > 0 else -u[1, 0, 0]) / 60.0 * (
         10.0 * (phi[1, 0, 0] - phi[0, 0, 0])
         - 5.0 * (phi[2, 0, 0] - phi[-1, 0, 0])
         + (phi[3, 0, 0] - phi[-2, 0, 0])
@@ -615,9 +609,7 @@ def get_sixth_order_centered_flux_y(v, phi):
 @gtscript.function
 def get_fifth_order_upwind_flux_y(v, phi):
     flux6 = get_sixth_order_centered_flux_y(v=v, phi=phi)
-    flux = flux6[0, 0, 0] - (
-        (v[0, 1, 0] > 0.0) * v[0, 1, 0] - (v[0, 1, 0] < 0.0) * v[0, 1, 0]
-    ) / 60.0 * (
+    flux = flux6[0, 0, 0] - (v[0, 1, 0] if v[0, 1, 0] > 0 else -v[0, 1, 0]) / 60.0 * (
         10.0 * (phi[0, 1, 0] - phi[0, 0, 0])
         - 5.0 * (phi[0, 2, 0] - phi[0, -1, 0])
         + (phi[0, 3, 0] - phi[0, -2, 0])

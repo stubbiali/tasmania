@@ -40,7 +40,6 @@ from tasmania.python.framework.base_components import (
     ImplicitTendencyComponent,
     Stepper,
     TendencyComponent,
-    TendencyPromoter,
 )
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
@@ -51,6 +50,7 @@ from tasmania.python.framework.offline_diagnostics import (
     RRMSD,
 )
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
+from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
 from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,
 )
@@ -103,8 +103,10 @@ from tasmania.python.physics.microphysics.kessler import (
     KesslerMicrophysics,
     KesslerSaturationAdjustment,
     KesslerSedimentation,
-    OldKesslerMicrophysics,
-    OldKesslerSaturationAdjustment,
+)
+from tasmania.python.physics.microphysics.old_kessler import (
+    KesslerMicrophysics as OldKesslerMicrophysics,
+    KesslerSaturationAdjustment as OldKesslerSaturationAdjustment
 )
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
@@ -163,6 +165,7 @@ __all__ = (
     Contour,
     Contourf,
     DataArrayDictOperator,
+    Diagnostic2Tendency,
     DiagnosticComponent,
     DiagnosticComponentComposite,
     Domain,
@@ -228,8 +231,8 @@ __all__ = (
     set_figure_properties,
     Smagorinsky2d,
     Stepper,
+    Tendency2Diagnostic,
     TendencyComponent,
-    TendencyPromoter,
     TimeInconsistencyError,
     TimeSeries,
     Topography,

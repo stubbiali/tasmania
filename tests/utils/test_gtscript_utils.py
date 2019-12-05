@@ -41,6 +41,11 @@ from tasmania.python.utils.gtscript_utils import (
     set_annotations,
     stencil_copy_defs,
     stencil_copychange_defs,
+    absolute,
+    positive,
+    negative,
+    stencil_abs_defs,
+    stencil_iabs_defs,
     stencil_add_defs,
     stencil_iadd_defs,
     stencil_sub_defs,
@@ -54,6 +59,8 @@ from tasmania.python.utils.gtscript_utils import (
     stencil_fma_defs,
     stencil_sts_rk2_0_defs,
     stencil_sts_rk3ws_0_defs,
+    stencil_clip_defs,
+    stencil_iclip_defs,
 )
 from tasmania.python.utils.storage_utils import zeros
 
@@ -134,9 +141,216 @@ def test_set_annotations():
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_absolute(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    src = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="src",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    def stencil_absolute_defs(
+        in_field: gtscript.Field[np.float64], out_field: gtscript.Field[np.float64]
+    ):
+        from __externals__ import absolute
+
+        with computation(PARALLEL), interval(...):
+            out_field = absolute(in_field)
+
+    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+
+    set_annotations(stencil_absolute_defs, dtype)
+    stencil_absolute = gtscript.stencil(
+        backend=backend,
+        definition=stencil_absolute_defs,
+        externals={"absolute": absolute},
+        rebuild=False,
+    )
+
+    stencil_absolute(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[...] = np.abs(src.data)
+
+    compare_arrays(out, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_positive(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    src = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="src",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    def stencil_positive_defs(
+        in_field: gtscript.Field[np.float64], out_field: gtscript.Field[np.float64]
+    ):
+        from __externals__ import positive
+
+        with computation(PARALLEL), interval(...):
+            out_field = positive(in_field)
+
+    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+
+    set_annotations(stencil_positive_defs, dtype)
+    stencil_positive = gtscript.stencil(
+        backend=backend,
+        definition=stencil_positive_defs,
+        externals={"positive": positive},
+        rebuild=False,
+    )
+
+    stencil_positive(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[src > 0] = src[src > 0]
+
+    compare_arrays(out, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_negative(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    src = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="src",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    def stencil_negative_defs(
+        in_field: gtscript.Field[np.float64], out_field: gtscript.Field[np.float64]
+    ):
+        from __externals__ import negative
+
+        with computation(PARALLEL), interval(...):
+            out_field = negative(in_field)
+
+    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+
+    set_annotations(stencil_negative_defs, dtype)
+    stencil_negative = gtscript.stencil(
+        backend=backend,
+        definition=stencil_negative_defs,
+        externals={"negative": negative},
+        rebuild=False,
+    )
+
+    stencil_negative(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[src < 0] = -src[src < 0]
+
+    compare_arrays(out, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -189,9 +403,9 @@ def test_copy(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -240,6 +454,122 @@ def test_copychange(data):
     stencil_copychange(src=src, dst=dst, origin=(0, 0, 0), domain=(nx, ny, nz))
 
     compare_arrays(dst, -src)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_abs(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    src = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="src",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+
+    set_annotations(stencil_abs_defs, dtype)
+    stencil_abs = gtscript.stencil(
+        backend=backend, definition=stencil_abs_defs, rebuild=False
+    )
+
+    stencil_abs(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[...] = np.abs(src.data)
+
+    compare_arrays(out, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_iabs(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    src = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="src",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    src_dc = deepcopy(src)
+
+    set_annotations(stencil_iabs_defs, dtype)
+    stencil_iabs = gtscript.stencil(
+        backend=backend, definition=stencil_iabs_defs, rebuild=False
+    )
+
+    stencil_iabs(inout_field=src, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[...] = np.abs(src_dc.data)
+
+    compare_arrays(src, out_val)
 
 
 @settings(
@@ -1090,9 +1420,9 @@ def test_sts_rk2_0(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -1175,6 +1505,122 @@ def test_sts_rk3ws_0(data):
     out_val[...] = (2.0 * field[...] + field_prv[...] + dt * tnd[...]) / 3.0
 
     compare_arrays(out, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_clip(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    field = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="field",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+
+    set_annotations(stencil_clip_defs, dtype)
+    stencil_clip = gtscript.stencil(
+        backend=backend, definition=stencil_clip_defs, rebuild=False
+    )
+
+    stencil_clip(in_field=field, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[field > 0] = field[field > 0]
+
+    compare_arrays(out, out_val)
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_iclip(data):
+    # comment the following line to prevent segfault
+    # gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
+        ),
+        label="grid",
+    )
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = grid.x.dtype
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    field = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="field",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    field_dc = deepcopy(field)
+
+    set_annotations(stencil_iclip_defs, dtype)
+    stencil_iclip = gtscript.stencil(
+        backend=backend, definition=stencil_iclip_defs, rebuild=False
+    )
+
+    stencil_iclip(inout_field=field, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val[field_dc > 0] = field_dc[field_dc > 0]
+
+    compare_arrays(field, out_val)
 
 
 if __name__ == "__main__":

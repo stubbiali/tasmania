@@ -35,8 +35,8 @@ from sympl._core.exceptions import InvalidStateError
 
 import gt4py as gt
 
-from tasmania.python.framework.base_components import TendencyPromoter
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.framework.promoters import Tendency2Diagnostic
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
 try:
@@ -282,7 +282,7 @@ def test_gt_serial(data, make_fake_tendency_component_1, make_fake_tendency_comp
     )
 
 
-class FakeTendencyPromoter(TendencyPromoter):
+class FakeTendency2Diagnostic(Tendency2Diagnostic):
     def __init__(self, domain):
         super().__init__(domain, "numerical")
 
@@ -293,8 +293,12 @@ class FakeTendencyPromoter(TendencyPromoter):
         dims_stgx = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
 
         return_dict = {
-            'air_isentropic_density': {'dims': dims, 'units': 'kg m^-2 K^-1 s^-1'},
-            'x_velocity_at_u_locations': {'dims': dims_stgx, 'units': 'm s^-2', 'prefix': 'tnd_of_'}
+            "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1 s^-1"},
+            "x_velocity_at_u_locations": {
+                "dims": dims_stgx,
+                "units": "m s^-2",
+                "diagnostic_name": "tnd_of_x_velocity_at_u_locations",
+            },
         }
 
         return return_dict
@@ -305,7 +309,9 @@ class FakeTendencyPromoter(TendencyPromoter):
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_tendency_promoter(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+def test_tendency_to_diagnostic(
+    data, make_fake_tendency_component_1, make_fake_tendency_component_2
+):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -343,12 +349,12 @@ def test_tendency_promoter(data, make_fake_tendency_component_1, make_fake_tende
     # ========================================
     tc1 = make_fake_tendency_component_1(domain, "numerical")
     tc2 = make_fake_tendency_component_2(domain, "numerical")
-    tp = FakeTendencyPromoter(domain)
+    t2d = FakeTendency2Diagnostic(domain)
 
     cc = ConcurrentCoupling(
         tc1,
         tc2,
-        tp,
+        t2d,
         execution_policy="serial",
         gt_powered=True,
         backend=backend,
@@ -366,13 +372,15 @@ def test_tendency_promoter(data, make_fake_tendency_component_1, make_fake_tende
     compare_arrays(
         tendencies["air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
         1e-3 * s + 1e-2 * f,
-        )
+    )
 
     assert "tendency_of_air_isentropic_density" in diagnostics
     compare_arrays(
-        diagnostics["tendency_of_air_isentropic_density"].to_units("kg m^-2 K^-1 s^-1").values,
+        diagnostics["tendency_of_air_isentropic_density"]
+        .to_units("kg m^-2 K^-1 s^-1")
+        .values,
         1e-3 * s + 1e-2 * f,
-        )
+    )
 
     assert "x_momentum_isentropic" in tendencies
     su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
@@ -386,10 +394,10 @@ def test_tendency_promoter(data, make_fake_tendency_component_1, make_fake_tende
     v_val[:-1, :-1, :-1] = 0.5 * s[:-1, :-1, :-1] * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
     compare_arrays(
         tendencies["y_momentum_isentropic"]
-            .to_units("kg m^-1 K^-1 s^-2")
-            .values[:-1, :-1, :-1],
+        .to_units("kg m^-1 K^-1 s^-2")
+        .values[:-1, :-1, :-1],
         v_val[:-1, :-1, :-1],
-            )
+    )
 
     assert "x_velocity_at_u_locations" in tendencies
     u = state["x_velocity_at_u_locations"].to_units("m s^-1").values
