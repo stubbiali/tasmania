@@ -113,6 +113,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
+            dtype=dtype,
             exec_info=exec_info,
             rebuild=rebuild,
         )
