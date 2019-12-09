@@ -96,6 +96,7 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
     get_isentropic_state_from_temperature,
 )
+from tasmania.python.isentropic.utils import AirPotentialTemperature2Diagnostic, AirPotentialTemperature2Tendency
 
 # physics
 from tasmania.python.physics.microphysics.kessler import (
@@ -152,6 +153,8 @@ __version__ = "0.6.1"
 
 
 __all__ = (
+    AirPotentialTemperature2Diagnostic,
+    AirPotentialTemperature2Tendency,
     Animation,
     BurgersAdvection,
     BurgersDynamicalCore,

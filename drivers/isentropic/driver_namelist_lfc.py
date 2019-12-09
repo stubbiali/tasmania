@@ -84,7 +84,7 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     nl.y_velocity,
     nl.brunt_vaisala,
     moist=True,
-    precipitation=nl.precipitation,
+    precipitation=nl.sedimentation,
     relative_humidity=nl.relative_humidity,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
@@ -93,6 +93,21 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     managed_memory=nl.gt_kwargs["managed_memory"],
 )
 domain.horizontal_boundary.reference_state = state
+
+# add tendency_of_air_potential_temperature to the state
+state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
+    taz.zeros(
+        nl.gt_kwargs["storage_shape"],
+        nl.gt_kwargs["backend"],
+        nl.gt_kwargs["dtype"],
+        default_origin=nl.gt_kwargs["default_origin"],
+        managed_memory=nl.gt_kwargs["managed_memory"],
+    ),
+    cgrid,
+    "K s^-1",
+    grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+    set_coordinates=False,
+)
 
 # ============================================================
 # The slow tendencies
@@ -129,12 +144,16 @@ if nl.turbulence:
     )
     args.append(turb)
 
+# component downgrading air_potential_temperature to tendency variable
+d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
+args.append(d2t)
+
 # component calculating the microphysics
 ke = taz.KesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
-    tendency_of_air_potential_temperature_in_diagnostics=True,
+    tendency_of_air_potential_temperature_in_diagnostics=False,
     rain_evaporation=nl.rain_evaporation,
     autoconversion_threshold=nl.autoconversion_threshold,
     autoconversion_rate=nl.autoconversion_rate,
@@ -149,18 +168,21 @@ if nl.update_frequency > 0:
 else:
     args.append(ke)
 
-if nl.rain_evaporation:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
-    args.append(vf)
+# component promoting air_potential_temperature to state variable
+t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
+args.append(t2d)
 
-if nl.precipitation and nl.sedimentation:
+# # component integrating the vertical flux
+# vf = taz.IsentropicVerticalAdvection(
+#     domain,
+#     flux_scheme=nl.vertical_flux_scheme,
+#     moist=True,
+#     tendency_of_air_potential_temperature_on_interface_levels=False,
+#     **nl.gt_kwargs
+# )
+# args.append(vf)
+
+if nl.sedimentation:
     # component estimating the raindrop fall velocity
     rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.gt_kwargs)
     args.append(rfv)
@@ -176,7 +198,7 @@ if nl.precipitation and nl.sedimentation:
 
 # wrap the components in a ConcurrentCoupling object
 slow_tends = taz.ConcurrentCoupling(
-    *args, execution_policy="serial", gt_powered=True, **nl.gt_kwargs
+    *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
 )
 
 # ============================================================
@@ -192,12 +214,19 @@ idv = taz.IsentropicDiagnostics(
 args.append(idv)
 
 # component performing the saturation adjustment
-sa = taz.OldKesslerSaturationAdjustment(
-    domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
+sa = taz.KesslerSaturationAdjustment(
+    domain,
+    grid_type="numerical",
+    air_pressure_on_interface_levels=True,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
+    **nl.gt_kwargs
 )
 args.append(sa)
 
-if nl.precipitation and nl.sedimentation:
+# component promoting air_potential_temperature to state variable
+args.append(t2d)
+
+if nl.sedimentation:
     # component calculating the accumulated precipitation
     ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
     args.append(ap)
@@ -219,7 +248,9 @@ if nl.smooth:
     args.append(vc)
 
 # wrap the components in a ConcurrentCoupling object
-slow_diags = taz.ConcurrentCoupling(*args, execution_policy="serial")
+slow_diags = taz.ConcurrentCoupling(
+    *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+)
 
 # ============================================================
 # The dynamical core

@@ -84,7 +84,7 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     nl.y_velocity,
     nl.brunt_vaisala,
     moist=True,
-    precipitation=nl.precipitation,
+    precipitation=nl.sedimentation,
     relative_humidity=nl.relative_humidity,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
@@ -93,6 +93,21 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     managed_memory=nl.gt_kwargs["managed_memory"],
 )
 domain.horizontal_boundary.reference_state = state
+
+# add tendency_of_air_potential_temperature to the state
+state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
+    taz.zeros(
+        nl.gt_kwargs["storage_shape"],
+        nl.gt_kwargs["backend"],
+        nl.gt_kwargs["dtype"],
+        default_origin=nl.gt_kwargs["default_origin"],
+        managed_memory=nl.gt_kwargs["managed_memory"],
+    ),
+    cgrid,
+    "K s^-1",
+    grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+    set_coordinates=False,
+)
 
 # ============================================================
 # The dynamics
@@ -227,12 +242,18 @@ if nl.turbulence:
         }
     )
 
+# component downgrading tendency_of_air_potential_temperature to tendency variable
+d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
+
+# component promoting air_potential_temperature to state variable
+t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
+
 # component calculating the microphysics
 ke = taz.KesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
-    tendency_of_air_potential_temperature_in_diagnostics=True,
+    tendency_of_air_potential_temperature_in_diagnostics=False,
     rain_evaporation=nl.rain_evaporation,
     autoconversion_threshold=nl.autoconversion_threshold,
     autoconversion_rate=nl.autoconversion_rate,
@@ -240,46 +261,41 @@ ke = taz.KesslerMicrophysics(
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     **nl.gt_kwargs
 )
+
 if nl.update_frequency > 0:
     from sympl import UpdateFrequencyWrapper
 
-    args_before_dynamics.append(
-        {
-            "component": UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
-            "time_integrator": "forward_euler",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
-    args_after_dynamics.append(
-        {
-            "component": UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep),
-            "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
+    comp = UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep)
 else:
-    args_before_dynamics.append(
-        {
-            "component": ke,
-            "time_integrator": "forward_euler",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
-    args_after_dynamics.append(
-        {
-            "component": ke,
-            "time_integrator": ptis,
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
+    comp = ke
+
+args_before_dynamics.append(
+    {
+        "component": taz.ConcurrentCoupling(
+            comp, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+        ),
+        "time_integrator": "forward_euler",
+        "gt_powered": nl.gt_powered,
+        "time_integrator_kwargs": nl.gt_kwargs,
+        "substeps": 1,
+    }
+)
+args_after_dynamics.append(
+    {
+        "component": taz.ConcurrentCoupling(
+            d2t,
+            comp,
+            t2d,
+            execution_policy="serial",
+            gt_powered=nl.gt_powered,
+            **nl.gt_kwargs
+        ),
+        "time_integrator": ptis,
+        "gt_powered": nl.gt_powered,
+        "time_integrator_kwargs": nl.gt_kwargs,
+        "substeps": 1,
+    }
+)
 
 # component clipping the negative values of the water species
 water_species_names = (
@@ -290,50 +306,49 @@ water_species_names = (
 clp = taz.Clipping(domain, "numerical", water_species_names)
 # args_before_dynamics.append({"component": clp})
 
-if nl.rain_evaporation:
-    # include tendency_of_air_potential_temperature in the state
-    state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
-        taz.zeros(
-            nl.gt_kwargs["storage_shape"],
-            nl.gt_kwargs["backend"],
-            nl.gt_kwargs["dtype"],
-            default_origin=nl.gt_kwargs["default_origin"],
-            managed_memory=nl.gt_kwargs["managed_memory"],
-        ),
-        cgrid,
-        "K s^-1",
-        grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
-        set_coordinates=False,
-    )
+# # include tendency_of_air_potential_temperature in the state
+# state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
+#     taz.zeros(
+#         nl.gt_kwargs["storage_shape"],
+#         nl.gt_kwargs["backend"],
+#         nl.gt_kwargs["dtype"],
+#         default_origin=nl.gt_kwargs["default_origin"],
+#         managed_memory=nl.gt_kwargs["managed_memory"],
+#     ),
+#     cgrid,
+#     "K s^-1",
+#     grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+#     set_coordinates=False,
+# )
+#
+# # component integrating the vertical flux
+# vf = taz.IsentropicVerticalAdvection(
+#     domain,
+#     flux_scheme=nl.vertical_flux_scheme,
+#     moist=True,
+#     tendency_of_air_potential_temperature_on_interface_levels=False,
+#     **nl.gt_kwargs
+# )
+# args_before_dynamics.append(
+#     {
+#         "component": vf,
+#         "time_integrator": "rk3ws",
+#         "gt_powered": nl.gt_powered,
+#         "time_integrator_kwargs": nl.gt_kwargs,
+#         "substeps": 1,
+#     }
+# )
+# args_after_dynamics.append(
+#     {
+#         "component": vf,
+#         "time_integrator": "rk3ws",
+#         "gt_powered": nl.gt_powered,
+#         "time_integrator_kwargs": nl.gt_kwargs,
+#         "substeps": 1,
+#     }
+# )
 
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
-    args_before_dynamics.append(
-        {
-            "component": vf,
-            "time_integrator": "rk3ws",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
-    args_after_dynamics.append(
-        {
-            "component": vf,
-            "time_integrator": "rk3ws",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
-
-if nl.precipitation:
+if nl.sedimentation:
     # component estimating the raindrop fall velocity
     rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.gt_kwargs)
 
@@ -364,13 +379,23 @@ if nl.precipitation:
     )
 
 # component performing the saturation adjustment
-sa = taz.OldKesslerSaturationAdjustment(
-    domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
+sa = taz.KesslerSaturationAdjustment(
+    domain,
+    grid_type="numerical",
+    air_pressure_on_interface_levels=True,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
+    **nl.gt_kwargs
 )
-args_after_dynamics.append({"component": sa})
+args_after_dynamics.append(
+    {
+        "component": taz.DiagnosticComponentComposite(
+            taz.ConcurrentCoupling(sa, t2d), execution_policy="serial"
+        )
+    }
+)
 
 # component calculating the accumulated precipitation
-if nl.precipitation:
+if nl.sedimentation:
     ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
     args_before_dynamics.append({"component": ap})
     args_after_dynamics.append({"component": ap})

@@ -789,7 +789,7 @@ class KesslerSaturationAdjustment(ImplicitTendencyComponent):
 
             # compute the source term representing the evaporation of
             # cloud liquid water
-            dq = (sat <= in_qc) * sat + (sat > in_qc) * in_qc
+            dq = sat if (sat <= in_qc) else in_qc
 
             # perform the adjustment
             out_qv = in_qv + dq

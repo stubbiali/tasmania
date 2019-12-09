@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 41
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -123,11 +123,10 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-precipitation = True
 sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
 rain_evaporation = True

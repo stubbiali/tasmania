@@ -201,6 +201,17 @@ class ParallelSplitting:
                     'substeps' represents the number of substeps to carry out
                     to integrate the process. Defaults to 1.
 
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'add_diagnostics_to_provisional_input' says whether the computed
+                    diagnostics should be added to the input or provisional state.
+
         execution_policy : `str`, optional
             String specifying the runtime mode in which parameterizations
             should be invoked. Either:
@@ -241,6 +252,7 @@ class ParallelSplitting:
         """
         self._component_list = []
         self._substeps = []
+
         for process in args:
             try:
                 bare_component = process["component"]
@@ -293,9 +305,7 @@ class ParallelSplitting:
 
             warnings.warn(
                 "Argument retrieve_diagnostics_from_provisional_state "
-                "only effective when execution policy set on "
-                "serial"
-                "."
+                "only effective when execution policy set on 'serial'."
             )
             self._diagnostics_from_provisional = False
         else:
@@ -475,8 +485,6 @@ class ParallelSplitting:
         by each process. In other words, when this method returns, `state_prv`
         will represent the state at the next time level.
         """
-        # TODO: add safety checks on input parameters
-
         # step the solution
         self._call(state, state_prv, timestep)
 
@@ -485,7 +493,9 @@ class ParallelSplitting:
 
     def _call_serial(self, state, state_prv, timestep):
         """ Process the components in 'serial' runtime mode. """
-        for component, substeps in zip(self._component_list, self._substeps):
+        for component, substeps in zip(
+            self._component_list, self._substeps
+        ):
             if not isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
@@ -508,14 +518,23 @@ class ParallelSplitting:
                     state,
                     field_properties=self.provisional_output_properties,
                 )
+
+                # name = 'mass_fraction_of_cloud_liquid_water_in_air'
+                # if name in diagnostics:
+                #     if diagnostics[name].values.max() > 0:
+                #         import ipdb
+                #         ipdb.set_trace()
+
                 state.update(diagnostics)
             else:
-                if self._diagnostics_from_provisional:
-                    diagnostics = component(state_prv)
-                    state_prv.update(diagnostics)
-                else:
-                    diagnostics = component(state)
-                    state.update(diagnostics)
+                arg = state_prv if self._diagnostics_from_provisional else state
+
+                try:
+                    diagnostics = component(arg)
+                except TypeError:
+                    diagnostics = component(arg, timestep)
+
+                arg.update(diagnostics)
 
     def _call_asparallel(self, state, state_prv, timestep):
         """ Process the components in 'as_parallel' runtime mode. """
@@ -546,7 +565,11 @@ class ParallelSplitting:
                 )
                 agg_diagnostics.update(diagnostics)
             else:
-                diagnostics = component(state)
+                try:
+                    diagnostics = component(state)
+                except TypeError:
+                    diagnostics = component(state, timestep)
+
                 agg_diagnostics.update(diagnostics)
 
         state.update(agg_diagnostics)

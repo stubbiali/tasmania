@@ -34,23 +34,22 @@ from sympl import (
 )
 from sympl._core.units import clean_units
 
-from tasmania.python.framework.composite import (
-    DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
+from tasmania.python.framework._base import (
+    BaseConcurrentCoupling,
+    BaseDiagnosticComponentComposite,
 )
 from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
+    check_t2d,
     check_properties_compatibility,
     get_input_properties,
+    get_tendency_properties,
 )
 from tasmania.python.utils.utils import assert_sequence
 
 
-class _BaseConcurrentCoupling(abc.ABC):
-    pass
-
-
-class ConcurrentCoupling(_BaseConcurrentCoupling):
+class ConcurrentCoupling(BaseConcurrentCoupling):
     """
     Callable class which automates the execution of a bundle of physical
     parameterizations pursuing the *explicit* concurrent coupling strategy.
@@ -82,14 +81,14 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
     allowed_diagnostic_type = (
         DiagnosticComponent,
         SymplDiagnosticComponentComposite,
-        TasmaniaDiagnosticComponentComposite,
+        BaseDiagnosticComponentComposite,
     )
     allowed_tendency_type = (
         TendencyComponent,
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
-        _BaseConcurrentCoupling,
+        BaseConcurrentCoupling,
     )
     allowed_promoter_type = (Diagnostic2Tendency, Tendency2Diagnostic)
     allowed_component_type = (
@@ -164,6 +163,10 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
             self._call_serial if execution_policy == "serial" else self._call_asparallel
         )
 
+        # ensure that a tendency is actually computed before it gets moved around
+        # by a Tendency2Diagnostic
+        check_t2d(args, Tendency2Diagnostic)
+
         # set properties
         self.input_properties = self._init_input_properties()
         self.tendency_properties = self._init_tendency_properties()
@@ -209,9 +212,8 @@ class ConcurrentCoupling(_BaseConcurrentCoupling):
         return get_input_properties(components_list)
 
     def _init_tendency_properties(self):
-        tends_type = self.__class__.allowed_tendency_type
-        tends_list = tuple(c for c in self.component_list if isinstance(c, tends_type))
-        return combine_component_properties(tends_list, "tendency_properties")
+        t2d_type = Tendency2Diagnostic
+        return get_tendency_properties(self.component_list, t2d_type)
 
     def _init_diagnostic_properties(self):
         return combine_component_properties(self.component_list, "diagnostic_properties")

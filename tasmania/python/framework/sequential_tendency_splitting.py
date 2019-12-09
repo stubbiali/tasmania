@@ -351,7 +351,11 @@ class SequentialTendencySplitting:
                 state_prv.update(state_tmp)
                 state.update(diagnostics)
             else:
-                diagnostics = component(state_prv)
+                try:
+                    diagnostics = component(state_prv)
+                except TypeError:
+                    diagnostics = component(state_prv, timestep)
+
                 state_prv.update(diagnostics)
 
             # ensure state is still defined at current time level

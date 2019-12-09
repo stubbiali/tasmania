@@ -208,10 +208,34 @@ def get_input_properties(components_list, return_dict=None):
     return return_dict
 
 
-def get_output_properties(
-    components_list,
-    return_dict=None,
-):
+def get_tendency_properties(component_list, t2d_type):
+    """ Combine the tendency_properties dictionaries from multiple components. """
+    return_dict = {}
+
+    for component in component_list:
+        if isinstance(component, t2d_type):  # tendency-to-diagnostic promoter
+            inputs = component.input_properties
+            for name, props in inputs.items():
+                if props.get("remove_from_tendencies", False):
+                    return_dict.pop(name, None)
+        else:
+            tendencies = getattr(component, "tendency_properties", {})
+
+            already_at_disposal = tuple(key for key in tendencies if key in return_dict)
+            for name in already_at_disposal:
+                check_property_compatibility(
+                    tendencies[name],
+                    return_dict[name],
+                    origin1_name=type(component),
+                    origin2_name="return_dict",
+                )
+
+            return_dict.update(tendencies)
+
+    return return_dict
+
+
+def get_output_properties(components_list, return_dict=None):
     """
     Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
     component is a subset of its input property component.
@@ -237,8 +261,7 @@ def get_output_properties(
                 component_dict,
                 properties1_name="return_dict",
                 properties2_name="{} of {}".format(
-                    attribute_name,
-                    getattr(component, "name", str(component.__class__)),
+                    attribute_name, getattr(component, "name", str(component.__class__))
                 ),
             )
 
@@ -271,3 +294,20 @@ def get_output_properties(
                     return_dict[name].update(properties)
 
     return return_dict
+
+
+def check_t2d(component_list, t2d_type):
+    """ Ensure that a tendency is actually computed before moving it around. """
+    tendencies = {}
+
+    for component in component_list:
+        if isinstance(component, t2d_type):
+            requirements = component.input_properties
+            check_missing_properties(
+                requirements,
+                tendencies,
+                properties1_name=type(component),
+                properties2_name="tendencies_at_disposal",
+            )
+        else:
+            tendencies.update(getattr(component, "tendency_properties", {}))

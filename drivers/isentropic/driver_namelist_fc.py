@@ -85,7 +85,7 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     nl.y_velocity,
     nl.brunt_vaisala,
     moist=True,
-    precipitation=nl.precipitation,
+    precipitation=nl.sedimentation,
     relative_humidity=nl.relative_humidity,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
@@ -94,6 +94,21 @@ state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
     managed_memory=nl.gt_kwargs["managed_memory"],
 )
 domain.horizontal_boundary.reference_state = state
+
+# add tendency_of_air_potential_temperature to the state
+state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
+    taz.zeros(
+        nl.gt_kwargs["storage_shape"],
+        nl.gt_kwargs["backend"],
+        nl.gt_kwargs["dtype"],
+        default_origin=nl.gt_kwargs["default_origin"],
+        managed_memory=nl.gt_kwargs["managed_memory"],
+    ),
+    cgrid,
+    "K s^-1",
+    grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+    set_coordinates=False,
+)
 
 # ============================================================
 # The intermediate tendencies
@@ -128,12 +143,16 @@ if nl.turbulence:
     turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
     args.append(turb)
 
+# component downgrading air_potential_temperature to tendency variable
+d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
+args.append(d2t)
+
 # component calculating the microphysics
 ke = taz.KesslerMicrophysics(
     domain,
     "numerical",
     air_pressure_on_interface_levels=True,
-    tendency_of_air_potential_temperature_in_diagnostics=True,
+    tendency_of_air_potential_temperature_in_diagnostics=False,
     rain_evaporation=nl.rain_evaporation,
     autoconversion_threshold=nl.autoconversion_threshold,
     autoconversion_rate=nl.autoconversion_rate,
@@ -148,18 +167,21 @@ if nl.update_frequency > 0:
 else:
     args.append(ke)
 
-if nl.rain_evaporation:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
-    args.append(vf)
+# component promoting air_potential_temperature to state variable
+t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
+args.append(t2d)
 
-if nl.precipitation and nl.sedimentation:
+# # component integrating the vertical flux
+# vf = taz.IsentropicVerticalAdvection(
+#     domain,
+#     flux_scheme=nl.vertical_flux_scheme,
+#     moist=True,
+#     tendency_of_air_potential_temperature_on_interface_levels=False,
+#     **nl.gt_kwargs
+# )
+# args.append(vf)
+
+if nl.sedimentation:
     # component estimating the raindrop fall velocity
     rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.gt_kwargs)
     args.append(rfv)
@@ -188,22 +210,25 @@ dv = taz.IsentropicDiagnostics(
 )
 
 # component performing the saturation adjustment
-sa = taz.OldKesslerSaturationAdjustment(
-    domain, grid_type="numerical", air_pressure_on_interface_levels=True, **nl.gt_kwargs
+sa = taz.KesslerSaturationAdjustment(
+    domain,
+    grid_type="numerical",
+    air_pressure_on_interface_levels=True,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
+    **nl.gt_kwargs
 )
 
 # wrap the components in a DiagnosticComponentComposite object
-inter_diags = taz.DiagnosticComponentComposite(dv, sa)
+inter_diags = taz.ConcurrentCoupling(
+    dv, sa, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+)
 
 # ============================================================
 # The slow diagnostics
 # ============================================================
 args = []
 
-if nl.precipitation:
-    if not nl.sedimentation:
-        # component calculating the raindrop fall velocity
-        rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.gt_kwargs)
+if nl.sedimentation:
     args.append(rfv)
 
     # component calculating the accumulated precipitation

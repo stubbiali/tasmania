@@ -77,9 +77,10 @@ class SequentialUpdateSplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        ConcurrentCoupling
     )
     allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
+        allowed_diagnostic_type + allowed_tendency_type
     )
 
     def __init__(self, *args):
@@ -297,7 +298,11 @@ class SequentialUpdateSplitting:
                 state.update(state_tmp)
                 state.update(diagnostics)
             else:
-                diagnostics = component(state)
+                try:
+                    diagnostics = component(state)
+                except TypeError:
+                    diagnostics = component(state, timestep)
+
                 state.update(diagnostics)
 
             # Ensure state is still defined at current time level

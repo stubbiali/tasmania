@@ -64,6 +64,9 @@ class Tendency2Diagnostic(abc.ABC):
                 "units": props["units"],
             }
 
+        # compliance with TendencyComponent
+        self.tendency_properties = {}
+
     @property
     def grid_type(self):
         """
@@ -158,6 +161,9 @@ class Diagnostic2Tendency(abc.ABC):
                 "units": props["units"],
             }
 
+        # compliance with DiagnosticComponent
+        self.diagnostic_properties = {}
+
     @property
     def grid_type(self):
         """
@@ -203,7 +209,7 @@ class Diagnostic2Tendency(abc.ABC):
             dims = props["dims"]
             units = props["units"]
             tend_name = props.get("tendency_name", name.replace("tendency_of_", ""))
-            rm = props.get('remove_from_diagnostics', False)
+            rm = props.get("remove_from_diagnostics", False)
 
             if any(src != trg for src, trg in zip(diagnostics[name].dims, dims)):
                 tendencies[tend_name] = diagnostics[name].transpose(*dims).to_units(units)
