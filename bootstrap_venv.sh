@@ -10,7 +10,6 @@ FRESH_INSTALL=1
 function install()
 {
   source $VENV/bin/activate && \
-    pip install wheel && \
     pip install -e . && \
     pip install -e docker/external/gt4py[$CUDA] || \
       pip install -e docker/external/gt4py && \
