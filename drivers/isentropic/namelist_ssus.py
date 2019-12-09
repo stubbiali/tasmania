@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 41
+nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
+ny = 161
 domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -123,7 +123,7 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = False
+coriolis = True
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
@@ -137,11 +137,11 @@ saturation_vapor_pressure_formula = "tetens"
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
-niter = int(1 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=10)
+niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = 2
 filename = (
     "../../data/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
@@ -186,5 +186,5 @@ store_names = (
     # "y_momentum_isentropic",
     # "y_velocity_at_v_locations",
 )
-print_dry_frequency = 2
-print_moist_frequency = 2
+print_dry_frequency = -1
+print_moist_frequency = -1

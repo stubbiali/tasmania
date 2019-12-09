@@ -123,7 +123,7 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
@@ -138,14 +138,14 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = False
-save_frequency = -1
+save = True
+save_frequency = 8
 filename = (
-    "../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sus_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ps_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         physics_time_integration_scheme,
@@ -170,21 +170,21 @@ filename = (
 )
 store_names = (
     "accumulated_precipitation",
-    "air_density",
-    "air_isentropic_density",
-    "air_pressure_on_interface_levels",
-    "air_temperature",
-    "exner_function_on_interface_levels",
+    # "air_density",
+    # "air_isentropic_density",
+    # "air_pressure_on_interface_levels",
+    # "air_temperature",
+    # "exner_function_on_interface_levels",
     "height_on_interface_levels",
-    "mass_fraction_of_water_vapor_in_air",
-    "mass_fraction_of_cloud_liquid_water_in_air",
-    "mass_fraction_of_precipitation_water_in_air",
-    "montgomery_potential",
+    # "mass_fraction_of_water_vapor_in_air",
+    # "mass_fraction_of_cloud_liquid_water_in_air",
+    # "mass_fraction_of_precipitation_water_in_air",
+    # "montgomery_potential",
     "precipitation",
     "x_momentum_isentropic",
-    "x_velocity_at_u_locations",
-    "y_momentum_isentropic",
-    "y_velocity_at_v_locations"
+    # "x_velocity_at_u_locations",
+    # "y_momentum_isentropic",
+    # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = -1
+print_moist_frequency = 8

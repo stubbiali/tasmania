@@ -220,11 +220,11 @@ class SequentialUpdateSplitting:
                 substeps = process.get("substeps", 1)
                 self._substeps.append(substeps)
 
-        # Set properties
+        # set properties
         self.input_properties = self._init_input_properties()
         self.output_properties = self._init_output_properties()
 
-        # Ensure that dimensions and units of the variables present
+        # ensure that dimensions and units of the variables present
         # in both input_properties and output_properties are compatible
         # across the two dictionaries
         check_properties_compatibility(
@@ -305,8 +305,8 @@ class SequentialUpdateSplitting:
 
                 state.update(diagnostics)
 
-            # Ensure state is still defined at current time level
+            # ensure state is still defined at current time level
             state["time"] = current_time
 
-        # Ensure the state is defined at the next time level
+        # ensure the state is defined at the next time level
         state["time"] = current_time + timestep

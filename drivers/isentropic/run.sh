@@ -20,10 +20,74 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-NITER=10
+
+NITER=2
 
 for i in $(seq 1 $NITER); do
-  rm -rf $SCRATCH/gt_cache/tasmania-new-calling-api
-  time python driver_namelist_fc.py
+  echo "python driver_namelist_fc.py"
+  python driver_namelist_fc.py
+  echo ""
+
+  echo "python driver_namelist_lfc.py"
+  python driver_namelist_lfc.py
+  echo ""
+
+  echo "python driver_namelist_ps.py"
+  python driver_namelist_ps.py
+  echo ""
+
+  echo "python driver_namelist_sts.py"
+  python driver_namelist_sts.py
+  echo ""
+
+  echo "python driver_namelist_sus.py"
+  python driver_namelist_sus.py
+  echo ""
+
+  echo "python driver_namelist_ssus.py"
+  python driver_namelist_ssus.py
   echo ""
 done
+
+#python driver_namelist_fc.py -n namelists/namelist_fc_0.py
+#echo ""
+#python driver_namelist_fc.py -n namelists/namelist_fc_1.py
+#echo ""
+#python driver_namelist_fc.py -n namelists/namelist_fc_2.py
+#echo ""
+#python driver_namelist_fc.py -n namelists/namelist_fc_3.py
+#echo ""
+#
+#python driver_namelist_lfc.py -n namelists/namelist_lfc_0.py
+#echo ""
+#python driver_namelist_lfc.py -n namelists/namelist_lfc_1.py
+#echo ""
+#python driver_namelist_lfc.py -n namelists/namelist_lfc_2.py
+#echo ""
+#
+#python driver_namelist_ps.py -n namelists/namelist_ps_0.py
+#echo ""
+#python driver_namelist_ps.py -n namelists/namelist_ps_1.py
+#echo ""
+#python driver_namelist_ps.py -n namelists/namelist_ps_2.py
+#echo ""
+#
+#python driver_namelist_sts.py -n namelists/namelist_sts_0.py
+#echo ""
+#python driver_namelist_sts.py -n namelists/namelist_sts_1.py
+#echo ""
+#python driver_namelist_sts.py -n namelists/namelist_sts_2.py
+#echo ""
+#
+#python driver_namelist_sus.py -n namelists/namelist_sus_0.py
+#echo ""
+#python driver_namelist_sus.py -n namelists/namelist_sus_1.py
+#echo ""
+#python driver_namelist_sus.py -n namelists/namelist_sus_2.py
+#echo ""
+#
+#python driver_namelist_ssus.py -n namelists/namelist_ssus_0.py
+#echo ""
+#python driver_namelist_ssus.py -n namelists/namelist_ssus_1.py
+#echo ""
+#python driver_namelist_ssus.py -n namelists/namelist_ssus_2.py

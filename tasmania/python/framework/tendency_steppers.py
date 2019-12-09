@@ -139,6 +139,10 @@ class TendencyStepper(abc.ABC):
             else ConcurrentCoupling(*args, execution_policy=execution_policy)
         )
 
+        self.input_properties = self._get_input_properties()
+        self.diagnostic_properties = self._prognostic.diagnostic_properties.copy()
+        self.output_properties = self._get_output_properties()
+
         self._input_checker = InputChecker(self)
         self._diagnostic_checker = DiagnosticChecker(self)
         self._output_checker = OutputChecker(self)
@@ -191,8 +195,7 @@ class TendencyStepper(abc.ABC):
         """
         return self._prognostic
 
-    @property
-    def input_properties(self):
+    def _get_input_properties(self):
         """
         Return
         ------
@@ -226,21 +229,7 @@ class TendencyStepper(abc.ABC):
 
         return return_dict
 
-    @property
-    def diagnostic_properties(self):
-        """
-        Return
-        ------
-        dict[str, dict] :
-            Dictionary whose keys are strings denoting diagnostics
-            which are retrieved from the input state dictionary, and
-            whose values are dictionaries specifying fundamental
-            properties (dims, units) of those diagnostics.
-        """
-        return self._prognostic.diagnostic_properties
-
-    @property
-    def output_properties(self):
+    def _get_output_properties(self):
         """
         Return
         ------

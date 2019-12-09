@@ -519,12 +519,6 @@ class ParallelSplitting:
                     field_properties=self.provisional_output_properties,
                 )
 
-                # name = 'mass_fraction_of_cloud_liquid_water_in_air'
-                # if name in diagnostics:
-                #     if diagnostics[name].values.max() > 0:
-                #         import ipdb
-                #         ipdb.set_trace()
-
                 state.update(diagnostics)
             else:
                 arg = state_prv if self._diagnostics_from_provisional else state

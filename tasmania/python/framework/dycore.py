@@ -1091,15 +1091,15 @@ class DynamicalCore(abc.ABC):
                 except TypeError:
                     inter_tends, inter_diags = self._inter_diags(out_state, timestep)
 
-            # diagnostic_fields = {}
-            # for name in inter_diags:
-            #     if name != "time" and name not in self._output_properties:
-            #         diagnostic_fields[name] = inter_diags[name]
-            #
-            # self._dict_op.copy(out_state, inter_diags)
-            # out_state.update(diagnostic_fields)
+            diagnostic_fields = {}
+            for name in inter_diags:
+                if name != "time" and name not in self._output_properties:
+                    diagnostic_fields[name] = inter_diags[name]
 
-            out_state.update(inter_diags)
+            self._dict_op.copy(out_state, inter_diags)
+            out_state.update(diagnostic_fields)
+
+            # out_state.update(inter_diags)
         else:
             inter_tends = {}
 
@@ -1117,12 +1117,6 @@ class DynamicalCore(abc.ABC):
                 if (name != "time" and name in self.output_properties)
             }
         )
-
-        # name = 'air_potential_temperature'
-        # field = inter_tends.get(name, out_state.get('tendency_of_' + name, None))
-        # if field.values.min() < 0 or field.values.max() > 0:
-        #     import ipdb
-        #     ipdb.set_trace()
 
         return inter_tends
 

@@ -171,15 +171,15 @@ else:
 t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
 args.append(t2d)
 
-# # component integrating the vertical flux
-# vf = taz.IsentropicVerticalAdvection(
-#     domain,
-#     flux_scheme=nl.vertical_flux_scheme,
-#     moist=True,
-#     tendency_of_air_potential_temperature_on_interface_levels=False,
-#     **nl.gt_kwargs
-# )
-# args.append(vf)
+# component integrating the vertical flux
+vf = taz.IsentropicVerticalAdvection(
+    domain,
+    flux_scheme=nl.vertical_flux_scheme,
+    moist=True,
+    tendency_of_air_potential_temperature_on_interface_levels=False,
+    **nl.gt_kwargs
+)
+args.append(vf)
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -253,7 +253,7 @@ if nl.smooth:
 
 if len(args) > 0:
     # wrap the components in a ConcurrentCoupling object
-    slow_diags = taz.ConcurrentCoupling(*args, execution_policy="serial")
+    slow_diags = taz.DiagnosticComponentComposite(*args, execution_policy="serial")
 else:
     slow_diags = None
 
@@ -331,7 +331,7 @@ for i in range(nt):
 
     # calculate the slow physics
     if slow_diags is not None:
-        _, diagnostics = slow_diags(state, dt)
+        diagnostics = slow_diags(state, dt)
         state.update(diagnostics)
 
     compute_time += time.time() - compute_time_start
