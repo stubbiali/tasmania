@@ -926,5 +926,4 @@ def _test_prescribed_surface_heating(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_centered()
+    pytest.main([__file__])

@@ -306,47 +306,33 @@ water_species_names = (
 clp = taz.Clipping(domain, "numerical", water_species_names)
 # args_before_dynamics.append({"component": clp})
 
-# include tendency_of_air_potential_temperature in the state
-state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
-    taz.zeros(
-        nl.gt_kwargs["storage_shape"],
-        nl.gt_kwargs["backend"],
-        nl.gt_kwargs["dtype"],
-        default_origin=nl.gt_kwargs["default_origin"],
-        managed_memory=nl.gt_kwargs["managed_memory"],
-    ),
-    cgrid,
-    "K s^-1",
-    grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
-    set_coordinates=False,
-)
-
-# component integrating the vertical flux
-vf = taz.IsentropicVerticalAdvection(
-    domain,
-    flux_scheme=nl.vertical_flux_scheme,
-    moist=True,
-    tendency_of_air_potential_temperature_on_interface_levels=False,
-    **nl.gt_kwargs
-)
-args_before_dynamics.append(
-    {
-        "component": vf,
-        "time_integrator": "rk3ws",
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
-        "substeps": 1,
-    }
-)
-args_after_dynamics.append(
-    {
-        "component": vf,
-        "time_integrator": "rk3ws",
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
-        "substeps": 1,
-    }
-)
+if nl.vertical_advection:
+    # component integrating the vertical flux
+    vf = taz.IsentropicVerticalAdvection(
+        domain,
+        flux_scheme=nl.vertical_flux_scheme,
+        moist=True,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        **nl.gt_kwargs
+    )
+    args_before_dynamics.append(
+        {
+            "component": vf,
+            "time_integrator": "rk3ws",
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
+    args_after_dynamics.append(
+        {
+            "component": vf,
+            "time_integrator": "rk3ws",
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -406,31 +392,32 @@ args_after_dynamics.append(
     }
 )
 
-# component calculating the accumulated precipitation
 if nl.sedimentation:
+    # component calculating the accumulated precipitation
     ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
-    args_before_dynamics.append(
+    args_before_dynamics.append({"component": ap})
+    args_after_dynamics.append(
         {
             "component": taz.DiagnosticComponentComposite(
                 rfv, ap, execution_policy="serial"
             )
         }
     )
-    args_after_dynamics.append({"component": ap})
 
-    # state["raindrop_fall_velocity"] = taz.get_dataarray_3d(
-    #     taz.zeros(
-    #         nl.gt_kwargs["storage_shape"],
-    #         nl.gt_kwargs["backend"],
-    #         nl.gt_kwargs["dtype"],
-    #         default_origin=nl.gt_kwargs["default_origin"],
-    #         managed_memory=nl.gt_kwargs["managed_memory"],
-    #     ),
-    #     cgrid,
-    #     "m s^-1",
-    #     grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
-    #     set_coordinates=False,
-    # )
+    # include raindrop_fall_velocity in the state
+    state["raindrop_fall_velocity"] = taz.get_dataarray_3d(
+        taz.zeros(
+            nl.gt_kwargs["storage_shape"],
+            nl.gt_kwargs["backend"],
+            nl.gt_kwargs["dtype"],
+            default_origin=nl.gt_kwargs["default_origin"],
+            managed_memory=nl.gt_kwargs["managed_memory"],
+        ),
+        cgrid,
+        "m s^-1",
+        grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
+        set_coordinates=False,
+    )
 
 iargs_before_dynamics = args_before_dynamics[::-1]
 

@@ -79,6 +79,7 @@ c = 0.25
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
+vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -137,16 +138,17 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 100  # int(2 * 60 * 60 / timestep.total_seconds())
+niter = 100  # int(4 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
-save_frequency = -1
+save_frequency = 20
 filename = (
-    "../../data/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_cc_{}.nc".format(
+    "../../data/isentropic-validation/isentropic_moist_{}_{}{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
+        "_{}".format(vertical_flux_scheme) if vertical_advection else "",
         nx,
         ny,
         nz,

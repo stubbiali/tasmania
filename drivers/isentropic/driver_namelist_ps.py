@@ -278,23 +278,24 @@ args.append(
     }
 )
 
-# component integrating the vertical flux
-vf = taz.IsentropicVerticalAdvection(
-    domain,
-    flux_scheme=nl.vertical_flux_scheme,
-    moist=True,
-    tendency_of_air_potential_temperature_on_interface_levels=False,
-    **nl.gt_kwargs
-)
-args.append(
-    {
-        "component": vf,
-        "time_integrator": "rk3ws",
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
-        "substeps": 1,
-    }
-)
+if nl.vertical_advection:
+    # component integrating the vertical flux
+    vf = taz.IsentropicVerticalAdvection(
+        domain,
+        flux_scheme=nl.vertical_flux_scheme,
+        moist=True,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        **nl.gt_kwargs
+    )
+    args.append(
+        {
+            "component": vf,
+            "time_integrator": "rk3ws",
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -319,7 +320,13 @@ if nl.sedimentation:
 
     # component calculating the accumulated precipitation
     ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
-    args.append({"component": ap})
+    args.append(
+        {
+            "component": taz.DiagnosticComponentComposite(
+                rfv, ap, execution_policy="serial"
+            )
+        }
+    )
 
 # component clipping the negative values of the water species
 water_species_names = (
@@ -387,6 +394,9 @@ for i in range(nt):
 
     # calculate the dynamics
     state_prv = dycore(state, {}, dt)
+    extension = {key: state[key] for key in state if key not in state_prv}
+    state_prv.update(extension)
+    # state_prv["accumulated_precipitation"] = state["accumulated_precipitation"]
 
     # calculate the physics
     physics(state, state_prv, dt)

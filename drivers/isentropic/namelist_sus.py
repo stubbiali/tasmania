@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 161
-domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "gtmc",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -80,6 +80,7 @@ physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
+vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -138,16 +139,17 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=10)
-niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = 100  # int(4 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
-save_frequency = -1
+save_frequency = 20
 filename = (
-    "../../data/isentropic_moist_{}_{}_{}_pg2_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "../../data/isentropic-validationisentropic_moist_{}_{}{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
     "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sus_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
+        "_{}".format(vertical_flux_scheme) if vertical_advection else "",
         physics_time_integration_scheme,
         nx,
         ny,
@@ -184,7 +186,7 @@ store_names = (
     "x_momentum_isentropic",
     "x_velocity_at_u_locations",
     "y_momentum_isentropic",
-    "y_velocity_at_v_locations"
+    "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
 print_moist_frequency = -1

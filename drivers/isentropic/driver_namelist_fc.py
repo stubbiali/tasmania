@@ -171,15 +171,16 @@ else:
 t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
 args.append(t2d)
 
-# component integrating the vertical flux
-vf = taz.IsentropicVerticalAdvection(
-    domain,
-    flux_scheme=nl.vertical_flux_scheme,
-    moist=True,
-    tendency_of_air_potential_temperature_on_interface_levels=False,
-    **nl.gt_kwargs
-)
-args.append(vf)
+if nl.vertical_advection:
+    # component integrating the vertical flux
+    vf = taz.IsentropicVerticalAdvection(
+        domain,
+        flux_scheme=nl.vertical_flux_scheme,
+        moist=True,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        **nl.gt_kwargs
+    )
+    args.append(vf)
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -218,7 +219,7 @@ sa = taz.KesslerSaturationAdjustment(
     **nl.gt_kwargs
 )
 
-# wrap the components in a DiagnosticComponentComposite object
+# wrap the components in a ConcurrentCoupling object
 inter_diags = taz.ConcurrentCoupling(
     dv, sa, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
 )

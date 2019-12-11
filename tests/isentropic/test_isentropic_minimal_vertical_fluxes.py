@@ -126,7 +126,8 @@ class WrappingStencil:
         names = ["flux_s", "flux_su", "flux_sv"]
         if moist:
             names += ["flux_sqv", "flux_sqc", "flux_sqr"]
-        return_list = tuple(stencil_args[name].data for name in names)
+        # return_list = tuple(stencil_args[name].data for name in names)
+        return_list = tuple(stencil_args[name] for name in names)
 
         return return_list
 

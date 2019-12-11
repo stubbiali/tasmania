@@ -172,15 +172,16 @@ else:
 t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
 args.append(t2d)
 
-# component integrating the vertical flux
-vf = taz.IsentropicVerticalAdvection(
-    domain,
-    flux_scheme=nl.vertical_flux_scheme,
-    moist=True,
-    tendency_of_air_potential_temperature_on_interface_levels=False,
-    **nl.gt_kwargs
-)
-args.append(vf)
+if nl.vertical_advection:
+    # component integrating the vertical flux
+    vf = taz.IsentropicVerticalAdvection(
+        domain,
+        flux_scheme=nl.vertical_flux_scheme,
+        moist=True,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        **nl.gt_kwargs
+    )
+    args.append(vf)
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -213,7 +214,7 @@ idv = taz.IsentropicDiagnostics(
 )
 args.append(idv)
 
-# component performing the saturation adjustment
+# components performing the saturation adjustment
 sa = taz.KesslerSaturationAdjustment(
     domain,
     grid_type="numerical",
@@ -221,14 +222,16 @@ sa = taz.KesslerSaturationAdjustment(
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     **nl.gt_kwargs
 )
-args.append(sa)
-
-# component promoting air_potential_temperature to state variable
-args.append(t2d)
+args.append(
+    taz.ConcurrentCoupling(
+        sa, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
+)
 
 if nl.sedimentation:
     # component calculating the accumulated precipitation
     ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
+    args.append(rfv)
     args.append(ap)
 
 if nl.smooth:
@@ -247,10 +250,8 @@ if nl.smooth:
     vc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
     args.append(vc)
 
-# wrap the components in a ConcurrentCoupling object
-slow_diags = taz.ConcurrentCoupling(
-    *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
-)
+# wrap the components in a DiagnosticComponentComposite object
+slow_diags = taz.DiagnosticComponentComposite(*args, execution_policy="serial")
 
 # ============================================================
 # The dynamical core
@@ -329,7 +330,7 @@ for i in range(nt):
     dict_op.copy(state, state_new)
 
     # retrieve the slow diagnostics
-    _, diagnostics = slow_diags(state, dt)
+    diagnostics = slow_diags(state, dt)
     state.update(diagnostics)
 
     compute_time += time.time() - compute_time_start

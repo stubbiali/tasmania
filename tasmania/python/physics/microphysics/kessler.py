@@ -1128,7 +1128,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         with computation(PARALLEL), interval(0, None):
             h = 0.5 * (in_h[0, 0, 0] + in_h[0, 0, 1])
 
-        with computation(PARALLEL), interval(0, sflux_extent):
+        with computation(FORWARD), interval(0, sflux_extent):
             out_qr = 0.0
         with computation(PARALLEL), interval(sflux_extent, None):
             out_dfdz = sflux(rho=in_rho, h=h, q=in_qr, vt=in_vt)

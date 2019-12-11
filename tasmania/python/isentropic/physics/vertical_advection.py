@@ -371,7 +371,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # interpolate the velocity on the interface levels
-        with computation(PARALLEL), interval(0, 1):
+        with computation(FORWARD), interval(0, 1):
                 w = 0.0
         with computation(PARALLEL), interval(1, None):
             if __INLINED(vstaggering):  # compile-time if

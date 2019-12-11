@@ -286,23 +286,24 @@ args.append(
     }
 )
 
-# component integrating the vertical flux
-vf = taz.IsentropicVerticalAdvection(
-    domain,
-    flux_scheme=nl.vertical_flux_scheme,
-    moist=True,
-    tendency_of_air_potential_temperature_on_interface_levels=False,
-    **nl.gt_kwargs
-)
-args.append(
-    {
-        "component": vf,
-        "time_integrator": "rk3ws",
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
-        "substeps": 1,
-    }
-)
+if nl.vertical_advection:
+    # component integrating the vertical flux
+    vf = taz.IsentropicVerticalAdvection(
+        domain,
+        flux_scheme=nl.vertical_flux_scheme,
+        moist=True,
+        tendency_of_air_potential_temperature_on_interface_levels=False,
+        **nl.gt_kwargs
+    )
+    args.append(
+        {
+            "component": vf,
+            "time_integrator": "rk3ws",
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -332,12 +333,14 @@ if nl.sedimentation:
     )
 
     # component calculating the accumulated precipitation
-    ap = taz.DiagnosticComponentComposite(
-        rfv,
-        taz.Precipitation(domain, "numerical", **nl.gt_kwargs),
-        execution_policy="serial",
+    ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
+    args.append(
+        {
+            "component": taz.DiagnosticComponentComposite(
+                rfv, ap, execution_policy="serial"
+            )
+        }
     )
-    args.append({"component": ap})
 
 # component performing the saturation adjustment
 sa = taz.KesslerSaturationAdjustment(

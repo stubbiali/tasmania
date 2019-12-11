@@ -79,12 +79,13 @@ def compare_arrays(field_a, field_b, atol=1e-8, rtol=1e-5):
     try:
         assert np.allclose(field_a, field_b, equal_nan=True, atol=atol, rtol=rtol)
     except RuntimeError:
-        try:
-            assert np.allclose(
-                field_a.data, field_b.data, equal_nan=True, atol=atol, rtol=rtol
-            )
-        except AttributeError:
-            assert False
+        assert False
+        # try:
+        #     assert np.allclose(
+        #         field_a.data, field_b.data, equal_nan=True, atol=atol, rtol=rtol
+        #     )
+        # except AttributeError:
+        #     assert False
 
     gt.storage.prepare_numpy()
 

@@ -25,19 +25,18 @@ import numpy as np
 import tasmania as taz
 
 
-#
-# Inputs
-#
+# ========================================
+# user inputs
+# ========================================
 filename1 = (
-    "../../data/isentropic_validation/isentropic_moist_rk3ws_si_fifth_order_upwind_gt_rk2_"
-    "nx41_ny41_nz60_dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_numpy.nc"
+    "../../data/isentropic-validation/isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_"
+    "nx41_ny41_nz60_dt40_nt360_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_numpy.nc"
 )
 filename2 = (
-    "../../data/isentropic_validation/isentropic_moist_rk3ws_si_fifth_order_upwind_gt_rk2_"
-    "nx41_ny41_nz60_dt40_nt180_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_gtx86.nc"
+    "../../data/isentropic-validation/isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_"
+    "nx41_ny41_nz60_dt40_nt360_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_gtx86.nc"
 )
 
-# field_properties = {"x_velocity": {"units": "m s^-1"}, "y_velocity": {"units": "m s^-1"}}
 field_properties = {
     "accumulated_precipitation": {"units": "mm"},
     "air_density": {"units": "kg m^-3"},
@@ -56,13 +55,13 @@ field_properties = {
     "y_velocity_at_v_locations": {"units": "m s^-1"},
 }
 
-tlevels1 = range(0, 37)
-tlevels2 = range(0, 37)
+tlevels1 = range(0, 19)
+tlevels2 = range(0, 19)
 
 
-#
-# Code
-#
+# ========================================
+# code
+# ========================================
 def get_range(x, y=None, z=None):
     z = z or 1
     return range(x, y, z) if y is not None else range(0, x, z)
