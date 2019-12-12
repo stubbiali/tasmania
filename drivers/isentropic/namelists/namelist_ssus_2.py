@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 161
-domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -80,6 +80,7 @@ physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
+vertical_advection = False
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -144,7 +145,7 @@ niter = int(1 * 60 * 60 / timestep.total_seconds())
 save = True
 save_frequency = 8
 filename = (
-    "/scratch/snx3000tds/subbiali/data/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-280/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
     "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,

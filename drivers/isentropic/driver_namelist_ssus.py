@@ -272,7 +272,49 @@ else:
 args_before_dynamics.append(
     {
         "component": taz.ConcurrentCoupling(
+            d2t,
+            comp,
+            t2d,
+            execution_policy="serial",
+            gt_powered=nl.gt_powered,
+            **nl.gt_kwargs
+        ),
+        "time_integrator": "forward_euler",
+        "gt_powered": nl.gt_powered,
+        "time_integrator_kwargs": nl.gt_kwargs,
+        "substeps": 1,
+    }
+)
+args_after_dynamics.append(
+    {
+        "component": taz.ConcurrentCoupling(
             comp, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+        ),
+        "time_integrator": ptis,
+        "gt_powered": nl.gt_powered,
+        "time_integrator_kwargs": nl.gt_kwargs,
+        "substeps": 1,
+    }
+)
+
+# component performing the saturation adjustment
+sa = taz.KesslerSaturationAdjustmentPrognostic(
+    domain,
+    grid_type="numerical",
+    air_pressure_on_interface_levels=True,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
+    saturation_rate=nl.saturation_rate,
+    **nl.gt_kwargs
+)
+args_before_dynamics.append(
+    {
+        "component": taz.ConcurrentCoupling(
+            d2t,
+            sa,
+            t2d,
+            execution_policy="serial",
+            gt_powered=nl.gt_powered,
+            **nl.gt_kwargs
         ),
         "time_integrator": "forward_euler",
         "gt_powered": nl.gt_powered,
@@ -284,7 +326,7 @@ args_after_dynamics.append(
     {
         "component": taz.ConcurrentCoupling(
             d2t,
-            comp,
+            sa,
             t2d,
             execution_policy="serial",
             gt_powered=nl.gt_powered,
@@ -375,22 +417,6 @@ if nl.sedimentation:
             "substeps": 1,
         }
     )
-
-# component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
-    domain,
-    grid_type="numerical",
-    air_pressure_on_interface_levels=True,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    **nl.gt_kwargs
-)
-args_after_dynamics.append(
-    {
-        "component": taz.DiagnosticComponentComposite(
-            taz.ConcurrentCoupling(sa, t2d), execution_policy="serial"
-        )
-    }
-)
 
 if nl.sedimentation:
     # component calculating the accumulated precipitation

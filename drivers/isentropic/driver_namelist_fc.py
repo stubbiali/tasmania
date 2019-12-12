@@ -143,10 +143,6 @@ if nl.turbulence:
     turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
     args.append(turb)
 
-# component downgrading air_potential_temperature to tendency variable
-d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
-args.append(d2t)
-
 # component calculating the microphysics
 ke = taz.KesslerMicrophysics(
     domain,
@@ -166,6 +162,17 @@ if nl.update_frequency > 0:
     args.append(UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep))
 else:
     args.append(ke)
+
+# component caluclating the tendencies "emulating" the saturation adjustment
+sa = taz.KesslerSaturationAdjustmentPrognostic(
+    domain,
+    grid_type="numerical",
+    air_pressure_on_interface_levels=True,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
+    saturation_rate=nl.saturation_rate,
+    **nl.gt_kwargs
+)
+args.append(sa)
 
 # component promoting air_potential_temperature to state variable
 t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
@@ -210,20 +217,6 @@ dv = taz.IsentropicDiagnostics(
     domain, grid_type="numerical", moist=True, pt=pt, **nl.gt_kwargs
 )
 
-# component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
-    domain,
-    grid_type="numerical",
-    air_pressure_on_interface_levels=True,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    **nl.gt_kwargs
-)
-
-# wrap the components in a ConcurrentCoupling object
-inter_diags = taz.ConcurrentCoupling(
-    dv, sa, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
-)
-
 # ============================================================
 # The slow diagnostics
 # ============================================================
@@ -266,7 +259,7 @@ dycore = taz.IsentropicDynamicalCore(
     moist=True,
     # parameterizations
     intermediate_tendencies=inter_tends,
-    intermediate_diagnostics=inter_diags,
+    intermediate_diagnostics=dv,
     substeps=nl.substeps,
     fast_tendencies=None,
     fast_diagnostics=None,

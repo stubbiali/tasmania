@@ -49,7 +49,6 @@ from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
 
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
-from tasmania.python.physics.microphysics.kessler import KesslerSaturationAdjustment
 from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray,
@@ -71,9 +70,6 @@ try:
         forward_euler_step_momentum_x,
         forward_euler_step_momentum_y,
     )
-    from .physics.test_microphysics_kessler import (
-        kessler_saturation_adjustment_validation,
-    )
     from .utils import (
         compare_arrays,
         compare_datetimes,
@@ -94,7 +90,6 @@ except (ImportError, ModuleNotFoundError):
         forward_euler_step_momentum_x,
         forward_euler_step_momentum_y,
     )
-    from physics.test_microphysics_kessler import kessler_saturation_adjustment_validation
     from utils import (
         compare_arrays,
         compare_datetimes,

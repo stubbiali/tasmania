@@ -56,7 +56,7 @@ class AirPotentialTemperature2Tendency(Diagnostic2Tendency):
                 "dims": dims,
                 "units": "K s^-1",
                 "tendency_name": "air_potential_temperature",
-                "remove_from_diagnostics": True,
+                "remove_from_diagnostics": False,
             }
         }
 

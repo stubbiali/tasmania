@@ -242,9 +242,6 @@ water_species_names = (
 )
 # clp = taz.Clipping(domain, "numerical", water_species_names)
 
-# component downgrading tendency_of_air_potential_temperature to tendency variable
-d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
-
 # component promoting air_potential_temperature to state variable
 t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
 
@@ -261,19 +258,41 @@ ke = taz.KesslerMicrophysics(
     saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
     **nl.gt_kwargs
 )
-
 if nl.update_frequency > 0:
     from sympl import UpdateFrequencyWrapper
 
     comp = UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep)
 else:
     comp = ke
+args.append(
+    {
+        "component": taz.ConcurrentCoupling(
+            comp, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
+        ),
+        "time_integrator": ptis,
+        "gt_powered": nl.gt_powered,
+        "time_integrator_kwargs": nl.gt_kwargs,
+        "substeps": 1,
+    }
+)
 
+# component downgrading tendency_of_air_potential_temperature to tendency variable
+d2t = taz.AirPotentialTemperature2Tendency(domain, "numerical")
+
+# component performing the saturation adjustment
+sa = taz.KesslerSaturationAdjustmentPrognostic(
+    domain,
+    grid_type="numerical",
+    air_pressure_on_interface_levels=True,
+    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
+    saturation_rate=nl.saturation_rate,
+    **nl.gt_kwargs
+)
 args.append(
     {
         "component": taz.ConcurrentCoupling(
             d2t,
-            comp,
+            sa,
             t2d,
             execution_policy="serial",
             gt_powered=nl.gt_powered,
@@ -341,22 +360,6 @@ if nl.sedimentation:
             )
         }
     )
-
-# component performing the saturation adjustment
-sa = taz.KesslerSaturationAdjustment(
-    domain,
-    grid_type="numerical",
-    air_pressure_on_interface_levels=True,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    **nl.gt_kwargs
-)
-args.append(
-    {
-        "component": taz.DiagnosticComponentComposite(
-            taz.ConcurrentCoupling(sa, t2d), execution_policy="serial"
-        )
-    }
-)
 
 # wrap the components in a SequentialUpdateSplitting object
 physics = taz.SequentialUpdateSplitting(*args)

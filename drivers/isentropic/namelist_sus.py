@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 161
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 161
+ny = 41
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtmc",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -80,7 +80,7 @@ physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
-vertical_advection = True
+vertical_advection = False
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -124,7 +124,7 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
@@ -135,11 +135,12 @@ autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
 saturation_vapor_pressure_formula = "tetens"
+saturation_rate = DataArray(0.025, attrs={'units': 's^-1'})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=10)
-niter = 100  # int(4 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -189,4 +190,4 @@ store_names = (
     "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = -1
+print_moist_frequency = 5

@@ -102,7 +102,8 @@ from tasmania.python.isentropic.utils import AirPotentialTemperature2Diagnostic,
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
     KesslerMicrophysics,
-    KesslerSaturationAdjustment,
+    KesslerSaturationAdjustmentDiagnostic,
+    KesslerSaturationAdjustmentPrognostic,
     KesslerSedimentation,
 )
 from tasmania.python.physics.microphysics.old_kessler import (
@@ -204,7 +205,8 @@ __all__ = (
     IsentropicVerticalAdvection,
     KesslerFallVelocity,
     KesslerMicrophysics,
-    KesslerSaturationAdjustment,
+    KesslerSaturationAdjustmentDiagnostic,
+    KesslerSaturationAdjustmentPrognostic,
     KesslerSedimentation,
     Line,
     LineProfile,
