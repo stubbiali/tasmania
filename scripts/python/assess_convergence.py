@@ -29,7 +29,7 @@ import tasmania as taz
 field_name = "precipitation"
 field_units = "mm hr^-1"
 
-prefix = "../../data/diagnostic-saturation-290/"
+prefix = "../../data/prognostic-saturation-280/"
 
 reference_dataset = {
     "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx321_ny321_nz60_"
@@ -42,8 +42,8 @@ reference_dataset = {
 
 datasets = (
     {
-        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx41_ny41_nz60_"
-        "dt40_nt90_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_sus_gtx86.nc",
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_"
+        "dt40_nt90_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_lfc_gtx86.nc",
         "xslice": slice(10, 31),
         "yslice": slice(10, 31),
         "zslice": slice(0, 1),
@@ -53,8 +53,8 @@ datasets = (
         "tlevel": 25,
     },
     {
-        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx81_ny81_nz60_"
-        "dt20_nt180_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_sus_gtx86.nc",
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx81_ny81_nz60_"
+        "dt20_nt180_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_lfc_gtx86.nc",
         "xslice": slice(20, 61),
         "yslice": slice(20, 61),
         "zslice": slice(0, 1),
@@ -64,8 +64,8 @@ datasets = (
         "tlevel": 25,
     },
     {
-        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx161_ny161_nz60_"
-        "dt10_nt360_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_sus_gtx86.nc",
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx161_ny161_nz60_"
+        "dt10_nt360_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_lfc_gtx86.nc",
         "xslice": slice(40, 121),
         "yslice": slice(40, 121),
         "zslice": slice(0, 1),
