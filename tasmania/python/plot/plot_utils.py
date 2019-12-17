@@ -833,9 +833,9 @@ def make_lineplot(x, y, ax, **kwargs):
 
     Parameters
     ----------
-    x : gt4py.storage.storage.Storage
+    x : numpy.ndarray
         1-D array gathering the x-coordinates of the points to plot.
-    y : gt4py.storage.storage.Storage
+    y : numpy.ndarray
         1-D array gathering the y-coordinates of the points to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.

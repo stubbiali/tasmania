@@ -133,7 +133,7 @@ class Relaxed(HorizontalBoundary):
         for i in range(nr):
             xnegyneg[i, i:] = rel[i]
             xnegyneg[i:, i] = rel[i]
-        xposyneg = xnegyneg[:, ::-1]
+        xposyneg = xnegyneg[::-1, :]
         xposypos = np.transpose(xnegyneg)
         xnegypos = np.transpose(xposyneg)
 

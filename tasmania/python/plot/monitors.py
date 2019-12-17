@@ -53,7 +53,7 @@ def get_time(states):
 class Plot(Monitor):
     """
     A :class:`sympl.Monitor` for visualization purposes, generating a
-    plot by nicely overlapping distinct plots drawn by one or multiple
+    panel by nicely overlapping distinct plots drawn by one or multiple
     :class:`tasmania.Drawer`\s.
 
     Warning

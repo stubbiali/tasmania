@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,21 +23,19 @@
 import abc
 
 
-class BaseLoader:
-	__metaclass__ = abc.ABCMeta
+class BaseLoader(abc.ABC):
+    @abc.abstractmethod
+    def get_grid(self):
+        pass
 
-	@abc.abstractmethod
-	def get_grid(self):
-		pass
+    @abc.abstractmethod
+    def get_nt(self):
+        pass
 
-	@abc.abstractmethod
-	def get_nt(self):
-		pass
+    @abc.abstractmethod
+    def get_initial_time(self):
+        pass
 
-	@abc.abstractmethod
-	def get_initial_time(self):
-		pass
-
-	@abc.abstractmethod
-	def get_state(self, tlevel):
-		pass
+    @abc.abstractmethod
+    def get_state(self, tlevel):
+        pass

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,24 +20,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-try:
-	from .base_loader import BaseLoader
-except ImportError:
-	from base_loader import BaseLoader
+import abc
 
 
-class FakeLoader(BaseLoader):
-	def __init__(self, json_filename=None):
-		pass
+class DrawerWrapper(abc.ABC):
+    def __init__(self, loader):
+        self.loader = loader
+        self.core = None
 
-	def get_grid(self):
-		raise NotImplementedError()
+    def get_drawer(self):
+        return self.core
 
-	def get_nt(self):
-		raise NotImplementedError()
+    def get_initial_time(self):
+        return self.loader.get_initial_time()
 
-	def get_initial_time(self):
-		raise NotImplementedError()
-
-	def get_state(self, tlevel):
-		return {}
+    def get_state(self, tlevel):
+        return self.loader.get_state(tlevel)
