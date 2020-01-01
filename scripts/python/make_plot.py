@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,85 +26,96 @@ import tasmania as taz
 
 
 class PlotWrapper:
-	def __init__(self, json_filename):
-		with open(json_filename, 'r') as json_file:
-			data = json.load(json_file)
+    def __init__(self, json_filename):
+        with open(json_filename, "r") as json_file:
+            data = json.load(json_file)
 
-			self._drawer_wrappers = []
+            self.drawer_wrappers = []
 
-			for drawer_data in data['drawers']:
-				loader_module = drawer_data['loader_module']
-				loader_classname = drawer_data['loader_classname']
-				loader_config = drawer_data['loader_config']
+            for drawer_data in data["drawers"]:
+                loader_module = drawer_data["loader_module"]
+                loader_classname = drawer_data["loader_classname"]
+                loader_config = drawer_data["loader_config"]
 
-				import_str = "from {} import {}".format(loader_module, loader_classname)
-				exec(import_str)
-				loader = locals()[loader_classname](loader_config)
+                import_str = "from {} import {}".format(loader_module, loader_classname)
+                exec(import_str)
+                loader = locals()[loader_classname](loader_config)
 
-				wrapper_module = drawer_data['wrapper_module']
-				wrapper_classname = drawer_data['wrapper_classname']
-				wrapper_config = drawer_data['wrapper_config']
+                wrapper_module = drawer_data["wrapper_module"]
+                wrapper_classname = drawer_data["wrapper_classname"]
+                wrapper_config = drawer_data["wrapper_config"]
 
-				import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
-				exec(import_str)
-				self._drawer_wrappers.append(locals()[wrapper_classname](loader, wrapper_config))
+                import_str = "from {} import {}".format(wrapper_module, wrapper_classname)
+                exec(import_str)
+                self.drawer_wrappers.append(
+                    locals()[wrapper_classname](loader, wrapper_config)
+                )
 
-			print_time = data['print_time']
-			
-			if print_time == 'elapsed' and 'init_time' in data:
-				init_time = datetime(
-					year=data['init_time']['year'],
-					month=data['init_time']['month'],
-					day=data['init_time']['day'],
-					hour=data['init_time'].get('hour', 0),
-					minute=data['init_time'].get('minute', 0),
-					second=data['init_time'].get('second', 0)
-				)
-			else:
-				init_time = None
+            print_time = data["print_time"]
 
-			figure_properties = data['figure_properties']
-			self._axes_properties = data['axes_properties']
+            if print_time == "elapsed" and "init_time" in data:
+                init_time = datetime(
+                    year=data["init_time"]["year"],
+                    month=data["init_time"]["month"],
+                    day=data["init_time"]["day"],
+                    hour=data["init_time"].get("hour", 0),
+                    minute=data["init_time"].get("minute", 0),
+                    second=data["init_time"].get("second", 0),
+                )
+            else:
+                init_time = None
 
-			self._core = taz.Plot(
-				*(wrapper.get_drawer() for wrapper in self._drawer_wrappers),
-				interactive=False, print_time=print_time, init_time=init_time,
-				figure_properties=figure_properties, axes_properties=self._axes_properties
-			)
+            figure_properties = data["figure_properties"]
+            self.axes_properties = data["axes_properties"]
 
-			self._tlevels = data.get('tlevels', 0)
-			self._save_dest = data.get('save_dest', None)
+            self.core = taz.Plot(
+                *(wrapper.get_drawer() for wrapper in self.drawer_wrappers),
+                interactive=False,
+                print_time=print_time,
+                init_time=init_time,
+                figure_properties=figure_properties,
+                axes_properties=self.axes_properties
+            )
 
-	def get_artist(self):
-		return self._core
+            self.tlevels = data.get("tlevels", 0)
+            self.save_dest = data.get("save_dest", None)
 
-	def get_states(self, tlevels=None):
-		wrappers = self._drawer_wrappers
+    def get_artist(self):
+        return self.core
 
-		tlevels = self._tlevels if tlevels is None else tlevels
-		tlevels = (tlevels, )*len(wrappers) if isinstance(tlevels, int) else tlevels
+    def get_states(self, tlevels=None):
+        wrappers = self.drawer_wrappers
 
-		states = []
+        tlevels = self.tlevels if tlevels is None else tlevels
+        tlevels = (tlevels,) * len(wrappers) if isinstance(tlevels, int) else tlevels
 
-		for wrapper, tlevel in zip(wrappers, tlevels):
-			states.append(wrapper.get_state(tlevel))
+        states = []
 
-		return states
+        for wrapper, tlevel in zip(wrappers, tlevels):
+            states.append(wrapper.get_state(tlevel))
 
-	def store(self, tlevels=None, fig=None, ax=None, show=False):
-		states = self.get_states(tlevels)
-		return self._core.store(*states, fig=fig, ax=ax, save_dest=self._save_dest, show=show)
+        return states
+
+    def store(self, tlevels=None, fig=None, ax=None, show=False):
+        states = self.get_states(tlevels)
+        return self.core.store(
+            *states, fig=fig, ax=ax, save_dest=self.save_dest, show=show
+        )
 
 
-if __name__ == '__main__':
-	import argparse
-	parser = argparse.ArgumentParser(description='Generate a figure with a single plot.')
-	parser.add_argument(
-		'configfile', metavar='configfile', type=str, help='JSON configuration file.'
-	)
-	parser.add_argument(
-		'show', metavar='show', type=int, help='1 to show the generated plot, 0 otherwise.'
-	)
-	args = parser.parse_args()
-	plot_wrapper = PlotWrapper(args.configfile)
-	plot_wrapper.store(show=args.show)
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate a figure with a single plot.")
+    parser.add_argument(
+        "configfile", metavar="configfile", type=str, help="JSON configuration file."
+    )
+    parser.add_argument(
+        "show",
+        metavar="show",
+        type=int,
+        help="1 to show the generated plot, 0 otherwise.",
+    )
+    args = parser.parse_args()
+    plot_wrapper = PlotWrapper(args.configfile)
+    plot_wrapper.store(show=args.show)

@@ -1,0 +1,22 @@
+{
+	"field_name": "rmsd_of_precipitation",
+	"field_units": "mm hr^-1",
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "min",
+	"time_on_xaxis": true,
+	"drawer_properties": {
+		"fontsize": 16,
+		"linestyle": "-",
+		"linewidth": 2,
+		"linecolor": "cyan",
+		"marker": null,
+		"markersize": 7,
+		"markeredgewidth": 1,
+		"markerfacecolor": "cyan",
+		"markeredgecolor": "cyan",
+		"legend_label": "SUS"
+	}
+}

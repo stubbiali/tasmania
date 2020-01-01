@@ -1,0 +1,19 @@
+{
+    "slaves": [
+        {
+            "module": "cumulative",
+            "classname": "TotalAccumulatedPrecipitationLoader",
+            "config": "config/tap/tap_loader_ps_0.json"
+        },
+        {
+            "module": "cumulative",
+            "classname": "TotalAccumulatedPrecipitationLoader",
+            "config": "config/tap/tap_loader_ps_1.json"
+        },
+        {
+            "module": "cumulative",
+            "classname": "TotalAccumulatedPrecipitationLoader",
+            "config": "config/tap/tap_loader_ps_2.json"
+        }
+    ]
+}

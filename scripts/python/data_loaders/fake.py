@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 try:
-    from .base_loader import BaseLoader
+    from .base import BaseLoader
 except ImportError:
     from base_loader import BaseLoader
 

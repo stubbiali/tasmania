@@ -27,7 +27,7 @@ import tasmania as taz
 import tasmania.python.utils.storage_utils
 
 try:
-    from .base_loader import BaseLoader
+    from .base import BaseLoader
     from .mounter import DatasetMounter
 except ImportError:
     from base_loader import BaseLoader

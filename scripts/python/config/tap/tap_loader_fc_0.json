@@ -1,0 +1,9 @@
+{
+	"filename": [
+		"../../data/prognostic-saturation-280/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_",
+		"nx41_ny41_nz60_dt40_nt90_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_fc_gtx86.nc"
+	],
+	"xslice": [10, 31, null],
+	"yslice": [10, 31, null]
+}

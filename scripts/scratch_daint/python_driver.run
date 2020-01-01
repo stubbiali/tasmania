@@ -16,7 +16,7 @@ PROJECT_ROOT=/project/s299/subbiali/tasmania-prognostic-saturation
 VENV=venv
 DRIVER_DIR=drivers/isentropic
 DRIVER_NAME=driver_namelist_fc.py
-NAMELIST=namelists/namelist_fc_4.py
+NAMELIST=namelists2dx/namelist_fc_4.py
 
 # ==================================================
 # Code

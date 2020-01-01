@@ -20,9 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from .base_wrapper import DrawerWrapper
 import json
 import tasmania as taz
+
+try:
+    from .base import DrawerWrapper
+except (ImportError, ModuleNotFoundError):
+    from base import DrawerWrapper
 
 
 class ContourWrapper(DrawerWrapper):

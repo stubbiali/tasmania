@@ -26,53 +26,64 @@ import tasmania as taz
 # ========================================
 # user inputs
 # ========================================
-field_name = "precipitation"
-field_units = "mm hr^-1"
+field_name = "x_momentum_isentropic"
+field_units = "kg m^-1 K^-1 s^-1"
 
-prefix = "../../data/prognostic-saturation-280/"
+prefix = "../../data/"
 
 reference_dataset = {
-    "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx321_ny321_nz60_"
-    "dt5_nt720_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_fc_gtx86.nc",
-    "xslice": slice(80, 241),
-    "yslice": slice(80, 241),
-    "zslice": slice(0, 1),
-    "tlevel": 25,
+    "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx801_nz300_"
+    "dt1_nt60000_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
+    "xslice": slice(240, 561),
+    "yslice": slice(0, 1),
+    "zslice": slice(200, 300),
+    "tlevel": -1,
 }
 
 datasets = (
     {
-        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_"
-        "dt40_nt90_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_lfc_gtx86.nc",
-        "xslice": slice(10, 31),
-        "yslice": slice(10, 31),
-        "zslice": slice(0, 1),
+        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx51_nz300_"
+        "dt16_nt3750_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
+        "xslice": slice(15, 36),
+        "yslice": slice(0, 1),
+        "zslice": slice(200, 300),
+        "xsampling": 16,
+        "ysampling": 16,
+        "zsampling": 1,
+        "tlevel": -1,
+    },
+    {
+        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx101_nz300_"
+        "dt8_nt7500_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
+        "xslice": slice(30, 71),
+        "yslice": slice(0, 1),
+        "zslice": slice(200, 300),
         "xsampling": 8,
         "ysampling": 8,
         "zsampling": 1,
-        "tlevel": 25,
+        "tlevel": -1,
     },
     {
-        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx81_ny81_nz60_"
-        "dt20_nt180_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_lfc_gtx86.nc",
-        "xslice": slice(20, 61),
-        "yslice": slice(20, 61),
-        "zslice": slice(0, 1),
+        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx201_nz300_"
+        "dt4_nt15000_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
+        "xslice": slice(60, 141),
+        "yslice": slice(0, 1),
+        "zslice": slice(200, 300),
         "xsampling": 4,
         "ysampling": 4,
         "zsampling": 1,
-        "tlevel": 25,
+        "tlevel": -1,
     },
     {
-        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_nx161_ny161_nz60_"
-        "dt10_nt360_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_lfc_gtx86.nc",
-        "xslice": slice(40, 121),
-        "yslice": slice(40, 121),
-        "zslice": slice(0, 1),
+        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx401_nz300_"
+        "dt2_nt30000_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
+        "xslice": slice(120, 281),
+        "yslice": slice(0, 1),
+        "zslice": slice(200, 300),
         "xsampling": 2,
         "ysampling": 2,
         "zsampling": 1,
-        "tlevel": 25,
+        "tlevel": -1,
     },
 )
 
@@ -81,7 +92,7 @@ datasets = (
 # ========================================
 if __name__ == "__main__":
     # get reference solution
-    print(reference_dataset["filename"])
+    # print(reference_dataset["filename"])
     _, _, states = taz.load_netcdf_dataset(prefix + reference_dataset["filename"])
     state_r = states[reference_dataset["tlevel"]]
     raw_field_r = state_r[field_name].to_units(field_units).values

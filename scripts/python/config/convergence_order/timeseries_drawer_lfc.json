@@ -1,0 +1,22 @@
+{
+	"field_name": "polyfit_of_rmsd_of_precipitation",
+	"field_units": "mm hr^-1",
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "min",
+	"time_on_xaxis": true,
+	"drawer_properties": {
+		"fontsize": 16,
+		"linestyle": "-",
+		"linewidth": 2,
+		"linecolor": "red",
+		"marker": null,
+		"markersize": 2,
+		"markeredgewidth": 1,
+		"markerfacecolor": "red",
+		"markeredgecolor": "red",
+		"legend_label": "LFC"
+	}
+}

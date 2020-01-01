@@ -1,0 +1,19 @@
+{
+    "slaves": [
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d/ssus_0.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d/ssus_1.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d/ssus_2.json"
+        }
+    ]
+}

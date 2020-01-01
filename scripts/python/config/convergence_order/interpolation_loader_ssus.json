@@ -1,0 +1,31 @@
+{
+    "slaves": [
+        {
+            "loader_module": "diff",
+            "loader_classname": "RMSDLoader",
+            "loader_config": "config/rmsd2d/ssus_0.json",
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        {
+            "loader_module": "diff",
+            "loader_classname": "RMSDLoader",
+            "loader_config": "config/rmsd2d/ssus_1.json",
+            "x": 0,
+            "y": 0,
+            "z": 0
+        },
+        {
+            "loader_module": "diff",
+            "loader_classname": "RMSDLoader",
+            "loader_config": "config/rmsd2d/ssus_2.json",
+            "x": 0,
+            "y": 0,
+            "z": 0
+        }
+    ],
+    "field_name": "rmsd_of_precipitation",
+    "field_units": "mm hr^-1",
+    "polynomial_degree": 1
+}
