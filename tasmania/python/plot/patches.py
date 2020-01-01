@@ -20,6 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
+
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import (
     add_annotation,
@@ -113,4 +115,4 @@ class Segment(Drawer):
         super().__init__(properties)
 
     def __call__(self, state, fig, ax):
-        make_lineplot(self.x, self.y, ax, **self.properties)
+        make_lineplot(np.array(self.x), np.array(self.y), ax, **self.properties)

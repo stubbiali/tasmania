@@ -281,8 +281,10 @@ def set_axes_properties(ax, **kwargs):
         Sequence of x-axis ticks location. Defaults to `None`.
     x_ticklabels : sequence[str]
         Sequence of x-axis ticks labels. Defaults to `None`.
-    x_ticklabelcolor : str
+    x_ticklabels_color : str
         Color for the x-axis ticks labels. Defaults to 'black'.
+    x_ticklabels_rotation : float
+        Rotation angle of the x-axis ticks labels. Defaults to 0.
     xaxis_minor_ticks_visible : bool
         `True` to show all ticks, either labelled or unlabelled,
         `False` to show only the labelled ticks. Defaults to `False`.
@@ -304,8 +306,10 @@ def set_axes_properties(ax, **kwargs):
         Sequence of y-axis ticks location. Defaults to `None`.
     y_ticklabels : sequence[str]
         Sequence of y-axis ticks labels. Defaults to `None`.
-    y_ticklabelcolor : str
+    y_ticklabels_color : str
         Color for the y-axis ticks labels. Defaults to 'black'.
+    y_ticklabels_rotation : float
+        Rotation angle of the y-axis ticks labels. Defaults to 0.
     yaxis_minor_ticks_visible : bool
         `True` to show all ticks, either labelled or unlabelled,
         `False` to show only the labelled ticks. Defaults to :obj:`False`.
@@ -327,7 +331,9 @@ def set_axes_properties(ax, **kwargs):
         Sequence of z-axis ticks location. Defaults to :obj:`None`.
     z_ticklabels : sequence[str]
         Sequence of z-axis ticks labels. Defaults to :obj:`None`.
-    z_ticklabelcolor : str
+    z_ticklabels_color : str
+        Rotation angle of the z-axis ticks labels. Defaults to 0.
+    z_ticklabels_rotation : float
         Color for the z-axis ticks labels. Defaults to 'black'.
     zaxis_minor_ticks_visible : bool
         :obj:`True` to show all ticks, either labelled or unlabelled,
@@ -374,7 +380,8 @@ def set_axes_properties(ax, **kwargs):
     x_scale = kwargs.get("x_scale", "linear")
     x_ticks = kwargs.get("x_ticks", None)
     x_ticklabels = kwargs.get("x_ticklabels", None)
-    x_ticklabelcolor = kwargs.get("x_ticklabelcolor", "black")
+    x_ticklabels_color = kwargs.get("x_ticklabels_color", "black")
+    x_ticklabels_rotation = kwargs.get("x_ticklabels_rotation", 0)
     xaxis_minor_ticks_visible = kwargs.get("xaxis_minor_ticks_visible", False)
     xaxis_visible = kwargs.get("xaxis_visible", True)
     # y-axis
@@ -385,7 +392,8 @@ def set_axes_properties(ax, **kwargs):
     y_scale = kwargs.get("y_scale", "linear")
     y_ticks = kwargs.get("y_ticks", None)
     y_ticklabels = kwargs.get("y_ticklabels", None)
-    y_ticklabelcolor = kwargs.get("y_ticklabelcolor", "black")
+    y_ticklabels_color = kwargs.get("y_ticklabels_color", "black")
+    y_ticklabels_rotation = kwargs.get("y_ticklabels_rotation", 0)
     yaxis_minor_ticks_visible = kwargs.get("yaxis_minor_ticks_visible", False)
     yaxis_visible = kwargs.get("yaxis_visible", True)
     # z-axis
@@ -396,7 +404,8 @@ def set_axes_properties(ax, **kwargs):
     z_scale = kwargs.get("z_scale", "linear")
     z_ticks = kwargs.get("z_ticks", None)
     z_ticklabels = kwargs.get("z_ticklabels", None)
-    z_ticklabelcolor = kwargs.get("z_ticklabelcolor", "black")
+    z_ticklabels_color = kwargs.get("z_ticklabels_color", "black")
+    z_ticklabels_rotation = kwargs.get("z_ticklabels_rotation", None)
     zaxis_minor_ticks_visible = kwargs.get("zaxis_minor_ticks_visible", False)
     zaxis_visible = kwargs.get("zaxis_visible", True)
     # legend
@@ -576,21 +585,36 @@ def set_axes_properties(ax, **kwargs):
         )
 
     # axes tick labels color
-    if x_ticklabelcolor != "":
-        ax.tick_params(axis="x", colors=x_ticklabelcolor)
-    if y_ticklabelcolor != "":
-        ax.tick_params(axis="y", colors=y_ticklabelcolor)
+    if x_ticklabels_color != "":
+        ax.tick_params(axis="x", colors=x_ticklabels_color)
+    if y_ticklabels_color != "":
+        ax.tick_params(axis="y", colors=y_ticklabels_color)
     try:
-        if z_ticklabelcolor != "":
-            ax.tick_params(axis="z", colors=z_ticklabelcolor)
+        if z_ticklabels_color != "":
+            ax.tick_params(axis="z", colors=z_ticklabels_color)
     except AttributeError:
         import warnings
 
         warnings.warn(
             "The plot is not three-dimensional, therefore the "
-            "argument ''z_ticklabelcolor'' is disregarded.",
+            "argument ''z_ticklabels_color'' is disregarded.",
             RuntimeWarning,
         )
+
+    # axes tick labels rotation
+    # ax.set_xticklabels(ax.get_xticklabels(), rotation=x_ticklabels_rotation)
+    # ax.set_yticklabels(ax.get_yticklabels(), rotation=y_ticklabels_rotation)
+    # try:
+    #     if z_ticklabels_rotation is not None:
+    #         ax.set_zticklabels(ax.get_zticklabels(), rotation=z_ticklabels_rotation)
+    # except AttributeError:
+    #     import warnings
+    #
+    #     warnings.warn(
+    #         "The plot is not three-dimensional, therefore the "
+    #         "argument ''z_ticklabels_rotation'' is disregarded.",
+    #         RuntimeWarning,
+    #     )
 
     # unlabelled axes ticks
     if not xaxis_minor_ticks_visible:

@@ -298,6 +298,10 @@ class IsentropicVerticalAdvection(TendencyComponent):
             in_qc = state[mfcw]
             in_qr = state[mfpw]
 
+        idx = in_w * 40 > 0.5
+        in_w[idx] = 0.5 / 40
+        print(in_w[:-1, :-1, :-1].max() * 40)
+
         # set the stencil's arguments
         stencil_args = {
             "dz": dz,

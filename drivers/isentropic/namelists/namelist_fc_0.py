@@ -134,6 +134,7 @@ autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
 saturation_vapor_pressure_formula = "tetens"
+saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
@@ -144,7 +145,7 @@ niter = int(1 * 60 * 60 / timestep.total_seconds())
 save = True
 save_frequency = 2
 filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-280/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "../../data/test/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
     "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
@@ -170,7 +171,7 @@ filename = (
 store_names = (
     "accumulated_precipitation",
     # "air_density",
-    # "air_isentropic_density",
+    "air_isentropic_density",
     # "air_pressure_on_interface_levels",
     # "air_temperature",
     # "exner_function_on_interface_levels",

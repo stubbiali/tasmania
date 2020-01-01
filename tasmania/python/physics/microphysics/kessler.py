@@ -1383,6 +1383,12 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         in_qr = state[mfpw]
         in_vt = state["raindrop_fall_velocity"]
 
+        dh = in_h[:, :, :-1] - in_h[:, :, 1:]
+        idx = np.where(in_vt[:-1, :-1, :-1] > 0.975 * dh[:-1, :-1] / timestep.total_seconds())
+        if idx[0].size > 0:
+            print("Number of gps violating vertical CFL: {:4d}".format(idx[0].size))
+        in_vt[idx] = 0.975 * dh[idx]
+
         self._stencil(
             in_rho=in_rho,
             in_h=in_h,
@@ -1393,12 +1399,6 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             domain=(nx - 2 * nbh, ny - 2 * nbh, nz),
             exec_info=self._exec_info,
         )
-
-        # dh = self._in_h[:, :, :-1] - self._in_h[:, :, 1:]
-        # x = np.where(
-        #   self._in_vt > self._max_cfl * dh / timestep.total_seconds())
-        # if x[0].size > 0:
-        #   print('Number of gps violating vertical CFL: {:4d}'.format(x[0].size))
 
         tendencies = {mfpw: self._out_qr}
         diagnostics = {}

@@ -119,7 +119,7 @@ from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot, PlotComposite
 from tasmania.python.plot.offline import Line
-from tasmania.python.plot.patches import Circle, Rectangle
+from tasmania.python.plot.patches import Annotation, Circle, Rectangle, Segment
 from tasmania.python.plot.plot_utils import (
     get_figure_and_axes,
     set_axes_properties,
@@ -157,6 +157,7 @@ __all__ = (
     AirPotentialTemperature2Diagnostic,
     AirPotentialTemperature2Tendency,
     Animation,
+    Annotation,
     BurgersAdvection,
     BurgersDynamicalCore,
     BurgersHorizontalDiffusion,
@@ -230,6 +231,7 @@ __all__ = (
     Rectangle,
     RMSD,
     RRMSD,
+    Segment,
     SequentialTendencySplitting,
     SequentialUpdateSplitting,
     set_axes_properties,

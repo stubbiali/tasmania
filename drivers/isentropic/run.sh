@@ -49,45 +49,55 @@
 #  echo ""
 #done
 
-python driver_namelist_fc.py -n namelists/namelist_fc_0.py
-echo ""
-python driver_namelist_fc.py -n namelists/namelist_fc_1.py
-echo ""
-python driver_namelist_fc.py -n namelists/namelist_fc_2.py
-echo ""
-python driver_namelist_fc.py -n namelists/namelist_fc_3.py
-echo ""
+#printf "namelist_fc_0 \n"
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_0.py
+#printf "\n namelist_fc_1 \n"
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_1.py
+#printf "\n namelist_fc_2 \n"
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_2.py
+#echo ""
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_3.py
+#echo ""
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_5.py
+#echo ""
 
-python driver_namelist_lfc.py -n namelists/namelist_lfc_0.py
-echo ""
-python driver_namelist_lfc.py -n namelists/namelist_lfc_1.py
-echo ""
-python driver_namelist_lfc.py -n namelists/namelist_lfc_2.py
-echo ""
+#printf "namelist_lfc_0 \n"
+#python driver_namelist_lfc.py -n namelists_vertical/namelist_lfc_0.py
+#printf "namelist_lfc_1 \n"
+#python driver_namelist_lfc.py -n namelists_vertical/namelist_lfc_1.py
+#printf "namelist_lfc_2 \n"
+#python driver_namelist_lfc.py -n namelists_vertical/namelist_lfc_2.py
+#
+#printf "namelist_ps_0 \n"
+#python driver_namelist_ps.py -n namelists_vertical/namelist_ps_0.py
+#printf "namelist_ps_1 \n"
+#python driver_namelist_ps.py -n namelists_vertical/namelist_ps_1.py
+#printf "namelist_ps_2 \n"
+#python driver_namelist_ps.py -n namelists_vertical/namelist_ps_2.py
+#
+#printf "namelist_sts_0 \n"
+#python driver_namelist_sts.py -n namelists_vertical/namelist_sts_0.py
+#printf "namelist_sts_1 \n"
+#python driver_namelist_sts.py -n namelists_vertical/namelist_sts_1.py
+#printf "namelist_sts_2 \n"
+#python driver_namelist_sts.py -n namelists_vertical/namelist_sts_2.py
+#
+#printf "namelist_sus_0 \n"
+#python driver_namelist_sus.py -n namelists_vertical/namelist_sus_0.py
+#printf "namelist_sus_1 \n"
+#python driver_namelist_sus.py -n namelists_vertical/namelist_sus_1.py
+#printf "namelist_sus_2 \n"
+#python driver_namelist_sus.py -n namelists_vertical/namelist_sus_2.py
 
-python driver_namelist_ps.py -n namelists/namelist_ps_0.py
-echo ""
-python driver_namelist_ps.py -n namelists/namelist_ps_1.py
-echo ""
-python driver_namelist_ps.py -n namelists/namelist_ps_2.py
-echo ""
-
-python driver_namelist_sts.py -n namelists/namelist_sts_0.py
-echo ""
-python driver_namelist_sts.py -n namelists/namelist_sts_1.py
-echo ""
-python driver_namelist_sts.py -n namelists/namelist_sts_2.py
-echo ""
-
-python driver_namelist_sus.py -n namelists/namelist_sus_0.py
-echo ""
-python driver_namelist_sus.py -n namelists/namelist_sus_1.py
-echo ""
-python driver_namelist_sus.py -n namelists/namelist_sus_2.py
-echo ""
-
-python driver_namelist_ssus.py -n namelists/namelist_ssus_0.py
-echo ""
-python driver_namelist_ssus.py -n namelists/namelist_ssus_1.py
-echo ""
-python driver_namelist_ssus.py -n namelists/namelist_ssus_2.py
+printf "\n namelist_ssus_0 \n"
+python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_0.py
+printf "\n namelist_ssus_1 \n"
+python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_1.py
+printf "\n namelist_ssus_2 \n"
+python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_2.py
+#printf "namelist_ssus_0 \n"
+#python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_0.py
+#printf "namelist_ssus_1 \n"
+#python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_1.py
+#printf "namelist_ssus_2 \n"
+#python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_2.py
