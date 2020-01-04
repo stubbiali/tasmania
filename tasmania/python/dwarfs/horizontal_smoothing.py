@@ -23,12 +23,13 @@
 import abc
 import math
 import numpy as np
+from typing import Optional
 
 from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils import types
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -45,20 +46,20 @@ class HorizontalSmoothing(abc.ABC):
 
     def __init__(
         self,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
+        shape: types.triplet_int_t,
+        smooth_coeff: float,
+        smooth_coeff_max: float,
+        smooth_damp_depth: int,
+        nb: int,
+        backend: str,
+        backend_opts: types.options_dict_t,
+        build_info: types.options_dict_t,
+        dtype: types.dtype_t,
+        exec_info: types.mutable_options_dict_t,
+        default_origin: types.triplet_int_t,
+        rebuild: bool,
+        managed_memory: bool,
+    ) -> None:
         """
         Parameters
         ----------
@@ -116,9 +117,6 @@ class HorizontalSmoothing(abc.ABC):
         )
         self._gamma[...] = gamma
 
-        # update annotations for the field arguments of the definition function
-        set_annotations(self._stencil_defs, dtype)
-
         # initialize the underlying stencil
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
@@ -126,11 +124,12 @@ class HorizontalSmoothing(abc.ABC):
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             **(backend_opts or {})
         )
 
     @abc.abstractmethod
-    def __call__(self, phi, phi_out):
+    def __call__(self, phi: types.gtstorage_t, phi_out: types.gtstorage_t) -> None:
         """
         Apply horizontal smoothing to a prognostic field.
         As this method is marked as abstract, its implementation is
@@ -147,22 +146,22 @@ class HorizontalSmoothing(abc.ABC):
 
     @staticmethod
     def factory(
-        smooth_type,
-        shape,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        nb=None,
+        smooth_type: str,
+        shape: types.triplet_int_t,
+        smooth_coeff: float,
+        smooth_coeff_max: float,
+        smooth_damp_depth: int,
+        nb: Optional[int] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        default_origin: Optional[types.triplet_int_t] = None,
+        rebuild: bool = False,
+        managed_memory: bool = False
+    ) -> "HorizontalSmoothing":
         """
         Static method returning an instance of the derived class
         implementing the smoothing technique specified by `smooth_type`.
@@ -261,10 +260,10 @@ class HorizontalSmoothing(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         pass
 
 
@@ -338,10 +337,10 @@ class FirstOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
                 0, 0, 0
@@ -416,10 +415,10 @@ class FirstOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
                 0, 0, 0
@@ -494,10 +493,10 @@ class FirstOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.5 * in_gamma[0, 0, 0]) * in_phi[0, 0, 0] + 0.25 * in_gamma[
                 0, 0, 0
@@ -574,10 +573,10 @@ class SecondOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.75 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
@@ -661,10 +660,10 @@ class SecondOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
@@ -744,10 +743,10 @@ class SecondOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.375 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
@@ -829,10 +828,10 @@ class ThirdOrder(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.625 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
@@ -920,10 +919,10 @@ class ThirdOrder1DX(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0
@@ -1005,10 +1004,10 @@ class ThirdOrder1DY(HorizontalSmoothing):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
-    ):
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_phi = (1.0 - 0.3125 * in_gamma[0, 0, 0]) * in_phi[
                 0, 0, 0

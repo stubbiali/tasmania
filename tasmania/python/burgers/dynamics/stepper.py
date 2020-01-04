@@ -21,14 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-import numpy as np
+from typing import Optional
 
 from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.grids.horizontal_grid import HorizontalGrid
+from tasmania.python.utils import types
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -43,19 +44,19 @@ except ImportError:
 
 
 def forward_euler_step(
-    in_u: gtscript.Field[np.float64],
-    in_v: gtscript.Field[np.float64],
-    in_u_tmp: gtscript.Field[np.float64],
-    in_v_tmp: gtscript.Field[np.float64],
-    out_u: gtscript.Field[np.float64],
-    out_v: gtscript.Field[np.float64],
-    in_u_tnd: gtscript.Field[np.float64] = None,
-    in_v_tnd: gtscript.Field[np.float64] = None,
+    in_u: gtscript.Field["dtype"],
+    in_v: gtscript.Field["dtype"],
+    in_u_tmp: gtscript.Field["dtype"],
+    in_v_tmp: gtscript.Field["dtype"],
+    out_u: gtscript.Field["dtype"],
+    out_v: gtscript.Field["dtype"],
+    in_u_tnd: gtscript.Field["dtype"] = None,
+    in_v_tnd: gtscript.Field["dtype"] = None,
     *,
     dt: float,
     dx: float,
     dy: float
-):
+) -> None:
     from __externals__ import advection, tnd_u, tnd_v
 
     with computation(PARALLEL), interval(...):
@@ -86,18 +87,18 @@ class BurgersStepper(abc.ABC):
 
     def __init__(
         self,
-        grid_xy,
-        nb,
-        flux_scheme,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
+        grid_xy: HorizontalGrid,
+        nb: int,
+        flux_scheme: str,
+        backend: str,
+        backend_opts: types.options_dict_t,
+        build_info: types.options_dict_t,
+        dtype: types.dtype_t,
+        exec_info: types.mutable_options_dict_t,
+        default_origin: types.triplet_int_t,
+        rebuild: bool,
+        managed_memory: bool,
+    ) -> None:
         """
         Parameters
         ----------
@@ -145,7 +146,7 @@ class BurgersStepper(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stages(self):
+    def stages(self) -> int:
         """
         Returns
         -------
@@ -155,7 +156,13 @@ class BurgersStepper(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def __call__(self, stage, state, tendencies, timestep):
+    def __call__(
+        self,
+        stage: int,
+        state: types.gtstorage_dict_t,
+        tendencies: types.gtstorage_dict_t,
+        timestep: types.timedelta_t,
+    ) -> types.gtstorage_dict_t:
         """
         Performing a stage of the time integrator.
 
@@ -185,20 +192,20 @@ class BurgersStepper(abc.ABC):
 
     @staticmethod
     def factory(
-        time_integration_scheme,
-        grid_xy,
-        nb,
-        flux_scheme,
+        time_integration_scheme: str,
+        grid_xy: HorizontalGrid,
+        nb: int,
+        flux_scheme: str,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        default_origin: Optional[types.triplet_int_t] = None,
+        rebuild: bool = False,
+        managed_memory: bool = False
+    ) -> "BurgersStepper":
         """
         Parameters
         ----------
@@ -359,14 +366,13 @@ class ForwardEuler(BurgersStepper):
             ),
         }
 
-        set_annotations(forward_euler_step, dtype)
-
         self._stencil = gtscript.stencil(
             definition=forward_euler_step,
             name=self.__class__.__name__,
             backend=backend,
             build_info=self._build_info,
             rebuild=self._rebuild,
+            dtypes={"dtype": dtype},
             externals={
                 "advection": self._advection.__call__,
                 "tnd_u": "x_velocity" in tendencies,
@@ -475,14 +481,13 @@ class RK2(BurgersStepper):
             ),
         }
 
-        set_annotations(forward_euler_step, dtype)
-
         self._stencil = gtscript.stencil(
             definition=forward_euler_step,
             name=self.__class__.__name__,
             backend=backend,
             build_info=self._build_info,
             rebuild=self._rebuild,
+            dtypes={"dtype": dtype},
             externals={
                 "advection": self._advection.__call__,
                 "tnd_u": "x_velocity" in tendencies,

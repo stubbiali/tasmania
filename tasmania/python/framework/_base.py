@@ -22,10 +22,16 @@
 #
 """ Base components placed in a separate file to avoid circular dependencies. """
 
-
-class BaseConcurrentCoupling:
-    pass
+import abc
 
 
-class BaseDiagnosticComponentComposite:
-    pass
+class BaseConcurrentCoupling(abc.ABC):
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass
+
+
+class BaseDiagnosticComponentComposite(abc.ABC):
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass

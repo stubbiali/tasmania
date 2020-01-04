@@ -23,12 +23,13 @@
 import abc
 import math
 import numpy as np
+from typing import Optional
 
 from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils import types
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -38,19 +39,19 @@ except ImportError:
 
 
 @gtscript.function
-def stage_laplacian_x(dx, phi):
+def stage_laplacian_x(dx: float, phi: types.field_t) -> types.field_t:
     lap = (phi[-1, 0, 0] - 2.0 * phi[0, 0, 0] + phi[1, 0, 0]) / (dx * dx)
     return lap
 
 
 @gtscript.function
-def stage_laplacian_y(dy, phi):
+def stage_laplacian_y(dy: float, phi: types.field_t) -> types.field_t:
     lap = (phi[0, -1, 0] - 2.0 * phi[0, 0, 0] + phi[0, 1, 0]) / (dy * dy)
     return lap
 
 
 @gtscript.function
-def stage_laplacian(dx, dy, phi):
+def stage_laplacian(dx: float, dy: float, phi: types.field_t) -> types.field_t:
     lap_x = stage_laplacian_x(dx=dx, phi=phi)
     lap_y = stage_laplacian_y(dy=dy, phi=phi)
     lap = lap_x + lap_y
@@ -65,22 +66,22 @@ class HorizontalHyperDiffusion(abc.ABC):
 
     def __init__(
         self,
-        shape,
-        dx,
-        dy,
-        diffusion_coeff,
-        diffusion_coeff_max,
-        diffusion_damp_depth,
-        nb,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
+        shape: types.triplet_int_t,
+        dx: float,
+        dy: float,
+        diffusion_coeff: float,
+        diffusion_coeff_max: float,
+        diffusion_damp_depth: int,
+        nb: int,
+        backend: str,
+        backend_opts: types.options_dict_t,
+        build_info: types.options_dict_t,
+        dtype: types.dtype_t,
+        exec_info: types.mutable_options_dict_t,
+        default_origin: types.triplet_int_t,
+        rebuild: bool,
+        managed_memory: bool,
+    ) -> None:
         """
         Parameters
         ----------
@@ -137,9 +138,6 @@ class HorizontalHyperDiffusion(abc.ABC):
             self._gamma[...] = diffusion_coeff
             self._gamma[:, :, :n] += (diffusion_coeff_max - diffusion_coeff) * pert
 
-        # update annotations for the field arguments of the definition function
-        set_annotations(self._stencil_defs, dtype)
-
         # initialize the underlying stencil
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
@@ -147,6 +145,7 @@ class HorizontalHyperDiffusion(abc.ABC):
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals={
                 "stage_laplacian": stage_laplacian,
                 "stage_laplacian_x": stage_laplacian_x,
@@ -156,7 +155,7 @@ class HorizontalHyperDiffusion(abc.ABC):
         )
 
     @abc.abstractmethod
-    def __call__(self, phi, phi_tnd):
+    def __call__(self, phi: types.gtstorage_t, phi_tnd: types.gtstorage_t) -> None:
         """
         Calculate the tendency.
 
@@ -171,24 +170,24 @@ class HorizontalHyperDiffusion(abc.ABC):
 
     @staticmethod
     def factory(
-        diffusion_type,
-        shape,
-        dx,
-        dy,
-        diffusion_coeff,
-        diffusion_coeff_max,
-        diffusion_damp_depth,
-        nb=None,
+        diffusion_type: str,
+        shape: types.triplet_int_t,
+        dx: float,
+        dy: float,
+        diffusion_coeff: float,
+        diffusion_coeff_max: float,
+        diffusion_damp_depth: int,
+        nb: Optional[int] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        default_origin: Optional[types.triplet_int_t] = None,
+        rebuild: bool = False,
+        managed_memory: bool = False
+    ) -> "HorizontalHyperDiffusion":
         """
         Static method returning an instance of the derived class
         calculating the tendency due to horizontal hyper-diffusion of type
@@ -295,13 +294,13 @@ class HorizontalHyperDiffusion(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float
-    ):
+    ) -> None:
         pass
 
 
@@ -373,13 +372,13 @@ class FirstOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
 
         with computation(PARALLEL), interval(...):
@@ -455,13 +454,13 @@ class FirstOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float = 0.0
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian_x
 
         with computation(PARALLEL), interval(...):
@@ -537,13 +536,13 @@ class FirstOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float = 0.0,
         dy: float
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian_y
 
         with computation(PARALLEL), interval(...):
@@ -619,13 +618,13 @@ class SecondOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
 
         with computation(PARALLEL), interval(...):
@@ -702,13 +701,13 @@ class SecondOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float = 0.0
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian_x
 
         with computation(PARALLEL), interval(...):
@@ -785,13 +784,13 @@ class SecondOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float = 0.0,
         dy: float
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian_y
 
         with computation(PARALLEL), interval(...):
@@ -868,13 +867,13 @@ class ThirdOrder(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian, stage_laplacian_x, stage_laplacian_y
 
         with computation(PARALLEL), interval(...):
@@ -952,13 +951,13 @@ class ThirdOrder1DX(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float = 0.0
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian_x
 
         with computation(PARALLEL), interval(...):
@@ -1036,13 +1035,13 @@ class ThirdOrder1DY(HorizontalHyperDiffusion):
 
     @staticmethod
     def _stencil_defs(
-        in_phi: gtscript.Field[np.float64],
-        in_gamma: gtscript.Field[np.float64],
-        out_phi: gtscript.Field[np.float64],
+        in_phi: gtscript.Field["dtype"],
+        in_gamma: gtscript.Field["dtype"],
+        out_phi: gtscript.Field["dtype"],
         *,
         dx: float = 0.0,
         dy: float
-    ):
+    ) -> None:
         from __externals__ import stage_laplacian_y
 
         with computation(PARALLEL), interval(...):

@@ -21,9 +21,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-
+from typing import Tuple
 
 from gt4py import gtscript
+from tasmania.python.utils import types
 
 
 class BurgersAdvection(abc.ABC):
@@ -34,7 +35,9 @@ class BurgersAdvection(abc.ABC):
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
-    def __call__(dx, dy, u, v):
+    def __call__(
+        dx: float, dy: float, u: types.field_t, v: types.field_t
+    ) -> "Tuple[types.field_t, types.field_t, types.field_t, types.field_t]":
         """
         Compute the accelerations due to advection.
 
@@ -48,11 +51,22 @@ class BurgersAdvection(abc.ABC):
             u-velocity.
         v : gt4py.gtscript.Field
             v-velocity.
+
+        Return
+        ------
+        adv_u_x : gt4py.gtscript.Field
+            x-acceleration for u-velocity.
+        adv_u_y : gt4py.gtscript.Field
+            y-acceleration for u-velocity.
+        adv_v_x : gt4py.gtscript.Field
+            x-acceleration for v-velocity.
+        adv_v_y : gt4py.gtscript.Field
+            y-acceleration for v-velocity.
         """
         pass
 
     @staticmethod
-    def factory(flux_scheme):
+    def factory(flux_scheme: str) -> "BurgersAdvection":
         if flux_scheme == "first_order":
             return _FirstOrder()
         elif flux_scheme == "second_order":

@@ -21,9 +21,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from sympl import DataArray
+from typing import Optional, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.grids.domain import Domain
+from tasmania.python.utils import types
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -40,19 +44,19 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type,
-        diffusion_type,
-        diffusion_coeff,
+        domain: Domain,
+        grid_type: str,
+        diffusion_type: str,
+        diffusion_coeff: DataArray,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        default_origin: Optional[types.triplet_int_t] = None,
+        rebuild: bool = False,
+        managed_memory: bool = False,
         **kwargs
     ):
         """
@@ -133,7 +137,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -142,7 +146,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -151,10 +155,12 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: types.gtstorage_dict_t
+    ) -> Tuple[types.gtstorage_dict_t, types.gtstorage_dict_t]:
         self._diffuser(state["x_velocity"], self._out_u_tnd)
         self._diffuser(state["y_velocity"], self._out_v_tnd)
 

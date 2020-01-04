@@ -579,6 +579,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
 
         # set physical parameters values
         pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        self._pcs = pcs  # debugging purposes
 
         # shortcuts
         rd = pcs["gas_constant_of_dry_air"]
@@ -737,7 +738,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             sat = (qvs - in_qv) / (1.0 + qvs * 4093.0 * lhvw / (cp * (in_t - 36) ** 2.0))
 
             # compute the source term representing the evaporation of cloud liquid water
-            dlt = (sat <= in_qc) * sat + (sat > in_qc) * in_qc
+            dlt = sat if (sat <= in_qc) else in_qc
 
             # perform the adjustment
             out_qv = in_qv + dlt

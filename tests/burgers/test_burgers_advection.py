@@ -35,7 +35,6 @@ import pytest
 from gt4py import gtscript, storage as gt_storage, __externals__
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -44,33 +43,25 @@ try:
         default_origin as conf_dorigin,
         nb as conf_nb,
     )
-    from .utils import (
-        compare_arrays,
-        st_burgers_state,
-        st_one_of,
-        st_physical_grid,
-    )
+    from .utils import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
 except (ImportError, ModuleNotFoundError):
     from conf import (
         backend as conf_backend,
         default_origin as conf_dorigin,
         nb as conf_nb,
     )
-    from utils import (
-        compare_arrays,
-        st_burgers_state,
-        st_one_of,
-        st_physical_grid,
-    )
+    from utils import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
 
 
 class WrappingStencil:
     def __init__(self, advection, nb, backend, dtype):
         assert nb >= advection.extent
         self.nb = nb
-        set_annotations(self.stencil_defs, dtype)
         decorator = gtscript.stencil(
-            backend, rebuild=False, externals={"call_func": advection.__call__}
+            backend,
+            rebuild=False,
+            dtypes={"dtype": dtype},
+            externals={"call_func": advection.__call__},
         )
         self.stencil = decorator(self.stencil_defs)
 
@@ -92,12 +83,12 @@ class WrappingStencil:
 
     @staticmethod
     def stencil_defs(
-        in_u: gtscript.Field[np.float64],
-        in_v: gtscript.Field[np.float64],
-        out_adv_u_x: gtscript.Field[np.float64],
-        out_adv_u_y: gtscript.Field[np.float64],
-        out_adv_v_x: gtscript.Field[np.float64],
-        out_adv_v_y: gtscript.Field[np.float64],
+        in_u: gtscript.Field["dtype"],
+        in_v: gtscript.Field["dtype"],
+        out_adv_u_x: gtscript.Field["dtype"],
+        out_adv_u_y: gtscript.Field["dtype"],
+        out_adv_v_x: gtscript.Field["dtype"],
+        out_adv_v_y: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float

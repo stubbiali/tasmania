@@ -22,14 +22,18 @@
 #
 import numpy as np
 import pint
+from sympl import DataArray
+from typing import Optional
 
+from tasmania.python.grids.grid import Grid
+from tasmania.python.utils import types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 
 class ZhaoSolutionFactory:
     """ Factory of valid velocity fields for the Zhao test case. """
 
-    def __init__(self, initial_time, eps):
+    def __init__(self, initial_time: types.datetime_t, eps: DataArray) -> None:
         """
         Parameters
         ----------
@@ -46,13 +50,13 @@ class ZhaoSolutionFactory:
 
     def __call__(
         self,
-        time,
-        grid,
-        slice_x=None,
-        slice_y=None,
-        field_name="x_velocity",
-        field_units=None,
-    ):
+        time: types.datetime_t,
+        grid: Grid,
+        slice_x: Optional[slice] = None,
+        slice_y: Optional[slice] = None,
+        field_name: str = "x_velocity",
+        field_units: Optional[str] = None,
+    ) -> np.ndarray:
         """
         Parameters
         ----------
@@ -142,8 +146,15 @@ class ZhaoStateFactory:
     """ Factory of valid states for the Zhao test case. """
 
     def __init__(
-        self, initial_time, eps, *, backend, dtype, default_origin, managed_memory=False
-    ):
+        self,
+        initial_time: types.datetime_t,
+        eps: DataArray,
+        *,
+        backend: str,
+        dtype: types.dtype_t,
+        default_origin: types.triplet_int_t,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -167,7 +178,7 @@ class ZhaoStateFactory:
         self._default_origin = default_origin
         self._managed_memory = managed_memory
 
-    def __call__(self, time, grid):
+    def __call__(self, time: types.datetime_t, grid: Grid) -> types.dataarray_dict_t:
         """
         Parameters
         ----------

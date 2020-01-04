@@ -20,8 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from typing import Optional
+
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
+from tasmania.python.grids.domain import Domain
+from tasmania.python.utils import types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 try:
@@ -35,21 +39,21 @@ class BurgersDynamicalCore(DynamicalCore):
 
     def __init__(
         self,
-        domain,
-        intermediate_tendencies=None,
-        time_integration_scheme="forward_euler",
-        flux_scheme="upwind",
-        gt_powered=False,
+        domain: Domain,
+        intermediate_tendencies: Optional[types.tendency_component_t] = None,
+        time_integration_scheme: str = "forward_euler",
+        flux_scheme: str = "upwind",
+        gt_powered: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        default_origin: Optional[types.triplet_int_t] = None,
+        rebuild: bool = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -137,7 +141,7 @@ class BurgersDynamicalCore(DynamicalCore):
         )
 
     @property
-    def _input_properties(self):
+    def _input_properties(self) -> types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -146,11 +150,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_input_properties(self):
+    def _substep_input_properties(self) -> types.properties_dict_t:
         return {}
 
     @property
-    def _tendency_properties(self):
+    def _tendency_properties(self) -> types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -159,11 +163,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_tendency_properties(self):
+    def _substep_tendency_properties(self) -> types.properties_dict_t:
         return {}
 
     @property
-    def _output_properties(self):
+    def _output_properties(self) -> types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -172,14 +176,14 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_output_properties(self):
+    def _substep_output_properties(self) -> types.properties_dict_t:
         return {}
 
     @property
-    def stages(self):
+    def stages(self) -> int:
         return self._stepper.stages
 
-    def substep_fractions(self):
+    def substep_fractions(self) -> int:
         return 1
 
     def _allocate_output_state(self):
@@ -213,7 +217,13 @@ class BurgersDynamicalCore(DynamicalCore):
 
         return {"x_velocity": u_da, "y_velocity": v_da}
 
-    def array_call(self, stage, raw_state, raw_tendencies, timestep):
+    def array_call(
+        self,
+        stage: int,
+        raw_state: types.gtstorage_dict_t,
+        raw_tendencies: types.gtstorage_dict_t,
+        timestep: types.timedelta_t,
+    ) -> types.gtstorage_dict_t:
         out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
         self.horizontal_boundary.dmn_enforce_raw(
@@ -228,12 +238,12 @@ class BurgersDynamicalCore(DynamicalCore):
 
     def substep_array_call(
         self,
-        stage,
-        substep,
-        raw_state,
-        raw_stage_state,
-        raw_tmp_state,
-        raw_tendencies,
-        timestep,
+        stage: int,
+        substep: int,
+        raw_state: types.gtstorage_dict_t,
+        raw_stage_state: types.gtstorage_dict_t,
+        raw_tmp_state: types.gtstorage_dict_t,
+        raw_tendencies: types.gtstorage_dict_t,
+        timestep: types.timedelta_t,
     ):
         raise NotImplementedError()

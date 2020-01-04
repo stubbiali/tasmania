@@ -21,12 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Optional
 
 from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-from tasmania.python.utils.gtscript_utils import set_annotations, positive
+from tasmania.python.grids.grid import Grid
+from tasmania.python.utils import types
+from tasmania.python.utils.gtscript_utils import positive
 
 try:
     from tasmania.conf import datatype
@@ -43,16 +46,16 @@ class HorizontalVelocity:
 
     def __init__(
         self,
-        grid,
-        staggering=True,
+        grid: Grid,
+        staggering: bool = True,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        rebuild=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        rebuild: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -81,16 +84,12 @@ class HorizontalVelocity:
         self._staggering = staggering
         self._exec_info = exec_info
 
-        # update annotations for the field arguments of the definition functions
-        set_annotations(self._stencil_diagnosing_momenta_defs, dtype)
-        set_annotations(self._stencil_diagnosing_velocity_x_defs, dtype)
-        set_annotations(self._stencil_diagnosing_velocity_y_defs, dtype)
-
         # initialize the underlying stencils
         self._stencil_diagnosing_momenta = gtscript.stencil(
             definition=self._stencil_diagnosing_momenta_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals={"staggering": staggering},
             rebuild=rebuild,
             **(backend_opts or {})
@@ -99,6 +98,7 @@ class HorizontalVelocity:
             definition=self._stencil_diagnosing_velocity_x_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals={"staggering": staggering},
             rebuild=rebuild,
             **(backend_opts or {})
@@ -107,12 +107,20 @@ class HorizontalVelocity:
             definition=self._stencil_diagnosing_velocity_y_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals={"staggering": staggering},
             rebuild=rebuild,
             **(backend_opts or {})
         )
 
-    def get_momenta(self, d, u, v, du, dv):
+    def get_momenta(
+        self,
+        d: types.gtstorage_t,
+        u: types.gtstorage_t,
+        v: types.gtstorage_t,
+        du: types.gtstorage_t,
+        dv: types.gtstorage_t,
+    ) -> None:
         """
         Diagnose the horizontal momenta.
 
@@ -144,7 +152,14 @@ class HorizontalVelocity:
             exec_info=self._exec_info,
         )
 
-    def get_velocity_components(self, d, du, dv, u, v):
+    def get_velocity_components(
+        self,
+        d: types.gtstorage_t,
+        du: types.gtstorage_t,
+        dv: types.gtstorage_t,
+        u: types.gtstorage_t,
+        v: types.gtstorage_t,
+    ) -> None:
         """
         Diagnose the horizontal velocity components.
 
@@ -190,12 +205,12 @@ class HorizontalVelocity:
 
     @staticmethod
     def _stencil_diagnosing_momenta_defs(
-        in_d: gtscript.Field[np.float64],
-        in_u: gtscript.Field[np.float64],
-        in_v: gtscript.Field[np.float64],
-        out_du: gtscript.Field[np.float64],
-        out_dv: gtscript.Field[np.float64],
-    ):
+        in_d: gtscript.Field["dtype"],
+        in_u: gtscript.Field["dtype"],
+        in_v: gtscript.Field["dtype"],
+        out_du: gtscript.Field["dtype"],
+        out_dv: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
@@ -208,10 +223,10 @@ class HorizontalVelocity:
 
     @staticmethod
     def _stencil_diagnosing_velocity_x_defs(
-        in_d: gtscript.Field[np.float64],
-        in_du: gtscript.Field[np.float64],
-        out_u: gtscript.Field[np.float64],
-    ):
+        in_d: gtscript.Field["dtype"],
+        in_du: gtscript.Field["dtype"],
+        out_u: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
@@ -224,10 +239,10 @@ class HorizontalVelocity:
 
     @staticmethod
     def _stencil_diagnosing_velocity_y_defs(
-        in_d: gtscript.Field[np.float64],
-        in_dv: gtscript.Field[np.float64],
-        out_v: gtscript.Field[np.float64],
-    ):
+        in_d: gtscript.Field["dtype"],
+        in_dv: gtscript.Field["dtype"],
+        out_v: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import staggering
 
         with computation(PARALLEL), interval(...):
@@ -248,16 +263,16 @@ class WaterConstituent:
 
     def __init__(
         self,
-        grid,
-        clipping=False,
+        grid: Grid,
+        clipping: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        rebuild=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[types.options_dict_t] = None,
+        build_info: Optional[types.options_dict_t] = None,
+        dtype: types.dtype_t = datatype,
+        exec_info: Optional[types.mutable_options_dict_t] = None,
+        rebuild: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -282,15 +297,12 @@ class WaterConstituent:
         self._grid = grid
         self._exec_info = exec_info
 
-        # update annotations for the field arguments of the definition functions
-        set_annotations(self._stencil_diagnosing_density_defs, dtype)
-        set_annotations(self._stencil_diagnosing_mass_fraction_defs, dtype)
-
         # initialize the underlying stencils
         self._stencil_diagnosing_density = gtscript.stencil(
             definition=self._stencil_diagnosing_density_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals={"clipping": clipping, "positive": positive},
             rebuild=rebuild,
             **(backend_opts or {})
@@ -299,12 +311,15 @@ class WaterConstituent:
             definition=self._stencil_diagnosing_mass_fraction_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals={"clipping": clipping, "positive": positive},
             rebuild=rebuild,
             **(backend_opts or {})
         )
 
-    def get_density_of_water_constituent(self, d, q, dq):
+    def get_density_of_water_constituent(
+        self, d: types.gtstorage_t, q: types.gtstorage_t, dq: types.gtstorage_t
+    ) -> None:
         """
         Diagnose the density of a water constituent.
 
@@ -331,7 +346,9 @@ class WaterConstituent:
             exec_info=self._exec_info,
         )
 
-    def get_mass_fraction_of_water_constituent_in_air(self, d, dq, q):
+    def get_mass_fraction_of_water_constituent_in_air(
+        self, d: types.gtstorage_t, dq: types.gtstorage_t, q: types.gtstorage_t
+    ) -> None:
         """
         Diagnose the mass fraction of a water constituent.
 
@@ -361,10 +378,10 @@ class WaterConstituent:
 
     @staticmethod
     def _stencil_diagnosing_density_defs(
-        in_d: gtscript.Field[np.float64],
-        in_q: gtscript.Field[np.float64],
-        out_dq: gtscript.Field[np.float64],
-    ):
+        in_d: gtscript.Field["dtype"],
+        in_q: gtscript.Field["dtype"],
+        out_dq: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import clipping, positive
 
         with computation(PARALLEL), interval(...):
@@ -376,10 +393,10 @@ class WaterConstituent:
 
     @staticmethod
     def _stencil_diagnosing_mass_fraction_defs(
-        in_d: gtscript.Field[np.float64],
-        in_dq: gtscript.Field[np.float64],
-        out_q: gtscript.Field[np.float64],
-    ):
+        in_d: gtscript.Field["dtype"],
+        in_dq: gtscript.Field["dtype"],
+        out_q: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import clipping, positive
 
         with computation(PARALLEL), interval(...):

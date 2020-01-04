@@ -22,8 +22,12 @@
 #
 import abc
 import sympl
-from sympl._core.base_components import InputChecker
+from typing import Optional
 
+from tasmania.python.grids.domain import Domain
+from tasmania.python.grids.grid import Grid
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+from tasmania.python.utils import types
 
 allowed_grid_types = ("physical", "numerical")
 
@@ -36,7 +40,7 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain, grid_type="numerical"):
+    def __init__(self, domain: Domain, grid_type: str = "numerical") -> None:
         """
         Parameters
         ----------
@@ -61,7 +65,7 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         super().__init__()
 
     @property
-    def grid_type(self):
+    def grid_type(self) -> str:
         """
         Returns
         -------
@@ -71,7 +75,7 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         return self._grid_type
 
     @property
-    def grid(self):
+    def grid(self) -> Grid:
         """
         Returns
         -------
@@ -81,7 +85,7 @@ class DiagnosticComponent(sympl.DiagnosticComponent):
         return self._grid
 
     @property
-    def horizontal_boundary(self):
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """
         Returns
         -------
@@ -100,8 +104,12 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
-    ):
+        self,
+        domain: Domain,
+        grid_type: str = "numerical",
+        tendencies_in_diagnostics: bool = False,
+        name: Optional[str] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -134,7 +142,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         super().__init__(tendencies_in_diagnostics, name)
 
     @property
-    def grid_type(self):
+    def grid_type(self) -> str:
         """
         Returns
         -------
@@ -144,7 +152,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         return self._grid_type
 
     @property
-    def grid(self):
+    def grid(self) -> Grid:
         """
         Returns
         -------
@@ -154,7 +162,7 @@ class ImplicitTendencyComponent(sympl.ImplicitTendencyComponent):
         return self._grid
 
     @property
-    def horizontal_boundary(self):
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """
         Returns
         -------
@@ -173,8 +181,12 @@ class Stepper(sympl.Stepper):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
-    ):
+        self,
+        domain: Domain,
+        grid_type: str = "numerical",
+        tendencies_in_diagnostics: bool = False,
+        name: Optional[str] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -207,7 +219,7 @@ class Stepper(sympl.Stepper):
         super().__init__(tendencies_in_diagnostics, name)
 
     @property
-    def grid_type(self):
+    def grid_type(self) -> str:
         """
         Returns
         -------
@@ -217,7 +229,7 @@ class Stepper(sympl.Stepper):
         return self._grid_type
 
     @property
-    def grid(self):
+    def grid(self) -> Grid:
         """
         Returns
         -------
@@ -227,7 +239,7 @@ class Stepper(sympl.Stepper):
         return self._grid
 
     @property
-    def horizontal_boundary(self):
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """
         Returns
         -------
@@ -246,8 +258,12 @@ class TendencyComponent(sympl.TendencyComponent):
     __metaclass__ = abc.ABCMeta
 
     def __init__(
-        self, domain, grid_type="numerical", tendencies_in_diagnostics=False, name=None
-    ):
+        self,
+        domain: Domain,
+        grid_type: str = "numerical",
+        tendencies_in_diagnostics: bool = False,
+        name: Optional[str] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -280,7 +296,7 @@ class TendencyComponent(sympl.TendencyComponent):
         super().__init__(tendencies_in_diagnostics, name)
 
     @property
-    def grid_type(self):
+    def grid_type(self) -> str:
         """
         Returns
         -------
@@ -290,7 +306,7 @@ class TendencyComponent(sympl.TendencyComponent):
         return self._grid_type
 
     @property
-    def grid(self):
+    def grid(self) -> Grid:
         """
         Returns
         -------
@@ -300,7 +316,7 @@ class TendencyComponent(sympl.TendencyComponent):
         return self._grid
 
     @property
-    def horizontal_boundary(self):
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """
         Returns
         -------
@@ -308,4 +324,3 @@ class TendencyComponent(sympl.TendencyComponent):
             The object handling the lateral boundary conditions.
         """
         return self._hb
-

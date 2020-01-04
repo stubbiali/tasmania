@@ -31,6 +31,7 @@ from tasmania.python.framework._base import (
     BaseConcurrentCoupling,
     BaseDiagnosticComponentComposite,
 )
+from tasmania.python.utils import types
 from tasmania.python.utils.framework_utils import get_input_properties
 from tasmania.python.utils.utils import assert_sequence
 
@@ -58,7 +59,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         properties (dims, units) for those variables.
     """
 
-    allowed_diagnostic_type = (DiagnosticComponent,)
+    allowed_diagnostic_type = (DiagnosticComponent, BaseDiagnosticComponentComposite)
     allowed_tendency_type = (
         BaseConcurrentCoupling,
         ImplicitTendencyComponent,
@@ -66,7 +67,9 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
     )
     allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
-    def __init__(self, *args, execution_policy="serial"):
+    def __init__(
+        self, *args: types.diagnostic_component_t, execution_policy: str = "serial"
+    ) -> None:
         """
         Parameters
         ----------
@@ -117,7 +120,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
             self._call_serial if execution_policy == "serial" else self._call_asparallel
         )
 
-    def __call__(self, state, timestep):
+    def __call__(self, state: types.dataarray_dict_t, timestep: types.timedelta_t):
         """
         Retrieve diagnostics from the input state by sequentially calling
         the wrapped :class:`sympl.DiagnosticComponent`\s, and incrementally
@@ -141,7 +144,7 @@ class DiagnosticComponentComposite(BaseDiagnosticComponentComposite):
         """
         return self._call(state, timestep)
 
-    def _call_serial(self, state, timestep):
+    def _call_serial(self, state: types.dataarray_dict_t, timestep: types.timedelta_t):
         return_dict = {}
 
         tmp_state = {}
