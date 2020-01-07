@@ -75,7 +75,7 @@ or
 
 to run a container in the background and get shell access to it. You login the container's shell as `tasmania-user` - a non-root user having the same `UID` of the host user who spun up the container. The container's working directory is `/home/tasmania-user`.
 
-**Disclaimer:** the container is given extended privileges to be able to run graphical applications, like generating a plot via [Matplotlib](https://matplotlib.org/) or running a [Jupyter](http://jupyter.org/) notebook. We are conscious of the fact that this is consider bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.
+**Disclaimer:** the container is given extended privileges to be able to run graphical applications, like generating a plot via [Matplotlib](https://matplotlib.org/) or running a [Jupyter](http://jupyter.org/) notebook. We are conscious of the fact that this is considered bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.
 
 **Remark:** ax explained [here](https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc), running a graphical application inside a Docker container on a Mac OS X requires *socat* and *Xquartz* to let the container harness the X window system on the host operating system. Both socat and Xquartz can be installed from the command line through, e.g., *homebrew*:
 
