@@ -21,46 +21,44 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import json
-import tasmania as taz
+from tasmania import Annotation, Circle, Rectangle, Segment
 
-try:
-    from .base import DrawerWrapper
-except (ImportError, ModuleNotFoundError):
-    from base import DrawerWrapper
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.drawer_wrappers.base import DrawerWrapper
 
 
 class AnnotationWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             drawer_properties = data["drawer_properties"]
-            self.core = taz.Annotation(drawer_properties)
+            self.core = Annotation(drawer_properties)
 
 
 class CircleWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             drawer_properties = data["drawer_properties"]
-            self.core = taz.Circle(drawer_properties)
+            self.core = Circle(drawer_properties)
 
 
 class RectangleWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             drawer_properties = data["drawer_properties"]
-            self.core = taz.Rectangle(drawer_properties)
+            self.core = Rectangle(drawer_properties)
 
 
 class SegmentWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -68,4 +66,4 @@ class SegmentWrapper(DrawerWrapper):
             x = data["x"]
             y = data["y"]
             drawer_properties = data["drawer_properties"]
-            self.core = taz.Segment(x, y, drawer_properties)
+            self.core = Segment(x, y, drawer_properties)

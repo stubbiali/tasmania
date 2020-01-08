@@ -20,27 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import datetime
 import json
-import tasmania as taz
+from tasmania import Line, taz_types
 
-try:
-    from .base import DrawerWrapper
-except (ImportError, ModuleNotFoundError):
-    from base import DrawerWrapper
-
-import os
-import sys
-
-sys.path.insert(
-    0, os.path.join(os.path.dirname(os.path.abspath(__file__)) + "/../data_loaders")
-)
-from composite import CompositeLoader
+from scripts.python.data_loaders.composite import CompositeLoader
+from scripts.python.drawer_wrappers.base import DrawerWrapper
 
 
 class LineWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
-        # assert isinstance(loader, CompositeLoader)
+    def __init__(self, loader: CompositeLoader, json_filename: str) -> None:
+        assert isinstance(loader, CompositeLoader)
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -55,7 +44,7 @@ class LineWrapper(DrawerWrapper):
             ydata = data.get("ydata", None)
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.Line(
+            self.core = Line(
                 loader.get_grid(),
                 field_name,
                 field_units,
@@ -67,7 +56,7 @@ class LineWrapper(DrawerWrapper):
                 properties=drawer_properties,
             )
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         self.core.reset()
         states = self.loader.get_state(tlevel)
         for state in states[:-1]:

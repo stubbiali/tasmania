@@ -22,63 +22,64 @@
 #
 import json
 from sympl import DataArray
-import tasmania as taz
+from tasmania import (
+    DataArrayDictOperator,
+    Grid,
+    get_isothermal_isentropic_analytical_solution,
+    taz_types,
+)
 
-try:
-    from .base import BaseLoader
-    from .mounter import DatasetMounter
-except ImportError:
-    from base_loader import BaseLoader
-    from mounter import DatasetMounter
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.data_loaders.mounter import DatasetMounter
 
 
 class IsentropicAnalyticalLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
             filename = "".join(data["filename"])
 
-            self._dsmounter = DatasetMounter(filename)
+            self.dsmounter = DatasetMounter(filename)
 
-            self._u = DataArray(
+            self.u = DataArray(
                 data["initial_x_velocity"]["value"],
                 attrs={"units": data["initial_x_velocity"]["units"]},
             )
-            self._t = DataArray(
+            self.t = DataArray(
                 data["temperature"]["value"],
                 attrs={"units": data["temperature"]["units"]},
             )
-            self._h = DataArray(
+            self.h = DataArray(
                 data["mountain_height"]["value"],
                 attrs={"units": data["mountain_height"]["units"]},
             )
-            self._a = DataArray(
+            self.a = DataArray(
                 data["mountain_width"]["value"],
                 attrs={"units": data["mountain_width"]["units"]},
             )
 
-    def get_nt(self):
-        return self._dsmounter.get_nt()
+    def get_nt(self) -> int:
+        return self.dsmounter.get_nt()
 
-    def get_grid(self):
-        return self._dsmounter.get_grid()
+    def get_grid(self) -> Grid:
+        return self.dsmounter.get_grid()
 
-    def get_initial_time(self):
-        return self._dsmounter.get_state(0)["time"]
+    def get_initial_time(self) -> taz_types.datetime_t:
+        return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         grid = self.get_grid()
-        init_state = self._dsmounter.get_state(0)
+        init_state = self.dsmounter.get_state(0)
 
-        u, _ = taz.get_isothermal_isentropic_analytical_solution(
-            grid, self._u, self._t, self._h, self._a
+        u, _ = get_isothermal_isentropic_analytical_solution(
+            grid, self.u, self.t, self.h, self.a
         )
         final_state = {"x_velocity_at_u_locations": u}
 
-        state = taz.dict_subtract(
-            final_state, init_state, unshared_variables_in_output=False
-        )
+        op = DataArrayDictOperator(gt_powered=False)
+
+        state = op.sub(final_state, init_state)
         state.update(
             {
                 key: value

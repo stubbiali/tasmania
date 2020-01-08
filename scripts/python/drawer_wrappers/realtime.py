@@ -21,16 +21,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import json
-import tasmania as taz
+from tasmania import Contour, Contourf, LineProfile, Quiver
 
-try:
-    from .base import DrawerWrapper
-except (ImportError, ModuleNotFoundError):
-    from base import DrawerWrapper
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.drawer_wrappers.base import DrawerWrapper
 
 
 class ContourWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -60,7 +58,7 @@ class ContourWrapper(DrawerWrapper):
 
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.Contour(
+            self.core = Contour(
                 loader.get_grid(),
                 field_name,
                 field_units,
@@ -84,7 +82,7 @@ class ContourWrapper(DrawerWrapper):
 
 
 class ContourfWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -114,7 +112,7 @@ class ContourfWrapper(DrawerWrapper):
 
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.Contourf(
+            self.core = Contourf(
                 loader.get_grid(),
                 field_name,
                 field_units,
@@ -138,7 +136,7 @@ class ContourfWrapper(DrawerWrapper):
 
 
 class LineProfileWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -159,7 +157,7 @@ class LineProfileWrapper(DrawerWrapper):
 
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.LineProfile(
+            self.core = LineProfile(
                 loader.get_grid(),
                 field_name,
                 field_units,
@@ -176,7 +174,7 @@ class LineProfileWrapper(DrawerWrapper):
 
 
 class QuiverWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -215,7 +213,7 @@ class QuiverWrapper(DrawerWrapper):
 
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.Quiver(
+            self.core = Quiver(
                 loader.get_grid(),
                 x=x,
                 y=y,

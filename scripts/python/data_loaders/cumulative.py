@@ -22,19 +22,14 @@
 #
 import json
 import numpy as np
-import tasmania as taz
-import tasmania.python.utils.storage_utils
+from tasmania import Grid, get_dataarray_3d, taz_types
 
-try:
-    from .base import BaseLoader
-    from .mounter import DatasetMounter
-except ImportError:
-    from base_loader import BaseLoader
-    from mounter import DatasetMounter
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.data_loaders.mounter import DatasetMounter
 
 
 class DomainCumulativeLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             filename = "".join(data["filename"])
@@ -56,25 +51,23 @@ class DomainCumulativeLoader(BaseLoader):
                 None if start == stop == step is None else slice(start, stop, step)
             )
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         g = self.dsmounter.get_grid()
         nx, ny = g.nx, g.ny
         x, y, z = self.xslice, self.yslice, self.zslice
 
         state = self.dsmounter.get_state(tlevel)
         field = state[self.fname].to_units(self.funits).values[x, y, z]
-        state[
-            "domain_cumulative_" + self.fname
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        state["domain_cumulative_" + self.fname] = get_dataarray_3d(
             np.sum(np.sum(np.sum(field, axis=2), axis=1), axis=0) * np.ones((nx, ny, 1)),
             g,
             self.funits,
@@ -84,7 +77,7 @@ class DomainCumulativeLoader(BaseLoader):
 
 
 class ColumnCumulativeLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             filename = "".join(data["filename"])
@@ -106,25 +99,22 @@ class ColumnCumulativeLoader(BaseLoader):
                 None if start == stop == step is None else slice(start, stop, step)
             )
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         g = self.dsmounter.get_grid()
-        nx, ny = g.nx, g.ny
         x, y, z = self.xslice, self.yslice, self.zslice
 
         state = self.dsmounter.get_state(tlevel)
         field = state[self.fname].to_units(self.funits).values[x, y, z]
-        state[
-            "column_cumulative_" + self.fname
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        state["column_cumulative_" + self.fname] = get_dataarray_3d(
             np.sum(field, axis=2)[:, :, np.newaxis], g, self.funits
         )
 
@@ -132,7 +122,7 @@ class ColumnCumulativeLoader(BaseLoader):
 
 
 class TotalPrecipitationLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             filename = "".join(data["filename"])
@@ -151,16 +141,16 @@ class TotalPrecipitationLoader(BaseLoader):
                 None if start == stop == step is None else slice(start, stop, step)
             )
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         g = self.dsmounter.get_grid()
         nx, ny = g.nx, g.ny
         x, y, z = self.xslice, self.yslice, self.zslice
@@ -169,9 +159,7 @@ class TotalPrecipitationLoader(BaseLoader):
         field = state["precipitation"].to_units("m hr^-1").values[x, y, z]
         dx = g.dx.to_units("m").values.item()
         dy = g.dx.to_units("m").values.item()
-        state[
-            "domain_cumulative_precipitation"
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        state["domain_cumulative_precipitation"] = get_dataarray_3d(
             1000
             * dx
             * dy
@@ -185,7 +173,7 @@ class TotalPrecipitationLoader(BaseLoader):
 
 
 class TotalAccumulatedPrecipitationLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             filename = "".join(data["filename"])
@@ -200,16 +188,16 @@ class TotalAccumulatedPrecipitationLoader(BaseLoader):
                 None if start == stop == step is None else slice(start, stop, step)
             )
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         g = self.dsmounter.get_grid()
         dx, dy = g.dx.to_units("m").values.item(), g.dy.to_units("m").values.item()
         nx, ny = g.nx, g.ny
@@ -217,9 +205,7 @@ class TotalAccumulatedPrecipitationLoader(BaseLoader):
 
         state = self.dsmounter.get_state(tlevel)
         accprec = state["accumulated_precipitation"].to_units("mm").values[x, y, 0]
-        state[
-            "total_accumulated_precipitation"
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        state["total_accumulated_precipitation"] = get_dataarray_3d(
             dx * dy * np.sum(np.sum(accprec, axis=1), axis=0) * np.ones((nx, ny, 1)),
             g,
             "kg",

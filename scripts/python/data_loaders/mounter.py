@@ -20,35 +20,35 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import tasmania as taz
+from tasmania import Grid, load_netcdf_dataset, taz_types
 
 
 class DatasetMounter:
     ledger = {}
 
-    def __new__(cls, filename):
+    def __new__(cls, filename: str) -> "DatasetMounter":
         if filename not in DatasetMounter.ledger:
             DatasetMounter.ledger[filename] = super().__new__(cls)
             print("New instance of DatasetMounter created.")
         return DatasetMounter.ledger[filename]
 
-    def __init__(self, filename):
+    def __init__(self, filename: str) -> None:
         if not hasattr(self, "mounted"):
             self.fname = filename
-            domain, grid_type, self.states = taz.load_netcdf_dataset(filename)
+            domain, grid_type, self.states = load_netcdf_dataset(filename)
             print("  Dataset mounted.")
             self.grid = (
                 domain.physical_grid if grid_type == "physical" else domain.numerical_grid
             )
             self.mounted = True  # tag
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.grid
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return len(self.states)
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         state = self.states[tlevel]
         self.grid.update_topography(state["time"] - self.states[0]["time"])
         return state

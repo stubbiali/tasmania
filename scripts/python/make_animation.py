@@ -20,13 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from datetime import datetime
 import json
 import tasmania as taz
 
 
 class AnimationWrapper:
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -47,12 +46,12 @@ class AnimationWrapper:
             )
             self.save_dest = data["save_dest"]
 
-    def store(self):
+    def store(self) -> None:
         for tlevel in self.tlevels:
             states = self.artist_wrapper.get_states(tlevel)
             self.core.store(*states)
 
-    def run(self):
+    def run(self) -> None:
         self.core.run(save_dest=self.save_dest)
 
 

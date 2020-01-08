@@ -23,19 +23,14 @@
 import json
 import numpy as np
 from sympl import DataArray
-import tasmania as taz
-import tasmania.python.utils.storage_utils
+from tasmania import Grid, get_dataarray_3d, taz_types
 
-try:
-    from .base import BaseLoader
-    from .mounter import DatasetMounter
-except ImportError:
-    from base_loader import BaseLoader
-    from mounter import DatasetMounter
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.data_loaders.mounter import DatasetMounter
 
 
 class DifferenceLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -48,16 +43,16 @@ class DifferenceLoader(BaseLoader):
             self.fname = data["field_name"]
             self.funits = data["field_units"]
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter1.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter1.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter1.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         state1 = self.dsmounter1.get_state(tlevel)
         state2 = self.dsmounter2.get_state(tlevel)
 
@@ -65,9 +60,7 @@ class DifferenceLoader(BaseLoader):
             state1[self.fname].to_units(self.funits).values
             - state2[self.fname].to_units(self.funits).values
         )
-        state1[
-            "diff_of_" + self.fname
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        state1["diff_of_" + self.fname] = get_dataarray_3d(
             diff, self.get_grid(), self.funits
         )
 
@@ -75,10 +68,10 @@ class DifferenceLoader(BaseLoader):
 
 
 class VelocityDifferenceLoader(DifferenceLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         super().__init__(json_filename)
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         state1 = self.dsmounter1.get_state(tlevel)
         state2 = self.dsmounter2.get_state(tlevel)
 
@@ -87,69 +80,51 @@ class VelocityDifferenceLoader(DifferenceLoader):
                 state1["x_momentum"].to_units("kg m^-2 s^-1").values
                 / state1["air_density"].to_units("kg m^-3").values
             )
-            state1["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state1["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state1["y_momentum"].to_units("kg m^-2 s^-1").values
                 / state1["air_density"].to_units("kg m^-3").values
             )
-            state1["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state1["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
 
             u = (
                 state2["x_momentum"].to_units("kg m^-2 s^-1").values
                 / state2["air_density"].to_units("kg m^-3").values
             )
-            state2["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state2["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state2["y_momentum"].to_units("kg m^-2 s^-1").values
                 / state2["air_density"].to_units("kg m^-3").values
             )
-            state2["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state2["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
         except KeyError:
             u = (
                 state1["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state1["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state1["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state1["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state1["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state1["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state1["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state1["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
 
             u = (
                 state2["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state2["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state2["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state2["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state2["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state2["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state2["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state2["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
 
         diff = (
             state1[self.fname].to_units(self.funits).values
             - state2[self.fname].to_units(self.funits).values
         )
-        state1[
-            "diff_of_" + self.fname
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+        state1["diff_of_" + self.fname] = get_dataarray_3d(
             diff, self.get_grid(), self.funits
         )
 
@@ -157,7 +132,7 @@ class VelocityDifferenceLoader(DifferenceLoader):
 
 
 class RelativeDifferenceLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -170,16 +145,16 @@ class RelativeDifferenceLoader(BaseLoader):
             self.fname = data["field_name"]
             self.funits = data["field_units"]
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter1.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter1.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter1.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         state1 = self.dsmounter1.get_state(tlevel)
         state2 = self.dsmounter2.get_state(tlevel)
 
@@ -192,17 +167,13 @@ class RelativeDifferenceLoader(BaseLoader):
         diff = (field1 - field2) / field2
         diff[np.where(np.isnan(diff))] = 0.0
         diff[np.where(np.isinf(diff))] = 0.0
-        state1[
-            "rdiff_of_" + self.fname
-        ] = tasmania.python.utils.storage_utils.get_dataarray_3d(
-            diff, self.get_grid(), "1"
-        )
+        state1["rdiff_of_" + self.fname] = get_dataarray_3d(diff, self.get_grid(), "1")
 
         return state1
 
 
 class RMSDLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -228,16 +199,16 @@ class RMSDLoader(BaseLoader):
             start, stop, step = data["z2"]
             self.z2 = None if start == stop == step is None else slice(start, stop, step)
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter1.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter1.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter1.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         fname, funits = self.fname, self.funits
         x1, y1, z1 = self.x1, self.y1, self.z1
         x2, y2, z2 = self.x2, self.y2, self.z2
@@ -258,10 +229,10 @@ class RMSDLoader(BaseLoader):
 
 
 class RMSDVelocityLoader(RMSDLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         super().__init__(json_filename)
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         fname, funits = self.fname, self.funits
         x1, y1, z1 = self.x1, self.y1, self.z1
         x2, y2, z2 = self.x2, self.y2, self.z2
@@ -275,14 +246,14 @@ class RMSDVelocityLoader(RMSDLoader):
                 state1["x_momentum"].to_units("kg m^-2 s^-1").values
                 / state1["air_density"].to_units("kg m^-3").values
             )
-            state1["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state1["x_velocity"] = get_dataarray_3d(
                 u, self.get_grid(), "m s^-1"
             )
             v = (
                 state1["y_momentum"].to_units("kg m^-2 s^-1").values
                 / state1["air_density"].to_units("kg m^-3").values
             )
-            state1["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state1["y_velocity"] = get_dataarray_3d(
                 v, self.get_grid(), "m s^-1"
             )
 
@@ -290,14 +261,14 @@ class RMSDVelocityLoader(RMSDLoader):
                 state2["x_momentum"].to_units("kg m^-2 s^-1").values
                 / state2["air_density"].to_units("kg m^-3").values
             )
-            state2["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state2["x_velocity"] = get_dataarray_3d(
                 u, self.get_grid(), "m s^-1"
             )
             v = (
                 state2["y_momentum"].to_units("kg m^-2 s^-1").values
                 / state2["air_density"].to_units("kg m^-3").values
             )
-            state2["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state2["y_velocity"] = get_dataarray_3d(
                 v, self.get_grid(), "m s^-1"
             )
         except KeyError:
@@ -305,14 +276,14 @@ class RMSDVelocityLoader(RMSDLoader):
                 state1["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state1["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state1["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state1["x_velocity"] = get_dataarray_3d(
                 u, self.get_grid(), "m s^-1"
             )
             v = (
                 state1["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state1["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state1["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state1["y_velocity"] = get_dataarray_3d(
                 v, self.get_grid(), "m s^-1"
             )
 
@@ -320,14 +291,14 @@ class RMSDVelocityLoader(RMSDLoader):
                 state2["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state2["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state2["x_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state2["x_velocity"] = get_dataarray_3d(
                 u, self.get_grid(), "m s^-1"
             )
             v = (
                 state2["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state2["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state2["y_velocity"] = tasmania.python.utils.storage_utils.get_dataarray_3d(
+            state2["y_velocity"] = get_dataarray_3d(
                 v, self.get_grid(), "m s^-1"
             )
 
@@ -342,7 +313,7 @@ class RMSDVelocityLoader(RMSDLoader):
 
 
 class RRMSDLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -368,16 +339,16 @@ class RRMSDLoader(BaseLoader):
             start, stop, step = data["z2"]
             self.z2 = None if start == stop == step is None else slice(start, stop, step)
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter1.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter1.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter1.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         fname, funits = self.fname, self.funits
         x1, y1, z1 = self.x1, self.y1, self.z1
         x2, y2, z2 = self.x2, self.y2, self.z2

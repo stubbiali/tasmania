@@ -20,24 +20,24 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-try:
-    from .base import BaseLoader
-except ImportError:
-    from base_loader import BaseLoader
+from tasmania import taz_types
+from typing import Optional
+
+from scripts.python.data_loaders.base import BaseLoader
 
 
 class FakeLoader(BaseLoader):
-    def __init__(self, json_filename=None):
+    def __init__(self, json_filename: Optional[str] = None) -> None:
         pass
 
-    def get_grid(self):
+    def get_grid(self) -> None:
         raise NotImplementedError()
 
-    def get_nt(self):
+    def get_nt(self) -> None:
         raise NotImplementedError()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> None:
         raise NotImplementedError()
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         return {}

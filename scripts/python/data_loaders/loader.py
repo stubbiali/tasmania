@@ -21,45 +21,27 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import json
+from tasmania import Grid, taz_types
 
-try:
-    from .base import BaseLoader
-    from .mounter import DatasetMounter
-except (ImportError, ModuleNotFoundError):
-    from base_loader import BaseLoader
-    from mounter import DatasetMounter
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.data_loaders.mounter import DatasetMounter
 
 
 class Loader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
             filename = "".join(data["filename"])
             self.dsmounter = DatasetMounter(filename)
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.dsmounter.get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.dsmounter.get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.dsmounter.get_state(0)["time"]
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         return self.dsmounter.get_state(tlevel)
-
-
-if __name__ == "__main__":
-    json_filename = "/home/tasmania-user/tasmania/scripts/python/config/loader.json"
-
-    _ = Loader(json_filename)
-    _ = Loader(json_filename)
-    obj = Loader(json_filename)
-
-    nt = obj.get_nt()
-    _ = obj.get_grid()
-    _ = obj.get_state(nt - 1)
-    _ = obj.get_initial_time()
-
-    print("All right!")

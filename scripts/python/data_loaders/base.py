@@ -21,21 +21,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+from tasmania import Grid, taz_types
 
 
 class BaseLoader(abc.ABC):
     @abc.abstractmethod
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         pass
 
     @abc.abstractmethod
-    def get_nt(self):
+    def get_nt(self) -> int:
         pass
 
     @abc.abstractmethod
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         pass
 
     @abc.abstractmethod
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         pass

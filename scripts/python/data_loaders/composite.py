@@ -23,17 +23,14 @@
 import json
 import numpy as np
 from sympl import DataArray
+from tasmania import Grid, taz_types
+from typing import List
 
-try:
-    from .base import BaseLoader
-    from .mounter import DatasetMounter
-except ImportError:
-    from base import BaseLoader
-    from mounter import DatasetMounter
+from scripts.python.data_loaders.base import BaseLoader
 
 
 class CompositeLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -50,26 +47,26 @@ class CompositeLoader(BaseLoader):
                 SlaveClass = locals()[classname]
                 self.slaves.append(SlaveClass(config))
 
-    def get_grid(self):
+    def get_grid(self) -> List[Grid]:
         grids = []
         for slave in self.slaves:
             grids.append(slave.get_grid())
         return grids
 
-    def get_nt(self):
+    def get_nt(self) -> List[int]:
         nts = []
         for slave in self.slaves:
             nts.append(slave.get_nt())
         return nts
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> List[taz_types.datetime_t]:
         itimes = []
         for slave in self.slaves:
             itimes.append(slave.get_initial_time())
         return itimes
 
-    def get_state(self, tlevel):
-        tlevel = [tlevel,] if isinstance(tlevel, int) else tlevel
+    def get_state(self, tlevel) -> List[taz_types.dataarray_dict_t]:
+        tlevel = [tlevel] if isinstance(tlevel, int) else tlevel
         tlevels = tlevel * len(self.slaves) if len(tlevel) == 1 else tlevel
         assert len(tlevels) == len(self.slaves)
 
@@ -81,7 +78,7 @@ class CompositeLoader(BaseLoader):
 
 
 class PolynomialInterpolationLoader(BaseLoader):
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -110,16 +107,16 @@ class PolynomialInterpolationLoader(BaseLoader):
 
             self.deg = data["polynomial_degree"]
 
-    def get_grid(self):
+    def get_grid(self) -> Grid:
         return self.slaves[0].get_grid()
 
-    def get_nt(self):
+    def get_nt(self) -> int:
         return self.slaves[0].get_nt()
 
-    def get_initial_time(self):
+    def get_initial_time(self) -> taz_types.datetime_t:
         return self.slaves[0].get_nt()
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         slaves = self.slaves
         x, y, z = self.x, self.y, self.z
         fname, funits = self.fname, self.funits

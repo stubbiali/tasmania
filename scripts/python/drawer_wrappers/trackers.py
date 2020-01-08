@@ -22,16 +22,14 @@
 #
 from datetime import datetime
 import json
-import tasmania as taz
+from tasmania import HovmollerDiagram, TimeSeries, taz_types
 
-try:
-    from .base import DrawerWrapper
-except (ImportError, ModuleNotFoundError):
-    from base import DrawerWrapper
+from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.drawer_wrappers.base import DrawerWrapper
 
 
 class TimeSeriesWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -52,7 +50,7 @@ class TimeSeriesWrapper(DrawerWrapper):
             time_on_xaxis = data["time_on_xaxis"]
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.TimeSeries(
+            self.core = TimeSeries(
                 loader.get_grid(),
                 field_name,
                 field_units,
@@ -63,7 +61,7 @@ class TimeSeriesWrapper(DrawerWrapper):
                 properties=drawer_properties,
             )
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         drawer_tlevel = len(self.core._data) - 1
 
@@ -78,16 +76,16 @@ class TimeSeriesWrapper(DrawerWrapper):
 
 
 class LazyTimeSeriesWrapper(TimeSeriesWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader, json_filename)
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         return self.loader.get_state(tlevel)
 
 
 class HovmollerDiagramWrapper(DrawerWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:
@@ -119,7 +117,7 @@ class HovmollerDiagramWrapper(DrawerWrapper):
 
             drawer_properties = data["drawer_properties"]
 
-            self.core = taz.HovmollerDiagram(
+            self.core = HovmollerDiagram(
                 loader.get_grid(),
                 field_name,
                 field_units,
@@ -137,7 +135,7 @@ class HovmollerDiagramWrapper(DrawerWrapper):
                 properties=drawer_properties,
             )
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         drawer_tlevel = len(self.core._time) - 1
 
@@ -156,9 +154,9 @@ class HovmollerDiagramWrapper(DrawerWrapper):
 
 
 class LazyHovmollerDiagramWrapper(HovmollerDiagramWrapper):
-    def __init__(self, loader, json_filename):
+    def __init__(self, loader: BaseLoader, json_filename: str) -> None:
         super().__init__(loader, json_filename)
 
-    def get_state(self, tlevel):
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
         tlevel = self.loader.get_nt() + tlevel if tlevel < 0 else tlevel
         return self.loader.get_state(tlevel)

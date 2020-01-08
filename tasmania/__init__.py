@@ -96,7 +96,10 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
     get_isentropic_state_from_temperature,
 )
-from tasmania.python.isentropic.utils import AirPotentialTemperature2Diagnostic, AirPotentialTemperature2Tendency
+from tasmania.python.isentropic.utils import (
+    AirPotentialTemperature2Diagnostic,
+    AirPotentialTemperature2Tendency,
+)
 
 # physics
 from tasmania.python.physics.microphysics.kessler import (
@@ -108,7 +111,7 @@ from tasmania.python.physics.microphysics.kessler import (
 )
 from tasmania.python.physics.microphysics.old_kessler import (
     KesslerMicrophysics as OldKesslerMicrophysics,
-    KesslerSaturationAdjustment as OldKesslerSaturationAdjustment
+    KesslerSaturationAdjustment as OldKesslerSaturationAdjustment,
 )
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
@@ -131,7 +134,7 @@ from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
-from tasmania.python.utils.taz_types import *
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray,
@@ -175,19 +178,7 @@ __all__ = (
     DiagnosticComponent,
     DiagnosticComponentComposite,
     Domain,
-    deepcopy_array_dict,
-    deepcopy_dataarray,
-    deepcopy_dataarray_dict,
     DynamicalCore,
-    get_array_dict,
-    get_dataarray_2d,
-    get_dataarray_3d,
-    get_dataarray_dict,
-    get_figure_and_axes,
-    get_isentropic_state_from_brunt_vaisala_frequency,
-    get_isentropic_state_from_temperature,
-    get_isothermal_isentropic_analytical_solution,
-    get_time_string,
     Grid,
     HorizontalBoundary,
     HorizontalDiffusion,
@@ -212,7 +203,6 @@ __all__ = (
     KesslerSedimentation,
     Line,
     LineProfile,
-    load_netcdf_dataset,
     NetCDFMonitor,
     NumericalGrid,
     NumericalHorizontalGrid,
@@ -235,8 +225,6 @@ __all__ = (
     Segment,
     SequentialTendencySplitting,
     SequentialUpdateSplitting,
-    set_axes_properties,
-    set_figure_properties,
     Smagorinsky2d,
     Stepper,
     Tendency2Diagnostic,
@@ -246,7 +234,23 @@ __all__ = (
     Topography,
     VerticalDamping,
     WaterConstituent,
-    zeros,
     ZhaoSolutionFactory,
     ZhaoStateFactory,
+    deepcopy_array_dict,
+    deepcopy_dataarray,
+    deepcopy_dataarray_dict,
+    get_array_dict,
+    get_dataarray_2d,
+    get_dataarray_3d,
+    get_dataarray_dict,
+    get_figure_and_axes,
+    get_isentropic_state_from_brunt_vaisala_frequency,
+    get_isentropic_state_from_temperature,
+    get_isothermal_isentropic_analytical_solution,
+    get_time_string,
+    load_netcdf_dataset,
+    set_axes_properties,
+    set_figure_properties,
+    taz_types,
+    zeros,
 )

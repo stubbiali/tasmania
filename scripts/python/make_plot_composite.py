@@ -22,12 +22,14 @@
 #
 from datetime import datetime
 import json
-import tasmania as taz
+from matplotlib import pyplot as plt
+from tasmania import PlotComposite, taz_types
 from tasmania.python.utils.utils import assert_sequence
+from typing import List, Optional, Sequence, Tuple, Union
 
 
 class PlotCompositeWrapper:
-    def __init__(self, json_filename):
+    def __init__(self, json_filename: str) -> None:
         with open(json_filename, "r") as json_file:
             data = json.load(json_file)
 
@@ -61,7 +63,7 @@ class PlotCompositeWrapper:
 
             figure_properties = data["figure_properties"]
 
-            self.core = taz.PlotComposite(
+            self.core = PlotComposite(
                 *(wrapper.get_artist() for wrapper in self.plot_wrappers),
                 nrows=nrows,
                 ncols=ncols,
@@ -74,10 +76,12 @@ class PlotCompositeWrapper:
             self.tlevels = data.get("tlevels", (0,) * len(self.plot_wrappers))
             self.save_dest = data.get("save_dest", None)
 
-    def get_artist(self):
+    def get_artist(self) -> PlotComposite:
         return self.core
 
-    def get_states(self, tlevels=None):
+    def get_states(
+        self, tlevels: Optional[Union[int, Sequence[int]]] = None
+    ) -> Tuple[Union[taz_types.dataarray_dict_t, Sequence[taz_types.dataarray_dict_t]]]:
         tlevels = self.tlevels if tlevels is None else tlevels
         tlevels = (
             (tlevels,) * len(self.plot_wrappers) if isinstance(tlevels, int) else tlevels
@@ -90,7 +94,12 @@ class PlotCompositeWrapper:
 
         return states
 
-    def store(self, tlevels=None, fig=None, show=False):
+    def store(
+        self,
+        tlevels: Optional[Union[int, Sequence[int]]] = None,
+        fig: Optional[plt.Figure] = None,
+        show: bool = False,
+    ) -> plt.Figure:
         states = self.get_states(tlevels)
         return self.core.store(*states, fig=fig, save_dest=self.save_dest, show=show)
 
@@ -99,7 +108,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Generate a figure with multiple subplots."
+        description="Generate a figure with multiple panels."
     )
     parser.add_argument(
         "configfile", metavar="configfile", type=str, help="JSON configuration file."
