@@ -23,6 +23,7 @@
 import abc
 import numpy as np
 from sympl import DataArray
+from typing import Mapping, Optional, Sequence, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript, __externals__
 
@@ -32,14 +33,13 @@ from tasmania.python.framework.base_components import (
     DiagnosticComponent,
     ImplicitTendencyComponent,
 )
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.gtscript_utils import set_annotations, stencil_clip_defs
+from tasmania.python.utils.gtscript_utils import stencil_clip_defs
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    from numpy import float32 as datatype
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -54,20 +54,20 @@ class Clipping(DiagnosticComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type,
-        water_species_names=None,
+        domain: "Domain",
+        grid_type: str,
+        water_species_names: Optional[Sequence[str]] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -118,17 +118,17 @@ class Clipping(DiagnosticComponent):
             for name in water_species_names
         }
 
-        set_annotations(stencil_clip_defs, dtype)
         self._stencil = gtscript.stencil(
             backend=backend,
             definition=stencil_clip_defs,
             rebuild=rebuild,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             **(backend_opts or {})
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {}
@@ -138,7 +138,7 @@ class Clipping(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {}
@@ -147,7 +147,7 @@ class Clipping(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
         diagnostics = {}
 
         for name in self._names:
@@ -172,21 +172,21 @@ class Precipitation(ImplicitTendencyComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type="numerical",
-        physical_constants=None,
+        domain: "Domain",
+        grid_type: str = "numerical",
+        physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -277,19 +277,18 @@ class Precipitation(ImplicitTendencyComponent):
             managed_memory=managed_memory,
         )
 
-        set_annotations(self._stencil_defs, dtype)
-
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals={"rhow": pcs["density_of_liquid_water"]},
             rebuild=rebuild,
             **(backend_opts or {})
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims2d = (
@@ -309,11 +308,11 @@ class Precipitation(ImplicitTendencyComponent):
         }
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims2d = (
             (g.x.dims[0], g.y.dims[0], g.z.dims[0] + "_at_surface_level")
@@ -326,7 +325,9 @@ class Precipitation(ImplicitTendencyComponent):
             "accumulated_precipitation": {"dims": dims2d, "units": "mm"},
         }
 
-    def array_call(self, state, timestep):
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         self._in_rho[...] = state["air_density"][:, :, nz - 1 : nz]
@@ -361,15 +362,15 @@ class Precipitation(ImplicitTendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_rho: gtscript.Field[np.float64],
-        in_qr: gtscript.Field[np.float64],
-        in_vt: gtscript.Field[np.float64],
-        in_accprec: gtscript.Field[np.float64],
-        out_prec: gtscript.Field[np.float64],
-        out_accprec: gtscript.Field[np.float64],
+        in_rho: gtscript.Field["dtype"],
+        in_qr: gtscript.Field["dtype"],
+        in_vt: gtscript.Field["dtype"],
+        in_accprec: gtscript.Field["dtype"],
+        out_prec: gtscript.Field["dtype"],
+        out_accprec: gtscript.Field["dtype"],
         *,
         dt: float
-    ):
+    ) -> None:
         from __externals__ import rhow
 
         with computation(PARALLEL), interval(...):
@@ -385,12 +386,17 @@ class SedimentationFlux(abc.ABC):
     """
 
     # the vertical extent of the stencil
-    nb = None
+    nb: int = None
 
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
-    def __call__(rho, h, q, vt):
+    def __call__(
+        rho: taz_types.gtfield_t,
+        h: taz_types.gtfield_t,
+        q: taz_types.gtfield_t,
+        vt: taz_types.gtfield_t,
+    ) -> taz_types.gtfield_t:
         """
         Get the vertical derivative of the sedimentation flux.
         As this method is marked as abstract, its implementation
@@ -412,9 +418,10 @@ class SedimentationFlux(abc.ABC):
         gt4py.gtscript.Field :
             The vertical derivative of the sedimentation flux.
         """
+        pass
 
     @staticmethod
-    def factory(sedimentation_flux_type):
+    def factory(sedimentation_flux_type: str) -> "SedimentationFlux":
         """
         Static method returning an instance of the derived class
         which discretizes the vertical derivative of the
@@ -506,7 +513,7 @@ class Sedimentation(ImplicitTendencyComponent):
         sedimentation_flux_scheme="first_order_upwind",
         maximum_vertical_cfl=0.975,
         backend="numpy",
-        dtype=datatype,
+        dtype=np.float64,
         **kwargs
     ):
         """

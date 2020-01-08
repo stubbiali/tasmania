@@ -43,7 +43,6 @@ from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -112,10 +111,11 @@ class WrappingStencil:
             "moist": moist,
         }
 
-        set_annotations(self.stencil_defs, self.dtype)
-
         decorator = gtscript.stencil(
-            self.backend, externals=externals, rebuild=self.rebuild
+            self.backend,
+            dtypes={"dtype": self.dtype},
+            externals=externals,
+            rebuild=self.rebuild,
         )
         stencil = decorator(self.stencil_defs)
 
@@ -133,19 +133,19 @@ class WrappingStencil:
 
     @staticmethod
     def stencil_defs(
-        w: gtscript.Field[np.float64],
-        s: gtscript.Field[np.float64],
-        su: gtscript.Field[np.float64],
-        sv: gtscript.Field[np.float64],
-        flux_s: gtscript.Field[np.float64],
-        flux_su: gtscript.Field[np.float64],
-        flux_sv: gtscript.Field[np.float64],
-        sqv: gtscript.Field[np.float64] = None,
-        sqc: gtscript.Field[np.float64] = None,
-        sqr: gtscript.Field[np.float64] = None,
-        flux_sqv: gtscript.Field[np.float64] = None,
-        flux_sqc: gtscript.Field[np.float64] = None,
-        flux_sqr: gtscript.Field[np.float64] = None,
+        w: gtscript.Field["dtype"],
+        s: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        sv: gtscript.Field["dtype"],
+        flux_s: gtscript.Field["dtype"],
+        flux_su: gtscript.Field["dtype"],
+        flux_sv: gtscript.Field["dtype"],
+        sqv: gtscript.Field["dtype"] = None,
+        sqc: gtscript.Field["dtype"] = None,
+        sqr: gtscript.Field["dtype"] = None,
+        flux_sqv: gtscript.Field["dtype"] = None,
+        flux_sqc: gtscript.Field["dtype"] = None,
+        flux_sqr: gtscript.Field["dtype"] = None,
         *,
         dt: float = 0.0,
         dz: float = 0.0

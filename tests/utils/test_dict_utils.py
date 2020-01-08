@@ -94,7 +94,6 @@ def get_grid_shape(name, nx, ny, nz):
     deadline=None,
 )
 @given(hyp_st.data())
-@reproduce_failure('4.28.0', b'AXicY2BAAYIzYCyOM4xQmglFBW8nw6AGjGRoAQCgKwLt')
 def test_copy(data):
     gt_storage.prepare_numpy()
 

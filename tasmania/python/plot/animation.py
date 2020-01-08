@@ -21,8 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import matplotlib.animation as manimation
+from typing import TYPE_CHECKING, Union
 
-from tasmania.python.plot.monitors import PlotComposite
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.plot.monitors import Plot, PlotComposite
 
 
 class Animation:
@@ -32,7 +36,7 @@ class Animation:
     to generate the frames.
     """
 
-    def __init__(self, artist, fps=15):
+    def __init__(self, artist: "Union[Plot, PlotComposite]", fps: int = 15) -> None:
         """
         Parameters
         ----------
@@ -51,7 +55,7 @@ class Animation:
         # initialize the list of states
         self._states = []
 
-    def store(self, *states):
+    def store(self, *states: taz_types.dataarray_dict_t) -> None:
         """
         Append a new state (respectively, a list of states), to the list of
         states (resp., lists of states) stored in this object.
@@ -63,13 +67,11 @@ class Animation:
         """
         self._states.append(states)
 
-    def reset(self):
-        """
-        Empty the list of stored states.
-        """
+    def reset(self) -> None:
+        """ Empty the list of stored states. """
         self._states = []
 
-    def run(self, save_dest):
+    def run(self, save_dest: str) -> None:
         """
         Generate the animation based on the list of states stored in this object.
 

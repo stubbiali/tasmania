@@ -29,12 +29,14 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
+from typing import Any, Mapping, Optional, Tuple, Union
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
@@ -96,17 +98,17 @@ class ParallelSplitting:
 
     def __init__(
         self,
-        *args,
-        execution_policy="serial",
-        retrieve_diagnostics_from_provisional_state=False,
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        rebuild=False,
+        *args: Mapping[str, Any],
+        execution_policy: str = "serial",
+        retrieve_diagnostics_from_provisional_state: bool = False,
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -348,7 +350,7 @@ class ParallelSplitting:
             rebuild=rebuild,
         )
 
-    def _init_input_properties(self):
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
         if not self._diagnostics_from_provisional:
             return get_input_properties(
                 tuple(
@@ -373,7 +375,7 @@ class ParallelSplitting:
                 )
             )
 
-    def _init_provisional_input_properties(self):
+    def _init_provisional_input_properties(self) -> taz_types.properties_dict_t:
         # We require that all prognostic variables affected by the
         # parameterizations are included in the provisional state
         return_dict = get_input_properties(
@@ -405,7 +407,7 @@ class ParallelSplitting:
 
         return return_dict
 
-    def _init_output_properties(self):
+    def _init_output_properties(self) -> taz_types.properties_dict_t:
         if not self._diagnostics_from_provisional:
             return get_output_properties(
                 tuple(
@@ -430,7 +432,7 @@ class ParallelSplitting:
                 )
             )
 
-    def _init_provisional_output_properties(self):
+    def _init_provisional_output_properties(self) -> taz_types.properties_dict_t:
         return_dict = self.provisional_input_properties
 
         if self._diagnostics_from_provisional:
@@ -451,7 +453,9 @@ class ParallelSplitting:
         return return_dict
 
     @property
-    def component_list(self):
+    def component_list(
+        self
+    ) -> Tuple[Union[taz_types.diagnostic_component_t, TendencyStepper], ...]:
         """
         Return
         ------
@@ -460,7 +464,12 @@ class ParallelSplitting:
         """
         return tuple(self._component_list)
 
-    def __call__(self, state, state_prv, timestep):
+    def __call__(
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the parallel splitting method.
@@ -491,11 +500,14 @@ class ParallelSplitting:
         # Ensure the provisional state is now defined at the next time level
         state_prv["time"] = state["time"] + timestep
 
-    def _call_serial(self, state, state_prv, timestep):
+    def _call_serial(
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """ Process the components in 'serial' runtime mode. """
-        for component, substeps in zip(
-            self._component_list, self._substeps
-        ):
+        for component, substeps in zip(self._component_list, self._substeps):
             if not isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
@@ -530,7 +542,12 @@ class ParallelSplitting:
 
                 arg.update(diagnostics)
 
-    def _call_asparallel(self, state, state_prv, timestep):
+    def _call_asparallel(
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """ Process the components in 'as_parallel' runtime mode. """
         agg_diagnostics = {}
 

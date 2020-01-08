@@ -21,26 +21,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-from typing import Optional
+import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.grids.horizontal_grid import HorizontalGrid
-from tasmania.python.utils import types
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import nb as conf_nb
-except ImportError:
-    conf_nb = None
-
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    from numpy import float32 as datatype
+if TYPE_CHECKING:
+    from tasmania.python.grids.horizontal_grid import HorizontalGrid
 
 
 def forward_euler_step(
@@ -87,15 +80,15 @@ class BurgersStepper(abc.ABC):
 
     def __init__(
         self,
-        grid_xy: HorizontalGrid,
+        grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
         backend: str,
-        backend_opts: types.options_dict_t,
-        build_info: types.options_dict_t,
-        dtype: types.dtype_t,
-        exec_info: types.mutable_options_dict_t,
-        default_origin: types.triplet_int_t,
+        backend_opts: taz_types.options_dict_t,
+        build_info: taz_types.options_dict_t,
+        dtype: taz_types.dtype_t,
+        exec_info: taz_types.mutable_options_dict_t,
+        default_origin: taz_types.triplet_int_t,
         rebuild: bool,
         managed_memory: bool,
     ) -> None:
@@ -159,10 +152,10 @@ class BurgersStepper(abc.ABC):
     def __call__(
         self,
         stage: int,
-        state: types.gtstorage_dict_t,
-        tendencies: types.gtstorage_dict_t,
-        timestep: types.timedelta_t,
-    ) -> types.gtstorage_dict_t:
+        state: taz_types.gtstorage_dict_t,
+        tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         """
         Performing a stage of the time integrator.
 
@@ -193,16 +186,16 @@ class BurgersStepper(abc.ABC):
     @staticmethod
     def factory(
         time_integration_scheme: str,
-        grid_xy: HorizontalGrid,
+        grid_xy: "HorizontalGrid",
         nb: int,
         flux_scheme: str,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[types.options_dict_t] = None,
-        build_info: Optional[types.options_dict_t] = None,
-        dtype: types.dtype_t = datatype,
-        exec_info: Optional[types.mutable_options_dict_t] = None,
-        default_origin: Optional[types.triplet_int_t] = None,
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
         managed_memory: bool = False
     ) -> "BurgersStepper":

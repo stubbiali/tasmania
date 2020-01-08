@@ -26,11 +26,21 @@ from sympl._core.combine_properties import (
     InvalidPropertyDictError,
 )
 from sympl._core.units import clean_units
+from typing import Any, Dict, Mapping, Optional, Sequence, TYPE_CHECKING, Type
+
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.framework._base import BaseTendency2Diagnostic
 
 
 def check_properties_compatibility(
-    properties1, properties2, to_append=None, properties1_name=None, properties2_name=None
-):
+    properties1: taz_types.properties_dict_t,
+    properties2: taz_types.properties_dict_t,
+    to_append: Optional[str] = None,
+    properties1_name: Optional[str] = None,
+    properties2_name: Optional[str] = None,
+) -> None:
     _properties1 = {}
     if to_append is None:
         _properties1.update(properties1)
@@ -57,8 +67,12 @@ def check_properties_compatibility(
 
 
 def check_property_compatibility(
-    property1, property2, property_name=None, origin1_name=None, origin2_name=None
-):
+    property1: Mapping[str, Any],
+    property2: Mapping[str, Any],
+    property_name: Optional[str] = None,
+    origin1_name: Optional[str] = None,
+    origin2_name: Optional[str] = None,
+) -> None:
     if (
         "dims" not in property1.keys()
         or "units" not in property1.keys()
@@ -93,8 +107,11 @@ def check_property_compatibility(
 
 
 def check_missing_properties(
-    properties1, properties2, properties1_name=None, properties2_name=None
-):
+    properties1: taz_types.properties_dict_t,
+    properties2: taz_types.properties_dict_t,
+    properties1_name: Optional[str] = None,
+    properties2_name: Optional[str] = None,
+) -> None:
     missing_vars = set(properties1.keys()).difference(properties2.keys())
 
     if len(missing_vars) > 0:
@@ -107,12 +124,16 @@ def check_missing_properties(
         )
 
 
-def resolve_aliases(data_dict, properties_dict):
+def resolve_aliases(
+    data_dict: taz_types.dataarray_dict_t, properties_dict: taz_types.properties_dict_t
+) -> taz_types.dataarray_dict_t:
     name_to_alias = _get_name_to_alias_map(data_dict, properties_dict)
     return _replace_aliases(data_dict, name_to_alias)
 
 
-def _get_name_to_alias_map(data_dict, properties_dict):
+def _get_name_to_alias_map(
+    data_dict: taz_types.dataarray_dict_t, properties_dict: taz_types.properties_dict_t
+) -> Dict[str, str]:
     return_dict = {}
 
     for name in properties_dict:
@@ -132,7 +153,9 @@ def _get_name_to_alias_map(data_dict, properties_dict):
     return return_dict
 
 
-def _replace_aliases(data_dict, name_to_alias):
+def _replace_aliases(
+    data_dict: taz_types.dataarray_dict_t, name_to_alias: Mapping[str, str]
+) -> taz_types.dataarray_dict_t:
     return_dict = {}
 
     for name in name_to_alias:
@@ -142,7 +165,10 @@ def _replace_aliases(data_dict, name_to_alias):
     return return_dict
 
 
-def get_input_properties(components_list, return_dict=None):
+def get_input_properties(
+    components_list: Sequence[taz_types.component_t],
+    return_dict: Optional[taz_types.properties_dict_t] = None,
+) -> taz_types.properties_dict_t:
     # Initialize the return dictionary, i.e., the list of requirements
     return_dict = return_dict or {}
 
@@ -208,11 +234,14 @@ def get_input_properties(components_list, return_dict=None):
     return return_dict
 
 
-def get_tendency_properties(component_list, t2d_type):
+def get_tendency_properties(
+    components_list: Sequence[taz_types.component_t],
+    t2d_type: "Type[BaseTendency2Diagnostic]",
+) -> taz_types.properties_dict_t:
     """ Combine the tendency_properties dictionaries from multiple components. """
     return_dict = {}
 
-    for component in component_list:
+    for component in components_list:
         if isinstance(component, t2d_type):  # tendency-to-diagnostic promoter
             inputs = component.input_properties
             for name, props in inputs.items():
@@ -235,7 +264,10 @@ def get_tendency_properties(component_list, t2d_type):
     return return_dict
 
 
-def get_output_properties(components_list, return_dict=None):
+def get_output_properties(
+    components_list: Sequence[taz_types.component_t],
+    return_dict: Optional[taz_types.properties_dict_t] = None,
+) -> taz_types.properties_dict_t:
     """
     Ansatz: the output property dictionary of a :class:`sympl.TendencyStepper`
     component is a subset of its input property component.
@@ -296,17 +328,20 @@ def get_output_properties(components_list, return_dict=None):
     return return_dict
 
 
-def check_t2d(component_list, t2d_type):
+def check_t2d(
+    components_list: Sequence[taz_types.component_t],
+    t2d_type: "Type[BaseTendency2Diagnostic]",
+):
     """ Ensure that a tendency is actually computed before moving it around. """
     tendencies = {}
 
-    for component in component_list:
+    for component in components_list:
         if isinstance(component, t2d_type):
             requirements = component.input_properties
             check_missing_properties(
                 requirements,
                 tendencies,
-                properties1_name=type(component),
+                properties1_name=str(component.__class__),
                 properties2_name="tendencies_at_disposal",
             )
         else:

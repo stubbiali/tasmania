@@ -29,12 +29,14 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
+from typing import Any, Mapping
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import (
     check_property_compatibility,
     get_input_properties,
@@ -89,12 +91,11 @@ class SequentialTendencySplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        ConcurrentCoupling,
     )
-    allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
-    )
+    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
-    def __init__(self, *args):
+    def __init__(self, *args: Mapping[str, Any]) -> None:
         """
         Parameters
         ----------
@@ -236,7 +237,7 @@ class SequentialTendencySplitting:
         self.output_properties = self._get_output_properties()
         self.provisional_output_properties = self._get_provisional_output_properties()
 
-    def _get_input_properties(self):
+    def _get_input_properties(self) -> taz_types.properties_dict_t:
         return get_input_properties(
             tuple(
                 {
@@ -249,7 +250,7 @@ class SequentialTendencySplitting:
             )
         )
 
-    def _get_provisional_input_properties(self):
+    def _get_provisional_input_properties(self) -> taz_types.properties_dict_t:
         at_disposal = {}
         return_dict = {}
 
@@ -276,7 +277,7 @@ class SequentialTendencySplitting:
 
         return return_dict
 
-    def _get_output_properties(self):
+    def _get_output_properties(self) -> taz_types.properties_dict_t:
         return_dict = self._get_input_properties()
         get_output_properties(
             tuple(
@@ -288,11 +289,11 @@ class SequentialTendencySplitting:
                 for component in self._component_list
                 if isinstance(component, STSTendencyStepper)
             ),
-            return_dict=return_dict
+            return_dict=return_dict,
         )
         return return_dict
 
-    def _get_provisional_output_properties(self):
+    def _get_provisional_output_properties(self) -> taz_types.properties_dict_t:
         return_dict = self._get_provisional_input_properties()
 
         for component in self._component_list:
@@ -309,7 +310,12 @@ class SequentialTendencySplitting:
 
         return return_dict
 
-    def __call__(self, state, state_prv, timestep):
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the sequential-tendency splitting method.

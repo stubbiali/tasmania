@@ -21,15 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.physics.turbulence import Smagorinsky2d
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 class IsentropicSmagorinsky(Smagorinsky2d):
@@ -43,20 +43,20 @@ class IsentropicSmagorinsky(Smagorinsky2d):
 
     def __init__(
         self,
-        domain,
-        smagorinsky_constant=0.18,
+        domain: "Domain",
+        smagorinsky_constant: float = 0.18,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -148,7 +148,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"},
@@ -157,7 +157,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         }
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_momentum_isentropic": {"dims": dims, "units": "kg m^-1 K^-1 s^-2"},
@@ -165,10 +165,12 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         }
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t
+    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()

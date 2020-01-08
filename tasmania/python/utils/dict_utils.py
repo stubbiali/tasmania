@@ -21,11 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Optional
 
 from gt4py import gtscript
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import (
-    set_annotations,
     stencil_copy_defs,
     stencil_copychange_defs,
     stencil_add_defs,
@@ -40,7 +41,7 @@ from tasmania.python.utils.gtscript_utils import (
     stencil_sts_rk2_0_defs,
     stencil_sts_rk3ws_0_defs,
 )
-from tasmania.python.utils.storage_utils import deepcopy_dataarray, zeros
+from tasmania.python.utils.storage_utils import deepcopy_dataarray
 
 
 class DataArrayDictOperator:
@@ -48,15 +49,15 @@ class DataArrayDictOperator:
 
     def __init__(
         self,
-        gt_powered=False,
+        gt_powered: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        rebuild=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -81,6 +82,7 @@ class DataArrayDictOperator:
         self._gt_kwargs = {
             "backend": backend,
             "build_info": build_info,
+            "dtypes": {"dtype": dtype},
             "rebuild": rebuild,
         }
         self._gt_kwargs.update(backend_opts or {})
@@ -99,7 +101,12 @@ class DataArrayDictOperator:
         self._stencil_sts_rk2_0 = None
         self._stencil_sts_rk3ws_0 = None
 
-    def copy(self, dst, src, unshared_variables_in_output=False):
+    def copy(
+        self,
+        dst: taz_types.dataarray_dict_t,
+        src: taz_types.dataarray_dict_t,
+        unshared_variables_in_output: bool = False,
+    ) -> None:
         """
         Overwrite the :class:`sympl.DataArray` in one dictionary using the
         :class:`sympl.DataArray` contained in another dictionary.
@@ -122,7 +129,6 @@ class DataArrayDictOperator:
 
         if self._gt_powered:
             if self._stencil_copy is None:
-                set_annotations(stencil_copy_defs, self._dtype)
                 self._stencil_copy = gtscript.stencil(
                     definition=stencil_copy_defs, **self._gt_kwargs
                 )
@@ -145,14 +151,13 @@ class DataArrayDictOperator:
 
     def add(
         self,
-        dict1,
-        dict2,
-        out=None,
-        field_properties=None,
-        unshared_variables_in_output=False,
-    ):
-        """
-        Add up two dictionaries item-wise.
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+        unshared_variables_in_output: bool = False,
+    ) -> taz_types.dataarray_dict_t:
+        """ Add up two dictionaries item-wise.
 
         Parameters
         ----------
@@ -190,7 +195,6 @@ class DataArrayDictOperator:
         unshared_keys = unshared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_add is None:
-            set_annotations(stencil_add_defs, self._dtype)
             self._stencil_add = gtscript.stencil(
                 definition=stencil_add_defs, **self._gt_kwargs
             )
@@ -223,7 +227,6 @@ class DataArrayDictOperator:
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
             if self._gt_powered and self._stencil_copy is None:
-                set_annotations(stencil_copy_defs, self._dtype)
                 self._stencil_copy = gtscript.stencil(
                     definition=stencil_copy_defs, **self._gt_kwargs
                 )
@@ -252,14 +255,13 @@ class DataArrayDictOperator:
 
     def iadd(
         self,
-        dict1,
-        dict2,
-        field_properties=None,
-        unshared_variables_in_output=False,
-        deepcopy_unshared_variables=False,
-    ):
-        """
-        In-place variant of `add`.
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+        unshared_variables_in_output: bool = False,
+        deepcopy_unshared_variables: bool = False,
+    ) -> None:
+        """ In-place variant of `add`.
 
         Parameters
         ----------
@@ -292,7 +294,6 @@ class DataArrayDictOperator:
         # unshared_keys += list(key for key in dict2 if key not in dict1 and key != "time")
 
         if self._gt_powered and self._stencil_iadd is None:
-            set_annotations(stencil_iadd_defs, self._dtype)
             self._stencil_iadd = gtscript.stencil(
                 definition=stencil_iadd_defs, **self._gt_kwargs
             )
@@ -324,14 +325,13 @@ class DataArrayDictOperator:
 
     def sub(
         self,
-        dict1,
-        dict2,
-        out=None,
-        field_properties=None,
-        unshared_variables_in_output=False,
-    ):
-        """
-        Compute the item-wise difference between two dictionaries.
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+        unshared_variables_in_output: bool = False,
+    ) -> taz_types.dataarray_dict_t:
+        """ Compute the item-wise difference between two dictionaries.
 
         Parameters
         ----------
@@ -369,7 +369,6 @@ class DataArrayDictOperator:
         unshared_keys = unshared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_sub is None:
-            set_annotations(stencil_sub_defs, self._dtype)
             self._stencil_sub = gtscript.stencil(
                 definition=stencil_sub_defs, **self._gt_kwargs
             )
@@ -403,12 +402,10 @@ class DataArrayDictOperator:
         if unshared_variables_in_output and len(unshared_keys) > 0:
             if self._gt_powered:
                 if self._stencil_copy is None:
-                    set_annotations(stencil_copy_defs, self._dtype)
                     self._stencil_copy = gtscript.stencil(
                         definition=stencil_copy_defs, **self._gt_kwargs
                     )
                 if self._stencil_copychange is None:
-                    set_annotations(stencil_copychange_defs, self._dtype)
                     self._stencil_copychange = gtscript.stencil(
                         definition=stencil_copychange_defs, **self._gt_kwargs
                     )
@@ -455,10 +452,13 @@ class DataArrayDictOperator:
         return out
 
     def isub(
-        self, dict1, dict2, field_properties=None, unshared_variables_in_output=False
-    ):
-        """
-        In-place variant of `add`.
+        self,
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+        unshared_variables_in_output: bool = False,
+    ) -> None:
+        """ In-place variant of `add`.
 
         Parameters
         ----------
@@ -487,7 +487,6 @@ class DataArrayDictOperator:
         unshared_keys = unshared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_isub is None:
-            set_annotations(stencil_isub_defs, self._dtype)
             self._stencil_isub = gtscript.stencil(
                 definition=stencil_isub_defs, **self._gt_kwargs
             )
@@ -508,7 +507,6 @@ class DataArrayDictOperator:
 
         if unshared_variables_in_output and len(unshared_keys) > 0:
             if self._gt_powered and self._stencil_iscale is None:
-                set_annotations(stencil_iscale_defs, self._dtype)
                 self._stencil_iscale = gtscript.stencil(
                     definition=stencil_iscale_defs, **self._gt_kwargs
                 )
@@ -526,14 +524,20 @@ class DataArrayDictOperator:
                     if self._gt_powered:
                         self._stencil_iscale(
                             inout_a=dict1[key].values,
-                            f=-1,
+                            f=-1.0,
                             origin=(0, 0, 0),
                             domain=dict1[key].shape,
                         )
                     else:
                         dict1[key].values *= -1
 
-    def scale(self, dictionary, factor, out=None, field_properties=None):
+    def scale(
+        self,
+        dictionary: taz_types.dataarray_dict_t,
+        factor: float,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> taz_types.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -543,7 +547,6 @@ class DataArrayDictOperator:
             out["time"] = dictionary["time"]
 
         if self._gt_powered and self._stencil_scale is None:
-            set_annotations(stencil_scale_defs, self._dtype)
             self._stencil_scale = gtscript.stencil(
                 definition=stencil_scale_defs, **self._gt_kwargs
             )
@@ -577,13 +580,17 @@ class DataArrayDictOperator:
 
         return out
 
-    def iscale(self, dictionary, factor, field_properties=None):
+    def iscale(
+        self,
+        dictionary: taz_types.dataarray_dict_t,
+        factor: float,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> None:
         """ TODO """
 
         field_properties = field_properties or {}
 
         if self._gt_powered and self._stencil_iscale is None:
-            set_annotations(stencil_iscale_defs, self._dtype)
             self._stencil_iscale = gtscript.stencil(
                 definition=stencil_iscale_defs, **self._gt_kwargs
             )
@@ -602,7 +609,14 @@ class DataArrayDictOperator:
                 else:
                     rfield[...] *= factor
 
-    def addsub(self, dict1, dict2, dict3, out=None, field_properties=None):
+    def addsub(
+        self,
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        dict3: taz_types.dataarray_dict_t,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> taz_types.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -616,7 +630,6 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_addsub is None:
-            set_annotations(stencil_addsub_defs, self._dtype)
             self._stencil_addsub = gtscript.stencil(
                 definition=stencil_addsub_defs, **self._gt_kwargs
             )
@@ -651,7 +664,13 @@ class DataArrayDictOperator:
 
         return out
 
-    def iaddsub(self, dict1, dict2, dict3, field_properties=None):
+    def iaddsub(
+        self,
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        dict3: taz_types.dataarray_dict_t,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> None:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -661,7 +680,6 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_iaddsub is None:
-            set_annotations(stencil_iaddsub_defs, self._dtype)
             self._stencil_iaddsub = gtscript.stencil(
                 definition=stencil_iaddsub_defs, **self._gt_kwargs
             )
@@ -686,7 +704,14 @@ class DataArrayDictOperator:
             else:
                 rfield1 += rfield2 - rfield3
 
-    def fma(self, dict1, dict2, factor, out=None, field_properties=None):
+    def fma(
+        self,
+        dict1: taz_types.dataarray_dict_t,
+        dict2: taz_types.dataarray_dict_t,
+        factor: float,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> taz_types.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -699,7 +724,6 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_fma is None:
-            set_annotations(stencil_fma_defs, self._dtype)
             self._stencil_fma = gtscript.stencil(
                 definition=stencil_fma_defs, **self._gt_kwargs
             )
@@ -733,7 +757,15 @@ class DataArrayDictOperator:
 
         return out
 
-    def sts_rk2_0(self, dt, state, state_prv, tnd, out=None, field_properties=None):
+    def sts_rk2_0(
+        self,
+        dt: float,
+        state: taz_types.dataarray_dict_t,
+        state_prv: taz_types.dataarray_dict_t,
+        tnd: taz_types.dataarray_dict_t,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> taz_types.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -747,7 +779,6 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_sts_rk2_0 is None:
-            set_annotations(stencil_sts_rk2_0_defs, self._dtype)
             self._stencil_sts_rk2_0 = gtscript.stencil(
                 definition=stencil_sts_rk2_0_defs, **self._gt_kwargs
             )
@@ -783,7 +814,15 @@ class DataArrayDictOperator:
 
         return out
 
-    def sts_rk3ws_0(self, dt, state, state_prv, tnd, out=None, field_properties=None):
+    def sts_rk3ws_0(
+        self,
+        dt: float,
+        state: taz_types.dataarray_dict_t,
+        state_prv: taz_types.dataarray_dict_t,
+        tnd: taz_types.dataarray_dict_t,
+        out: Optional[taz_types.dataarray_dict_t] = None,
+        field_properties: Optional[taz_types.properties_dict_t] = None,
+    ) -> taz_types.dataarray_dict_t:
         """ TODO """
 
         field_properties = field_properties or {}
@@ -797,7 +836,6 @@ class DataArrayDictOperator:
         shared_keys = shared_keys.difference(("time",))
 
         if self._gt_powered and self._stencil_sts_rk3ws_0 is None:
-            set_annotations(stencil_sts_rk3ws_0_defs, self._dtype)
             self._stencil_sts_rk3ws_0 = gtscript.stencil(
                 definition=stencil_sts_rk3ws_0_defs, **self._gt_kwargs
             )

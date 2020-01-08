@@ -21,13 +21,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
+from tasmania.python.utils import taz_types
 
 
 class AirPotentialTemperature2Diagnostic(Tendency2Diagnostic):
     """ Promoting the tendency of air potential temperature to state variable. """
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -47,7 +48,7 @@ class AirPotentialTemperature2Tendency(Diagnostic2Tendency):
     """ Downgrading the tendency of air potential temperature to tendency variable. """
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 

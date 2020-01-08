@@ -23,13 +23,27 @@
 from copy import deepcopy
 import numpy as np
 from sympl import DataArray
+from typing import TYPE_CHECKING, Optional, Sequence, Union
 
 import gt4py as gt
 
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
+    from tasmania.python.grids.horizontal_grid import HorizontalGrid
+    from tasmania.python.grids.domain import Domain
+
 
 def get_dataarray_2d(
-    array, grid, units, name=None, grid_origin=None, grid_shape=None, set_coordinates=True
-):
+    array: taz_types.array_t,
+    grid: "Union[Grid, HorizontalGrid]",
+    units: str,
+    name: Optional[str] = None,
+    grid_origin: Optional[taz_types.pair_int_t] = None,
+    grid_shape: Optional[taz_types.pair_int_t] = None,
+    set_coordinates: bool = True,
+) -> DataArray:
     """
     Create a DataArray out of a 2-D :class:`numpy.ndarray`-like storage.
 
@@ -105,8 +119,14 @@ def get_dataarray_2d(
 
 
 def get_dataarray_3d(
-    array, grid, units, name=None, grid_origin=None, grid_shape=None, set_coordinates=True
-):
+    array: taz_types.array_t,
+    grid: "Grid",
+    units: str,
+    name: Optional[str] = None,
+    grid_origin: Optional[taz_types.triplet_int_t] = None,
+    grid_shape: Optional[taz_types.triplet_int_t] = None,
+    set_coordinates: bool = True,
+) -> DataArray:
     """
     Create a DataArray out of a 3-D ndarray-like storage.
 
@@ -224,7 +244,12 @@ def get_dataarray_3d(
         )
 
 
-def get_dataarray_dict(array_dict, grid, properties, set_coordinates=True):
+def get_dataarray_dict(
+    array_dict: taz_types.array_dict_t,
+    grid: "Grid",
+    properties: taz_types.properties_dict_t,
+    set_coordinates: bool = True,
+) -> taz_types.dataarray_dict_t:
     """
     Parameters
     ----------
@@ -282,7 +307,9 @@ def get_dataarray_dict(array_dict, grid, properties, set_coordinates=True):
     return dataarray_dict
 
 
-def get_array_dict(dataarray_dict, properties):
+def get_array_dict(
+    dataarray_dict: taz_types.dataarray_dict_t, properties: taz_types.properties_dict_t
+) -> taz_types.array_dict_t:
     """
     Parameters
     ----------
@@ -316,7 +343,11 @@ def get_array_dict(dataarray_dict, properties):
     return array_dict
 
 
-def get_physical_state(domain, cstate, store_names=None):
+def get_physical_state(
+    domain: "Domain",
+    cstate: taz_types.dataarray_dict_t,
+    store_names: Optional[Sequence[str]] = None,
+) -> DataArray:
     """
     Given a state dictionary defined over the numerical grid, transpose that state
     over the corresponding physical grid.
@@ -361,7 +392,11 @@ def get_physical_state(domain, cstate, store_names=None):
     return pstate
 
 
-def get_numerical_state(domain, pstate, store_names=None):
+def get_numerical_state(
+    domain: "Domain",
+    pstate: taz_types.dataarray_dict_t,
+    store_names: Optional[Sequence[str]] = None,
+) -> taz_types.dataarray_dict_t:
     """
     Given a state defined over the physical grid, transpose that state
     over the corresponding numerical grid.
@@ -412,7 +447,11 @@ def get_numerical_state(domain, pstate, store_names=None):
     return cstate
 
 
-def get_storage_shape(in_shape, min_shape, max_shape=None):
+def get_storage_shape(
+    in_shape: Sequence[int],
+    min_shape: Sequence[int],
+    max_shape: Optional[Sequence[int]] = None,
+) -> Sequence[int]:
     out_shape = in_shape or min_shape
 
     if max_shape is None:
@@ -433,8 +472,11 @@ def get_storage_shape(in_shape, min_shape, max_shape=None):
 
 
 def get_default_origin(
-    default_origin, storage_shape, min_default_origin=None, max_default_origin=None
-):
+    default_origin: taz_types.triplet_int_t,
+    storage_shape: taz_types.triplet_int_t,
+    min_default_origin: Optional[taz_types.triplet_int_t] = None,
+    max_default_origin: Optional[taz_types.triplet_int_t] = None,
+) -> taz_types.triplet_int_t:
     default_origin = default_origin or (0, 0, 0)
 
     max_default_origin = max_default_origin or default_origin
@@ -461,15 +503,14 @@ def get_default_origin(
     return out
 
 
-def get_storage_descriptor(dtype, grid_group=None, mask=None):
-    grid_group = grid_group or "default_grid_group"
-    descriptor = gt.storage.StorageDescriptor(dtype, grid_group, mask=mask)
-    return descriptor
-
-
 def empty(
-    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
-):
+    storage_shape: taz_types.triplet_int_t,
+    backend: str,
+    dtype: taz_types.dtype_t,
+    default_origin: Optional[taz_types.triplet_int_t] = None,
+    mask: Optional[taz_types.triplet_bool_t] = None,
+    managed_memory: bool = False,
+) -> taz_types.gtstorage_t:
     default_origin = default_origin or (0, 0, 0)
     gt_storage = gt.storage.empty(
         backend,
@@ -483,8 +524,13 @@ def empty(
 
 
 def zeros(
-    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
-):
+    storage_shape: taz_types.triplet_int_t,
+    backend: str,
+    dtype: taz_types.dtype_t,
+    default_origin: Optional[taz_types.triplet_int_t] = None,
+    mask: Optional[taz_types.triplet_bool_t] = None,
+    managed_memory: bool = False,
+) -> taz_types.gtstorage_t:
     default_origin = default_origin or (0, 0, 0)
     gt_storage = gt.storage.zeros(
         backend,
@@ -498,8 +544,13 @@ def zeros(
 
 
 def ones(
-    storage_shape, backend, dtype, default_origin=None, mask=None, managed_memory=False
-):
+    storage_shape: taz_types.triplet_int_t,
+    backend: str,
+    dtype: taz_types.dtype_t,
+    default_origin: Optional[taz_types.triplet_int_t] = None,
+    mask: Optional[taz_types.triplet_bool_t] = None,
+    managed_memory: bool = False,
+) -> taz_types.gtstorage_t:
     default_origin = default_origin or (0, 0, 0)
     gt_storage = gt.storage.ones(
         backend,
@@ -512,7 +563,7 @@ def ones(
     return gt_storage
 
 
-def deepcopy_array_dict(src):
+def deepcopy_array_dict(src: taz_types.array_dict_t) -> taz_types.array_dict_t:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":
@@ -520,7 +571,7 @@ def deepcopy_array_dict(src):
     return dst
 
 
-def deepcopy_dataarray(src):
+def deepcopy_dataarray(src: DataArray) -> DataArray:
     return DataArray(
         deepcopy(src.values),
         coords=src.coords,
@@ -530,7 +581,9 @@ def deepcopy_dataarray(src):
     )
 
 
-def deepcopy_dataarray_dict(src):
+def deepcopy_dataarray_dict(
+    src: taz_types.dataarray_dict_t
+) -> taz_types.dataarray_dict_t:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:
         if name != "time":

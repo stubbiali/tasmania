@@ -20,19 +20,26 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from typing import Optional, Tuple
+
 from gt4py import gtscript, __externals__
 
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import IsentropicHorizontalFlux
+from tasmania.python.utils import taz_types
 
 
 @gtscript.function
-def get_upwind_flux_x(u, phi):
+def get_upwind_flux_x(
+    u: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = u[1, 0, 0] * (phi[0, 0, 0] if u[1, 0, 0] > 0 else phi[1, 0, 0])
     return flux
 
 
 @gtscript.function
-def get_upwind_flux_y(v, phi):
+def get_upwind_flux_y(
+    v: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = v[0, 1, 0] * (phi[0, 0, 0] if v[0, 1, 0] > 0 else phi[0, 1, 0])
     return flux
 
@@ -50,25 +57,25 @@ class Upwind(IsentropicHorizontalFlux):
     @staticmethod
     @gtscript.function
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: "Optional[taz_types.gtfield_t]" = None,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
@@ -107,13 +114,17 @@ class Upwind(IsentropicHorizontalFlux):
 
 
 @gtscript.function
-def get_centered_flux_x(u, phi):
+def get_centered_flux_x(
+    u: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = u[1, 0, 0] * 0.5 * (phi[0, 0, 0] + phi[1, 0, 0])
     return flux
 
 
 @gtscript.function
-def get_centered_flux_y(v, phi):
+def get_centered_flux_y(
+    v: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = v[0, 1, 0] * 0.5 * (phi[0, 0, 0] + phi[0, 1, 0])
     return flux
 
@@ -131,25 +142,25 @@ class Centered(IsentropicHorizontalFlux):
     @staticmethod
     @gtscript.function
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: "Optional[taz_types.gtfield_t]" = None,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
@@ -188,7 +199,14 @@ class Centered(IsentropicHorizontalFlux):
 
 
 @gtscript.function
-def get_maccormack_predicted_value_s(dt, dx, dy, s, su, sv):
+def get_maccormack_predicted_value_s(
+    dt: float,
+    dx: float,
+    dy: float,
+    s: taz_types.gtfield_t,
+    su: taz_types.gtfield_t,
+    sv: taz_types.gtfield_t,
+) -> taz_types.gtfield_t:
     s_prd = s[0, 0, 0] - dt * (
         (su[1, 0, 0] - su[0, 0, 0]) / dx + (sv[0, 1, 0] - sv[0, 0, 0]) / dy
     )
@@ -196,7 +214,17 @@ def get_maccormack_predicted_value_s(dt, dx, dy, s, su, sv):
 
 
 @gtscript.function
-def get_maccormack_predicted_value_su(dt, dx, dy, s, u_unstg, v_unstg, mtg, su, su_tnd):
+def get_maccormack_predicted_value_su(
+    dt: float,
+    dx: float,
+    dy: float,
+    s: taz_types.gtfield_t,
+    u_unstg: taz_types.gtfield_t,
+    v_unstg: taz_types.gtfield_t,
+    mtg: taz_types.gtfield_t,
+    su: taz_types.gtfield_t,
+    su_tnd: taz_types.gtfield_t,
+) -> taz_types.gtfield_t:
     from __externals__ import su_tnd_on
 
     if __INLINED(su_tnd_on):  # compile-time if
@@ -217,7 +245,17 @@ def get_maccormack_predicted_value_su(dt, dx, dy, s, u_unstg, v_unstg, mtg, su, 
 
 
 @gtscript.function
-def get_maccormack_predicted_value_sv(dt, dx, dy, s, u_unstg, v_unstg, mtg, sv, sv_tnd):
+def get_maccormack_predicted_value_sv(
+    dt: float,
+    dx: float,
+    dy: float,
+    s: taz_types.gtfield_t,
+    u_unstg: taz_types.gtfield_t,
+    v_unstg: taz_types.gtfield_t,
+    mtg: taz_types.gtfield_t,
+    sv: taz_types.gtfield_t,
+    sv_tnd: taz_types.gtfield_t,
+) -> taz_types.gtfield_t:
     from __externals__ import sv_tnd_on
 
     if __INLINED(sv_tnd_on) is None:  # compile-time if
@@ -239,8 +277,16 @@ def get_maccormack_predicted_value_sv(dt, dx, dy, s, u_unstg, v_unstg, mtg, sv, 
 
 @gtscript.function
 def get_maccormack_predicted_value_sq(
-    dt, dx, dy, s, u_unstg, v_unstg, sq, q_tnd_on, q_tnd
-):
+    dt: float,
+    dx: float,
+    dy: float,
+    s: taz_types.gtfield_t,
+    u_unstg: taz_types.gtfield_t,
+    v_unstg: taz_types.gtfield_t,
+    sq: taz_types.gtfield_t,
+    q_tnd_on: taz_types.gtfield_t,
+    q_tnd: taz_types.gtfield_t,
+) -> taz_types.gtfield_t:
     if __INLINED(q_tnd_on) is None:  # compile-time if
         sq_prd = sq[0, 0, 0] - dt * (
             (u_unstg[1, 0, 0] * sq[1, 0, 0] - u_unstg[0, 0, 0] * sq[0, 0, 0]) / dx
@@ -256,7 +302,12 @@ def get_maccormack_predicted_value_sq(
 
 
 @gtscript.function
-def get_maccormack_flux_x(u_unstg, phi, u_prd_unstg, phi_prd):
+def get_maccormack_flux_x(
+    u_unstg: taz_types.gtfield_t,
+    phi: taz_types.gtfield_t,
+    u_prd_unstg: taz_types.gtfield_t,
+    phi_prd: taz_types.gtfield_t,
+) -> taz_types.gtfield_t:
     flux = 0.5 * (
         u_unstg[1, 0, 0] * phi[1, 0, 0] + u_prd_unstg[0, 0, 0] * phi_prd[0, 0, 0]
     )
@@ -264,13 +315,20 @@ def get_maccormack_flux_x(u_unstg, phi, u_prd_unstg, phi_prd):
 
 
 @gtscript.function
-def get_maccormack_flux_x_s(su, su_prd):
+def get_maccormack_flux_x_s(
+    su: taz_types.gtfield_t, su_prd: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux_s_x = 0.5 * (su[1, 0, 0] + su_prd[0, 0, 0])
     return flux_s_x
 
 
 @gtscript.function
-def get_maccormack_flux_y(v_unstg, phi, v_prd_unstg, phi_prd):
+def get_maccormack_flux_y(
+    v_unstg: taz_types.gtfield_t,
+    phi: taz_types.gtfield_t,
+    v_prd_unstg: taz_types.gtfield_t,
+    phi_prd: taz_types.gtfield_t,
+) -> taz_types.gtfield_t:
     flux = 0.5 * (
         v_unstg[0, 1, 0] * phi[0, 1, 0] + v_prd_unstg[0, 0, 0] * phi_prd[0, 0, 0]
     )
@@ -279,7 +337,9 @@ def get_maccormack_flux_y(v_unstg, phi, v_prd_unstg, phi_prd):
 
 
 @gtscript.function
-def get_maccormack_flux_y_s(sv, sv_prd):
+def get_maccormack_flux_y_s(
+    sv: taz_types.gtfield_t, sv_prd: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux_s_y = 0.5 * (sv[0, 1, 0] + sv_prd[0, 0, 0])
     return flux_s_y
 
@@ -303,25 +363,25 @@ class MacCormack(IsentropicHorizontalFlux):
     @staticmethod
     @gtscript.function
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: taz_types.gtfield_t = None,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         from __externals__ import (
             get_maccormack_predicted_values_s,
             get_maccormack_predicted_values_su,
@@ -459,7 +519,9 @@ class MacCormack(IsentropicHorizontalFlux):
 
 
 @gtscript.function
-def get_fourth_order_centered_flux_x(u, phi):
+def get_fourth_order_centered_flux_x(
+    u: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = (
         u[1, 0, 0]
         / 12.0
@@ -469,7 +531,9 @@ def get_fourth_order_centered_flux_x(u, phi):
 
 
 @gtscript.function
-def get_third_order_upwind_flux_x(u, phi):
+def get_third_order_upwind_flux_x(
+    u: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux4 = get_fourth_order_centered_flux_x(u=u, phi=phi)
     flux = flux4[0, 0, 0] - (u[1, 0, 0] if u[1, 0, 0] > 0 else -u[1, 0, 0]) / 12.0 * (
         3.0 * (phi[1, 0, 0] - phi[0, 0, 0]) - (phi[2, 0, 0] - phi[-1, 0, 0])
@@ -478,7 +542,9 @@ def get_third_order_upwind_flux_x(u, phi):
 
 
 @gtscript.function
-def get_fourth_order_centered_flux_y(v, phi):
+def get_fourth_order_centered_flux_y(
+    v: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = (
         v[0, 1, 0]
         / 12.0
@@ -488,7 +554,9 @@ def get_fourth_order_centered_flux_y(v, phi):
 
 
 @gtscript.function
-def get_third_order_upwind_flux_y(v, phi):
+def get_third_order_upwind_flux_y(
+    v: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux4 = get_fourth_order_centered_flux_y(v=v, phi=phi)
     flux = flux4[0, 0, 0] - (v[0, 1, 0] if v[0, 1, 0] > 0 else -v[0, 1, 0]) / 12.0 * (
         3.0 * (phi[0, 1, 0] - phi[0, 0, 0]) - (phi[0, 2, 0] - phi[0, -1, 0])
@@ -511,25 +579,25 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
     @staticmethod
     @gtscript.function
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: "Optional[taz_types.gtfield_t]" = None,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta
@@ -568,7 +636,9 @@ class ThirdOrderUpwind(IsentropicHorizontalFlux):
 
 
 @gtscript.function
-def get_sixth_order_centered_flux_x(u, phi):
+def get_sixth_order_centered_flux_x(
+    u: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = (
         u[1, 0, 0]
         / 60.0
@@ -582,7 +652,9 @@ def get_sixth_order_centered_flux_x(u, phi):
 
 
 @gtscript.function
-def get_fifth_order_upwind_flux_x(u, phi):
+def get_fifth_order_upwind_flux_x(
+    u: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux6 = get_sixth_order_centered_flux_x(u=u, phi=phi)
     flux = flux6[0, 0, 0] - (u[1, 0, 0] if u[1, 0, 0] > 0 else -u[1, 0, 0]) / 60.0 * (
         10.0 * (phi[1, 0, 0] - phi[0, 0, 0])
@@ -593,7 +665,9 @@ def get_fifth_order_upwind_flux_x(u, phi):
 
 
 @gtscript.function
-def get_sixth_order_centered_flux_y(v, phi):
+def get_sixth_order_centered_flux_y(
+    v: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = (
         v[0, 1, 0]
         / 60.0
@@ -607,7 +681,9 @@ def get_sixth_order_centered_flux_y(v, phi):
 
 
 @gtscript.function
-def get_fifth_order_upwind_flux_y(v, phi):
+def get_fifth_order_upwind_flux_y(
+    v: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux6 = get_sixth_order_centered_flux_y(v=v, phi=phi)
     flux = flux6[0, 0, 0] - (v[0, 1, 0] if v[0, 1, 0] > 0 else -v[0, 1, 0]) / 60.0 * (
         10.0 * (phi[0, 1, 0] - phi[0, 0, 0])
@@ -632,25 +708,25 @@ class FifthOrderUpwind(IsentropicHorizontalFlux):
     @staticmethod
     @gtscript.function
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: "Optional[taz_types.gtfield_t]" = None,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         from __externals__ import moist
 
         # compute fluxes for the isentropic density and the momenta

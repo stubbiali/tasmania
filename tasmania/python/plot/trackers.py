@@ -20,34 +20,38 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from matplotlib import pyplot as plt
 import numpy as np
 from sympl import DataArray
+from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.profile import LineProfile
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_contourf, make_lineplot
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class TimeSeries(Drawer):
-    """
-    Drawer which visualizes a time series.
-    """
+    """ Drawer which visualizes a time series. """
 
     def __init__(
         self,
-        grid,
-        field_name,
-        field_units,
-        x=0,
-        y=0,
-        z=0,
-        time_mode="elapsed",
-        init_time=None,
-        time_units="s",
-        time_on_xaxis=True,
-        properties=None,
-    ):
+        grid: "Grid",
+        field_name: str,
+        field_units: str,
+        x: int = 0,
+        y: int = 0,
+        z: int = 0,
+        time_mode: str = "elapsed",
+        init_time: Optional[taz_types.datetime_t] = None,
+        time_units: str = "s",
+        time_on_xaxis: bool = True,
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -104,17 +108,20 @@ class TimeSeries(Drawer):
         self._time = []
         self._data = []
 
-    def reset(self):
+    def reset(self) -> None:
         self._time = []
         self._data = []
 
         if not self._uitime:
             self._itime = None
 
-    def __call__(self, state, fig=None, ax=None):
-        """
-        Call operator updating and visualizing the time series.
-        """
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        fig: Optional[plt.Figure] = None,
+        ax: Optional[plt.Axes] = None,
+    ) -> None:
+        """ Call operator updating and visualizing the time series. """
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(
@@ -134,28 +141,26 @@ class TimeSeries(Drawer):
 
 
 class HovmollerDiagram(Drawer):
-    """
-    Drawer which generates a Hovmoller diagram.
-    """
+    """ Drawer which generates a Hovmoller diagram. """
 
     def __init__(
         self,
-        grid,
-        field_name,
-        field_units,
-        x=None,
-        y=None,
-        z=None,
-        axis_name=None,
-        axis_units=None,
-        axis_x=None,
-        axis_y=None,
-        axis_z=None,
-        time_mode="elapsed",
-        init_time=None,
-        time_units="s",
-        properties=None,
-    ):
+        grid: "Grid",
+        field_name: str,
+        field_units: str,
+        x: Optional[int] = None,
+        y: Optional[int] = None,
+        z: Optional[int] = None,
+        axis_name: Optional[str] = None,
+        axis_units: Optional[str] = None,
+        axis_x: Optional[int] = None,
+        axis_y: Optional[int] = None,
+        axis_z: Optional[int] = None,
+        time_mode: str = "elapsed",
+        init_time: Optional[taz_types.datetime_t] = None,
+        time_units: str = "s",
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -263,7 +268,7 @@ class HovmollerDiagram(Drawer):
         self._axis = None
         self._data = None
 
-    def reset(self):
+    def reset(self) -> None:
         self._time = []
         self._axis = None
         self._data = None
@@ -271,10 +276,13 @@ class HovmollerDiagram(Drawer):
         if not self._uitime:
             self._itime = None
 
-    def __call__(self, state, fig=None, ax=None):
-        """
-        Call operator generating the plot.
-        """
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        fig: Optional[plt.Figure] = None,
+        ax: Optional[plt.Axes] = None,
+    ) -> None:
+        """ Call operator generating the plot. """
         if self._tmode == "elapsed":
             self._itime = state["time"] if self._itime is None else self._itime
             ctime = DataArray(

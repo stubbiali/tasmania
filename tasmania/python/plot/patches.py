@@ -20,7 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from matplotlib import pyplot as plt
 import numpy as np
+from typing import Optional
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import (
@@ -29,6 +31,7 @@ from tasmania.python.plot.plot_utils import (
     make_lineplot,
     make_rectangle,
 )
+from tasmania.python.utils import taz_types
 
 
 class Annotation(Drawer):
@@ -36,7 +39,7 @@ class Annotation(Drawer):
     Add an annotation.
     """
 
-    def __init__(self, properties=None):
+    def __init__(self, properties: Optional[taz_types.options_dict_t] = None) -> None:
         """
         Parameters
         ----------
@@ -47,7 +50,9 @@ class Annotation(Drawer):
         """
         super().__init__(properties)
 
-    def __call__(self, state, fig, ax):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+    ) -> None:
         add_annotation(ax, **self.properties)
 
 
@@ -56,7 +61,7 @@ class Circle(Drawer):
     Drawer plotting a circle.
     """
 
-    def __init__(self, properties=None):
+    def __init__(self, properties: Optional[taz_types.options_dict_t] = None):
         """
         Parameters
         ----------
@@ -67,7 +72,9 @@ class Circle(Drawer):
         """
         super().__init__(properties)
 
-    def __call__(self, state, fig, ax):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+    ) -> None:
         make_circle(ax, **self.properties)
 
 
@@ -76,7 +83,7 @@ class Rectangle(Drawer):
     Drawer plotting a rectangle.
     """
 
-    def __init__(self, properties=None):
+    def __init__(self, properties: Optional[taz_types.options_dict_t] = None):
         """
         Parameters
         ----------
@@ -87,7 +94,9 @@ class Rectangle(Drawer):
         """
         super().__init__(properties)
 
-    def __call__(self, state, fig, ax):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+    ) -> None:
         make_rectangle(ax, **self.properties)
 
 
@@ -96,7 +105,12 @@ class Segment(Drawer):
     Drawer plotting a segment.
     """
 
-    def __init__(self, x, y, properties=None):
+    def __init__(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -114,5 +128,7 @@ class Segment(Drawer):
         self.x, self.y = x, y
         super().__init__(properties)
 
-    def __call__(self, state, fig, ax):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+    ) -> None:
         make_lineplot(np.array(self.x), np.array(self.y), ax, **self.properties)

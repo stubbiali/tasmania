@@ -42,7 +42,6 @@ from tasmania.python.isentropic.dynamics.implementations.horizontal_fluxes impor
     ThirdOrderUpwind,
     FifthOrderUpwind,
 )
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 try:
@@ -169,10 +168,11 @@ class WrappingStencil:
                 {"qv_tnd_on": qv_tnd_on, "qc_tnd_on": qc_tnd_on, "qr_tnd_on": qr_tnd_on}
             )
 
-        set_annotations(self.stencil_defs, self.dtype)
-
         decorator = gtscript.stencil(
-            self.backend, externals=externals, rebuild=self.rebuild
+            self.backend,
+            dtypes={"dtype": self.dtype},
+            externals=externals,
+            rebuild=self.rebuild,
         )
         stencil = decorator(self.stencil_defs)
 
@@ -209,33 +209,33 @@ class WrappingStencil:
 
     @staticmethod
     def stencil_defs(
-        s: gtscript.Field[np.float64],
-        u: gtscript.Field[np.float64],
-        v: gtscript.Field[np.float64],
-        su: gtscript.Field[np.float64],
-        sv: gtscript.Field[np.float64],
-        flux_s_x: gtscript.Field[np.float64],
-        flux_s_y: gtscript.Field[np.float64],
-        flux_su_x: gtscript.Field[np.float64],
-        flux_su_y: gtscript.Field[np.float64],
-        flux_sv_x: gtscript.Field[np.float64],
-        flux_sv_y: gtscript.Field[np.float64],
-        mtg: gtscript.Field[np.float64] = None,
-        sqv: gtscript.Field[np.float64] = None,
-        sqc: gtscript.Field[np.float64] = None,
-        sqr: gtscript.Field[np.float64] = None,
-        flux_sqv_x: gtscript.Field[np.float64] = None,
-        flux_sqv_y: gtscript.Field[np.float64] = None,
-        flux_sqc_x: gtscript.Field[np.float64] = None,
-        flux_sqc_y: gtscript.Field[np.float64] = None,
-        flux_sqr_x: gtscript.Field[np.float64] = None,
-        flux_sqr_y: gtscript.Field[np.float64] = None,
-        s_tnd: gtscript.Field[np.float64] = None,
-        su_tnd: gtscript.Field[np.float64] = None,
-        sv_tnd: gtscript.Field[np.float64] = None,
-        qv_tnd: gtscript.Field[np.float64] = None,
-        qc_tnd: gtscript.Field[np.float64] = None,
-        qr_tnd: gtscript.Field[np.float64] = None,
+        s: gtscript.Field["dtype"],
+        u: gtscript.Field["dtype"],
+        v: gtscript.Field["dtype"],
+        su: gtscript.Field["dtype"],
+        sv: gtscript.Field["dtype"],
+        flux_s_x: gtscript.Field["dtype"],
+        flux_s_y: gtscript.Field["dtype"],
+        flux_su_x: gtscript.Field["dtype"],
+        flux_su_y: gtscript.Field["dtype"],
+        flux_sv_x: gtscript.Field["dtype"],
+        flux_sv_y: gtscript.Field["dtype"],
+        mtg: gtscript.Field["dtype"] = None,
+        sqv: gtscript.Field["dtype"] = None,
+        sqc: gtscript.Field["dtype"] = None,
+        sqr: gtscript.Field["dtype"] = None,
+        flux_sqv_x: gtscript.Field["dtype"] = None,
+        flux_sqv_y: gtscript.Field["dtype"] = None,
+        flux_sqc_x: gtscript.Field["dtype"] = None,
+        flux_sqc_y: gtscript.Field["dtype"] = None,
+        flux_sqr_x: gtscript.Field["dtype"] = None,
+        flux_sqr_y: gtscript.Field["dtype"] = None,
+        s_tnd: gtscript.Field["dtype"] = None,
+        su_tnd: gtscript.Field["dtype"] = None,
+        sv_tnd: gtscript.Field["dtype"] = None,
+        qv_tnd: gtscript.Field["dtype"] = None,
+        qc_tnd: gtscript.Field["dtype"] = None,
+        qr_tnd: gtscript.Field["dtype"] = None,
         *,
         dt: float = 0.0,
         dx: float = 0.0,

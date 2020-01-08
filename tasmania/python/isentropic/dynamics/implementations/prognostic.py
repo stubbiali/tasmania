@@ -32,7 +32,6 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
 
@@ -43,32 +42,32 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 def step_forward_euler(
-    s_now: gtscript.Field[np.float64],
-    s_int: gtscript.Field[np.float64],
-    s_new: gtscript.Field[np.float64],
-    u_int: gtscript.Field[np.float64],
-    v_int: gtscript.Field[np.float64],
-    su_int: gtscript.Field[np.float64] = None,
-    sv_int: gtscript.Field[np.float64] = None,
-    mtg_int: gtscript.Field[np.float64] = None,
-    sqv_now: gtscript.Field[np.float64] = None,
-    sqv_int: gtscript.Field[np.float64] = None,
-    sqv_new: gtscript.Field[np.float64] = None,
-    sqc_now: gtscript.Field[np.float64] = None,
-    sqc_int: gtscript.Field[np.float64] = None,
-    sqc_new: gtscript.Field[np.float64] = None,
-    sqr_now: gtscript.Field[np.float64] = None,
-    sqr_int: gtscript.Field[np.float64] = None,
-    sqr_new: gtscript.Field[np.float64] = None,
-    s_tnd: gtscript.Field[np.float64] = None,
-    qv_tnd: gtscript.Field[np.float64] = None,
-    qc_tnd: gtscript.Field[np.float64] = None,
-    qr_tnd: gtscript.Field[np.float64] = None,
+    s_now: gtscript.Field["dtype"],
+    s_int: gtscript.Field["dtype"],
+    s_new: gtscript.Field["dtype"],
+    u_int: gtscript.Field["dtype"],
+    v_int: gtscript.Field["dtype"],
+    su_int: gtscript.Field["dtype"] = None,
+    sv_int: gtscript.Field["dtype"] = None,
+    mtg_int: gtscript.Field["dtype"] = None,
+    sqv_now: gtscript.Field["dtype"] = None,
+    sqv_int: gtscript.Field["dtype"] = None,
+    sqv_new: gtscript.Field["dtype"] = None,
+    sqc_now: gtscript.Field["dtype"] = None,
+    sqc_int: gtscript.Field["dtype"] = None,
+    sqc_new: gtscript.Field["dtype"] = None,
+    sqr_now: gtscript.Field["dtype"] = None,
+    sqr_int: gtscript.Field["dtype"] = None,
+    sqr_new: gtscript.Field["dtype"] = None,
+    s_tnd: gtscript.Field["dtype"] = None,
+    qv_tnd: gtscript.Field["dtype"] = None,
+    qc_tnd: gtscript.Field["dtype"] = None,
+    qr_tnd: gtscript.Field["dtype"] = None,
     *,
     dt: float,
     dx: float,
     dy: float
-):
+) -> None:
     from __externals__ import fluxer, moist, qc_tnd_on, qr_tnd_on, qv_tnd_on, s_tnd_on
 
     with computation(PARALLEL), interval(...):
@@ -156,28 +155,28 @@ def step_forward_euler(
 
 
 def step_forward_euler_momentum(
-    s_now: gtscript.Field[np.float64],
-    s_int: gtscript.Field[np.float64],
-    s_new: gtscript.Field[np.float64],
-    u_int: gtscript.Field[np.float64],
-    v_int: gtscript.Field[np.float64],
-    su_now: gtscript.Field[np.float64],
-    su_int: gtscript.Field[np.float64],
-    su_new: gtscript.Field[np.float64],
-    sv_now: gtscript.Field[np.float64],
-    sv_int: gtscript.Field[np.float64],
-    sv_new: gtscript.Field[np.float64],
-    mtg_now: gtscript.Field[np.float64],
-    mtg_new: gtscript.Field[np.float64],
-    mtg_int: gtscript.Field[np.float64] = None,
-    su_tnd: gtscript.Field[np.float64] = None,
-    sv_tnd: gtscript.Field[np.float64] = None,
+    s_now: gtscript.Field["dtype"],
+    s_int: gtscript.Field["dtype"],
+    s_new: gtscript.Field["dtype"],
+    u_int: gtscript.Field["dtype"],
+    v_int: gtscript.Field["dtype"],
+    su_now: gtscript.Field["dtype"],
+    su_int: gtscript.Field["dtype"],
+    su_new: gtscript.Field["dtype"],
+    sv_now: gtscript.Field["dtype"],
+    sv_int: gtscript.Field["dtype"],
+    sv_new: gtscript.Field["dtype"],
+    mtg_now: gtscript.Field["dtype"],
+    mtg_new: gtscript.Field["dtype"],
+    mtg_int: gtscript.Field["dtype"] = None,
+    su_tnd: gtscript.Field["dtype"] = None,
+    sv_tnd: gtscript.Field["dtype"] = None,
     *,
     dt: float,
     dx: float,
     dy: float,
     eps: float
-):
+) -> None:
     from __externals__ import fluxer, moist, su_tnd_on, sv_tnd_on
 
     with computation(PARALLEL), interval(...):
@@ -483,15 +482,13 @@ class ForwardEulerSI(IsentropicPrognostic):
             "qr_tnd_on": self._moist and mfpw in tendencies,
         }
 
-        # update the annotations for the field arguments of the first stencil
-        set_annotations(step_forward_euler, self._dtype)
-
         # compile the first stencil
         self._stencil = gtscript.stencil(
             definition=step_forward_euler,
             name=self.__class__.__name__ + "_stencil",
             backend=self._backend,
             build_info=self._build_info,
+            dtypes={"dtype": self._dtype},
             externals=externals,
             rebuild=self._rebuild,
             **self._backend_opts
@@ -510,15 +507,13 @@ class ForwardEulerSI(IsentropicPrognostic):
             "qr_tnd_on": False,
         }
 
-        # update the annotations for the field arguments of the second stencil
-        set_annotations(step_forward_euler_momentum, self._dtype)
-
         # compile the second stencil
         self._stencil_momentum = gtscript.stencil(
             definition=step_forward_euler_momentum,
             name=self.__class__.__name__ + "_stencil_momentum",
             backend=self._backend,
             build_info=self._build_info,
+            dtypes={"dtype": self._dtype},
             externals=externals,
             rebuild=self._rebuild,
             **self._backend_opts
@@ -791,15 +786,13 @@ class RK3WSSI(IsentropicPrognostic):
             "qr_tnd_on": self._moist and mfpw in tendencies,
         }
 
-        # update the annotations for the field arguments of the first stencil
-        set_annotations(step_forward_euler, self._dtype)
-
         # compile the first stencil
         self._stencil = gtscript.stencil(
             definition=step_forward_euler,
             name=self.__class__.__name__ + "_stencil",
             backend=self._backend,
             build_info=self._build_info,
+            dtypes={"dtype": self._dtype},
             externals=externals,
             rebuild=self._rebuild,
             **self._backend_opts
@@ -817,15 +810,13 @@ class RK3WSSI(IsentropicPrognostic):
             "qr_tnd_on": False,
         }
 
-        # update the annotations for the field arguments of the second stencil
-        set_annotations(step_forward_euler_momentum, self._dtype)
-
         # compile the second stencil
         self._stencil_momentum = gtscript.stencil(
             definition=step_forward_euler_momentum,
             name=self.__class__.__name__ + "_stencil_momentum",
             backend=self._backend,
             build_info=self._build_info,
+            dtypes={"dtype": self._dtype},
             externals=externals,
             rebuild=self._rebuild,
             **self._backend_opts

@@ -27,7 +27,7 @@ from typing import Optional
 from tasmania.python.grids.domain import Domain
 from tasmania.python.grids.grid import Grid
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
-from tasmania.python.utils import types
+from tasmania.python.utils import taz_types
 
 allowed_grid_types = ("physical", "numerical")
 

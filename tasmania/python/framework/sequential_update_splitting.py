@@ -29,12 +29,14 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
+from typing import Any, Mapping
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
@@ -77,13 +79,11 @@ class SequentialUpdateSplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
-        ConcurrentCoupling
+        ConcurrentCoupling,
     )
-    allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type
-    )
+    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
-    def __init__(self, *args):
+    def __init__(self, *args: Mapping[str, Any]) -> None:
         """
         Parameters
         ----------
@@ -234,7 +234,7 @@ class SequentialUpdateSplitting:
             properties2_name="output_properties",
         )
 
-    def _init_input_properties(self):
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
         return get_input_properties(
             tuple(
                 {
@@ -246,7 +246,7 @@ class SequentialUpdateSplitting:
             )
         )
 
-    def _init_output_properties(self):
+    def _init_output_properties(self) -> taz_types.properties_dict_t:
         return get_output_properties(
             tuple(
                 {
@@ -258,7 +258,9 @@ class SequentialUpdateSplitting:
             )
         )
 
-    def __call__(self, state, timestep):
+    def __call__(
+        self, state: taz_types.mutable_dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the parallel splitting method.

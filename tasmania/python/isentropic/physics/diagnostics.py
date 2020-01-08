@@ -22,16 +22,16 @@
 #
 import numpy as np
 from sympl import DataArray
+from typing import Mapping, Optional, TYPE_CHECKING
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity
 from tasmania.python.framework.base_components import DiagnosticComponent
 from tasmania.python.isentropic.dynamics.diagnostics import IsentropicDiagnostics as Core
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 class IsentropicDiagnostics(DiagnosticComponent):
@@ -63,22 +63,22 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type,
-        moist,
-        pt,
-        physical_constants=None,
+        domain: "Domain",
+        grid_type: str,
+        moist: bool,
+        pt: DataArray,
+        physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -187,7 +187,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
             )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {"air_isentropic_density": {"dims": dims, "units": "kg m^-2 K^-1"}}
@@ -195,7 +195,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         dims_stgz = (dims[0], dims[1], self.grid.z_on_interface_levels.dims[0])
 
@@ -215,7 +215,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
         s = state["air_isentropic_density"]
         self._core.get_diagnostic_variables(
             s, self._pt, self._out_p, self._out_exn, self._out_mtg, self._out_h
@@ -246,18 +246,18 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
     def __init__(
         self,
-        domain,
+        domain: "Domain",
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -316,7 +316,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -329,7 +329,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
         dims_y = (g.x.dims[0], g.y_at_v_locations.dims[0], g.z.dims[0])
@@ -341,7 +341,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
         # extract the required model variables from the input state
         s = state["air_isentropic_density"]
         su = state["x_momentum_isentropic"]

@@ -21,19 +21,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from sympl import DataArray
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 class IsentropicConservativeCoriolis(TendencyComponent):
@@ -43,21 +43,21 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type="numerical",
-        coriolis_parameter=None,
+        domain: "Domain",
+        grid_type: str = "numerical",
+        coriolis_parameter: Optional[DataArray] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -127,18 +127,17 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             managed_memory=managed_memory,
         )
 
-        set_annotations(self._stencil_defs, dtype)
-
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             rebuild=rebuild,
             **(backend_opts or {})
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -150,7 +149,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -162,10 +161,12 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t
+    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
 
@@ -191,13 +192,13 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_su: gtscript.Field[np.float64],
-        in_sv: gtscript.Field[np.float64],
-        tnd_su: gtscript.Field[np.float64],
-        tnd_sv: gtscript.Field[np.float64],
+        in_su: gtscript.Field["dtype"],
+        in_sv: gtscript.Field["dtype"],
+        tnd_su: gtscript.Field["dtype"],
+        tnd_sv: gtscript.Field["dtype"],
         *,
         f: float
-    ):
+    ) -> None:
         with computation(PARALLEL), interval(...):
             tnd_su = f * in_sv
             tnd_sv = -f * in_su

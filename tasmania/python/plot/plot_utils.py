@@ -26,6 +26,7 @@ from matplotlib.offsetbox import AnchoredText
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import Optional, Sequence, Tuple
 
 from tasmania.python.plot.utils import smaller_than as lt, equal_to as eq
 
@@ -67,8 +68,14 @@ linestyle_dict = {
 
 
 def get_figure_and_axes(
-    fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
-):
+    fig: Optional[plt.Figure] = None,
+    ax: Optional[plt.Axes] = None,
+    default_fig: Optional[plt.Figure] = None,
+    nrows: int = 1,
+    ncols: int = 1,
+    index: int = 1,
+    **kwargs
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Get a :class:`matplotlib.figure.Figure` object and a :class:`matplotlib.axes.Axes`
     object, with the latter embedded in the former. The returned values are determined
@@ -163,8 +170,7 @@ def get_figure_and_axes(
             )
 
             out_fig, out_ax = ax.get_figure(), ax
-
-    if (fig is not None) and (ax is None):
+    elif (fig is not None) and (ax is None):
         try:
             out_fig = fig
             out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
@@ -179,11 +185,9 @@ def get_figure_and_axes(
 
             out_fig = plt.figure(figsize=figsize)
             out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
-
-    if (fig is None) and (ax is not None):
+    elif (fig is None) and (ax is not None):
         out_fig, out_ax = ax.get_figure(), ax
-
-    if (fig is None) and (ax is None):
+    else:  # (fig is None) and (ax is None)
         if default_fig is None:
             out_fig = plt.figure(figsize=figsize)
             out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
@@ -207,7 +211,7 @@ def get_figure_and_axes(
     return out_fig, out_ax
 
 
-def set_figure_properties(fig, **kwargs):
+def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
     """
     Ease the configuration of a :class:`matplotlib.figure.Figure`.
 
@@ -245,7 +249,7 @@ def set_figure_properties(fig, **kwargs):
         fig.suptitle(suptitle, fontsize=fontsize + 1)
 
 
-def set_axes_properties(ax, **kwargs):
+def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     """
     Ease the configuration of a :class:`matplotlib.axes.Axes` object.
 
@@ -734,7 +738,9 @@ def set_axes_properties(ax, **kwargs):
             )
 
 
-def reverse_colormap(cmap, name=None):
+def reverse_colormap(
+    cmap: LinearSegmentedColormap, name: Optional[str] = None
+) -> LinearSegmentedColormap:
     """
     Reverse a Matplotlib colormap.
 
@@ -777,19 +783,19 @@ def reverse_colormap(cmap, name=None):
 
 
 def set_colorbar(
-    fig,
-    mappable,
-    color_levels,
+    fig: plt.Figure,
+    mappable: plt.cm.ScalarMappable,
+    color_levels: np.ndarray,
     *,
-    cbar_ticks_step=1,
-    cbar_ticks_pos="center",
-    cbar_title="",
-    cbar_x_label="",
-    cbar_y_label="",
-    cbar_orientation="vertical",
-    cbar_ax=None,
-    cbar_format=None
-):
+    cbar_ticks_step: int = 1,
+    cbar_ticks_pos: str = "center",
+    cbar_title: str = "",
+    cbar_x_label: str = "",
+    cbar_y_label: str = "",
+    cbar_orientation: str = "vertical",
+    cbar_ax: Optional[Sequence[int]] = None,
+    cbar_format: Optional[str] = None
+) -> None:
     """
     Ease the configuration of the colorbar in Matplotlib plots.
 
@@ -851,9 +857,8 @@ def set_colorbar(
         cb.set_ticks(color_levels[::cbar_ticks_step])
 
 
-def make_lineplot(x, y, ax, **kwargs):
-    """
-    Plot a line.
+def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
+    """ Plot a line.
 
     Parameters
     ----------
@@ -949,17 +954,19 @@ def make_lineplot(x, y, ax, **kwargs):
     y /= y_factor
 
 
-def make_contour(x, y, field, ax, **kwargs):
+def make_contour(
+    x: np.ndarray, y: np.ndarray, field: np.ndarray, ax: plt.Axes, **kwargs
+) -> None:
     """
     Generate a contour plot.
 
     Parameters
     ----------
-    x : gt4py.storage.storage.Storage
+    x : numpy.ndarray
         2-D array gathering the x-coordinates of the grid points.
-    y : gt4py.storage.storage.Storage
+    y : numpy.ndarray
         2-D array gathering the y-coordinates of the grid points.
-    field : gt4py.storage.storage.Storage
+    field : numpy.ndarray
         2-D array representing the field to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -1026,7 +1033,14 @@ def make_contour(x, y, field, ax, **kwargs):
     field += field_bias
 
 
-def make_contourf(x, y, field, fig, ax, **kwargs):
+def make_contourf(
+    x: np.ndarray,
+    y: np.ndarray,
+    field: np.ndarray,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     """
     Generate a contourf plot.
 
@@ -1193,7 +1207,16 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
     field += field_bias
 
 
-def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
+def make_quiver(
+    x: np.ndarray,
+    y: np.ndarray,
+    vx: np.ndarray,
+    vy: np.ndarray,
+    scalar: np.ndarray,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     """
     Generate the quiver plot of a gridded vector field at a cross-section
     parallel to a coordinate plane.
@@ -1449,7 +1472,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
         scalar += scalar_bias
 
 
-def make_circle(ax, **kwargs):
+def make_circle(ax: plt.Axes, **kwargs) -> None:
     """
     Draw a circle.
 
@@ -1484,7 +1507,7 @@ def make_circle(ax, **kwargs):
     ax.add_patch(circ)
 
 
-def make_rectangle(ax, **kwargs):
+def make_rectangle(ax: plt.Axes, **kwargs) -> None:
     """
     Draw a rectangle.
 
@@ -1531,7 +1554,7 @@ def make_rectangle(ax, **kwargs):
     ax.add_patch(rect)
 
 
-def make_cdf(data, ax, **kwargs):
+def make_cdf(data: np.ndarray, ax: plt.Axes, **kwargs) -> None:
     """
     Plot the cumulative distribution function (CDF) for an array of points.
 
@@ -1589,7 +1612,7 @@ def make_cdf(data, ax, **kwargs):
         make_lineplot(cdf, values, ax, **kwargs)
 
 
-def add_annotation(ax, **kwargs):
+def add_annotation(ax: plt.Axes, **kwargs) -> None:
     """ Add a text annotation to a plot. """
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)

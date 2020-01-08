@@ -44,7 +44,7 @@ except (ImportError, ModuleNotFoundError):
     from utils import compare_arrays, st_one_of, st_raw_field
 
 
-def stencil_avg_defs(in_a: gtscript.Field[np.float64], out_a: gtscript.Field[np.float64]):
+def stencil_avg_defs(in_a: gtscript.Field["dtype"], out_a: gtscript.Field["dtype"]):
     from __externals__ import offi, offj
 
     with computation(PARALLEL), interval(...):
@@ -85,7 +85,7 @@ def test_avg(data):
     # test bed
     # ========================================
     decorator = gtscript.stencil(
-        backend, externals={"offi": offi, "offj": offj}, rebuild=False
+        backend, dtypes={"dtype": dtype}, externals={"offi": offi, "offj": offj}, rebuild=False
     )
     stencil_avg = decorator(stencil_avg_defs)
 

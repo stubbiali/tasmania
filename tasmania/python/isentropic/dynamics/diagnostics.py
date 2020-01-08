@@ -22,19 +22,18 @@
 #
 import numpy as np
 from sympl import DataArray
+from typing import Mapping, Optional, TYPE_CHECKING
 
 from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL, FORWARD, BACKWARD
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class IsentropicDiagnostics:
@@ -55,19 +54,19 @@ class IsentropicDiagnostics:
 
     def __init__(
         self,
-        grid,
-        physical_constants=None,
+        grid: "Grid",
+        physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -159,18 +158,13 @@ class IsentropicDiagnostics:
             "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
         }
 
-        # update the annotations for the field arguments of the definition functions
-        set_annotations(self._stencil_diagnostic_variables_defs, dtype)
-        set_annotations(self._stencil_density_and_temperature_defs, dtype)
-        set_annotations(self._stencil_montgomery_defs, dtype)
-        set_annotations(self._stencil_height_defs, dtype)
-
         # instantiate the underlying gt4py stencils
         self._stencil_diagnostic_variables = gtscript.stencil(
             definition=self._stencil_diagnostic_variables_defs,
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals=externals,
             **(backend_opts or {})
         )
@@ -179,6 +173,7 @@ class IsentropicDiagnostics:
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals=externals,
             **(backend_opts or {})
         )
@@ -187,6 +182,7 @@ class IsentropicDiagnostics:
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals=externals,
             **(backend_opts or {})
         )
@@ -195,11 +191,20 @@ class IsentropicDiagnostics:
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals=externals,
             **(backend_opts or {})
         )
 
-    def get_diagnostic_variables(self, s, pt, p, exn, mtg, h):
+    def get_diagnostic_variables(
+        self,
+        s: taz_types.gtstorage_t,
+        pt: float,
+        p: taz_types.gtstorage_t,
+        exn: taz_types.gtstorage_t,
+        mtg: taz_types.gtstorage_t,
+        h: taz_types.gtstorage_t,
+    ) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the pressure,
@@ -247,7 +252,9 @@ class IsentropicDiagnostics:
             exec_info=self._exec_info,
         )
 
-    def get_montgomery_potential(self, s, pt, mtg):
+    def get_montgomery_potential(
+        self, s: taz_types.gtstorage_t, pt: float, mtg: taz_types.gtstorage_t
+    ) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the Montgomery
@@ -284,7 +291,9 @@ class IsentropicDiagnostics:
             exec_info=self._exec_info,
         )
 
-    def get_height(self, s, pt, h):
+    def get_height(
+        self, s: taz_types.gtstorage_t, pt: float, h: taz_types.gtstorage_t
+    ) -> None:
         """
         With the help of the isentropic density and the upper boundary
         condition on the pressure distribution, diagnose the geometric
@@ -321,7 +330,14 @@ class IsentropicDiagnostics:
             exec_info=self._exec_info,
         )
 
-    def get_density_and_temperature(self, s, exn, h, rho, t):
+    def get_density_and_temperature(
+        self,
+        s: taz_types.gtstorage_t,
+        exn: taz_types.gtstorage_t,
+        h: taz_types.gtstorage_t,
+        rho: taz_types.gtstorage_t,
+        t: taz_types.gtstorage_t,
+    ) -> None:
         """
         With the help of the isentropic density and the geometric height
         of the interface levels, diagnose the air density and temperature.
@@ -358,17 +374,17 @@ class IsentropicDiagnostics:
 
     @staticmethod
     def _stencil_diagnostic_variables_defs(
-        in_theta: gtscript.Field[np.float64],
-        in_hs: gtscript.Field[np.float64],
-        in_s: gtscript.Field[np.float64],
-        inout_p: gtscript.Field[np.float64],
-        out_exn: gtscript.Field[np.float64],
-        inout_mtg: gtscript.Field[np.float64],
-        inout_h: gtscript.Field[np.float64],
+        in_theta: gtscript.Field["dtype"],
+        in_hs: gtscript.Field["dtype"],
+        in_s: gtscript.Field["dtype"],
+        inout_p: gtscript.Field["dtype"],
+        out_exn: gtscript.Field["dtype"],
+        inout_mtg: gtscript.Field["dtype"],
+        inout_h: gtscript.Field["dtype"],
         *,
         dz: float,
         pt: float
-    ):
+    ) -> None:
         from __externals__ import cp, g, pref, rd
 
         # retrieve the pressure
@@ -401,14 +417,14 @@ class IsentropicDiagnostics:
 
     @staticmethod
     def _stencil_montgomery_defs(
-        in_hs: gtscript.Field[np.float64],
-        in_s: gtscript.Field[np.float64],
-        inout_mtg: gtscript.Field[np.float64],
+        in_hs: gtscript.Field["dtype"],
+        in_s: gtscript.Field["dtype"],
+        inout_mtg: gtscript.Field["dtype"],
         *,
         dz: float,
         pt: float,
         theta_s: float
-    ):
+    ) -> None:
         from __externals__ import cp, g, pref, rd
 
         # retrieve the pressure
@@ -430,14 +446,14 @@ class IsentropicDiagnostics:
 
     @staticmethod
     def _stencil_height_defs(
-        in_theta: gtscript.Field[np.float64],
-        in_hs: gtscript.Field[np.float64],
-        in_s: gtscript.Field[np.float64],
-        inout_h: gtscript.Field[np.float64],
+        in_theta: gtscript.Field["dtype"],
+        in_hs: gtscript.Field["dtype"],
+        in_s: gtscript.Field["dtype"],
+        inout_h: gtscript.Field["dtype"],
         *,
         dz: float,
         pt: float
-    ):
+    ) -> None:
         from __externals__ import cp, g, rd, pref
 
         # retrieve the pressure
@@ -470,13 +486,13 @@ class IsentropicDiagnostics:
 
     @staticmethod
     def _stencil_density_and_temperature_defs(
-        in_theta: gtscript.Field[np.float64],
-        in_s: gtscript.Field[np.float64],
-        in_exn: gtscript.Field[np.float64],
-        in_h: gtscript.Field[np.float64],
-        out_rho: gtscript.Field[np.float64],
-        out_t: gtscript.Field[np.float64],
-    ):
+        in_theta: gtscript.Field["dtype"],
+        in_s: gtscript.Field["dtype"],
+        in_exn: gtscript.Field["dtype"],
+        in_h: gtscript.Field["dtype"],
+        out_rho: gtscript.Field["dtype"],
+        out_t: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import cp
 
         with computation(PARALLEL), interval(...):

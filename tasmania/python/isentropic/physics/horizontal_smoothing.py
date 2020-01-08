@@ -21,15 +21,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.framework.base_components import DiagnosticComponent
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -46,26 +46,26 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
 
     def __init__(
         self,
-        domain,
-        smooth_type,
-        smooth_coeff,
-        smooth_coeff_max,
-        smooth_damp_depth,
-        moist=False,
-        smooth_moist_coeff=None,
-        smooth_moist_coeff_max=None,
-        smooth_moist_damp_depth=None,
+        domain: "Domain",
+        smooth_type: str,
+        smooth_coeff: float,
+        smooth_coeff_max: float,
+        smooth_damp_depth: int,
+        moist: bool = False,
+        smooth_moist_coeff: Optional[float] = None,
+        smooth_moist_coeff_max: Optional[float] = None,
+        smooth_moist_damp_depth: Optional[int] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -187,7 +187,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -204,10 +204,10 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return self.input_properties
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
         in_s = state["air_isentropic_density"]
         in_su = state["x_momentum_isentropic"]
         in_sv = state["y_momentum_isentropic"]

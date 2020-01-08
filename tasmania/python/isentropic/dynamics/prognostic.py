@@ -22,14 +22,18 @@
 #
 import abc
 import numpy as np
+from typing import Optional, TYPE_CHECKING, Type, Union
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
-
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
+    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
+        IsentropicHorizontalFlux,
+        IsentropicMinimalHorizontalFlux,
+    )
 
 # convenient aliases
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -50,21 +54,21 @@ class IsentropicPrognostic(abc.ABC):
 
     def __init__(
         self,
-        horizontal_flux_class,
-        horizontal_flux_scheme,
-        grid,
-        hb,
-        moist,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        storage_shape,
-        managed_memory,
-    ):
+        horizontal_flux_class: "Union[Type[IsentropicHorizontalFlux], Type[IsentropicMinimalHorizontalFlux]]",
+        horizontal_flux_scheme: str,
+        grid: "Grid",
+        hb: "HorizontalBoundary",
+        moist: bool,
+        backend: str,
+        backend_opts: taz_types.options_dict_t,
+        build_info: taz_types.options_dict_t,
+        dtype: taz_types.dtype_t,
+        exec_info: taz_types.mutable_options_dict_t,
+        default_origin: taz_types.triplet_int_t,
+        rebuild: bool,
+        storage_shape: taz_types.triplet_int_t,
+        managed_memory: bool,
+    ) -> None:
         """
         Parameters
         ----------
@@ -158,16 +162,23 @@ class IsentropicPrognostic(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stages(self):
+    def stages(self) -> int:
         """
         Return
         ------
         int :
             The number of stages performed by the time-integration scheme.
         """
+        pass
 
     @abc.abstractmethod
-    def stage_call(self, stage, timestep, state, tendencies=None):
+    def stage_call(
+        self,
+        stage: int,
+        timestep: taz_types.timedelta_t,
+        state: taz_types.gtstorage_dict_t,
+        tendencies: Optional[taz_types.gtstorage_dict_t] = None,
+    ) -> taz_types.gtstorage_dict_t:
         """
         Perform a stage.
 
@@ -191,23 +202,23 @@ class IsentropicPrognostic(abc.ABC):
 
     @staticmethod
     def factory(
-        time_integration_scheme,
-        horizontal_flux_scheme,
-        grid,
-        hb,
-        moist=False,
+        time_integration_scheme: str,
+        horizontal_flux_scheme: str,
+        grid: "Grid",
+        hb: "HorizontalBoundary",
+        moist: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> "IsentropicPrognostic":
         """
         Static method returning an instance of the derived class implementing
         the time stepping scheme specified by `time_scheme`.
@@ -293,7 +304,7 @@ class IsentropicPrognostic(abc.ABC):
                 "{}.".format(time_integration_scheme, ",".join(available))
             )
 
-    def _stencils_allocate_outputs(self):
+    def _stencils_allocate_outputs(self) -> None:
         """
         Allocate the storages which collect the output fields calculated
         by the underlying gt4py stencils.

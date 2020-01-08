@@ -24,14 +24,15 @@ from copy import deepcopy
 import numpy as np
 from pandas import Timedelta
 from sympl import DataArray
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_dataarray_2d
 from tasmania.python.utils.utils import smaller_than as lt
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.grids.horizontal_grid import HorizontalGrid
 
 
 class Topography:
@@ -71,7 +72,13 @@ class Topography:
     *Journal of Atmospheric Sciences*, *54*:534-554.
     """
 
-    def __init__(self, topography_type, steady_profile, profile=None, **kwargs):
+    def __init__(
+        self,
+        topography_type: str,
+        steady_profile: DataArray,
+        profile: Optional[DataArray] = None,
+        **kwargs
+    ) -> None:
         """
         Parameters
         ----------
@@ -148,7 +155,7 @@ class Topography:
         self._profile.values[...] = self._fact * steady_profile.values[...]
 
     @property
-    def type(self):
+    def type(self) -> str:
         """
         Returns
         -------
@@ -158,7 +165,7 @@ class Topography:
         return self._type
 
     @property
-    def profile(self):
+    def profile(self) -> DataArray:
         """
         Returns
         -------
@@ -169,7 +176,7 @@ class Topography:
         return self._profile
 
     @property
-    def steady_profile(self):
+    def steady_profile(self) -> DataArray:
         """
         Returns
         -------
@@ -180,7 +187,7 @@ class Topography:
         return self._steady_profile
 
     @property
-    def kwargs(self):
+    def kwargs(self) -> Dict[str, Any]:
         """
         Returns
         -------
@@ -189,7 +196,7 @@ class Topography:
         """
         return self._kwargs
 
-    def update(self, time):
+    def update(self, time: taz_types.datetime_t) -> None:
         """
         Update topography at current simulation time.
 
@@ -208,7 +215,7 @@ class PhysicalTopography(Topography):
     Class which represents a possibly time-dependent topography.
     """
 
-    def __init__(self, grid, topography_type, **kwargs):
+    def __init__(self, grid: "HorizontalGrid", topography_type: str, **kwargs) -> None:
         """
         Parameters
         ----------
@@ -420,7 +427,12 @@ class NumericalTopography(Topography):
     over a *numerical* grid.
     """
 
-    def __init__(self, grid, phys_topography, boundary):
+    def __init__(
+        self,
+        grid: "HorizontalGrid",
+        phys_topography: Topography,
+        boundary: "HorizontalBoundary",
+    ) -> None:
         """
         Parameters
         ----------

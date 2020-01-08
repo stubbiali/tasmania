@@ -22,16 +22,18 @@
 #
 from sympl._core.base_components import TendencyChecker as SymplTendencyChecker
 
+from tasmania.python.utils import taz_types
+
 
 class SubsetTendencyChecker(SymplTendencyChecker):
     """
     Ensure that the input dictionary is a *subset* of `tendency_properties`.
     """
 
-    def __init__(self, component):
+    def __init__(self, component: taz_types.tendency_component_t) -> None:
         super().__init__(component)
 
-    def check_tendencies(self, tendency_dict):
+    def check_tendencies(self, tendency_dict: taz_types.properties_mapping_t) -> None:
         __tendency_dict = {
             key: value for key, value in tendency_dict.items() if key != "time"
         }
@@ -43,10 +45,10 @@ class SupersetTendencyChecker(SymplTendencyChecker):
     Ensure that the input dictionary is a *superset* of `tendency_properties`.
     """
 
-    def __init__(self, component):
+    def __init__(self, component: taz_types.tendency_component_t) -> None:
         super().__init__(component)
 
-    def check_tendencies(self, tendency_dict):
+    def check_tendencies(self, tendency_dict: taz_types.properties_mapping_t) -> None:
         __tendency_dict = {
             key: value for key, value in tendency_dict.items() if key != "time"
         }

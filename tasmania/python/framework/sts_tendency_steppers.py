@@ -30,12 +30,14 @@ from sympl import (
 )
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
+from typing import Optional, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_steppers import (
     get_increment,
     restore_tendency_units,
 )
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
@@ -43,7 +45,7 @@ from tasmania.python.utils.utils import assert_sequence
 
 
 class FakeComponent:
-    def __init__(self, real_component, property_name):
+    def __init__(self, real_component: "STSTendencyStepper", property_name: str) -> None:
         self.input_properties = getattr(real_component, property_name)
 
 
@@ -64,16 +66,16 @@ class STSTendencyStepper(abc.ABC):
 
     def __init__(
         self,
-        *args,
-        execution_policy="serial",
-        enforce_horizontal_boundary=False,
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        rebuild=False
-    ):
+        *args: taz_types.tendency_component_t,
+        execution_policy: str = "serial",
+        enforce_horizontal_boundary: bool = False,
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -173,7 +175,7 @@ class STSTendencyStepper(abc.ABC):
         self._out_state = None
 
     @property
-    def prognostic(self):
+    def prognostic(self) -> ConcurrentCoupling:
         """
         Return
         ------
@@ -182,7 +184,7 @@ class STSTendencyStepper(abc.ABC):
         """
         return self._prognostic
 
-    def _get_input_properties(self):
+    def _get_input_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -216,7 +218,7 @@ class STSTendencyStepper(abc.ABC):
 
         return return_dict
 
-    def _get_provisional_input_properties(self):
+    def _get_provisional_input_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -235,7 +237,7 @@ class STSTendencyStepper(abc.ABC):
 
         return return_dict
 
-    def _get_diagnostic_properties(self):
+    def _get_diagnostic_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -247,7 +249,7 @@ class STSTendencyStepper(abc.ABC):
         """
         return self._prognostic.diagnostic_properties
 
-    def _get_output_properties(self):
+    def _get_output_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -259,7 +261,12 @@ class STSTendencyStepper(abc.ABC):
         """
         return self._get_provisional_input_properties()
 
-    def __call__(self, state, prv_state, timestep):
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        prv_state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Step the model state.
 
@@ -298,18 +305,18 @@ class STSTendencyStepper(abc.ABC):
 
     @staticmethod
     def factory(
-        scheme,
-        *args,
-        execution_policy="serial",
-        enforce_horizontal_boundary=False,
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        rebuild=False,
+        scheme: str,
+        *args: taz_types.tendency_component_t,
+        execution_policy: str = "serial",
+        enforce_horizontal_boundary: bool = False,
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False,
         **kwargs
-    ):
+    ) -> "STSTendencyStepper":
         """
         Factory returning an instance of the desired derived class.
 
@@ -395,7 +402,12 @@ class STSTendencyStepper(abc.ABC):
         )
 
     @abc.abstractmethod
-    def _call(self, state, prv_state, timestep):
+    def _call(
+        self,
+        state: taz_types.dataarray_dict_t,
+        prv_state: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Step the model state. As this method is marked as abstract,
         its implementation is delegated to the derived classes.
@@ -418,7 +430,9 @@ class STSTendencyStepper(abc.ABC):
         """
         pass
 
-    def _allocate_output_state(self, state):
+    def _allocate_output_state(
+        self, state: taz_types.dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
         out_state = self._out_state or {}
 
         if not out_state:
@@ -632,7 +646,7 @@ class RungeKutta3WS(STSTendencyStepper):
             prv_state,
             k0,
             out=out_state,
-            field_properties=self.output_properties
+            field_properties=self.output_properties,
         )
         out_state["time"] = state["time"] + 1.0 / 3.0 * timestep
 
@@ -665,7 +679,7 @@ class RungeKutta3WS(STSTendencyStepper):
             prv_state,
             k1,
             out=out_state,
-            field_properties=self.output_properties
+            field_properties=self.output_properties,
         )
         out_state["time"] = state["time"] + 0.5 * timestep
 
@@ -697,7 +711,7 @@ class RungeKutta3WS(STSTendencyStepper):
             k2,
             timestep.total_seconds(),
             out=out_state,
-            field_properties=self.output_properties
+            field_properties=self.output_properties,
         )
         out_state["time"] = state["time"] + timestep
 

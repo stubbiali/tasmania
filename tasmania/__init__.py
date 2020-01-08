@@ -131,7 +131,7 @@ from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
-from tasmania.python.utils.types import *
+from tasmania.python.utils.taz_types import *
 from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray,

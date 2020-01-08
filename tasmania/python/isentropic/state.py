@@ -22,12 +22,14 @@
 #
 import numpy as np
 from sympl import DataArray
+from typing import Mapping, Optional, TYPE_CHECKING
 
 try:
     import cupy
 except (ImportError, ModuleNotFoundError):
     cupy = np
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.meteo_utils import convert_relative_humidity_to_water_vapor
 from tasmania.python.utils.storage_utils import (
@@ -37,10 +39,8 @@ from tasmania.python.utils.storage_utils import (
     zeros,
 )
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 _d_physical_constants = {
@@ -60,22 +60,22 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 def get_isentropic_state_from_brunt_vaisala_frequency(
-    grid,
-    time,
-    x_velocity,
-    y_velocity,
-    brunt_vaisala,
-    moist=False,
-    precipitation=False,
-    relative_humidity=0.5,
-    physical_constants=None,
+    grid: "Grid",
+    time: taz_types.datetime_t,
+    x_velocity: DataArray,
+    y_velocity: DataArray,
+    brunt_vaisala: DataArray,
+    moist: bool = False,
+    precipitation: bool = False,
+    relative_humidity: float = 0.5,
+    physical_constants: Optional[Mapping[str, DataArray]] = None,
     *,
-    backend="numpy",
-    dtype=datatype,
-    default_origin=None,
-    storage_shape=None,
-    managed_memory=False
-):
+    backend: str = "numpy",
+    dtype: taz_types.dtype_t = np.float64,
+    default_origin: Optional[taz_types.triplet_int_t] = None,
+    storage_shape: Optional[taz_types.triplet_int_t] = None,
+    managed_memory: bool = False
+) -> taz_types.dataarray_dict_t:
     """
     Compute a valid state for the isentropic model given
     the Brunt-Vaisala frequency.
@@ -366,26 +366,26 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
 
 def get_isentropic_state_from_temperature(
-    grid,
-    time,
-    x_velocity,
-    y_velocity,
-    background_temperature,
-    bubble_center_x=None,
-    bubble_center_y=None,
-    bubble_center_height=None,
-    bubble_radius=None,
-    bubble_maximum_perturbation=None,
-    moist=False,
-    precipitation=False,
-    physical_constants=None,
+    grid: "Grid",
+    time: taz_types.datetime_t,
+    x_velocity: DataArray,
+    y_velocity: DataArray,
+    background_temperature: DataArray,
+    bubble_center_x: Optional[DataArray] = None,
+    bubble_center_y: Optional[DataArray] = None,
+    bubble_center_height: Optional[DataArray] = None,
+    bubble_radius: Optional[DataArray] = None,
+    bubble_maximum_perturbation: Optional[DataArray] = None,
+    moist: bool = False,
+    precipitation: bool = False,
+    physical_constants: Optional[Mapping[str, DataArray]] = None,
     *,
-    backend="numpy",
-    dtype=datatype,
-    default_origin=None,
-    storage_shape=None,
-    managed_memory=False
-):
+    backend: str = "numpy",
+    dtype: taz_types.dtype_t = np.float64,
+    default_origin: Optional[taz_types.triplet_int_t] = None,
+    storage_shape: Optional[taz_types.triplet_int_t] = None,
+    managed_memory: bool = False
+) -> taz_types.dataarray_dict_t:
     """
     Compute a valid state for the isentropic model given
     the air temperature.

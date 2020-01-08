@@ -20,16 +20,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from typing import Optional, Tuple
+
 from gt4py import gtscript, __externals__
 
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import absolute
 
 
 @gtscript.function
-def get_upwind_flux(w, phi):
+def get_upwind_flux(
+    w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = w[0, 0, 0] * (phi[0, 0, 0] if w[0, 0, 0] > 0 else phi[0, 0, -1])
     return flux
 
@@ -43,7 +48,18 @@ class Upwind(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     @gtscript.function
-    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    def __call__(
+        dt: float,
+        dz: float,
+        w: taz_types.gtfield_t,
+        s: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
+
         from __externals__ import moist
 
         flux_s = get_upwind_flux(w=w, phi=s)
@@ -61,7 +77,9 @@ class Upwind(IsentropicMinimalVerticalFlux):
 
 
 @gtscript.function
-def get_centered_flux(w, phi):
+def get_centered_flux(
+    w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = w[0, 0, 0] * 0.5 * (phi[0, 0, 0] + phi[0, 0, -1])
     return flux
 
@@ -75,7 +93,18 @@ class Centered(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     @gtscript.function
-    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    def __call__(
+        dt: float,
+        dz: float,
+        w: taz_types.gtfield_t,
+        s: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
+
         from __externals__ import moist
 
         flux_s = get_centered_flux(w=w, phi=s)
@@ -93,7 +122,9 @@ class Centered(IsentropicMinimalVerticalFlux):
 
 
 @gtscript.function
-def get_third_order_upwind_flux(w, phi):
+def get_third_order_upwind_flux(
+    w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = w[0, 0, 0] / 12.0 * (
         7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] + phi[0, 0, 1])
     ) - absolute(w)[0, 0, 0] / 12.0 * (
@@ -114,7 +145,18 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     @gtscript.function
-    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    def __call__(
+        dt: float,
+        dz: float,
+        w: taz_types.gtfield_t,
+        s: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
+
         from __externals__ import moist
 
         flux_s = get_third_order_upwind_flux(w=w, phi=s)
@@ -132,7 +174,9 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
 
 
 @gtscript.function
-def get_fifth_order_upwind_flux(w, phi):
+def get_fifth_order_upwind_flux(
+    w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     flux = w[0, 0, 0] / 60.0 * (
         37.0 * (phi[0, 0, -1] + phi[0, 0, 0])
         - 8.0 * (phi[0, 0, -2] + phi[0, 0, 1])
@@ -157,7 +201,18 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
 
     @staticmethod
     @gtscript.function
-    def __call__(dt, dz, w, s, su, sv, sqv=None, sqc=None, sqr=None):
+    def __call__(
+        dt: float,
+        dz: float,
+        w: taz_types.gtfield_t,
+        s: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
+
         from __externals__ import moist
 
         flux_s = get_fifth_order_upwind_flux(w=w, phi=s)

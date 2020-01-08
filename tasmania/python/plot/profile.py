@@ -20,12 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from matplotlib import pyplot as plt
 import numpy as np
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_lineplot
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class LineProfile(Drawer):
@@ -39,19 +45,19 @@ class LineProfile(Drawer):
 
     def __init__(
         self,
-        grid,
-        field_name,
-        field_units,
-        x=None,
-        y=None,
-        z=None,
-        axis_name=None,
-        axis_units=None,
-        axis_x=None,
-        axis_y=None,
-        axis_z=None,
-        properties=None,
-    ):
+        grid: "Grid",
+        field_name: str,
+        field_units: str,
+        x: Optional[int] = None,
+        y: Optional[int] = None,
+        z: Optional[int] = None,
+        axis_name: Optional[str] = None,
+        axis_units: Optional[str] = None,
+        axis_x: Optional[int] = None,
+        axis_y: Optional[int] = None,
+        axis_z: Optional[int] = None,
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -150,7 +156,12 @@ class LineProfile(Drawer):
                     grid, axis_units, retriever, state, ax, **self.properties
                 )
 
-    def __call__(self, state, fig=None, ax=None):
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        fig: Optional[plt.Figure] = None,
+        ax: Optional[plt.Axes] = None,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Call operator generating the plot.
 
@@ -165,15 +176,22 @@ class LineProfile(Drawer):
 
         Returns
         -------
-        x : gt4py.storage.storage.Storage
+        x : numpy.ndarray
             1-D array gathering the x-coordinates of the plotted points.
-        y : gt4py.storage.storage.Storage
+        y : numpy.ndarray
             1-D array gathering the y-coordinates of the plotted points.
         """
         return self._slave(state, ax)
 
 
-def make_xplot(grid, axis_units, field_retriever, state, ax=None, **kwargs):
+def make_xplot(
+    grid: "Grid",
+    axis_units: str,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    ax: Optional[plt.Axes] = None,
+    **kwargs
+) -> Tuple[np.ndarray, np.ndarray]:
     y = np.squeeze(field_retriever(state))
     x = (
         to_units(grid.x, axis_units).values
@@ -187,7 +205,14 @@ def make_xplot(grid, axis_units, field_retriever, state, ax=None, **kwargs):
     return x, y
 
 
-def make_yplot(grid, axis_units, field_retriever, state, ax=None, **kwargs):
+def make_yplot(
+    grid: "Grid",
+    axis_units: str,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    ax: Optional[plt.Axes] = None,
+    **kwargs
+) -> Tuple[np.ndarray, np.ndarray]:
     y = np.squeeze(field_retriever(state))
     x = (
         to_units(grid.y, axis_units).values
@@ -201,7 +226,14 @@ def make_yplot(grid, axis_units, field_retriever, state, ax=None, **kwargs):
     return x, y
 
 
-def make_zplot(grid, axis_units, field_retriever, state, ax=None, **kwargs):
+def make_zplot(
+    grid: "Grid",
+    axis_units: str,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    ax: Optional[plt.Axes] = None,
+    **kwargs
+) -> Tuple[np.ndarray, np.ndarray]:
     x = np.squeeze(field_retriever(state))
     y = (
         to_units(grid.z, axis_units).values
@@ -215,7 +247,13 @@ def make_zplot(grid, axis_units, field_retriever, state, ax=None, **kwargs):
     return x, y
 
 
-def make_hplot(axis_retriever, field_retriever, state, ax=None, **kwargs):
+def make_hplot(
+    axis_retriever: DataRetriever,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    ax: Optional[plt.Axes] = None,
+    **kwargs
+) -> Tuple[np.ndarray, np.ndarray]:
     xv = np.squeeze(field_retriever(state))
     yv = np.squeeze(axis_retriever(state))
 

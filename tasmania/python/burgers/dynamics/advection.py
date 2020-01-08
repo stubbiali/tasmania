@@ -24,20 +24,21 @@ import abc
 from typing import Tuple
 
 from gt4py import gtscript
-from tasmania.python.utils import types
+
+from tasmania.python.utils import taz_types
 
 
 class BurgersAdvection(abc.ABC):
     """ A discretizer for the 2-D Burgers advection flux. """
 
-    extent = None
+    extent: int = 0
 
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
     def __call__(
-        dx: float, dy: float, u: types.field_t, v: types.field_t
-    ) -> "Tuple[types.field_t, types.field_t, types.field_t, types.field_t]":
+        dx: float, dy: float, u: taz_types.gtfield_t, v: taz_types.gtfield_t
+    ) -> "Tuple[taz_types.field_t, taz_types.field_t, taz_types.field_t, taz_types.field_t]":
         """
         Compute the accelerations due to advection.
 

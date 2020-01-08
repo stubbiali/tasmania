@@ -21,20 +21,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-from tasmania.python.grids.grid import Grid
-from tasmania.python.utils import types
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import positive
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class HorizontalVelocity:
@@ -46,14 +43,14 @@ class HorizontalVelocity:
 
     def __init__(
         self,
-        grid: Grid,
+        grid: "Grid",
         staggering: bool = True,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[types.options_dict_t] = None,
-        build_info: Optional[types.options_dict_t] = None,
-        dtype: types.dtype_t = datatype,
-        exec_info: Optional[types.mutable_options_dict_t] = None,
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         rebuild: bool = False
     ) -> None:
         """
@@ -115,11 +112,11 @@ class HorizontalVelocity:
 
     def get_momenta(
         self,
-        d: types.gtstorage_t,
-        u: types.gtstorage_t,
-        v: types.gtstorage_t,
-        du: types.gtstorage_t,
-        dv: types.gtstorage_t,
+        d: taz_types.gtstorage_t,
+        u: taz_types.gtstorage_t,
+        v: taz_types.gtstorage_t,
+        du: taz_types.gtstorage_t,
+        dv: taz_types.gtstorage_t,
     ) -> None:
         """
         Diagnose the horizontal momenta.
@@ -154,11 +151,11 @@ class HorizontalVelocity:
 
     def get_velocity_components(
         self,
-        d: types.gtstorage_t,
-        du: types.gtstorage_t,
-        dv: types.gtstorage_t,
-        u: types.gtstorage_t,
-        v: types.gtstorage_t,
+        d: taz_types.gtstorage_t,
+        du: taz_types.gtstorage_t,
+        dv: taz_types.gtstorage_t,
+        u: taz_types.gtstorage_t,
+        v: taz_types.gtstorage_t,
     ) -> None:
         """
         Diagnose the horizontal velocity components.
@@ -263,14 +260,14 @@ class WaterConstituent:
 
     def __init__(
         self,
-        grid: Grid,
+        grid: "Grid",
         clipping: bool = False,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[types.options_dict_t] = None,
-        build_info: Optional[types.options_dict_t] = None,
-        dtype: types.dtype_t = datatype,
-        exec_info: Optional[types.mutable_options_dict_t] = None,
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
         rebuild: bool = False
     ) -> None:
         """
@@ -318,7 +315,10 @@ class WaterConstituent:
         )
 
     def get_density_of_water_constituent(
-        self, d: types.gtstorage_t, q: types.gtstorage_t, dq: types.gtstorage_t
+        self,
+        d: taz_types.gtstorage_t,
+        q: taz_types.gtstorage_t,
+        dq: taz_types.gtstorage_t,
     ) -> None:
         """
         Diagnose the density of a water constituent.
@@ -347,7 +347,10 @@ class WaterConstituent:
         )
 
     def get_mass_fraction_of_water_constituent_in_air(
-        self, d: types.gtstorage_t, dq: types.gtstorage_t, q: types.gtstorage_t
+        self,
+        d: taz_types.gtstorage_t,
+        dq: taz_types.gtstorage_t,
+        q: taz_types.gtstorage_t,
     ) -> None:
         """
         Diagnose the mass fraction of a water constituent.

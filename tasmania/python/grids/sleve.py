@@ -32,11 +32,6 @@ from tasmania.python.utils.utils import (
     greater_or_equal_than as gt,
 )
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
-
 
 # Default numerical settings
 d_s1 = sympl.DataArray(8000.0, attrs={"units": "m"})
@@ -102,7 +97,7 @@ class SLEVE3d(Grid):
         s1=d_s1,
         s2=d_s2,
         physical_constants=None,
-        dtype=datatype,
+        dtype=np.float64,
     ):
         """
         Constructor.
@@ -172,7 +167,7 @@ class SLEVE3d(Grid):
         dtype : `obj`, optional
             Instance of :class:`data-type` specifying the data type for
             any :class:`gt4py.storage.storage.Storage` used within this class.
-            Defaults to :obj:`~tasmania.namelist.datatype`.
+            Defaults to :obj:`numpy.float64`.
 
         Raises
         ------

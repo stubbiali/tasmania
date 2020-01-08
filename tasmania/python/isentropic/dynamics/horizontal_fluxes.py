@@ -21,8 +21,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+from typing import Any, Dict, Optional, Tuple
 
 from gt4py import gtscript
+
+from tasmania.python.utils import taz_types
 
 
 class IsentropicHorizontalFlux(abc.ABC):
@@ -34,33 +37,33 @@ class IsentropicHorizontalFlux(abc.ABC):
     """
 
     # class attributes
-    extent = None
-    order = None
-    externals = None
+    extent: int = None
+    order: int = None
+    externals: Dict[str, Any] = None
 
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: taz_types.gtfield_t,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         """
         This method returns the :class:`gt4py.gtscript.Field`\s representing
         the x- and y-fluxes for all the conservative model variables.
@@ -139,9 +142,10 @@ class IsentropicHorizontalFlux(abc.ABC):
         flux_sqr_y : `gt4py.gtscript.Field`, optional
             The y-flux for the isentropic density of precipitation water.
         """
+        pass
 
     @staticmethod
-    def factory(scheme):
+    def factory(scheme: str) -> "IsentropicHorizontalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -202,14 +206,25 @@ class IsentropicNonconservativeHorizontalFlux(abc.ABC):
     """
 
     # class attributes
-    extent = None
-    order = None
-    externals = None
+    extent: int = None
+    order: int = None
+    externals: Dict[str, Any] = None
 
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
-    def __call__(dt, dx, dy, s, u, v, mtg, qv=None, qc=None, qr=None):
+    def __call__(
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        mtg: taz_types.gtfield_t,
+        qv: "Optional[taz_types.gtfield_t]" = None,
+        qc: "Optional[taz_types.gtfield_t]" = None,
+        qr: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         """
         Method returning the :class:`gt4py.gtscript.Field`\s representing the
         x- and y-fluxes for all the prognostic model variables.
@@ -266,9 +281,10 @@ class IsentropicNonconservativeHorizontalFlux(abc.ABC):
         flux_qr_y : `gt4py.gtscript.Field`, optional
             The y-flux for the mass fraction of precipitation water.
         """
+        pass
 
     @staticmethod
-    def factory(scheme):
+    def factory(scheme: str) -> "IsentropicNonconservativeHorizontalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -301,33 +317,33 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
     """
 
     # class attributes
-    extent = None
-    order = None
-    externals = None
+    extent: int = None
+    order: int = None
+    externals: Dict[str, Any] = None
 
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        mtg=None,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        mtg: "Optional[taz_types.gtfield_t]" = None,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         """
         This method returns the :class:`gt4py.gtscript.Field`\s representing
         the x- and y-fluxes for all the conservative model variables.
@@ -404,9 +420,10 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         flux_sqr_y : `gt4py.gtscript.Field`, optional
             The y-flux for the isentropic density of precipitation water.
         """
+        pass
 
     @staticmethod
-    def factory(scheme):
+    def factory(scheme: str) -> "IsentropicMinimalHorizontalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -467,33 +484,33 @@ class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
     """
 
     # class attributes
-    extent = None
-    order = None
-    externals = None
+    extent: int = None
+    order: int = None
+    externals: Dict[str, Any] = None
 
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
     def __call__(
-        dt,
-        dx,
-        dy,
-        s,
-        u,
-        v,
-        su,
-        sv,
-        ddmtg,
-        sqv=None,
-        sqc=None,
-        sqr=None,
-        s_tnd=None,
-        su_tnd=None,
-        sv_tnd=None,
-        qv_tnd=None,
-        qc_tnd=None,
-        qr_tnd=None,
-    ):
+        dt: float,
+        dx: float,
+        dy: float,
+        s: taz_types.gtfield_t,
+        u: taz_types.gtfield_t,
+        v: taz_types.gtfield_t,
+        su: taz_types.gtfield_t,
+        sv: taz_types.gtfield_t,
+        ddmtg: taz_types.gtfield_t,
+        sqv: "Optional[taz_types.gtfield_t]" = None,
+        sqc: "Optional[taz_types.gtfield_t]" = None,
+        sqr: "Optional[taz_types.gtfield_t]" = None,
+        s_tnd: "Optional[taz_types.gtfield_t]" = None,
+        su_tnd: "Optional[taz_types.gtfield_t]" = None,
+        sv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qv_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qc_tnd: "Optional[taz_types.gtfield_t]" = None,
+        qr_tnd: "Optional[taz_types.gtfield_t]" = None,
+    ) -> "Tuple[taz_types.gtfield_t, ...]":
         """
         This method returns the :class:`gt4py.gtscript.Field`\s representing
         the x- and y-fluxes for all the conservative model variables.
@@ -579,9 +596,10 @@ class IsentropicBoussinesqMinimalHorizontalFlux(abc.ABC):
         flux_sqr_y : `gt4py.storage.Storage`, optional
             The y-flux for the isentropic density of precipitation water.
         """
+        pass
 
     @staticmethod
-    def factory(scheme):
+    def factory(scheme: str) -> "IsentropicBoussinesqMinimalHorizontalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.

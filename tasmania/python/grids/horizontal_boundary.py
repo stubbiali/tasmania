@@ -22,8 +22,11 @@
 #
 import abc
 from copy import deepcopy
-from numpy import float64
+import numpy as np
+from sympl import DataArray
+from typing import Any, Dict, Optional, Sequence
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 
 
@@ -33,7 +36,9 @@ class HorizontalBoundary(abc.ABC):
     horizontal boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(
+        self, nx: int, ny: int, nb: int, backend: str, dtype: taz_types.dtype_t
+    ) -> None:
         """
         Parameters
         ----------
@@ -62,7 +67,7 @@ class HorizontalBoundary(abc.ABC):
         self._ref_state = None
 
     @property
-    def nx(self):
+    def nx(self) -> int:
         """
         Return
         ------
@@ -73,7 +78,7 @@ class HorizontalBoundary(abc.ABC):
         return self._nx
 
     @property
-    def ny(self):
+    def ny(self) -> int:
         """
         Return
         ------
@@ -84,7 +89,7 @@ class HorizontalBoundary(abc.ABC):
         return self._ny
 
     @property
-    def nb(self):
+    def nb(self) -> int:
         """
         Return
         ------
@@ -95,7 +100,7 @@ class HorizontalBoundary(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def ni(self):
+    def ni(self) -> int:
         """
         Return
         ------
@@ -107,7 +112,7 @@ class HorizontalBoundary(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def nj(self):
+    def nj(self) -> int:
         """
         Return
         ------
@@ -118,17 +123,18 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @property
-    def type(self):
+    def type(self) -> str:
         """
         Return
         ------
+        str :
             The string passed to :meth:`tasmania.HorizontalBoundary.factory`
             as `boundary_type` argument.
         """
         return self._type
 
     @type.setter
-    def type(self, type_str):
+    def type(self, type_str: str) -> None:
         """
         Parameters
         ----------
@@ -139,7 +145,7 @@ class HorizontalBoundary(abc.ABC):
         self._type = type_str
 
     @property
-    def kwargs(self):
+    def kwargs(self) -> Dict[str, Any]:
         """
         Return
         ------
@@ -149,7 +155,7 @@ class HorizontalBoundary(abc.ABC):
         return self._kwargs
 
     @property
-    def reference_state(self):
+    def reference_state(self) -> taz_types.dataarray_dict_t:
         """
         Return
         ------
@@ -160,7 +166,7 @@ class HorizontalBoundary(abc.ABC):
         return self._ref_state if self._ref_state is not None else {}
 
     @reference_state.setter
-    def reference_state(self, ref_state):
+    def reference_state(self, ref_state: taz_types.dataarray_dict_t) -> None:
         """
         Parameters
         ----------
@@ -181,7 +187,9 @@ class HorizontalBoundary(abc.ABC):
                 self._ref_state[name] = deepcopy_dataarray(ref_state[name])
 
     @abc.abstractmethod
-    def get_numerical_xaxis(self, paxis, dims=None):
+    def get_numerical_xaxis(
+        self, paxis: DataArray, dims: Optional[str] = None
+    ) -> DataArray:
         """
         Parameters
         ----------
@@ -202,7 +210,9 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_numerical_yaxis(self, paxis, dims=None):
+    def get_numerical_yaxis(
+        self, paxis: DataArray, dims: Optional[str] = None
+    ) -> DataArray:
         """
         Parameters
         ----------
@@ -223,7 +233,9 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_numerical_field(self, field, field_name=None):
+    def get_numerical_field(
+        self, field: taz_types.array_t, field_name: Optional[str] = None
+    ) -> np.ndarray:
         """
         Parameters
         ----------
@@ -239,7 +251,9 @@ class HorizontalBoundary(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_physical_xaxis(self, caxis, dims=None):
+    def get_physical_xaxis(
+        self, caxis: DataArray, dims: Optional[str] = None
+    ) -> DataArray:
         """
         Parameters
         ----------
@@ -260,7 +274,9 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_physical_yaxis(self, caxis, dims=None):
+    def get_physical_yaxis(
+        self, caxis: DataArray, dims: Optional[str] = None
+    ) -> DataArray:
         """
         Parameters
         ----------
@@ -281,7 +297,9 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_physical_field(self, field, field_name=None):
+    def get_physical_field(
+        self, field: taz_types.array_t, field_name: Optional[str] = None
+    ) -> np.ndarray:
         """
         Parameters
         ----------
@@ -298,8 +316,13 @@ class HorizontalBoundary(abc.ABC):
 
     @abc.abstractmethod
     def enforce_field(
-        self, field, field_name=None, field_units=None, time=None, grid=None
-    ):
+        self,
+        field: taz_types.array_t,
+        field_name: Optional[str] = None,
+        field_units: Optional[str] = None,
+        time: Optional[taz_types.datetime_t] = None,
+        grid: "Optional[NumericalGrid]" = None,
+    ) -> None:
         """
         Enforce the horizontal boundary conditions on the passed field,
         which is modified in-place.
@@ -318,7 +341,12 @@ class HorizontalBoundary(abc.ABC):
             The underlying numerical grid.
         """
 
-    def enforce_raw(self, state, field_properties=None, grid=None):
+    def enforce_raw(
+        self,
+        state: taz_types.array_dict_t,
+        field_properties: Optional[taz_types.properties_mapping_t] = None,
+        grid: "Optional[NumericalGrid]" = None,
+    ) -> None:
         """
         Enforce the horizontal boundary conditions on the passed state,
         which is modified in-place.
@@ -363,7 +391,12 @@ class HorizontalBoundary(abc.ABC):
                 grid=grid,
             )
 
-    def enforce(self, state, field_names=None, grid=None):
+    def enforce(
+        self,
+        state: taz_types.dataarray_dict_t,
+        field_names: Optional[Sequence[str]] = None,
+        grid: "Optional[NumericalGrid]" = None,
+    ) -> None:
         """
         Enforce the horizontal boundary conditions on the passed state,
         which is modified in-place.
@@ -407,8 +440,13 @@ class HorizontalBoundary(abc.ABC):
 
     @abc.abstractmethod
     def set_outermost_layers_x(
-        self, field, field_name=None, field_units=None, time=None, grid=None
-    ):
+        self,
+        field: taz_types.array_t,
+        field_name: Optional[str] = None,
+        field_units: Optional[str] = None,
+        time: Optional[taz_types.datetime_t] = None,
+        grid: "Optional[NumericalGrid]" = None,
+    ) -> None:
         """
         Set the outermost layers along the first horizontal dimension of a
         x-staggered field, which is modified in-place.
@@ -430,8 +468,13 @@ class HorizontalBoundary(abc.ABC):
 
     @abc.abstractmethod
     def set_outermost_layers_y(
-        self, field, field_name=None, field_units=None, time=None, grid=None
-    ):
+        self,
+        field: taz_types.array_t,
+        field_name: Optional[str] = None,
+        field_units: Optional[str] = None,
+        time: Optional[taz_types.datetime_t] = None,
+        grid: "Optional[NumericalGrid]" = None,
+    ) -> None:
         """
         Set the outermost layers along the second horizontal dimension of a
         x-staggered field, which is modified in-place.
@@ -452,7 +495,15 @@ class HorizontalBoundary(abc.ABC):
         pass
 
     @staticmethod
-    def factory(boundary_type, nx, ny, nb, backend="numpy", dtype=float64, **kwargs):
+    def factory(
+        boundary_type: str,
+        nx: int,
+        ny: int,
+        nb: int,
+        backend: str = "numpy",
+        dtype: taz_types.dtype_t = np.float64,
+        **kwargs
+    ) -> "HorizontalBoundary":
         """
         Parameters
         ----------

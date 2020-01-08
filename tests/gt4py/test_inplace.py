@@ -45,7 +45,7 @@ except (ImportError, ModuleNotFoundError):
 
 
 def stencil_sum_defs(
-    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
+    inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]
 ):
     with computation(PARALLEL), interval(...):
         inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
@@ -81,7 +81,7 @@ def test_sum(data):
     # ========================================
     # test bed
     # ========================================
-    decorator = gtscript.stencil(backend, rebuild=False)
+    decorator = gtscript.stencil(backend, dtypes={"dtype": dtype}, rebuild=False)
     stencil_sum = decorator(stencil_sum_defs)
 
     a_dc = deepcopy(a)

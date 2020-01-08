@@ -22,6 +22,7 @@
 #
 import numpy as np
 from sympl import DataArray
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript, __externals__
 
@@ -31,14 +32,12 @@ from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -47,13 +46,17 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 @gtscript.function
-def first_order_boundary(dz, w, phi):
+def first_order_boundary(
+    dz: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     out = (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 0] * phi[0, 0, 0]) / dz
     return out
 
 
 @gtscript.function
-def second_order_boundary(dz, w, phi):
+def second_order_boundary(
+    dz: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     out = (
         0.5
         * (
@@ -77,22 +80,22 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        flux_scheme="upwind",
-        moist=False,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
+        domain: "Domain",
+        flux_scheme: str = "upwind",
+        moist: bool = False,
+        tendency_of_air_potential_temperature_on_interface_levels: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -196,18 +199,18 @@ class IsentropicVerticalAdvection(TendencyComponent):
             "vflux_extent": self._vflux.extent,
             "vstaggering": self._stgz,
         }
-        set_annotations(self._stencil_defs, dtype)
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             externals=externals,
             rebuild=rebuild,
             **(backend_opts or {})
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -250,7 +253,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -276,10 +279,12 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t
+    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
         nb = self._vflux.extent
@@ -297,10 +302,6 @@ class IsentropicVerticalAdvection(TendencyComponent):
             in_qv = state[mfwv]
             in_qc = state[mfcw]
             in_qr = state[mfpw]
-
-        idx = in_w * 40 > 0.5
-        in_w[idx] = 0.5 / 40
-        print(in_w[:-1, :-1, :-1].max() * 40)
 
         # set the stencil's arguments
         stencil_args = {
@@ -348,23 +349,23 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_w: gtscript.Field[np.float64],
-        in_s: gtscript.Field[np.float64],
-        in_su: gtscript.Field[np.float64],
-        in_sv: gtscript.Field[np.float64],
-        out_s: gtscript.Field[np.float64],
-        out_su: gtscript.Field[np.float64],
-        out_sv: gtscript.Field[np.float64],
-        in_qv: gtscript.Field[np.float64] = None,
-        in_qc: gtscript.Field[np.float64] = None,
-        in_qr: gtscript.Field[np.float64] = None,
-        out_qv: gtscript.Field[np.float64] = None,
-        out_qc: gtscript.Field[np.float64] = None,
-        out_qr: gtscript.Field[np.float64] = None,
+        in_w: gtscript.Field["dtype"],
+        in_s: gtscript.Field["dtype"],
+        in_su: gtscript.Field["dtype"],
+        in_sv: gtscript.Field["dtype"],
+        out_s: gtscript.Field["dtype"],
+        out_su: gtscript.Field["dtype"],
+        out_sv: gtscript.Field["dtype"],
+        in_qv: gtscript.Field["dtype"] = None,
+        in_qc: gtscript.Field["dtype"] = None,
+        in_qr: gtscript.Field["dtype"] = None,
+        out_qv: gtscript.Field["dtype"] = None,
+        out_qc: gtscript.Field["dtype"] = None,
+        out_qr: gtscript.Field["dtype"] = None,
         *,
         dt: float = 0.0,
         dz: float
-    ):
+    ) -> None:
         from __externals__ import (
             compute_boundary,
             moist,
@@ -376,7 +377,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
         # interpolate the velocity on the interface levels
         with computation(FORWARD), interval(0, 1):
-                w = 0.0
+            w = 0.0
         with computation(PARALLEL), interval(1, None):
             if __INLINED(vstaggering):  # compile-time if
                 w = in_w

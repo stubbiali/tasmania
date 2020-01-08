@@ -47,13 +47,13 @@ def vflux(w, s, su, sv):
 
 
 def stencil_defs(
-    in_w: gtscript.Field[np.float64],
-    in_s: gtscript.Field[np.float64],
-    in_su: gtscript.Field[np.float64],
-    in_sv: gtscript.Field[np.float64],
-    out_s: gtscript.Field[np.float64],
-    out_su: gtscript.Field[np.float64],
-    out_sv: gtscript.Field[np.float64],
+    in_w: gtscript.Field["dtype"],
+    in_s: gtscript.Field["dtype"],
+    in_su: gtscript.Field["dtype"],
+    in_sv: gtscript.Field["dtype"],
+    out_s: gtscript.Field["dtype"],
+    out_su: gtscript.Field["dtype"],
+    out_sv: gtscript.Field["dtype"],
     *,
     dz: float
 ):
@@ -89,9 +89,11 @@ def stencil_defs(
 if __name__ == "__main__":
     backend = "numpy"
     vstaggering = True
+    dtype = np.float64
 
     decorator = gtscript.stencil(
         backend,
+        dtypes={"dtype": dtype},
         externals={
             "get_upwind_flux": get_upwind_flux,
             "vflux": vflux,
@@ -101,13 +103,13 @@ if __name__ == "__main__":
     )
     stencil = decorator(stencil_defs)
 
-    in_w = zeros((30, 30, 11), backend, np.float64)
-    in_s = zeros((30, 30, 11), backend, np.float64)
-    in_su = zeros((30, 30, 11), backend, np.float64)
-    in_sv = zeros((30, 30, 11), backend, np.float64)
-    out_s = zeros((30, 30, 11), backend, np.float64)
-    out_su = zeros((30, 30, 11), backend, np.float64)
-    out_sv = zeros((30, 30, 11), backend, np.float64)
+    in_w = zeros((30, 30, 11), backend, dtype)
+    in_s = zeros((30, 30, 11), backend, dtype)
+    in_su = zeros((30, 30, 11), backend, dtype)
+    in_sv = zeros((30, 30, 11), backend, dtype)
+    out_s = zeros((30, 30, 11), backend, dtype)
+    out_su = zeros((30, 30, 11), backend, dtype)
+    out_sv = zeros((30, 30, 11), backend, dtype)
     dz = 1.0
 
     stencil(

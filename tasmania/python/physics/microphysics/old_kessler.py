@@ -22,6 +22,7 @@
 #
 import numpy as np
 from sympl import DataArray
+from typing import Mapping, Optional, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript, __externals__
 
@@ -33,15 +34,13 @@ from tasmania.python.framework.base_components import (
     TendencyComponent,
 )
 from tasmania.python.physics.microphysics.utils import SedimentationFlux
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import get_storage_shape, zeros
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    from numpy import float32 as datatype
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -84,28 +83,28 @@ class KesslerMicrophysics(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type="numerical",
-        air_pressure_on_interface_levels=True,
-        tendency_of_air_potential_temperature_in_diagnostics=False,
-        rain_evaporation=True,
-        autoconversion_threshold=_d_a,
-        autoconversion_rate=_d_k1,
-        collection_rate=_d_k2,
-        saturation_vapor_pressure_formula="tetens",
-        physical_constants=None,
+        domain: "Domain",
+        grid_type: str = "numerical",
+        air_pressure_on_interface_levels: bool = True,
+        tendency_of_air_potential_temperature_in_diagnostics: bool = False,
+        rain_evaporation: bool = True,
+        autoconversion_threshold: DataArray = _d_a,
+        autoconversion_rate: DataArray = _d_k1,
+        collection_rate: DataArray = _d_k2,
+        saturation_vapor_pressure_formula: str = "tetens",
+        physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -244,9 +243,6 @@ class KesslerMicrophysics(TendencyComponent):
                 managed_memory=managed_memory,
             )
 
-        # update the annotations for the field arguments of the definition function
-        set_annotations(self._stencil_defs, dtype)
-
         # initialize the underlying gt4py stencil object
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
@@ -254,6 +250,7 @@ class KesslerMicrophysics(TendencyComponent):
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals={
                 "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
                 "beta": beta,
@@ -264,7 +261,7 @@ class KesslerMicrophysics(TendencyComponent):
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -303,7 +300,7 @@ class KesslerMicrophysics(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         grid = self._grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -333,7 +330,7 @@ class KesslerMicrophysics(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         if self._rain_evaporation and self._pttd:
             grid = self._grid
             dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
@@ -343,7 +340,9 @@ class KesslerMicrophysics(TendencyComponent):
         else:
             return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t
+    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -408,22 +407,22 @@ class KesslerMicrophysics(TendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_rho: gtscript.Field[np.float64],
-        in_p: gtscript.Field[np.float64],
-        in_ps: gtscript.Field[np.float64],
-        in_exn: gtscript.Field[np.float64],
-        in_qc: gtscript.Field[np.float64],
-        in_qr: gtscript.Field[np.float64],
-        out_qc_tnd: gtscript.Field[np.float64],
-        out_qr_tnd: gtscript.Field[np.float64],
-        in_qv: gtscript.Field[np.float64] = None,
-        out_qv_tnd: gtscript.Field[np.float64] = None,
-        out_theta_tnd: gtscript.Field[np.float64] = None,
+        in_rho: gtscript.Field["dtype"],
+        in_p: gtscript.Field["dtype"],
+        in_ps: gtscript.Field["dtype"],
+        in_exn: gtscript.Field["dtype"],
+        in_qc: gtscript.Field["dtype"],
+        in_qr: gtscript.Field["dtype"],
+        out_qc_tnd: gtscript.Field["dtype"],
+        out_qr_tnd: gtscript.Field["dtype"],
+        in_qv: gtscript.Field["dtype"] = None,
+        out_qv_tnd: gtscript.Field["dtype"] = None,
+        out_theta_tnd: gtscript.Field["dtype"] = None,
         *,
         a: float,
         k1: float,
         k2: float
-    ):
+    ) -> None:
         from __externals__ import (
             air_pressure_on_interface_levels,
             beta,
@@ -506,21 +505,21 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type="numerical",
-        air_pressure_on_interface_levels=True,
-        physical_constants=None,
+        domain: "Domain",
+        grid_type: str = "numerical",
+        air_pressure_on_interface_levels: bool = True,
+        physical_constants: Optional[Mapping[str, DataArray]] = None,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -615,9 +614,6 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             managed_memory=managed_memory,
         )
 
-        # update the annotations for the field arguments of the definition function
-        set_annotations(self._stencil_defs, dtype)
-
         # initialize the underlying gt4py stencil object
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
@@ -625,6 +621,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals={
                 "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
                 "beta": beta,
@@ -635,7 +632,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
         dims_on_interface_levels = (
@@ -664,7 +661,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -678,7 +675,7 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -714,14 +711,14 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_p: gtscript.Field[np.float64],
-        in_ps: gtscript.Field[np.float64],
-        in_t: gtscript.Field[np.float64],
-        in_qv: gtscript.Field[np.float64],
-        in_qc: gtscript.Field[np.float64],
-        out_qv: gtscript.Field[np.float64],
-        out_qc: gtscript.Field[np.float64],
-    ):
+        in_p: gtscript.Field["dtype"],
+        in_ps: gtscript.Field["dtype"],
+        in_t: gtscript.Field["dtype"],
+        in_qv: gtscript.Field["dtype"],
+        in_qc: gtscript.Field["dtype"],
+        out_qv: gtscript.Field["dtype"],
+        out_qc: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import air_pressure_on_interface_levels, beta, cp, lhvw
 
         with computation(PARALLEL), interval(...):
@@ -759,19 +756,19 @@ class KesslerFallVelocity(DiagnosticComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type="numerical",
+        domain: "Domain",
+        grid_type: str = "numerical",
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -825,19 +822,18 @@ class KesslerFallVelocity(DiagnosticComponent):
             managed_memory=managed_memory,
         )
 
-        set_annotations(self._stencil_defs, dtype)
-
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             name=self.__class__.__name__,
             backend=backend,
             build_info=build_info,
+            dtypes={"dtype": dtype},
             rebuild=rebuild,
             **(backend_opts or {})
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -851,14 +847,14 @@ class KesslerFallVelocity(DiagnosticComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {"raindrop_fall_velocity": {"dims": dims, "units": "m s^-1"}}
 
         return return_dict
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_rho = state["air_density"]
@@ -882,11 +878,11 @@ class KesslerFallVelocity(DiagnosticComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_rho: gtscript.Field[np.float64],
-        in_rho_s: gtscript.Field[np.float64],
-        in_qr: gtscript.Field[np.float64],
-        out_vt: gtscript.Field[np.float64],
-    ):
+        in_rho: gtscript.Field["dtype"],
+        in_rho_s: gtscript.Field["dtype"],
+        in_qr: gtscript.Field["dtype"],
+        out_vt: gtscript.Field["dtype"],
+    ) -> None:
         with computation(PARALLEL), interval(...):
             out_vt = (
                 36.34
@@ -903,22 +899,22 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type="numerical",
-        sedimentation_flux_scheme="first_order_upwind",
-        maximum_vertical_cfl=0.975,
+        domain: "Domain",
+        grid_type: str = "numerical",
+        sedimentation_flux_scheme: str = "first_order_upwind",
+        maximum_vertical_cfl: float = 0.975,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -981,14 +977,13 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             managed_memory=managed_memory,
         )
 
-        set_annotations(self._stencil_defs, dtype)
-
         self._stencil = gtscript.stencil(
             definition=self._stencil_defs,
             name=self.__class__.__name__,
             backend=backend,
             build_info=build_info,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals={
                 "sflux": sflux.__call__,
                 "sflux_extent": sflux.nb,
@@ -998,7 +993,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_z = (g.x.dims[0], g.y.dims[0], g.z_on_interface_levels.dims[0])
@@ -1014,7 +1009,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         }
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
 
@@ -1026,10 +1021,12 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state, timestep):
+    def array_call(
+        self, state: taz_types.gtstorage_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nbh = self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
 
@@ -1062,12 +1059,12 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
     @staticmethod
     def _stencil_defs(
-        in_rho: gtscript.Field[np.float64],
-        in_h: gtscript.Field[np.float64],
-        in_qr: gtscript.Field[np.float64],
-        in_vt: gtscript.Field[np.float64],
-        out_qr: gtscript.Field[np.float64],
-    ):
+        in_rho: gtscript.Field["dtype"],
+        in_h: gtscript.Field["dtype"],
+        in_qr: gtscript.Field["dtype"],
+        in_vt: gtscript.Field["dtype"],
+        out_qr: gtscript.Field["dtype"],
+    ) -> None:
         from __externals__ import sflux, sflux_extent
 
         with computation(FORWARD), interval(0, None):

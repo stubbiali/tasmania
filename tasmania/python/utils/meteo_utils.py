@@ -23,6 +23,7 @@
 from copy import deepcopy
 import numpy as np
 from sympl import DataArray
+from typing import Mapping, Optional, TYPE_CHECKING, Tuple
 
 try:
     import cupy as cp
@@ -31,13 +32,12 @@ except (ImportError, ModuleNotFoundError):
 
 import gt4py as gt
 
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 _d_physical_constants = {
@@ -51,15 +51,15 @@ _d_physical_constants = {
 
 
 def get_isothermal_isentropic_analytical_solution(
-    grid,
-    x_velocity_initial,
-    temperature,
-    mountain_height,
-    mountain_width,
-    x_staggered=True,
-    z_staggered=False,
-    physical_constants=None,
-):
+    grid: "Grid",
+    x_velocity_initial: DataArray,
+    temperature: DataArray,
+    mountain_height: DataArray,
+    mountain_width: DataArray,
+    x_staggered: bool = True,
+    z_staggered: bool = False,
+    physical_constants: Optional[Mapping[str, DataArray]] = None,
+) -> Tuple[DataArray, DataArray]:
     """
     Get the analytical expression of a two-dimensional, hydrostatic, isentropic
     and isothermal flow over an isolated 'Switch of Agnesi' mountain.
@@ -198,7 +198,9 @@ def get_isothermal_isentropic_analytical_solution(
     return u, w
 
 
-def convert_relative_humidity_to_water_vapor(method, p, t, rh):
+def convert_relative_humidity_to_water_vapor(
+    method: str, p: DataArray, t: DataArray, rh: DataArray
+) -> taz_types.array_t:
     """
     Convert relative humidity to water vapor mixing ratio.
 
@@ -263,7 +265,7 @@ def convert_relative_humidity_to_water_vapor(method, p, t, rh):
     return qv
 
 
-def tetens_formula(t):
+def tetens_formula(t: taz_types.array_t) -> taz_types.array_t:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Tetens formula.
@@ -292,7 +294,7 @@ def tetens_formula(t):
     return e
 
 
-def goff_gratch_formula(t):
+def goff_gratch_formula(t: taz_types.array_t) -> taz_types.array_t:
     """
     Compute the saturation vapor pressure over water at a given temperature,
     according to the Goff-Gratch formula.

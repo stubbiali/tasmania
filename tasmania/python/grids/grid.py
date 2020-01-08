@@ -22,19 +22,21 @@
 #
 import math
 import numpy as np
-import sympl
+from sympl import DataArray
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from tasmania.python.grids.topography import PhysicalTopography, NumericalTopography
 from tasmania.python.grids.horizontal_grid import (
     PhysicalHorizontalGrid,
     NumericalHorizontalGrid,
 )
+from tasmania.python.grids.topography import PhysicalTopography, NumericalTopography
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.utils import smaller_than as lt, smaller_or_equal_than as le
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
+    from tasmania.python.grids.topography import Topography
+    from tasmania.python.grids.horizontal_grid import HorizontalGrid
 
 
 class Grid:
@@ -66,7 +68,14 @@ class Grid:
     the vertical grid points are ordered from the top of the domain to the surface.
     """
 
-    def __init__(self, grid_xy, z, z_on_interface_levels, z_interface, topography):
+    def __init__(
+        self,
+        grid_xy: "HorizontalGrid",
+        z: DataArray,
+        z_on_interface_levels: DataArray,
+        z_interface: DataArray,
+        topography: "Topography",
+    ) -> None:
         """ 
         Parameters
         ----------
@@ -93,20 +102,20 @@ class Grid:
         self._nz = z.values.shape[0]
         dz_v = math.fabs(self._zhl.values[0] - self._zhl.values[-1]) / self._nz
         dz_v = 1.0 if dz_v == 0.0 else dz_v
-        self._dz = sympl.DataArray(dz_v, name="dz", attrs={"units": z.attrs["units"]})
+        self._dz = DataArray(dz_v, name="dz", attrs={"units": z.attrs["units"]})
 
     @property
-    def grid_xy(self):
+    def grid_xy(self) -> "HorizontalGrid":
         """
         Return
         ------
-        tasmania.PhysicalHorizontalGrid :
-            The underlying physical horizontal grid.
+        tasmania.HorizontalGrid :
+            The underlying horizontal grid.
         """
         return self._grid_xy
 
     @property
-    def x(self):
+    def x(self) -> DataArray:
         """
         Returns
         -------
@@ -117,7 +126,7 @@ class Grid:
         return self._grid_xy.x
 
     @property
-    def x_at_u_locations(self):
+    def x_at_u_locations(self) -> DataArray:
         """
         Returns
         -------
@@ -128,7 +137,7 @@ class Grid:
         return self._grid_xy.x_at_u_locations
 
     @property
-    def nx(self):
+    def nx(self) -> int:
         """
         Returns
         -------
@@ -139,7 +148,7 @@ class Grid:
         return self._grid_xy.nx
 
     @property
-    def dx(self):
+    def dx(self) -> DataArray:
         """
         Returns
         -------
@@ -150,7 +159,7 @@ class Grid:
         return self._grid_xy.dx
 
     @property
-    def y(self):
+    def y(self) -> DataArray:
         """
         Returns
         -------
@@ -161,7 +170,7 @@ class Grid:
         return self._grid_xy.y
 
     @property
-    def y_at_v_locations(self):
+    def y_at_v_locations(self) -> DataArray:
         """
         Returns
         -------
@@ -172,7 +181,7 @@ class Grid:
         return self._grid_xy.y_at_v_locations
 
     @property
-    def ny(self):
+    def ny(self) -> int:
         """
         Returns
         -------
@@ -183,7 +192,7 @@ class Grid:
         return self._grid_xy.ny
 
     @property
-    def dy(self):
+    def dy(self) -> DataArray:
         """
         Returns
         -------
@@ -194,7 +203,7 @@ class Grid:
         return self._grid_xy.dy
 
     @property
-    def z(self):
+    def z(self) -> DataArray:
         """
         Return
         ------
@@ -204,7 +213,7 @@ class Grid:
         return self._z
 
     @property
-    def z_on_interface_levels(self):
+    def z_on_interface_levels(self) -> DataArray:
         """
         Return
         ------
@@ -214,7 +223,7 @@ class Grid:
         return self._zhl
 
     @property
-    def nz(self):
+    def nz(self) -> int:
         """
         Return
         ------
@@ -224,7 +233,7 @@ class Grid:
         return self._nz
 
     @property
-    def dz(self):
+    def dz(self) -> DataArray:
         """
         Return
         ------
@@ -235,7 +244,7 @@ class Grid:
         return self._dz
 
     @property
-    def z_interface(self):
+    def z_interface(self) -> DataArray:
         """
         Return
         ------
@@ -247,16 +256,16 @@ class Grid:
         return self._zi
 
     @property
-    def topography(self):
+    def topography(self) -> "Topography":
         """
         Return
         ------
-        tasmania.PhysicalTopography :
-            The topography defined over the underlying physical grid.
+        tasmania.Topography :
+            The topography defined over the underlying horizontal grid.
         """
         return self._topo
 
-    def update_topography(self, time):
+    def update_topography(self, time: taz_types.datetime_t) -> None:
         """
         Update the underlying (time-dependent) topography.
 
@@ -276,17 +285,17 @@ class PhysicalGrid(Grid):
 
     def __init__(
         self,
-        domain_x,
-        nx,
-        domain_y,
-        ny,
-        domain_z,
-        nz,
-        z_interface=None,
-        topography_type="flat_terrain",
-        topography_kwargs=None,
-        dtype=datatype,
-    ):
+        domain_x: DataArray,
+        nx: int,
+        domain_y: DataArray,
+        ny: int,
+        domain_z: DataArray,
+        nz: int,
+        z_interface: Optional[DataArray] = None,
+        topography_type: str = "flat_terrain",
+        topography_kwargs: Dict[str, Any] = None,
+        dtype: taz_types.dtype_t = np.float64,
+    ) -> None:
         """
         Parameters
         ----------
@@ -342,7 +351,7 @@ class PhysicalGrid(Grid):
 
         # z-coordinates of the half-levels
         zhl_v = np.linspace(values_z[0], values_z[1], nz + 1, dtype=dtype)
-        zhl = sympl.DataArray(
+        zhl = DataArray(
             zhl_v,
             coords=[zhl_v],
             dims=dims_zhl,
@@ -352,13 +361,11 @@ class PhysicalGrid(Grid):
 
         # z-coordinates of the main-levels
         z_v = 0.5 * (zhl_v[:-1] + zhl_v[1:])
-        z = sympl.DataArray(
-            z_v, coords=[z_v], dims=dims_z, name="z", attrs={"units": units_z}
-        )
+        z = DataArray(z_v, coords=[z_v], dims=dims_z, name="z", attrs={"units": units_z})
 
         # z-interface
         if z_interface is None:
-            zi = sympl.DataArray(values_z[0], attrs={"units": units_z})
+            zi = DataArray(values_z[0], attrs={"units": units_z})
         else:
             zi = z_interface.to_units(units_z)
 
@@ -397,7 +404,7 @@ class NumericalGrid(Grid):
     three-dimensional *numerical* grid.
     """
 
-    def __init__(self, phys_grid, boundary):
+    def __init__(self, phys_grid: PhysicalGrid, boundary: "HorizontalBoundary") -> None:
         """
         Parameters
         ----------

@@ -262,12 +262,13 @@ def test_precipitation(data):
 
 
 class WrappingStencil:
-    def __init__(self, core, backend, rebuild):
+    def __init__(self, core, backend, dtype, rebuild):
         self.core = core
         decorator = gtscript.stencil(
             backend,
             name=core.__class__.__name__,
             rebuild=rebuild,
+            dtypes={"dtype": dtype},
             externals={"core": core.__call__, "extent": core.nb},
         )
         self.stencil = decorator(self.stencil_defs)
@@ -286,11 +287,11 @@ class WrappingStencil:
 
     @staticmethod
     def stencil_defs(
-        rho: gtscript.Field[np.float64],
-        h: gtscript.Field[np.float64],
-        qr: gtscript.Field[np.float64],
-        vt: gtscript.Field[np.float64],
-        dfdz: gtscript.Field[np.float64],
+        rho: gtscript.Field["dtype"],
+        h: gtscript.Field["dtype"],
+        qr: gtscript.Field["dtype"],
+        vt: gtscript.Field["dtype"],
+        dfdz: gtscript.Field["dtype"],
     ):
         from __externals__ import core, extent
 
@@ -435,7 +436,7 @@ def test_sedimentation_flux(data):
     core = SedimentationFlux.factory(flux_type)
     assert isinstance(core, flux_properties[flux_type]["type"])
 
-    ws = WrappingStencil(core, backend, True)
+    ws = WrappingStencil(core, backend, dtype, True)
     ws(rho, h, qr, vt, dfdz)
 
     dfdz_val = flux_properties[flux_type]["validation"](

@@ -39,7 +39,7 @@ from tasmania.python.framework._base import (
     BaseDiagnosticComponentComposite,
 )
 from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
-from tasmania.python.utils import types
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_t2d,
@@ -99,19 +99,19 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
     def __init__(
         self,
         *args: Union[
-            types.diagnostic_component_t,
-            types.tendency_component_t,
-            types.promoter_component_t,
+            taz_types.diagnostic_component_t,
+            taz_types.tendency_component_t,
+            taz_types.promoter_component_t,
         ],
         execution_policy: str = "serial",
         gt_powered: bool = False,
         backend: str = "numpy",
-        backend_opts: Optional[types.options_dict_t] = None,
-        build_info: Optional[types.options_dict_t] = None,
-        dtype: types.dtype_t = np.float64,
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
         rebuild: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -201,7 +201,7 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
             rebuild=rebuild,
         )
 
-    def _init_input_properties(self) -> types.properties_dict_t:
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
         t2d_type = Tendency2Diagnostic
         components_list = []
         for component in self.component_list:
@@ -216,11 +216,11 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
             )
         return get_input_properties(components_list)
 
-    def _init_tendency_properties(self) -> types.properties_dict_t:
+    def _init_tendency_properties(self) -> taz_types.properties_dict_t:
         t2d_type = Tendency2Diagnostic
         return get_tendency_properties(self.component_list, t2d_type)
 
-    def _init_diagnostic_properties(self) -> types.properties_dict_t:
+    def _init_diagnostic_properties(self) -> taz_types.properties_dict_t:
         return combine_component_properties(self.component_list, "diagnostic_properties")
 
     @property
@@ -228,9 +228,9 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         self
     ) -> Tuple[
         Union[
-            types.diagnostic_component_t,
-            types.tendency_component_t,
-            types.promoter_component_t,
+            taz_types.diagnostic_component_t,
+            taz_types.tendency_component_t,
+            taz_types.promoter_component_t,
         ]
     ]:
         """
@@ -242,8 +242,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return self._component_list
 
     def __call__(
-        self, state: types.dataarray_dict_t, timestep: types.timedelta_t
-    ) -> Tuple[types.dataarray_dict_t, types.dataarray_dict_t]:
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Execute the wrapped components to calculate tendencies and retrieve
         diagnostics with the help of the input state.
@@ -275,8 +275,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return tendencies, diagnostics
 
     def _call_serial(
-        self, state: types.dataarray_dict_t, timestep: types.timedelta_t
-    ) -> Tuple[types.dataarray_dict_t, types.dataarray_dict_t]:
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """ Process the components in 'serial' runtime mode. """
         aux_state = {}
         aux_state.update(state)
@@ -319,8 +319,8 @@ class ConcurrentCoupling(BaseConcurrentCoupling):
         return out_tendencies, out_diagnostics
 
     def _call_asparallel(
-        self, state: types.dataarray_dict_t, timestep: types.timedelta_t
-    ) -> Tuple[types.dataarray_dict_t, types.dataarray_dict_t]:
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """ Process the components in 'as_parallel' runtime mode. """
         out_tendencies = {}
         out_diagnostics = {}

@@ -20,12 +20,18 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from matplotlib import pyplot as plt
 import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import make_contourf
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.utils import to_units
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class Contourf(Drawer):
@@ -36,26 +42,26 @@ class Contourf(Drawer):
 
     def __init__(
         self,
-        grid,
-        field_name,
-        field_units,
-        x=None,
-        y=None,
-        z=None,
-        xaxis_name=None,
-        xaxis_units=None,
-        xaxis_y=None,
-        xaxis_z=None,
-        yaxis_name=None,
-        yaxis_units=None,
-        yaxis_x=None,
-        yaxis_z=None,
-        zaxis_name=None,
-        zaxis_units=None,
-        zaxis_x=None,
-        zaxis_y=None,
-        properties=None,
-    ):
+        grid: "Grid",
+        field_name: str,
+        field_units: str,
+        x: Optional[int] = None,
+        y: Optional[int] = None,
+        z: Optional[int] = None,
+        xaxis_name: Optional[str] = None,
+        xaxis_units: Optional[str] = None,
+        xaxis_y: Optional[int] = None,
+        xaxis_z: Optional[int] = None,
+        yaxis_name: Optional[str] = None,
+        yaxis_units: Optional[str] = None,
+        yaxis_x: Optional[int] = None,
+        yaxis_z: Optional[int] = None,
+        zaxis_name: Optional[str] = None,
+        zaxis_units: Optional[str] = None,
+        zaxis_x: Optional[int] = None,
+        zaxis_y: Optional[int] = None,
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -235,7 +241,9 @@ class Contourf(Drawer):
                         **self.properties
                     )
 
-    def __call__(self, state, fig, ax):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+    ) -> None:
         """
         Call operator generating the contourf plot.
         """
@@ -243,8 +251,15 @@ class Contourf(Drawer):
 
 
 def make_contourf_xy(
-    grid, xaxis_units, yaxis_units, field_retriever, state, fig, ax, **kwargs
-):
+    grid: "Grid",
+    xaxis_units: str,
+    yaxis_units: str,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     field = np.squeeze(field_retriever(state))
 
     xv = (
@@ -264,8 +279,15 @@ def make_contourf_xy(
 
 
 def make_contourf_xz(
-    grid, xaxis_units, zaxis_units, field_retriever, state, fig, ax, **kwargs
-):
+    grid: "Grid",
+    xaxis_units: str,
+    zaxis_units: str,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     field = np.squeeze(field_retriever(state))
 
     xv = (
@@ -285,8 +307,15 @@ def make_contourf_xz(
 
 
 def make_contourf_xh(
-    grid, xaxis_units, zaxis_retriever, field_retriever, state, fig, ax, **kwargs
-):
+    grid: "Grid",
+    xaxis_units: str,
+    zaxis_retriever: DataRetriever,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     field = np.squeeze(field_retriever(state))
 
     zv = np.squeeze(zaxis_retriever(state))
@@ -310,8 +339,15 @@ def make_contourf_xh(
 
 
 def make_contourf_yz(
-    grid, yaxis_units, zaxis_units, field_retriever, state, fig, ax, **kwargs
-):
+    grid: "Grid",
+    yaxis_units: str,
+    zaxis_units: str,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     field = np.squeeze(field_retriever(state))
 
     yv = (
@@ -331,8 +367,15 @@ def make_contourf_yz(
 
 
 def make_contourf_yh(
-    grid, yaxis_units, zaxis_retriever, field_retriever, state, fig, ax, **kwargs
-):
+    grid: "Grid",
+    yaxis_units: str,
+    zaxis_retriever: DataRetriever,
+    field_retriever: DataRetriever,
+    state: taz_types.dataarray_dict_t,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     field = np.squeeze(field_retriever(state))
 
     zv = np.squeeze(zaxis_retriever(state))

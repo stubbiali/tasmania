@@ -49,7 +49,7 @@ def absolute(phi):
     return phi if phi > 0 else -phi
 
 
-def stencil_defs(in_a: gtscript.Field[np.float64], out_a: gtscript.Field[np.float64]):
+def stencil_defs(in_a: gtscript.Field["dtype"], out_a: gtscript.Field["dtype"]):
     from __externals__ import absolute
 
     with computation(PARALLEL), interval(...):
@@ -92,6 +92,7 @@ def test(data):
         definition=stencil_defs,
         backend=backend,
         rebuild=False,
+        dtypes={"dtype": dtype},
         externals={"absolute": absolute},
     )
 

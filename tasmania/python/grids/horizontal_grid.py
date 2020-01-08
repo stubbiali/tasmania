@@ -21,12 +21,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-import sympl
+from sympl import DataArray
+from typing import Optional, TYPE_CHECKING
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
 class HorizontalGrid:
@@ -39,7 +40,13 @@ class HorizontalGrid:
     in which case :math:`y \equiv \phi`.
     """
 
-    def __init__(self, x, y, x_at_u_locations=None, y_at_v_locations=None):
+    def __init__(
+        self,
+        x: DataArray,
+        y: DataArray,
+        x_at_u_locations: Optional[DataArray] = None,
+        y_at_v_locations: Optional[DataArray] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -71,7 +78,7 @@ class HorizontalGrid:
         # x-spacing
         dx_v = 1.0 if nx == 1 else (x.values[-1] - x.values[0]) / (nx - 1)
         dx_v = dx_v if dx_v != 0.0 else 1.0
-        self._dx = sympl.DataArray(dx_v, name="dx", attrs={"units": x.attrs["units"]})
+        self._dx = DataArray(dx_v, name="dx", attrs={"units": x.attrs["units"]})
 
         # x-coordinates of the x-staggered points
         if x_at_u_locations is not None:
@@ -80,7 +87,7 @@ class HorizontalGrid:
             xu_v = np.linspace(
                 x.values[0] - 0.5 * dx_v, x.values[-1] + 0.5 * dx_v, nx + 1, dtype=dtype
             )
-            self._xu = sympl.DataArray(
+            self._xu = DataArray(
                 xu_v,
                 coords=[xu_v],
                 dims=(x.dims[0] + "_at_u_locations"),
@@ -98,7 +105,7 @@ class HorizontalGrid:
         # y-spacing
         dy_v = 1.0 if ny == 1 else (y.values[-1] - y.values[0]) / (ny - 1)
         dy_v = dy_v if dy_v != 0.0 else 1.0
-        self._dy = sympl.DataArray(dy_v, name="dy", attrs={"units": y.attrs["units"]})
+        self._dy = DataArray(dy_v, name="dy", attrs={"units": y.attrs["units"]})
 
         # y-coordinates of the y-staggered points
         if y_at_v_locations is not None:
@@ -107,7 +114,7 @@ class HorizontalGrid:
             yv_v = np.linspace(
                 y.values[0] - 0.5 * dy_v, y.values[-1] + 0.5 * dy_v, ny + 1, dtype=dtype
             )
-            self._yv = sympl.DataArray(
+            self._yv = DataArray(
                 yv_v,
                 coords=[yv_v],
                 dims=(y.dims[0] + "_at_v_locations"),
@@ -116,7 +123,7 @@ class HorizontalGrid:
             )
 
     @property
-    def x(self):
+    def x(self) -> DataArray:
         """
         Returns
         -------
@@ -127,7 +134,7 @@ class HorizontalGrid:
         return self._x
 
     @property
-    def x_at_u_locations(self):
+    def x_at_u_locations(self) -> DataArray:
         """
         Returns
         -------
@@ -138,7 +145,7 @@ class HorizontalGrid:
         return self._xu
 
     @property
-    def nx(self):
+    def nx(self) -> int:
         """
         Returns
         -------
@@ -149,7 +156,7 @@ class HorizontalGrid:
         return self._nx
 
     @property
-    def dx(self):
+    def dx(self) -> DataArray:
         """
         Returns
         -------
@@ -160,7 +167,7 @@ class HorizontalGrid:
         return self._dx
 
     @property
-    def y(self):
+    def y(self) -> DataArray:
         """
         Returns
         -------
@@ -171,7 +178,7 @@ class HorizontalGrid:
         return self._y
 
     @property
-    def y_at_v_locations(self):
+    def y_at_v_locations(self) -> DataArray:
         """
         Returns
         -------
@@ -182,7 +189,7 @@ class HorizontalGrid:
         return self._yv
 
     @property
-    def ny(self):
+    def ny(self) -> int:
         """
         Returns
         -------
@@ -193,7 +200,7 @@ class HorizontalGrid:
         return self._ny
 
     @property
-    def dy(self):
+    def dy(self) -> DataArray:
         """
         Returns
         -------
@@ -210,7 +217,14 @@ class PhysicalHorizontalGrid(HorizontalGrid):
     in a two-dimensional *physical* domain.
     """
 
-    def __init__(self, domain_x, nx, domain_y, ny, dtype=datatype):
+    def __init__(
+        self,
+        domain_x: DataArray,
+        nx: int,
+        domain_y: DataArray,
+        ny: int,
+        dtype: taz_types.dtype_t = np.float64,
+    ) -> None:
         """ 
         Parameters
         ----------
@@ -246,7 +260,7 @@ class PhysicalHorizontalGrid(HorizontalGrid):
             if nx == 1
             else np.linspace(values_x[0], values_x[1], nx, dtype=dtype)
         )
-        x = sympl.DataArray(
+        x = DataArray(
             x_v, coords=[x_v], dims=dims_x, name=dims_x[0], attrs={"units": units_x}
         )
 
@@ -261,7 +275,7 @@ class PhysicalHorizontalGrid(HorizontalGrid):
             if ny == 1
             else np.linspace(values_y[0], values_y[1], ny, dtype=dtype)
         )
-        y = sympl.DataArray(
+        y = DataArray(
             y_v, coords=[y_v], dims=dims_y, name=dims_y[0], attrs={"units": units_y}
         )
 
@@ -275,7 +289,7 @@ class NumericalHorizontalGrid(HorizontalGrid):
     in a two-dimensional *numerical* domain.
     """
 
-    def __init__(self, phys_grid, boundary):
+    def __init__(self, phys_grid: HorizontalGrid, boundary: "HorizontalBoundary") -> None:
         """
         Parameters
         ----------

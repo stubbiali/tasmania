@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -30,12 +31,14 @@ from sympl import (
     ImplicitTendencyComponentComposite,
 )
 from sympl._core.base_components import InputChecker, OutputChecker
+from typing import Optional, Sequence, TYPE_CHECKING, Union
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.framework.tendency_checkers import SubsetTendencyChecker
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_array_dict, get_dataarray_dict
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
@@ -43,10 +46,10 @@ from tasmania.python.utils.framework_utils import (
     check_missing_properties,
 )
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    from numpy import float32 as datatype
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
+    from tasmania.python.grids.grid import Grid
+    from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 
 class DynamicalCore(abc.ABC):
@@ -72,21 +75,21 @@ class DynamicalCore(abc.ABC):
 
     def __init__(
         self,
-        domain,
-        grid_type,
-        intermediate_tendencies=None,
-        intermediate_diagnostics=None,
-        substeps=0,
-        fast_tendencies=None,
-        fast_diagnostics=None,
-        gt_powered=False,
+        domain: "Domain",
+        grid_type: str,
+        intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
+        intermediate_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        substeps: int = 0,
+        fast_tendencies: Optional[taz_types.tendency_component_t] = None,
+        fast_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        gt_powered: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        rebuild=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -245,7 +248,7 @@ class DynamicalCore(abc.ABC):
         self._inter_tendencies = {}
 
     @property
-    def grid(self):
+    def grid(self) -> "Grid":
         """
         Returns
         -------
@@ -255,7 +258,7 @@ class DynamicalCore(abc.ABC):
         return self._grid
 
     @property
-    def horizontal_boundary(self):
+    def horizontal_boundary(self) -> "HorizontalBoundary":
         """
         Returns
         -------
@@ -264,7 +267,7 @@ class DynamicalCore(abc.ABC):
         """
         return self._hb
 
-    def ensure_internal_consistency(self):
+    def ensure_internal_consistency(self) -> None:
         """
         Perform some controls aiming to verify internal consistency.
         In more detail:
@@ -529,7 +532,7 @@ class DynamicalCore(abc.ABC):
                 properties2_name="_tendency_properties",
             )
 
-    def ensure_input_output_consistency(self):
+    def ensure_input_output_consistency(self) -> None:
         """
         Perform some controls aiming to verify input-output consistency.
         In more detail:
@@ -572,7 +575,7 @@ class DynamicalCore(abc.ABC):
                 properties2_name="input_properties",
             )
 
-    def _init_input_properties(self):
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -641,7 +644,7 @@ class DynamicalCore(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _input_properties(self):
+    def _input_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -651,10 +654,11 @@ class DynamicalCore(abc.ABC):
             whose values are fundamental properties (dims, units, alias)
             of those variables.
         """
+        pass
 
     @property
     @abc.abstractmethod
-    def _substep_input_properties(self):
+    def _substep_input_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -664,8 +668,9 @@ class DynamicalCore(abc.ABC):
             carrying out the sub-stepping routine, and whose values are
             fundamental properties (dims, units, alias) of those variables.
         """
+        pass
 
-    def _init_tendency_properties(self):
+    def _init_tendency_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -700,7 +705,7 @@ class DynamicalCore(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _tendency_properties(self):
+    def _tendency_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -710,10 +715,11 @@ class DynamicalCore(abc.ABC):
             the stages, and whose values are fundamental properties
             (dims, units, alias) of those tendencies.
         """
+        pass
 
     @property
     @abc.abstractmethod
-    def _substep_tendency_properties(self):
+    def _substep_tendency_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -723,8 +729,9 @@ class DynamicalCore(abc.ABC):
             the substeps, and whose values are fundamental properties
             (dims, units, alias) of those tendencies.
         """
+        pass
 
-    def _init_output_properties(self):
+    def _init_output_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -769,7 +776,7 @@ class DynamicalCore(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _output_properties(self):
+    def _output_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -778,10 +785,11 @@ class DynamicalCore(abc.ABC):
             included in the output state returned by any stage,	and whose
             values are fundamental properties (dims, units) of those variables.
         """
+        pass
 
     @property
     @abc.abstractmethod
-    def _substep_output_properties(self):
+    def _substep_output_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -790,20 +798,22 @@ class DynamicalCore(abc.ABC):
             included in the output state returned by any sub-step, and whose
             values are fundamental properties (dims, units) of those variables.
         """
+        pass
 
     @property
     @abc.abstractmethod
-    def stages(self):
+    def stages(self) -> int:
         """
         Return
         ------
         int :
             Number of stages carried out by the dynamical core.
         """
+        pass
 
     @property
     @abc.abstractmethod
-    def substep_fractions(self):
+    def substep_fractions(self) -> Union[float, Sequence[float]]:
         """
         Return
         ------
@@ -811,14 +821,21 @@ class DynamicalCore(abc.ABC):
             For each stage, fraction of the total number of sub-steps
             (specified at instantiation) to carry out.
         """
+        pass
 
     @abc.abstractmethod
-    def _allocate_output_state(self):
+    def _allocate_output_state(self) -> taz_types.dataarray_dict_t:
         """
         Allocate memory for the return state.
         """
+        pass
 
-    def __call__(self, state, tendencies, timestep):
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        tendencies: taz_types.dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.dataarray_dict_t:
         """
         Call operator advancing the input state one timestep forward.
 
@@ -869,14 +886,14 @@ class DynamicalCore(abc.ABC):
 
     def _call(
         self,
-        stage,
-        timestep,
-        state,
-        tmp_state,
-        slow_tendencies,
-        inter_tendencies,
-        out_state,
-    ):
+        stage: int,
+        timestep: taz_types.timedelta_t,
+        state: taz_types.dataarray_dict_t,
+        tmp_state: taz_types.dataarray_dict_t,
+        slow_tendencies: taz_types.dataarray_dict_t,
+        inter_tendencies: taz_types.dataarray_dict_t,
+        out_state: taz_types.mutable_dataarray_dict_t,
+    ) -> taz_types.dataarray_dict_t:
         """
         Perform a single stage of the time integration algorithm.
 
@@ -1121,7 +1138,13 @@ class DynamicalCore(abc.ABC):
         return inter_tends
 
     @abc.abstractmethod
-    def array_call(self, stage, raw_state, raw_tendencies, timestep):
+    def array_call(
+        self,
+        stage: int,
+        raw_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.array_dict_t:
         """
         Parameters
         ----------
@@ -1139,18 +1162,19 @@ class DynamicalCore(abc.ABC):
         dict[str, array_like]
             The (raw) state at the next stage.
         """
+        pass
 
     @abc.abstractmethod
     def substep_array_call(
         self,
-        stage,
-        substep,
-        raw_state,
-        raw_stage_state,
-        raw_tmp_state,
-        raw_tendencies,
-        timestep,
-    ):
+        stage: int,
+        substep: int,
+        raw_state: taz_types.array_dict_t,
+        raw_stage_state: taz_types.array_dict_t,
+        raw_tmp_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.array_dict_t:
         """
         Parameters
         ----------
@@ -1175,8 +1199,9 @@ class DynamicalCore(abc.ABC):
         dict[str, array_like]
             The sub-stepped (raw) state.
         """
+        pass
 
-    def update_topography(self, time):
+    def update_topography(self, time: taz_types.datetime_t) -> None:
         """
         Update the underlying (time-dependent) topography.
 

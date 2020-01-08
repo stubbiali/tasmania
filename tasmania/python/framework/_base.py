@@ -31,7 +31,29 @@ class BaseConcurrentCoupling(abc.ABC):
         pass
 
 
+class BaseDiagnostic2Tendency(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def input_properties(self):
+        pass
+
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass
+
+
 class BaseDiagnosticComponentComposite(abc.ABC):
+    @abc.abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass
+
+
+class BaseTendency2Diagnostic(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def input_properties(self):
+        pass
+
     @abc.abstractmethod
     def __call__(self, *args, **kwargs):
         pass

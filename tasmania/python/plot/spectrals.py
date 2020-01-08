@@ -20,11 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from matplotlib import pyplot as plt
 import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_cdf
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class CDF(Drawer):
@@ -34,8 +40,15 @@ class CDF(Drawer):
     """
 
     def __init__(
-        self, grid, field_name, field_units, x=None, y=None, z=None, properties=None
-    ):
+        self,
+        grid: "Grid",
+        field_name: str,
+        field_units: str,
+        x: Optional[slice] = None,
+        y: Optional[slice] = None,
+        z: Optional[slice] = None,
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -66,13 +79,16 @@ class CDF(Drawer):
         self._retriever = DataRetriever(grid, field_name, field_units, x, y, z)
         self._data = None
 
-    def reset(self):
+    def reset(self) -> None:
         self._data = None
 
-    def __call__(self, state, fig=None, ax=None):
-        """
-        Call operator computing and visualizing the CDF.
-        """
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        fig: Optional[plt.Figure] = None,
+        ax: Optional[plt.Axes] = None,
+    ) -> None:
+        """ Call operator computing and visualizing the CDF. """
         if self._data is None:
             self._data = self._retriever(state)
         else:

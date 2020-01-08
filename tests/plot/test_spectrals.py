@@ -26,12 +26,12 @@ import pytest
 import sys
 
 from tasmania.python.plot.monitors import Plot
-from tasmania.python.plot.spectral import CDF
+from tasmania.python.plot.spectrals import CDF
 
 
 baseline_dir = os.path.join(
     os.getcwd(),
-    "baseline_images/py{}{}/test_spectral".format(
+    "baseline_images/py{}{}/test_spectrals".format(
         sys.version_info.major, sys.version_info.minor
     ),
 )

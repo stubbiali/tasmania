@@ -23,112 +23,28 @@
 import abc
 import sympl
 from sympl._core.base_components import InputChecker
+from typing import TYPE_CHECKING
+
+from tasmania.python.framework._base import (
+    BaseDiagnostic2Tendency,
+    BaseTendency2Diagnostic,
+)
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
+    from tasmania.python.grids.grid import Grid
 
 
 allowed_grid_types = ("physical", "numerical")
 
 
-class Tendency2Diagnostic(abc.ABC):
-    """ Promote a tendency to a (diagnostic) state variable. """
-
-    def __init__(self, domain, grid_type):
-        """
-        Parameters
-        ----------
-        domain : tasmania.Domain
-            The underlying domain.
-        grid_type : `str`, optional
-            The type of grid over which instantiating the class. Either:
-
-                * 'physical';
-                * 'numerical' (default).
-
-        """
-        assert (
-            grid_type in allowed_grid_types
-        ), "grid_type is {}, but either ({}) was expected.".format(
-            grid_type, ",".join(allowed_grid_types)
-        )
-        self._grid_type = grid_type
-        self._grid = (
-            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-        )
-
-        self._input_checker = InputChecker(self)
-
-        self.diagnostic_properties = {}
-        for name, props in self.input_properties.items():
-            diag_name = props.get("diagnostic_name", "tendency_of_" + name)
-            self.diagnostic_properties[diag_name] = {
-                "dims": props["dims"],
-                "units": props["units"],
-            }
-
-        # compliance with TendencyComponent
-        self.tendency_properties = {}
-
-    @property
-    def grid_type(self):
-        """
-        Returns
-        -------
-        str :
-            The grid type, either 'physical' or 'numerical'.
-        """
-        return self._grid_type
-
-    @property
-    def grid(self):
-        """
-        Returns
-        -------
-        tasmania.Grid :
-            The underlying grid.
-        """
-        return self._grid
-
-    @property
-    @abc.abstractmethod
-    def input_properties(self):
-        pass
-
-    def __call__(self, tendencies):
-        """
-        Parameters
-        ----------
-        tendencies : dict[str, sympl.DataArray]
-            The dictionary of tendencies.
-
-        Return
-        ------
-        dict[str, sympl.DataArray] :
-            The dictionary of promoted tendencies.
-        """
-        self._input_checker.check_inputs(tendencies)
-
-        diagnostics = {}
-
-        for name, props in self.input_properties.items():
-            dims = props["dims"]
-            units = props["units"]
-            diag_name = props.get("diagnostic_name", "tendency_of_" + name)
-            rm = props.get("remove_from_tendencies", False)
-
-            if any(src != trg for src, trg in zip(tendencies[name].dims, dims)):
-                diagnostics[diag_name] = tendencies[name].transpose(*dims).to_units(units)
-            else:
-                diagnostics[diag_name] = tendencies[name].to_units(units)
-
-            if rm:
-                tendencies.pop(name)
-
-        return diagnostics
-
-
-class Diagnostic2Tendency(abc.ABC):
+class Diagnostic2Tendency(BaseDiagnostic2Tendency):
     """ Promote a diagnostic variable to a tendency. """
 
-    def __init__(self, domain, grid_type):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, domain: "Domain", grid_type: str) -> None:
         """
         Parameters
         ----------
@@ -165,7 +81,7 @@ class Diagnostic2Tendency(abc.ABC):
         self.diagnostic_properties = {}
 
     @property
-    def grid_type(self):
+    def grid_type(self) -> str:
         """
         Returns
         -------
@@ -175,7 +91,7 @@ class Diagnostic2Tendency(abc.ABC):
         return self._grid_type
 
     @property
-    def grid(self):
+    def grid(self) -> "Grid":
         """
         Returns
         -------
@@ -186,10 +102,12 @@ class Diagnostic2Tendency(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         pass
 
-    def __call__(self, diagnostics):
+    def __call__(
+        self, diagnostics: taz_types.mutable_dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
         """
         Parameters
         ----------
@@ -220,3 +138,104 @@ class Diagnostic2Tendency(abc.ABC):
                 diagnostics.pop(name)
 
         return tendencies
+
+
+class Tendency2Diagnostic(BaseTendency2Diagnostic):
+    """ Promote a tendency to a (diagnostic) state variable. """
+
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, domain: "Domain", grid_type: str) -> None:
+        """
+        Parameters
+        ----------
+        domain : tasmania.Domain
+            The underlying domain.
+        grid_type : `str`, optional
+            The type of grid over which instantiating the class. Either:
+
+                * 'physical';
+                * 'numerical' (default).
+
+        """
+        assert (
+            grid_type in allowed_grid_types
+        ), "grid_type is {}, but either ({}) was expected.".format(
+            grid_type, ",".join(allowed_grid_types)
+        )
+        self._grid_type = grid_type
+        self._grid = (
+            domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+        )
+
+        self._input_checker = InputChecker(self)
+
+        self.diagnostic_properties = {}
+        for name, props in self.input_properties.items():
+            diag_name = props.get("diagnostic_name", "tendency_of_" + name)
+            self.diagnostic_properties[diag_name] = {
+                "dims": props["dims"],
+                "units": props["units"],
+            }
+
+        # compliance with TendencyComponent
+        self.tendency_properties = {}
+
+    @property
+    def grid_type(self) -> str:
+        """
+        Returns
+        -------
+        str :
+            The grid type, either 'physical' or 'numerical'.
+        """
+        return self._grid_type
+
+    @property
+    def grid(self) -> "Grid":
+        """
+        Returns
+        -------
+        tasmania.Grid :
+            The underlying grid.
+        """
+        return self._grid
+
+    @property
+    @abc.abstractmethod
+    def input_properties(self) -> taz_types.properties_dict_t:
+        pass
+
+    def __call__(
+        self, tendencies: taz_types.mutable_dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
+        """
+        Parameters
+        ----------
+        tendencies : dict[str, sympl.DataArray]
+            The dictionary of tendencies.
+
+        Return
+        ------
+        dict[str, sympl.DataArray] :
+            The dictionary of promoted tendencies.
+        """
+        self._input_checker.check_inputs(tendencies)
+
+        diagnostics = {}
+
+        for name, props in self.input_properties.items():
+            dims = props["dims"]
+            units = props["units"]
+            diag_name = props.get("diagnostic_name", "tendency_of_" + name)
+            rm = props.get("remove_from_tendencies", False)
+
+            if any(src != trg for src, trg in zip(tendencies[name].dims, dims)):
+                diagnostics[diag_name] = tendencies[name].transpose(*dims).to_units(units)
+            else:
+                diagnostics[diag_name] = tendencies[name].to_units(units)
+
+            if rm:
+                tendencies.pop(name)
+
+        return diagnostics

@@ -21,18 +21,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Optional, TYPE_CHECKING, Tuple, Union
 
 from tasmania.python.dwarfs.diagnostics import HorizontalVelocity, WaterConstituent
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.framework.dycore import DynamicalCore
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 # convenient shortcuts
@@ -52,45 +52,45 @@ class IsentropicDynamicalCore(DynamicalCore):
 
     def __init__(
         self,
-        domain,
-        intermediate_tendencies=None,
-        intermediate_diagnostics=None,
-        substeps=0,
-        fast_tendencies=None,
-        fast_diagnostics=None,
-        moist=False,
-        time_integration_scheme="forward_euler_si",
-        horizontal_flux_scheme="upwind",
-        time_integration_properties=None,
-        damp=True,
-        damp_at_every_stage=True,
-        damp_type="rayleigh",
-        damp_depth=15,
-        damp_max=0.0002,
-        smooth=True,
-        smooth_at_every_stage=True,
-        smooth_type="first_order",
-        smooth_coeff=0.03,
-        smooth_coeff_max=0.24,
-        smooth_damp_depth=10,
-        smooth_moist=False,
-        smooth_moist_at_every_stage=True,
-        smooth_moist_type="first_order",
-        smooth_moist_coeff=0.03,
-        smooth_moist_coeff_max=0.24,
-        smooth_moist_damp_depth=10,
-        gt_powered=False,
+        domain: "Domain",
+        intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
+        intermediate_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        substeps: int = 0,
+        fast_tendencies: Optional[taz_types.tendency_component_t] = None,
+        fast_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        moist: bool = False,
+        time_integration_scheme: str = "forward_euler_si",
+        horizontal_flux_scheme: str = "upwind",
+        time_integration_properties: Optional[taz_types.options_dict_t] = None,
+        damp: bool = True,
+        damp_at_every_stage: bool = True,
+        damp_type: str = "rayleigh",
+        damp_depth: int = 15,
+        damp_max: float = 0.0002,
+        smooth: bool = True,
+        smooth_at_every_stage: bool = True,
+        smooth_type: str = "first_order",
+        smooth_coeff: float = 0.03,
+        smooth_coeff_max: float = 0.24,
+        smooth_damp_depth: int = 10,
+        smooth_moist: bool = False,
+        smooth_moist_at_every_stage: bool = True,
+        smooth_moist_type: str = "first_order",
+        smooth_moist_coeff: float = 0.03,
+        smooth_moist_coeff_max: float = 0.24,
+        smooth_moist_damp_depth: int = 10,
+        gt_powered: bool = False,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -282,7 +282,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             backend_opts=backend_opts,
             build_info=build_info,
             dtype=dtype,
-            rebuild=rebuild
+            rebuild=rebuild,
         )
         hb = self.horizontal_boundary
 
@@ -447,7 +447,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._v_out = allocate()
 
     @property
-    def _input_properties(self):
+    def _input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -470,7 +470,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _substep_input_properties(self):
+    def _substep_input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         ftends, fdiags = self._fast_tends, self._fast_diags
 
@@ -558,7 +558,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _tendency_properties(self):
+    def _tendency_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
 
         return_dict = {
@@ -575,11 +575,11 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _substep_tendency_properties(self):
+    def _substep_tendency_properties(self) -> taz_types.properties_dict_t:
         return self._tendency_properties
 
     @property
-    def _output_properties(self):
+    def _output_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.x.dims[0], g.y.dims[0], g.z.dims[0])
         dims_stg_x = (g.x_at_u_locations.dims[0], g.y.dims[0], g.z.dims[0])
@@ -624,7 +624,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         return return_dict
 
     @property
-    def _substep_output_properties(self):
+    def _substep_output_properties(self) -> taz_types.properties_dict_t:
         if not hasattr(self, "__substep_output_properties"):
             dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
             g_shape = (self.grid.nx, self.grid.ny, self.grid.nz)
@@ -686,14 +686,14 @@ class IsentropicDynamicalCore(DynamicalCore):
         return self.__substep_output_properties
 
     @property
-    def stages(self):
+    def stages(self) -> int:
         return self._prognostic.stages
 
     @property
-    def substep_fractions(self):
+    def substep_fractions(self) -> Union[float, Tuple[float, ...]]:
         return self._prognostic.substep_fractions
 
-    def _allocate_output_state(self):
+    def _allocate_output_state(self) -> taz_types.gtstorage_dict_t:
         """
         Allocate memory only for the prognostic fields.
         """
@@ -746,10 +746,22 @@ class IsentropicDynamicalCore(DynamicalCore):
 
         return out_state
 
-    def array_call(self, stage, raw_state, raw_tendencies, timestep):
+    def array_call(
+        self,
+        stage: int,
+        raw_state: taz_types.gtstorage_dict_t,
+        raw_tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         return self._array_call(stage, raw_state, raw_tendencies, timestep)
 
-    def _array_call_dry(self, stage, raw_state, raw_tendencies, timestep):
+    def _array_call_dry(
+        self,
+        stage: int,
+        raw_state: taz_types.gtstorage_dict_t,
+        raw_tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         """ Perform a stage of the dry dynamical core. """
         # shortcuts
         hb = self.horizontal_boundary
@@ -862,7 +874,13 @@ class IsentropicDynamicalCore(DynamicalCore):
 
         return raw_state_out
 
-    def _array_call_moist(self, stage, raw_state, raw_tendencies, timestep):
+    def _array_call_moist(
+        self,
+        stage: int,
+        raw_state: taz_types.gtstorage_dict_t,
+        raw_tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         """	Perform a stage of the moist dynamical core. """
         # shortcuts
         hb = self.horizontal_boundary
@@ -1057,12 +1075,12 @@ class IsentropicDynamicalCore(DynamicalCore):
 
     def substep_array_call(
         self,
-        stage,
-        substep,
-        raw_state,
-        raw_stage_state,
-        raw_tmp_state,
-        raw_tendencies,
-        timestep,
-    ):
+        stage: int,
+        substep: int,
+        raw_state: taz_types.gtstorage_dict_t,
+        raw_stage_state: taz_types.gtstorage_dict_t,
+        raw_tmp_state: taz_types.gtstorage_dict_t,
+        raw_tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         raise NotImplementedError()

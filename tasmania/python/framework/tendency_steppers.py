@@ -31,20 +31,21 @@ from sympl import (
 )
 from sympl._core.base_components import InputChecker, DiagnosticChecker, OutputChecker
 from sympl._core.units import clean_units
+from typing import Optional, Tuple
 
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import check_property_compatibility
 from tasmania.python.utils.storage_utils import deepcopy_dataarray
 from tasmania.python.utils.utils import assert_sequence
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    from numpy import float32 as datatype
 
-
-def get_increment(state, timestep, prognostic):
+def get_increment(
+    state: taz_types.dataarray_dict_t,
+    timestep: taz_types.timedelta_t,
+    prognostic: taz_types.tendency_component_t,
+) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
     # calculate tendencies and retrieve diagnostics
     tendencies, diagnostics = prognostic(state, timestep)
 
@@ -56,7 +57,7 @@ def get_increment(state, timestep, prognostic):
     return tendencies, diagnostics
 
 
-def restore_tendency_units(tendencies):
+def restore_tendency_units(tendencies: taz_types.mutable_dataarray_dict_t) -> None:
     for name in tendencies:
         if name != "time":
             tendencies[name].attrs["units"] = clean_units(
@@ -80,16 +81,16 @@ class TendencyStepper(abc.ABC):
 
     def __init__(
         self,
-        *args,
-        execution_policy="serial",
-        enforce_horizontal_boundary=False,
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        rebuild=False
-    ):
+        *args: taz_types.tendency_component_t,
+        execution_policy: str = "serial",
+        enforce_horizontal_boundary: bool = False,
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False
+    ) -> None:
         """
         Parameters
         ----------
@@ -186,7 +187,7 @@ class TendencyStepper(abc.ABC):
         self._out_state = None
 
     @property
-    def prognostic(self):
+    def prognostic(self) -> ConcurrentCoupling:
         """
         Return
         ------
@@ -195,7 +196,7 @@ class TendencyStepper(abc.ABC):
         """
         return self._prognostic
 
-    def _get_input_properties(self):
+    def _get_input_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -229,7 +230,7 @@ class TendencyStepper(abc.ABC):
 
         return return_dict
 
-    def _get_output_properties(self):
+    def _get_output_properties(self) -> taz_types.properties_dict_t:
         """
         Return
         ------
@@ -248,7 +249,9 @@ class TendencyStepper(abc.ABC):
 
         return return_dict
 
-    def __call__(self, state, timestep):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Step the model state.
 
@@ -286,18 +289,18 @@ class TendencyStepper(abc.ABC):
 
     @staticmethod
     def factory(
-        scheme,
-        *args,
-        execution_policy="serial",
-        enforce_horizontal_boundary=False,
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=np.float64,
-        rebuild=False,
+        scheme: str,
+        *args: taz_types.tendency_component_t,
+        execution_policy: str = "serial",
+        enforce_horizontal_boundary: bool = False,
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False,
         **kwargs
-    ):
+    ) -> "TendencyStepper":
         """
         Factory returning an instance of the desired derived class.
 
@@ -383,7 +386,9 @@ class TendencyStepper(abc.ABC):
         )
 
     @abc.abstractmethod
-    def _call(self, state, timestep):
+    def _call(
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Step the model state. As this method is marked as abstract,
         its implementation is delegated to the derived classes.
@@ -406,7 +411,9 @@ class TendencyStepper(abc.ABC):
         """
         pass
 
-    def _allocate_output_state(self, state):
+    def _allocate_output_state(
+        self, state: taz_types.dataarray_dict_t
+    ) -> taz_types.dataarray_dict_t:
         out_state = self._out_state or {}
 
         if not out_state:

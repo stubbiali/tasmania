@@ -20,18 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional
+import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from tasmania.python.burgers.dynamics.stepper import BurgersStepper
 from tasmania.python.framework.dycore import DynamicalCore
-from tasmania.python.grids.domain import Domain
-from tasmania.python.utils import types
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from tasmania.conf import datatype
-except TypeError:
-    from numpy import float32 as datatype
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 class BurgersDynamicalCore(DynamicalCore):
@@ -39,19 +37,19 @@ class BurgersDynamicalCore(DynamicalCore):
 
     def __init__(
         self,
-        domain: Domain,
-        intermediate_tendencies: Optional[types.tendency_component_t] = None,
+        domain: "Domain",
+        intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
         time_integration_scheme: str = "forward_euler",
         flux_scheme: str = "upwind",
         gt_powered: bool = False,
         *,
         backend: str = "numpy",
-        backend_opts: Optional[types.options_dict_t] = None,
-        build_info: Optional[types.options_dict_t] = None,
-        dtype: types.dtype_t = datatype,
-        exec_info: Optional[types.mutable_options_dict_t] = None,
-        default_origin: Optional[types.triplet_int_t] = None,
-        rebuild: bool = None,
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
         managed_memory: bool = False
     ) -> None:
         """
@@ -141,7 +139,7 @@ class BurgersDynamicalCore(DynamicalCore):
         )
 
     @property
-    def _input_properties(self) -> types.properties_dict_t:
+    def _input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -150,11 +148,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_input_properties(self) -> types.properties_dict_t:
+    def _substep_input_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
-    def _tendency_properties(self) -> types.properties_dict_t:
+    def _tendency_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -163,11 +161,11 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_tendency_properties(self) -> types.properties_dict_t:
+    def _substep_tendency_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
-    def _output_properties(self) -> types.properties_dict_t:
+    def _output_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -176,7 +174,7 @@ class BurgersDynamicalCore(DynamicalCore):
         }
 
     @property
-    def _substep_output_properties(self) -> types.properties_dict_t:
+    def _substep_output_properties(self) -> taz_types.properties_dict_t:
         return {}
 
     @property
@@ -220,10 +218,10 @@ class BurgersDynamicalCore(DynamicalCore):
     def array_call(
         self,
         stage: int,
-        raw_state: types.gtstorage_dict_t,
-        raw_tendencies: types.gtstorage_dict_t,
-        timestep: types.timedelta_t,
-    ) -> types.gtstorage_dict_t:
+        raw_state: taz_types.gtstorage_dict_t,
+        raw_tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
         self.horizontal_boundary.dmn_enforce_raw(
@@ -240,10 +238,10 @@ class BurgersDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: types.gtstorage_dict_t,
-        raw_stage_state: types.gtstorage_dict_t,
-        raw_tmp_state: types.gtstorage_dict_t,
-        raw_tendencies: types.gtstorage_dict_t,
-        timestep: types.timedelta_t,
+        raw_state: taz_types.gtstorage_dict_t,
+        raw_stage_state: taz_types.gtstorage_dict_t,
+        raw_tmp_state: taz_types.gtstorage_dict_t,
+        raw_tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
     ):
         raise NotImplementedError()

@@ -37,11 +37,11 @@ clean:
 	@$(RM) -r $(TMP_FOLDERS)
 
 prepare:
-	. prepare_tests.sh
-	. prepare_matplotlib.sh
+	@. prepare_tests.sh
+	@. prepare_matplotlib.sh
 
 run: prepare
-	pytest --mpl --cov=../tasmania/python .
+	@pytest --mpl --cov=../tasmania/python .
 
 gtclean: clean
 	@$(RM) -r $(GTCACHE)

@@ -51,9 +51,9 @@ def _stage_laplacian(dx, dy, phi):
 
 
 def hyperdiffusion_defs(
-    in_phi: gtscript.Field[np.float64],
-    in_gamma: gtscript.Field[np.float64],
-    out_phi: gtscript.Field[np.float64],
+    in_phi: gtscript.Field["dtype"],
+    in_gamma: gtscript.Field["dtype"],
+    out_phi: gtscript.Field["dtype"],
     *,
     dx: float,
     dy: float
@@ -67,8 +67,11 @@ def hyperdiffusion_defs(
 
 
 if __name__ == "__main__":
+    dtype = np.float64
+
     decorator = gtscript.stencil(
         "numpy",
+        dtypes={"dtype": dtype},
         externals={
             "stage_laplacian": _stage_laplacian,
             "stage_laplacian_x": _stage_laplacian_x,
@@ -78,9 +81,9 @@ if __name__ == "__main__":
     )
     hyperdiffusion = decorator(hyperdiffusion_defs)
 
-    in_phi = zeros((30, 30, 10), "numpy", np.float64)
-    in_gamma = zeros((30, 30, 10), "numpy", np.float64)
-    out_phi = zeros((30, 30, 10), "numpy", np.float64)
+    in_phi = zeros((30, 30, 10), "numpy", dtype)
+    in_gamma = zeros((30, 30, 10), "numpy", dtype)
+    out_phi = zeros((30, 30, 10), "numpy", dtype)
 
     hyperdiffusion(
         in_phi=in_phi,
