@@ -65,7 +65,7 @@ if [[ $key = "" ]]; then
 
 	git submodule update --init --recursive
 	cd "$EXTERNAL_DIR/sympl" || return
-	git checkout $GT4PY_BRANCH
+	git checkout $SYMPL_BRANCH
 	git pull
 	cd "$CDIR" || return
 fi
