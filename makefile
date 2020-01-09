@@ -21,11 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 PYSRC := $(shell find $(shell pwd) -name '*.py')
-TMP_FILES := $(shell find $(shell pwd) -name '*.pyc')
-TMP_FOLDERS := $(shell find $(shell pwd) -name '__pycache__') 
-TMP_FOLDERS += $(shell find $(shell pwd) -name '.pytest_cache')
-TMP_FOLDERS += $(shell find $(shell pwd) -name '.idea')
-TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
 BUILD_FOLDERS = build .eggs tasmania/tasmania.egg-info
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 ROOT_DIR := $(dir $(MKFILE_PATH))
@@ -41,9 +36,11 @@ DOCKER_DIR := $(ROOT_DIR)/docker
 .PHONY: docker-build-cpu docker-build-gpu docker-run-cpu docker-run-gpu docs uml prepare-tests tests clean distclean
 
 docker-build-cpu:
+	@mkdir -p $(DOCKER_DIR)/images
 	@cd $(DOCKER_DIR) && ./build_cpu.sh
 
 docker-build-gpu:
+	@mkdir -p $(DOCKER_DIR)/images
 	@cd $(DOCKER_DIR) && ./build_gpu.sh
 
 docker-run-cpu:
@@ -88,13 +85,17 @@ tests:
 	@cd $(TEST_DIR) && make
 
 clean:
-	@$(RM) $(TMP_FILES) > /dev/null
-	@$(RM) -r $(TMP_FOLDERS) > /dev/null
-	@$(RM) -r $(HYPOTHESIS_DIR) > /dev/null
+	@find . -name "*.pyc" -delete
+	@find . -name "__pycache__" -delete
+	@find . -name ".pytest_cache" -delete
+	@find . -name ".idea" -delete
+	@find . -name ".cache" -delete
+	@$(RM) -r $(HYPOTHESIS_DIR)
 	@find . -type f -name "*.sw[klmnop]" -delete
 	@$(CD) $(TEST_DIR) && make clean
 
 distclean: clean
+	@find . -name ".gt_cache" -delete
 	@cd $(PARSER_DIR) && $(MAKE) clean > /dev/null
 	@cd $(PARSER_DIR)/tests && $(MAKE) clean > /dev/null
 	@$(RM) -r $(BUILD_FOLDERS) > /dev/null
