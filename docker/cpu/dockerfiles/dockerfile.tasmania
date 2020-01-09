@@ -59,18 +59,18 @@ RUN cd $HOME/tasmania/docker/external && \
 #	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
 #	deactivate
 
-# create a virtual environment around python3.6
-RUN virtualenv --python=python3.6 py36
-RUN . py36/bin/activate && \
-	pip install -e $HOME/tasmania --no-cache-dir && \
-    # cat py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | \
-    #   sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
-	cp /tmp/.matplotlibrc py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc && \
-	rm /tmp/.matplotlibrc && \
-	pip install -e $HOME/tasmania/docker/external/gt4py --no-cache-dir && \
-    python $HOME/tasmania/docker/external/gt4py/setup.py install_gt_sources && \
-	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
-	deactivate
+# # create a virtual environment around python3.6
+# RUN virtualenv --python=python3.6 py36
+# RUN . py36/bin/activate && \
+#	pip install -e $HOME/tasmania/docker/external/gt4py --no-cache-dir && \
+#   python $HOME/tasmania/docker/external/gt4py/setup.py install_gt_sources && \
+#	pip install -e $HOME/tasmania --no-cache-dir && \
+#   # cat py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | \
+#   #   sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+#	# cp /tmp/.matplotlibrc py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc && \
+#	# rm /tmp/.matplotlibrc && \
+#	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
+#	deactivate
 
 # create a virtual environment around python3.7
 RUN virtualenv --python=python3.7 py37
@@ -78,8 +78,8 @@ RUN . py37/bin/activate && \
 	pip install -e $HOME/tasmania --no-cache-dir && \
 	# cat py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc | \
 	#   sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
-	cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
-	rm /tmp/.matplotlibrc && \
+	# cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	# rm /tmp/.matplotlibrc && \
 	pip install -e $HOME/tasmania/docker/external/gt4py --no-cache-dir && \
     python $HOME/tasmania/docker/external/gt4py/setup.py install_gt_sources && \
 	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
