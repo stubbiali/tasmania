@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-
 CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 TASMANIA_ROOT="$(dirname "$CDIR")"
 TASMANIA_ROOT="$(dirname "$TASMANIA_ROOT")"

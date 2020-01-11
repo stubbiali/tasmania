@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-
 CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 TASMANIA_ROOT="$(dirname "$CDIR")"
 TASMANIA_ROOT="$(dirname "$CDIR")"
@@ -29,7 +28,7 @@ GT4PY_BRANCH=master
 SYMPL_BRANCH=ubbiali
 IMAGE_NAME=tasmania:cpu
 CONTAINER_NAME=$(openssl rand -hex 6)
-IP=$(ifconfig en0 | grep 'inet ' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | head -1)
+# IP=$(ifconfig en0 | grep 'inet ' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | head -1)
 
 echo "About to pull the branch '$GT4PY_BRANCH' of the GridTools/gt4py repository."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
