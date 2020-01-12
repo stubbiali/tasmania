@@ -54,7 +54,7 @@ To clone this repository (with submodules) on your machine and place yourself on
 	
 ## Running Tasmania
 
-### Using a virtual environment
+### Using a virtual environment (recommended)
 
 The `bootstrap_venv.sh` bash script automates the creation of an isolated Python environment for Tasmania. The [virtualenv](https://virtualenv.pypa.io/en/latest/) package is used. The procedure can be customized by means of the bash variables defined in the preamble of the script. 
 
