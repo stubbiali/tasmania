@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,12 +32,6 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania.python.grids.grid import NumericalGrid
 from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.grids._horizontal_boundary import (
@@ -57,6 +51,15 @@ from tasmania.python.grids._horizontal_boundary import (
 from tasmania.python.utils.storage_utils import get_numerical_state
 from tasmania.python.utils.utils import equal_to as eq
 
+from tests.utilities import (
+    compare_dataarrays,
+    st_burgers_state,
+    st_horizontal_boundary_kwargs,
+    st_horizontal_boundary_layers,
+    st_isentropic_state,
+    st_physical_grid,
+)
+
 
 @settings(
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
@@ -67,23 +70,22 @@ def test_relaxed(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(utils.st_physical_grid(), label="grid")
+    grid = data.draw(st_physical_grid(), label="grid")
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
 
-    nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny), label="nb")
+    nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        utils.st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("relaxed", nx, ny, nb), label="hb_kwargs"
     )
     hb = HorizontalBoundary.factory("relaxed", nx, ny, nb, **hb_kwargs)
 
     state = data.draw(
-        utils.st_isentropic_state(grid, moist=True, precipitation=True), label="state"
+        st_isentropic_state(grid, moist=True, precipitation=True), label="state"
     )
 
     cgrid = NumericalGrid(grid, hb)
     cstate = data.draw(
-        utils.st_isentropic_state(cgrid, moist=True, precipitation=True),
-        label="ref_state",
+        st_isentropic_state(cgrid, moist=True, precipitation=True), label="ref_state"
     )
 
     # ========================================
@@ -171,11 +173,11 @@ def test_relaxed(data):
             ]
         )
     else:
-        utils.compare_dataarrays(x, hb.get_numerical_xaxis(x))
-        utils.compare_dataarrays(xu, hb.get_numerical_xaxis(xu))
+        compare_dataarrays(x, hb.get_numerical_xaxis(x))
+        compare_dataarrays(xu, hb.get_numerical_xaxis(xu))
 
-    utils.compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
-    utils.compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
+    compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
+    compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
 
     #
     # y-axis
@@ -232,11 +234,11 @@ def test_relaxed(data):
             ]
         )
     else:
-        utils.compare_dataarrays(y, hb.get_numerical_yaxis(y))
-        utils.compare_dataarrays(yv, hb.get_numerical_yaxis(yv))
+        compare_dataarrays(y, hb.get_numerical_yaxis(y))
+        compare_dataarrays(yv, hb.get_numerical_yaxis(yv))
 
-    utils.compare_dataarrays(y, hb.get_physical_yaxis(hb.get_numerical_yaxis(y)))
-    utils.compare_dataarrays(yv, hb.get_physical_yaxis(hb.get_numerical_yaxis(yv)))
+    compare_dataarrays(y, hb.get_physical_yaxis(hb.get_numerical_yaxis(y)))
+    compare_dataarrays(yv, hb.get_physical_yaxis(hb.get_numerical_yaxis(yv)))
 
     #
     # numerical and physical field
@@ -367,16 +369,16 @@ def test_periodic(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(utils.st_physical_grid(), label="grid")
+    grid = data.draw(st_physical_grid(), label="grid")
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
 
-    nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny), label="nb")
+    nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        utils.st_horizontal_boundary_kwargs("periodic", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("periodic", nx, ny, nb), label="hb_kwargs"
     )
 
     state = data.draw(
-        utils.st_isentropic_state(grid, moist=True, precipitation=True), label="state"
+        st_isentropic_state(grid, moist=True, precipitation=True), label="state"
     )
 
     # ========================================
@@ -587,8 +589,8 @@ def test_periodic(data):
             ]
         )
 
-    utils.compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
-    utils.compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
+    compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
+    compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
 
     #
     # numerical and physical unstaggered field
@@ -837,19 +839,19 @@ def test_dirichlet_burgers(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(utils.st_physical_grid(zaxis_length=(1, 1)), label="grid")
+    grid = data.draw(st_physical_grid(zaxis_length=(1, 1)), label="grid")
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
 
-    nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny), label="nb")
+    nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        utils.st_horizontal_boundary_kwargs("dirichlet", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("dirichlet", nx, ny, nb), label="hb_kwargs"
     )
     hb = HorizontalBoundary.factory("dirichlet", nx, ny, nb, **hb_kwargs)
 
-    state = data.draw(utils.st_burgers_state(grid), label="state")
+    state = data.draw(st_burgers_state(grid), label="state")
 
     cgrid = NumericalGrid(grid, hb)
-    cstate = data.draw(utils.st_burgers_state(cgrid), label="ref_state")
+    cstate = data.draw(st_burgers_state(cgrid), label="ref_state")
 
     # ========================================
     # test
@@ -936,11 +938,11 @@ def test_dirichlet_burgers(data):
             ]
         )
     else:
-        utils.compare_dataarrays(x, hb.get_numerical_xaxis(x))
-        utils.compare_dataarrays(xu, hb.get_numerical_xaxis(xu))
+        compare_dataarrays(x, hb.get_numerical_xaxis(x))
+        compare_dataarrays(xu, hb.get_numerical_xaxis(xu))
 
-    utils.compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
-    utils.compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
+    compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
+    compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
 
     #
     # y-axis
@@ -997,11 +999,11 @@ def test_dirichlet_burgers(data):
             ]
         )
     else:
-        utils.compare_dataarrays(y, hb.get_numerical_yaxis(y))
-        utils.compare_dataarrays(yv, hb.get_numerical_yaxis(yv))
+        compare_dataarrays(y, hb.get_numerical_yaxis(y))
+        compare_dataarrays(yv, hb.get_numerical_yaxis(yv))
 
-    utils.compare_dataarrays(y, hb.get_physical_yaxis(hb.get_numerical_yaxis(y)))
-    utils.compare_dataarrays(yv, hb.get_physical_yaxis(hb.get_numerical_yaxis(yv)))
+    compare_dataarrays(y, hb.get_physical_yaxis(hb.get_numerical_yaxis(y)))
+    compare_dataarrays(yv, hb.get_physical_yaxis(hb.get_numerical_yaxis(yv)))
 
     #
     # numerical and physical field
@@ -1064,20 +1066,20 @@ def test_identity(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(utils.st_physical_grid(), label="grid")
+    grid = data.draw(st_physical_grid(), label="grid")
     nx, ny = grid.grid_xy.nx, grid.grid_xy.ny
 
-    nb = data.draw(utils.st_horizontal_boundary_layers(nx, ny), label="nb")
+    nb = data.draw(st_horizontal_boundary_layers(nx, ny), label="nb")
     hb_kwargs = data.draw(
-        utils.st_horizontal_boundary_kwargs("identity", nx, ny, nb), label="hb_kwargs"
+        st_horizontal_boundary_kwargs("identity", nx, ny, nb), label="hb_kwargs"
     )
     hb = HorizontalBoundary.factory("identity", nx, ny, nb, **hb_kwargs)
 
     state0 = data.draw(
-        utils.st_isentropic_state(grid, moist=True, precipitation=True), label="state0"
+        st_isentropic_state(grid, moist=True, precipitation=True), label="state0"
     )
     state1 = data.draw(
-        utils.st_isentropic_state(grid, moist=True, precipitation=True), label="state1"
+        st_isentropic_state(grid, moist=True, precipitation=True), label="state1"
     )
 
     # ========================================
@@ -1163,11 +1165,11 @@ def test_identity(data):
             ]
         )
     else:
-        utils.compare_dataarrays(x, hb.get_numerical_xaxis(x))
-        utils.compare_dataarrays(xu, hb.get_numerical_xaxis(xu))
+        compare_dataarrays(x, hb.get_numerical_xaxis(x))
+        compare_dataarrays(xu, hb.get_numerical_xaxis(xu))
 
-    utils.compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
-    utils.compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
+    compare_dataarrays(x, hb.get_physical_xaxis(hb.get_numerical_xaxis(x)))
+    compare_dataarrays(xu, hb.get_physical_xaxis(hb.get_numerical_xaxis(xu)))
 
     #
     # y-axis
@@ -1224,11 +1226,11 @@ def test_identity(data):
             ]
         )
     else:
-        utils.compare_dataarrays(y, hb.get_numerical_yaxis(y))
-        utils.compare_dataarrays(yv, hb.get_numerical_yaxis(yv))
+        compare_dataarrays(y, hb.get_numerical_yaxis(y))
+        compare_dataarrays(yv, hb.get_numerical_yaxis(yv))
 
-    utils.compare_dataarrays(y, hb.get_physical_yaxis(hb.get_numerical_yaxis(y)))
-    utils.compare_dataarrays(yv, hb.get_physical_yaxis(hb.get_numerical_yaxis(yv)))
+    compare_dataarrays(y, hb.get_physical_yaxis(hb.get_numerical_yaxis(y)))
+    compare_dataarrays(yv, hb.get_physical_yaxis(hb.get_numerical_yaxis(yv)))
 
     #
     # numerical and physical field

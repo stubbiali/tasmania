@@ -56,48 +56,27 @@ from tasmania.python.utils.storage_utils import (
     zeros,
 )
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .isentropic.test_isentropic_horizontal_fluxes import (
-        get_fifth_order_upwind_fluxes,
-    )
-    from .isentropic.test_isentropic_prognostic import (
-        forward_euler_step,
-        forward_euler_step_momentum_x,
-        forward_euler_step_momentum_y,
-    )
-    from .utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from isentropic.test_isentropic_horizontal_fluxes import get_fifth_order_upwind_fluxes
-    from isentropic.test_isentropic_prognostic import (
-        forward_euler_step,
-        forward_euler_step_momentum_x,
-        forward_euler_step_momentum_y,
-    )
-    from utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.isentropic.test_isentropic_horizontal_fluxes import (
+    get_fifth_order_upwind_fluxes,
+)
+from tests.isentropic.test_isentropic_prognostic import (
+    forward_euler_step,
+    forward_euler_step_momentum_x,
+    forward_euler_step_momentum_y,
+)
+from tests.utilities import (
+    compare_arrays,
+    compare_datetimes,
+    st_floats,
+    st_one_of,
+    st_domain,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

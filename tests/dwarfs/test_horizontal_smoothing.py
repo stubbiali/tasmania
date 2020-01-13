@@ -34,12 +34,8 @@ import pytest
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from .utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
+from tests.conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
+from tests.utilities import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
 def assert_xyz(phi, phi_new, phi_new_assert, nb):

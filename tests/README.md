@@ -1,8 +1,3 @@
-The tests rely on `conf.py` and `utils.py`. To create a soft link to these two modules
-in any subdirectory:
-
-    . prepare_tests.sh
-    
 To generate the baseline images needed by the Matplotlib tests in `plot/`:
     
     . prepare_matplotlib.sh
@@ -15,8 +10,7 @@ To run only the tests contained in a subfolder:
 
     pytest <subfolder>
     
-To run a specific test, *do not* enter the corresponding subfolder. Rather, from
-this directory issue
+To run a specific test:
 
     pytest <subfolder>/<test>
     

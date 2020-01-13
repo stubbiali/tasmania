@@ -46,34 +46,19 @@ from tasmania.python.isentropic.dynamics.implementations.minimal_horizontal_flux
 )
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_isentropic_horizontal_fluxes import (
-        get_upwind_fluxes,
-        get_centered_fluxes,
-        get_maccormack_fluxes,
-        get_third_order_upwind_fluxes,
-        get_fifth_order_upwind_fluxes,
-    )
-    from .utils import st_domain, st_floats, st_one_of, st_raw_field, compare_arrays
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_isentropic_horizontal_fluxes import (
-        get_upwind_fluxes,
-        get_centered_fluxes,
-        get_maccormack_fluxes,
-        get_third_order_upwind_fluxes,
-        get_fifth_order_upwind_fluxes,
-    )
-    from utils import st_domain, st_floats, st_one_of, st_raw_field, compare_arrays
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.isentropic.test_isentropic_horizontal_fluxes import (
+    get_upwind_fluxes,
+    get_centered_fluxes,
+    get_maccormack_fluxes,
+    get_third_order_upwind_fluxes,
+    get_fifth_order_upwind_fluxes,
+)
+from tests.utilities import st_domain, st_floats, st_one_of, st_raw_field, compare_arrays
 
 
 class WrappingStencil:

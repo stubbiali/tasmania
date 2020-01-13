@@ -31,17 +31,14 @@ from hypothesis import (
     strategies as hyp_st,
 )
 import numpy as np
+import os
 import pytest
 import tempfile
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.io_utils import NetCDFMonitor, load_netcdf_dataset
+
+from tests.utilities import compare_dataarrays, st_domain, st_isentropic_state
 
 
 @settings(
@@ -53,11 +50,11 @@ def test_store_pp(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     pgrid = domain.physical_grid
     pstate = data.draw(
-        utils.st_isentropic_state(pgrid, moist=True, precipitation=True), label="pstate"
+        st_isentropic_state(pgrid, moist=True, precipitation=True), label="pstate"
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -83,11 +80,11 @@ def test_store_pc(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     cgrid = domain.numerical_grid
     cstate = data.draw(
-        utils.st_isentropic_state(cgrid, moist=False, precipitation=False), label="cstate"
+        st_isentropic_state(cgrid, moist=False, precipitation=False), label="cstate"
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -110,11 +107,11 @@ def test_store_cc(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     cgrid = domain.physical_grid
     cstate = data.draw(
-        utils.st_isentropic_state(cgrid, moist=True, precipitation=True), label="cstate"
+        st_isentropic_state(cgrid, moist=True, precipitation=True), label="cstate"
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -140,11 +137,11 @@ def test_store_cp(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     pgrid = domain.numerical_grid
     pstate = data.draw(
-        utils.st_isentropic_state(pgrid, moist=False, precipitation=False), label="pstate"
+        st_isentropic_state(pgrid, moist=False, precipitation=False), label="pstate"
     )
 
     filename = data.draw(hyp_st.text(), label="filename")
@@ -162,20 +159,20 @@ def assert_grids(g1, g2):
     # x-axis
     assert g1.nx == g2.nx
     assert g1.dx == g2.dx
-    utils.compare_dataarrays(g1.x, g2.x)
-    utils.compare_dataarrays(g1.x_at_u_locations, g2.x_at_u_locations)
+    compare_dataarrays(g1.x, g2.x)
+    compare_dataarrays(g1.x_at_u_locations, g2.x_at_u_locations)
 
     # y-axis
     assert g1.ny == g2.ny
     assert g1.dy == g2.dy
-    utils.compare_dataarrays(g1.y, g2.y)
-    utils.compare_dataarrays(g1.y_at_v_locations, g2.y_at_v_locations)
+    compare_dataarrays(g1.y, g2.y)
+    compare_dataarrays(g1.y_at_v_locations, g2.y_at_v_locations)
 
     # z-axis
     assert g1.nz == g2.nz
     assert g1.dz == g2.dz
-    utils.compare_dataarrays(g1.z, g2.z)
-    utils.compare_dataarrays(g1.z_on_interface_levels, g2.z_on_interface_levels)
+    compare_dataarrays(g1.z, g2.z)
+    compare_dataarrays(g1.z_on_interface_levels, g2.z_on_interface_levels)
 
     # topography
     topo1, topo2 = g1.topography, g2.topography
@@ -208,7 +205,7 @@ def test_write_and_load(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    domain = data.draw(st_domain(), label="domain")
 
     assume(domain.horizontal_boundary.type != "dirichlet")
 
@@ -216,7 +213,7 @@ def test_write_and_load(data):
     cgrid = domain.numerical_grid
 
     pstate = data.draw(
-        utils.st_isentropic_state(
+        st_isentropic_state(
             pgrid,
             moist=False,
             precipitation=False,

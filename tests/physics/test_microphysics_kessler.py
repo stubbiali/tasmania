@@ -47,38 +47,21 @@ from tasmania import get_dataarray_3d
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_microphysics_utils import kessler_sedimentation_validation
-    from .utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_microphysics_utils import kessler_sedimentation_validation
-    from utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.physics.test_microphysics_utils import kessler_sedimentation_validation
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    compare_datetimes,
+    st_floats,
+    st_one_of,
+    st_domain,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

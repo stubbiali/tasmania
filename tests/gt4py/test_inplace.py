@@ -36,12 +36,8 @@ from gt4py import gtscript, storage as gt_storage
 
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import default_origin as conf_dorigin
-    from .utils import compare_arrays, st_one_of, st_raw_field
-except (ImportError, ModuleNotFoundError):
-    from conf import default_origin as conf_dorigin
-    from utils import compare_arrays, st_one_of, st_raw_field
+from tests.conf import default_origin as conf_dorigin
+from tests.utilities import compare_arrays, st_one_of, st_raw_field
 
 
 def stencil_sum_defs(

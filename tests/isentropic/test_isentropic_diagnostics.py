@@ -43,32 +43,18 @@ from tasmania.python.isentropic.physics.diagnostics import (
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin
-    from .utils import (
-        compare_datetimes,
-        compare_arrays,
-        compare_dataarrays,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_physical_grid,
-        st_isentropic_state_f,
-        st_raw_field,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin
-    from utils import (
-        compare_datetimes,
-        compare_arrays,
-        compare_dataarrays,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_physical_grid,
-        st_isentropic_state_f,
-        st_raw_field,
-    )
+from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.utilities import (
+    compare_datetimes,
+    compare_arrays,
+    compare_dataarrays,
+    st_floats,
+    st_one_of,
+    st_domain,
+    st_physical_grid,
+    st_isentropic_state_f,
+    st_raw_field,
+)
 
 
 @settings(

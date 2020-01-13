@@ -40,30 +40,17 @@ from tasmania.python.physics.microphysics.utils import (
 from tasmania.python.utils.storage_utils import zeros
 from tasmania import get_dataarray_3d
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin
-    from .utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-        st_raw_field,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin
-    from utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-        st_raw_field,
-    )
+from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    compare_datetimes,
+    st_floats,
+    st_one_of,
+    st_domain,
+    st_isentropic_state_f,
+    st_raw_field,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

@@ -41,7 +41,7 @@ tasmania.egg-info/
 .eggs/
 
 # venv
-venv*t/
+venv*/
 
 # archives
 *.tar

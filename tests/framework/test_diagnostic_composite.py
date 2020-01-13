@@ -40,36 +40,20 @@ from tasmania.python.physics.microphysics.old_kessler import KesslerSaturationAd
 from tasmania.python.utils.meteo_utils import tetens_formula
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_domain,
-        st_isentropic_state_f,
-        st_one_of,
-        st_timedeltas,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_domain,
-        st_isentropic_state_f,
-        st_one_of,
-        st_timedeltas,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    compare_datetimes,
+    st_domain,
+    st_isentropic_state_f,
+    st_one_of,
+    st_timedeltas,
+)
 
 
 def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):

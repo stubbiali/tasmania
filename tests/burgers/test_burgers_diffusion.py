@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,34 +36,23 @@ import gt4py as gt
 
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from .dwarfs.test_horizontal_diffusion import (
-        second_order_diffusion_xyz,
-        second_order_diffusion_xz,
-        second_order_diffusion_yz,
-        fourth_order_diffusion_xyz,
-        fourth_order_diffusion_xz,
-        fourth_order_diffusion_yz,
-        assert_xyz,
-        assert_xz,
-        assert_yz,
-    )
-    from .utils import st_burgers_state, st_domain, st_floats, st_one_of
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from dwarfs.test_horizontal_diffusion import (
-        second_order_diffusion_xyz,
-        second_order_diffusion_xz,
-        second_order_diffusion_yz,
-        fourth_order_diffusion_xyz,
-        fourth_order_diffusion_xz,
-        fourth_order_diffusion_yz,
-        assert_xyz,
-        assert_xz,
-        assert_yz,
-    )
-    from utils import st_burgers_state, st_domain, st_floats, st_one_of
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.dwarfs.test_horizontal_diffusion import (
+    second_order_diffusion_xyz,
+    second_order_diffusion_xz,
+    second_order_diffusion_yz,
+    fourth_order_diffusion_xyz,
+    fourth_order_diffusion_xz,
+    fourth_order_diffusion_yz,
+    assert_xyz,
+    assert_xz,
+    assert_yz,
+)
+from tests.utilities import st_burgers_state, st_domain, st_floats, st_one_of
 
 
 def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
@@ -106,10 +95,12 @@ def test_second_order(data):
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, default_origin=default_origin), label="pstate"
+        st_burgers_state(pgrid, backend=backend, default_origin=default_origin),
+        label="pstate",
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, default_origin=default_origin), label="cstate"
+        st_burgers_state(cgrid, backend=backend, default_origin=default_origin),
+        label="cstate",
     )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
@@ -238,10 +229,12 @@ def test_fourth_order(data):
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, default_origin=default_origin), label="pstate"
+        st_burgers_state(pgrid, backend=backend, default_origin=default_origin),
+        label="pstate",
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, default_origin=default_origin), label="cstate"
+        st_burgers_state(cgrid, backend=backend, default_origin=default_origin),
+        label="cstate",
     )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
@@ -331,5 +324,4 @@ def test_fourth_order(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_second_order()
+    pytest.main([__file__])

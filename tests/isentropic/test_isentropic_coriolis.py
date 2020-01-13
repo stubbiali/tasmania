@@ -36,32 +36,18 @@ import gt4py as gt
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania import get_dataarray_3d
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_default_origin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_default_origin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_default_origin,
+    nb as conf_nb,
+)
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_isentropic_state_f,
+    st_one_of,
+)
 
 
 @settings(

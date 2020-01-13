@@ -36,32 +36,18 @@ from gt4py import storage as gt_storage
 from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict, get_dataarray_3d
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_isentropic_state_f,
+    st_one_of,
+)
 
 
 __field_properties = {

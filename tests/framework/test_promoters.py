@@ -36,10 +36,7 @@ import gt4py as gt
 from tasmania.python.framework.promoters import Tendency2Diagnostic, Diagnostic2Tendency
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
-try:
-    from .utils import compare_arrays, st_domain, st_one_of, st_raw_field
-except (ImportError, ModuleNotFoundError):
-    from utils import compare_arrays, st_domain, st_one_of, st_raw_field
+from tests.utilities import compare_arrays, st_domain, st_one_of, st_raw_field
 
 
 class FakeTendency2Diagnostic(Tendency2Diagnostic):

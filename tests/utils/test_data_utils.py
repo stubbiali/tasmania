@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,16 +32,11 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-
 import tasmania.python.utils.storage_utils
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania.python.utils import data_utils as du
 from tasmania.python.utils.exceptions import ConstantNotFoundError
+
+from tests.utilities import st_physical_grid, st_physical_horizontal_grid, st_raw_field
 
 
 def test_get_constant():
@@ -97,21 +92,19 @@ def test_get_physical_constants():
 )
 @given(hyp_st.data())
 def test_make_dataarray_2d(data):
-    grid = data.draw(utils.st_physical_horizontal_grid())
+    grid = data.draw(st_physical_horizontal_grid())
     dtype = grid.x.dtype
 
     #
     # nx, ny
     #
     raw_array = data.draw(
-        utils.st_raw_field(dtype, (grid.nx, grid.ny), min_value=-1e5, max_value=1e5)
+        st_raw_field(dtype, (grid.nx, grid.ny), min_value=-1e5, max_value=1e5)
     )
     units = data.draw(hyp_st.text(max_size=10))
     name = data.draw(hyp_st.text(max_size=10))
 
-    array = tasmania.python.utils.storage_utils.get_dataarray_2d(
-        raw_array, grid, units, name
-    )
+    array = tasmania.python.storage_utils.get_dataarray_2d(raw_array, grid, units, name)
 
     assert array.shape == (grid.nx, grid.ny)
     assert array.dims == (grid.x.dims[0], grid.y.dims[0])
@@ -124,7 +117,7 @@ def test_make_dataarray_2d(data):
     # nx+1, ny
     #
     raw_array = data.draw(
-        utils.st_raw_field(dtype, (grid.nx + 1, grid.ny), min_value=-1e5, max_value=1e5)
+        st_raw_field(dtype, (grid.nx + 1, grid.ny), min_value=-1e5, max_value=1e5)
     )
     units = data.draw(hyp_st.text(max_size=10))
     name = data.draw(hyp_st.text(max_size=10))
@@ -144,7 +137,7 @@ def test_make_dataarray_2d(data):
     # nx, ny+1
     #
     raw_array = data.draw(
-        utils.st_raw_field(dtype, (grid.nx, grid.ny + 1), min_value=-1e5, max_value=1e5)
+        st_raw_field(dtype, (grid.nx, grid.ny + 1), min_value=-1e5, max_value=1e5)
     )
     units = data.draw(hyp_st.text(max_size=10))
     name = data.draw(hyp_st.text(max_size=10))
@@ -164,9 +157,7 @@ def test_make_dataarray_2d(data):
     # nx+1, ny+1
     #
     raw_array = data.draw(
-        utils.st_raw_field(
-            dtype, (grid.nx + 1, grid.ny + 1), min_value=-1e5, max_value=1e5
-        )
+        st_raw_field(dtype, (grid.nx + 1, grid.ny + 1), min_value=-1e5, max_value=1e5)
     )
     units = data.draw(hyp_st.text(max_size=10))
     name = data.draw(hyp_st.text(max_size=10))
@@ -192,13 +183,13 @@ def test_make_dataarray_3d(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(utils.st_physical_grid())
+    grid = data.draw(st_physical_grid())
 
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     dtype = grid.z.dtype
 
     raw_array_ = data.draw(
-        utils.st_raw_field(dtype, (nx + 1, ny + 1, nz + 1), min_value=-1e5, max_value=1e5)
+        st_raw_field(dtype, (nx + 1, ny + 1, nz + 1), min_value=-1e5, max_value=1e5)
     )
     units = data.draw(hyp_st.text(max_size=10))
     name = data.draw(hyp_st.text(max_size=10))

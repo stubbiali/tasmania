@@ -40,46 +40,25 @@ from tasmania.python.burgers.dynamics.stepper import (
 )
 from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_burgers_advection import (
-        first_order_advection,
-        third_order_advection,
-        fifth_order_advection,
-    )
-    from .utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_burgers_state,
-        st_burgers_tendency,
-        st_domain,
-        st_one_of,
-        st_timedeltas,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_burgers_advection import (
-        first_order_advection,
-        third_order_advection,
-        fifth_order_advection,
-    )
-    from utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_burgers_state,
-        st_burgers_tendency,
-        st_domain,
-        st_one_of,
-        st_timedeltas,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.burgers.test_burgers_advection import (
+    first_order_advection,
+    third_order_advection,
+    fifth_order_advection,
+)
+from tests.utilities import (
+    compare_arrays,
+    compare_datetimes,
+    st_burgers_state,
+    st_burgers_tendency,
+    st_domain,
+    st_one_of,
+    st_timedeltas,
+)
 
 
 @settings(

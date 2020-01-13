@@ -50,46 +50,25 @@ from tasmania.python.isentropic.dynamics.implementations.prognostic import (
 )
 from tasmania.python.utils.storage_utils import deepcopy_array_dict, get_array_dict, zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_isentropic_horizontal_fluxes import (
-        get_upwind_fluxes,
-        get_centered_fluxes,
-        get_third_order_upwind_fluxes,
-        get_fifth_order_upwind_fluxes,
-    )
-    from .utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_isentropic_horizontal_fluxes import (
-        get_upwind_fluxes,
-        get_centered_fluxes,
-        get_third_order_upwind_fluxes,
-        get_fifth_order_upwind_fluxes,
-    )
-    from utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.isentropic.test_isentropic_horizontal_fluxes import (
+    get_upwind_fluxes,
+    get_centered_fluxes,
+    get_third_order_upwind_fluxes,
+    get_fifth_order_upwind_fluxes,
+)
+from tests.utilities import (
+    compare_arrays,
+    compare_datetimes,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

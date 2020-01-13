@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -30,15 +30,23 @@ from hypothesis import (
 )
 import pytest
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 from tasmania.python.grids.grid import Grid, PhysicalGrid, NumericalGrid
 from tasmania.python.grids.topography import PhysicalTopography
+
+from tests.conf import datatype as conf_dtype
+from tests.utilities import (
+    compare_dataarrays,
+    get_xaxis,
+    get_yaxis,
+    get_zaxis,
+    st_horizontal_boundary,
+    st_interface,
+    st_interval,
+    st_length,
+    st_one_of,
+    st_physical_horizontal_grid,
+    st_topography_kwargs,
+)
 
 
 @given(hyp_st.data())
@@ -46,30 +54,30 @@ def test_grid(data):
     # ========================================
     # random data generation
     # ========================================
-    grid_xy = data.draw(utils.st_physical_horizontal_grid())
+    grid_xy = data.draw(st_physical_horizontal_grid())
 
-    nz = data.draw(utils.st_length(axis_name="z"))
-    domain_z = data.draw(utils.st_interval(axis_name="z"))
-    zi = data.draw(utils.st_interface(domain_z))
+    nz = data.draw(st_length(axis_name="z"))
+    domain_z = data.draw(st_interval(axis_name="z"))
+    zi = data.draw(st_interface(domain_z))
 
-    topo_kwargs = data.draw(utils.st_topography_kwargs(grid_xy.x, grid_xy.y))
+    topo_kwargs = data.draw(st_topography_kwargs(grid_xy.x, grid_xy.y))
     topo_type = topo_kwargs["type"]
     topo = PhysicalTopography(grid_xy, topo_type, **topo_kwargs)
 
     # ========================================
     # test bed
     # ========================================
-    z, zhl, dz = utils.get_zaxis(domain_z, nz, grid_xy.x.dtype)
+    z, zhl, dz = get_zaxis(domain_z, nz, grid_xy.x.dtype)
 
     grid = Grid(grid_xy, z, zhl, zi, topo)
 
-    utils.compare_dataarrays(grid_xy.x, grid.grid_xy.x)
-    utils.compare_dataarrays(grid_xy.x_at_u_locations, grid.grid_xy.x_at_u_locations)
-    utils.compare_dataarrays(grid_xy.y, grid.grid_xy.y)
-    utils.compare_dataarrays(grid_xy.y_at_v_locations, grid.grid_xy.y_at_v_locations)
-    utils.compare_dataarrays(z, grid.z)
-    utils.compare_dataarrays(zhl, grid.z_on_interface_levels)
-    utils.compare_dataarrays(dz, grid.dz)
+    compare_dataarrays(grid_xy.x, grid.grid_xy.x)
+    compare_dataarrays(grid_xy.x_at_u_locations, grid.grid_xy.x_at_u_locations)
+    compare_dataarrays(grid_xy.y, grid.grid_xy.y)
+    compare_dataarrays(grid_xy.y_at_v_locations, grid.grid_xy.y_at_v_locations)
+    compare_dataarrays(z, grid.z)
+    compare_dataarrays(zhl, grid.z_on_interface_levels)
+    compare_dataarrays(dz, grid.dz)
     assert nz == grid.nz
 
 
@@ -78,45 +86,43 @@ def test_physical_grid(data):
     # ========================================
     # random data generation
     # ========================================
-    nx = data.draw(utils.st_length(axis_name="x"), label="nx")
-    ny = data.draw(utils.st_length(axis_name="y"), label="ny")
-    nz = data.draw(utils.st_length(axis_name="z"), label="nz")
+    nx = data.draw(st_length(axis_name="x"), label="nx")
+    ny = data.draw(st_length(axis_name="y"), label="ny")
+    nz = data.draw(st_length(axis_name="z"), label="nz")
 
     assume(not (nx == 1 and ny == 1))
 
-    domain_x = data.draw(utils.st_interval(axis_name="x"), label="x")
-    domain_y = data.draw(utils.st_interval(axis_name="y"), label="y")
-    domain_z = data.draw(utils.st_interval(axis_name="z"), label="z")
+    domain_x = data.draw(st_interval(axis_name="x"), label="x")
+    domain_y = data.draw(st_interval(axis_name="y"), label="y")
+    domain_z = data.draw(st_interval(axis_name="z"), label="z")
 
-    zi = data.draw(utils.st_interface(domain_z), label="zi")
+    zi = data.draw(st_interface(domain_z), label="zi")
 
-    topo_kwargs = data.draw(
-        utils.st_topography_kwargs(domain_x, domain_y), label="kwargs"
-    )
+    topo_kwargs = data.draw(st_topography_kwargs(domain_x, domain_y), label="kwargs")
     topo_type = topo_kwargs["type"]
 
-    dtype = data.draw(utils.st_one_of(conf.datatype), label="dtype")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
     # ========================================
     # test bed
     # ========================================
-    x, xu, dx = utils.get_xaxis(domain_x, nx, dtype)
-    y, yv, dy = utils.get_yaxis(domain_y, ny, dtype)
-    z, zhl, dz = utils.get_zaxis(domain_z, nz, dtype)
+    x, xu, dx = get_xaxis(domain_x, nx, dtype)
+    y, yv, dy = get_yaxis(domain_y, ny, dtype)
+    z, zhl, dz = get_zaxis(domain_z, nz, dtype)
 
     grid = PhysicalGrid(
         domain_x, nx, domain_y, ny, domain_z, nz, zi, topo_type, topo_kwargs, dtype
     )
 
-    utils.compare_dataarrays(x, grid.grid_xy.x)
-    utils.compare_dataarrays(xu, grid.grid_xy.x_at_u_locations)
-    utils.compare_dataarrays(dx, grid.grid_xy.dx)
-    utils.compare_dataarrays(y, grid.grid_xy.y)
-    utils.compare_dataarrays(yv, grid.grid_xy.y_at_v_locations)
-    utils.compare_dataarrays(dy, grid.grid_xy.dy)
-    utils.compare_dataarrays(z, grid.z)
-    utils.compare_dataarrays(zhl, grid.z_on_interface_levels)
-    utils.compare_dataarrays(dz, grid.dz)
+    compare_dataarrays(x, grid.grid_xy.x)
+    compare_dataarrays(xu, grid.grid_xy.x_at_u_locations)
+    compare_dataarrays(dx, grid.grid_xy.dx)
+    compare_dataarrays(y, grid.grid_xy.y)
+    compare_dataarrays(yv, grid.grid_xy.y_at_v_locations)
+    compare_dataarrays(dy, grid.grid_xy.dy)
+    compare_dataarrays(z, grid.z)
+    compare_dataarrays(zhl, grid.z_on_interface_levels)
+    compare_dataarrays(dz, grid.dz)
     assert nz == grid.nz
 
 
@@ -125,56 +131,50 @@ def test_numerical_grid(data):
     # ========================================
     # random data generation
     # ========================================
-    nx = data.draw(utils.st_length(axis_name="x"), label="nx")
-    ny = data.draw(utils.st_length(axis_name="y"), label="ny")
-    nz = data.draw(utils.st_length(axis_name="z"), label="nz")
+    nx = data.draw(st_length(axis_name="x"), label="nx")
+    ny = data.draw(st_length(axis_name="y"), label="ny")
+    nz = data.draw(st_length(axis_name="z"), label="nz")
 
     assume(not (nx == 1 and ny == 1))
 
-    domain_x = data.draw(utils.st_interval(axis_name="x"), label="x")
-    domain_y = data.draw(utils.st_interval(axis_name="y"), label="y")
-    domain_z = data.draw(utils.st_interval(axis_name="z"), label="z")
+    domain_x = data.draw(st_interval(axis_name="x"), label="x")
+    domain_y = data.draw(st_interval(axis_name="y"), label="y")
+    domain_z = data.draw(st_interval(axis_name="z"), label="z")
 
-    zi = data.draw(utils.st_interface(domain_z), label="zi")
+    zi = data.draw(st_interface(domain_z), label="zi")
 
-    topo_kwargs = data.draw(
-        utils.st_topography_kwargs(domain_x, domain_y), label="kwargs"
-    )
+    topo_kwargs = data.draw(st_topography_kwargs(domain_x, domain_y), label="kwargs")
     topo_type = topo_kwargs["type"]
 
-    dtype = data.draw(utils.st_one_of(conf.datatype), label="dtype")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
 
-    hb = data.draw(utils.st_horizontal_boundary(nx, ny))
+    hb = data.draw(st_horizontal_boundary(nx, ny))
 
     # ========================================
     # test bed
     # ========================================
-    x, xu, dx = utils.get_xaxis(domain_x, nx, dtype)
-    y, yv, dy = utils.get_yaxis(domain_y, ny, dtype)
-    z, zhl, dz = utils.get_zaxis(domain_z, nz, dtype)
+    x, xu, dx = get_xaxis(domain_x, nx, dtype)
+    y, yv, dy = get_yaxis(domain_y, ny, dtype)
+    z, zhl, dz = get_zaxis(domain_z, nz, dtype)
 
     pgrid = PhysicalGrid(
         domain_x, nx, domain_y, ny, domain_z, nz, zi, topo_type, topo_kwargs, dtype
     )
     grid = NumericalGrid(pgrid, hb)
 
-    utils.compare_dataarrays(
-        hb.get_numerical_xaxis(x, dims="c_" + x.dims[0]), grid.grid_xy.x
-    )
-    utils.compare_dataarrays(
+    compare_dataarrays(hb.get_numerical_xaxis(x, dims="c_" + x.dims[0]), grid.grid_xy.x)
+    compare_dataarrays(
         hb.get_numerical_xaxis(xu, dims="c_" + xu.dims[0]), grid.grid_xy.x_at_u_locations
     )
-    utils.compare_dataarrays(dx, grid.grid_xy.dx)
-    utils.compare_dataarrays(
-        hb.get_numerical_yaxis(y, dims="c_" + y.dims[0]), grid.grid_xy.y
-    )
-    utils.compare_dataarrays(
+    compare_dataarrays(dx, grid.grid_xy.dx)
+    compare_dataarrays(hb.get_numerical_yaxis(y, dims="c_" + y.dims[0]), grid.grid_xy.y)
+    compare_dataarrays(
         hb.get_numerical_yaxis(yv, dims="c_" + yv.dims[0]), grid.grid_xy.y_at_v_locations
     )
-    utils.compare_dataarrays(dy, grid.grid_xy.dy)
-    utils.compare_dataarrays(z, grid.z)
-    utils.compare_dataarrays(zhl, grid.z_on_interface_levels)
-    utils.compare_dataarrays(dz, grid.dz)
+    compare_dataarrays(dy, grid.grid_xy.dy)
+    compare_dataarrays(z, grid.z)
+    compare_dataarrays(zhl, grid.z_on_interface_levels)
+    compare_dataarrays(dz, grid.dz)
     assert nz == grid.nz
 
 

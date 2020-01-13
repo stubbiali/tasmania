@@ -35,10 +35,8 @@ from tasmania.python.framework.base_components import (
     ImplicitTendencyComponent,
     TendencyComponent,
 )
-try:
-    from .utils import compare_arrays, st_domain, st_one_of, st_raw_field
-except (ImportError, ModuleNotFoundError):
-    from utils import compare_arrays, st_domain, st_one_of, st_raw_field
+
+from tests.utilities import compare_arrays, st_domain, st_one_of, st_raw_field
 
 
 class FakeDiagnosticComponent(DiagnosticComponent):

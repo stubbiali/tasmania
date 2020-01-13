@@ -61,29 +61,23 @@ from tasmania.python.utils.gtscript_utils import (
     stencil_sts_rk3ws_0_defs,
     stencil_clip_defs,
     stencil_iclip_defs,
+    stencil_thomas_defs,
 )
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_arrays,
-        st_floats,
-        st_one_of,
-        st_physical_grid,
-        st_raw_field,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import compare_arrays, st_floats, st_one_of, st_physical_grid, st_raw_field
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+    datatype as conf_dtype,
+)
+from tests.utilities import (
+    compare_arrays,
+    st_floats,
+    st_one_of,
+    st_physical_grid,
+    st_raw_field,
+)
 
 
 def assert_annotations(func_handle, dtype):
@@ -1640,6 +1634,141 @@ def test_iclip(data):
     out_val[field_dc > 0] = field_dc[field_dc > 0]
 
     compare_arrays(field, out_val)
+
+
+def thomas_validation(a, b, c, d, x=None):
+    nx, ny, nz = a.shape
+
+    w = deepcopy(b)
+    beta = deepcopy(b)
+    delta = deepcopy(d)
+    for i in range(nx):
+        for j in range(ny):
+            w[i, j, 0] = 0.0
+            for k in range(1, nz):
+                w[i, j, k] = (
+                    a[i, j, k] / beta[i, j, k - 1] if beta[i, j, k - 1] != 0.0 else a[i, j, k]
+                )
+                beta[i, j, k] = b[i, j, k] - w[i, j, k] * c[i, j, k - 1]
+                delta[i, j, k] = d[i, j, k] - w[i, j, k] * delta[i, j, k - 1]
+
+    x = deepcopy(b) if x is None else x
+    for i in range(nx):
+        for j in range(ny):
+            x[i, j, -1] = (
+                delta[i, j, -1] / beta[i, j, -1]
+                if beta[i, j, -1] != 0.0
+                else delta[i, j, -1] / b[i, j, -1]
+            )
+            for k in range(nz - 2, -1, -1):
+                x[i, j, k] = (
+                    (delta[i, j, k] - c[i, j, k] * x[i, j, k + 1]) / beta[i, j, k]
+                    if beta[i, j, k] != 0.0
+                    else (delta[i, j, k] - c[i, j, k] * x[i, j, k + 1]) / b[i, j, k]
+                )
+
+    return x
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_thomas(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    nx = data.draw(hyp_st.integers(min_value=1, max_value=30), label="nx")
+    ny = data.draw(hyp_st.integers(min_value=1, max_value=30), label="ny")
+    nz = data.draw(hyp_st.integers(min_value=2, max_value=30), label="nz")
+
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    a = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="a",
+    )
+    b = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="b",
+    )
+    b[b == 0.0] = 1.0
+    c = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="c",
+    )
+    d = data.draw(
+        st_raw_field(
+            shape=(nx, ny, nz),
+            min_value=-1e4,
+            max_value=1e4,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="d",
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    x = zeros((nx, ny, nz), backend, dtype, default_origin=default_origin)
+
+    stencil_thomas = gtscript.stencil(
+        backend=backend,
+        definition=stencil_thomas_defs,
+        dtypes={"dtype": dtype},
+        rebuild=False,
+    )
+
+    stencil_thomas(a=a, b=b, c=c, d=d, x=x, origin=(0, 0, 0), domain=(nx, ny, nz))
+
+    x_val = thomas_validation(a, b, c, d)
+
+    compare_arrays(x, x_val)
+
+    try:
+        i = data.draw(hyp_st.integers(min_value=0, max_value=nx - 1))
+        j = data.draw(hyp_st.integers(min_value=0, max_value=ny - 1))
+        m = np.diag(a[i, j, 1:], -1) + np.diag(b[i, j, :]) + np.diag(c[i, j, :-1], 1)
+        d_val = zeros((1, 1, nz), backend, dtype, default_origin=default_origin)
+        for k in range(nz):
+            for p in range(nz):
+                d_val[0, 0, k] += m[k, p] * x_val[i, j, p]
+
+        compare_arrays(d_val, d[i, j])
+    except AssertionError:
+        print("Numerical verification of Thomas' algorithm failed.")
 
 
 if __name__ == "__main__":

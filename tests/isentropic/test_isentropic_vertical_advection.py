@@ -43,46 +43,25 @@ from tasmania.python.isentropic.physics.vertical_advection import (
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .isentropic.test_isentropic_minimal_vertical_fluxes import (
-        get_upwind_flux,
-        get_centered_flux,
-        get_third_order_upwind_flux,
-        get_fifth_order_upwind_flux,
-    )
-    from .utils import (
-        compare_arrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-        st_raw_field,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from isentropic.test_isentropic_minimal_vertical_fluxes import (
-        get_upwind_flux,
-        get_centered_flux,
-        get_third_order_upwind_flux,
-        get_fifth_order_upwind_flux,
-    )
-    from utils import (
-        compare_arrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-        st_raw_field,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
+    get_upwind_flux,
+    get_centered_flux,
+    get_third_order_upwind_flux,
+    get_fifth_order_upwind_flux,
+)
+from tests.utilities import (
+    compare_arrays,
+    st_domain,
+    st_floats,
+    st_isentropic_state_f,
+    st_one_of,
+    st_raw_field,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -231,7 +210,7 @@ def validation(
 
     flux = get_flux(w_hl, s)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
+    # set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
     assert "air_isentropic_density" in tendencies
     compare_arrays(
         out[:nx, :ny, :nz], tendencies["air_isentropic_density"].values[:nx, :ny, :nz]
@@ -239,7 +218,7 @@ def validation(
 
     flux = get_flux(w_hl, su)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
+    # set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
     assert "x_momentum_isentropic" in tendencies
     compare_arrays(
         out[:nx, :ny, :nz], tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz]
@@ -247,7 +226,7 @@ def validation(
 
     flux = get_flux(w_hl, sv)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
+    # set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
     assert "y_momentum_isentropic" in tendencies
     compare_arrays(
         out[:nx, :ny, :nz], tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz]
@@ -256,21 +235,21 @@ def validation(
     if moist:
         flux = get_flux(w_hl, sqv)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
+        # set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
         out /= s
         assert mfwv in tendencies
         compare_arrays(out[:nx, :ny, :nz], tendencies[mfwv].values[:nx, :ny, :nz])
 
         flux = get_flux(w_hl, sqc)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
+        # set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
         out /= s
         assert mfcw in tendencies
         compare_arrays(out[:nx, :ny, :nz], tendencies[mfcw].values[:nx, :ny, :nz])
 
         flux = get_flux(w_hl, sqr)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
+        # set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
         out /= s
         assert mfpw in tendencies
         compare_arrays(out[:nx, :ny, :nz], tendencies[mfpw].values[:nx, :ny, :nz])

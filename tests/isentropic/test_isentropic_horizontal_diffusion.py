@@ -40,32 +40,18 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_default_origin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_default_origin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_default_origin,
+    nb as conf_nb,
+)
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

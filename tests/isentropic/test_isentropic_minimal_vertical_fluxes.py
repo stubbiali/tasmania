@@ -45,20 +45,12 @@ from tasmania.python.isentropic.dynamics.implementations.minimal_vertical_fluxes
 )
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
-except (ModuleNotFoundError, ImportError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
 class WrappingStencil:

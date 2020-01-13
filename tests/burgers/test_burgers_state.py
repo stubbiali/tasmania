@@ -36,12 +36,8 @@ import gt4py as gt
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin
-    from .utils import st_floats, st_one_of, st_physical_grid
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin
-    from utils import st_floats, st_one_of, st_physical_grid
+from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.utilities import st_floats, st_one_of, st_physical_grid
 
 
 @settings(

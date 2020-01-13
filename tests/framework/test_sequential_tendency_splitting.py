@@ -39,20 +39,12 @@ from tasmania.python.framework.sequential_tendency_splitting import (
 )
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import compare_arrays, st_domain, st_isentropic_state_f, st_one_of
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import compare_arrays, st_domain, st_isentropic_state_f, st_one_of
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import compare_arrays, st_domain, st_isentropic_state_f, st_one_of
 
 
 @settings(

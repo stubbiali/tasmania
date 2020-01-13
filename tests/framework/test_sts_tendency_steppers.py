@@ -41,24 +41,14 @@ from tasmania.python.framework.sts_tendency_steppers import (
 )
 from tasmania import get_dataarray_dict
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin
-    from .utils import (
-        compare_arrays,
-        st_domain,
-        st_isentropic_state_f,
-        st_one_of,
-        st_timedeltas,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin
-    from utils import (
-        compare_arrays,
-        st_domain,
-        st_isentropic_state_f,
-        st_one_of,
-        st_timedeltas,
-    )
+from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.utilities import (
+    compare_arrays,
+    st_domain,
+    st_isentropic_state_f,
+    st_one_of,
+    st_timedeltas,
+)
 
 
 @settings(

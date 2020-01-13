@@ -35,34 +35,19 @@ import gt4py as gt
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania import get_dataarray_3d
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .physics.test_turbulence import smagorinsky2d_validation
-    from .utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from physics.test_turbulence import smagorinsky2d_validation
-    from utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.physics.test_turbulence import smagorinsky2d_validation
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_isentropic_state_f,
+)
 
 
 @settings(

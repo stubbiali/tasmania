@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,17 +33,20 @@ import numpy as np
 from pandas import Timedelta
 import pytest
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania.python.grids.horizontal_grid import NumericalHorizontalGrid
 from tasmania.python.grids.topography import (
     Topography,
     PhysicalTopography,
     NumericalTopography,
+)
+
+from tests.utilities import (
+    compare_dataarrays,
+    st_floats,
+    st_horizontal_boundary,
+    st_horizontal_field,
+    st_physical_horizontal_grid,
+    st_topography_kwargs,
 )
 
 
@@ -52,13 +55,13 @@ def test_topography(data):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
+    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
 
     steady_profile = data.draw(
-        utils.st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
+        st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
     )
 
-    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
+    kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
     # ========================================
     # test bed
@@ -67,18 +70,18 @@ def test_topography(data):
     topo = Topography(topo_type, steady_profile, **kwargs)
 
     assert topo.type == topo_type
-    utils.compare_dataarrays(steady_profile, topo.steady_profile)
+    compare_dataarrays(steady_profile, topo.steady_profile)
 
     topo_time = kwargs.get("time", Timedelta(seconds=0.0))
 
     if topo_time.total_seconds() == 0.0:
         kwargs["time"] = topo_time
         assert kwargs == topo.kwargs
-        utils.compare_dataarrays(steady_profile, topo.profile)
+        compare_dataarrays(steady_profile, topo.profile)
     else:
         profile = deepcopy(steady_profile)
         profile.values[...] = 0.0
-        utils.compare_dataarrays(profile, topo.profile)
+        compare_dataarrays(profile, topo.profile)
 
 
 @given(hyp_st.data())
@@ -86,16 +89,16 @@ def test_update_topography(data):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
+    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
 
     steady_profile = data.draw(
-        utils.st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
+        st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
     )
 
-    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
+    kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
-    fact1 = data.draw(utils.st_floats(min_value=1e-6, max_value=1.0), label="fact1")
-    fact2 = data.draw(utils.st_floats(min_value=fact1, max_value=1.0), label="fact2")
+    fact1 = data.draw(st_floats(min_value=1e-6, max_value=1.0), label="fact1")
+    fact2 = data.draw(st_floats(min_value=fact1, max_value=1.0), label="fact2")
 
     # ========================================
     # test bed
@@ -106,23 +109,23 @@ def test_update_topography(data):
     topo_time = kwargs.get("time", Timedelta(seconds=0.0))
 
     if topo_time.total_seconds() == 0.0:
-        utils.compare_dataarrays(steady_profile, topo.profile)
+        compare_dataarrays(steady_profile, topo.profile)
     else:
         profile = deepcopy(steady_profile)
         profile.values[...] = 0.0
-        utils.compare_dataarrays(profile, topo.profile)
+        compare_dataarrays(profile, topo.profile)
 
         time1 = fact1 * topo_time
         topo.update(time1)
         profile.values[...] = time1 / topo_time * steady_profile.values[...]
-        utils.compare_dataarrays(profile, topo.profile)
-        utils.compare_dataarrays(steady_profile, topo.steady_profile)
+        compare_dataarrays(profile, topo.profile)
+        compare_dataarrays(steady_profile, topo.steady_profile)
 
         time2 = fact2 * topo_time
         topo.update(time2)
         profile.values[...] = time2 / topo_time * steady_profile.values[...]
-        utils.compare_dataarrays(profile, topo.profile)
-        utils.compare_dataarrays(steady_profile, topo.steady_profile)
+        compare_dataarrays(profile, topo.profile)
+        compare_dataarrays(steady_profile, topo.steady_profile)
 
 
 @settings(
@@ -134,8 +137,8 @@ def test_physical_topography(data):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
-    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
+    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
+    kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
     # ========================================
     # test bed
@@ -148,11 +151,11 @@ def test_physical_topography(data):
     topo_time = kwargs.get("time", Timedelta(seconds=0.0))
 
     if topo_time.total_seconds() == 0.0:
-        utils.compare_dataarrays(topo.steady_profile, topo.profile)
+        compare_dataarrays(topo.steady_profile, topo.profile)
     else:
         profile = deepcopy(topo.steady_profile)
         profile.values[...] = 0.0
-        utils.compare_dataarrays(profile, topo.profile)
+        compare_dataarrays(profile, topo.profile)
 
 
 @settings(
@@ -164,10 +167,10 @@ def test_numerical_topography(data):
     # ========================================
     # random data generation
     # ========================================
-    pgrid = data.draw(utils.st_physical_horizontal_grid(), label="pgrid")
-    hb = data.draw(utils.st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
+    pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
+    hb = data.draw(st_horizontal_boundary(pgrid.nx, pgrid.ny), label="hb")
     cgrid = NumericalHorizontalGrid(pgrid, hb)
-    kwargs = data.draw(utils.st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
+    kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
     # ========================================
     # test bed
