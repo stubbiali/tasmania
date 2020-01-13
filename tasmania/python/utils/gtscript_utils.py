@@ -199,3 +199,34 @@ def stencil_clip_defs(
 def stencil_iclip_defs(inout_field: gtscript.Field["dtype"]) -> None:
     with computation(PARALLEL), interval(...):
         inout_field = positive(inout_field)
+
+
+def stencil_thomas_defs(
+    a: gtscript.Field["dtype"],
+    b: gtscript.Field["dtype"],
+    c: gtscript.Field["dtype"],
+    d: gtscript.Field["dtype"],
+    x: gtscript.Field["dtype"],
+) -> None:
+    # """ The Thomas' algorithm to solve a tridiagonal system of equations. """
+    with computation(FORWARD), interval(0, 1):
+        w = 0.0
+        beta = b[0, 0, 0]
+        delta = d[0, 0, 0]
+    with computation(FORWARD), interval(1, None):
+        w = a[0, 0, 0] / beta[0, 0, -1] if beta[0, 0, -1] != 0.0 else a[0, 0, 0]
+        beta = b[0, 0, 0] - w[0, 0, 0] * c[0, 0, -1]
+        delta = d[0, 0, 0] - w[0, 0, 0] * delta[0, 0, -1]
+
+    with computation(BACKWARD), interval(-1, None):
+        x = (
+            delta[0, 0, 0] / beta[0, 0, 0]
+            if beta[0, 0, 0] != 0.0
+            else delta[0, 0, 0] / b[0, 0, 0]
+        )
+    with computation(BACKWARD), interval(0, -1):
+        x = (
+            (delta[0, 0, 0] - c[0, 0, 0] * x[0, 0, 1]) / beta[0, 0, 0]
+            if beta[0, 0, 0] != 0.0
+            else (delta[0, 0, 0] - c[0, 0, 0] * x[0, 0, 1]) / b[0, 0, 0]
+        )
