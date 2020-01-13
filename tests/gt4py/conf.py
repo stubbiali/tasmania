@@ -1,1 +1,0 @@
-/Users/subbiali/Desktop/phd/tasmania-annotations/tests/conf.py
