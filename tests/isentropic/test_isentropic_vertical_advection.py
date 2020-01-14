@@ -86,10 +86,10 @@ def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
     wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
     wm = deepcopy(w)
     wm[:, :, :-1] = 0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
-    out[:, :, -nb-1:-1] = (
+    out[:, :, -nb - 1 : -1] = (
         0.5
         * (
-            -3.0 * wm[:, :, -nb-1:-1] * phi[:, :, -nb-1:-1]
+            -3.0 * wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
             + 4.0 * wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
             - wm[:, :, -nb - 3 : -3] * phi[:, :, -nb - 3 : -3]
         )
@@ -122,7 +122,15 @@ flux_properties = {
 
 
 def validation(
-    domain, flux_scheme, moist, toaptoil, backend, default_origin, rebuild, state
+    domain,
+    flux_scheme,
+    moist,
+    toaptoil,
+    backend,
+    default_origin,
+    rebuild,
+    state,
+    cls=IsentropicVerticalAdvection,
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -135,7 +143,7 @@ def validation(
 
     storage_shape = state["air_isentropic_density"].shape
 
-    fluxer = IsentropicVerticalAdvection(
+    fluxer = cls(
         domain,
         flux_scheme,
         moist,
