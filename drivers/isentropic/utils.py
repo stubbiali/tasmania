@@ -57,33 +57,33 @@ def print_info(dt, i, nl, pgrid, state):
     if (nl.print_moist_frequency > 0) and ((i + 1) % nl.print_moist_frequency == 0):
         qv_max = (
             state["mass_fraction_of_water_vapor_in_air"]
-            .values[10:-11, 10:-11, :-1]
+            .values[3:-4, 3:-4, :-1]
             .max()
             .item()
             * 1e3
         )
         qc_max = (
             state["mass_fraction_of_cloud_liquid_water_in_air"]
-            .values[10:-11, 10:-11, :-1]
+            .values[3:-4, 3:-4, :-1]
             .max()
             .item()
             * 1e3
         )
         qr_max = (
             state["mass_fraction_of_precipitation_water_in_air"]
-            .values[10:-11, 10:-11, :-1]
+            .values[3:-4, 3:-4, :-1]
             .max()
             .item()
             * 1e3
         )
         if "precipitation" in state:
             prec_max = (
-                state["precipitation"].to_units("mm hr^-1").values[10:-10, 10:-10].max()
+                state["precipitation"].to_units("mm hr^-1").values[3:-4, 3:-4].max()
             )
             accprec_max = (
                 state["accumulated_precipitation"]
                 .to_units("mm")
-                .values[10:-10, 10:-10]
+                .values[3:-4, 3:-4]
                 .max()
                 .item()
             )

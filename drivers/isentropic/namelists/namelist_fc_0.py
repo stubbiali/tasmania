@@ -56,7 +56,7 @@ gt_kwargs["backend_opts"] = (
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1.0, attrs={"units": "km"}),
+    "max_height": DataArray(1000.0, attrs={"units": "m"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -79,7 +79,7 @@ c = 0.25
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
-vertical_advection = False
+vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -142,7 +142,7 @@ timestep = timedelta(seconds=40)
 niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = 2
 filename = (
     "../../data/test/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
@@ -187,4 +187,4 @@ store_names = (
     # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 2
+print_moist_frequency = 1

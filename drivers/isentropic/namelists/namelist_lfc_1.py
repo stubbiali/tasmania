@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 81
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 81
-domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -64,7 +64,7 @@ topo_kwargs = {
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(10.0, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
 brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
 relative_humidity = 0.9
@@ -79,7 +79,7 @@ c = 0.25
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
-vertical_advection = False
+vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -142,7 +142,7 @@ timestep = timedelta(seconds=20)
 niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = 4
 filename = (
     "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
@@ -186,5 +186,5 @@ store_names = (
     # "y_momentum_isentropic",
     # "y_velocity_at_v_locations",
 )
-print_dry_frequency = -1
-print_moist_frequency = 4
+print_dry_frequency = 1
+print_moist_frequency = -1

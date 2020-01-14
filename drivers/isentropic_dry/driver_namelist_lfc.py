@@ -72,42 +72,41 @@ domain = taz.Domain(
 )
 pgrid = domain.physical_grid
 cgrid = domain.numerical_grid
-nl.gt_kwargs["storage_shape"] = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+storage_shape = (cgrid.nx + 1, cgrid.ny + 1, cgrid.nz + 1)
+nl.gt_kwargs["storage_shape"] = storage_shape
 
 # ============================================================
 # The initial state
 # ============================================================
-state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
-    cgrid,
-    nl.init_time,
-    nl.x_velocity,
-    nl.y_velocity,
-    nl.brunt_vaisala,
-    moist=True,
-    precipitation=nl.sedimentation,
-    relative_humidity=nl.relative_humidity,
-    backend=nl.gt_kwargs["backend"],
-    dtype=nl.gt_kwargs["dtype"],
-    default_origin=nl.gt_kwargs["default_origin"],
-    storage_shape=nl.gt_kwargs["storage_shape"],
-    managed_memory=nl.gt_kwargs["managed_memory"],
-)
-domain.horizontal_boundary.reference_state = state
-
-# add tendency_of_air_potential_temperature to the state
-state["tendency_of_air_potential_temperature"] = taz.get_dataarray_3d(
-    taz.zeros(
-        nl.gt_kwargs["storage_shape"],
-        nl.gt_kwargs["backend"],
-        nl.gt_kwargs["dtype"],
+if nl.isothermal:
+    state = taz.get_isentropic_state_from_temperature(
+        cgrid,
+        nl.init_time,
+        nl.x_velocity,
+        nl.y_velocity,
+        nl.temperature,
+        moist=False,
+        backend=nl.gt_kwargs["backend"],
+        dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
+        storage_shape=storage_shape,
         managed_memory=nl.gt_kwargs["managed_memory"],
-    ),
-    cgrid,
-    "K s^-1",
-    grid_shape=(cgrid.nx, cgrid.ny, cgrid.nz),
-    set_coordinates=False,
-)
+    )
+else:
+    state = taz.get_isentropic_state_from_brunt_vaisala_frequency(
+        cgrid,
+        nl.init_time,
+        nl.x_velocity,
+        nl.y_velocity,
+        nl.brunt_vaisala,
+        moist=False,
+        backend=nl.gt_kwargs["backend"],
+        dtype=nl.gt_kwargs["dtype"],
+        default_origin=nl.gt_kwargs["default_origin"],
+        storage_shape=storage_shape,
+        managed_memory=nl.gt_kwargs["managed_memory"],
+    )
+domain.horizontal_boundary.reference_state = state
 
 # ============================================================
 # The slow tendencies
@@ -144,66 +143,6 @@ if nl.turbulence:
     )
     args.append(turb)
 
-# component calculating the microphysics
-ke = taz.KesslerMicrophysics(
-    domain,
-    "numerical",
-    air_pressure_on_interface_levels=True,
-    tendency_of_air_potential_temperature_in_diagnostics=False,
-    rain_evaporation=nl.rain_evaporation,
-    autoconversion_threshold=nl.autoconversion_threshold,
-    autoconversion_rate=nl.autoconversion_rate,
-    collection_rate=nl.collection_rate,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    **nl.gt_kwargs
-)
-if nl.update_frequency > 0:
-    from sympl import UpdateFrequencyWrapper
-
-    args.append(UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep))
-else:
-    args.append(ke)
-
-# components calculating the tendencies "emulating" the saturation adjustment
-sa = taz.KesslerSaturationAdjustmentPrognostic(
-    domain,
-    grid_type="numerical",
-    air_pressure_on_interface_levels=True,
-    saturation_vapor_pressure_formula=nl.saturation_vapor_pressure_formula,
-    saturation_rate=nl.saturation_rate,
-    **nl.gt_kwargs
-)
-args.append(sa)
-
-# component promoting air_potential_temperature to state variable
-t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
-args.append(t2d)
-
-if nl.vertical_advection:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
-    args.append(vf)
-
-if nl.sedimentation:
-    # component estimating the raindrop fall velocity
-    rfv = taz.KesslerFallVelocity(domain, "numerical", **nl.gt_kwargs)
-    args.append(rfv)
-
-    # component integrating the sedimentation flux
-    sd = taz.KesslerSedimentation(
-        domain,
-        "numerical",
-        sedimentation_flux_scheme=nl.sedimentation_flux_scheme,
-        **nl.gt_kwargs
-    )
-    args.append(sd)
-
 # wrap the components in a ConcurrentCoupling object
 slow_tends = taz.ConcurrentCoupling(
     *args, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
@@ -217,15 +156,9 @@ args = []
 # component retrieving the diagnostic variables
 pt = state["air_pressure_on_interface_levels"][0, 0, 0]
 idv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=True, pt=pt, **nl.gt_kwargs
+    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
 )
 args.append(idv)
-
-if nl.sedimentation:
-    # component calculating the accumulated precipitation
-    ap = taz.Precipitation(domain, "numerical", **nl.gt_kwargs)
-    args.append(rfv)
-    args.append(ap)
 
 if nl.smooth:
     # component performing the horizontal smoothing
@@ -251,7 +184,7 @@ slow_diags = taz.DiagnosticComponentComposite(*args, execution_policy="serial")
 # ============================================================
 dycore = taz.IsentropicDynamicalCore(
     domain,
-    moist=True,
+    moist=False,
     # parameterizations
     intermediate_tendencies=None,
     intermediate_diagnostics=None,

@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 41
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -56,7 +56,7 @@ gt_kwargs["backend_opts"] = (
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1000.0, attrs={"units": "m"}),
+    "max_height": DataArray(1.0, attrs={"units": "km"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -66,9 +66,8 @@ topo_kwargs = {
 init_time = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
-isothermal = False
 brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
-temperature = DataArray(250.0, attrs={"units": "K"})
+relative_humidity = 0.9
 
 # time stepping
 time_integration_scheme = "rk3ws_si"
@@ -77,9 +76,12 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
+physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
+vertical_advection = False
+vertical_flux_scheme = "third_order_upwind"
 
 # damping
 damp = True
@@ -105,10 +107,10 @@ diff_moist_damp_depth = 0
 
 # horizontal smoothing
 smooth = False
-smooth_type = "second_order"
-smooth_coeff = 1.0
+smooth_type = "first_order"
+smooth_coeff = 0.1
 smooth_coeff_max = 1.0
-smooth_damp_depth = 0
+smooth_damp_depth = 15
 smooth_at_every_stage = False
 smooth_moist = False
 smooth_moist_type = "second_order"
@@ -121,18 +123,34 @@ smooth_moist_at_every_stage = False
 turbulence = True
 smagorinsky_constant = 0.18
 
+# coriolis
+coriolis = False
+coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
+
+# microphysics
+sedimentation = True
+sedimentation_flux_scheme = "second_order_upwind"
+rain_evaporation = True
+autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
+autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
+collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
+saturation_vapor_pressure_formula = "tetens"
+saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
+update_frequency = 0
+
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(12 * 60 * 60 / timestep.total_seconds())
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = True
-save_frequency = -1
+save_frequency = 2
 filename = (
-    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
+        physics_time_integration_scheme,
         nx,
         ny,
         nz,
@@ -142,19 +160,33 @@ filename = (
         int(topo_kwargs["width_x"].to_units("m").values.item()),
         int(topo_kwargs["max_height"].to_units("m").values.item()),
         int(x_velocity.to_units("m s^-1").values.item()),
-        "T" if isothermal else "bv",
+        int(relative_humidity * 100),
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",
+        "_f" if coriolis else "",
+        "_sed" if sedimentation else "",
+        "_evap" if rain_evaporation else "",
         gt_kwargs["backend"],
     )
 )
 store_names = (
-    "air_isentropic_density",
+    "accumulated_precipitation",
+    # "air_density",
+    # "air_isentropic_density",
+    # "air_pressure_on_interface_levels",
+    # "air_temperature",
+    # "exner_function_on_interface_levels",
     "height_on_interface_levels",
-    "x_momentum_isentropic",
-    "x_velocity_at_u_locations",
-    "y_momentum_isentropic",
-    "y_velocity_at_v_locations",
+    # "mass_fraction_of_water_vapor_in_air",
+    # "mass_fraction_of_cloud_liquid_water_in_air",
+    "mass_fraction_of_precipitation_water_in_air",
+    # "montgomery_potential",
+    "precipitation",
+    # "x_momentum_isentropic",
+    # "x_velocity_at_u_locations",
+    # "y_momentum_isentropic",
+    # "y_velocity_at_v_locations",
 )
-print_frequency = 100
+print_dry_frequency = -1
+print_moist_frequency = 2

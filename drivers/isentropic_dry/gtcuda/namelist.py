@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtx86",
+    "backend": "gtcuda",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -56,7 +56,7 @@ gt_kwargs["backend_opts"] = (
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1000.0, attrs={"units": "m"}),
+    "max_height": DataArray(500.0, attrs={"units": "m"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -97,11 +97,6 @@ diff_type = "second_order"
 diff_coeff = DataArray(10, attrs={"units": "s^-1"})
 diff_coeff_max = DataArray(12, attrs={"units": "s^-1"})
 diff_damp_depth = 30
-diff_moist = False
-diff_moist_type = "second_order"
-diff_moist_coeff = DataArray(0.12, attrs={"units": "s^-1"})
-diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
-diff_moist_damp_depth = 0
 
 # horizontal smoothing
 smooth = False
@@ -110,31 +105,28 @@ smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
-smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
-smooth_moist_damp_depth = 0
-smooth_moist_at_every_stage = False
 
 # turbulence
 turbulence = True
 smagorinsky_constant = 0.18
 
+# coriolis
+coriolis = True
+coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
+
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(12 * 60 * 60 / timestep.total_seconds())
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = -1
 filename = (
-    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-2d/isentropic_dry_{}_{}_nx{}_nz{}_dt{}_nt{}_"
     "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         nx,
-        ny,
         nz,
         int(timestep.total_seconds()),
         niter,
@@ -157,4 +149,4 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 100
+print_frequency = 5

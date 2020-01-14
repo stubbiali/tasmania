@@ -26,12 +26,12 @@ from sympl import DataArray
 
 
 # computational domain
-domain_x = DataArray([-220, 220], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 101
-domain_y = DataArray([-220, 220], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 101
-domain_z = DataArray([765, 300], dims="potential_temperature", attrs={"units": "K"})
-nz = 300
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+nx = 81
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
+ny = 81
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+nz = 60
 
 # horizontal boundary
 hb_type = "relaxed"
@@ -56,17 +56,17 @@ gt_kwargs["backend_opts"] = (
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1.0, attrs={"units": "m"}),
-    "width_x": DataArray(10.0, attrs={"units": "km"}),
-    "width_y": DataArray(10.0, attrs={"units": "km"}),
+    "max_height": DataArray(1000.0, attrs={"units": "m"}),
+    "width_x": DataArray(50.0, attrs={"units": "km"}),
+    "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
 }
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(10.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
-isothermal = True
+isothermal = False
 brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
 temperature = DataArray(250.0, attrs={"units": "K"})
 
@@ -84,8 +84,8 @@ horizontal_flux_scheme = "fifth_order_upwind"
 # damping
 damp = True
 damp_type = "rayleigh"
-damp_depth = 150
-damp_max = 0.05
+damp_depth = 15
+damp_max = 0.0002
 damp_at_every_stage = False
 
 # dict operator
@@ -122,18 +122,19 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # simulation length
-timestep = timedelta(seconds=8)
-niter = int(60000 / timestep.total_seconds())
+timestep = timedelta(seconds=20)
+niter = int(12 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = False
+save = True
 save_frequency = -1
 filename = (
-    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_T{}{}{}{}_fc_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         nx,
+        ny,
         nz,
         int(timestep.total_seconds()),
         niter,
@@ -141,7 +142,7 @@ filename = (
         int(topo_kwargs["width_x"].to_units("m").values.item()),
         int(topo_kwargs["max_height"].to_units("m").values.item()),
         int(x_velocity.to_units("m s^-1").values.item()),
-        int(temperature),
+        "T" if isothermal else "bv",
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",
@@ -156,4 +157,4 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 10
+print_frequency = 200

@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 41
-domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -80,7 +80,7 @@ physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
-vertical_advection = False
+vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -128,7 +128,7 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-sedimentation = True
+sedimentation = False
 sedimentation_flux_scheme = "second_order_upwind"
 rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
@@ -143,7 +143,7 @@ timestep = timedelta(seconds=40)
 niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = 2
 filename = (
     "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
@@ -189,4 +189,4 @@ store_names = (
     # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 2
+print_moist_frequency = 1

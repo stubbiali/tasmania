@@ -49,11 +49,13 @@
 #  echo ""
 #done
 
-#printf "namelist_fc_0 \n"
-#python driver_namelist_fc.py -n namelists2dy/namelist_fc_0.py
-printf "\n namelist_fc_1 \n"
-python driver_namelist_fc.py -n namelists2dy/namelist_fc_1.py
-printf "\n namelist_fc_2 \n"
-python driver_namelist_fc.py -n namelists2dy/namelist_fc_2.py
-printf "\n namelist_fc_3 \n"
-python driver_namelist_fc.py -n namelists2dy/namelist_fc_3.py
+printf "namelist_sus_0 \n"
+python driver_namelist_fc.py -n namelists2dx/namelist_sus_0.py
+printf "\n namelist_sus_1 \n"
+python driver_namelist_fc.py -n namelists2dx/namelist_sus_1.py
+printf "\n namelist_sus_2 \n"
+python driver_namelist_fc.py -n namelists2dx/namelist_sus_2.py
+printf "\n namelist_sus_3 \n"
+python driver_namelist_fc.py -n namelists2dx/namelist_sus_3.py
+printf "\n namelist_sus_4 \n"
+python driver_namelist_fc.py -n namelists2dx/namelist_sus_4.py

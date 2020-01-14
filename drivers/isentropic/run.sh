@@ -44,13 +44,13 @@
 #  python driver_namelist_sus.py 2> /dev/null
 #  echo ""
 #
-#  echo "python driver_namelist_ssus.py"
-#  python driver_namelist_ssus.py 2> /dev/null
+#  echo "python driver_namelist_fc.py"
+#  python driver_namelist_fc.py 2> /dev/null
 #  echo ""
 #done
 
 #printf "namelist_fc_0 \n"
-#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_0.py
+#python driver_namelist_fc.py -n namelists_vertical/namelist.py
 #printf "\n namelist_fc_1 \n"
 #python driver_namelist_fc.py -n namelists_vertical/namelist_fc_1.py
 #printf "\n namelist_fc_2 \n"
@@ -89,15 +89,19 @@
 #printf "namelist_sus_2 \n"
 #python driver_namelist_sus.py -n namelists_vertical/namelist_sus_2.py
 
-printf "\n namelist_ssus_0 \n"
-python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_0.py
-printf "\n namelist_ssus_1 \n"
-python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_1.py
-printf "\n namelist_ssus_2 \n"
-python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_2.py
-#printf "namelist_ssus_0 \n"
-#python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_0.py
-#printf "namelist_ssus_1 \n"
-#python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_1.py
-#printf "namelist_ssus_2 \n"
-#python driver_namelist_ssus.py -n namelists_vertical/namelist_ssus_2.py
+printf "\n namelist_fc_0 \n"
+python driver_namelist_fc.py -n namelists2d/namelist.py
+printf "\n namelist_fc_1 \n"
+python driver_namelist_fc.py -n namelists2d/namelist_fc_1.py
+printf "\n namelist_fc_2 \n"
+python driver_namelist_fc.py -n namelists2d/namelist_fc_2.py
+printf "\n namelist_fc_3 \n"
+python driver_namelist_fc.py -n namelists2d/namelist_fc_3.py
+printf "\n namelist_fc_4 \n"
+python driver_namelist_fc.py -n namelists2d/namelist_fc_4.py
+#printf "namelist_fc_0 \n"
+#python driver_namelist_fc.py -n namelists_vertical/namelist.py
+#printf "namelist_fc_1 \n"
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_1.py
+#printf "namelist_fc_2 \n"
+#python driver_namelist_fc.py -n namelists_vertical/namelist_fc_2.py
