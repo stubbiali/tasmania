@@ -45,10 +45,10 @@ endif
 run: prepare
 ifeq ($(ENABLE_MPL_TESTS), 1)
 	@pytest --mpl --cov=../tasmania/python \
-        burgers/ dwarfs/ framework/ gt4py/ isentropic/ physics/ utils/
+        burgers/ dwarfs/ framework/ gt4py/ isentropic/ physics/ plot/ utils/
 else
 	@pytest --mpl --cov=../tasmania/python \
-        burgers/ dwarfs/ framework/ gt4py/ isentropic/ physics/ plot/ utils/
+        burgers/ dwarfs/ framework/ gt4py/ isentropic/ physics/ utils/
 endif
 
 gtclean: clean
