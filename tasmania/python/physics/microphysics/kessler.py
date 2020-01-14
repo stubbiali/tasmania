@@ -1388,7 +1388,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         )
         if idx[0].size > 0:
             print("Number of gps violating vertical CFL: {:4d}".format(idx[0].size))
-        in_vt[idx] = 0.975 * dh[idx]
+        in_vt[idx] = 0.975 * dh[idx] / timestep.total_seconds()
 
         self._stencil(
             in_rho=in_rho,

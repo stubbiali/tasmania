@@ -38,7 +38,7 @@ class BurgersAdvection(abc.ABC):
     @abc.abstractmethod
     def __call__(
         dx: float, dy: float, u: taz_types.gtfield_t, v: taz_types.gtfield_t
-    ) -> "Tuple[taz_types.field_t, taz_types.field_t, taz_types.field_t, taz_types.field_t]":
+    ) -> "Tuple[taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t, taz_types.gtfield_t]":
         """
         Compute the accelerations due to advection.
 
