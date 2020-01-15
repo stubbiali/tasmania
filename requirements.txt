@@ -35,7 +35,7 @@ Pygments>=2.0.1
 pylint>=1.9.0
 PyOpenGL==3.1.0
 pyparsing==2.1.9
-pyqt5>=5.7.0
+pyqt5>=5.14.0
 pyqtgraph==0.9.10
 pytest>=3.6.0
 pytest-cov>=2.6.0
