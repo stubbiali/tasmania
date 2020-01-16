@@ -230,6 +230,8 @@ class HorizontalSmoothing(abc.ABC):
                 return FirstOrder1DY(*args)
             else:
                 return FirstOrder(*args)
+
+            # return FirstOrder1DX(*args)
         elif smooth_type == "second_order":
             assert not (shape[0] < 5 and shape[1] < 5)
 
@@ -239,6 +241,8 @@ class HorizontalSmoothing(abc.ABC):
                 return SecondOrder1DY(*args)
             else:
                 return SecondOrder(*args)
+
+            # return SecondOrder1DX(*args)
         elif smooth_type == "third_order":
             assert not (shape[0] < 7 and shape[1] < 7)
 

@@ -1386,8 +1386,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         idx = np.where(
             in_vt[:-1, :-1, :-1] > 0.975 * dh[:-1, :-1] / timestep.total_seconds()
         )
-        if idx[0].size > 0:
-            print("Number of gps violating vertical CFL: {:4d}".format(idx[0].size))
+        # if idx[0].size > 0:
+        #     print("Number of gps violating vertical CFL: {:4d}".format(idx[0].size))
         in_vt[idx] = 0.975 * dh[idx] / timestep.total_seconds()
 
         self._stencil(

@@ -300,8 +300,8 @@ class IsentropicPrognostic(abc.ABC):
             return SIL3(*args, **kwargs)
         else:
             raise ValueError(
-                "Unknown time integration scheme {}. Available options are "
-                "{}.".format(time_integration_scheme, ",".join(available))
+                "Unknown time integration scheme {}. Available options are: "
+                "{}.".format(time_integration_scheme, ", ".join(available))
             )
 
     def _stencils_allocate_outputs(self) -> None:

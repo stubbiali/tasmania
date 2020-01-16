@@ -89,6 +89,7 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import (
 )
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.isentropic.physics.vertical_advection import (
+    IsentropicImplicitVerticalAdvection,
     IsentropicVerticalAdvection,
     PrescribedSurfaceHeating,
 )
@@ -193,6 +194,7 @@ __all__ = (
     IsentropicDynamicalCore,
     IsentropicHorizontalDiffusion,
     IsentropicHorizontalSmoothing,
+    IsentropicImplicitVerticalAdvection,
     IsentropicSmagorinsky,
     IsentropicVelocityComponents,
     IsentropicVerticalAdvection,
