@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 81
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 81
-domain_z = DataArray([350, 290], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -106,16 +106,16 @@ diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
 diff_moist_damp_depth = 0
 
 # horizontal smoothing
-smooth = False
-smooth_type = "first_order"
-smooth_coeff = 0.1
+smooth = True
+smooth_type = "second_order"
+smooth_coeff = 1.0
 smooth_coeff_max = 1.0
-smooth_damp_depth = 15
+smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
+smooth_moist = True
 smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
+smooth_moist_coeff = 1.0
+smooth_moist_coeff_max = 1.0
 smooth_moist_damp_depth = 0
 smooth_moist_at_every_stage = False
 
@@ -144,10 +144,10 @@ niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = True
-save_frequency = 4
+save_frequency = 10
 filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-3d/isentropic_moist_{}_{}_{}_"
+    "nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_ssus_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         physics_time_integration_scheme,
@@ -173,20 +173,20 @@ filename = (
 store_names = (
     "accumulated_precipitation",
     # "air_density",
-    # "air_isentropic_density",
+    "air_isentropic_density",
     # "air_pressure_on_interface_levels",
     # "air_temperature",
     # "exner_function_on_interface_levels",
     "height_on_interface_levels",
-    # "mass_fraction_of_water_vapor_in_air",
+    "mass_fraction_of_water_vapor_in_air",
     # "mass_fraction_of_cloud_liquid_water_in_air",
     "mass_fraction_of_precipitation_water_in_air",
     # "montgomery_potential",
     "precipitation",
-    # "x_momentum_isentropic",
+    "x_momentum_isentropic",
     # "x_velocity_at_u_locations",
     # "y_momentum_isentropic",
     # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 4
+print_moist_frequency = 10

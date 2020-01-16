@@ -210,6 +210,15 @@ if nl.diff:
         diffusion_moist_damp_depth=nl.diff_moist_damp_depth,
         **nl.gt_kwargs
     )
+    args_before_dynamics.append(
+        {
+            "component": hd,
+            "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
     args_after_dynamics.append(
         {
             "component": hd,

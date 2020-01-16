@@ -113,6 +113,16 @@ domain.horizontal_boundary.reference_state = state
 # ============================================================
 args = []
 
+# component calculating the Coriolis acceleration
+if nl.coriolis:
+    cf = taz.IsentropicConservativeCoriolis(
+        domain,
+        grid_type="numerical",
+        coriolis_parameter=nl.coriolis_parameter,
+        **nl.gt_kwargs
+    )
+    args.append(cf)
+
 if nl.diff:
     # component calculating tendencies due to numerical diffusion
     diff = taz.IsentropicHorizontalDiffusion(
@@ -247,7 +257,8 @@ for i in range(nt):
     # calculate the slow physics
     if slow_diags is not None:
         diagnostics = slow_diags(state, dt)
-        state.update(diagnostics)
+        # state.update(diagnostics)
+        dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
 
     compute_time += time.time() - compute_time_start
 

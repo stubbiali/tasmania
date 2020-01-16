@@ -127,7 +127,7 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-sedimentation = True
+sedimentation = False
 sedimentation_flux_scheme = "second_order_upwind"
 rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})

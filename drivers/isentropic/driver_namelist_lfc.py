@@ -324,7 +324,8 @@ for i in range(nt):
 
     # retrieve the slow diagnostics
     diagnostics = slow_diags(state, dt)
-    state.update(diagnostics)
+    # state.update(diagnostics)
+    dict_op.copy(state, diagnostics, unshared_variables_in_output=True)
 
     compute_time += time.time() - compute_time_start
 

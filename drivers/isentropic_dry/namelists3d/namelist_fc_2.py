@@ -104,29 +104,27 @@ diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
 diff_moist_damp_depth = 0
 
 # horizontal smoothing
-smooth = False
+smooth = True
 smooth_type = "second_order"
 smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
-smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
-smooth_moist_damp_depth = 0
-smooth_moist_at_every_stage = False
 
 # turbulence
 turbulence = True
 smagorinsky_constant = 0.18
 
+# coriolis
+coriolis = True
+coriolis_parameter = None
+
 # simulation length
 timestep = timedelta(seconds=10)
-niter = int(12 * 60 * 60 / timestep.total_seconds())
+niter = 100  # int(12 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = True
+save = False
 save_frequency = -1
 filename = (
     "/scratch/snx3000tds/subbiali/data/isentropic_dry_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
@@ -157,4 +155,4 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 400
+print_frequency = -1

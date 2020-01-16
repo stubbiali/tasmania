@@ -64,7 +64,7 @@ topo_kwargs = {
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(10.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
 brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
 relative_humidity = 0.9
@@ -79,7 +79,7 @@ c = 0.25
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
-vertical_advection = True
+vertical_advection = False
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -105,16 +105,16 @@ diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
 diff_moist_damp_depth = 0
 
 # horizontal smoothing
-smooth = False
-smooth_type = "first_order"
-smooth_coeff = 0.1
+smooth = True
+smooth_type = "second_order"
+smooth_coeff = 1.0
 smooth_coeff_max = 1.0
-smooth_damp_depth = 15
+smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
+smooth_moist = True
 smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
+smooth_moist_coeff = 1.0
+smooth_moist_coeff_max = 1.0
 smooth_moist_damp_depth = 0
 smooth_moist_at_every_stage = False
 
@@ -142,11 +142,11 @@ timestep = timedelta(seconds=20)
 niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = False
-save_frequency = 4
+save = True
+save_frequency = 10
 filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-290/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_lfc_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-3d/isentropic_moist_{}_{}_"
+    "nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_lfc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         nx,
@@ -171,20 +171,20 @@ filename = (
 store_names = (
     "accumulated_precipitation",
     # "air_density",
-    # "air_isentropic_density",
+    "air_isentropic_density",
     # "air_pressure_on_interface_levels",
     # "air_temperature",
     # "exner_function_on_interface_levels",
     "height_on_interface_levels",
-    # "mass_fraction_of_water_vapor_in_air",
+    "mass_fraction_of_water_vapor_in_air",
     # "mass_fraction_of_cloud_liquid_water_in_air",
     "mass_fraction_of_precipitation_water_in_air",
     # "montgomery_potential",
     "precipitation",
-    # "x_momentum_isentropic",
+    "x_momentum_isentropic",
     # "x_velocity_at_u_locations",
     # "y_momentum_isentropic",
     # "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
-print_moist_frequency = -1
+print_dry_frequency = -1
+print_moist_frequency = 10

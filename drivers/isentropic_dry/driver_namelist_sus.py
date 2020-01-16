@@ -153,7 +153,7 @@ ptis = nl.physics_time_integration_scheme
 
 # component retrieving the diagnostic variables
 dv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=True, pt=pt, **nl.gt_kwargs
+    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
 )
 args.append({"component": dv})
 

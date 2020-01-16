@@ -298,23 +298,33 @@ args.append(
 )
 
 if nl.vertical_advection:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
-    args.append(
-        {
-            "component": vf,
-            "time_integrator": "rk3ws",
-            "gt_powered": nl.gt_powered,
-            "time_integrator_kwargs": nl.gt_kwargs,
-            "substeps": 1,
-        }
-    )
+    if nl.implicit_vertical_advection:
+        # component integrating the vertical flux
+        vf = taz.IsentropicImplicitVerticalAdvection(
+            domain,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            **nl.gt_kwargs
+        )
+        args.append({"component": vf})
+    else:
+        # component integrating the vertical flux
+        vf = taz.IsentropicVerticalAdvection(
+            domain,
+            flux_scheme=nl.vertical_flux_scheme,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            **nl.gt_kwargs
+        )
+        args.append(
+            {
+                "component": vf,
+                "time_integrator": "rk3ws",
+                "gt_powered": nl.gt_powered,
+                "time_integrator_kwargs": nl.gt_kwargs,
+                "substeps": 1,
+            }
+        )
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity

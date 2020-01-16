@@ -105,16 +105,16 @@ diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
 diff_moist_damp_depth = 0
 
 # horizontal smoothing
-smooth = False
+smooth = True
 smooth_type = "second_order"
 smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
+smooth_moist = True
 smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
+smooth_moist_coeff = 1.0
+smooth_moist_coeff_max = 1.0
 smooth_moist_damp_depth = 0
 smooth_moist_at_every_stage = False
 
@@ -127,9 +127,9 @@ coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
-sedimentation = False
+sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = False
+rain_evaporation = True
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
@@ -143,10 +143,10 @@ niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = True
-save_frequency = 8
+save_frequency = 20
 filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-280/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_fc_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-3d/isentropic_moist_{}_{}_"
+    "nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         nx,
@@ -176,7 +176,7 @@ store_names = (
     # "air_temperature",
     # "exner_function_on_interface_levels",
     "height_on_interface_levels",
-    # "mass_fraction_of_water_vapor_in_air",
+    "mass_fraction_of_water_vapor_in_air",
     # "mass_fraction_of_cloud_liquid_water_in_air",
     "mass_fraction_of_precipitation_water_in_air",
     # "montgomery_potential",
@@ -187,4 +187,4 @@ store_names = (
     # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 8
+print_moist_frequency = 20
