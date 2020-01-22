@@ -26,7 +26,7 @@ from sympl._core.combine_properties import (
     InvalidPropertyDictError,
 )
 from sympl._core.units import clean_units
-from typing import Any, Dict, Mapping, Optional, Sequence, TYPE_CHECKING, Type
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, TYPE_CHECKING, Type
 
 from tasmania.python.utils import taz_types
 
@@ -166,7 +166,7 @@ def _replace_aliases(
 
 
 def get_input_properties(
-    components_list: Sequence[taz_types.component_t],
+    components_list: Sequence[Dict[str, Any]],
     return_dict: Optional[taz_types.properties_dict_t] = None,
 ) -> taz_types.properties_dict_t:
     # Initialize the return dictionary, i.e., the list of requirements
@@ -265,7 +265,7 @@ def get_tendency_properties(
 
 
 def get_output_properties(
-    components_list: Sequence[taz_types.component_t],
+    components_list: Sequence[Dict[str, Any]],
     return_dict: Optional[taz_types.properties_dict_t] = None,
 ) -> taz_types.properties_dict_t:
     """
@@ -346,3 +346,27 @@ def check_t2d(
             )
         else:
             tendencies.update(getattr(component, "tendency_properties", {}))
+
+
+def get_increment(
+    state: taz_types.dataarray_dict_t,
+    timestep: taz_types.timedelta_t,
+    prognostic: taz_types.tendency_component_t,
+) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
+    # calculate tendencies and retrieve diagnostics
+    tendencies, diagnostics = prognostic(state, timestep)
+
+    # "multiply" the tendencies by the time step
+    for name in tendencies:
+        if name != "time":
+            tendencies[name].attrs["units"] += " s"
+
+    return tendencies, diagnostics
+
+
+def restore_tendency_units(tendencies: taz_types.mutable_dataarray_dict_t) -> None:
+    for name in tendencies:
+        if name != "time":
+            tendencies[name].attrs["units"] = clean_units(
+                tendencies[name].attrs["units"] + " s^-1"
+            )

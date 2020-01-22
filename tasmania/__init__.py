@@ -57,6 +57,9 @@ from tasmania.python.framework.sequential_tendency_splitting import (
 from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
+from tasmania.python.framework.sts_tendency_steppers_rk import ForwardEuler, RK2, RK3WS
+from tasmania.python.framework.tendency_steppers_implicit import Implicit
+from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
 
 # grids
 from tasmania.python.grids.domain import Domain
@@ -89,7 +92,8 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import (
 )
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.isentropic.physics.vertical_advection import (
-    IsentropicImplicitVerticalAdvection,
+    IsentropicImplicitVerticalAdvectionDiagnostic,
+    IsentropicImplicitVerticalAdvectionPrognostic,
     IsentropicVerticalAdvection,
     PrescribedSurfaceHeating,
 )
@@ -194,7 +198,8 @@ __all__ = (
     IsentropicDynamicalCore,
     IsentropicHorizontalDiffusion,
     IsentropicHorizontalSmoothing,
-    IsentropicImplicitVerticalAdvection,
+    IsentropicImplicitVerticalAdvectionDiagnostic,
+    IsentropicImplicitVerticalAdvectionPrognostic,
     IsentropicSmagorinsky,
     IsentropicVelocityComponents,
     IsentropicVerticalAdvection,
