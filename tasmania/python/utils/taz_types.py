@@ -32,17 +32,18 @@ from sympl import (
     TendencyComponent,
     TendencyComponentComposite,
 )
-from typing import Any, Dict, Mapping, MutableMapping, Sequence, Tuple, Union
+from typing import Any, Dict, Mapping, MutableMapping, Sequence, TYPE_CHECKING, Tuple, Union
 
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 
-from tasmania.python.framework._base import (
-    BaseConcurrentCoupling,
-    BaseDiagnostic2Tendency,
-    BaseDiagnosticComponentComposite,
-    BaseTendency2Diagnostic,
-)
+if TYPE_CHECKING:
+    from tasmania.python.framework._base import (
+        BaseConcurrentCoupling,
+        BaseDiagnostic2Tendency,
+        BaseDiagnosticComponentComposite,
+        BaseTendency2Diagnostic,
+    )
 
 
 array_t = Union[np.ndarray, Storage]
@@ -54,7 +55,7 @@ array_dict_t = Dict[str, Union[timedelta_t, array_t]]
 dataarray_dict_t = Dict[str, Union[timedelta_t, dataarray_t]]
 datetime_t = Union[dt.datetime, pd.Timestamp]
 diagnostic_component_t = Union[
-    DiagnosticComponent, DiagnosticComponentComposite, BaseDiagnosticComponentComposite
+    DiagnosticComponent, DiagnosticComponentComposite, "BaseDiagnosticComponentComposite"
 ]
 dtype_t = type
 gtfield_t = gtscript.Field["dtype"]
@@ -65,7 +66,7 @@ mutable_gtstorage_dict_t = Dict[str, Union[timedelta_t, gtstorage_t]]
 mutable_options_dict_t = Dict[str, Any]
 options_dict_t = Dict[str, Any]
 pair_int_t = Tuple[int, int]
-promoter_component_t = Union[BaseDiagnostic2Tendency, BaseTendency2Diagnostic]
+promoter_component_t = Union["BaseDiagnostic2Tendency", "BaseTendency2Diagnostic"]
 properties_dict_t = Dict[str, Any]
 properties_mapping_t = Union[Mapping[str, Any], MutableMapping[str, Any]]
 tendency_component_t = Union[
@@ -73,7 +74,7 @@ tendency_component_t = Union[
     ImplicitTendencyComponentComposite,
     TendencyComponent,
     TendencyComponentComposite,
-    BaseConcurrentCoupling,
+    "BaseConcurrentCoupling",
 ]
 triplet_bool_t = Union[Tuple[bool, bool, bool], Sequence[bool]]
 triplet_int_t = Union[Tuple[int, int, int], Sequence[int]]

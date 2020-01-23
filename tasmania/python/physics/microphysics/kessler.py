@@ -1382,13 +1382,13 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         in_qr = state[mfpw]
         in_vt = state["raindrop_fall_velocity"]
 
-        dh = in_h[:, :, :-1] - in_h[:, :, 1:]
-        idx = np.where(
-            in_vt[:-1, :-1, :-1] > 0.975 * dh[:-1, :-1] / timestep.total_seconds()
-        )
+        # dh = in_h[:, :, :-1] - in_h[:, :, 1:]
+        # idx = np.where(
+        #     in_vt[:-1, :-1, :-1] > 0.975 * dh[:-1, :-1] / timestep.total_seconds()
+        # )
         # if idx[0].size > 0:
         #     print("Number of gps violating vertical CFL: {:4d}".format(idx[0].size))
-        in_vt[idx] = 0.975 * dh[idx] / timestep.total_seconds()
+        # in_vt[idx] = 0.975 * dh[idx] / timestep.total_seconds()
 
         self._stencil(
             in_rho=in_rho,

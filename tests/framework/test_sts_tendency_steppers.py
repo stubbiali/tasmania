@@ -35,6 +35,8 @@ import gt4py as gt
 from tasmania.python.framework.fakes import FakeTendencyComponent
 from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper, register
 from tasmania.python.framework.sts_tendency_steppers_rk import ForwardEuler, RK2, RK3WS
+from tasmania.python.isentropic.physics.implicit_vertical_advection import IsentropicImplicitVerticalAdvectionDiagnostic
+from tasmania.python.isentropic.physics.sts_tendency_steppers import IsentropicVerticalAdvection
 
 from tests.utilities import st_domain, st_one_of
 
@@ -51,6 +53,10 @@ def test_register():
     # rk3ws
     assert "rk3ws" in register
     assert register["rk3ws"] == RK3WS
+
+    # isentropic vertical advection
+    assert "isentropic_vertical_advection" in register
+    assert register["isentropic_vertical_advection"] == IsentropicVerticalAdvection
 
 
 @settings(
@@ -87,6 +93,11 @@ def test_factory(data):
     # rk3ws
     obj = STSTendencyStepper.factory("rk3ws", ftc)
     assert isinstance(obj, RK3WS)
+
+    # isentropic vertical advection
+    arg = IsentropicImplicitVerticalAdvectionDiagnostic(domain)
+    obj = STSTendencyStepper.factory("isentropic_vertical_advection", arg)
+    assert isinstance(obj, IsentropicVerticalAdvection)
 
 
 if __name__ == "__main__":

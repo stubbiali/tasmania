@@ -34,7 +34,7 @@ import pytest
 
 import gt4py as gt
 
-from tasmania.python.isentropic.physics.vertical_advection import (
+from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
     IsentropicImplicitVerticalAdvectionPrognostic,
 )
@@ -49,7 +49,6 @@ from tests.utils.test_gtscript_utils import thomas_validation
 from tests.utilities import (
     compare_arrays,
     st_domain,
-    st_floats,
     st_isentropic_state_f,
     st_one_of,
     st_raw_field,
