@@ -57,9 +57,8 @@ from tasmania.python.framework.sequential_tendency_splitting import (
 from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
-from tasmania.python.framework.sts_tendency_steppers_rk import ForwardEuler, RK2, RK3WS
-from tasmania.python.framework.tendency_steppers_implicit import Implicit
-from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
+from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
+from tasmania.python.framework.tendency_steppers import TendencyStepper
 
 # grids
 from tasmania.python.grids.domain import Domain
@@ -78,7 +77,6 @@ from tasmania.python.grids.topography import (
 
 # isentropic
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
-
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
@@ -90,10 +88,12 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
-from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
-from tasmania.python.isentropic.physics.vertical_advection import (
+from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
     IsentropicImplicitVerticalAdvectionPrognostic,
+)
+from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
+from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
     PrescribedSurfaceHeating,
 )
@@ -163,6 +163,9 @@ __version__ = "0.6.1"
 
 
 __all__ = (
+    RMSD,
+    RRMSD,
+    STSTendencyStepper,
     AirPotentialTemperature2Diagnostic,
     AirPotentialTemperature2Tendency,
     Animation,
@@ -227,8 +230,6 @@ __all__ = (
     PrescribedSurfaceHeating,
     Quiver,
     Rectangle,
-    RMSD,
-    RRMSD,
     Segment,
     SequentialTendencySplitting,
     SequentialUpdateSplitting,
@@ -236,6 +237,7 @@ __all__ = (
     Stepper,
     Tendency2Diagnostic,
     TendencyComponent,
+    TendencyStepper,
     TimeInconsistencyError,
     TimeSeries,
     Topography,
