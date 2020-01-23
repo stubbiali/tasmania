@@ -139,10 +139,10 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = 10  # int(1 * 60 * 60 / timestep.total_seconds())
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = False
+save = True
 save_frequency = 5
 filename = (
     "/scratch/snx3000tds/subbiali/data/prognostic-saturation-3d/isentropic_moist_{}_{}_"
@@ -186,5 +186,5 @@ store_names = (
     # "y_momentum_isentropic",
     # "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
-print_moist_frequency = -1
+print_dry_frequency = -1
+print_moist_frequency = 5

@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtcuda",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -116,7 +116,7 @@ coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(12 * 60 * 60 / timestep.total_seconds())
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False

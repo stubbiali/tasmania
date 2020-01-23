@@ -140,6 +140,12 @@ from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
+from tasmania.python.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
+from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
+from tasmania.python.utils.meteo_utils import (
+    get_isothermal_isentropic_analytical_solution,
+)
 from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray,
@@ -150,13 +156,7 @@ from tasmania.python.utils.storage_utils import (
     get_dataarray_2d,
     zeros,
 )
-from tasmania.python.utils.dict_utils import DataArrayDictOperator
-from tasmania.python.utils.meteo_utils import (
-    get_isothermal_isentropic_analytical_solution,
-)
-from tasmania.python.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
-from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
-from tasmania.python.utils.utils import get_time_string
+from tasmania.python.utils.utils import feed_module, get_time_string
 
 
 __version__ = "0.6.1"
@@ -248,6 +248,7 @@ __all__ = (
     deepcopy_array_dict,
     deepcopy_dataarray,
     deepcopy_dataarray_dict,
+    feed_module,
     get_array_dict,
     get_dataarray_2d,
     get_dataarray_3d,

@@ -27,7 +27,7 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 321
+nx = 641
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 1
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
@@ -76,10 +76,12 @@ eps = 0.5
 a = 0.375
 b = 0.375
 c = 0.25
+physics_time_integration_scheme = "rk2"
 
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
 vertical_advection = True
+implicit_vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -138,18 +140,19 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=5)
+timestep = timedelta(seconds=2.5)
 niter = int(8 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = True
-save_frequency = 40
-save_iterations = range(0, 721, save_frequency)
+save_frequency = 80
+save_iterations = range(0, 1441, save_frequency)
 filename = (
-    "/scratch/snx3000/subbiali/data/prognostic-saturation-20200120/isentropic_moist_{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}{}_fc_{}.nc".format(
+    "/scratch/snx3000/subbiali/data/prognostic-saturation-20200120/isentropic_moist_{}_{}_{}_"
+    "nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}{}_ssus_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
+        physics_time_integration_scheme,
         nx,
         ny,
         nz,
@@ -189,4 +192,4 @@ store_names = (
     # "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = 40
+print_moist_frequency = 80

@@ -1,4 +1,4 @@
-#!/bin/bash
+# -*- coding: utf-8 -*-
 #
 # Tasmania
 #
@@ -20,11 +20,9 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-printf "\n namelist_sus_0 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_0.py
-printf "\n namelist_sus_1 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_1.py
-printf "\n namelist_sus_2 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_2.py
-printf "\n namelist_sus_3 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_3.py
+import numpy as np
+
+bar = 5
+foo = False
+franco = "Hello, world!"
+ciccio = np.float64

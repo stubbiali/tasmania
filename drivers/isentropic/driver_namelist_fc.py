@@ -26,10 +26,8 @@ import os
 import tasmania as taz
 import time
 
-try:
-    from .utils import print_info
-except (ImportError, ModuleNotFoundError):
-    from utils import print_info
+from drivers.isentropic import namelist_fc
+from drivers.isentropic.utils import print_info
 
 
 gt.storage.prepare_numpy()
@@ -51,6 +49,7 @@ namelist = args.namelist.replace("/", ".")
 namelist = namelist[:-3] if namelist.endswith(".py") else namelist
 exec("import {} as namelist".format(namelist))
 nl = locals()["namelist"]
+taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
 # The underlying domain
@@ -179,15 +178,25 @@ t2d = taz.AirPotentialTemperature2Diagnostic(domain, "numerical")
 args.append(t2d)
 
 if nl.vertical_advection:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
-    args.append(vf)
+    if nl.implicit_vertical_advection:
+        # component integrating the vertical flux
+        vf = taz.IsentropicImplicitVerticalAdvectionPrognostic(
+            domain,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            **nl.gt_kwargs
+        )
+        args.append(vf)
+    else:
+        # component integrating the vertical flux
+        vf = taz.IsentropicVerticalAdvection(
+            domain,
+            flux_scheme=nl.vertical_flux_scheme,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            **nl.gt_kwargs
+        )
+        args.append(vf)
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -339,7 +348,8 @@ for i in range(nt):
         nl.save
         and (nl.filename is not None)
         and (
-            ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0))
+            # ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0))
+            i + 1 in nl.save_iterations
             or i + 1 == nt
         )
     )

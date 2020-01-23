@@ -21,10 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 printf "\n namelist_fc_0 \n"
-python driver_namelist_fc.py -n namelists/namelist_fc_0.py
+python driver_namelist_fc.py -n namelists2d/namelist_fc_0.py
 printf "\n namelist_fc_1 \n"
-python driver_namelist_fc.py -n namelists/namelist_fc_1.py
+python driver_namelist_fc.py -n namelists2d/namelist_fc_1.py
 printf "\n namelist_fc_2 \n"
-python driver_namelist_fc.py -n namelists/namelist_fc_2.py
+python driver_namelist_fc.py -n namelists2d/namelist_fc_2.py
 printf "\n namelist_fc_3 \n"
-python driver_namelist_fc.py -n namelists/namelist_fc_3.py
+python driver_namelist_fc.py -n namelists2d/namelist_fc_3.py
+printf "\n namelist_fc_4 \n"
+python driver_namelist_fc.py -n namelists2d/namelist_fc_4.py

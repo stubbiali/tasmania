@@ -21,10 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 printf "\n namelist_ssus_0 \n"
-python driver_namelist_ssus.py -n namelists/namelist_ssus_0.py
+python driver_namelist_ssus.py -n namelists2d/namelist_ssus_0.py
 printf "\n namelist_ssus_1 \n"
-python driver_namelist_ssus.py -n namelists/namelist_ssus_1.py
+python driver_namelist_ssus.py -n namelists2d/namelist_ssus_1.py
 printf "\n namelist_ssus_2 \n"
-python driver_namelist_ssus.py -n namelists/namelist_ssus_2.py
+python driver_namelist_ssus.py -n namelists2d/namelist_ssus_2.py
 printf "\n namelist_ssus_3 \n"
-python driver_namelist_ssus.py -n namelists/namelist_ssus_3.py
+python driver_namelist_ssus.py -n namelists2d/namelist_ssus_3.py
+printf "\n namelist_ssus_4 \n"
+python driver_namelist_ssus.py -n namelists2d/namelist_ssus_4.py

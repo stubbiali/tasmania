@@ -56,7 +56,7 @@ gt_kwargs["backend_opts"] = (
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(0.5, attrs={"units": "km"}),
+    "max_height": DataArray(1.0, attrs={"units": "km"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -112,10 +112,10 @@ smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
+smooth_moist = True
 smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
+smooth_moist_coeff = 1.0
+smooth_moist_coeff_max = 1.0
 smooth_moist_damp_depth = 0
 smooth_moist_at_every_stage = False
 
@@ -140,14 +140,15 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(12 * 60 * 60 / timestep.total_seconds())
+niter = int(8 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = True
-save_frequency = -1
+save_frequency = 5
+save_iterations = range(0, 91, save_frequency)
 filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-2d/isentropic_moist_{}_{}_{}_"
-    "nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sts_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-20200120/isentropic_moist_{}_{}_{}_"
+    "nx{}_ny{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}{}_sts_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         physics_time_integration_scheme,
@@ -161,6 +162,7 @@ filename = (
         int(topo_kwargs["max_height"].to_units("m").values.item()),
         int(x_velocity.to_units("m s^-1").values.item()),
         int(relative_humidity * 100),
+        "_lh" if vertical_advection else "",
         "_diff" if diff else "",
         "_smooth" if smooth else "",
         "_turb" if turbulence else "",

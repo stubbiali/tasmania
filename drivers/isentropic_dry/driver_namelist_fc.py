@@ -26,10 +26,8 @@ import os
 import tasmania as taz
 import time
 
-try:
-    from .utils import print_info
-except (ImportError, ModuleNotFoundError):
-    from utils import print_info
+from drivers.isentropic_dry import namelist_fc
+from drivers.isentropic_dry.utils import print_info
 
 
 gt.storage.prepare_numpy()
@@ -51,6 +49,7 @@ namelist = args.namelist.replace("/", ".")
 namelist = namelist[:-3] if namelist.endswith(".py") else namelist
 exec("import {} as namelist".format(namelist))
 nl = locals()["namelist"]
+taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
 # The underlying domain

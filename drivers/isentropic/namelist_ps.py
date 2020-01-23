@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 161
+nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 161
+ny = 1
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -67,7 +67,7 @@ init_time = datetime(year=1992, month=2, day=20, hour=0)
 x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
 brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
-relative_humidity = 0.9
+relative_humidity = 0.8
 
 # time stepping
 time_integration_scheme = "rk3ws_si"
@@ -81,6 +81,7 @@ physics_time_integration_scheme = "rk2"
 # advection
 horizontal_flux_scheme = "fifth_order_upwind"
 vertical_advection = True
+implicit_vertical_advection = True
 vertical_flux_scheme = "third_order_upwind"
 
 # damping
@@ -106,16 +107,16 @@ diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
 diff_moist_damp_depth = 0
 
 # horizontal smoothing
-smooth = False
-smooth_type = "first_order"
-smooth_coeff = 0.1
+smooth = True
+smooth_type = "second_order"
+smooth_coeff = 1.0
 smooth_coeff_max = 1.0
-smooth_damp_depth = 15
+smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
+smooth_moist = True
 smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
+smooth_moist_coeff = 1.0
+smooth_moist_coeff_max = 1.0
 smooth_moist_damp_depth = 0
 smooth_moist_at_every_stage = False
 
@@ -124,7 +125,7 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
@@ -139,8 +140,8 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=10)
-niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -190,4 +191,4 @@ store_names = (
     "y_velocity_at_v_locations",
 )
 print_dry_frequency = -1
-print_moist_frequency = -1
+print_moist_frequency = 1

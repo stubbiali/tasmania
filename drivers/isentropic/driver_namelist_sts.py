@@ -26,10 +26,8 @@ import os
 import tasmania as taz
 import time
 
-try:
-    from .utils import print_info
-except (ImportError, ModuleNotFoundError):
-    from utils import print_info
+from drivers.isentropic import namelist_sts
+from drivers.isentropic.utils import print_info
 
 
 gt.storage.prepare_numpy()
@@ -51,6 +49,7 @@ namelist = args.namelist.replace("/", ".")
 namelist = namelist[:-3] if namelist.endswith(".py") else namelist
 exec("import {} as namelist".format(namelist))
 nl = locals()["namelist"]
+taz.feed_module(target=nl, source=namelist_sts)
 
 # ============================================================
 # The underlying domain
@@ -259,17 +258,32 @@ if nl.update_frequency > 0:
     comp = UpdateFrequencyWrapper(ke, nl.update_frequency * nl.timestep)
 else:
     comp = ke
-args.append(
-    {
-        "component": taz.ConcurrentCoupling(
-            comp, t2d, execution_policy="serial", gt_powered=nl.gt_powered, **nl.gt_kwargs
-        ),
-        "time_integrator": ptis,
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
-        "substeps": 1,
-    }
-)
+if nl.rain_evaporation:
+    args.append(
+        {
+            "component": taz.ConcurrentCoupling(
+                comp,
+                t2d,
+                execution_policy="serial",
+                gt_powered=nl.gt_powered,
+                **nl.gt_kwargs
+            ),
+            "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
+else:
+    args.append(
+        {
+            "component": comp,
+            "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
 
 # component performing the saturation adjustment
 sa = taz.KesslerSaturationAdjustmentPrognostic(
@@ -280,41 +294,76 @@ sa = taz.KesslerSaturationAdjustmentPrognostic(
     saturation_rate=nl.saturation_rate,
     **nl.gt_kwargs
 )
-args.append(
-    {
-        "component": taz.ConcurrentCoupling(
-            d2t,
-            sa,
-            t2d,
-            execution_policy="serial",
-            gt_powered=nl.gt_powered,
-            **nl.gt_kwargs
-        ),
-        "time_integrator": ptis,
-        "gt_powered": nl.gt_powered,
-        "time_integrator_kwargs": nl.gt_kwargs,
-        "substeps": 1,
-    }
-)
-
-if nl.vertical_advection:
-    # component integrating the vertical flux
-    vf = taz.IsentropicVerticalAdvection(
-        domain,
-        flux_scheme=nl.vertical_flux_scheme,
-        moist=True,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
-        **nl.gt_kwargs
-    )
+if nl.rain_evaporation:
     args.append(
         {
-            "component": vf,
-            "time_integrator": "rk3ws",
+            "component": taz.ConcurrentCoupling(
+                d2t,
+                sa,
+                t2d,
+                execution_policy="serial",
+                gt_powered=nl.gt_powered,
+                **nl.gt_kwargs
+            ),
+            "time_integrator": ptis,
             "gt_powered": nl.gt_powered,
             "time_integrator_kwargs": nl.gt_kwargs,
             "substeps": 1,
         }
     )
+else:
+    args.append(
+        {
+            "component": taz.ConcurrentCoupling(
+                sa,
+                t2d,
+                execution_policy="serial",
+                gt_powered=nl.gt_powered,
+                **nl.gt_kwargs
+            ),
+            "time_integrator": ptis,
+            "gt_powered": nl.gt_powered,
+            "time_integrator_kwargs": nl.gt_kwargs,
+            "substeps": 1,
+        }
+    )
+
+if nl.vertical_advection:
+    if nl.implicit_vertical_advection:
+        # component integrating the vertical flux
+        core = taz.IsentropicImplicitVerticalAdvectionDiagnostic(
+            domain,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            **nl.gt_kwargs
+        )
+        args.append(
+            {
+                "component": core,
+                "time_integrator": "isentropic_vertical_advection",
+                "gt_powered": nl.gt_powered,
+                "time_integrator_kwargs": nl.gt_kwargs,
+                "substeps": 1,
+            }
+        )
+    else:
+        # component integrating the vertical flux
+        vf = taz.IsentropicVerticalAdvection(
+            domain,
+            flux_scheme=nl.vertical_flux_scheme,
+            moist=True,
+            tendency_of_air_potential_temperature_on_interface_levels=False,
+            **nl.gt_kwargs
+        )
+        args.append(
+            {
+                "component": vf,
+                "time_integrator": "rk3ws",
+                "gt_powered": nl.gt_powered,
+                "time_integrator_kwargs": nl.gt_kwargs,
+                "substeps": 1,
+            }
+        )
 
 if nl.sedimentation:
     # component estimating the raindrop fall velocity
@@ -417,7 +466,8 @@ for i in range(nt):
         nl.save
         and (nl.filename is not None)
         and (
-            ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0))
+            # ((nl.save_frequency > 0) and ((i + 1) % nl.save_frequency == 0))
+            i + 1 in nl.save_iterations
             or i + 1 == nt
         )
     )

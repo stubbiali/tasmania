@@ -20,20 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-"""
-This module contains:
-	equal_to
-	smaller_than
-	smaller_or_equal_than
-	greater_than
-	greater_or_equal_than
-	assert_sequence
-	convert_datetime64_to_datetime
-	get_time_string
-"""
 from datetime import datetime
+import inspect
 import math
 import numpy as np
+from types import ModuleType
 
 try:
     from tasmania.conf import tol as d_tol
@@ -43,133 +34,133 @@ except ImportError:
 
 def equal_to(a, b, tol=d_tol):
     """
-	Compare floating point numbers, or arrays of floating point numbers,
-	properly accounting for round-off errors.
+    Compare floating point numbers, or arrays of floating point numbers,
+    properly accounting for round-off errors.
 
-	Parameters
-	----------
-	a : `float` or `array_like` 
-		Left-hand side.
-	b : `float` or `array_like` 
-		Right-hand side.
-	tol : `float`, optional 
-		Tolerance.
+    Parameters
+    ----------
+    a : `float` or `array_like`
+        Left-hand side.
+    b : `float` or `array_like`
+        Right-hand side.
+    tol : `float`, optional
+        Tolerance.
 
-	Return
-	------
-	bool : 
-		`True` if `a` is equal to `b` up to `tol`,
-		`False` otherwise.
-	"""
+    Return
+    ------
+    bool :
+        `True` if `a` is equal to `b` up to `tol`,
+        `False` otherwise.
+    """
     return math.fabs(a - b) <= tol
 
 
 def smaller_than(a, b, tol=d_tol):
     """
-	Compare floating point numbers, or arrays of floating point numbers,
-	properly accounting for round-off errors.
+    Compare floating point numbers, or arrays of floating point numbers,
+    properly accounting for round-off errors.
 
-	Parameters
-	----------
-	a : `float` or `array_like` 
-		Left-hand side.
-	b : `float` or `array_like` 
-		Right-hand side.
-	tol : `float`, optional 
-		Tolerance.
+    Parameters
+    ----------
+    a : `float` or `array_like`
+        Left-hand side.
+    b : `float` or `array_like`
+        Right-hand side.
+    tol : `float`, optional
+        Tolerance.
 
-	Return
-	------
-	bool : 
-		`True` if `a` is smaller than `b` up to `tol`,
-		`False` otherwise.
-	"""
+    Return
+    ------
+    bool :
+        `True` if `a` is smaller than `b` up to `tol`,
+        `False` otherwise.
+    """
     return a < (b - tol)
 
 
 def smaller_or_equal_than(a, b, tol=d_tol):
     """
-	Compare floating point numbers or arrays of floating point numbers,
-	properly accounting for round-off errors.
+    Compare floating point numbers or arrays of floating point numbers,
+    properly accounting for round-off errors.
 
-	Parameters
-	----------
-	a : `float` or `array_like` 
-		Left-hand side.
-	b : `float` or `array_like` 
-		Right-hand side.
-	tol : `float`, optional 
-		Tolerance.
+    Parameters
+    ----------
+    a : `float` or `array_like`
+        Left-hand side.
+    b : `float` or `array_like`
+        Right-hand side.
+    tol : `float`, optional
+        Tolerance.
 
-	Return
-	------
-	bool : 
-		`True` if `a` is smaller than or equal to `b`
-		up to `tol`, `False` otherwise.
-	"""
+    Return
+    ------
+    bool :
+        `True` if `a` is smaller than or equal to `b`
+        up to `tol`, `False` otherwise.
+    """
     return a <= (b + tol)
 
 
 def greater_than(a, b, tol=d_tol):
     """
-	Compare floating point numbers, or arrays of floating point numbers,
-	properly accounting for round-off errors.
+    Compare floating point numbers, or arrays of floating point numbers,
+    properly accounting for round-off errors.
 
-	Parameters
-	----------
-	a : `float` or `array_like` 
-		Left-hand side.
-	b : `float` or `array_like` 
-		Right-hand side.
-	tol : `float`, optional 
-		Tolerance.
+    Parameters
+    ----------
+    a : `float` or `array_like`
+        Left-hand side.
+    b : `float` or `array_like`
+        Right-hand side.
+    tol : `float`, optional
+        Tolerance.
 
-	Return
-	------
-	bool :  
-		`True` if `a` is greater than `b` up to `tol`,
-		`False` otherwise.
-	"""
+    Return
+    ------
+    bool :
+        `True` if `a` is greater than `b` up to `tol`,
+        `False` otherwise.
+    """
     return a > (b + tol)
 
 
 def greater_or_equal_than(a, b, tol=d_tol):
     """
-	Compare floating point numbers, or arrays of floating point numbers,
-	properly accounting for round-off errors.
+    Compare floating point numbers, or arrays of floating point numbers,
+    properly accounting for round-off errors.
 
-	Parameters
-	----------
-	a : `float` or `array_like` 
-		Left-hand side.
-	b : `float` or `array_like` 
-		Right-hand side.
-	tol : `float`, optional 
-		Tolerance.
+    Parameters
+    ----------
+    a : `float` or `array_like`
+        Left-hand side.
+    b : `float` or `array_like`
+        Right-hand side.
+    tol : `float`, optional
+        Tolerance.
 
-	Return
-	------
-	bool : 
-		`True` if `a` is greater than or equal to `b`
-		up to `tol`, `False` otherwise.
-	"""
+    Return
+    ------
+    bool :
+        `True` if `a` is greater than or equal to `b`
+        up to `tol`, `False` otherwise.
+    """
     return a >= (b - tol)
 
 
 def assert_sequence(seq, reflen=None, reftype=None):
     """
-	Assert if a sequence has appropriate length and contains objects
-	of appropriate type.
+    Assert if a sequence has appropriate length and contains objects
+    of appropriate type.
 
-	Parameters
-	----------
-	seq : sequence
-		The sequence.
-	reflen : int
-		The reference length.
-	reftype : obj
-		The reference type, or a list of reference types.
-	"""
+    Parameters
+    ----------
+    seq : sequence
+        The sequence.
+    reflen : int
+        The reference length.
+    reftype : obj
+        The reference type, or a list of reference types.
+    """
     if reflen is not None:
         assert (
             len(seq) == reflen
@@ -195,23 +186,23 @@ def assert_sequence(seq, reflen=None, reftype=None):
 
 def convert_datetime64_to_datetime(time):
     """
-	Convert :class:`numpy.datetime64` to :class:`datetime.datetime`.
+    Convert :class:`numpy.datetime64` to :class:`datetime.datetime`.
 
-	Parameters
-	----------
-	time : obj 
-		The :class:`numpy.datetime64` object to convert.
+    Parameters
+    ----------
+    time : obj
+        The :class:`numpy.datetime64` object to convert.
 
-	Return
-	------
-	obj :
-		The converted :class:`datetime.datetime` object.
+    Return
+    ------
+    obj :
+        The converted :class:`datetime.datetime` object.
 
-	References
-	----------
-	https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
-	https://github.com/bokeh/bokeh/pull/6192/commits/48aea137edbabe731fb9a9c160ff4ab2b463e036.
-	"""
+    References
+    ----------
+    https://stackoverflow.com/questions/13703720/converting-between-datetime-timestamp-and-datetime64.
+    https://github.com/bokeh/bokeh/pull/6192/commits/48aea137edbabe731fb9a9c160ff4ab2b463e036.
+    """
     # safeguard check
     if type(time) == datetime:
         return time
@@ -222,13 +213,13 @@ def convert_datetime64_to_datetime(time):
 
 def get_time_string(seconds):
     """
-	Convert seconds into a string of the form hours:minutes:seconds.
+    Convert seconds into a string of the form hours:minutes:seconds.
 
-	Parameters
-	----------
-	seconds : float
-		Total seconds.
-	"""
+    Parameters
+    ----------
+    seconds : float
+        Total seconds.
+    """
     s = ""
 
     hours = int(seconds / (60 * 60))
@@ -246,3 +237,42 @@ def get_time_string(seconds):
     )
 
     return s
+
+
+def feed_module(target, source, exclude_paths=None):
+    def get_symbol(name, symbols):
+        for symbol in symbols:
+            if symbol[0] == name:
+                return symbol[1]
+        return None
+
+    exclude_paths = exclude_paths or ("__",)
+
+    source_symbols = inspect.getmembers(source)
+    source_symbol_names = set(
+        symbol[0]
+        for symbol in source_symbols
+        if all(exclude_path not in symbol[0] for exclude_path in exclude_paths)
+    )
+    target_symbols = inspect.getmembers(target)
+    target_symbol_names = set(
+        symbol[0]
+        for symbol in target_symbols
+        if all(exclude_path not in symbol[0] for exclude_path in exclude_paths)
+    )
+
+    missing_symbol_names = source_symbol_names.difference(target_symbol_names)
+
+    for symbol_name in missing_symbol_names:
+        symbol_value = get_symbol(symbol_name, source_symbols)
+        assert symbol_value is not None
+
+        print(
+            "Symbol '{symbol_name}' added to the module '{module_name}'.".format(
+                symbol_name=symbol_name, module_name=target.__name__
+            )
+        )
+
+        setattr(target, symbol_name, symbol_value)
+
+    return target

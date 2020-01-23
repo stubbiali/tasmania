@@ -1,4 +1,4 @@
-#!/bin/bash
+# -*- coding: utf-8 -*-
 #
 # Tasmania
 #
@@ -20,11 +20,29 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-printf "\n namelist_sus_0 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_0.py
-printf "\n namelist_sus_1 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_1.py
-printf "\n namelist_sus_2 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_2.py
-printf "\n namelist_sus_3 \n"
-python driver_namelist_sus.py -n namelists2d/namelist_sus_3.py
+import numpy
+import pytest
+
+from tasmania.python.utils.utils import feed_module
+
+
+def test_feed_module():
+    from tests.utils import namelist
+    from tests.utils import namelist_baseline as baseline
+
+    feed_module(target=namelist, source=baseline)
+
+    assert hasattr(namelist, "bar")
+    assert namelist.bar == 1.0
+    assert hasattr(namelist, "foo")
+    assert namelist.foo is True
+    assert hasattr(namelist, "pippo")
+    assert namelist.pippo == "Hello, world!"
+    assert hasattr(namelist, "franco")
+    assert namelist.franco == "Hello, world!"
+    assert hasattr(namelist, "ciccio")
+    assert namelist.ciccio == numpy.float64
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])

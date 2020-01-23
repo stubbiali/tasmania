@@ -40,7 +40,7 @@ hb_kwargs = {"nr": 6}
 
 # gt4py settings
 gt_kwargs = {
-    "backend": "gtcuda",
+    "backend": "numpy",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -164,4 +164,4 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_frequency = 100
+print_frequency = 1
