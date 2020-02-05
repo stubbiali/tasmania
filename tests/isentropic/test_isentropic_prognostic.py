@@ -52,6 +52,7 @@ from tasmania.python.utils.storage_utils import deepcopy_array_dict, get_array_d
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -116,30 +117,30 @@ def forward_euler_step_momentum_x(
 
 
 def forward_euler_step_momentum_y(
-        get_fluxes,
-        mode,
-        eps,
-        dx,
-        dy,
-        dt,
-        s,
-        s_new,
-        u_tmp,
-        v_tmp,
-        mtg,
-        mtg_new,
-        sv,
-        sv_tmp,
-        sv_tnd,
-        sv_out,
+    get_fluxes,
+    mode,
+    eps,
+    dx,
+    dy,
+    dt,
+    s,
+    s_new,
+    u_tmp,
+    v_tmp,
+    mtg,
+    mtg_new,
+    sv,
+    sv_tmp,
+    sv_tnd,
+    sv_out,
 ):
     flux_x, flux_y = get_fluxes(u_tmp, v_tmp, sv_tmp)
     sv_out[1:-1, 1:-1] = sv[1:-1, 1:-1] - dt * (
-            ((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != "y" else 0.0)
-            + ((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != "x" else 0.0)
-            + (1 - eps) * s[1:-1, 1:-1] * (mtg[1:-1, 2:] - mtg[1:-1, :-2]) / (2.0 * dy)
-            + eps * s_new[1:-1, 1:-1] * (mtg_new[1:-1, 2:] - mtg_new[1:-1, :-2]) / (2.0 * dy)
-            - (sv_tnd[1:-1, 1:-1] if sv_tnd is not None else 0.0)
+        ((flux_x[1:-1, 1:-1] - flux_x[:-2, 1:-1]) / dx if mode != "y" else 0.0)
+        + ((flux_y[1:-1, 1:-1] - flux_y[1:-1, :-2]) / dy if mode != "x" else 0.0)
+        + (1 - eps) * s[1:-1, 1:-1] * (mtg[1:-1, 2:] - mtg[1:-1, :-2]) / (2.0 * dy)
+        + eps * s_new[1:-1, 1:-1] * (mtg_new[1:-1, 2:] - mtg_new[1:-1, :-2]) / (2.0 * dy)
+        - (sv_tnd[1:-1, 1:-1] if sv_tnd is not None else 0.0)
     )
 
 
@@ -156,13 +157,23 @@ def test_factory(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=3),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            nb=3,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     moist = data.draw(hyp_st.booleans(), label="moist")
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     pt = DataArray(
         data.draw(st_floats(min_value=0, max_value=100), label="pt"),
         attrs={"units": "Pa"},
@@ -185,6 +196,7 @@ def test_factory(data):
         grid,
         hb,
         moist,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -200,6 +212,7 @@ def test_factory(data):
         grid,
         hb,
         moist,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -235,10 +248,21 @@ def test_forward_euler_si(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(2, 20), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 20),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -248,15 +272,13 @@ def test_forward_euler_si(data):
 
     moist = data.draw(hyp_st.booleans(), label="moist")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -300,6 +322,7 @@ def test_forward_euler_si(data):
         grid,
         hb,
         moist,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -341,7 +364,6 @@ def test_forward_euler_si(data):
     assert "time" in raw_state_new.keys()
     compare_datetimes(raw_state_new["time"], raw_state["time"] + timestep)
 
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
     dx = grid.dx.to_units("m").values.item()
     dy = grid.dy.to_units("m").values.item()
     dt = timestep.total_seconds()
@@ -351,7 +373,13 @@ def test_forward_euler_si(data):
     # isentropic density
     s_now = raw_state["air_isentropic_density"]
     s_tnd = raw_tendencies.get("air_isentropic_density", None)
-    s_new = zeros(storage_shape, backend, dtype, default_origin)
+    s_new = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_upwind_fluxes, "xy", dx, dy, dt, u_now, v_now, s_now, s_now, s_tnd, s_new
     )
@@ -371,7 +399,13 @@ def test_forward_euler_si(data):
             "isentropic_density_of_cloud_liquid_water",
             "isentropic_density_of_precipitation_water",
         ]
-        sq_new = zeros(storage_shape, backend, dtype, default_origin)
+        sq_new = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         for name in names:
             sq_now = raw_state[name]
             sq_tnd = raw_tendencies.get(name, None)
@@ -396,9 +430,19 @@ def test_forward_euler_si(data):
 
     # montgomery potential
     ids = IsentropicDiagnostics(
-        grid, backend=backend, dtype=dtype, default_origin=default_origin
+        grid,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
     )
-    mtg_new = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    mtg_new = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     ids.get_montgomery_potential(s_new, pt.values.item(), mtg_new)
     compare_arrays(mtg_new, imp._mtg_new)
 
@@ -406,7 +450,13 @@ def test_forward_euler_si(data):
     mtg_now = raw_state["montgomery_potential"]
     su_now = raw_state["x_momentum_isentropic"]
     su_tnd = raw_tendencies.get("x_momentum_isentropic", None)
-    su_new = zeros(storage_shape, backend, dtype, default_origin)
+    su_new = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_upwind_fluxes, "xy", dx, dy, dt, u_now, v_now, su_now, su_now, su_tnd, su_new
     )
@@ -426,7 +476,13 @@ def test_forward_euler_si(data):
     # y-momentum
     sv_now = raw_state["y_momentum_isentropic"]
     sv_tnd = raw_tendencies.get("y_momentum_isentropic", None)
-    sv_new = zeros(storage_shape, backend, dtype, default_origin)
+    sv_new = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_upwind_fluxes, "xy", dx, dy, dt, u_now, v_now, sv_now, sv_now, sv_tnd, sv_new
     )
@@ -459,10 +515,21 @@ def test_rk3ws_si(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(2, 20), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 20),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -472,15 +539,13 @@ def test_rk3ws_si(data):
 
     moist = data.draw(hyp_st.booleans(), label="moist")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -524,6 +589,7 @@ def test_rk3ws_si(data):
         grid,
         hb,
         moist,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -571,7 +637,13 @@ def test_rk3ws_si(data):
         "isentropic_density_of_cloud_liquid_water",
         "isentropic_density_of_precipitation_water",
     ]
-    sq_new = zeros(storage_shape, backend, dtype, default_origin)
+    sq_new = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     #
     # stage 0
@@ -586,7 +658,13 @@ def test_rk3ws_si(data):
     # isentropic density
     s0 = raw_state["air_isentropic_density"]
     s_tnd = raw_tendencies.get("air_isentropic_density", None)
-    s1 = zeros(storage_shape, backend, dtype, default_origin)
+    s1 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, s0, s0, s_tnd, s1
     )
@@ -628,12 +706,19 @@ def test_rk3ws_si(data):
     # montgomery potential
     ids = IsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
         storage_shape=storage_shape,
     )
-    mtg1 = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    mtg1 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     ids.get_montgomery_potential(s1, pt.to_units("Pa").values.item(), mtg1)
     compare_arrays(mtg1[:nx, :ny, :nz], imp._mtg_new[:nx, :ny, :nz])
 
@@ -642,7 +727,13 @@ def test_rk3ws_si(data):
     compare_arrays(mtg0, imp._mtg_now)
     su0 = raw_state["x_momentum_isentropic"]
     su_tnd = raw_tendencies.get("x_momentum_isentropic", None)
-    su1 = zeros(storage_shape, backend, dtype, default_origin)
+    su1 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, su0, su0, su_tnd, su1
     )
@@ -665,7 +756,13 @@ def test_rk3ws_si(data):
     # y-momentum
     sv0 = raw_state["y_momentum_isentropic"]
     sv_tnd = raw_tendencies.get("y_momentum_isentropic", None)
-    sv1 = zeros(storage_shape, backend, dtype, default_origin)
+    sv1 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, sv0, sv0, sv_tnd, sv1
     )
@@ -714,7 +811,13 @@ def test_rk3ws_si(data):
     compare_datetimes(raw_state_2["time"], raw_state["time"] + 0.5 * timestep)
 
     # isentropic density
-    s2 = zeros(storage_shape, backend, dtype, default_origin)
+    s2 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, s0, s1, s_tnd, s2
     )
@@ -752,13 +855,25 @@ def test_rk3ws_si(data):
             )
 
     # montgomery potential
-    mtg2 = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    mtg2 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     ids.get_montgomery_potential(s2, pt.to_units("Pa").values.item(), mtg2)
     compare_arrays(mtg2[:nx, :ny, :nz], imp._mtg_new[:nx, :ny, :nz])
 
     # x-momentum
     su1 = raw_state_1_dc["x_momentum_isentropic"]
-    su2 = zeros(storage_shape, backend, dtype, default_origin)
+    su2 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, su0, su1, su_tnd, su2
     )
@@ -780,7 +895,13 @@ def test_rk3ws_si(data):
 
     # y-momentum
     sv1 = raw_state_1_dc["y_momentum_isentropic"]
-    sv2 = zeros(storage_shape, backend, dtype, default_origin)
+    sv2 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, sv0, sv1, sv_tnd, sv2
     )
@@ -829,7 +950,13 @@ def test_rk3ws_si(data):
     compare_datetimes(raw_state_3["time"], raw_state["time"] + timestep)
 
     # isentropic density
-    s3 = zeros(storage_shape, backend, dtype, default_origin)
+    s3 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, s0, s2, s_tnd, s3
     )
@@ -867,13 +994,25 @@ def test_rk3ws_si(data):
             )
 
     # montgomery potential
-    mtg3 = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    mtg3 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     ids.get_montgomery_potential(s3, pt.to_units("Pa").values.item(), mtg3)
     compare_arrays(mtg3[:nx, :ny, :nz], imp._mtg_new[:nx, :ny, :nz])
 
     # x-momentum
     su2 = raw_state_2_dc["x_momentum_isentropic"]
-    su3 = zeros(storage_shape, backend, dtype, default_origin)
+    su3 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, su0, su2, su_tnd, su3
     )
@@ -895,7 +1034,13 @@ def test_rk3ws_si(data):
 
     # y-momentum
     sv2 = raw_state_2_dc["y_momentum_isentropic"]
-    sv3 = zeros(storage_shape, backend, dtype, default_origin)
+    sv3 = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     forward_euler_step(
         get_fifth_order_upwind_fluxes, "xy", dx, dy, dts, u, v, sv0, sv2, sv_tnd, sv3
     )
@@ -1501,5 +1646,4 @@ def _test_sil3(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_forward_euler_si()
+    pytest.main([__file__])

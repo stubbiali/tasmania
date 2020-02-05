@@ -20,7 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from typing import Optional, Tuple
+import numpy as np
+from typing import List, Optional, Tuple
 
 from gt4py import gtscript, __externals__
 
@@ -29,6 +30,11 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
 )
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.gtscript_utils import absolute
+
+
+def get_upwind_flux_numpy(w: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    flux = w[:, :, 1:-1] * np.where(w[:, :, 1:-1] > 0.0, phi[:, :, 1:-1], phi[:, :, :-2])
+    return flux
 
 
 @gtscript.function
@@ -46,9 +52,39 @@ class Upwind(IsentropicMinimalVerticalFlux):
     order = 1
     externals = {"get_upwind_flux": get_upwind_flux}
 
+    def __init__(self, moist, gt_powered):
+        super().__init__(moist, gt_powered)
+
+    def call_numpy(
+        self,
+        dt: float,
+        dz: float,
+        w: np.ndarray,
+        s: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
+    ) -> List[np.ndarray]:
+        flux_s = get_upwind_flux_numpy(w, s)
+        flux_su = get_upwind_flux_numpy(w, su)
+        flux_sv = get_upwind_flux_numpy(w, sv)
+
+        return_list = [flux_s, flux_su, flux_sv]
+
+        if self.moist:
+            flux_sqv = get_upwind_flux_numpy(w, sqv)
+            flux_sqc = get_upwind_flux_numpy(w, sqc)
+            flux_sqr = get_upwind_flux_numpy(w, sqr)
+
+            return_list += [flux_sqv, flux_sqc, flux_sqr]
+
+        return return_list
+
     @staticmethod
     @gtscript.function
-    def __call__(
+    def call_gt(
         dt: float,
         dz: float,
         w: taz_types.gtfield_t,
@@ -76,6 +112,11 @@ class Upwind(IsentropicMinimalVerticalFlux):
             return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
 
 
+def get_centered_flux_numpy(w: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    flux = w[:, :, 1:-1] * 0.5 * (phi[:, :, 1:-1] + phi[:, :, :-2])
+    return flux
+
+
 @gtscript.function
 def get_centered_flux(
     w: taz_types.gtfield_t, phi: taz_types.gtfield_t
@@ -91,9 +132,39 @@ class Centered(IsentropicMinimalVerticalFlux):
     order = 2
     externals = {"get_centered_flux": get_centered_flux}
 
+    def __init__(self, moist, gt_powered):
+        super().__init__(moist, gt_powered)
+
+    def call_numpy(
+        self,
+        dt: float,
+        dz: float,
+        w: np.ndarray,
+        s: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
+    ) -> List[np.ndarray]:
+        flux_s = get_centered_flux_numpy(w, s)
+        flux_su = get_centered_flux_numpy(w, su)
+        flux_sv = get_centered_flux_numpy(w, sv)
+
+        return_list = [flux_s, flux_su, flux_sv]
+
+        if self.moist:
+            flux_sqv = get_centered_flux_numpy(w, sqv)
+            flux_sqc = get_centered_flux_numpy(w, sqc)
+            flux_sqr = get_centered_flux_numpy(w, sqr)
+
+            return_list += [flux_sqv, flux_sqc, flux_sqr]
+
+        return return_list
+
     @staticmethod
     @gtscript.function
-    def __call__(
+    def call_gt(
         dt: float,
         dz: float,
         w: taz_types.gtfield_t,
@@ -121,14 +192,23 @@ class Centered(IsentropicMinimalVerticalFlux):
             return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
 
 
+def get_third_order_upwind_flux_numpy(w: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    flux = w[:, :, 2:-2] / 12.0 * (
+        7.0 * (phi[:, :, 1:-3] + phi[:, :, 2:-2]) - (phi[:, :, :-4] + phi[:, :, 3:-1])
+    ) - np.abs(w[:, :, 2:-2]) / 12.0 * (
+        3.0 * (phi[:, :, 1:-3] - phi[:, :, 2:-2]) - (phi[:, :, :-4] - phi[:, :, 3:-1])
+    )
+    return flux
+
+
 @gtscript.function
 def get_third_order_upwind_flux(
     w: taz_types.gtfield_t, phi: taz_types.gtfield_t
 ) -> taz_types.gtfield_t:
     flux = w[0, 0, 0] / 12.0 * (
-        7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] + phi[0, 0, 1])
+        7.0 * (phi[0, 0, -1] + phi[0, 0, 0]) - (phi[0, 0, -2] + phi[0, 0, 1])
     ) - absolute(w)[0, 0, 0] / 12.0 * (
-        3.0 * (phi[0, 0, -1] - phi[0, 0, 0]) - 1.0 * (phi[0, 0, -2] - phi[0, 0, 1])
+        3.0 * (phi[0, 0, -1] - phi[0, 0, 0]) - (phi[0, 0, -2] - phi[0, 0, 1])
     )
     return flux
 
@@ -143,9 +223,39 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
         "absolute": absolute,
     }
 
+    def __init__(self, moist, gt_powered):
+        super().__init__(moist, gt_powered)
+
+    def call_numpy(
+        self,
+        dt: float,
+        dz: float,
+        w: np.ndarray,
+        s: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
+    ) -> List[np.ndarray]:
+        flux_s = get_third_order_upwind_flux_numpy(w, s)
+        flux_su = get_third_order_upwind_flux_numpy(w, su)
+        flux_sv = get_third_order_upwind_flux_numpy(w, sv)
+
+        return_list = [flux_s, flux_su, flux_sv]
+
+        if self.moist:
+            flux_sqv = get_third_order_upwind_flux_numpy(w, sqv)
+            flux_sqc = get_third_order_upwind_flux_numpy(w, sqc)
+            flux_sqr = get_third_order_upwind_flux_numpy(w, sqr)
+
+            return_list += [flux_sqv, flux_sqc, flux_sqr]
+
+        return return_list
+
     @staticmethod
     @gtscript.function
-    def __call__(
+    def call_gt(
         dt: float,
         dz: float,
         w: taz_types.gtfield_t,
@@ -173,6 +283,19 @@ class ThirdOrderUpwind(IsentropicMinimalVerticalFlux):
             return flux_s, flux_su, flux_sv, flux_sqv, flux_sqc, flux_sqr
 
 
+def get_fifth_order_upwind_flux_numpy(w: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    flux = w[:, :, 3:-3] / 60.0 * (
+        37.0 * (phi[:, :, 2:-4] + phi[:, :, 3:-3])
+        - 8.0 * (phi[:, :, 1:-5] + phi[:, :, 4:-2])
+        + (phi[:, :, :-6] + phi[:, :, 5:-1])
+    ) - np.abs(w[:, :, 3:-3]) / 60.0 * (
+        10.0 * (phi[:, :, 2:-4] - phi[:, :, 3:-3])
+        - 5.0 * (phi[:, :, 1:-5] - phi[:, :, 4:-2])
+        + (phi[:, :, :-6] - phi[:, :, 5:-1])
+    )
+    return flux
+
+
 @gtscript.function
 def get_fifth_order_upwind_flux(
     w: taz_types.gtfield_t, phi: taz_types.gtfield_t
@@ -180,11 +303,11 @@ def get_fifth_order_upwind_flux(
     flux = w[0, 0, 0] / 60.0 * (
         37.0 * (phi[0, 0, -1] + phi[0, 0, 0])
         - 8.0 * (phi[0, 0, -2] + phi[0, 0, 1])
-        + 1.0 * (phi[0, 0, -3] + phi[0, 0, 2])
+        + (phi[0, 0, -3] + phi[0, 0, 2])
     ) - absolute(w)[0, 0, 0] / 60.0 * (
         10.0 * (phi[0, 0, -1] - phi[0, 0, 0])
         - 5.0 * (phi[0, 0, -2] - phi[0, 0, 1])
-        + 1.0 * (phi[0, 0, -3] - phi[0, 0, 2])
+        + (phi[0, 0, -3] - phi[0, 0, 2])
     )
     return flux
 
@@ -199,9 +322,39 @@ class FifthOrderUpwind(IsentropicMinimalVerticalFlux):
         "absolute": absolute,
     }
 
+    def __init__(self, moist, gt_powered):
+        super().__init__(moist, gt_powered)
+
+    def call_numpy(
+        self,
+        dt: float,
+        dz: float,
+        w: np.ndarray,
+        s: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
+    ) -> List[np.ndarray]:
+        flux_s = get_fifth_order_upwind_flux_numpy(w, s)
+        flux_su = get_fifth_order_upwind_flux_numpy(w, su)
+        flux_sv = get_fifth_order_upwind_flux_numpy(w, sv)
+
+        return_list = [flux_s, flux_su, flux_sv]
+
+        if self.moist:
+            flux_sqv = get_fifth_order_upwind_flux_numpy(w, sqv)
+            flux_sqc = get_fifth_order_upwind_flux_numpy(w, sqc)
+            flux_sqr = get_fifth_order_upwind_flux_numpy(w, sqr)
+
+            return_list += [flux_sqv, flux_sqc, flux_sqr]
+
+        return return_list
+
     @staticmethod
     @gtscript.function
-    def __call__(
+    def call_gt(
         dt: float,
         dz: float,
         w: taz_types.gtfield_t,

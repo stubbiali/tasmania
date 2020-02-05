@@ -38,6 +38,7 @@ from tasmania import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -68,16 +69,25 @@ def test_dry(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20)),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -89,6 +99,7 @@ def test_dry(data):
             storage_shape,
             -1e3,
             1e3,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -100,6 +111,7 @@ def test_dry(data):
             storage_shape,
             -1e3,
             1e3,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -132,6 +144,7 @@ def test_dry(data):
         domain,
         grid_type,
         height_on_interface_levels=False,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -163,6 +176,7 @@ def test_dry(data):
         domain,
         grid_type,
         height_on_interface_levels=True,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -204,16 +218,19 @@ def test_moist(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20)),
+        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20),
+                  gt_powered=gt_powered, backend=backend, dtype=dtype),
         label="domain",
     )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.numerical_grid if grid_type == "numerical" else domain.physical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -225,6 +242,7 @@ def test_moist(data):
             storage_shape,
             -1e3,
             1e3,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -236,6 +254,7 @@ def test_moist(data):
             storage_shape,
             -1e3,
             1e3,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -261,6 +280,7 @@ def test_moist(data):
     comp = MoistStaticEnergy(
         domain,
         grid_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

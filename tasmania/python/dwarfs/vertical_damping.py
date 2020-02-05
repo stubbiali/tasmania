@@ -50,6 +50,7 @@ class VerticalDamping(abc.ABC):
         damp_depth: int,
         damp_coeff_max: float,
         time_units: str,
+        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
         build_info: taz_types.options_dict_t,
@@ -71,6 +72,8 @@ class VerticalDamping(abc.ABC):
             Maximum value for the damping coefficient.
         time_units : str
             Time units to be used throughout the class.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -116,8 +119,9 @@ class VerticalDamping(abc.ABC):
         r = ge(z, za) * damp_coeff_max * (1 - np.cos(math.pi * (z - za) / (zt - za)))
         self._rmat = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             mask=(True, True, True),
             managed_memory=managed_memory,
@@ -125,14 +129,17 @@ class VerticalDamping(abc.ABC):
         self._rmat[...] = r[np.newaxis, np.newaxis, :]
 
         # instantiate the underlying stencil
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @abc.abstractmethod
     def __call__(
@@ -170,6 +177,7 @@ class VerticalDamping(abc.ABC):
         damp_depth: int,
         damp_coeff_max: float,
         time_units: str = "s",
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -200,6 +208,8 @@ class VerticalDamping(abc.ABC):
             Maximum value for the damping coefficient.
         time_units : `str`, optional
             Time units to be used throughout the class. Defaults to 's'.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -228,6 +238,7 @@ class VerticalDamping(abc.ABC):
             damp_depth,
             damp_coeff_max,
             time_units,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -245,7 +256,23 @@ class VerticalDamping(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi_now: np.ndarray,
+        in_phi_new: np.ndarray,
+        in_phi_ref: np.ndarray,
+        in_rmat: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dt: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def _stencil_gt_defs(
         in_phi_now: gtscript.Field["dtype"],
         in_phi_new: gtscript.Field["dtype"],
         in_phi_ref: gtscript.Field["dtype"],
@@ -269,6 +296,7 @@ class Rayleigh(VerticalDamping):
         damp_depth=15,
         damp_coeff_max=0.0002,
         time_units="s",
+        gt_powered=True,
         backend="numpy",
         backend_opts=None,
         build_info=None,
@@ -284,6 +312,7 @@ class Rayleigh(VerticalDamping):
             damp_depth,
             damp_coeff_max,
             time_units,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -313,7 +342,7 @@ class Rayleigh(VerticalDamping):
                 in_rmat=self._rmat,
                 out_phi=field_out,
                 dt=dt_raw,
-                origin={"_all_": (0, 0, 0)},
+                origin=(0, 0, 0),
                 domain=(ni, nj, dnk),
                 exec_info=self._exec_info,
             )
@@ -322,7 +351,28 @@ class Rayleigh(VerticalDamping):
         field_out[:, :, dnk:] = field_new[:, :, dnk:]
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi_now: np.ndarray,
+        in_phi_new: np.ndarray,
+        in_phi_ref: np.ndarray,
+        in_rmat: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dt: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        out_phi[i, j, k] = in_phi_new[i, j, k] - dt * in_rmat[i, j, k] * (
+            in_phi_now[i, j, k] - in_phi_ref[i, j, k]
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi_now: gtscript.Field["dtype"],
         in_phi_new: gtscript.Field["dtype"],
         in_phi_ref: gtscript.Field["dtype"],

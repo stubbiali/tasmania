@@ -41,6 +41,7 @@ from tasmania.python.isentropic.state import (
 
 from tests.conf import (
     backend as conf_backend,
+datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -69,18 +70,20 @@ def test_brunt_vaisala(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(2, 10), nb=nb
+            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(2, 10), nb=nb,
+            gt_powered=gt_powered, backend=backend, dtype=dtype
         ),
         label="domain",
     )
     grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -96,6 +99,7 @@ def test_brunt_vaisala(data):
         moist=False,
         precipitation=False,
         relative_humidity=0.5,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

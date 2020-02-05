@@ -68,6 +68,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         moist: bool,
         pt: DataArray,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -112,6 +113,8 @@ class IsentropicDiagnostics(DiagnosticComponent):
             :func:`tasmania.utils.data_utils.get_physical_constants` and
             :obj:`tasmania.physics.isentropic.IsentropicDiagnostics._d_physical_constants`
             for the default values.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -145,6 +148,7 @@ class IsentropicDiagnostics(DiagnosticComponent):
         self._core = Core(
             self.grid,
             physical_constants=physical_constants,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -159,30 +163,52 @@ class IsentropicDiagnostics(DiagnosticComponent):
         # allocate the gt4py storages collecting the output fields calculated
         # by the stencils
         self._out_p = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_exn = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_mtg = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_h = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if moist:
             self._out_r = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._out_t = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
@@ -247,6 +273,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
     def __init__(
         self,
         domain: "Domain",
+            gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -263,6 +290,8 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         ----------
         domain : tasmania.Domain
             The underlying domain.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -290,6 +319,7 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         self._core = HorizontalVelocity(
             self.grid,
             staggering=True,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -307,12 +337,22 @@ class IsentropicVelocityComponents(DiagnosticComponent):
         assert storage_shape[1] >= ny, error_msg
         assert storage_shape[2] >= nz + 1, error_msg
 
-        # allocate the gt4py storages gathering the output fields
+        # allocate the storages gathering the output fields
         self._out_u = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_v = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
     @property

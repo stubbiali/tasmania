@@ -36,14 +36,20 @@ import pytest
 import gt4py as gt
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
-from tasmania.python.physics.microphysics.old_kessler import KesslerSaturationAdjustment
+from tasmania.python.physics.microphysics.kessler import (
+    KesslerSaturationAdjustmentDiagnostic,
+)
 from tasmania.python.utils.meteo_utils import tetens_formula
 from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
+)
+from tests.physics.test_microphysics_kessler import (
+    kessler_saturation_adjustment_diagnostic_validation,
 )
 from tests.utilities import (
     compare_arrays,
@@ -54,6 +60,16 @@ from tests.utilities import (
     st_one_of,
     st_timedeltas,
 )
+
+
+class KesslerSaturationAdjustment(KesslerSaturationAdjustmentDiagnostic):
+    @property
+    def tendency_properties(self):
+        return {}
+
+    def array_call(self, state, timestep):
+        _, diagnostics = super().array_call(state, timestep)
+        return {}, diagnostics
 
 
 def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
@@ -106,18 +122,6 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
     return p_val, exn_val, mtg_val, h_val, r_val, temp_val
 
 
-def old_kessler_saturation_adjustment_validation(p, t, qv, qc, beta, lhvw, cp):
-    p = p if p.shape[2] == t.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
-
-    ps = tetens_formula(t)
-    qvs = beta * ps / (p - ps)
-    sat = (qvs - qv) / (1.0 + qvs * 4093.0 * lhvw / (cp * ((t - 36.0) ** 2.0)))
-    dq = deepcopy(qc)
-    dq[sat <= qc] = sat[sat <= qc]
-
-    return qv + dq, qc - dq
-
-
 @settings(
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
@@ -129,23 +133,35 @@ def test_serial(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(2, 30)),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 30),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
-
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    storage_shape = (nx + 1, ny + 1, nz + 1)
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -168,6 +184,7 @@ def test_serial(data):
         grid_type,
         True,
         state["air_pressure_on_interface_levels"][0, 0, 0],
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -177,6 +194,8 @@ def test_serial(data):
         domain,
         grid_type,
         air_pressure_on_interface_levels=True,
+        saturation_vapor_pressure_formula="tetens",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -233,7 +252,7 @@ def test_serial(data):
     rd = dv._core._pcs["gas_constant_of_dry_air"]
     g = dv._core._pcs["gravitational_acceleration"]
 
-    p_val, exn_val, mtg_val, h_val, r_val, temp_val = isentropic_diagnostics_validation(
+    p_val, exn_val, mtg_val, h_val, r_val, temp_tmp = isentropic_diagnostics_validation(
         grid, state, cp, p_ref, rd, g
     )
 
@@ -262,9 +281,6 @@ def test_serial(data):
     compare_arrays(
         diagnostics["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz], r_val
     )
-    compare_arrays(
-        diagnostics["air_temperature"].to_units("K").values[:nx, :ny, :nz], temp_val
-    )
 
     qv_in = (
         state["mass_fraction_of_water_vapor_in_air"]
@@ -276,26 +292,38 @@ def test_serial(data):
         .to_units("g g^-1")
         .values[:nx, :ny, :nz]
     )
-    rd = sa._pcs["gas_constant_of_dry_air"]
-    rv = sa._pcs["gas_constant_of_water_vapor"]
-    beta = rd / rv
-    lhvw = sa._pcs["latent_heat_of_vaporization_of_water"]
+    rv = sa._rv
+    beta = sa._beta
+    lhvw = sa._lhvw
 
-    qv_out, qc_out = old_kessler_saturation_adjustment_validation(
-        p_val, temp_val, qv_in, qc_in, beta, lhvw, cp
+    qv_val, qc_val, temp_val, _ = kessler_saturation_adjustment_diagnostic_validation(
+        timestep.total_seconds(),
+        p_val,
+        temp_tmp,
+        exn_val,
+        qv_in,
+        qc_in,
+        tetens_formula,
+        beta,
+        lhvw,
+        cp,
+        rv,
     )
 
     compare_arrays(
         diagnostics["mass_fraction_of_water_vapor_in_air"]
         .to_units("g g^-1")
         .values[:nx, :ny, :nz],
-        qv_out,
+        qv_val,
     )
     compare_arrays(
         diagnostics["mass_fraction_of_cloud_liquid_water_in_air"]
         .to_units("g g^-1")
         .values[:nx, :ny, :nz],
-        qc_out,
+        qc_val,
+    )
+    compare_arrays(
+        diagnostics["air_temperature"].to_units("K").values[:nx, :ny, :nz], temp_val
     )
 
 
@@ -310,23 +338,35 @@ def test_asparallel(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(2, 30)),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 30),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
-
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    storage_shape = (nx + 1, ny + 1, nz + 1)
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -349,6 +389,7 @@ def test_asparallel(data):
         grid_type,
         True,
         state["air_pressure_on_interface_levels"][0, 0, 0],
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -358,6 +399,8 @@ def test_asparallel(data):
         domain,
         grid_type,
         air_pressure_on_interface_levels=True,
+        saturation_vapor_pressure_formula="tetens",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -372,9 +415,10 @@ def test_asparallel(data):
     assert "air_isentropic_density" in dcc.input_properties
     assert "air_pressure_on_interface_levels" in dcc.input_properties
     assert "air_temperature" in dcc.input_properties
+    assert "exner_function_on_interface_levels" in dcc.input_properties
     assert "mass_fraction_of_water_vapor_in_air" in dcc.input_properties
     assert "mass_fraction_of_cloud_liquid_water_in_air" in dcc.input_properties
-    assert len(dcc.input_properties) == 5
+    assert len(dcc.input_properties) == 6
 
     assert "air_density" in dcc.diagnostic_properties
     assert "air_pressure_on_interface_levels" in dcc.diagnostic_properties
@@ -445,9 +489,6 @@ def test_asparallel(data):
     compare_arrays(
         diagnostics["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz], r_val
     )
-    compare_arrays(
-        diagnostics["air_temperature"].to_units("K").values[:nx, :ny, :nz], temp_val
-    )
 
     p = (
         state["air_pressure_on_interface_levels"]
@@ -455,36 +496,43 @@ def test_asparallel(data):
         .values[:nx, :ny, : nz + 1]
     )
     temp = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
-    qv_in = (
+    exn = (
+        state["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
+    )
+    qv = (
         state["mass_fraction_of_water_vapor_in_air"]
         .to_units("g g^-1")
         .values[:nx, :ny, :nz]
     )
-    qc_in = (
+    qc = (
         state["mass_fraction_of_cloud_liquid_water_in_air"]
         .to_units("g g^-1")
         .values[:nx, :ny, :nz]
     )
-    rd = sa._pcs["gas_constant_of_dry_air"]
-    rv = sa._pcs["gas_constant_of_water_vapor"]
-    beta = rd / rv
-    lhvw = sa._pcs["latent_heat_of_vaporization_of_water"]
+    rv = sa._rv
+    beta = sa._beta
+    lhvw = sa._lhvw
 
-    qv_out, qc_out = old_kessler_saturation_adjustment_validation(
-        p, temp, qv_in, qc_in, beta, lhvw, cp
+    qv_val, qc_val, temp_val, _ = kessler_saturation_adjustment_diagnostic_validation(
+        timestep.total_seconds(), p, temp, exn, qv, qc, tetens_formula, beta, lhvw, cp, rv
     )
 
     compare_arrays(
         diagnostics["mass_fraction_of_water_vapor_in_air"]
         .to_units("g g^-1")
         .values[:nx, :ny, :nz],
-        qv_out,
+        qv_val,
     )
     compare_arrays(
         diagnostics["mass_fraction_of_cloud_liquid_water_in_air"]
         .to_units("g g^-1")
         .values[:nx, :ny, :nz],
-        qc_out,
+        qc_val,
+    )
+    compare_arrays(
+        diagnostics["air_temperature"].to_units("K").values[:nx, :ny, :nz], temp_val
     )
 
 

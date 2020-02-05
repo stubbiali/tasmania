@@ -45,6 +45,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         grid_type: str,
         diffusion_type: str,
         diffusion_coeff: DataArray,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -73,6 +74,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         diffusion_coeff : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusion
             coefficient. The units should be compatible with 'm^2 s^-1'.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -108,6 +111,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             diffusion_coeff_max=diffusion_coeff.to_units("m^2 s^-1").values.item(),
             diffusion_damp_depth=0,
             nb=self.horizontal_boundary.nb,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -120,15 +124,17 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
         self._out_u_tnd = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_v_tnd = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
@@ -156,8 +162,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         self._diffuser(state["x_velocity"], self._out_u_tnd)
         self._diffuser(state["y_velocity"], self._out_v_tnd)
 

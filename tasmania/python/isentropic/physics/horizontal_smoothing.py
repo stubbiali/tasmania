@@ -55,6 +55,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
         smooth_moist_coeff: Optional[float] = None,
         smooth_moist_coeff_max: Optional[float] = None,
         smooth_moist_damp_depth: Optional[int] = None,
+        gt_powered: bool = None,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -91,6 +92,8 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             species close to the upper boundary.
         smooth_damp_depth : int
             Depth of the damping region for the water species.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -127,6 +130,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -154,6 +158,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
                 smooth_moist_coeff_max,
                 smooth_moist_damp_depth,
                 nb,
+                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
@@ -167,23 +172,53 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
             self._core_moist = None
 
         self._out_s = zeros(
-            shape, backend, dtype, default_origin, managed_memory=managed_memory
+            shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_su = zeros(
-            shape, backend, dtype, default_origin, managed_memory=managed_memory
+            shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_sv = zeros(
-            shape, backend, dtype, default_origin, managed_memory=managed_memory
+            shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if self._moist:
             self._out_qv = zeros(
-                shape, backend, dtype, default_origin, managed_memory=managed_memory
+                shape,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
             )
             self._out_qc = zeros(
-                shape, backend, dtype, default_origin, managed_memory=managed_memory
+                shape,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
             )
             self._out_qr = zeros(
-                shape, backend, dtype, default_origin, managed_memory=managed_memory
+                shape,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
             )
 
     @property
@@ -207,7 +242,7 @@ class IsentropicHorizontalSmoothing(DiagnosticComponent):
     def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return self.input_properties
 
-    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
+    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
         in_s = state["air_isentropic_density"]
         in_su = state["x_momentum_isentropic"]
         in_sv = state["y_momentum_isentropic"]

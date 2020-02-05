@@ -45,6 +45,7 @@ class HorizontalVelocity:
         self,
         grid: "Grid",
         staggering: bool = True,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -62,6 +63,8 @@ class HorizontalVelocity:
             `True` if the velocity components should be computed
             on the staggered grid, `False` to collocate the velocity
             components in the mass points.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -82,33 +85,42 @@ class HorizontalVelocity:
         self._exec_info = exec_info
 
         # initialize the underlying stencils
-        self._stencil_diagnosing_momenta = gtscript.stencil(
-            definition=self._stencil_diagnosing_momenta_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals={"staggering": staggering},
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
-        self._stencil_diagnosing_velocity_x = gtscript.stencil(
-            definition=self._stencil_diagnosing_velocity_x_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals={"staggering": staggering},
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
-        self._stencil_diagnosing_velocity_y = gtscript.stencil(
-            definition=self._stencil_diagnosing_velocity_y_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals={"staggering": staggering},
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil_diagnosing_momenta = gtscript.stencil(
+                definition=self._stencil_diagnosing_momenta_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals={"staggering": staggering},
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+            self._stencil_diagnosing_velocity_x = gtscript.stencil(
+                definition=self._stencil_diagnosing_velocity_x_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals={"staggering": staggering},
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+            self._stencil_diagnosing_velocity_y = gtscript.stencil(
+                definition=self._stencil_diagnosing_velocity_y_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals={"staggering": staggering},
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil_diagnosing_momenta = self._stencil_diagnosing_momenta_numpy
+            self._stencil_diagnosing_velocity_x = (
+                self._stencil_diagnosing_velocity_x_numpy
+            )
+            self._stencil_diagnosing_velocity_y = (
+                self._stencil_diagnosing_velocity_y_numpy
+            )
 
     def get_momenta(
         self,
@@ -144,7 +156,7 @@ class HorizontalVelocity:
             in_v=v,
             out_du=du,
             out_dv=dv,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -187,7 +199,7 @@ class HorizontalVelocity:
             in_d=d,
             in_du=du,
             out_u=u,
-            origin={"_all_": (dn, 0, 0)},
+            origin=(dn, 0, 0),
             domain=(nx - dn, ny, nz),
             exec_info=self._exec_info,
         )
@@ -195,13 +207,38 @@ class HorizontalVelocity:
             in_d=d,
             in_dv=dv,
             out_v=v,
-            origin={"_all_": (0, dn, 0)},
+            origin=(0, dn, 0),
             domain=(nx, ny - dn, nz),
             exec_info=self._exec_info,
         )
 
+    def _stencil_diagnosing_momenta_numpy(
+        self,
+        in_d: np.ndarray,
+        in_u: np.ndarray,
+        in_v: np.ndarray,
+        out_du: np.ndarray,
+        out_dv: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
+        j = slice(origin[1], origin[1] + domain[1])
+        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
+        k = slice(origin[2], origin[2] + domain[2])
+
+        if self._staggering:  # compile-time if
+            out_du[i, j, k] = 0.5 * in_d[i, j, k] * (in_u[i, j, k] + in_u[ip1, j, k])
+            out_dv[i, j, k] = 0.5 * in_d[i, j, k] * (in_v[i, j, k] + in_v[i, jp1, k])
+        else:
+            out_du[i, j, k] = in_d[i, j, k] * in_u[i, j, k]
+            out_dv[i, j, k] = in_d[i, j, k] * in_v[i, j, k]
+
     @staticmethod
-    def _stencil_diagnosing_momenta_defs(
+    def _stencil_diagnosing_momenta_gt_defs(
         in_d: gtscript.Field["dtype"],
         in_u: gtscript.Field["dtype"],
         in_v: gtscript.Field["dtype"],
@@ -218,8 +255,30 @@ class HorizontalVelocity:
                 out_du = in_d * in_u
                 out_dv = in_d * in_v
 
+    def _stencil_diagnosing_velocity_x_numpy(
+        self,
+        in_d: np.ndarray,
+        in_du: np.ndarray,
+        out_u: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        if self._staggering:  # compile-time if
+            out_u[i, j, k] = (in_du[im1, j, k] + in_du[i, j, k]) / (
+                in_d[im1, j, k] + in_d[i, j, k]
+            )
+        else:
+            out_u[i, j, k] = in_du[i, j, k] / in_d[i, j, k]
+
     @staticmethod
-    def _stencil_diagnosing_velocity_x_defs(
+    def _stencil_diagnosing_velocity_x_gt_defs(
         in_d: gtscript.Field["dtype"],
         in_du: gtscript.Field["dtype"],
         out_u: gtscript.Field["dtype"],
@@ -234,8 +293,30 @@ class HorizontalVelocity:
             else:
                 out_u = in_du / in_d
 
+    def _stencil_diagnosing_velocity_y_numpy(
+        self,
+        in_d: np.ndarray,
+        in_dv: np.ndarray,
+        out_v: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+        k = slice(origin[2], origin[2] + domain[2])
+
+        if self._staggering:  # compile-time if
+            out_v[i, j, k] = (in_dv[i, jm1, k] + in_dv[i, j, k]) / (
+                in_d[i, jm1, k] + in_d[i, j, k]
+            )
+        else:
+            out_v[i, j, k] = in_dv[i, j, k] / in_d[i, j, k]
+
     @staticmethod
-    def _stencil_diagnosing_velocity_y_defs(
+    def _stencil_diagnosing_velocity_y_gt_defs(
         in_d: gtscript.Field["dtype"],
         in_dv: gtscript.Field["dtype"],
         out_v: gtscript.Field["dtype"],
@@ -262,6 +343,7 @@ class WaterConstituent:
         self,
         grid: "Grid",
         clipping: bool = False,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -278,6 +360,8 @@ class WaterConstituent:
         clipping : `bool`, optional
             `True` to clip the negative values of the output fields,
             `False` otherwise. Defaults to `False`.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -292,27 +376,34 @@ class WaterConstituent:
         """
         # store input arguments needed at run-time
         self._grid = grid
+        self._clipping = clipping
         self._exec_info = exec_info
 
         # initialize the underlying stencils
-        self._stencil_diagnosing_density = gtscript.stencil(
-            definition=self._stencil_diagnosing_density_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals={"clipping": clipping, "positive": positive},
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
-        self._stencil_diagnosing_mass_fraction = gtscript.stencil(
-            definition=self._stencil_diagnosing_mass_fraction_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals={"clipping": clipping, "positive": positive},
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil_diagnosing_density = gtscript.stencil(
+                definition=self._stencil_diagnosing_density_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals={"clipping": clipping, "positive": positive},
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+            self._stencil_diagnosing_mass_fraction = gtscript.stencil(
+                definition=self._stencil_diagnosing_mass_fraction_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals={"clipping": clipping, "positive": positive},
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil_diagnosing_density = self._stencil_diagnosing_density_numpy
+            self._stencil_diagnosing_mass_fraction = (
+                self._stencil_diagnosing_mass_fraction_numpy
+            )
 
     def get_density_of_water_constituent(
         self,
@@ -341,7 +432,7 @@ class WaterConstituent:
             in_d=d,
             in_q=q,
             out_dq=dq,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -374,13 +465,31 @@ class WaterConstituent:
             in_d=d,
             in_dq=dq,
             out_q=q,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
 
+    def _stencil_diagnosing_density_numpy(
+        self,
+        in_d: np.ndarray,
+        in_q: np.ndarray,
+        out_dq: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        out_dq[i, j, k] = in_d[i, j, k] * in_q[i, j, k]
+        if self._clipping:
+            out_dq[i, j, k] = np.where(out_dq[i, j, k] > 0.0, out_dq[i, j, k], 0.0)
+
     @staticmethod
-    def _stencil_diagnosing_density_defs(
+    def _stencil_diagnosing_density_gt_defs(
         in_d: gtscript.Field["dtype"],
         in_q: gtscript.Field["dtype"],
         out_dq: gtscript.Field["dtype"],
@@ -394,8 +503,26 @@ class WaterConstituent:
             else:
                 out_dq = in_d * in_q
 
+    def _stencil_diagnosing_mass_fraction_numpy(
+        self,
+        in_d: np.ndarray,
+        in_dq: np.ndarray,
+        out_q: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        out_q[i, j, k] = in_dq[i, j, k] / in_d[i, j, k]
+        if self._clipping:
+            out_q[i, j, k] = np.where(out_q[i, j, k] > 0.0, out_q[i, j, k], 0.0)
+
     @staticmethod
-    def _stencil_diagnosing_mass_fraction_defs(
+    def _stencil_diagnosing_mass_fraction_gt_defs(
         in_d: gtscript.Field["dtype"],
         in_dq: gtscript.Field["dtype"],
         out_q: gtscript.Field["dtype"],

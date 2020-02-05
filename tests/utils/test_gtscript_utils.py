@@ -35,7 +35,7 @@ import pytest
 from gt4py import gtscript, storage as gt_storage
 
 from tasmania.python.isentropic.dynamics.implementations.prognostic import (
-    step_forward_euler,
+    step_forward_euler_gt,
 )
 from tasmania.python.utils.gtscript_utils import (
     set_annotations,
@@ -113,24 +113,24 @@ def assert_annotations(func_handle, dtype):
 
 def test_set_annotations():
     # int
-    set_annotations(step_forward_euler, int)
-    assert_annotations(step_forward_euler, int)
+    set_annotations(step_forward_euler_gt, int)
+    assert_annotations(step_forward_euler_gt, int)
 
     # float
-    set_annotations(step_forward_euler, float)
-    assert_annotations(step_forward_euler, float)
+    set_annotations(step_forward_euler_gt, float)
+    assert_annotations(step_forward_euler_gt, float)
 
     # # np.float16
-    # set_annotations(step_forward_euler, np.float16)
-    # assert_annotations(step_forward_euler, np.float16)
+    # set_annotations(step_forward_euler_gt, np.float16)
+    # assert_annotations(step_forward_euler_gt, np.float16)
 
     # np.float32
-    set_annotations(step_forward_euler, np.float32)
-    assert_annotations(step_forward_euler, np.float32)
+    set_annotations(step_forward_euler_gt, np.float32)
+    assert_annotations(step_forward_euler_gt, np.float32)
 
     # np.float64
-    set_annotations(step_forward_euler, np.float64)
-    assert_annotations(step_forward_euler, np.float64)
+    set_annotations(step_forward_euler_gt, np.float64)
+    assert_annotations(step_forward_euler_gt, np.float64)
 
 
 @settings(
@@ -1647,7 +1647,9 @@ def thomas_validation(a, b, c, d, x=None):
             w[i, j, 0] = 0.0
             for k in range(1, nz):
                 w[i, j, k] = (
-                    a[i, j, k] / beta[i, j, k - 1] if beta[i, j, k - 1] != 0.0 else a[i, j, k]
+                    a[i, j, k] / beta[i, j, k - 1]
+                    if beta[i, j, k - 1] != 0.0
+                    else a[i, j, k]
                 )
                 beta[i, j, k] = b[i, j, k] - w[i, j, k] * c[i, j, k - 1]
                 delta[i, j, k] = d[i, j, k] - w[i, j, k] * delta[i, j, k - 1]
@@ -1679,7 +1681,7 @@ def thomas_validation(a, b, c, d, x=None):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_thomas(data):
+def test_thomas_gt(data):
     gt_storage.prepare_numpy()
 
     # ========================================

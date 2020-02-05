@@ -21,7 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-from typing import Any, Dict, Optional, Tuple
+import numpy as np
+from typing import Any, Dict, List, Optional, Tuple
 
 from gt4py import gtscript
 
@@ -41,10 +42,42 @@ class IsentropicHorizontalFlux(abc.ABC):
     order: int = None
     externals: Dict[str, Any] = None
 
+    def __init__(self, moist, gt_powered):
+        self.moist = moist
+        self.call = self.call_gt if gt_powered else self.call_numpy
+
+    @abc.abstractmethod
+    def call_numpy(
+        self,
+        dt: float,
+        dx: float,
+        dy: float,
+        s: np.ndarray,
+        u: np.ndarray,
+        v: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        mtg: np.ndarray,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
+        s_tnd: Optional[np.ndarray] = None,
+        su_tnd: Optional[np.ndarray] = None,
+        sv_tnd: Optional[np.ndarray] = None,
+        qv_tnd: Optional[np.ndarray] = None,
+        qc_tnd: Optional[np.ndarray] = None,
+        qr_tnd: Optional[np.ndarray] = None,
+        *,
+        compute_density_fluxes: bool = True,
+        compute_momentum_fluxes: bool = True,
+        compute_water_species_fluxes: bool = True
+    ) -> List[np.ndarray]:
+        pass
+
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
-    def __call__(
+    def call_gt(
         dt: float,
         dx: float,
         dy: float,
@@ -145,7 +178,9 @@ class IsentropicHorizontalFlux(abc.ABC):
         pass
 
     @staticmethod
-    def factory(scheme: str) -> "IsentropicHorizontalFlux":
+    def factory(
+        scheme: str, moist: bool, gt_powered: bool = True
+    ) -> "IsentropicHorizontalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -160,6 +195,11 @@ class IsentropicHorizontalFlux(abc.ABC):
                 * 'maccormack', for the MacCormack scheme;
                 * 'third_order_upwind', for the third-order upwind scheme;
                 * 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+        moist : bool
+            TODO
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
 
         Return
         ------
@@ -178,22 +218,18 @@ class IsentropicHorizontalFlux(abc.ABC):
         from .implementations.horizontal_fluxes import (
             Upwind,
             Centered,
-            MacCormack,
             ThirdOrderUpwind,
             FifthOrderUpwind,
         )
 
         if scheme == "upwind":
-            return Upwind()
+            return Upwind(moist, gt_powered)
         elif scheme == "centered":
-            return Centered()
-        elif scheme == "maccormack":
-            raise NotImplementedError
-            # return MacCormack()
+            return Centered(moist, gt_powered)
         elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind()
+            return ThirdOrderUpwind(moist, gt_powered)
         elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind()
+            return FifthOrderUpwind(moist, gt_powered)
         else:
             raise ValueError("Unsupported horizontal flux scheme " "{}" "".format(scheme))
 
@@ -321,10 +357,42 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
     order: int = None
     externals: Dict[str, Any] = None
 
+    def __init__(self, moist, gt_powered):
+        self.moist = moist
+        self.call = self.call_gt if gt_powered else self.call_numpy
+
+    @staticmethod
+    @abc.abstractmethod
+    def call_numpy(
+        dt: float,
+        dx: float,
+        dy: float,
+        s: np.ndarray,
+        u: np.ndarray,
+        v: np.ndarray,
+        su: np.ndarray,
+        sv: np.ndarray,
+        mtg: Optional[np.ndarray] = None,
+        sqv: Optional[np.ndarray] = None,
+        sqc: Optional[np.ndarray] = None,
+        sqr: Optional[np.ndarray] = None,
+        s_tnd: Optional[np.ndarray] = None,
+        su_tnd: Optional[np.ndarray] = None,
+        sv_tnd: Optional[np.ndarray] = None,
+        qv_tnd: Optional[np.ndarray] = None,
+        qc_tnd: Optional[np.ndarray] = None,
+        qr_tnd: Optional[np.ndarray] = None,
+        *,
+        compute_density_fluxes: bool = True,
+        compute_momentum_fluxes: bool = True,
+        compute_water_species_fluxes: bool = True
+    ) -> List[np.ndarray]:
+        pass
+
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
-    def __call__(
+    def call_gt(
         dt: float,
         dx: float,
         dy: float,
@@ -423,7 +491,9 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         pass
 
     @staticmethod
-    def factory(scheme: str) -> "IsentropicMinimalHorizontalFlux":
+    def factory(
+        scheme: str, moist: bool, gt_powered: bool = True
+    ) -> "IsentropicMinimalHorizontalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -438,6 +508,11 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
                 * 'maccormack', for the MacCormack scheme;
                 * 'third_order_upwind', for the third-order upwind scheme;
                 * 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+        moist : bool
+            TODO
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
 
         Return
         ------
@@ -456,21 +531,18 @@ class IsentropicMinimalHorizontalFlux(abc.ABC):
         from .implementations.minimal_horizontal_fluxes import (
             Upwind,
             Centered,
-            MacCormack,
             ThirdOrderUpwind,
             FifthOrderUpwind,
         )
 
         if scheme == "upwind":
-            return Upwind()
+            return Upwind(moist, gt_powered)
         elif scheme == "centered":
-            return Centered()
-        elif scheme == "maccormack":
-            return MacCormack()
+            return Centered(moist, gt_powered)
         elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind()
+            return ThirdOrderUpwind(moist, gt_powered)
         elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind()
+            return FifthOrderUpwind(moist, gt_powered)
         else:
             raise ValueError("Unsupported horizontal flux scheme " "{}" "".format(scheme))
 

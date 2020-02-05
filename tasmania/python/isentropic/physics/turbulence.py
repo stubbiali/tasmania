@@ -45,6 +45,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         self,
         domain: "Domain",
         smagorinsky_constant: float = 0.18,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -70,6 +71,8 @@ class IsentropicSmagorinsky(Smagorinsky2d):
 
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -95,6 +98,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         super().__init__(
             domain,
             smagorinsky_constant,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -110,6 +114,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         self._hv = HorizontalVelocity(
             self.grid,
             staggering=False,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -120,30 +125,34 @@ class IsentropicSmagorinsky(Smagorinsky2d):
 
         self._in_u = zeros(
             self._storage_shape,
-            backend,
-            dtype,
-            default_origin,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._in_v = zeros(
             self._storage_shape,
-            backend,
-            dtype,
-            default_origin,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_su_tnd = zeros(
             self._storage_shape,
-            backend,
-            dtype,
-            default_origin,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_sv_tnd = zeros(
             self._storage_shape,
-            backend,
-            dtype,
-            default_origin,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
@@ -169,8 +178,8 @@ class IsentropicSmagorinsky(Smagorinsky2d):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
@@ -190,7 +199,7 @@ class IsentropicSmagorinsky(Smagorinsky2d):
             dx=dx,
             dy=dy,
             cs=self._cs,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )

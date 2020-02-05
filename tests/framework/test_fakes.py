@@ -37,7 +37,11 @@ from tasmania.python.framework.fakes import FakeTendencyComponent
 from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
 from tasmania.python.framework.tendency_steppers import TendencyStepper
 
-from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+)
 from tests.utilities import (
     compare_arrays,
     compare_dataarrays,
@@ -64,18 +68,23 @@ def test_fake_tendency_component(data, make_fake_tendency_component_1):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=False,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -111,18 +120,23 @@ def test_fake_tendency_component_tendency_stepper(data, make_fake_tendency_compo
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=False,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -201,18 +215,23 @@ def test_fake_tendency_component_sts_tendency_stepper(
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=False,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),

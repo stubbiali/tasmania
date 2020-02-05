@@ -69,6 +69,7 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
     precipitation: bool = False,
     relative_humidity: float = 0.5,
     physical_constants: Optional[Mapping[str, DataArray]] = None,
+    gt_powered: bool = True,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -114,6 +115,8 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             * 'specific_heat_of_dry_air_at_constant_pressure', \
                 in units compatible with [J kg^-1 K^-1].
 
+    gt_powered : `bool`, optional
+        TODO
     backend : `str`, optional
         The GT4Py backend.
     dtype : `data-type`, optional
@@ -148,7 +151,12 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
 
     def allocate():
         return zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
     # initialize the velocity components
@@ -338,8 +346,9 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             state["precipitation"] = get_dataarray_3d(
                 zeros(
                     (storage_shape[0], storage_shape[1], 1),
-                    backend,
-                    dtype,
+                    gt_powered=gt_powered,
+                    backend=backend,
+                    dtype=dtype,
                     default_origin=default_origin,
                 ),
                 grid,
@@ -351,8 +360,9 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
             state["accumulated_precipitation"] = get_dataarray_3d(
                 zeros(
                     (storage_shape[0], storage_shape[1], 1),
-                    backend,
-                    dtype,
+                    gt_powered=gt_powered,
+                    backend=backend,
+                    dtype=dtype,
                     default_origin=default_origin,
                 ),
                 grid,
@@ -379,6 +389,7 @@ def get_isentropic_state_from_temperature(
     moist: bool = False,
     precipitation: bool = False,
     physical_constants: Optional[Mapping[str, DataArray]] = None,
+    gt_powered: bool = True,
     *,
     backend: str = "numpy",
     dtype: taz_types.dtype_t = np.float64,
@@ -438,6 +449,8 @@ def get_isentropic_state_from_temperature(
             * 'specific_heat_of_dry_air_at_constant_pressure', \
                 in units compatible with [J kg^-1 K^-1].
 
+    gt_powered : `bool`, optional
+        TODO
     backend : `str`, optional
         The GT4Py backend.
     dtype : `data-type`, optional
@@ -470,7 +483,12 @@ def get_isentropic_state_from_temperature(
 
     def allocate():
         return zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
     # initialize the air pressure

@@ -20,9 +20,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 import numpy as np
 from sympl import DataArray
-from typing import Optional, TYPE_CHECKING, Tuple
+from typing import Optional, TYPE_CHECKING, Tuple, Union
 
 from gt4py import gtscript, __externals__
 
@@ -38,6 +39,7 @@ from tasmania.python.isentropic.dynamics.vertical_fluxes import (
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import zeros
+from tasmania.python.utils.utils import thomas_numpy
 
 if TYPE_CHECKING:
     from tasmania.python.grids.domain import Domain
@@ -46,6 +48,33 @@ if TYPE_CHECKING:
 mfwv = "mass_fraction_of_water_vapor_in_air"
 mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
+
+
+def setup_tridiagonal_system_numpy(
+    gamma: float,
+    w: np.ndarray,
+    phi: np.ndarray,
+    a: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    *,
+    i: Union[int, slice],
+    j: Union[int, slice],
+    kstart: int,
+    kstop: int
+) -> None:
+    a[i, j, kstart + 1 : kstop - 1] = gamma * w[i, j, kstart : kstop - 2]
+    a[i, j, kstop - 1] = 0.0
+
+    c[i, j, kstart] = 0.0
+    c[i, j, kstart + 1 : kstop - 1] = -gamma * w[i, j, kstart + 2 : kstop]
+
+    d[i, j, kstart] = phi[i, j, kstart]
+    d[i, j, kstart + 1 : kstop - 1] = phi[i, j, kstart + 1 : kstop - 1] - gamma * (
+        w[i, j, kstart : kstop - 2] * phi[i, j, kstart : kstop - 2]
+        - w[i, j, kstart + 2 : kstop] * phi[i, j, kstart + 2 : kstop]
+    )
+    d[i, j, kstop - 1] = phi[i, j, kstop - 1]
 
 
 @gtscript.function
@@ -79,6 +108,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         domain: "Domain",
         moist: bool = False,
         tendency_of_air_potential_temperature_on_interface_levels: bool = False,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -103,6 +133,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
             `True` if the input tendency of air potential temperature
             is defined at the interface levels, `False` otherwise.
             Defaults to `False`.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -145,53 +177,74 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
         # allocate the gt4py storages collecting the stencil outputs
         self._out_s = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_su = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_sv = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if moist:
             self._out_qv = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._out_qc = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._out_qr = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
         # instantiate the underlying stencil object
-        externals = {
-            "moist": moist,
-            "vstaggering": self._stgz,
-            "setup_tridiagonal_system": setup_tridiagonal_system,
-            "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
-        }
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals=externals,
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            externals = {
+                "moist": moist,
+                "vstaggering": self._stgz,
+                "setup_tridiagonal_system": setup_tridiagonal_system,
+                "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
+            }
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals=externals,
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -267,8 +320,8 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -314,7 +367,7 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
         # run the stencil
         self._stencil(
             **stencil_args,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info
         )
@@ -332,8 +385,140 @@ class IsentropicImplicitVerticalAdvectionDiagnostic(ImplicitTendencyComponent):
 
         return {}, diagnostics
 
+    def _stencil_numpy(
+        self,
+        in_w: np.ndarray,
+        in_s: np.ndarray,
+        in_su: np.ndarray,
+        in_sv: np.ndarray,
+        out_s: np.ndarray,
+        out_su: np.ndarray,
+        out_sv: np.ndarray,
+        in_qv: np.ndarray = None,
+        in_qc: np.ndarray = None,
+        in_qr: np.ndarray = None,
+        out_qv: np.ndarray = None,
+        out_qc: np.ndarray = None,
+        out_qr: np.ndarray = None,
+        *,
+        gamma: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        kstart, kstop = origin[2], origin[2] + domain[2]
+
+        # interpolate the velocity on the main levels
+        if self._stgz:
+            w = np.zeros_like(in_w)
+            w[i, j, kstart:kstop] = 0.5 * (
+                in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
+            )
+        else:
+            w = in_w
+
+        # compute the isentropic density of the water species
+        if self._moist:
+            sqv = np.zeros_like(in_qv)
+            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqc = np.zeros_like(in_qc)
+            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqr = np.zeros_like(in_qr)
+            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+        else:
+            sqv = sqc = sqr = None
+
+        #
+        # isentropic density
+        #
+        # set up the tridiagonal system
+        a = np.zeros_like(in_s)
+        b = np.ones_like(in_s)
+        c = np.zeros_like(in_s)
+        d = np.zeros_like(in_s)
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_s, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        thomas_numpy(a, b, c, d, out_s, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        #
+        # x-momentum
+        #
+        # set up the tridiagonal system
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_su, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        thomas_numpy(a, b, c, d, out_su, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        #
+        # y-momentum
+        #
+        # set up the tridiagonal system
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_sv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        thomas_numpy(a, b, c, d, out_sv, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        if self._moist:
+            #
+            # isentropic density of water vapor
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqv = np.zeros_like(sqv)
+            thomas_numpy(a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # isentropic density of cloud liquid water
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqc, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqc = np.zeros_like(sqc)
+            thomas_numpy(a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # isentropic density of precipitation water
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqr, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqr = np.zeros_like(sqr)
+            thomas_numpy(a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # mass fraction of the water species
+            #
+            out_qv[i, j, kstart:kstop] = (
+                out_sqv[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+            )
+            out_qc[i, j, kstart:kstop] = (
+                out_sqc[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+            )
+            out_qr[i, j, kstart:kstop] = (
+                out_sqr[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+            )
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_su: gtscript.Field["dtype"],
@@ -616,6 +801,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         domain: "Domain",
         moist: bool = False,
         tendency_of_air_potential_temperature_on_interface_levels: bool = False,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -640,6 +826,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
             `True` if the input tendency of air potential temperature
             is defined at the interface levels, `False` otherwise.
             Defaults to `False`.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -682,53 +870,74 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
         # allocate the gt4py storages collecting the stencil outputs
         self._tnd_s = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._tnd_su = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._tnd_sv = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if moist:
             self._tnd_qv = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._tnd_qc = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._tnd_qr = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
-        # instantiate the underlying stencil object
-        externals = {
-            "moist": moist,
-            "vstaggering": self._stgz,
-            "setup_tridiagonal_system": setup_tridiagonal_system,
-            "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
-        }
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals=externals,
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # instantiate the underlying stencil object
+            externals = {
+                "moist": moist,
+                "vstaggering": self._stgz,
+                "setup_tridiagonal_system": setup_tridiagonal_system,
+                "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
+            }
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals=externals,
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -804,8 +1013,8 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
 
@@ -850,7 +1059,7 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
         # run the stencil
         self._stencil(
             **stencil_args,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info
         )
@@ -868,8 +1077,155 @@ class IsentropicImplicitVerticalAdvectionPrognostic(ImplicitTendencyComponent):
 
         return tendencies, {}
 
+    def _stencil_numpy(
+        self,
+        in_w: np.ndarray,
+        in_s: np.ndarray,
+        in_su: np.ndarray,
+        in_sv: np.ndarray,
+        tnd_s: np.ndarray,
+        tnd_su: np.ndarray,
+        tnd_sv: np.ndarray,
+        in_qv: np.ndarray = None,
+        in_qc: np.ndarray = None,
+        in_qr: np.ndarray = None,
+        tnd_qv: np.ndarray = None,
+        tnd_qc: np.ndarray = None,
+        tnd_qr: np.ndarray = None,
+        *,
+        dt: float,
+        gamma: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        kstart, kstop = origin[2], origin[2] + domain[2]
+
+        # interpolate the velocity on the main levels
+        if self._stgz:
+            w = np.zeros_like(in_w)
+            w[i, j, kstart:kstop] = 0.5 * (
+                in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
+            )
+        else:
+            w = in_w
+
+        # compute the isentropic density of the water species
+        if self._moist:
+            sqv = np.zeros_like(in_qv)
+            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqc = np.zeros_like(in_qc)
+            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqr = np.zeros_like(in_qr)
+            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+        else:
+            sqv = sqc = sqr = None
+
+        #
+        # isentropic density
+        #
+        # set up the tridiagonal system
+        a = np.zeros_like(in_s)
+        b = np.ones_like(in_s)
+        c = np.zeros_like(in_s)
+        d = np.zeros_like(in_s)
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_s, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        out_s = np.zeros_like(in_s)
+        thomas_numpy(a, b, c, d, out_s, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        #
+        # x-momentum
+        #
+        # set up the tridiagonal system
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_su, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        out_su = np.zeros_like(in_su)
+        thomas_numpy(a, b, c, d, out_su, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        #
+        # y-momentum
+        #
+        # set up the tridiagonal system
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_sv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        out_sv = np.zeros_like(in_sv)
+        thomas_numpy(a, b, c, d, out_sv, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        if self._moist:
+            #
+            # isentropic density of water vapor
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqv = np.zeros_like(sqv)
+            thomas_numpy(a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # isentropic density of cloud liquid water
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqc, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqc = np.zeros_like(sqc)
+            thomas_numpy(a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # isentropic density of precipitation water
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqr, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqr = np.zeros_like(sqr)
+            thomas_numpy(a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        # compute the tendencies
+        tnd_s[i, j, kstart:kstop] = (
+            out_s[i, j, kstart:kstop] - in_s[i, j, kstart:kstop]
+        ) / dt
+        tnd_su[i, j, kstart:kstop] = (
+            out_su[i, j, kstart:kstop] - in_su[i, j, kstart:kstop]
+        ) / dt
+        tnd_sv[i, j, kstart:kstop] = (
+            out_sv[i, j, kstart:kstop] - in_sv[i, j, kstart:kstop]
+        ) / dt
+        if self._moist:
+            tnd_qv[i, j, kstart:kstop] = (
+                out_sqv[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+                - in_qv[i, j, kstart:kstop]
+            ) / dt
+            tnd_qc[i, j, kstart:kstop] = (
+                out_sqc[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+                - in_qc[i, j, kstart:kstop]
+            ) / dt
+            tnd_qr[i, j, kstart:kstop] = (
+                out_sqr[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+                - in_qr[i, j, kstart:kstop]
+            ) / dt
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_su: gtscript.Field["dtype"],

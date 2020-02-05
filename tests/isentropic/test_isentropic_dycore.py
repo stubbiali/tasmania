@@ -58,6 +58,7 @@ from tasmania.python.utils.storage_utils import (
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -619,10 +620,21 @@ def test1(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb
+            xaxis_length=(1, 25),
+            yaxis_length=(1, 25),
+            zaxis_length=(2, 15),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -630,9 +642,6 @@ def test1(data):
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -641,6 +650,7 @@ def test1(data):
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -666,8 +676,6 @@ def test1(data):
     )
     smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-
     # ========================================
     # test bed
     # ========================================
@@ -679,6 +687,7 @@ def test1(data):
         damp_depth,
         0.0002,
         "s",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -691,6 +700,7 @@ def test1(data):
         0.24,
         smooth_damp_depth,
         hb.nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -856,10 +866,21 @@ def test2(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb
+            xaxis_length=(1, 25),
+            yaxis_length=(1, 25),
+            zaxis_length=(2, 15),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -867,9 +888,6 @@ def test2(data):
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -878,6 +896,7 @@ def test2(data):
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -930,8 +949,6 @@ def test2(data):
     )
     smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-
     # ========================================
     # test bed
     # ========================================
@@ -943,6 +960,7 @@ def test2(data):
         damp_depth,
         0.0002,
         "s",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -955,6 +973,7 @@ def test2(data):
         0.24,
         smooth_damp_depth,
         hb.nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1125,10 +1144,21 @@ def test3(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb
+            xaxis_length=(1, 25),
+            yaxis_length=(1, 25),
+            zaxis_length=(2, 15),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -1136,9 +1166,6 @@ def test3(data):
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -1147,6 +1174,7 @@ def test3(data):
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -1199,8 +1227,6 @@ def test3(data):
     )
     smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-
     # ========================================
     # test bed
     # ========================================
@@ -1212,6 +1238,7 @@ def test3(data):
         damp_depth,
         0.0002,
         "s",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1224,6 +1251,7 @@ def test3(data):
         0.24,
         smooth_damp_depth,
         hb.nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1232,6 +1260,7 @@ def test3(data):
     cf = IsentropicConservativeCoriolis(
         domain,
         grid_type="numerical",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1358,13 +1387,25 @@ def test3(data):
             raw_state_0[name] = state[name].to_units(props["units"]).values
     if moist:
         raw_state_0["isentropic_density_of_water_vapor"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
         raw_state_0["isentropic_density_of_cloud_liquid_water"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
         raw_state_0["isentropic_density_of_precipitation_water"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
 
     raw_tendencies = {}
@@ -1374,11 +1415,19 @@ def test3(data):
 
     if "x_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["x_momentum_isentropic"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
     if "y_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["y_momentum_isentropic"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
 
     raw_tendencies_dc = deepcopy_array_dict(raw_tendencies)
@@ -1541,10 +1590,16 @@ def test4(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb
+            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb,
+            gt_powered=gt_powered, backend=backend, dtype=dtype
         ),
         label="domain",
     )
@@ -1552,9 +1607,6 @@ def test4(data):
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -1563,6 +1615,7 @@ def test4(data):
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -1615,8 +1668,6 @@ def test4(data):
     )
     smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-
     # ========================================
     # test bed
     # ========================================
@@ -1628,6 +1679,7 @@ def test4(data):
         damp_depth,
         0.0002,
         "s",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1640,6 +1692,7 @@ def test4(data):
         0.24,
         smooth_damp_depth,
         hb.nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1648,6 +1701,7 @@ def test4(data):
     cf = IsentropicConservativeCoriolis(
         domain,
         grid_type="numerical",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1660,6 +1714,7 @@ def test4(data):
         "numerical",
         moist,
         state["air_pressure_on_interface_levels"][0, 0, 0],
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1667,6 +1722,7 @@ def test4(data):
     )
     rdv = RawIsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -1801,13 +1857,25 @@ def test4(data):
             raw_state_0[name] = state[name].to_units(props["units"]).values
     if moist:
         raw_state_0["isentropic_density_of_water_vapor"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
         raw_state_0["isentropic_density_of_cloud_liquid_water"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
         raw_state_0["isentropic_density_of_precipitation_water"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
 
     raw_tendencies = {}
@@ -1817,11 +1885,19 @@ def test4(data):
 
     if "x_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["x_momentum_isentropic"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
     if "y_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["y_momentum_isentropic"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
 
     raw_tendencies_dc = deepcopy_array_dict(raw_tendencies)
@@ -2073,10 +2149,16 @@ def test5(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb
+            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb,
+            gt_powered=gt_powered, backend=backend, dtype=dtype
         ),
         label="domain",
     )
@@ -2084,9 +2166,6 @@ def test5(data):
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -2095,6 +2174,7 @@ def test5(data):
         st_isentropic_state_f(
             grid,
             moist=moist,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -2147,8 +2227,6 @@ def test5(data):
     )
     smooth_at_every_stage = data.draw(hyp_st.booleans(), label="smooth_at_every_stage")
 
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
-
     # ========================================
     # test bed
     # ========================================
@@ -2160,6 +2238,7 @@ def test5(data):
         damp_depth,
         0.0002,
         "s",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -2172,6 +2251,7 @@ def test5(data):
         0.24,
         smooth_damp_depth,
         hb.nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -2180,6 +2260,7 @@ def test5(data):
     cf = IsentropicConservativeCoriolis(
         domain,
         grid_type="numerical",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -2308,13 +2389,25 @@ def test5(data):
             raw_state_0[name] = state[name].to_units(props["units"]).values
     if moist:
         raw_state_0["isentropic_density_of_water_vapor"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
         raw_state_0["isentropic_density_of_cloud_liquid_water"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
         raw_state_0["isentropic_density_of_precipitation_water"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
 
     raw_tendencies = {}
@@ -2324,11 +2417,19 @@ def test5(data):
 
     if "x_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["x_momentum_isentropic"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
     if "y_momentum_isentropic" not in raw_tendencies:
         raw_tendencies["y_momentum_isentropic"] = zeros(
-            storage_shape, backend, dtype, default_origin
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
         )
 
     tendencies_dc = deepcopy_dataarray_dict(tendencies)

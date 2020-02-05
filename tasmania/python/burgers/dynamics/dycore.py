@@ -128,6 +128,7 @@ class BurgersDynamicalCore(DynamicalCore):
             self.grid.grid_xy,
             self.horizontal_boundary.nb,
             flux_scheme,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -187,6 +188,7 @@ class BurgersDynamicalCore(DynamicalCore):
     def _allocate_output_state(self):
         grid = self.grid
         nx, ny = grid.nx, grid.ny
+        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
@@ -194,8 +196,9 @@ class BurgersDynamicalCore(DynamicalCore):
 
         u = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
@@ -204,8 +207,9 @@ class BurgersDynamicalCore(DynamicalCore):
         )
         v = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
@@ -218,10 +222,10 @@ class BurgersDynamicalCore(DynamicalCore):
     def array_call(
         self,
         stage: int,
-        raw_state: taz_types.gtstorage_dict_t,
-        raw_tendencies: taz_types.gtstorage_dict_t,
+        raw_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
-    ) -> taz_types.gtstorage_dict_t:
+    ) -> taz_types.array_dict_t:
         out_state = self._stepper(stage, raw_state, raw_tendencies, timestep)
 
         self.horizontal_boundary.dmn_enforce_raw(
@@ -238,10 +242,10 @@ class BurgersDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: taz_types.gtstorage_dict_t,
-        raw_stage_state: taz_types.gtstorage_dict_t,
-        raw_tmp_state: taz_types.gtstorage_dict_t,
-        raw_tendencies: taz_types.gtstorage_dict_t,
+        raw_state: taz_types.array_dict_t,
+        raw_stage_state: taz_types.array_dict_t,
+        raw_tmp_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
     ):
         raise NotImplementedError()

@@ -38,10 +38,17 @@ from tasmania import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import compare_dataarrays, st_domain, st_floats, st_one_of, st_raw_field
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_raw_field,
+)
 
 
 def smagorinsky2d_validation(dx, dy, cs, u, v):
@@ -82,18 +89,26 @@ def test_smagorinsky2d(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -105,6 +120,7 @@ def test_smagorinsky2d(data):
             storage_shape,
             -1e3,
             1e3,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -116,6 +132,7 @@ def test_smagorinsky2d(data):
             storage_shape,
             -1e3,
             1e3,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -148,6 +165,7 @@ def test_smagorinsky2d(data):
     smag = Smagorinsky2d(
         domain,
         smagorinsky_constant=cs,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

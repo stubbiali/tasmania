@@ -248,7 +248,6 @@ def get_dataarray_dict(
     array_dict: taz_types.array_dict_t,
     grid: "Grid",
     properties: taz_types.properties_dict_t,
-    set_coordinates: bool = True,
 ) -> taz_types.dataarray_dict_t:
     """
     Parameters
@@ -263,8 +262,6 @@ def get_dataarray_dict(
         Dictionary whose keys are strings indicating the variables
         included in the model state, and values are strings indicating
         the units in which those variables should be expressed.
-    set_coordinates : `bool`, optional
-        `True` to set the coordinates of the grid points, `False` otherwise.
 
     Return
     ------
@@ -283,6 +280,7 @@ def get_dataarray_dict(
             units = properties[key]["units"]
             grid_origin = properties[key].get("grid_origin", None)
             grid_shape = properties[key].get("grid_shape", None)
+            set_coordinates = properties[key].get("set_coordinates", True)
             if len(array_dict[key].shape) == 2:
                 dataarray_dict[key] = get_dataarray_2d(
                     array_dict[key],
@@ -505,62 +503,83 @@ def get_default_origin(
 
 def empty(
     storage_shape: taz_types.triplet_int_t,
-    backend: str,
-    dtype: taz_types.dtype_t,
+    gt_powered: bool,
+    *,
+    backend: str = "numpy",
+    dtype: taz_types.dtype_t = np.float64,
     default_origin: Optional[taz_types.triplet_int_t] = None,
     mask: Optional[taz_types.triplet_bool_t] = None,
-    managed_memory: bool = False,
-) -> taz_types.gtstorage_t:
+    managed_memory: bool = False
+) -> Union[np.ndarray, taz_types.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
-    gt_storage = gt.storage.empty(
-        backend,
-        default_origin,
-        storage_shape,
-        dtype,
-        mask=mask,
-        managed_memory=managed_memory,
-    )
-    return gt_storage
+
+    if gt_powered:
+        storage = gt.storage.empty(
+            backend,
+            default_origin,
+            storage_shape,
+            dtype,
+            mask=mask,
+            managed_memory=managed_memory,
+        )
+    else:
+        storage = np.empty(storage_shape, dtype=dtype)
+
+    return storage
 
 
 def zeros(
     storage_shape: taz_types.triplet_int_t,
-    backend: str,
-    dtype: taz_types.dtype_t,
+    gt_powered: bool,
+    *,
+    backend: str = "numpy",
+    dtype: taz_types.dtype_t = np.float64,
     default_origin: Optional[taz_types.triplet_int_t] = None,
     mask: Optional[taz_types.triplet_bool_t] = None,
-    managed_memory: bool = False,
-) -> taz_types.gtstorage_t:
+    managed_memory: bool = False
+) -> Union[np.ndarray, taz_types.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
-    gt_storage = gt.storage.zeros(
-        backend,
-        default_origin,
-        storage_shape,
-        dtype,
-        mask=mask,
-        managed_memory=managed_memory,
-    )
-    return gt_storage
+
+    if gt_powered:
+        storage = gt.storage.zeros(
+            backend,
+            default_origin,
+            storage_shape,
+            dtype,
+            mask=mask,
+            managed_memory=managed_memory,
+        )
+    else:
+        storage = np.zeros(storage_shape, dtype=dtype)
+
+    return storage
 
 
 def ones(
     storage_shape: taz_types.triplet_int_t,
-    backend: str,
-    dtype: taz_types.dtype_t,
+    gt_powered: bool,
+    *,
+    backend: str = "numpy",
+    dtype: taz_types.dtype_t = np.float64,
     default_origin: Optional[taz_types.triplet_int_t] = None,
     mask: Optional[taz_types.triplet_bool_t] = None,
-    managed_memory: bool = False,
-) -> taz_types.gtstorage_t:
+    managed_memory: bool = False
+) -> Union[np.ndarray, taz_types.gtstorage_t]:
     default_origin = default_origin or (0, 0, 0)
-    gt_storage = gt.storage.ones(
-        backend,
-        default_origin,
-        storage_shape,
-        dtype,
-        mask=mask,
-        managed_memory=managed_memory,
-    )
-    return gt_storage
+
+    if gt_powered:
+        storage = gt.storage.ones(
+            backend,
+            default_origin,
+            storage_shape,
+            dtype,
+            mask=mask,
+            managed_memory=managed_memory,
+        )
+    else:
+        storage = np.ones(storage_shape, dtype=dtype)
+
+    return storage
 
 
 def deepcopy_array_dict(src: taz_types.array_dict_t) -> taz_types.array_dict_t:

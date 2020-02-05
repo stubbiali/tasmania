@@ -36,11 +36,15 @@ from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.isentropic.physics.sts_tendency_steppers import (
-    IsentropicVerticalAdvection
+    IsentropicVerticalAdvection,
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+)
 from tests.utils.test_gtscript_utils import thomas_validation
 from tests.utilities import (
     compare_arrays,
@@ -90,7 +94,16 @@ def setup_tridiagonal_system(gamma, w, phi, phi_prv, a=None, b=None, c=None, d=N
 
 
 def validation(
-    domain, moist, toaptoil, backend, default_origin, rebuild, state, state_prv, timestep
+    domain,
+    moist,
+    toaptoil,
+    gt_powered,
+    backend,
+    default_origin,
+    rebuild,
+    state,
+    state_prv,
+    timestep,
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -102,6 +115,7 @@ def validation(
         domain,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -109,7 +123,7 @@ def validation(
         storage_shape=storage_shape,
     )
     stepper = IsentropicVerticalAdvection(
-        core, backend=backend, dtype=dtype, rebuild=rebuild
+        core, gt_powered=gt_powered, backend=backend, dtype=dtype, rebuild=rebuild
     )
 
     input_names = [
@@ -163,7 +177,13 @@ def validation(
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
         w_hl = state[name].to_units("K s^-1").values
-        w = zeros((nx, ny, nz), backend, dtype, default_origin)
+        w = zeros(
+            (nx, ny, nz),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
@@ -215,11 +235,41 @@ def validation(
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros((nx, ny, nz), backend, dtype, default_origin)
-    b = zeros((nx, ny, nz), backend, dtype, default_origin)
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
-    d = zeros((nx, ny, nz), backend, dtype, default_origin)
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    a = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    b = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    d = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     setup_tridiagonal_system(gamma, w, s, s_prv, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
@@ -275,12 +325,15 @@ def test_isentropic_vertical_advection_dry(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
-    grid = domain.numerical_grid
-
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -289,9 +342,10 @@ def test_isentropic_vertical_advection_dry(data):
             grid,
             moist=False,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
-            storage_shape=storage_shape
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -300,6 +354,7 @@ def test_isentropic_vertical_advection_dry(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -318,6 +373,7 @@ def test_isentropic_vertical_advection_dry(data):
             grid,
             moist=False,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -333,15 +389,37 @@ def test_isentropic_vertical_advection_dry(data):
     # ========================================
     # test bed
     # ========================================
-    validation(domain, False, False, backend, default_origin, False, state, state_prv, timestep)
-    validation(domain, False, True, backend, default_origin, False, state, state_prv, timestep)
+    validation(
+        domain,
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        state_prv,
+        timestep,
+    )
+    validation(
+        domain,
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        state_prv,
+        timestep,
+    )
 
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -350,12 +428,15 @@ def test_isentropic_vertical_advection_moist(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
-    grid = domain.numerical_grid
-
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
     backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -364,9 +445,10 @@ def test_isentropic_vertical_advection_moist(data):
             grid,
             moist=True,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
-            storage_shape=storage_shape
+            storage_shape=storage_shape,
         ),
         label="state",
     )
@@ -375,6 +457,7 @@ def test_isentropic_vertical_advection_moist(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -393,6 +476,7 @@ def test_isentropic_vertical_advection_moist(data):
             grid,
             moist=True,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -408,8 +492,30 @@ def test_isentropic_vertical_advection_moist(data):
     # ========================================
     # test bed
     # ========================================
-    validation(domain, True, False, backend, default_origin, False, state, state_prv, timestep)
-    validation(domain, True, True, backend, default_origin, False, state, state_prv, timestep)
+    validation(
+        domain,
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        state_prv,
+        timestep,
+    )
+    validation(
+        domain,
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        state_prv,
+        timestep,
+    )
 
 
 if __name__ == "__main__":

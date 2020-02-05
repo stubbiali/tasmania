@@ -34,12 +34,16 @@ import pytest
 import gt4py as gt
 
 from tasmania.python.framework.tendency_steppers_implicit import Implicit
-from tasmania.python.isentropic.physics.vertical_advection import (
+from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
-from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+)
 from tests.utilities import (
     compare_dataarrays,
     st_domain,
@@ -65,20 +69,31 @@ def test_implicit(data, make_fake_tendency_component_1):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(2, 30), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     cgrid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = cgrid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = cgrid.nx, cgrid.ny, cgrid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
     state = data.draw(
         st_isentropic_state_f(
             cgrid,
             moist=True,
             precipitation=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -112,13 +127,20 @@ def test_implicit(data, make_fake_tendency_component_1):
         domain,
         moist=True,
         tendency_of_air_potential_temperature_on_interface_levels=False,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
         storage_shape=storage_shape,
     )
 
-    imp = Implicit(iva, execution_policy="serial", gt_powered=False)
+    imp = Implicit(
+        iva,
+        execution_policy="serial",
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+    )
 
     assert imp.input_properties == iva.input_properties
     assert imp.output_properties == imp.output_properties
@@ -129,6 +151,7 @@ def test_implicit(data, make_fake_tendency_component_1):
         domain,
         moist=True,
         tendency_of_air_potential_temperature_on_interface_levels=False,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

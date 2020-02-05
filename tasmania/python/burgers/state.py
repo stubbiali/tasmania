@@ -151,10 +151,11 @@ class ZhaoStateFactory:
         self,
         initial_time: taz_types.datetime_t,
         eps: DataArray,
+        gt_powered: bool,
         *,
-        backend: str,
-        dtype: taz_types.dtype_t,
-        default_origin: taz_types.triplet_int_t,
+        backend: str = "numpy",
+        dtype: taz_types.dtype_t = np.float64,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
         managed_memory: bool = False
     ) -> None:
         """
@@ -165,16 +166,19 @@ class ZhaoStateFactory:
         eps : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusivity.
             The units should be compatible with 'm s^-2'.
-        backend : str
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
+        backend : `str`, optional
             The GT4Py backend.
-        dtype : data-type
+        dtype : `data-type`, optional
             Data type of the storages.
-        default_origin : tuple[int]
+        default_origin : `tuple[int]`, optional
             Storage default origin.
         managed_memory : `bool`, optional
             `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._solution_factory = ZhaoSolutionFactory(initial_time, eps)
+        self._gt_powered = gt_powered
         self._backend = backend
         self._dtype = dtype
         self._default_origin = default_origin
@@ -197,6 +201,7 @@ class ZhaoStateFactory:
             The computed model state dictionary.
         """
         nx, ny = grid.nx, grid.ny
+        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
@@ -204,8 +209,9 @@ class ZhaoStateFactory:
 
         u = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
@@ -216,8 +222,9 @@ class ZhaoStateFactory:
 
         v = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )

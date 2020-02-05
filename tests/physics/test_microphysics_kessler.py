@@ -49,6 +49,7 @@ from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -112,18 +113,24 @@ def test_kessler_microphysics(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -147,7 +154,13 @@ def test_kessler_microphysics(data):
 
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        p_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -159,7 +172,13 @@ def test_kessler_microphysics(data):
         )
 
         exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
-        exn_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        exn_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -188,6 +207,7 @@ def test_kessler_microphysics(data):
         autoconversion_rate=DataArray(k1, attrs={"units": "s^-1"}),
         collection_rate=DataArray(k2, attrs={"units": "hr^-1"}),
         saturation_vapor_pressure_formula=svpf_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -337,13 +357,16 @@ def test_kessler_saturation_adjustment_diagnostic(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -351,6 +374,7 @@ def test_kessler_saturation_adjustment_diagnostic(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -368,7 +392,13 @@ def test_kessler_saturation_adjustment_diagnostic(data):
     # ========================================
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        p_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -380,7 +410,13 @@ def test_kessler_saturation_adjustment_diagnostic(data):
         )
 
         exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
-        exn_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        exn_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -405,6 +441,7 @@ def test_kessler_saturation_adjustment_diagnostic(data):
         grid_type,
         air_pressure_on_interface_levels=apoif,
         saturation_vapor_pressure_formula=svpf_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -493,7 +530,7 @@ def test_kessler_saturation_adjustment_diagnostic(data):
 
 
 def kessler_saturation_adjustment_prognostic_validation(
-        timestep, p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv, sr
+    timestep, p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv, sr
 ):
     p = p if p.shape[2] == t.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
     exn = exn if exn.shape[2] == t.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
@@ -504,14 +541,14 @@ def kessler_saturation_adjustment_prognostic_validation(
     dq = deepcopy(qc)
     dq[sat <= qc] = sat[sat <= qc]
 
-    return sr * dq, - sr * dq, - sr * (lhvw / exn) * dq
+    return sr * dq, -sr * dq, -sr * (lhvw / exn) * dq
 
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -522,13 +559,16 @@ def test_kessler_saturation_adjustment_prognostic(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -536,6 +576,7 @@ def test_kessler_saturation_adjustment_prognostic(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -554,7 +595,13 @@ def test_kessler_saturation_adjustment_prognostic(data):
     # ========================================
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        p_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -566,7 +613,13 @@ def test_kessler_saturation_adjustment_prognostic(data):
         )
 
         exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
-        exn_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        exn_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -591,7 +644,8 @@ def test_kessler_saturation_adjustment_prognostic(data):
         grid_type,
         air_pressure_on_interface_levels=apoif,
         saturation_vapor_pressure_formula=svpf_type,
-        saturation_rate=DataArray(sr, attrs={'units': 's^-1'}),
+        saturation_rate=DataArray(sr, attrs={"units": "s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -632,16 +686,16 @@ def test_kessler_saturation_adjustment_prognostic(data):
 
     p = (
         state["air_pressure_on_interface_levels"]
-            .to_units("Pa")
-            .values[:nx, :ny, : nz + 1]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1]
         if apoif
         else state["air_pressure"].to_units("Pa").values[:nx, :ny, :nz]
     )
     t = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
     exn = (
         state["exner_function_on_interface_levels"]
-            .to_units("J kg^-1 K^-1")
-            .values[:nx, :ny, : nz + 1]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
         if apoif
         else state["exner_function"].to_units("J kg^-1 K^-1").values[:nx, :ny, :nz]
     )
@@ -690,13 +744,16 @@ def test_kessler_fall_velocity(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -704,6 +761,7 @@ def test_kessler_fall_velocity(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -720,6 +778,7 @@ def test_kessler_fall_velocity(data):
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -769,13 +828,19 @@ def test_kessler_sedimentation(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -783,6 +848,7 @@ def test_kessler_sedimentation(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -808,6 +874,7 @@ def test_kessler_sedimentation(data):
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -821,6 +888,7 @@ def test_kessler_sedimentation(data):
         grid_type,
         flux_type,
         maxcfl,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

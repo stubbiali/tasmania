@@ -21,7 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
-from typing import Tuple
+from typing import Optional, Tuple, Union
 
 from gt4py import gtscript
 
@@ -30,11 +30,40 @@ from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
 from tasmania.python.utils import taz_types
+from tasmania.python.utils.utils import thomas_numpy
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
 mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
+
+
+def setup_tridiagonal_system_numpy(
+    gamma: float,
+    w: np.ndarray,
+    phi: np.ndarray,
+    phi_prv: np.ndarray,
+    a: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    *,
+    i: Union[int, slice],
+    j: Union[int, slice],
+    kstart: int,
+    kstop: int
+) -> None:
+    a[i, j, kstart + 1 : kstop - 1] = gamma * w[i, j, kstart : kstop - 2]
+    a[i, j, kstop - 1] = 0.0
+
+    c[i, j, kstart] = 0.0
+    c[i, j, kstart + 1 : kstop - 1] = -gamma * w[i, j, kstart + 2 : kstop]
+
+    d[i, j, kstart] = phi_prv[i, j, kstart]
+    d[i, j, kstart + 1 : kstop - 1] = phi_prv[i, j, kstart + 1 : kstop - 1] - gamma * (
+        w[i, j, kstart : kstop - 2] * phi[i, j, kstart : kstop - 2]
+        - w[i, j, kstart + 2 : kstop] * phi[i, j, kstart + 2 : kstop]
+    )
+    d[i, j, kstop - 1] = phi_prv[i, j, kstop - 1]
 
 
 @gtscript.function
@@ -72,7 +101,7 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         *args,
         execution_policy="serial",
         enforce_horizontal_boundary=False,
-        gt_powered=False,
+        gt_powered=True,
         backend="numpy",
         backend_opts=None,
         build_info=None,
@@ -126,22 +155,25 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
         self._nz = core.grid.nz
         self._dz = core.grid.dz.to_units("K").values.item()
 
-        # instantiate stencil object
-        externals = {
-            "moist": self._moist,
-            "vstaggering": self._stgz,
-            "setup_tridiagonal_system": setup_tridiagonal_system,
-            "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
-        }
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            externals=externals,
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # instantiate stencil object
+            externals = {
+                "moist": self._moist,
+                "vstaggering": self._stgz,
+                "setup_tridiagonal_system": setup_tridiagonal_system,
+                "setup_tridiagonal_system_bc": setup_tridiagonal_system_bc,
+            }
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals=externals,
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     def _call(self, state, prv_state, timestep):
         # initialize the output state
@@ -219,15 +251,164 @@ class IsentropicVerticalAdvection(STSTendencyStepper):
 
         # run the stencil
         self._stencil(
-            **stencil_args,
-            origin={"_all_": (0, 0, 0)},
-            domain=(self._nx, self._ny, self._nz),
+            **stencil_args, origin=(0, 0, 0), domain=(self._nx, self._ny, self._nz)
         )
 
         return {}, out_state
 
+    def _stencil_numpy(
+        self,
+        in_w: np.ndarray,
+        in_s: np.ndarray,
+        in_s_prv: np.ndarray,
+        out_s: np.ndarray,
+        in_su: np.ndarray,
+        in_su_prv: np.ndarray,
+        out_su: np.ndarray,
+        in_sv: np.ndarray,
+        in_sv_prv: np.ndarray,
+        out_sv: np.ndarray,
+        in_qv: Optional[np.ndarray] = None,
+        in_qv_prv: Optional[np.ndarray] = None,
+        out_qv: Optional[np.ndarray] = None,
+        in_qc: Optional[np.ndarray] = None,
+        in_qc_prv: Optional[np.ndarray] = None,
+        out_qc: Optional[np.ndarray] = None,
+        in_qr: Optional[np.ndarray] = None,
+        in_qr_prv: Optional[np.ndarray] = None,
+        out_qr: Optional[np.ndarray] = None,
+        *,
+        gamma: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        kstart, kstop = origin[2], origin[2] + domain[2]
+
+        # interpolate the velocity on the main levels
+        if self._stgz:
+            w = np.zeros_like(in_w)
+            w[i, j, kstart:kstop] = 0.5 * (
+                in_w[i, j, kstart:kstop] + in_w[i, j, kstart + 1 : kstop + 1]
+            )
+        else:
+            w = in_w
+
+        # compute the isentropic density of the water species
+        if self._moist:
+            sqv = np.zeros_like(in_qv)
+            sqv_prv = np.zeros_like(in_qv)
+            sqc = np.zeros_like(in_qc)
+            sqc_prv = np.zeros_like(in_qv)
+            sqr = np.zeros_like(in_qr)
+            sqr_prv = np.zeros_like(in_qv)
+
+            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqv_prv[i, j, kstart:kstop] = (
+                in_s_prv[i, j, kstart:kstop] * in_qv_prv[i, j, kstart:kstop]
+            )
+            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqc_prv[i, j, kstart:kstop] = (
+                in_s_prv[i, j, kstart:kstop] * in_qc_prv[i, j, kstart:kstop]
+            )
+            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+            sqr_prv[i, j, kstart:kstop] = (
+                in_s_prv[i, j, kstart:kstop] * in_qr_prv[i, j, kstart:kstop]
+            )
+        else:
+            sqv = sqv_prv = sqc = sqc_prv = sqr = sqr_prv = None
+
+        #
+        # isentropic density
+        #
+        # set up the tridiagonal system
+        a = np.zeros_like(in_s)
+        b = np.ones_like(in_s)
+        c = np.zeros_like(in_s)
+        d = np.zeros_like(in_s)
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_s, in_s_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        thomas_numpy(a, b, c, d, out_s, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        #
+        # x-momentum
+        #
+        # set up the tridiagonal system
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_su, in_su_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        thomas_numpy(a, b, c, d, out_su, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        #
+        # y-momentum
+        #
+        # set up the tridiagonal system
+        setup_tridiagonal_system_numpy(
+            gamma, w, in_sv, in_sv_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+        )
+
+        # solve the tridiagonal system
+        thomas_numpy(a, b, c, d, out_sv, i=i, j=j, kstart=kstart, kstop=kstop)
+
+        if self._moist:
+            #
+            # isentropic density of water vapor
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqv, sqv_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqv = np.zeros_like(sqv)
+            thomas_numpy(a, b, c, d, out_sqv, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # isentropic density of cloud liquid water
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqc, sqc_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqc = np.zeros_like(sqc)
+            thomas_numpy(a, b, c, d, out_sqc, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # isentropic density of precipitation water
+            #
+            # set up the tridiagonal system
+            setup_tridiagonal_system_numpy(
+                gamma, w, sqr, sqr_prv, a, c, d, i=i, j=j, kstart=kstart, kstop=kstop
+            )
+
+            # solve the tridiagonal system
+            out_sqr = np.zeros_like(sqr)
+            thomas_numpy(a, b, c, d, out_sqr, i=i, j=j, kstart=kstart, kstop=kstop)
+
+            #
+            # mass fraction of the water species
+            #
+            out_qv[i, j, kstart:kstop] = (
+                out_sqv[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+            )
+            out_qc[i, j, kstart:kstop] = (
+                out_sqc[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+            )
+            out_qr[i, j, kstart:kstop] = (
+                out_sqr[i, j, kstart:kstop] / out_s[i, j, kstart:kstop]
+            )
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_w: gtscript.Field["dtype"],
         in_s: gtscript.Field["dtype"],
         in_s_prv: gtscript.Field["dtype"],

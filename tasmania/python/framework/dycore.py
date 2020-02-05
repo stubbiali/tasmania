@@ -232,6 +232,7 @@ class DynamicalCore(abc.ABC):
         self._output_checker = OutputChecker(self)
 
         # instantiate the dictionary operator
+        self._gt_powered = gt_powered
         self._dict_op = DataArrayDictOperator(
             gt_powered,
             backend=backend,
@@ -983,10 +984,11 @@ class DynamicalCore(abc.ABC):
             # ============================================================
             # Create dataarrays out of the numpy arrays contained in the stepped state
             stage_state_properties = {
-                name: self._output_properties[name] for name in self._output_properties
+                name: dict(**self._output_properties[name], set_coordinates=False)
+                for name in self._output_properties
             }
             stage_state = get_dataarray_dict(
-                raw_stage_state, self._grid, stage_state_properties, set_coordinates=False
+                raw_stage_state, self._grid, stage_state_properties
             )
 
             # Update the latest state

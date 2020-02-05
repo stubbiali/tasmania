@@ -57,6 +57,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         diffusion_moist_coeff: Optional[DataArray] = None,
         diffusion_moist_coeff_max: Optional[DataArray] = None,
         diffusion_moist_damp_depth: Optional[int] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -98,6 +99,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             in units compatible with [s^-1].
         diffusion_damp_depth : int
             Depth of the damping region for the water species.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -144,6 +147,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             diff_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -174,6 +178,7 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
                 diff_moist_coeff_max,
                 diff_moist_damp_depth,
                 nb,
+                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
@@ -187,23 +192,53 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
             self._core_moist = None
 
         self._s_tnd = zeros(
-            shape, backend, dtype, default_origin, managed_memory=managed_memory
+            shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._su_tnd = zeros(
-            shape, backend, dtype, default_origin, managed_memory=managed_memory
+            shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._sv_tnd = zeros(
-            shape, backend, dtype, default_origin, managed_memory=managed_memory
+            shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if self._moist:
             self._qv_tnd = zeros(
-                shape, backend, dtype, default_origin, managed_memory=managed_memory
+                shape,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
             )
             self._qc_tnd = zeros(
-                shape, backend, dtype, default_origin, managed_memory=managed_memory
+                shape,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
             )
             self._qr_tnd = zeros(
-                shape, backend, dtype, default_origin, managed_memory=managed_memory
+                shape,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
+                managed_memory=managed_memory,
             )
 
     @property
@@ -245,8 +280,8 @@ class IsentropicHorizontalDiffusion(TendencyComponent):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         in_s = state["air_isentropic_density"]
         in_su = state["x_momentum_isentropic"]
         in_sv = state["y_momentum_isentropic"]

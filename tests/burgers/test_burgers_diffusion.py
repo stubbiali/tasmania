@@ -38,6 +38,7 @@ from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -82,24 +83,37 @@ def test_second_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     pgrid = domain.physical_grid
     cgrid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = pgrid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            pgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
         label="pstate",
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            cgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
         label="cstate",
     )
 
@@ -116,6 +130,7 @@ def test_second_order(data):
         "physical",
         "second_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -156,6 +171,7 @@ def test_second_order(data):
         "numerical",
         "second_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=cgrid.x.dtype,
         default_origin=default_origin,
@@ -216,24 +232,37 @@ def test_fourth_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     pgrid = domain.physical_grid
     cgrid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = pgrid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            pgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
         label="pstate",
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            cgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
         label="cstate",
     )
 
@@ -250,6 +279,7 @@ def test_fourth_order(data):
         "physical",
         "fourth_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -290,6 +320,7 @@ def test_fourth_order(data):
         "numerical",
         "fourth_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=cgrid.x.dtype,
         default_origin=default_origin,

@@ -59,6 +59,7 @@ class IsentropicPrognostic(abc.ABC):
         grid: "Grid",
         hb: "HorizontalBoundary",
         moist: bool,
+        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
         build_info: taz_types.options_dict_t,
@@ -86,6 +87,8 @@ class IsentropicPrognostic(abc.ABC):
             The object handling the lateral boundary conditions.
         moist : bool
             `True` for a moist dynamical core, `False` otherwise.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -110,6 +113,7 @@ class IsentropicPrognostic(abc.ABC):
         self._grid = grid
         self._hb = hb
         self._moist = moist
+        self._gt_powered = gt_powered
         self._backend = backend
         self._backend_opts = backend_opts or {}
         self._build_info = build_info
@@ -130,7 +134,9 @@ class IsentropicPrognostic(abc.ABC):
         self._storage_shape = storage_shape
 
         # instantiate the class computing the numerical horizontal fluxes
-        self._hflux = horizontal_flux_class.factory(horizontal_flux_scheme)
+        self._hflux = horizontal_flux_class.factory(
+            horizontal_flux_scheme, moist, gt_powered
+        )
         assert hb.nb >= self._hflux.extent, (
             "The number of lateral boundary layers is {}, but should be "
             "greater or equal than {}.".format(hb.nb, self._hflux.extent)
@@ -148,7 +154,7 @@ class IsentropicPrognostic(abc.ABC):
             )
         )
 
-        # allocate the gt storages collecting the output fields computed by
+        # allocate the storages collecting the output fields computed by
         # the underlying stencils
         self._stencils_allocate_outputs()
 
@@ -207,6 +213,7 @@ class IsentropicPrognostic(abc.ABC):
         grid: "Grid",
         hb: "HorizontalBoundary",
         moist: bool = False,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -245,6 +252,8 @@ class IsentropicPrognostic(abc.ABC):
         moist : `bool`, optional
             `True` for a moist dynamical core, `False` otherwise.
             Defaults to `False`.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -277,6 +286,7 @@ class IsentropicPrognostic(abc.ABC):
             grid,
             hb,
             moist,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -310,39 +320,58 @@ class IsentropicPrognostic(abc.ABC):
         by the underlying gt4py stencils.
         """
         storage_shape = self._storage_shape
+        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
         managed_memory = self._managed_memory
 
         self._s_new = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._su_new = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._sv_new = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if self._moist:
             self._sqv_new = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._sqc_new = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._sqr_new = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )

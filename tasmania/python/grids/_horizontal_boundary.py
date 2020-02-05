@@ -69,7 +69,7 @@ class Relaxed(HorizontalBoundary):
     Relaxed boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype, nr=8):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, nr=8):
         """
         Parameters
         ----------
@@ -79,8 +79,10 @@ class Relaxed(HorizontalBoundary):
         ny : int
             Number of points featured by the *physical* grid
             along the second horizontal dimension.
-        nb : `int`, optional
+        nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -102,7 +104,7 @@ class Relaxed(HorizontalBoundary):
             nb <= nr
         ), "Number of boundary layers cannot exceed depth of relaxation region."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
         self._kwargs["nr"] = nr
 
         # the relaxation coefficients
@@ -139,7 +141,10 @@ class Relaxed(HorizontalBoundary):
 
         # inspect the backend properties to load the proper asarray function
         backend = backend or "numpy"
-        device = gt.backend.from_name(backend).storage_info["device"]
+        if self._gt_powered:
+            device = gt.backend.from_name(backend).storage_info["device"]
+        else:
+            device = "numpy"
         asarray = cp.asarray if device == "gpu" else np.asarray
 
         # made all matrices three-dimensional to harness array broadcasting
@@ -273,7 +278,7 @@ class Relaxed1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype, nr=8):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, nr=8):
         """
         Parameters
         ----------
@@ -285,6 +290,8 @@ class Relaxed1DX(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -303,7 +310,7 @@ class Relaxed1DX(HorizontalBoundary):
             nb <= nr
         ), "Number of boundary layers cannot exceed depth of relaxation region."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
         self._kwargs["nr"] = nr
 
         nr = nr if nb <= nr <= 8 else 8
@@ -438,7 +445,7 @@ class Relaxed1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype, nr=8):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, nr=8):
         """
         Parameters
         ----------
@@ -450,6 +457,8 @@ class Relaxed1DY(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -468,7 +477,7 @@ class Relaxed1DY(HorizontalBoundary):
             nb <= nr
         ), "Number of boundary layers cannot exceed depth of relaxation region."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
         self._kwargs["nr"] = nr
 
         # the relaxation coefficients
@@ -600,7 +609,7 @@ class Periodic(HorizontalBoundary):
     Periodic boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
         """
         Parameters
         ----------
@@ -612,6 +621,8 @@ class Periodic(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         """
         assert (
             nx > 1
@@ -622,7 +633,7 @@ class Periodic(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
     @property
     def ni(self):
@@ -741,7 +752,7 @@ class Periodic1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
         """
         Parameters
         ----------
@@ -753,6 +764,8 @@ class Periodic1DX(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         """
         assert (
             nx > 1
@@ -760,7 +773,7 @@ class Periodic1DX(HorizontalBoundary):
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
     @property
     def ni(self):
@@ -875,7 +888,7 @@ class Periodic1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
         """
         Parameters
         ----------
@@ -887,6 +900,8 @@ class Periodic1DY(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         """
         assert nx == 1, "Number of grid points along first dimension must be 1."
         assert (
@@ -894,7 +909,7 @@ class Periodic1DY(HorizontalBoundary):
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
     @property
     def ni(self):
@@ -1012,7 +1027,7 @@ class Dirichlet(HorizontalBoundary):
     Dirichlet boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -1024,6 +1039,8 @@ class Dirichlet(HorizontalBoundary):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -1051,7 +1068,7 @@ class Dirichlet(HorizontalBoundary):
         assert "slice_y" in signature.parameters, error_msg
         assert "field_name" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
         self._kwargs["core"] = core
 
@@ -1161,7 +1178,7 @@ class Dirichlet1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -1173,6 +1190,8 @@ class Dirichlet1DX(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -1197,7 +1216,7 @@ class Dirichlet1DX(HorizontalBoundary):
         assert "slice_y" in signature.parameters, error_msg
         assert "field_name" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
         self._kwargs["core"] = core
 
@@ -1306,7 +1325,7 @@ class Dirichlet1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype, core=placeholder):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype, core=placeholder):
         """
         Parameters
         ----------
@@ -1318,6 +1337,8 @@ class Dirichlet1DY(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -1342,7 +1363,7 @@ class Dirichlet1DY(HorizontalBoundary):
         assert "slice_y" in signature.parameters, error_msg
         assert "field_name" in signature.parameters, error_msg
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
         self._kwargs["core"] = core
 
@@ -1450,7 +1471,7 @@ class Identity(HorizontalBoundary):
     *Identity* boundary conditions.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
         """
         Parameters
         ----------
@@ -1462,6 +1483,8 @@ class Identity(HorizontalBoundary):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         """
         assert (
             nx > 1
@@ -1472,7 +1495,7 @@ class Identity(HorizontalBoundary):
         assert nb <= nx / 2, "Number of boundary layers cannot exceed ny/2."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
     @property
     def ni(self):
@@ -1522,7 +1545,7 @@ class Identity1DX(HorizontalBoundary):
     along the second horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
         """
         Parameters
         ----------
@@ -1534,6 +1557,8 @@ class Identity1DX(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         """
         assert (
             nx > 1
@@ -1541,7 +1566,7 @@ class Identity1DX(HorizontalBoundary):
         assert ny == 1, "Number of grid points along second dimension must be 1."
         assert nb <= nx / 2, "Number of boundary layers cannot exceed nx/2."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
     @property
     def ni(self):
@@ -1599,7 +1624,7 @@ class Identity1DY(HorizontalBoundary):
     along the first horizontal dimension.
     """
 
-    def __init__(self, nx, ny, nb, backend, dtype):
+    def __init__(self, nx, ny, nb, gt_powered, backend, dtype):
         """
         Parameters
         ----------
@@ -1611,6 +1636,8 @@ class Identity1DY(HorizontalBoundary):
             along the second horizontal dimension. It must be 1.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         """
         assert nx == 1, "Number of grid points along first dimension must be 1."
         assert (
@@ -1618,7 +1645,7 @@ class Identity1DY(HorizontalBoundary):
         ), "Number of grid points along second dimension should be larger than 1."
         assert nb <= ny / 2, "Number of boundary layers cannot exceed ny/2."
 
-        super().__init__(nx, ny, nb, backend, dtype)
+        super().__init__(nx, ny, nb, gt_powered, backend, dtype)
 
     @property
     def ni(self):

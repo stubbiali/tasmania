@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Union
 
 from gt4py import gtscript, __externals__
 
@@ -32,6 +33,7 @@ from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicMinimalHorizontalFlux,
 )
 from tasmania.python.isentropic.dynamics.prognostic import IsentropicPrognostic
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
 
@@ -41,7 +43,181 @@ mfcw = "mass_fraction_of_cloud_liquid_water_in_air"
 mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
-def step_forward_euler(
+def step_forward_euler_numpy(
+    s_now: gtscript.Field["dtype"],
+    s_int: gtscript.Field["dtype"],
+    s_new: gtscript.Field["dtype"],
+    u_int: gtscript.Field["dtype"],
+    v_int: gtscript.Field["dtype"],
+    su_int: gtscript.Field["dtype"] = None,
+    sv_int: gtscript.Field["dtype"] = None,
+    mtg_int: gtscript.Field["dtype"] = None,
+    sqv_now: gtscript.Field["dtype"] = None,
+    sqv_int: gtscript.Field["dtype"] = None,
+    sqv_new: gtscript.Field["dtype"] = None,
+    sqc_now: gtscript.Field["dtype"] = None,
+    sqc_int: gtscript.Field["dtype"] = None,
+    sqc_new: gtscript.Field["dtype"] = None,
+    sqr_now: gtscript.Field["dtype"] = None,
+    sqr_int: gtscript.Field["dtype"] = None,
+    sqr_new: gtscript.Field["dtype"] = None,
+    s_tnd: gtscript.Field["dtype"] = None,
+    qv_tnd: gtscript.Field["dtype"] = None,
+    qc_tnd: gtscript.Field["dtype"] = None,
+    qr_tnd: gtscript.Field["dtype"] = None,
+    *,
+    dt: float,
+    dx: float,
+    dy: float,
+    fluxer: Union[IsentropicHorizontalFlux, IsentropicMinimalHorizontalFlux],
+    origin: taz_types.triplet_int_t,
+    domain: taz_types.triplet_int_t,
+    **kwargs  # catch-all
+) -> None:
+    i = slice(origin[0], origin[0] + domain[0])
+    j = slice(origin[1], origin[1] + domain[1])
+    k = slice(origin[2], origin[2] + domain[2])
+
+    ne = fluxer.extent
+    ip_f = slice(origin[0] - ne + 1, origin[0] - ne + domain[0] + 1)
+    im_f = slice(origin[0] - ne, origin[0] - ne + domain[0])
+    jp_f = slice(origin[1] - ne + 1, origin[1] - ne + domain[1] + 1)
+    jm_f = slice(origin[1] - ne, origin[1] - ne + domain[1])
+
+    fluxes = fluxer.call(
+        s=s_int,
+        u=u_int,
+        v=v_int,
+        su=su_int,
+        sv=sv_int,
+        mtg=mtg_int,
+        sqv=sqv_int,
+        sqc=sqc_int,
+        sqr=sqr_int,
+        s_tnd=s_tnd,
+        qv_tnd=qv_tnd,
+        qc_tnd=qc_tnd,
+        qr_tnd=qr_tnd,
+        dt=dt,
+        dx=dx,
+        dy=dy,
+        compute_density_fluxes=True,
+        compute_momentum_fluxes=False,
+        compute_water_species_fluxes=True,
+    )
+
+    flux_s_x, flux_s_y = fluxes[0:2]
+    s_new[i, j, k] = s_now[i, j, k] - dt * (
+        (flux_s_x[ip_f, j, k] - flux_s_x[im_f, j, k]) / dx
+        + (flux_s_y[i, jp_f, k] - flux_s_y[i, jm_f, k]) / dy
+        - (s_tnd[i, j, k] if s_tnd is not None else 0.0)
+    )
+
+    if len(fluxes) > 2:  # moist
+        flux_sqv_x, flux_sqv_y = fluxes[2:4]
+        sqv_new[i, j, k] = sqv_now[i, j, k] - dt * (
+            (flux_sqv_x[ip_f, j, k] - flux_sqv_x[im_f, j, k]) / dx
+            + (flux_sqv_y[i, jp_f, k] - flux_sqv_y[i, jm_f, k]) / dy
+            - (s_int[i, j, k] * qv_tnd[i, j, k] if qv_tnd is not None else 0.0)
+        )
+
+        flux_sqc_x, flux_sqc_y = fluxes[4:6]
+        sqc_new[i, j, k] = sqc_now[i, j, k] - dt * (
+            (flux_sqc_x[ip_f, j, k] - flux_sqc_x[im_f, j, k]) / dx
+            + (flux_sqc_y[i, jp_f, k] - flux_sqc_y[i, jm_f, k]) / dy
+            - (s_int[i, j, k] * qc_tnd[i, j, k] if qc_tnd is not None else 0.0)
+        )
+
+        flux_sqr_x, flux_sqr_y = fluxes[6:8]
+        sqr_new[i, j, k] = sqr_now[i, j, k] - dt * (
+            (flux_sqr_x[ip_f, j, k] - flux_sqr_x[im_f, j, k]) / dx
+            + (flux_sqr_y[i, jp_f, k] - flux_sqr_y[i, jm_f, k]) / dy
+            - (s_int[i, j, k] * qr_tnd[i, j, k] if qr_tnd is not None else 0.0)
+        )
+
+
+def step_forward_euler_momentum_numpy(
+    s_now: gtscript.Field["dtype"],
+    s_int: gtscript.Field["dtype"],
+    s_new: gtscript.Field["dtype"],
+    u_int: gtscript.Field["dtype"],
+    v_int: gtscript.Field["dtype"],
+    su_now: gtscript.Field["dtype"],
+    su_int: gtscript.Field["dtype"],
+    su_new: gtscript.Field["dtype"],
+    sv_now: gtscript.Field["dtype"],
+    sv_int: gtscript.Field["dtype"],
+    sv_new: gtscript.Field["dtype"],
+    mtg_now: gtscript.Field["dtype"],
+    mtg_new: gtscript.Field["dtype"],
+    mtg_int: gtscript.Field["dtype"] = None,
+    su_tnd: gtscript.Field["dtype"] = None,
+    sv_tnd: gtscript.Field["dtype"] = None,
+    *,
+    dt: float,
+    dx: float,
+    dy: float,
+    eps: float,
+    fluxer: Union[IsentropicHorizontalFlux, IsentropicMinimalHorizontalFlux],
+    origin: taz_types.triplet_int_t,
+    domain: taz_types.triplet_int_t,
+    **kwargs  # catch-all
+) -> None:
+    i = slice(origin[0], origin[0] + domain[0])
+    im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
+    ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
+    j = slice(origin[1], origin[1] + domain[1])
+    jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+    jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
+    k = slice(origin[2], origin[2] + domain[2])
+
+    ne = fluxer.extent
+    ip_f = slice(origin[0] - ne + 1, origin[0] - ne + domain[0] + 1)
+    im_f = slice(origin[0] - ne, origin[0] - ne + domain[0])
+    jp_f = slice(origin[1] - ne + 1, origin[1] - ne + domain[1] + 1)
+    jm_f = slice(origin[1] - ne, origin[1] - ne + domain[1])
+
+    flux_su_x, flux_su_y, flux_sv_x, flux_sv_y = fluxer.call(
+        dt=dt,
+        dx=dx,
+        dy=dy,
+        s=s_int,
+        u=u_int,
+        v=v_int,
+        su=su_int,
+        sv=sv_int,
+        mtg=mtg_int,
+        su_tnd=su_tnd,
+        sv_tnd=sv_tnd,
+        compute_density_fluxes=False,
+        compute_momentum_fluxes=True,
+        compute_water_species_fluxes=False,
+    )
+
+    su_new[i, j, k] = su_now[i, j, k] - dt * (
+        (flux_su_x[ip_f, j, k] - flux_su_x[im_f, j, k]) / dx
+        + (flux_su_y[i, jp_f, k] - flux_su_y[i, jm_f, k]) / dy
+        + (1.0 - eps)
+        * s_now[i, j, k]
+        * (mtg_now[ip1, j, k] - mtg_now[im1, j, k])
+        / (2.0 * dx)
+        + eps * s_new[i, j, k] * (mtg_new[ip1, j, k] - mtg_new[im1, j, k]) / (2.0 * dx)
+        - (su_tnd[i, j, k] if su_tnd is not None else 0.0)
+    )
+
+    sv_new[i, j, k] = sv_now[i, j, k] - dt * (
+        (flux_sv_x[ip_f, j, k] - flux_sv_x[im_f, j, k]) / dx
+        + (flux_sv_y[i, jp_f, k] - flux_sv_y[i, jm_f, k]) / dy
+        + (1.0 - eps)
+        * s_now[i, j, k]
+        * (mtg_now[i, jp1, k] - mtg_now[i, jm1, k])
+        / (2.0 * dy)
+        + eps * s_new[i, j, k] * (mtg_new[i, jp1, k] - mtg_new[i, jm1, k]) / (2.0 * dy)
+        - (sv_tnd[i, j, k] if sv_tnd is not None else 0.0)
+    )
+
+
+def step_forward_euler_gt(
     s_now: gtscript.Field["dtype"],
     s_int: gtscript.Field["dtype"],
     s_new: gtscript.Field["dtype"],
@@ -154,7 +330,7 @@ def step_forward_euler(
                 )
 
 
-def step_forward_euler_momentum(
+def step_forward_euler_momentum_gt(
     s_now: gtscript.Field["dtype"],
     s_int: gtscript.Field["dtype"],
     s_new: gtscript.Field["dtype"],
@@ -260,6 +436,7 @@ class ForwardEulerSI(IsentropicPrognostic):
         grid,
         hb,
         moist,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -278,6 +455,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             grid,
             hb,
             moist,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -300,6 +478,7 @@ class ForwardEulerSI(IsentropicPrognostic):
         # instantiate the component retrieving the diagnostic variables
         self._diagnostics = IsentropicDiagnostics(
             grid,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -374,6 +553,8 @@ class ForwardEulerSI(IsentropicPrognostic):
                     "sqr_new": self._sqr_new,
                 }
             )
+        if not self._gt_powered:
+            stencil_args["fluxer"] = self._hflux
 
         # step the isentropic density and the water species
         self._stencil(
@@ -381,7 +562,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info
         )
@@ -423,6 +604,8 @@ class ForwardEulerSI(IsentropicPrognostic):
             "sv_tnd": self._sv_tnd,
             "sv_new": self._sv_new,
         }
+        if not self._gt_powered:
+            stencil_args["fluxer"] = self._hflux
 
         # step the momenta
         self._stencil_momentum(
@@ -431,7 +614,7 @@ class ForwardEulerSI(IsentropicPrognostic):
             dx=dx,
             dy=dy,
             eps=self._eps,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info
         )
@@ -460,64 +643,74 @@ class ForwardEulerSI(IsentropicPrognostic):
         # allocate the storage which will collect the Montgomery potential
         # retrieved from the updated isentropic density
         storage_shape = self._storage_shape
+        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
         managed_memory = self._managed_memory
         self._mtg_new = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
     def _stencils_initialize(self, tendencies):
-        # set external symbols for the first stencil
-        # externals = self._hflux.externals.copy()
-        externals = {
-            "fluxer": self._hflux.__call__,
-            "moist": self._moist,
-            "s_tnd_on": "air_isentropic_density" in tendencies,
-            "su_tnd_on": False,
-            "sv_tnd_on": False,
-            "qv_tnd_on": self._moist and mfwv in tendencies,
-            "qc_tnd_on": self._moist and mfcw in tendencies,
-            "qr_tnd_on": self._moist and mfpw in tendencies,
-        }
+        if self._gt_powered:
+            # set external symbols for the first stencil
+            # externals = self._hflux.externals.copy()
+            externals = {
+                "fluxer": self._hflux.call,
+                "moist": self._moist,
+                "s_tnd_on": "air_isentropic_density" in tendencies,
+                "su_tnd_on": False,
+                "sv_tnd_on": False,
+                "qv_tnd_on": self._moist and mfwv in tendencies,
+                "qc_tnd_on": self._moist and mfcw in tendencies,
+                "qr_tnd_on": self._moist and mfpw in tendencies,
+            }
 
-        # compile the first stencil
-        self._stencil = gtscript.stencil(
-            definition=step_forward_euler,
-            name=self.__class__.__name__ + "_stencil",
-            backend=self._backend,
-            build_info=self._build_info,
-            dtypes={"dtype": self._dtype},
-            externals=externals,
-            rebuild=self._rebuild,
-            **self._backend_opts
-        )
+            # compile the first stencil
+            self._stencil = gtscript.stencil(
+                definition=step_forward_euler_gt,
+                name=self.__class__.__name__ + "_stencil",
+                backend=self._backend,
+                build_info=self._build_info,
+                dtypes={"dtype": self._dtype},
+                externals=externals,
+                rebuild=self._rebuild,
+                **self._backend_opts
+            )
 
-        # set external symbols for the second stencil
-        # externals = self._hflux.externals.copy()
-        externals = {
-            "fluxer": self._hflux.__call__,
-            "moist": False,
-            "s_tnd_on": False,
-            "su_tnd_on": "x_momentum_isentropic" in tendencies,
-            "sv_tnd_on": "y_momentum_isentropic" in tendencies,
-            "qv_tnd_on": False,
-            "qc_tnd_on": False,
-            "qr_tnd_on": False,
-        }
+            # set external symbols for the second stencil
+            # externals = self._hflux.externals.copy()
+            externals = {
+                "fluxer": self._hflux.call,
+                "moist": False,
+                "s_tnd_on": False,
+                "su_tnd_on": "x_momentum_isentropic" in tendencies,
+                "sv_tnd_on": "y_momentum_isentropic" in tendencies,
+                "qv_tnd_on": False,
+                "qc_tnd_on": False,
+                "qr_tnd_on": False,
+            }
 
-        # compile the second stencil
-        self._stencil_momentum = gtscript.stencil(
-            definition=step_forward_euler_momentum,
-            name=self.__class__.__name__ + "_stencil_momentum",
-            backend=self._backend,
-            build_info=self._build_info,
-            dtypes={"dtype": self._dtype},
-            externals=externals,
-            rebuild=self._rebuild,
-            **self._backend_opts
-        )
+            # compile the second stencil
+            self._stencil_momentum = gtscript.stencil(
+                definition=step_forward_euler_momentum_gt,
+                name=self.__class__.__name__ + "_stencil_momentum",
+                backend=self._backend,
+                build_info=self._build_info,
+                dtypes={"dtype": self._dtype},
+                externals=externals,
+                rebuild=self._rebuild,
+                **self._backend_opts
+            )
+        else:
+            self._stencil = step_forward_euler_numpy
+            self._stencil_momentum = step_forward_euler_momentum_numpy
 
 
 class CenteredSI(IsentropicPrognostic):
@@ -533,6 +726,7 @@ class RK3WSSI(IsentropicPrognostic):
         grid,
         hb,
         moist,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -551,6 +745,7 @@ class RK3WSSI(IsentropicPrognostic):
             grid,
             hb,
             moist,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -573,6 +768,7 @@ class RK3WSSI(IsentropicPrognostic):
         # instantiate the component retrieving the diagnostic variables
         self._diagnostics = IsentropicDiagnostics(
             grid,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -679,6 +875,8 @@ class RK3WSSI(IsentropicPrognostic):
                     "sqr_new": self._sqr_new,
                 }
             )
+        if not self._gt_powered:
+            stencil_args["fluxer"] = self._hflux
 
         # step the isentropic density and the water species
         self._stencil(
@@ -686,7 +884,7 @@ class RK3WSSI(IsentropicPrognostic):
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info
         )
@@ -728,6 +926,8 @@ class RK3WSSI(IsentropicPrognostic):
             "sv_tnd": self._sv_tnd,
             "sv_new": self._sv_new,
         }
+        if not self._gt_powered:
+            stencil_args["fluxer"] = self._hflux
 
         # step the momenta
         self._stencil_momentum(
@@ -736,7 +936,7 @@ class RK3WSSI(IsentropicPrognostic):
             dx=dx,
             dy=dy,
             eps=self._eps,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info
         )
@@ -765,62 +965,72 @@ class RK3WSSI(IsentropicPrognostic):
         # allocate the storage which will collect the Montgomery potential
         # retrieved from the updated isentropic density
         storage_shape = self._storage_shape
+        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
         managed_memory = self._managed_memory
         self._mtg_new = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
 
     def _stencils_initialize(self, tendencies):
-        # set external symbols for the first stencil
-        externals = {
-            "fluxer": self._hflux.__call__,
-            "moist": self._moist,
-            "s_tnd_on": "air_isentropic_density" in tendencies,
-            "su_tnd_on": False,
-            "sv_tnd_on": False,
-            "qv_tnd_on": self._moist and mfwv in tendencies,
-            "qc_tnd_on": self._moist and mfcw in tendencies,
-            "qr_tnd_on": self._moist and mfpw in tendencies,
-        }
+        if self._gt_powered:
+            # set external symbols for the first stencil
+            externals = {
+                "fluxer": self._hflux.call,
+                "moist": self._moist,
+                "s_tnd_on": "air_isentropic_density" in tendencies,
+                "su_tnd_on": False,
+                "sv_tnd_on": False,
+                "qv_tnd_on": self._moist and mfwv in tendencies,
+                "qc_tnd_on": self._moist and mfcw in tendencies,
+                "qr_tnd_on": self._moist and mfpw in tendencies,
+            }
 
-        # compile the first stencil
-        self._stencil = gtscript.stencil(
-            definition=step_forward_euler,
-            name=self.__class__.__name__ + "_stencil",
-            backend=self._backend,
-            build_info=self._build_info,
-            dtypes={"dtype": self._dtype},
-            externals=externals,
-            rebuild=self._rebuild,
-            **self._backend_opts
-        )
+            # compile the first stencil
+            self._stencil = gtscript.stencil(
+                definition=step_forward_euler_gt,
+                name=self.__class__.__name__ + "_stencil",
+                backend=self._backend,
+                build_info=self._build_info,
+                dtypes={"dtype": self._dtype},
+                externals=externals,
+                rebuild=self._rebuild,
+                **self._backend_opts
+            )
 
-        # set external symbols for the second stencil
-        externals = {
-            "fluxer": self._hflux.__call__,
-            "moist": False,
-            "s_tnd_on": False,
-            "su_tnd_on": "x_momentum_isentropic" in tendencies,
-            "sv_tnd_on": "y_momentum_isentropic" in tendencies,
-            "qv_tnd_on": False,
-            "qc_tnd_on": False,
-            "qr_tnd_on": False,
-        }
+            # set external symbols for the second stencil
+            externals = {
+                "fluxer": self._hflux.call,
+                "moist": False,
+                "s_tnd_on": False,
+                "su_tnd_on": "x_momentum_isentropic" in tendencies,
+                "sv_tnd_on": "y_momentum_isentropic" in tendencies,
+                "qv_tnd_on": False,
+                "qc_tnd_on": False,
+                "qr_tnd_on": False,
+            }
 
-        # compile the second stencil
-        self._stencil_momentum = gtscript.stencil(
-            definition=step_forward_euler_momentum,
-            name=self.__class__.__name__ + "_stencil_momentum",
-            backend=self._backend,
-            build_info=self._build_info,
-            dtypes={"dtype": self._dtype},
-            externals=externals,
-            rebuild=self._rebuild,
-            **self._backend_opts
-        )
+            # compile the second stencil
+            self._stencil_momentum = gtscript.stencil(
+                definition=step_forward_euler_momentum_gt,
+                name=self.__class__.__name__ + "_stencil_momentum",
+                backend=self._backend,
+                build_info=self._build_info,
+                dtypes={"dtype": self._dtype},
+                externals=externals,
+                rebuild=self._rebuild,
+                **self._backend_opts
+            )
+        else:
+            self._stencil = step_forward_euler_numpy
+            self._stencil_momentum = step_forward_euler_momentum_numpy
 
 
 class SIL3(IsentropicPrognostic):

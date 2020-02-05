@@ -53,8 +53,10 @@ class Domain:
         horizontal_boundary_kwargs: Optional[Dict[str, Any]] = None,
         topography_type: str = "flat_terrain",
         topography_kwargs: Optional[Dict[str, Any]] = None,
+        gt_powered: bool = True,
+        *,
         backend: str = "numpy",
-        dtype: taz_types.dtype_t = np.float64,
+        dtype: taz_types.dtype_t = np.float64
     ) -> None:
         """ 
         Parameters
@@ -99,6 +101,8 @@ class Domain:
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         dtype : `data-type`, optional
@@ -133,7 +137,14 @@ class Domain:
             else horizontal_boundary_kwargs
         )
         self._hb = HorizontalBoundary.factory(
-            horizontal_boundary_type, nx, ny, nb, backend, dtype, **kwargs
+            horizontal_boundary_type,
+            nx,
+            ny,
+            nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            **kwargs
         )
 
         # the numerical grid

@@ -42,6 +42,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -93,7 +94,7 @@ def setup_tridiagonal_system(gamma, w, phi, a=None, b=None, c=None, d=None):
 
 
 def validation_diagnostic(
-    domain, moist, toaptoil, backend, default_origin, rebuild, state, timestep
+    domain, moist, toaptoil, gt_powered, backend, default_origin, rebuild, state, timestep
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -105,6 +106,7 @@ def validation_diagnostic(
         domain,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -149,7 +151,13 @@ def validation_diagnostic(
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
         w_hl = state[name].to_units("K s^-1").values
-        w = zeros((nx, ny, nz), backend, dtype, default_origin)
+        w = zeros(
+            (nx, ny, nz),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
@@ -178,11 +186,41 @@ def validation_diagnostic(
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros((nx, ny, nz), backend, dtype, default_origin)
-    b = zeros((nx, ny, nz), backend, dtype, default_origin)
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
-    d = zeros((nx, ny, nz), backend, dtype, default_origin)
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    a = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    b = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    d = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     setup_tridiagonal_system(gamma, w, s, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
@@ -237,12 +275,19 @@ def test_diagnostic_dry(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -250,6 +295,7 @@ def test_diagnostic_dry(data):
         st_isentropic_state_f(
             grid,
             moist=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -261,6 +307,7 @@ def test_diagnostic_dry(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -283,10 +330,10 @@ def test_diagnostic_dry(data):
     # test bed
     # ========================================
     validation_diagnostic(
-        domain, False, False, backend, default_origin, False, state, timestep
+        domain, False, False, gt_powered, backend, default_origin, False, state, timestep
     )
     validation_diagnostic(
-        domain, False, True, backend, default_origin, False, state, timestep
+        domain, False, True, gt_powered, backend, default_origin, False, state, timestep
     )
 
 
@@ -305,12 +352,19 @@ def test_diagnostic_moist(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -318,6 +372,7 @@ def test_diagnostic_moist(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -329,6 +384,7 @@ def test_diagnostic_moist(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -351,14 +407,16 @@ def test_diagnostic_moist(data):
     # test bed
     # ========================================
     validation_diagnostic(
-        domain, True, False, backend, default_origin, False, state, timestep
+        domain, True, False, gt_powered, backend, default_origin, False, state, timestep
     )
     validation_diagnostic(
-        domain, True, True, backend, default_origin, False, state, timestep
+        domain, True, True, gt_powered, backend, default_origin, False, state, timestep
     )
 
 
-def check_consistency(domain, moist, backend, default_origin, rebuild, state, timestep):
+def check_consistency(
+    domain, moist, gt_powered, backend, default_origin, rebuild, state, timestep
+):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dtype = grid.z.dtype
@@ -369,6 +427,7 @@ def check_consistency(domain, moist, backend, default_origin, rebuild, state, ti
         domain,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=False,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -398,7 +457,13 @@ def check_consistency(domain, moist, backend, default_origin, rebuild, state, ti
         output_names.append(mfpw)
 
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        zeros(storage_shape, backend, dtype, default_origin=default_origin),
+        zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
         grid,
         units="K s^-1",
         grid_shape=(nx, ny, nz),
@@ -459,11 +524,19 @@ def test_diagnostic_consistency(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -471,6 +544,7 @@ def test_diagnostic_consistency(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -486,11 +560,13 @@ def test_diagnostic_consistency(data):
     # ========================================
     # test bed
     # ========================================
-    check_consistency(domain, True, backend, default_origin, False, state, timestep)
+    check_consistency(
+        domain, True, gt_powered, backend, default_origin, False, state, timestep
+    )
 
 
 def validation_prognostic(
-    domain, moist, toaptoil, backend, default_origin, rebuild, state, timestep
+    domain, moist, toaptoil, gt_powered, backend, default_origin, rebuild, state, timestep
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -501,6 +577,7 @@ def validation_prognostic(
     fluxer = IsentropicImplicitVerticalAdvectionPrognostic(
         domain,
         moist,
+        gt_powered=gt_powered,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
         backend=backend,
         dtype=dtype,
@@ -546,7 +623,13 @@ def validation_prognostic(
     if toaptoil:
         name = "tendency_of_air_potential_temperature_on_interface_levels"
         w_hl = state[name].to_units("K s^-1").values
-        w = zeros((nx, ny, nz), backend, dtype, default_origin)
+        w = zeros(
+            (nx, ny, nz),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         w[...] = 0.5 * (w_hl[:nx, :ny, :nz] + w_hl[:nx, :ny, 1 : nz + 1])
     else:
         name = "tendency_of_air_potential_temperature"
@@ -575,11 +658,41 @@ def validation_prognostic(
     dt = timestep.total_seconds()
     gamma = dt / (4.0 * dz)
 
-    a = zeros((nx, ny, nz), backend, dtype, default_origin)
-    b = zeros((nx, ny, nz), backend, dtype, default_origin)
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
-    d = zeros((nx, ny, nz), backend, dtype, default_origin)
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    a = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    b = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    d = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     setup_tridiagonal_system(gamma, w, s, a=a, b=b, c=c, d=d)
     thomas_validation(a, b, c, d, x=out)
@@ -637,12 +750,19 @@ def test_prognostic_dry(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -650,6 +770,7 @@ def test_prognostic_dry(data):
         st_isentropic_state_f(
             grid,
             moist=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -661,6 +782,7 @@ def test_prognostic_dry(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -683,10 +805,10 @@ def test_prognostic_dry(data):
     # test bed
     # ========================================
     validation_prognostic(
-        domain, False, False, backend, default_origin, False, state, timestep
+        domain, False, False, gt_powered, backend, default_origin, False, state, timestep
     )
     validation_prognostic(
-        domain, False, True, backend, default_origin, False, state, timestep
+        domain, False, True, gt_powered, backend, default_origin, False, state, timestep
     )
 
 
@@ -705,12 +827,19 @@ def test_prognostic_moist(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -718,6 +847,7 @@ def test_prognostic_moist(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -729,6 +859,7 @@ def test_prognostic_moist(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -751,10 +882,10 @@ def test_prognostic_moist(data):
     # test bed
     # ========================================
     validation_prognostic(
-        domain, True, False, backend, default_origin, False, state, timestep
+        domain, True, False, gt_powered, backend, default_origin, False, state, timestep
     )
     validation_prognostic(
-        domain, True, True, backend, default_origin, False, state, timestep
+        domain, True, True, gt_powered, backend, default_origin, False, state, timestep
     )
 
 

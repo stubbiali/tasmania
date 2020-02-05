@@ -20,11 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from datetime import datetime
 import inspect
 import math
 import numpy as np
-from types import ModuleType
+from typing import Union
 
 try:
     from tasmania.conf import tol as d_tol
@@ -211,9 +212,9 @@ def convert_datetime64_to_datetime(time):
     return datetime.utcfromtimestamp(ts)
 
 
-def get_time_string(seconds):
+def get_time_string(seconds, print_milliseconds=False):
     """
-    Convert seconds into a string of the form hours:minutes:seconds.
+    Convert seconds into a string of the form hours:minutes:seconds[.milliseconds].
 
     Parameters
     ----------
@@ -223,18 +224,18 @@ def get_time_string(seconds):
     s = ""
 
     hours = int(seconds / (60 * 60))
-    s += "0{}:".format(hours) if hours < 10 else "{}:".format(hours)
+    s += "{:02d}:".format(hours)
     remainder = seconds - hours * 60 * 60
 
     minutes = int(remainder / 60)
-    s += "0{}:".format(minutes) if minutes < 10 else "{}:".format(minutes)
+    s += "{:02d}:".format(minutes)
     remainder -= minutes * 60
 
-    s += (
-        "0{}".format(int(remainder))
-        if int(remainder) < 10
-        else "{}".format(int(remainder))
-    )
+    s += "{:02d}".format(int(remainder))
+
+    if print_milliseconds:
+        milliseconds = int(1000 * (remainder - int(remainder)))
+        s += ".{:03d}".format(milliseconds)
 
     return s
 
@@ -276,3 +277,36 @@ def feed_module(target, source, exclude_paths=None):
         setattr(target, symbol_name, symbol_value)
 
     return target
+
+
+def thomas_numpy(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    out: np.ndarray,
+    *,
+    i: Union[int, slice],
+    j: Union[int, slice],
+    kstart: int,
+    kstop: int
+):
+    """ The Thomas' algorithm to solve a tridiagonal system of equations. """
+    beta = deepcopy(b)
+    delta = deepcopy(d)
+    for k in range(kstart + 1, kstop):
+        w = np.where(beta[i, j, k - 1] != 0.0, a[i, j, k] / beta[i, j, k - 1], a[i, j, k])
+        beta[i, j, k] -= w * c[i, j, k - 1]
+        delta[i, j, k] -= w * delta[i, j, k - 1]
+
+    out[i, j, kstop - 1] = np.where(
+        beta[i, j, kstop - 1] != 0.0,
+        delta[i, j, kstop - 1] / beta[i, j, kstop - 1],
+        delta[i, j, kstop - 1] / b[i, j, kstop - 1],
+    )
+    for k in range(kstop - 2, kstart - 1, -1):
+        out[i, j, k] = np.where(
+            beta[i, j, k] != 0.0,
+            (delta[i, j, k] - c[i, j, k] * out[i, j, k + 1]) / beta[i, j, k],
+            (delta[i, j, k] - c[i, j, k] * out[i, j, k + 1]) / b[i, j, k],
+        )

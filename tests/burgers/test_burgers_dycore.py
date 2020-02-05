@@ -38,6 +38,7 @@ from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -66,22 +67,32 @@ def test_forward_euler(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -92,8 +103,6 @@ def test_forward_euler(data):
         st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
         label="timestep",
     )
-
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
 
     # ========================================
     # test
@@ -167,22 +176,32 @@ def test_rk2(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -193,8 +212,6 @@ def test_rk2(data):
         st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
         label="timestep",
     )
-
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
 
     # ========================================
     # test
@@ -289,22 +306,32 @@ def test_rk3ws(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -315,8 +342,6 @@ def test_rk3ws(data):
         st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
         label="timestep",
     )
-
-    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
 
     # ========================================
     # test

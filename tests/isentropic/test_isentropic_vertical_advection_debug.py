@@ -36,14 +36,14 @@ from tasmania.python.isentropic.physics.vertical_advection import (
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-from tests.conf import default_origin as conf_dorigin
+from tests.conf import default_origin as conf_dorigin, datatype as conf_dtype
 from tests.isentropic.test_isentropic_vertical_advection import validation
 from tests.utilities import st_domain, st_isentropic_state_f, st_one_of, st_raw_field
 
 
 class DebugIsentropicVerticalAdvection(IsentropicVerticalAdvection):
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_w: gt.gtscript.Field["dtype"],
         in_s: gt.gtscript.Field["dtype"],
         in_su: gt.gtscript.Field["dtype"],
@@ -147,12 +147,16 @@ def test_upwind(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
-    grid = domain.numerical_grid
-
+    gt_powered = True
     backend = "gtmc"
-    dtype = grid.x.dtype
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(zaxis_length=(3, 20), gt_powered=True, backend=backend, dtype=dtype),
+        label="domain",
+    )
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -160,6 +164,7 @@ def test_upwind(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -171,6 +176,7 @@ def test_upwind(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -192,6 +198,7 @@ def test_upwind(data):
         "upwind",
         False,
         False,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -203,6 +210,7 @@ def test_upwind(data):
         "upwind",
         False,
         True,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -214,6 +222,7 @@ def test_upwind(data):
         "upwind",
         True,
         False,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -225,6 +234,7 @@ def test_upwind(data):
         "upwind",
         True,
         True,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -248,12 +258,18 @@ def test_centered(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
-    grid = domain.numerical_grid
-
+    gt_powered = True
     backend = "gtmc"
-    dtype = grid.x.dtype
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -261,6 +277,7 @@ def test_centered(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -272,6 +289,7 @@ def test_centered(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -293,6 +311,7 @@ def test_centered(data):
         "centered",
         False,
         False,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -304,6 +323,7 @@ def test_centered(data):
         "centered",
         False,
         True,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -315,6 +335,7 @@ def test_centered(data):
         "centered",
         True,
         False,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -326,6 +347,7 @@ def test_centered(data):
         "centered",
         True,
         True,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -349,12 +371,18 @@ def test_third_order_upwind(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(5, 20)), label="domain")
-    grid = domain.numerical_grid
-
+    gt_powered = True
     backend = "gtmc"
-    dtype = grid.x.dtype
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(5, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
+    grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -362,6 +390,7 @@ def test_third_order_upwind(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -373,6 +402,7 @@ def test_third_order_upwind(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -394,6 +424,7 @@ def test_third_order_upwind(data):
         "third_order_upwind",
         False,
         False,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -405,6 +436,7 @@ def test_third_order_upwind(data):
         "third_order_upwind",
         False,
         True,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -416,6 +448,7 @@ def test_third_order_upwind(data):
         "third_order_upwind",
         True,
         False,
+        gt_powered,
         backend,
         default_origin,
         False,
@@ -427,6 +460,7 @@ def test_third_order_upwind(data):
         "third_order_upwind",
         True,
         True,
+        gt_powered,
         backend,
         default_origin,
         False,

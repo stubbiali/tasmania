@@ -34,7 +34,12 @@ import pytest
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing as HS
 from tasmania.python.utils.storage_utils import zeros
 
-from tests.conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
 from tests.utilities import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
 
 
@@ -101,9 +106,15 @@ def first_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def first_order_validation(phi, smooth_depth, nb, backend, default_origin):
+def first_order_validation(phi, smooth_depth, nb, gt_powered, backend, default_origin):
     ni, nj, nk = phi.shape
-    phi_new = zeros(phi.shape, backend, phi.dtype, default_origin=default_origin)
+    phi_new = zeros(
+        phi.shape,
+        gt_powered,
+        backend=backend,
+        dtype=phi.dtype,
+        default_origin=default_origin,
+    )
 
     hs = HS.factory(
         "first_order",
@@ -112,6 +123,7 @@ def first_order_validation(phi, smooth_depth, nb, backend, default_origin):
         1.0,
         smooth_depth,
         nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -145,18 +157,25 @@ def test_first_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="grid",
     )
     grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -168,6 +187,7 @@ def test_first_order(data):
             shape,
             min_value=1e-10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -180,7 +200,7 @@ def test_first_order(data):
     # ========================================
     # test
     # ========================================
-    first_order_validation(phi, depth, nb, backend, default_origin)
+    first_order_validation(phi, depth, nb, gt_powered, backend, default_origin)
 
 
 def second_order_smoothing_xyz(phi, g):
@@ -237,9 +257,15 @@ def second_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def second_order_validation(phi, smooth_depth, nb, backend, default_origin):
+def second_order_validation(phi, smooth_depth, nb, gt_powered, backend, default_origin):
     ni, nj, nk = phi.shape
-    phi_new = zeros(phi.shape, backend, phi.dtype, default_origin=default_origin)
+    phi_new = zeros(
+        phi.shape,
+        gt_powered,
+        backend=backend,
+        dtype=phi.dtype,
+        default_origin=default_origin,
+    )
 
     hs = HS.factory(
         "second_order",
@@ -248,6 +274,7 @@ def second_order_validation(phi, smooth_depth, nb, backend, default_origin):
         1.0,
         smooth_depth,
         nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -281,18 +308,25 @@ def test_second_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="grid",
     )
     grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -304,6 +338,7 @@ def test_second_order(data):
             shape,
             min_value=1e-10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -316,7 +351,7 @@ def test_second_order(data):
     # ========================================
     # test
     # ========================================
-    second_order_validation(phi, depth, nb, backend, default_origin)
+    second_order_validation(phi, depth, nb, gt_powered, backend, default_origin)
 
 
 def third_order_smoothing_xyz(phi, g):
@@ -397,9 +432,15 @@ def third_order_smoothing_yz(phi, g):
     return phi_smooth
 
 
-def third_order_validation(phi, smooth_depth, nb, backend, default_origin):
+def third_order_validation(phi, smooth_depth, nb, gt_powered, backend, default_origin):
     ni, nj, nk = phi.shape
-    phi_new = zeros(phi.shape, backend, phi.dtype, default_origin=default_origin)
+    phi_new = zeros(
+        phi.shape,
+        gt_powered,
+        backend=backend,
+        dtype=phi.dtype,
+        default_origin=default_origin,
+    )
 
     hs = HS.factory(
         "third_order",
@@ -408,6 +449,7 @@ def third_order_validation(phi, smooth_depth, nb, backend, default_origin):
         1.0,
         smooth_depth,
         nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -441,18 +483,25 @@ def test_third_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="grid",
     )
     grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -464,6 +513,7 @@ def test_third_order(data):
             shape,
             min_value=1e-10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -476,7 +526,7 @@ def test_third_order(data):
     # ========================================
     # test
     # ========================================
-    third_order_validation(phi, depth, nb, backend, default_origin)
+    third_order_validation(phi, depth, nb, gt_powered, backend, default_origin)
 
 
 if __name__ == "__main__":

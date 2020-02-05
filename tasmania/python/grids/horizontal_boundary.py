@@ -37,7 +37,7 @@ class HorizontalBoundary(abc.ABC):
     """
 
     def __init__(
-        self, nx: int, ny: int, nb: int, backend: str, dtype: taz_types.dtype_t
+        self, nx: int, ny: int, nb: int, gt_powered: bool, backend: str, dtype: taz_types.dtype_t
     ) -> None:
         """
         Parameters
@@ -50,6 +50,8 @@ class HorizontalBoundary(abc.ABC):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         dtype : data-type
@@ -59,6 +61,7 @@ class HorizontalBoundary(abc.ABC):
         self._ny = ny
         self._nb = nb
 
+        self._gt_powered = gt_powered
         self._backend = backend
         self._dtype = dtype
 
@@ -500,6 +503,8 @@ class HorizontalBoundary(abc.ABC):
         nx: int,
         ny: int,
         nb: int,
+            gt_powered: bool = True,
+            *,
         backend: str = "numpy",
         dtype: taz_types.dtype_t = np.float64,
         **kwargs
@@ -524,6 +529,8 @@ class HorizontalBoundary(abc.ABC):
             along the second horizontal dimension.
         nb : int
             Number of boundary layers.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         dtype : `data-type`, optional
@@ -537,7 +544,7 @@ class HorizontalBoundary(abc.ABC):
         obj :
             An object of the suitable child class.
         """
-        args = (nx, ny, nb)
+        args = (nx, ny, nb, gt_powered)
         child_kwargs = {"backend": backend, "dtype": dtype}
         child_kwargs.update(kwargs)
 

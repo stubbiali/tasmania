@@ -46,6 +46,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         domain: "Domain",
         grid_type: str = "numerical",
         coriolis_parameter: Optional[DataArray] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -72,6 +73,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         coriolis_parameter : `sympl.DataArray`, optional
             1-item :class:`~sympl.DataArray` representing the Coriolis
             parameter, in units compatible with [rad s^-1].
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -114,27 +117,32 @@ class IsentropicConservativeCoriolis(TendencyComponent):
 
         self._tnd_su = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._tnd_sv = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            dtypes={"dtype": dtype},
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -165,8 +173,8 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
 
@@ -176,7 +184,7 @@ class IsentropicConservativeCoriolis(TendencyComponent):
             tnd_su=self._tnd_su,
             tnd_sv=self._tnd_sv,
             f=self._f,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
@@ -191,7 +199,26 @@ class IsentropicConservativeCoriolis(TendencyComponent):
         return tendencies, diagnostics
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_su: np.ndarray,
+        in_sv: np.ndarray,
+        tnd_su: np.ndarray,
+        tnd_sv: np.ndarray,
+        *,
+        f: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        tnd_su[i, j, k] = f * in_sv[i, j, k]
+        tnd_sv[i, j, k] = -f * in_su[i, j, k]
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_su: gtscript.Field["dtype"],
         in_sv: gtscript.Field["dtype"],
         tnd_su: gtscript.Field["dtype"],

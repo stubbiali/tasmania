@@ -43,7 +43,11 @@ from tasmania.python.isentropic.physics.diagnostics import (
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+)
 from tests.utilities import (
     compare_datetimes,
     compare_arrays,
@@ -70,12 +74,16 @@ def test_diagnostic_variables(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    grid = data.draw(
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
+    )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     storage_shape = (nx + dnx, ny + dny, nz + 1)
@@ -85,6 +93,7 @@ def test_diagnostic_variables(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -96,13 +105,38 @@ def test_diagnostic_variables(data):
     # ========================================
     # test bed
     # ========================================
-    p = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    exn = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    mtg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    h = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    p = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    exn = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    mtg = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    h = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     did = DynamicsIsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -163,12 +197,16 @@ def test_montgomery(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    grid = data.draw(
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
+    )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     storage_shape = (nx + dnx, ny + dny, nz + 1)
@@ -178,6 +216,7 @@ def test_montgomery(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -189,10 +228,17 @@ def test_montgomery(data):
     # ========================================
     # test bed
     # ========================================
-    mtg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    mtg = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     did = DynamicsIsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -241,12 +287,16 @@ def test_height(data):
     # ========================================
     # random data generation
     # ========================================
-    grid = data.draw(st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    grid = data.draw(
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20), dtype=dtype), label="grid"
+    )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     storage_shape = (nx + dnx, ny + dny, nz + 1)
@@ -256,6 +306,7 @@ def test_height(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -267,10 +318,17 @@ def test_height(data):
     # ========================================
     # test bed
     # ========================================
-    h = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    h = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     did = DynamicsIsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -320,12 +378,14 @@ def test_density_and_temperature(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     grid = data.draw(st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     storage_shape = (nx + dnx, ny + dny, nz + 1)
@@ -335,6 +395,7 @@ def test_density_and_temperature(data):
             storage_shape,
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -346,15 +407,52 @@ def test_density_and_temperature(data):
     # ========================================
     # test bed
     # ========================================
-    p = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    exn = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    mtg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    h = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    rho = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    t = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    p = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    exn = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    mtg = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    h = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    rho = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    t = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     did = DynamicsIsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -438,12 +536,16 @@ def test_isentropic_diagnostics(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -451,6 +553,7 @@ def test_isentropic_diagnostics(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -464,15 +567,52 @@ def test_isentropic_diagnostics(data):
     #
     # validation data
     #
-    p = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    exn = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    mtg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    h = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    rho = zeros(storage_shape, backend, dtype, default_origin=default_origin)
-    t = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    p = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    exn = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    mtg = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    h = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    rho = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    t = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     did = DynamicsIsentropicDiagnostics(
         grid,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -494,6 +634,7 @@ def test_isentropic_diagnostics(data):
         "numerical",
         moist=False,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -549,6 +690,7 @@ def test_isentropic_diagnostics(data):
         "numerical",
         moist=True,
         pt=state["air_pressure_on_interface_levels"][0, 0, 0],
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -595,15 +737,16 @@ def test_horizontal_velocity(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
+    domain = data.draw(st_domain(), label="domain")
     hb = domain.horizontal_boundary
     assume(hb.type != "dirichlet")
-
     grid = domain.numerical_grid
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -611,6 +754,7 @@ def test_horizontal_velocity(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -625,6 +769,7 @@ def test_horizontal_velocity(data):
     # ========================================
     ivc = IsentropicVelocityComponents(
         domain,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -638,8 +783,20 @@ def test_horizontal_velocity(data):
     su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
     sv = state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
 
-    u = zeros(storage_shape, backend, dtype, default_origin)
-    v = zeros(storage_shape, backend, dtype, default_origin)
+    u = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    v = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     assert "x_velocity_at_u_locations" in diags
     u[1:-1, :] = (su[:-2, :] + su[1:-1, :]) / (s[:-2, :] + s[1:-1, :])

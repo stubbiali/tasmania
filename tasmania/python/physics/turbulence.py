@@ -52,6 +52,7 @@ class Smagorinsky2d(TendencyComponent):
         self,
         domain: "Domain",
         smagorinsky_constant: float = 0.18,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -71,6 +72,8 @@ class Smagorinsky2d(TendencyComponent):
             The underlying domain.
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -114,27 +117,32 @@ class Smagorinsky2d(TendencyComponent):
 
         self._out_u_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_v_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -157,8 +165,8 @@ class Smagorinsky2d(TendencyComponent):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
@@ -172,7 +180,7 @@ class Smagorinsky2d(TendencyComponent):
             dx=dx,
             dy=dy,
             cs=self._cs,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
@@ -183,7 +191,53 @@ class Smagorinsky2d(TendencyComponent):
         return tendencies, diagnostics
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_u: np.ndarray,
+        in_v: np.ndarray,
+        out_u_tnd: np.ndarray,
+        out_v_tnd: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        cs: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        ib, ie = origin[0], origin[0] + domain[0]
+        jb, je = origin[1], origin[1] + domain[1]
+        k = slice(origin[2], origin[2] + domain[2])
+
+        s00 = (
+            in_u[ib : ie + 2, jb - 1 : je + 1, k] - in_u[ib - 2 : ie, jb - 1 : je + 1, k]
+        ) / (2.0 * dx)
+        s01 = 0.5 * (
+            (
+                in_u[ib - 1 : ie + 1, jb : je + 2, k]
+                - in_u[ib - 1 : ie + 1, jb - 2 : je, k]
+            )
+            / (2.0 * dy)
+            + (
+                in_v[ib : ie + 2, jb - 1 : je + 1, k]
+                - in_v[ib - 2 : ie, jb - 1 : je + 1, k]
+            )
+            / (2.0 * dx)
+        )
+        s11 = (
+            in_v[ib - 1 : ie + 1, jb : je + 2, k] - in_v[ib - 1 : ie + 1, jb - 2 : je, k]
+        ) / (2.0 * dy)
+        nu = cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+        out_u_tnd[ib:ie, jb:je, k] = 2.0 * (
+            (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1]) / (2.0 * dx)
+            + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2]) / (2.0 * dy)
+        )
+        out_v_tnd[ib:ie, jb:je, k] = 2.0 * (
+            (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1]) / (2.0 * dx)
+            + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2]) / (2.0 * dy)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_u: gtscript.Field["dtype"],
         in_v: gtscript.Field["dtype"],
         out_u_tnd: gtscript.Field["dtype"],

@@ -37,16 +37,11 @@ from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import (
-    compare_arrays,
-    st_floats,
-    st_one_of,
-    st_domain,
-    st_raw_field,
-)
+from tests.utilities import compare_arrays, st_floats, st_one_of, st_domain, st_raw_field
 
 
 @settings(
@@ -59,28 +54,37 @@ from tests.utilities import (
 )
 @given(hyp_st.data())
 def test_horizontal_velocity_staggered(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=1),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            nb=1,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     r = data.draw(
         st_raw_field(
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -92,6 +96,7 @@ def test_horizontal_velocity_staggered(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -103,6 +108,7 @@ def test_horizontal_velocity_staggered(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -113,10 +119,24 @@ def test_horizontal_velocity_staggered(data):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
-    rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    ru = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    rv = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    hv = HorizontalVelocity(grid, True, backend=backend, dtype=dtype, rebuild=False)
+    hv = HorizontalVelocity(
+        grid, True, gt_powered=gt_powered, backend=backend, dtype=dtype, rebuild=False
+    )
 
     hv.get_momenta(r, u, v, ru, rv)
 
@@ -125,8 +145,20 @@ def test_horizontal_velocity_staggered(data):
     rv_val = r[:-1, :-1, :-1] * 0.5 * (v[:-1, :-1, :-1] + v[:-1, 1:, :-1])
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
-    v_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    u_new = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    v_new = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
@@ -147,27 +179,37 @@ def test_horizontal_velocity_staggered(data):
 @given(hyp_st.data())
 def test_horizontal_velocity(data):
     # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=1),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            nb=1,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     r = data.draw(
         st_raw_field(
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -179,6 +221,7 @@ def test_horizontal_velocity(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -190,6 +233,7 @@ def test_horizontal_velocity(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -200,10 +244,24 @@ def test_horizontal_velocity(data):
     # ========================================
     # test bed
     # ========================================
-    ru = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
-    rv = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    ru = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    rv = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    hv = HorizontalVelocity(grid, False, backend=backend, dtype=dtype, rebuild=False)
+    hv = HorizontalVelocity(
+        grid, False, gt_powered=gt_powered, backend=backend, dtype=dtype, rebuild=False
+    )
 
     hv.get_momenta(r, u, v, ru, rv)
 
@@ -212,8 +270,20 @@ def test_horizontal_velocity(data):
     rv_val = r[:-1, :-1, :-1] * v[:-1, :-1, :-1]
     compare_arrays(rv[:-1, :-1, :-1], rv_val)
 
-    u_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
-    v_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    u_new = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    v_new = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     hv.get_velocity_components(r, ru, rv, u_new, v_new)
 
@@ -234,27 +304,37 @@ def test_horizontal_velocity(data):
 @given(hyp_st.data())
 def test_water_constituent(data):
     # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20), nb=1),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            nb=1,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     r = data.draw(
         st_raw_field(
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=1,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -266,23 +346,38 @@ def test_water_constituent(data):
             shape=(nx + 1, ny + 1, nz + 1),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
         ),
-        label="r",
+        label="q",
     )
 
     # ========================================
     # test bed
     # ========================================
-    rq = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
-    q_new = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    rq = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    q_new = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     #
     # clipping off
     #
-    wc = WaterConstituent(grid, False, backend=backend, dtype=dtype, rebuild=False)
+    wc = WaterConstituent(
+        grid, False, gt_powered, backend=backend, dtype=dtype, rebuild=False
+    )
 
     wc.get_density_of_water_constituent(r, q, rq)
     rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]
@@ -295,7 +390,9 @@ def test_water_constituent(data):
     #
     # clipping on
     #
-    wc = WaterConstituent(grid, True, backend=backend, dtype=dtype, rebuild=False)
+    wc = WaterConstituent(
+        grid, True, gt_powered, backend=backend, dtype=dtype, rebuild=False
+    )
 
     wc.get_density_of_water_constituent(r, q, rq)
     rq_val = r[:-1, :-1, :-1] * q[:-1, :-1, :-1]

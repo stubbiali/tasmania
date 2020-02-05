@@ -48,6 +48,7 @@ class HorizontalDiffusion(abc.ABC):
         diffusion_coeff_max: float,
         diffusion_damp_depth: int,
         nb: int,
+        gt_powered: bool,
         backend: str,
         backend_opts: taz_types.options_dict_t,
         build_info: taz_types.options_dict_t,
@@ -74,6 +75,8 @@ class HorizontalDiffusion(abc.ABC):
             Depth of, i.e., number of vertical regions in the damping region.
         nb : int
             Number of boundary layers.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -102,9 +105,10 @@ class HorizontalDiffusion(abc.ABC):
         # initialize the diffusivity
         gamma = zeros(
             (shape[0], shape[1], shape[2]),
-            backend,
-            dtype,
-            default_origin,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
             mask=[True, True, True],
             managed_memory=managed_memory
             # (1, 1, shape[2]), backend, dtype, default_origin, mask=[False, False, True]
@@ -122,15 +126,18 @@ class HorizontalDiffusion(abc.ABC):
             )
 
         # initialize the underlying stencil
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @abc.abstractmethod
     def __call__(
@@ -158,6 +165,7 @@ class HorizontalDiffusion(abc.ABC):
         diffusion_coeff_max: float,
         diffusion_damp_depth: int,
         nb: Optional[int] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -192,6 +200,8 @@ class HorizontalDiffusion(abc.ABC):
         nb : `int`, optional
             Number of boundary layers. If not specified, this is derived
             from the extent of the underlying stencil.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -223,6 +233,7 @@ class HorizontalDiffusion(abc.ABC):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -259,7 +270,22 @@ class HorizontalDiffusion(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -292,6 +318,7 @@ class SecondOrder(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -310,6 +337,7 @@ class SecondOrder(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -338,7 +366,31 @@ class SecondOrder(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
+        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
+        j = slice(origin[1], origin[1] + domain[1])
+        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
+        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+
+        out_phi[i, j] = in_gamma[i, j] * (
+            (in_phi[im1, j] - 2.0 * in_phi[i, j] + in_phi[ip1, j]) / (dx * dx)
+            + (in_phi[i, jm1] - 2.0 * in_phi[i, j] + in_phi[i, jp1]) / (dy * dy)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -375,6 +427,7 @@ class SecondOrder1DX(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -393,6 +446,7 @@ class SecondOrder1DX(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -421,7 +475,30 @@ class SecondOrder1DX(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
+        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
+        j = slice(origin[1], origin[1] + domain[1])
+
+        out_phi[i, j] = (
+            in_gamma[i, j]
+            * (in_phi[im1, j] - 2.0 * in_phi[i, j] + in_phi[ip1, j])
+            / (dx * dx)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -459,6 +536,7 @@ class SecondOrder1DY(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -477,6 +555,7 @@ class SecondOrder1DY(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -505,7 +584,30 @@ class SecondOrder1DY(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
+        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+
+        out_phi[i, j] = (
+            in_gamma[i, j]
+            * (in_phi[i, jm1] - 2.0 * in_phi[i, j] + in_phi[i, jp1])
+            / (dy * dy)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -543,6 +645,7 @@ class FourthOrder(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -561,6 +664,7 @@ class FourthOrder(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -589,7 +693,49 @@ class FourthOrder(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
+        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
+        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
+        im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
+        j = slice(origin[1], origin[1] + domain[1])
+        jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
+        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
+        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+        jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
+
+        out_phi[i, j] = in_gamma[i, j] * (
+            (
+                -in_phi[im2, j]
+                + 16.0 * in_phi[im1, j]
+                - 30.0 * in_phi[i, j]
+                + 16.0 * in_phi[ip1, j]
+                - in_phi[ip2, j]
+            )
+            / (12.0 * dx * dx)
+            + (
+                -in_phi[i, jm2]
+                + 16.0 * in_phi[i, jm1]
+                - 30.0 * in_phi[i, j]
+                + 16.0 * in_phi[i, jp1]
+                - in_phi[i, jp2]
+            )
+            / (12.0 * dy * dy)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -640,6 +786,7 @@ class FourthOrder1DX(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -658,6 +805,7 @@ class FourthOrder1DX(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -686,7 +834,38 @@ class FourthOrder1DX(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        ip2 = slice(origin[0] + 2, origin[0] + domain[0] + 2)
+        ip1 = slice(origin[0] + 1, origin[0] + domain[0] + 1)
+        im1 = slice(origin[0] - 1, origin[0] + domain[0] - 1)
+        im2 = slice(origin[0] - 2, origin[0] + domain[0] - 2)
+        j = slice(origin[1], origin[1] + domain[1])
+
+        out_phi[i, j] = (
+            in_gamma[i, j]
+            * (
+                -in_phi[im2, j]
+                + 16.0 * in_phi[im1, j]
+                - 30.0 * in_phi[i, j]
+                + 16.0 * in_phi[ip1, j]
+                - in_phi[ip2, j]
+            )
+            / (12.0 * dx * dx)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],
@@ -730,6 +909,7 @@ class FourthOrder1DY(HorizontalDiffusion):
         diffusion_coeff_max,
         diffusion_damp_depth,
         nb,
+        gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -748,6 +928,7 @@ class FourthOrder1DY(HorizontalDiffusion):
             diffusion_coeff_max,
             diffusion_damp_depth,
             nb,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -776,7 +957,38 @@ class FourthOrder1DY(HorizontalDiffusion):
         )
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_phi: np.ndarray,
+        in_gamma: np.ndarray,
+        out_phi: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        jp2 = slice(origin[1] + 2, origin[1] + domain[1] + 2)
+        jp1 = slice(origin[1] + 1, origin[1] + domain[1] + 1)
+        jm1 = slice(origin[1] - 1, origin[1] + domain[1] - 1)
+        jm2 = slice(origin[1] - 2, origin[1] + domain[1] - 2)
+
+        out_phi[i, j] = (
+            in_gamma[i, j]
+            * (
+                -in_phi[i, jm2]
+                + 16.0 * in_phi[i, jm1]
+                - 30.0 * in_phi[i, j]
+                + 16.0 * in_phi[i, jp1]
+                - in_phi[i, jp2]
+            )
+            / (12.0 * dy * dy)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_phi: gtscript.Field["dtype"],
         in_gamma: gtscript.Field["dtype"],
         out_phi: gtscript.Field["dtype"],

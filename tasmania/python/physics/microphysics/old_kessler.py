@@ -594,22 +594,25 @@ class KesslerSaturationAdjustment(DiagnosticComponent):
         # allocate the gt4py storages collecting inputs and outputs
         self._in_ps = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_qv = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_qc = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )

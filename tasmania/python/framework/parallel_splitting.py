@@ -277,7 +277,7 @@ class ParallelSplitting:
                 integrator_gt_powered = process.get("gt_powered", gt_powered)
                 integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": "numpy", "dtype": np.float32, "rebuild": False},
+                    {"backend": "numpy", "dtype": np.float64, "rebuild": False},
                 )
 
                 self._component_list.append(

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -203,18 +203,22 @@ class FakeTendencyComponent2(TendencyComponent):
 
         if s.shape == (g.nx, g.ny, g.nz):
             sv = 0.5 * 1e-6 * s * (v[:, :-1, :] / 3.6 + v[:, 1:, :] / 3.6)
-        elif s.shape == (g.nx + 1, g.ny + 1, g.nz + 1):
+        else:
             try:
                 backend = s.backend
                 dtype = s.dtype
                 default_origin = s.default_origin
-                sv = zeros(s.shape, backend, dtype, default_origin)
+                sv = zeros(
+                    s.shape,
+                    gt_powered=True,
+                    backend=backend,
+                    dtype=dtype,
+                    default_origin=default_origin,
+                )
             except AttributeError:
                 sv = np.zeros_like(s, dtype=s.dtype)
-                
+
             sv[:, :-1] = 0.5 * 1e-6 * s[:, :-1] * (v[:, :-1] / 3.6 + v[:, 1:] / 3.6)
-        else:
-            raise RuntimeError()
 
         tendencies = {"air_isentropic_density": f / 100, "y_momentum_isentropic": sv}
 

@@ -52,6 +52,8 @@ class DryStaticEnergy(DiagnosticComponent):
         grid_type: str = "numerical",
         height_on_interface_levels: bool = True,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
+        gt_powered: bool = True,
+        *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
         build_info: Optional[taz_types.options_dict_t] = None,
@@ -60,7 +62,7 @@ class DryStaticEnergy(DiagnosticComponent):
         default_origin: Optional[taz_types.triplet_int_t] = None,
         rebuild: bool = False,
         storage_shape: Optional[taz_types.triplet_int_t] = None,
-        managed_memory: bool = False,
+        managed_memory: bool = False
     ) -> None:
         # keep track of input arguments needed at run-time
         self._stgz = height_on_interface_levels
@@ -81,26 +83,30 @@ class DryStaticEnergy(DiagnosticComponent):
         # allocate the gt4py storage storing the output
         self._out_dse = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        # instantiate the underlying gt4py stencil object
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            externals={
-                "height_on_interface_levels": self._stgz,
-                "g": pcs["gravitational_acceleration"],
-                "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
-            },
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # instantiate the underlying gt4py stencil object
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "height_on_interface_levels": self._stgz,
+                    "g": pcs["gravitational_acceleration"],
+                    "cp": pcs["specific_heat_of_dry_air_at_constant_pressure"],
+                },
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -125,7 +131,7 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
+    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_t = state["air_temperature"]
@@ -136,7 +142,7 @@ class DryStaticEnergy(DiagnosticComponent):
             in_t=in_t,
             in_h=in_h,
             out_dse=out_dse,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -145,8 +151,28 @@ class DryStaticEnergy(DiagnosticComponent):
 
         return diagnostics
 
+    def _stencil_numpy(
+            self,
+            in_t: np.ndarray,
+            in_h: np.ndarray,
+            out_dse: np.ndarray,
+            *,
+            origin: taz_types.triplet_int_t,
+            domain: taz_types.triplet_int_t,
+            **kwargs  # catch-all
+    ):
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+        kp1 = slice(origin[2]+1, origin[2] + domain[2]+1)
+
+        if self._stgz:
+            out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * 0.5 * (in_h[i, j, k] + in_h[i, j, kp1])
+        else:
+            out_dse[i, j, k] = self._cp * in_t[i, j, k] + self._g * in_h[i, j, k]
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_t: gtscript.Field["dtype"],
         in_h: gtscript.Field["dtype"],
         out_dse: gtscript.Field["dtype"],
@@ -177,6 +203,8 @@ class MoistStaticEnergy(DiagnosticComponent):
         domain: "Domain",
         grid_type: str = "numerical",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
+        gt_powered: bool = True,
+            *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
         build_info: Optional[taz_types.options_dict_t] = None,
@@ -195,7 +223,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         # set physical parameters values
         pcs = get_physical_constants(self._d_physical_constants, physical_constants)
-        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]  # debug purposes
+        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -204,22 +232,26 @@ class MoistStaticEnergy(DiagnosticComponent):
         # allocate the gt4py storage storing the output
         self._out_mse = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        # instantiate the underlying gt4py stencil object
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            externals={"lhvw": pcs["latent_heat_of_vaporization_of_water"]},
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # instantiate the underlying gt4py stencil object
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                externals={"lhvw": pcs["latent_heat_of_vaporization_of_water"]},
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -242,7 +274,7 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
+    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_dse = state["montgomery_potential"]
@@ -253,7 +285,7 @@ class MoistStaticEnergy(DiagnosticComponent):
             in_dse=in_dse,
             in_qv=in_qv,
             out_mse=out_mse,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -262,8 +294,24 @@ class MoistStaticEnergy(DiagnosticComponent):
 
         return diagnostics
 
+    def _stencil_numpy(
+        self,
+        in_dse: np.ndarray,
+        in_qv: np.ndarray,
+        out_mse: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ):
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        out_mse[i, j, k] = in_dse[i, j, k] + self._lhvw * in_qv[i, j, k]
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_dse: gtscript.Field["dtype"],
         in_qv: gtscript.Field["dtype"],
         out_mse: gtscript.Field["dtype"],

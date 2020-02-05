@@ -45,6 +45,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -126,6 +127,7 @@ def validation(
     flux_scheme,
     moist,
     toaptoil,
+    gt_powered,
     backend,
     default_origin,
     rebuild,
@@ -139,7 +141,7 @@ def validation(
 
     nb = flux_properties[flux_scheme]["nb"]
     get_flux = flux_properties[flux_scheme]["get_flux"]
-    set_lower_layers = flux_properties[flux_scheme]["set_lower_layers"]
+    # set_lower_layers = flux_properties[flux_scheme]["set_lower_layers"]
 
     storage_shape = state["air_isentropic_density"].shape
 
@@ -148,6 +150,7 @@ def validation(
         flux_scheme,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -196,7 +199,13 @@ def validation(
     else:
         name = "tendency_of_air_potential_temperature"
         w = state[name].to_units("K s^-1").values
-        w_hl = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        w_hl = zeros(
+            (nx + 1, ny + 1, nz + 1),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         w_hl[:, :, 1:-1] = 0.5 * (w[:, :, :-2] + w[:, :, 1:-1])
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
@@ -212,7 +221,13 @@ def validation(
 
     tendencies, diagnostics = fluxer(state)
 
-    out = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    out = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     up = slice(nb, nz - nb)
     down = slice(nb + 1, nz - nb + 1)
 
@@ -282,12 +297,19 @@ def test_upwind(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -295,6 +317,7 @@ def test_upwind(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -306,6 +329,7 @@ def test_upwind(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -322,10 +346,18 @@ def test_upwind(data):
     # ========================================
     # test bed
     # ========================================
-    validation(domain, "upwind", False, False, backend, default_origin, False, state)
-    validation(domain, "upwind", False, True, backend, default_origin, False, state)
-    validation(domain, "upwind", True, False, backend, default_origin, False, state)
-    validation(domain, "upwind", True, True, backend, default_origin, False, state)
+    validation(
+        domain, "upwind", False, False, gt_powered, backend, default_origin, False, state
+    )
+    validation(
+        domain, "upwind", False, True, gt_powered, backend, default_origin, False, state
+    )
+    validation(
+        domain, "upwind", True, False, gt_powered, backend, default_origin, False, state
+    )
+    validation(
+        domain, "upwind", True, True, gt_powered, backend, default_origin, False, state
+    )
 
 
 @settings(
@@ -343,12 +375,19 @@ def test_centered(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -356,6 +395,7 @@ def test_centered(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -367,6 +407,7 @@ def test_centered(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -383,10 +424,26 @@ def test_centered(data):
     # ========================================
     # test bed
     # ========================================
-    validation(domain, "centered", False, False, backend, default_origin, False, state)
-    validation(domain, "centered", False, True, backend, default_origin, False, state)
-    validation(domain, "centered", True, False, backend, default_origin, False, state)
-    validation(domain, "centered", True, True, backend, default_origin, False, state)
+    validation(
+        domain,
+        "centered",
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+    )
+    validation(
+        domain, "centered", False, True, gt_powered, backend, default_origin, False, state
+    )
+    validation(
+        domain, "centered", True, False, gt_powered, backend, default_origin, False, state
+    )
+    validation(
+        domain, "centered", True, True, gt_powered, backend, default_origin, False, state
+    )
 
 
 @settings(
@@ -404,12 +461,19 @@ def test_third_order_upwind(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(5, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(5, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -417,6 +481,7 @@ def test_third_order_upwind(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -428,6 +493,7 @@ def test_third_order_upwind(data):
             storage_shape,
             -1e4,
             1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -445,16 +511,48 @@ def test_third_order_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "third_order_upwind", False, False, backend, default_origin, False, state
+        domain,
+        "third_order_upwind",
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
     )
     validation(
-        domain, "third_order_upwind", False, True, backend, default_origin, False, state
+        domain,
+        "third_order_upwind",
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
     )
     validation(
-        domain, "third_order_upwind", True, False, backend, default_origin, False, state
+        domain,
+        "third_order_upwind",
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
     )
     validation(
-        domain, "third_order_upwind", True, True, backend, default_origin, False, state
+        domain,
+        "third_order_upwind",
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
     )
 
 

@@ -21,7 +21,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
-from typing import Any, Dict, Optional, Tuple
+import numpy as np
+from typing import Any, Dict, List, Optional, Tuple
 
 from gt4py import gtscript
 
@@ -293,10 +294,29 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
     order: int = None
     externals: Dict[str, Any] = None
 
+    def __init__(self, moist, gt_powered):
+        self.moist = moist
+        self.call = self.call_gt if gt_powered else self.call_numpy
+
+    @abc.abstractmethod
+    def call_numpy(
+            self,
+            dt: float,
+            dz: float,
+            w: np.ndarray,
+            s: np.ndarray,
+            su: np.ndarray,
+            sv: np.ndarray,
+            sqv: Optional[np.ndarray] = None,
+            sqc: Optional[np.ndarray] = None,
+            sqr: Optional[np.ndarray] = None,
+    ) -> List[np.ndarray]:
+        pass
+
     @staticmethod
     @gtscript.function
     @abc.abstractmethod
-    def __call__(
+    def call_gt(
         dt: float,
         dz: float,
         w: taz_types.gtfield_t,
@@ -353,7 +373,7 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         pass
 
     @staticmethod
-    def factory(scheme: str) -> "IsentropicMinimalVerticalFlux":
+    def factory(scheme: str, moist: bool, gt_powered: bool) -> "IsentropicMinimalVerticalFlux":
         """
         Static method which returns an instance of the derived class
         implementing the numerical scheme specified by `scheme`.
@@ -367,6 +387,11 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
                 * 'centered', for a second-order centered scheme;
                 * 'third_order_upwind', for the third-order upwind scheme;
                 * 'fifth_order_upwind', for the fifth-order upwind scheme.
+
+        moist : bool
+            TODO
+        gt_powered : bool
+            TODO
 
         Return
         ------
@@ -390,13 +415,13 @@ class IsentropicMinimalVerticalFlux(abc.ABC):
         )
 
         if scheme == "upwind":
-            return Upwind()
+            return Upwind(moist, gt_powered)
         elif scheme == "centered":
-            return Centered()
+            return Centered(moist, gt_powered)
         elif scheme == "third_order_upwind":
-            return ThirdOrderUpwind()
+            return ThirdOrderUpwind(moist, gt_powered)
         elif scheme == "fifth_order_upwind":
-            return FifthOrderUpwind()
+            return FifthOrderUpwind(moist, gt_powered)
         else:
             raise ValueError("Unsupported vertical flux scheme " "{}" "".format(scheme))
 

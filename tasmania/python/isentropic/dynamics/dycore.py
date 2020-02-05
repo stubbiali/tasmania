@@ -79,7 +79,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         smooth_moist_coeff: float = 0.03,
         smooth_moist_coeff_max: float = 0.24,
         smooth_moist_damp_depth: int = 10,
-        gt_powered: bool = False,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -214,7 +214,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             Number of vertical layers in the smoothing damping region for the
             water constituents. Defaults to 10.
         gt_powered : `bool`, optional
-            `True` to perform all the intensive math operations harnessing GT4Py.
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -277,7 +277,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             substeps,
             fast_tendencies,
             fast_diagnostics,
-            gt_powered,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -296,6 +296,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             self.grid,
             self.horizontal_boundary,
             moist,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -317,6 +318,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 self.grid,
                 damp_depth,
                 damp_max,
+                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
@@ -338,6 +340,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                 smooth_coeff_max,
                 smooth_damp_depth,
                 hb.nb,
+                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
@@ -355,6 +358,7 @@ class IsentropicDynamicalCore(DynamicalCore):
                     smooth_moist_coeff_max,
                     smooth_moist_damp_depth,
                     hb.nb,
+                    gt_powered=gt_powered,
                     backend=backend,
                     backend_opts=backend_opts,
                     build_info=build_info,
@@ -371,6 +375,7 @@ class IsentropicDynamicalCore(DynamicalCore):
         self._velocity_components = HorizontalVelocity(
             self.grid,
             staggering=True,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -382,6 +387,7 @@ class IsentropicDynamicalCore(DynamicalCore):
             self._water_constituent = WaterConstituent(
                 self.grid,
                 clipping=True,
+                gt_powered=gt_powered,
                 backend=backend,
                 backend_opts=backend_opts,
                 build_info=build_info,
@@ -401,9 +407,10 @@ class IsentropicDynamicalCore(DynamicalCore):
         def allocate():
             return zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
@@ -694,11 +701,10 @@ class IsentropicDynamicalCore(DynamicalCore):
         return self._prognostic.substep_fractions
 
     def _allocate_output_state(self) -> taz_types.gtstorage_dict_t:
-        """
-        Allocate memory only for the prognostic fields.
-        """
+        """ Allocate memory only for the prognostic fields. """
         g = self.grid
         nx, ny, nz = g.nx, g.ny, g.nz
+        gt_powered = self._gt_powered
         backend = self._backend
         dtype = self._dtype
         default_origin = self._default_origin
@@ -732,9 +738,10 @@ class IsentropicDynamicalCore(DynamicalCore):
             out_state[name] = get_dataarray_3d(
                 zeros(
                     storage_shape,
-                    backend,
-                    dtype,
-                    default_origin,
+                    gt_powered=gt_powered,
+                    backend=backend,
+                    dtype=dtype,
+                    default_origin=default_origin,
                     managed_memory=managed_memory,
                 ),
                 g,
@@ -749,19 +756,19 @@ class IsentropicDynamicalCore(DynamicalCore):
     def array_call(
         self,
         stage: int,
-        raw_state: taz_types.gtstorage_dict_t,
-        raw_tendencies: taz_types.gtstorage_dict_t,
+        raw_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
-    ) -> taz_types.gtstorage_dict_t:
+    ) -> taz_types.array_dict_t:
         return self._array_call(stage, raw_state, raw_tendencies, timestep)
 
     def _array_call_dry(
         self,
         stage: int,
-        raw_state: taz_types.gtstorage_dict_t,
-        raw_tendencies: taz_types.gtstorage_dict_t,
+        raw_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
-    ) -> taz_types.gtstorage_dict_t:
+    ) -> taz_types.array_dict_t:
         """ Perform a stage of the dry dynamical core. """
         # shortcuts
         hb = self.horizontal_boundary
@@ -877,10 +884,10 @@ class IsentropicDynamicalCore(DynamicalCore):
     def _array_call_moist(
         self,
         stage: int,
-        raw_state: taz_types.gtstorage_dict_t,
-        raw_tendencies: taz_types.gtstorage_dict_t,
+        raw_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
-    ) -> taz_types.gtstorage_dict_t:
+    ) -> taz_types.array_dict_t:
         """	Perform a stage of the moist dynamical core. """
         # shortcuts
         hb = self.horizontal_boundary
@@ -1077,10 +1084,10 @@ class IsentropicDynamicalCore(DynamicalCore):
         self,
         stage: int,
         substep: int,
-        raw_state: taz_types.gtstorage_dict_t,
-        raw_stage_state: taz_types.gtstorage_dict_t,
-        raw_tmp_state: taz_types.gtstorage_dict_t,
-        raw_tendencies: taz_types.gtstorage_dict_t,
+        raw_state: taz_types.array_dict_t,
+        raw_stage_state: taz_types.array_dict_t,
+        raw_tmp_state: taz_types.array_dict_t,
+        raw_tendencies: taz_types.array_dict_t,
         timestep: taz_types.timedelta_t,
-    ) -> taz_types.gtstorage_dict_t:
+    ) -> taz_types.array_dict_t:
         raise NotImplementedError()

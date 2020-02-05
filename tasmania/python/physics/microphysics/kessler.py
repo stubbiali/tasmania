@@ -93,6 +93,7 @@ class KesslerMicrophysics(TendencyComponent):
         collection_rate: DataArray = _d_k2,
         saturation_vapor_pressure_formula: str = "tetens",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -151,6 +152,8 @@ class KesslerMicrophysics(TendencyComponent):
                 * 'latent_heat_of_vaporization_of_water', in units compatible with \
                     [J kg^-1].
 
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -187,7 +190,7 @@ class KesslerMicrophysics(TendencyComponent):
         super().__init__(domain, grid_type, **kwargs)
 
         # set physical parameters values
-        pcs = get_physical_constants(self._d_physical_constants, physical_constants)
+        self._pcs = get_physical_constants(self._d_physical_constants, physical_constants)
 
         # set the formula calculating the saturation water vapor pressure
         self._swvf = (
@@ -197,9 +200,9 @@ class KesslerMicrophysics(TendencyComponent):
         )
 
         # shortcuts
-        rd = pcs["gas_constant_of_dry_air"]
-        rv = pcs["gas_constant_of_water_vapor"]
-        beta = rd / rv
+        rd = self._pcs["gas_constant_of_dry_air"]
+        rv = self._pcs["gas_constant_of_water_vapor"]
+        self._beta = rd / rv
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -208,57 +211,65 @@ class KesslerMicrophysics(TendencyComponent):
         # allocate the gt4py storage collecting the outputs
         self._in_ps = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_qc_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_qr_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         if rain_evaporation:
             self._out_qv_tnd = zeros(
                 storage_shape,
-                backend,
-                dtype,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._out_theta_tnd = zeros(
                 storage_shape,
-                backend,
-                dtype,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
-        # initialize the underlying gt4py stencil object
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            externals={
-                "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
-                "beta": beta,
-                "lhvw": pcs["latent_heat_of_vaporization_of_water"],
-                "rain_evaporation": rain_evaporation,
-            },
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # initialize the underlying gt4py stencil object
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
+                    "beta": self._beta,
+                    "lhvw": self._pcs["latent_heat_of_vaporization_of_water"],
+                    "rain_evaporation": rain_evaporation,
+                },
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -326,8 +337,8 @@ class KesslerMicrophysics(TendencyComponent):
             return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -367,7 +378,7 @@ class KesslerMicrophysics(TendencyComponent):
             stencil_args["out_theta_tnd"] = self._out_theta_tnd
 
         # run the stencil
-        self._stencil(**stencil_args, origin={"_all_": (0, 0, 0)}, domain=(nx, ny, nz))
+        self._stencil(**stencil_args, origin=(0, 0, 0), domain=(nx, ny, nz))
 
         # collect the tendencies
         tendencies = {mfcw: self._out_qc_tnd, mfpw: self._out_qr_tnd}
@@ -384,8 +395,77 @@ class KesslerMicrophysics(TendencyComponent):
 
         return tendencies, diagnostics
 
+    def _stencil_numpy(
+        self,
+        in_rho: np.ndarray,
+        in_p: np.ndarray,
+        in_ps: np.ndarray,
+        in_exn: np.ndarray,
+        in_qc: np.ndarray,
+        in_qr: np.ndarray,
+        out_qc_tnd: np.ndarray,
+        out_qr_tnd: np.ndarray,
+        in_qv: Optional[np.ndarray] = None,
+        out_qv_tnd: Optional[np.ndarray] = None,
+        out_theta_tnd: Optional[np.ndarray] = None,
+        *,
+        a: float,
+        k1: float,
+        k2: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+        kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
+
+        # interpolate the pressure and the Exner function at the vertical main levels
+        if self._air_pressure_on_interface_levels:
+            p = 0.5 * (in_p[i, j, k] + in_p[i, j, kp1])
+            exn = 0.5 * (in_exn[i, j, k] + in_exn[i, j, kp1])
+        else:
+            p = in_p[i, j, k]
+            exn = in_exn[i, j, k]
+
+        # compute the saturation mixing ratio of water vapor
+        qvs = self._beta * in_ps[i, j, k] / p
+
+        # compute the contribution of autoconversion to rain development
+        ar = k1 * np.where(in_qc[i, j, k] > a, in_qc[i, j, k] - a, 0.0)
+
+        # compute the contribution of accretion to rain development
+        cr = (
+            k2
+            * in_qc[i, j, k]
+            * np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k] ** 0.875, 0.0)
+        )
+
+        if self._rain_evaporation:  # compile-time if
+            # compute the contribution of evaporation to rain development
+            er = np.where(
+                in_qr[i, j, k] > 0.0,
+                0.0484794
+                * (qvs - in_qv[i, j, k])
+                * (in_rho[i, j, k] * in_qr[i, j, k]) ** (13.0 / 20.0),
+                0.0,
+            )
+
+        # calculate the tendencies
+        if not self._rain_evaporation:
+            out_qc_tnd[i, j, k] = -(ar + cr)
+            out_qr_tnd[i, j, k] = ar + cr
+        else:
+            out_qv_tnd[i, j, k] = er
+            out_qc_tnd[i, j, k] = -(ar + cr)
+            out_qr_tnd[i, j, k] = ar + cr - er
+
+            lhvw = self._pcs["latent_heat_of_vaporization_of_water"]
+            out_theta_tnd[i, j, k] = -lhvw / exn * er
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_rho: gtscript.Field["dtype"],
         in_p: gtscript.Field["dtype"],
         in_ps: gtscript.Field["dtype"],
@@ -483,6 +563,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         air_pressure_on_interface_levels: bool = True,
         saturation_vapor_pressure_formula: str = "tetens",
         physical_constants: Optional[Mapping[str, DataArray]] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -529,6 +610,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
                 * 'specific_heat_of_dry_air_at_constant_pressure', in units compatible \
                     with [J K^-1 kg^-1].
 
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -568,69 +651,77 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
         # shortcuts
         rd = pcs["gas_constant_of_dry_air"]
-        rv = pcs["gas_constant_of_water_vapor"]
-        beta = rd / rv
-        lhvw = pcs["latent_heat_of_vaporization_of_water"]
-        cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
+        self._rv = pcs["gas_constant_of_water_vapor"]
+        self._beta = rd / self._rv
+        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
+        self._cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
 
-        # allocate the gt4py storages collecting inputs and outputs
+        # allocate the storages collecting inputs and outputs
         self._in_ps = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_qv = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_qc = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_t = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_theta_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        # initialize the underlying gt4py stencil object
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            externals={
-                "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
-                "beta": beta,
-                "lhvw": lhvw,
-                "cp": cp,
-                "rv": rv,
-            },
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # initialize the underlying gt4py stencil object
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
+                    "beta": self._beta,
+                    "lhvw": self._lhvw,
+                    "cp": self._cp,
+                    "rv": self._rv,
+                },
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -686,8 +777,8 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
         return return_dict
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         # extract the required model variables
@@ -717,7 +808,7 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
             out_t=self._out_t,
             tnd_theta=self._out_theta_tnd,
             dt=timestep.total_seconds(),
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -732,8 +823,61 @@ class KesslerSaturationAdjustmentDiagnostic(ImplicitTendencyComponent):
 
         return tendencies, diagnostics
 
+    def _stencil_numpy(
+        self,
+        in_p: np.ndarray,
+        in_ps: np.ndarray,
+        in_t: np.ndarray,
+        in_exn: np.ndarray,
+        in_qv: np.ndarray,
+        in_qc: np.ndarray,
+        out_qv: np.ndarray,
+        out_qc: np.ndarray,
+        out_t: np.ndarray,
+        tnd_theta: np.ndarray,
+        *,
+        dt: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+        kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
+
+        # interpolate the pressure at the vertical main levels
+        if self._apoil:
+            p = 0.5 * (in_p[i, j, k] + in_p[i, j, kp1])
+            exn = 0.5 * (in_exn[i, j, k] + in_exn[i, j, kp1])
+        else:
+            p = in_p[i, j, k]
+            exn = in_exn[i, j, k]
+
+        # compute the saturation mixing ratio of water vapor
+        qvs = self._beta * in_ps[i, j, k] / p
+
+        # compute the amount of latent heat released by the condensation of
+        # cloud liquid water
+        sat = (qvs - in_qv[i, j, k]) / (
+            1.0
+            + qvs * (self._lhvw ** 2.0) / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
+        )
+
+        # compute the source term representing the evaporation of
+        # cloud liquid water
+        dq = np.where(sat <= in_qc[i, j, k], sat, in_qc[i, j, k])
+
+        # perform the adjustment
+        out_qv[i, j, k] = in_qv[i, j, k] + dq
+        out_qc[i, j, k] = in_qc[i, j, k] - dq
+        out_t[i, j, k] = in_t[i, j, k] - dq * self._lhvw / self._cp
+
+        # calculate the tendency of air potential temperature
+        tnd_theta[i, j, k] = (self._lhvw / exn) * (-dq / dt)
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_p: gtscript.Field["dtype"],
         in_ps: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
@@ -813,6 +957,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         saturation_vapor_pressure_formula: str = "tetens",
         saturation_rate: Optional[DataArray] = None,
         physical_constants: Optional[Mapping[str, DataArray]] = None,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -907,10 +1052,10 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
         # shortcuts
         rd = pcs["gas_constant_of_dry_air"]
-        rv = pcs["gas_constant_of_water_vapor"]
-        beta = rd / rv
-        lhvw = pcs["latent_heat_of_vaporization_of_water"]
-        cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
+        self._rv = pcs["gas_constant_of_water_vapor"]
+        self._beta = rd / self._rv
+        self._lhvw = pcs["latent_heat_of_vaporization_of_water"]
+        self._cp = pcs["specific_heat_of_dry_air_at_constant_pressure"]
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -919,50 +1064,57 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
         # allocate the gt4py storages collecting inputs and outputs
         self._in_ps = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._tnd_qv = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._tnd_qc = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._tnd_theta = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        # initialize the underlying gt4py stencil object
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            externals={
-                "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
-                "beta": beta,
-                "lhvw": lhvw,
-                "cp": cp,
-                "rv": rv,
-            },
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            # initialize the underlying gt4py stencil object
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "air_pressure_on_interface_levels": air_pressure_on_interface_levels,
+                    "beta": self._beta,
+                    "lhvw": self._lhvw,
+                    "cp": self._cp,
+                    "rv": self._rv,
+                },
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -1043,7 +1195,7 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
             tnd_qc=self._tnd_qc,
             tnd_theta=self._tnd_theta,
             sr=self._sr,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -1058,8 +1210,57 @@ class KesslerSaturationAdjustmentPrognostic(TendencyComponent):
 
         return tendencies, diagnostics
 
+    def _stencil_numpy(
+        self,
+        in_p: np.ndarray,
+        in_ps: np.ndarray,
+        in_t: np.ndarray,
+        in_exn: np.ndarray,
+        in_qv: np.ndarray,
+        in_qc: np.ndarray,
+        tnd_qv: np.ndarray,
+        tnd_qc: np.ndarray,
+        tnd_theta: np.ndarray,
+        *,
+        sr: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+        kp1 = slice(origin[2] + 1, origin[2] + domain[2] + 1)
+
+        # interpolate the pressure at the vertical main levels
+        if self._apoil:  # compile-time if
+            p = 0.5 * (in_p[i, j, k] + in_p[i, j, kp1])
+            exn = 0.5 * (in_exn[i, j, k] + in_exn[i, j, kp1])
+        else:
+            p = in_p[i, j, k]
+            exn = in_exn[i, j, k]
+
+        # compute the saturation mixing ratio of water vapor
+        qvs = self._beta * in_ps[i, j, k] / p
+
+        # compute the amount of latent heat released by the condensation of
+        # cloud liquid water
+        sat = (qvs - in_qv[i, j, k]) / (
+            1.0
+            + qvs * (self._lhvw ** 2.0) / (self._cp * self._rv * (in_t[i, j, k] ** 2.0))
+        )
+
+        # compute the source term representing the evaporation of
+        # cloud liquid water
+        dq = np.where(sat <= in_qc[i, j, k], sat, in_qc[i, j, k])
+
+        # calculate the tendencies
+        tnd_qv[i, j, k] = sr * dq
+        tnd_qc[i, j, k] = -sr * dq
+        tnd_theta[i, j, k] = -sr * (self._lhvw / exn) * dq
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_p: gtscript.Field["dtype"],
         in_ps: gtscript.Field["dtype"],
         in_t: gtscript.Field["dtype"],
@@ -1116,6 +1317,7 @@ class KesslerFallVelocity(DiagnosticComponent):
         self,
         domain: "Domain",
         grid_type: str = "numerical",
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -1138,6 +1340,8 @@ class KesslerFallVelocity(DiagnosticComponent):
                 * 'physical';
                 * 'numerical' (default).
 
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -1167,28 +1371,33 @@ class KesslerFallVelocity(DiagnosticComponent):
 
         self._in_rho_s = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_vt = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -1209,7 +1418,7 @@ class KesslerFallVelocity(DiagnosticComponent):
 
         return return_dict
 
-    def array_call(self, state: taz_types.gtstorage_dict_t) -> taz_types.gtstorage_dict_t:
+    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
 
         in_rho = state["air_density"]
@@ -1221,7 +1430,7 @@ class KesslerFallVelocity(DiagnosticComponent):
             in_rho_s=self._in_rho_s,
             in_qr=in_qr,
             out_vt=self._out_vt,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info,
         )
@@ -1232,7 +1441,33 @@ class KesslerFallVelocity(DiagnosticComponent):
         return diagnostics
 
     @staticmethod
-    def _stencil_defs(
+    def _stencil_numpy(
+        in_rho: np.ndarray,
+        in_rho_s: np.ndarray,
+        in_qr: np.ndarray,
+        out_vt: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        k = slice(origin[2], origin[2] + domain[2])
+
+        out_vt[i, j, k] = (
+            36.34
+            * (
+                1.0e-3
+                * in_rho[i, j, k]
+                * np.where(in_qr[i, j, k] > 0.0, in_qr[i, j, k], 0.0)
+            )
+            ** 0.1346
+            * (in_rho_s[i, j, k] / in_rho[i, j, k]) ** 0.5
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
         in_rho: gtscript.Field["dtype"],
         in_rho_s: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],
@@ -1258,6 +1493,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         grid_type: str = "numerical",
         sedimentation_flux_scheme: str = "first_order_upwind",
         maximum_vertical_cfl: float = 0.975,
+        gt_powered: bool = True,
         *,
         backend: str = "numpy",
         backend_opts: Optional[taz_types.options_dict_t] = None,
@@ -1287,6 +1523,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             Defaults to 'first_order_upwind'.
         maximum_vertical_cfl : `float`, optional
             Maximum allowed vertical CFL number. Defaults to 0.975.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -1313,39 +1551,36 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
         self._exec_info = exec_info
 
-        sflux = SedimentationFlux.factory(sedimentation_flux_scheme)
+        self._sflux = SedimentationFlux.factory(sedimentation_flux_scheme, gt_powered)
 
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         storage_shape = get_storage_shape(storage_shape, (nx, ny, nz + 1))
         self._out_qr = zeros(
             storage_shape,
-            backend,
-            dtype,
-            default_origin=default_origin,
-            managed_memory=managed_memory,
-        )
-        self._out_dfdz = zeros(
-            storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            dtypes={"dtype": dtype},
-            externals={
-                "sflux": sflux.__call__,
-                "sflux_extent": sflux.nb,
-                # "max_cfl": maximum_vertical_cfl},
-            },
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "sflux": self._sflux.call,
+                    "sflux_extent": self._sflux.nb,
+                    # "max_cfl": maximum_vertical_cfl},
+                },
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
     def input_properties(self) -> taz_types.properties_dict_t:
@@ -1372,8 +1607,8 @@ class KesslerSedimentation(ImplicitTendencyComponent):
         return {}
 
     def array_call(
-        self, state: taz_types.gtstorage_dict_t, timestep: taz_types.timedelta_t
-    ) -> Tuple[taz_types.gtstorage_dict_t, taz_types.gtstorage_dict_t]:
+        self, state: taz_types.array_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nbh = 0  # self.horizontal_boundary.nb if self.grid_type == "numerical" else 0
 
@@ -1396,7 +1631,7 @@ class KesslerSedimentation(ImplicitTendencyComponent):
             in_qr=in_qr,
             in_vt=in_vt,
             out_qr=self._out_qr,
-            origin={"_all_": (nbh, nbh, 0)},
+            origin=(nbh, nbh, 0),
             domain=(nx - 2 * nbh, ny - 2 * nbh, nz),
             exec_info=self._exec_info,
         )
@@ -1406,8 +1641,34 @@ class KesslerSedimentation(ImplicitTendencyComponent):
 
         return tendencies, diagnostics
 
+    def _stencil_numpy(
+        self,
+        in_rho: np.ndarray,
+        in_h: np.ndarray,
+        in_qr: np.ndarray,
+        in_vt: np.ndarray,
+        out_qr: np.ndarray,
+        *,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        kb, ke = origin[2], origin[2] + domain[2]
+
+        h = 0.5 * (in_h[i, j, kb:ke] + in_h[i, j, kb + 1 : ke + 1])
+
+        dfdz = self._sflux.call(
+            rho=in_rho[i, j, kb:ke], h=h, q=in_qr[i, j, kb:ke], vt=in_vt[i, j, kb:ke]
+        )
+        out_qr[i, j, kb : kb + self._sflux.nb] = 0.0
+        out_qr[i, j, kb + self._sflux.nb : ke] = (
+            dfdz / in_rho[i, j, kb + self._sflux.nb : ke]
+        )
+
     @staticmethod
-    def _stencil_defs(
+    def _stencil_gt_defs(
         in_rho: gtscript.Field["dtype"],
         in_h: gtscript.Field["dtype"],
         in_qr: gtscript.Field["dtype"],

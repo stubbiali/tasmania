@@ -38,6 +38,7 @@ from tasmania import get_dataarray_3d
 
 from tests.conf import (
     backend as conf_backend,
+    datatype as conf_dtype,
     default_origin as conf_default_origin,
     nb as conf_nb,
 )
@@ -65,15 +66,21 @@ def test_conservative(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw((st_one_of(conf_backend)), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw((st_one_of(conf_default_origin)), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
-    domain = data.draw(st_domain(nb=nb), label="domain")
+    domain = data.draw(
+        st_domain(nb=nb, gt_powered=gt_powered, backend=backend, dtype=dtype),
+        label="domain",
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     f = data.draw(st_floats(min_value=0, max_value=1), label="f")
 
     time = data.draw(hyp_st.datetimes(), label="time")
-    backend = data.draw((st_one_of(conf_backend)), label="backend")
-    default_origin = data.draw((st_one_of(conf_default_origin)), label="default_origin")
     storage_shape = (grid.nx + 1, grid.ny + 1, grid.nz + 1)
 
     state = data.draw(
@@ -81,6 +88,7 @@ def test_conservative(data):
             grid,
             time=time,
             moist=False,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -99,6 +107,7 @@ def test_conservative(data):
         domain,
         grid_type,
         coriolis_parameter,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=grid.x.dtype,
         default_origin=default_origin,
