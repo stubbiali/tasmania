@@ -67,7 +67,7 @@ topography = {
 nb = 4
 horizontal_boundary_types = ("relaxed",)  # "periodic", "dirichlet", "identity"
 
-# isentropic model
+# isentropic_prognostic model
 isentropic_state = {
     "air_isentropic_density": {"kg m^-2 K^-1": (10, 1000)},
     "x_velocity_at_u_locations": {"m s^-1": (-50, 50), "km hr^-1": (-150, 150)},

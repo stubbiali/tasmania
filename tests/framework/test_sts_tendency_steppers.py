@@ -54,7 +54,7 @@ def test_register():
     assert "rk3ws" in register
     assert register["rk3ws"] == RK3WS
 
-    # isentropic vertical advection
+    # isentropic_prognostic vertical advection
     assert "isentropic_vertical_advection" in register
     assert register["isentropic_vertical_advection"] == IsentropicVerticalAdvection
 
@@ -94,7 +94,7 @@ def test_factory(data):
     obj = STSTendencyStepper.factory("rk3ws", ftc)
     assert isinstance(obj, RK3WS)
 
-    # isentropic vertical advection
+    # isentropic_prognostic vertical advection
     arg = IsentropicImplicitVerticalAdvectionDiagnostic(domain)
     obj = STSTendencyStepper.factory("isentropic_vertical_advection", arg)
     assert isinstance(obj, IsentropicVerticalAdvection)

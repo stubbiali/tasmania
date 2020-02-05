@@ -62,6 +62,11 @@ def test_avg(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = True
+    backend = "numpy"
+    dtype = np.float64
+    default_origin = data.draw(st_one_of(conf_dorigin))
+
     ni = data.draw(hyp_st.integers(min_value=2, max_value=30))
     nj = data.draw(hyp_st.integers(min_value=2, max_value=30))
     nk = data.draw(hyp_st.integers(min_value=1, max_value=30))
@@ -70,26 +75,45 @@ def test_avg(data):
     offi = data.draw(hyp_st.integers(min_value=0, max_value=1))
     offj = data.draw(hyp_st.integers(min_value=0, max_value=1))
 
-    backend = "numpy"
-    dtype = np.float64
-    default_origin = data.draw(st_one_of(conf_dorigin))
-
-    a = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, default_origin))
-    out_a = zeros((ni, nj, nk), backend, dtype, default_origin)
+    a = data.draw(
+        st_raw_field(
+            shape,
+            -1e5,
+            1e5,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    out_a = zeros(
+        (ni, nj, nk),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     # ========================================
     # test bed
     # ========================================
     decorator = gtscript.stencil(
-        backend, dtypes={"dtype": dtype}, externals={"offi": offi, "offj": offj}, rebuild=False
+        backend,
+        dtypes={"dtype": dtype},
+        externals={"offi": offi, "offj": offj},
+        rebuild=False,
     )
     stencil_avg = decorator(stencil_avg_defs)
 
-    stencil_avg(
-        in_a=a, out_a=out_a, origin=(0, 0, 0), domain=(ni - offi, nj - offj, nk)
-    )
+    stencil_avg(in_a=a, out_a=out_a, origin=(0, 0, 0), domain=(ni - offi, nj - offj, nk))
 
-    c = zeros(shape, backend, dtype, default_origin=default_origin)
+    c = zeros(
+        shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c[: ni - offi, : nj - offj] = 0.5 * (
         a[: ni - offi, : nj - offj] + a[offi:ni, offj:nj]
     )

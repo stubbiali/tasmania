@@ -108,6 +108,8 @@ contourf_properties = {
     "cbar_title": "",
     "cbar_orientation": "horizontal",
     "cbar_ax": None,
+    "cbar_format": "%2.2f  ",
+    "cbar_extend": False,
     "draw_vertical_levels": False,
 }
 

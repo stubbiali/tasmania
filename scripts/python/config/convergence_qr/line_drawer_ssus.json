@@ -1,0 +1,21 @@
+{
+	"field_name": "rmsd_of_mass_fraction_of_precipitation_water_in_air",
+	"field_units": "g Mg^-1",
+  	"x": 0,
+	"y": 0,
+	"z": 0,
+	"xdata": [1.0, 2.0, 3.0, 4.0, 5.0],
+	"ydata": null,
+	"drawer_properties": {
+		"fontsize": 16,
+		"linestyle": "-",
+		"linewidth": 1.5,
+		"linecolor": "blue",
+		"marker": ">",
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markerfacecolor": "blue",
+		"markeredgecolor": "blue",
+		"legend_label": "SSUS"
+	}
+}

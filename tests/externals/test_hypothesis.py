@@ -59,32 +59,32 @@ if __name__ == "__main__":
         utils.st_grid_yz().example()
 
         utils.st_isentropic_field(
-            g, "isentropic", "air_isentropic_density", (g.nx, g.ny, g.nz)
+            g, "isentropic_prognostic", "air_isentropic_density", (g.nx, g.ny, g.nz)
         )
         utils.st_isentropic_field(
-            g, "isentropic", "x_velocity_at_u_locations", (g.nx + 1, g.ny, g.nz)
+            g, "isentropic_prognostic", "x_velocity_at_u_locations", (g.nx + 1, g.ny, g.nz)
         )
         utils.st_isentropic_field(
-            g, "isentropic", "y_velocity_at_v_locations", (g.nx, g.ny + 1, g.nz)
+            g, "isentropic_prognostic", "y_velocity_at_v_locations", (g.nx, g.ny + 1, g.nz)
         )
         utils.st_isentropic_field(
-            g, "isentropic", "mass_fraction_of_water_vapor_in_air", (g.nx, g.ny, g.nz)
+            g, "isentropic_prognostic", "mass_fraction_of_water_vapor_in_air", (g.nx, g.ny, g.nz)
         )
         utils.st_isentropic_field(
             g,
-            "isentropic",
+            "isentropic_prognostic",
             "mass_fraction_of_cloud_liquid_water_in_air",
             (g.nx, g.ny, g.nz),
         )
         utils.st_isentropic_field(
             g,
-            "isentropic",
+            "isentropic_prognostic",
             "mass_fraction_of_precipitation_water_in_air",
             (g.nx, g.ny, g.nz),
         )
-        utils.st_isentropic_field(g, "isentropic", "precipitation", (g.nx, g.ny, 1))
+        utils.st_isentropic_field(g, "isentropic_prognostic", "precipitation", (g.nx, g.ny, 1))
         utils.st_isentropic_field(
-            g, "isentropic", "accumulated_precipitation", (g.nx, g.ny, 1)
+            g, "isentropic_prognostic", "accumulated_precipitation", (g.nx, g.ny, 1)
         )
 
         utils.st_isentropic_state(g)

@@ -1,0 +1,20 @@
+{
+	"filename1": [
+		"../../data/prognostic-saturation-20200120/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_nx81_ny1_nz60_",
+        "dt20_nt1440_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_lfc_gtx86.nc"
+	],
+	"filename2": [
+		"../../data/prognostic-saturation-20200120/",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_nx641_ny1_nz60_",
+        "dt2_nt11520_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_fc_gtx86.nc"
+	],
+	"field_name": "mass_fraction_of_precipitation_water_in_air",
+	"field_units": "g kg^-1",
+	"x1": [30, 51, null],
+	"x2": [240, 401, 8],
+	"y1": [0, 1, null],
+	"y2": [0, 1, null],
+	"z1": [45, 60, null],
+	"z2": [45, 60, null]
+}

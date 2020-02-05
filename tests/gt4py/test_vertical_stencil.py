@@ -40,6 +40,7 @@ def get_upwind_flux(w, phi):
 @gtscript.function
 def vflux(w, s, su, sv):
     from __externals__ import get_upwind_flux
+
     flux_s = get_upwind_flux(w=w, phi=s)
     flux_su = get_upwind_flux(w=w, phi=su)
     flux_sv = get_upwind_flux(w=w, phi=sv)
@@ -87,6 +88,7 @@ def stencil_defs(
 
 
 if __name__ == "__main__":
+    gt_powered = True
     backend = "numpy"
     vstaggering = True
     dtype = np.float64
@@ -103,13 +105,13 @@ if __name__ == "__main__":
     )
     stencil = decorator(stencil_defs)
 
-    in_w = zeros((30, 30, 11), backend, dtype)
-    in_s = zeros((30, 30, 11), backend, dtype)
-    in_su = zeros((30, 30, 11), backend, dtype)
-    in_sv = zeros((30, 30, 11), backend, dtype)
-    out_s = zeros((30, 30, 11), backend, dtype)
-    out_su = zeros((30, 30, 11), backend, dtype)
-    out_sv = zeros((30, 30, 11), backend, dtype)
+    in_w = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    in_s = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    in_su = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    in_sv = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    out_s = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    out_su = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
+    out_sv = zeros((30, 30, 11), gt_powered=gt_powered, backend=backend, dtype=dtype)
     dz = 1.0
 
     stencil(

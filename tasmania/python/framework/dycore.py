@@ -78,7 +78,9 @@ class DynamicalCore(abc.ABC):
         domain: "Domain",
         grid_type: str,
         intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
-        intermediate_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        intermediate_diagnostics: Optional[
+            Union[taz_types.diagnostic_component_t, taz_types.tendency_component_t]
+        ] = None,
         substeps: int = 0,
         fast_tendencies: Optional[taz_types.tendency_component_t] = None,
         fast_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
@@ -1103,7 +1105,10 @@ class DynamicalCore(abc.ABC):
         if self._inter_diags is not None:
             if isinstance(self._inter_diags, self.__class__.allowed_diagnostic_type):
                 inter_tends = {}
-                inter_diags = self._inter_diags(out_state)
+                try:
+                    inter_diags = self._inter_diags(out_state)
+                except TypeError:
+                    inter_diags = self._inter_diags(out_state, timestep)
             else:  # tendency component
                 try:
                     inter_tends, inter_diags = self._inter_diags(out_state)

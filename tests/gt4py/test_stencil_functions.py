@@ -81,9 +81,9 @@ if __name__ == "__main__":
     )
     hyperdiffusion = decorator(hyperdiffusion_defs)
 
-    in_phi = zeros((30, 30, 10), "numpy", dtype)
-    in_gamma = zeros((30, 30, 10), "numpy", dtype)
-    out_phi = zeros((30, 30, 10), "numpy", dtype)
+    in_phi = zeros((30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype)
+    in_gamma = zeros((30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype)
+    out_phi = zeros((30, 30, 10), gt_powered=True, backend="numpy", dtype=dtype)
 
     hyperdiffusion(
         in_phi=in_phi,

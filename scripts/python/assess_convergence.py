@@ -26,64 +26,86 @@ import tasmania as taz
 # ========================================
 # user inputs
 # ========================================
-field_name = "x_momentum_isentropic"
-field_units = "kg m^-1 K^-1 s^-1"
+field_name = "precipitation"
+field_units = "mm hr^-1"
 
-prefix = "../../data/"
+prefix = "../../data/pdc-paper/"
 
 reference_dataset = {
-    "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx801_nz300_"
-    "dt1_nt60000_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
-    "xslice": slice(240, 561),
+    "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx2561_ny1_nz60_"
+    "dt0_nt28800_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+    "xslice": slice(960, 1601),
     "yslice": slice(0, 1),
-    "zslice": slice(200, 300),
-    "tlevel": -1,
+    "zslice": slice(0, 1),
+    "tlevel": -2,
 }
 
 datasets = (
     {
-        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx51_nz300_"
-        "dt16_nt3750_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
-        "xslice": slice(15, 36),
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx41_ny1_nz60_"
+        "dt40_nt450_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "xslice": slice(15, 26),
         "yslice": slice(0, 1),
-        "zslice": slice(200, 300),
+        "zslice": slice(0, 1),
+        "xsampling": 64,
+        "ysampling": 1,
+        "zsampling": 1,
+        "tlevel": -2,
+    },
+    {
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx81_ny1_nz60_"
+        "dt20_nt900_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "xslice": slice(30, 51),
+        "yslice": slice(0, 1),
+        "zslice": slice(0, 1),
+        "xsampling": 32,
+        "ysampling": 1,
+        "zsampling": 1,
+        "tlevel": -2,
+    },
+    {
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx161_ny1_nz60_"
+        "dt10_nt1800_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "xslice": slice(60, 101),
+        "yslice": slice(0, 1),
+        "zslice": slice(0, 1),
         "xsampling": 16,
-        "ysampling": 16,
+        "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -1,
+        "tlevel": -2,
     },
     {
-        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx101_nz300_"
-        "dt8_nt7500_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
-        "xslice": slice(30, 71),
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx321_ny1_nz60_"
+        "dt5_nt3600_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "xslice": slice(120, 201),
         "yslice": slice(0, 1),
-        "zslice": slice(200, 300),
+        "zslice": slice(0, 1),
         "xsampling": 8,
-        "ysampling": 8,
+        "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -1,
+        "tlevel": -2,
     },
     {
-        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx201_nz300_"
-        "dt4_nt15000_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
-        "xslice": slice(60, 141),
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx641_ny1_nz60_"
+        "dt2_nt7200_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "xslice": slice(240, 401),
         "yslice": slice(0, 1),
-        "zslice": slice(200, 300),
+        "zslice": slice(0, 1),
         "xsampling": 4,
-        "ysampling": 4,
+        "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -1,
+        "tlevel": -2,
     },
     {
-        "filename": "isentropic_dry_rk3ws_si_fifth_order_upwind_nx401_nz300_"
-        "dt2_nt30000_gaussian_L10000_H1_u10_T250_turb_fc_gtx86.nc",
-        "xslice": slice(120, 281),
+        "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx1281_ny1_nz60_"
+        "dt1_nt14400_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "xslice": slice(480, 801),
         "yslice": slice(0, 1),
-        "zslice": slice(200, 300),
+        "zslice": slice(0, 1),
         "xsampling": 2,
-        "ysampling": 2,
+        "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -1,
+        "tlevel": -2,
     },
 )
 
@@ -112,7 +134,9 @@ if __name__ == "__main__":
         sol = raw_field[ds["xslice"], ds["yslice"], ds["zslice"]]
         rsol = refsol[:: ds["xsampling"], :: ds["ysampling"], :: ds["zsampling"]]
 
-        err = (
-            np.sum(np.abs(sol - rsol) ** 2) / (sol.shape[0] * sol.shape[1] * sol.shape[2])
-        ) ** 0.5
+        # err = (
+        #     np.sum(np.abs(sol - rsol) ** 2) / (sol.shape[0] * sol.shape[1] * sol.shape[2])
+        # ) ** 0.5
+        err = np.linalg.norm(sol - rsol) / np.sqrt(sol.size)
+        # err = np.abs(sol - rsol).max()
         print("{:5.5E}".format(err))

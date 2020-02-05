@@ -40,9 +40,7 @@ from tests.conf import default_origin as conf_dorigin
 from tests.utilities import compare_arrays, st_one_of, st_raw_field
 
 
-def stencil_sum_defs(
-    inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]
-):
+def stencil_sum_defs(inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]):
     with computation(PARALLEL), interval(...):
         inout_a = inout_a[0, 0, 0] + in_b[0, 0, 0]
 
@@ -62,17 +60,38 @@ def test_sum(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = True
+    backend = "numpy"
+    dtype = np.float64
+    default_origin = data.draw(st_one_of(conf_dorigin))
+
     ni = data.draw(hyp_st.integers(min_value=1, max_value=30))
     nj = data.draw(hyp_st.integers(min_value=1, max_value=30))
     nk = data.draw(hyp_st.integers(min_value=1, max_value=30))
     shape = (ni, nj, nk)
 
-    backend = "numpy"
-    dtype = np.float64
-    default_origin = data.draw(st_one_of(conf_dorigin))
-
-    a = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, default_origin))
-    b = data.draw(st_raw_field(shape, -1e5, 1e5, backend, dtype, default_origin))
+    a = data.draw(
+        st_raw_field(
+            shape,
+            -1e5,
+            1e5,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    b = data.draw(
+        st_raw_field(
+            shape,
+            -1e5,
+            1e5,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
 
     # ========================================
     # test bed
@@ -83,7 +102,13 @@ def test_sum(data):
     a_dc = deepcopy(a)
     stencil_sum(inout_a=a, in_b=b, origin=(0, 0, 0), domain=(ni, nj, nk))
 
-    c = zeros(shape, backend, dtype, default_origin=default_origin)
+    c = zeros(
+        shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c[...] = a_dc + b
 
     compare_arrays(c, a)

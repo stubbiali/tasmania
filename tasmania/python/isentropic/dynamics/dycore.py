@@ -54,7 +54,9 @@ class IsentropicDynamicalCore(DynamicalCore):
         self,
         domain: "Domain",
         intermediate_tendencies: Optional[taz_types.tendency_component_t] = None,
-        intermediate_diagnostics: Optional[taz_types.diagnostic_component_t] = None,
+        intermediate_diagnostics: Optional[
+            Union[taz_types.diagnostic_component_t, taz_types.tendency_component_t]
+        ] = None,
         substeps: int = 0,
         fast_tendencies: Optional[taz_types.tendency_component_t] = None,
         fast_diagnostics: Optional[taz_types.diagnostic_component_t] = None,

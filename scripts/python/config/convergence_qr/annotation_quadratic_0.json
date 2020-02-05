@@ -1,0 +1,9 @@
+{
+    "drawer_properties": {
+        "fontsize": 16,
+        "text": "$\\mathcal{O}(\\Delta t^2)$",
+        "location": [5.05, 6.25e-2],
+        "horizontal_alignment": "left",
+        "vertical_alignment": "center"
+    }
+}

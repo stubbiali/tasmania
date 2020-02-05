@@ -1,0 +1,34 @@
+{
+    "slaves": [
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/ssus_0.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/ssus_1.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/ssus_2.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/ssus_3.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/ssus_4.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/ssus_5.json"
+        }
+    ]
+}

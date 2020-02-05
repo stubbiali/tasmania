@@ -64,6 +64,11 @@ def test(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = True
+    backend = "numpy"
+    dtype = np.float64
+    default_origin = data.draw(st_one_of(conf_dorigin))
+
     nx = data.draw(hyp_st.integers(min_value=1, max_value=30))
     ny = data.draw(hyp_st.integers(min_value=1, max_value=30))
     nz = data.draw(hyp_st.integers(min_value=1, max_value=30))
@@ -79,13 +84,35 @@ def test(data):
     ok = data.draw(hyp_st.integers(min_value=0, max_value=nz - nk))
     origin = (oi, oj, ok)
 
-    backend = "numpy"
-    dtype = np.float64
-    default_origin = data.draw(st_one_of(conf_dorigin))
-
-    a = data.draw(st_raw_field(storage_shape, -1e5, 1e5, backend, dtype, default_origin))
-    b = data.draw(st_raw_field(storage_shape, -1e5, 1e5, backend, dtype, default_origin))
-    c = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    a = data.draw(
+        st_raw_field(
+            storage_shape,
+            -1e5,
+            1e5,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    b = data.draw(
+        st_raw_field(
+            storage_shape,
+            -1e5,
+            1e5,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    c = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     # ========================================
     # test bed
@@ -100,7 +127,13 @@ def test(data):
     stencil_sum(in_a=a, in_b=b, out_c=c, origin=origin, domain=domain)
 
     i, j, k = slice(oi, oi + ni), slice(oj, oj + nj), slice(ok, ok + nk)
-    c_val = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    c_val = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[i, j, k] = a[i, j, k] + b[i, j, k]
 
     compare_arrays(c, c_val)

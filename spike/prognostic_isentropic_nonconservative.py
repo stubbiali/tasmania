@@ -33,7 +33,7 @@ import python.utils.utils as utils
 class PrognosticIsentropicNonconservative:
 	"""
 	Abstract base class whose derived classes implement different schemes to carry out the 
-	prognostic steps of the three-dimensional moist isentropic dynamical core. 
+	prognostic steps of the three-dimensional moist isentropic_prognostic dynamical core.
 	The nonconservative form of the governing equations is used.
 	"""
 	# Make the class abstract
@@ -87,14 +87,14 @@ class PrognosticIsentropicNonconservative:
 	@property
 	def diagnostic(self):
 		"""
-		Get the attribute implementing the diagnostic steps of the three-dimensional moist isentropic dynamical core.
+		Get the attribute implementing the diagnostic steps of the three-dimensional moist isentropic_prognostic dynamical core.
 		If this is set to :obj:`None`, a :class:`ValueError` is thrown.
 		
 		Return
 		------
 		obj :
 			:class:`~tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
-			three-dimensional moist isentropic dynamical core.
+			three-dimensional moist isentropic_prognostic dynamical core.
 		"""
 		if self._diagnostic is None:
 			raise ValueError("""The attribute which is supposed to implement the diagnostic step of the moist isentroic """ \
@@ -104,13 +104,13 @@ class PrognosticIsentropicNonconservative:
 	@diagnostic.setter
 	def diagnostic(self, value):
 		"""
-		Set the attribute implementing the diagnostic steps of the three-dimensional moist isentropic dynamical core.
+		Set the attribute implementing the diagnostic steps of the three-dimensional moist isentropic_prognostic dynamical core.
 
 		Parameter
 		---------
 		value : obj
 			:class:`~tasmania.dycore.diagnostic_isentropic.DiagnosticIsentropic` carrying out the diagnostic step of the 
-			three-dimensional moist isentropic dynamical core.
+			three-dimensional moist isentropic_prognostic dynamical core.
 		"""
 		self._diagnostic = value
 
@@ -205,7 +205,7 @@ class PrognosticIsentropicNonconservative:
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
 			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
-			* montgomery_potential (isentropic);
+			* montgomery_potential (isentropic_prognostic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
@@ -514,7 +514,7 @@ class PrognosticIsentropicNonconservative:
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* montgomery_potential (isentropic);
+			* montgomery_potential (isentropic_prognostic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
@@ -634,9 +634,9 @@ class PrognosticIsentropicNonconservative:
 		in_w : array_like
 			:class:`numpy.ndarray` representing the vertical velocity, i.e., the change over time in potential temperature.
 		in_s_now : obj
-			:class:`gridtools.Equation` representing the current isentropic density. 
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density.
 		in_s_prv : obj 
-			:class:`gridtools.Equation` representing the provisional isentropic density. 
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density.
 		in_u_now : obj 
 			:class:`gridtools.Equation` representing the current :math:`x`-velocity.
 		in_u_prv : obj 
@@ -661,7 +661,7 @@ class PrognosticIsentropicNonconservative:
 		Returns
 		-------
 		out_s : obj
-			:class:`gridtools.Equation` representing the updated isentropic density. 
+			:class:`gridtools.Equation` representing the updated isentropic_prognostic density.
 		out_u : obj 
 			:class:`gridtools.Equation` representing the updated :math:`x`-velocity.
 		out_v : obj 

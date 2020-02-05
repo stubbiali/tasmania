@@ -1,0 +1,24 @@
+{
+    "slaves": [
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/fc_0.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/fc_1.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/fc_2.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDLoader",
+            "config": "config/rmsd2d_precipitation/fc_3.json"
+        }
+    ]
+}

@@ -79,7 +79,7 @@ class DebugIsentropicVerticalAdvection(IsentropicVerticalAdvection):
             else:
                 wc = in_w
 
-        # compute the isentropic density of the water species
+        # compute the isentropic_prognostic density of the water species
         if __INLINED(moist):  # compile-time if
             with computation(PARALLEL), interval(0, None):
                 sqv = in_s * in_qv

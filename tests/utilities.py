@@ -773,7 +773,7 @@ def st_isentropic_state(
     default_origin=None,
     storage_shape=None
 ):
-    """ Strategy drawing a valid isentropic model state over `grid`. """
+    """ Strategy drawing a valid isentropic_prognostic model state over `grid`. """
     nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
     dz = grid.dz.to_units("K").values.item()
     dtype = grid.x.dtype
@@ -792,7 +792,7 @@ def st_isentropic_state(
         time = draw(hyp_st.datetimes())
     return_dict["time"] = time
 
-    # air isentropic density
+    # air isentropic_prognostic density
     return_dict["air_isentropic_density"] = draw(
         st_field(
             grid,
@@ -1135,7 +1135,7 @@ def st_isentropic_state_f(
     default_origin=None,
     storage_shape=None
 ):
-    """ Strategy drawing a valid isentropic model state over `grid`. """
+    """ Strategy drawing a valid isentropic_prognostic model state over `grid`. """
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     dtype = grid.x.dtype
     set_coordinates = False
@@ -1153,7 +1153,7 @@ def st_isentropic_state_f(
         time = draw(hyp_st.datetimes())
     return_dict["time"] = time
 
-    # air isentropic density
+    # air isentropic_prognostic density
     s = draw(
         st_raw_field(
             storage_shape or (nx, ny, nz),
@@ -1537,7 +1537,7 @@ def st_isentropic_boussinesq_state_f(
     default_origin=None,
     storage_shape=None
 ):
-    """ Strategy drawing a valid isentropic Boussinesq model state over `grid`. """
+    """ Strategy drawing a valid isentropic_prognostic Boussinesq model state over `grid`. """
     return_dict = draw(
         st_isentropic_state_f(
             grid,

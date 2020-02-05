@@ -67,19 +67,34 @@ def test(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = True
+    backend = "numpy"
+    dtype = np.float64
+    default_origin = data.draw(st_one_of(conf_dorigin))
+
     nx = data.draw(hyp_st.integers(min_value=2, max_value=30))
     ny = data.draw(hyp_st.integers(min_value=3, max_value=30))
     nz = data.draw(hyp_st.integers(min_value=1, max_value=30))
     storage_shape = (nx, ny, nz)
 
-    backend = "numpy"
-    dtype = np.float64
-    default_origin = data.draw(st_one_of(conf_dorigin))
-
     in_a = data.draw(
-        st_raw_field(storage_shape, -1e5, 1e5, backend, dtype, default_origin)
+        st_raw_field(
+            storage_shape,
+            -1e5,
+            1e5,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
     )
-    out_a = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    out_a = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     # ========================================
     # test bed
@@ -94,7 +109,13 @@ def test(data):
 
     stencil(in_a=in_a, out_a=out_a, origin=(1, 2, 0), domain=(nx - 1, ny - 2, nz))
 
-    val = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+    val = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     val[1:, 2:] = np.abs(in_a[:-1, :-2])
 
     compare_arrays(out_a, val)

@@ -29,11 +29,11 @@ import tasmania as taz
 # user inputs
 # ========================================
 filename1 = (
-    "../../data/isentropic-validation/isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_"
+    "../../data/isentropic_prognostic-validation/isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_"
     "nx41_ny41_nz60_dt40_nt360_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_numpy.nc"
 )
 filename2 = (
-    "../../data/isentropic-validation/isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_"
+    "../../data/isentropic_prognostic-validation/isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_"
     "nx41_ny41_nz60_dt40_nt360_gaussian_L50000_H1000_u15_rh90_turb_f_sed_evap_ssus_gtx86.nc"
 )
 

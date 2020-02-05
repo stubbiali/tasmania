@@ -146,7 +146,7 @@ niter = 100  # int(1 * 60 * 60 / timestep.total_seconds())
 save = False
 save_frequency = 20
 filename = (
-    "../../data/isentropic-validationisentropic_moist_{}_{}{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
+    "../../data/isentropic_prognostic-validationisentropic_moist_{}_{}{}_{}_nx{}_ny{}_nz{}_dt{}_nt{}_"
     "{}_L{}_H{}_u{}_rh{}{}{}{}{}{}{}_sus_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,

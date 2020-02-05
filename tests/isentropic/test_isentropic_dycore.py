@@ -264,7 +264,7 @@ def rk3wssi_stage(
 
     dt = (fraction * timestep).total_seconds()
 
-    # isentropic density
+    # isentropic_prognostic density
     s_now = raw_state_now["air_isentropic_density"]
     s_int = raw_state_int["air_isentropic_density"]
     s_tnd = raw_tendencies.get("air_isentropic_density", None)

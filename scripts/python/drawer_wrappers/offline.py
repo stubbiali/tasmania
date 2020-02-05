@@ -29,7 +29,7 @@ from scripts.python.drawer_wrappers.base import DrawerWrapper
 
 class LineWrapper(DrawerWrapper):
     def __init__(self, loader: CompositeLoader, json_filename: str) -> None:
-        assert isinstance(loader, CompositeLoader)
+        # assert isinstance(loader, CompositeLoader)
         super().__init__(loader)
 
         with open(json_filename, "r") as json_file:

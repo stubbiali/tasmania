@@ -27,7 +27,7 @@ from sympl import DataArray
 import tasmania as taz
 
 
-factor = 8
+factor = 1
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
@@ -69,10 +69,10 @@ gt_powered = True
 # simulation time
 cfl = 1.0
 timestep = pd.Timedelta(cfl / (nx - 1) ** 2, unit="s")
-niter = 100  # 4 ** factor * 100
+niter = 4 ** factor * 100
 
 # output
 save = False
 save_frequency = -1
 filename = "../../data/burgers_sts_{}.nc".format(gt_kwargs["backend"])
-print_frequency = -1
+print_frequency = 1

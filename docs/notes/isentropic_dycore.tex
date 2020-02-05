@@ -116,7 +116,7 @@
 }
 
 \begin{document}
-	\noindent \textbf{\LARGE{Numerical methods for the 3D isentropic dynamical core}}
+	\noindent \textbf{\LARGE{Numerical methods for the 3D isentropic_prognostic dynamical core}}
 	\normalsize
 
 	\section{Notation}
@@ -130,7 +130,7 @@
 					\item staggered in the $y$-direction, i.e., $\lbrace (x_i = i \Delta x, \, y_{j + 1/2} = (j + 1/2) \Delta y, \, \theta_k = k \Delta \theta) \rbrace_{1 \leq i \leq N_i, \, 0 \leq j \leq N_j, \, 1 \leq k \leq N_k}$;
 					\item staggered in the $\theta$-direction, i.e., $\lbrace (x_i = i \Delta x, \, y_j = j \Delta y, \, \theta_{k+1/2} = (k + 1/2) \Delta \theta) \rbrace_{1 \leq i \leq N_i, \, 1 \leq j \leq N_j, \, 0 \leq k \leq N_k}$.
 				\end{itemize}
-			\item $\sigma_{i,j,k}^n$ is the isentropic density at $(x_i, \, y_j, \, \theta_k)$ at time $t^n = n \Delta t$.
+			\item $\sigma_{i,j,k}^n$ is the isentropic_prognostic density at $(x_i, \, y_j, \, \theta_k)$ at time $t^n = n \Delta t$.
 			\item $u_{i+1/2,j,k}^n$ is the \emph{staggered} $x$-velocity at $(x_{i+1/2}, \, y_j, \, \theta_k)$ at time $t^n$; the \emph{unstaggered} $x$-velocity at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$ is then defined as \[ u_{i,j,k}^n = \dfrac{u_{i-1/2,j,k}^n + u_{i+1/2,j,k}^n}{2} \, . \]
 			\item $U_{i,j,k}^n = \sigma_{i,j,k}^n \, u_{i,j,k}^n$ is the $x$-momentum at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$.
 			\item $v_{i,j+1/2,k}^n$ is the \emph{staggered} $y$-velocity at $(x_i, \, y_{j+1/2}, \, \theta_k)$ at time $t^n$; the \emph{unstaggered} $y$-velocity at $(x_i, \, y_j, \, \theta_k)$ at time $t^n$ is then defined as \[ v_{i,j,k}^n = \dfrac{v_{i,j-1/2,k}^n + u_{i,j+1/2,k}^n}{2} \, . \]
@@ -147,7 +147,7 @@
 		\end{itemize}
 
 	\section{Prognostic equations}
-		The conservative form of the prognostic equations for the isentropic density, the momentums and the air constituents reads:
+		The conservative form of the prognostic equations for the isentropic_prognostic density, the momentums and the air constituents reads:
 		\begin{subequations}
 			\label{eq:prognostic}
 			\begin{align}
@@ -231,7 +231,7 @@
 			\label{eq:average-derivative}
 			\left( \dfrac{\partial \phi}{\partial t} \right)_{i,j}^{avg} = \dfrac{1}{2} \left[ \left( \dfrac{\partial \phi}{\partial t} \right)_{i,j}^n + \overline{\left( \dfrac{\partial \phi}{\partial t} \right)}_{i,j}^{n+1} \right] \, .
 		\end{equation}
-		The average derivatives for the isentropic density, momentums and water components are derived in the following paragraphs.
+		The average derivatives for the isentropic_prognostic density, momentums and water components are derived in the following paragraphs.
 
 	\subsubsection{Continuity equation}
 		\begin{enumerate}

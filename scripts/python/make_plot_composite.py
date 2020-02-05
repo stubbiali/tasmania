@@ -89,7 +89,8 @@ class PlotCompositeWrapper:
         assert_sequence(tlevels, reflen=len(self.plot_wrappers), reftype=int)
 
         states = tuple(
-            plot_wrapper.get_states(tlevels) for plot_wrapper in self.plot_wrappers
+            plot_wrapper.get_states(tls)
+            for plot_wrapper, tls in zip(self.plot_wrappers, tlevels)
         )
 
         return states
@@ -114,10 +115,12 @@ if __name__ == "__main__":
         "configfile", metavar="configfile", type=str, help="JSON configuration file."
     )
     parser.add_argument(
-        "show",
-        metavar="show",
-        type=int,
-        help="1 to show the generated plot, 0 otherwise.",
+        "--no-show",
+        dest="show",
+        action="store_const",
+        const=0,
+        default=1,
+        help="Do not show the generated plot.",
     )
     args = parser.parse_args()
     plot_wrapper = PlotCompositeWrapper(args.configfile)

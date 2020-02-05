@@ -313,7 +313,13 @@ def get_isentropic_state_from_brunt_vaisala_frequency(
         )
 
         # initialize the relative humidity
-        rh = relative_humidity * ones(storage_shape, backend, dtype, default_origin)
+        rh = relative_humidity * ones(
+            storage_shape,
+            gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         rh_ = get_dataarray_3d(rh, grid, "1")
 
         # interpolate the pressure at the main levels

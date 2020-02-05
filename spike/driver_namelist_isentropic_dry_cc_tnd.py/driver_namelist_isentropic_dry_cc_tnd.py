@@ -57,7 +57,7 @@ else:
 #============================================================
 args = []
 
-# Component calculating the pressure gradient in isentropic coordinates
+# Component calculating the pressure gradient in isentropic_prognostic coordinates
 order = 4 if nl.horizontal_flux_scheme == 'fifth_order_upwind' else 2
 pg = taz.ConservativeIsentropicPressureGradient(
 	grid, order=order,
