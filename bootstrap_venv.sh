@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MODULES=( )
-# MODULES=( cray-python/3.6.5.7 cudatoolkit )
+# MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
 PYTHON=python3.7   # use 'python3.7' when possible
 CUDA=
 VENV=venv
@@ -14,8 +14,9 @@ function install()
     pip install -e . && \
     pip install -e docker/external/gt4py[$CUDA] || \
       pip install -e docker/external/gt4py && \
-    python docker/external/gt4py/setup.py install_gt_sources && \
+	python -m gt4py.gt_src_manager install && \
     pip install -e docker/external/sympl && \
+	pip install -e docker/external/xarray && \
 	deactivate
 
   # On OSX only:

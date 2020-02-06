@@ -6,3 +6,7 @@
 	path = docker/external/gt4py
 	url = git@github.com:GridTools/gt4py.git
 	branch = dev
+[submodule "docker/external/xarray"]
+	path = docker/external/xarray
+	url = https://github.com/pydata/xarray.git
+	branch = master
