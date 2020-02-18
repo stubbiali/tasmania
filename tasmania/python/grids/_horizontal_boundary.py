@@ -408,11 +408,15 @@ class Relaxed1DX(HorizontalBoundary):
 
         # apply the relaxed boundary conditions in the negative x-direction
         i, j = slice(nb, nr), slice(nb, mj - nb)
-        field[i, j] -= self._xneg[nb:, :mj_int] * (field[i, j] - field_ref[i, j])
+        field[i, j] -= self._xneg[nb:, :mj_int] * (
+            field[i, j] - field_ref[i, j]
+        )
 
         # apply the relaxed boundary conditions in the positive x-direction
         i, j = slice(mi - nr, mi - nb), slice(nb, mj - nb)
-        field[i, j] -= self._xpos[:-nb, :mj_int] * (field[i, j] - field_ref[i, j])
+        field[i, j] -= self._xpos[:-nb, :mj_int] * (
+            field[i, j] - field_ref[i, j]
+        )
 
         # repeat the innermost column(s) along the y-direction
         field[:mi, :nb] = field[:mi, nb : nb + 1]

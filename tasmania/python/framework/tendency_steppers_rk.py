@@ -71,6 +71,7 @@ class ForwardEuler(TendencyStepper):
             out=out_state,
             field_properties=self.output_properties,
         )
+        out_state["time"] = state["time"] + timestep
 
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
@@ -166,6 +167,7 @@ class RK2(TendencyStepper):
             out=out_state,
             field_properties=self.output_properties,
         )
+        out_state["time"] = state["time"] + timestep
 
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
@@ -236,7 +238,7 @@ class RK3WS(TendencyStepper):
             out=out_state,
             field_properties=self.output_properties,
         )
-        out_state["time"] = state["time"] + 1.0 / 3.0 * timestep
+        out_state["time"] = state["time"] + timestep / 3.0
 
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable
@@ -300,6 +302,7 @@ class RK3WS(TendencyStepper):
             out=out_state,
             field_properties=self.output_properties,
         )
+        out_state["time"] = state["time"] + timestep
 
         if self._enforce_hb:
             # enforce the boundary conditions on each prognostic variable

@@ -401,7 +401,7 @@ def load_domain(dataset: xr.Dataset) -> Domain:
         horizontal_boundary_kwargs=hb_kwargs,
         topography_type=topo_type,
         topography_kwargs=topo_kwargs,
-        dtype=domain_z.values.dtype,
+        dtype=domain_x.values.dtype,
     )
 
 
