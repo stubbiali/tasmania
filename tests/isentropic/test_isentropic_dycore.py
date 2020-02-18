@@ -1598,8 +1598,13 @@ def test4(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb,
-            gt_powered=gt_powered, backend=backend, dtype=dtype
+            xaxis_length=(1, 25),
+            yaxis_length=(1, 25),
+            zaxis_length=(2, 15),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -2157,8 +2162,13 @@ def test5(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 25), yaxis_length=(1, 25), zaxis_length=(2, 15), nb=nb,
-            gt_powered=gt_powered, backend=backend, dtype=dtype
+            xaxis_length=(1, 25),
+            yaxis_length=(1, 25),
+            zaxis_length=(2, 15),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )

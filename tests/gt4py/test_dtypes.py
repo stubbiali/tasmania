@@ -124,8 +124,13 @@ def test(data):
 
     stencil(in_a=a, in_b=b, out_c=c, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    c_val = zeros(storage_shape, gt_powered=gt_powered, backend=backend,
-                  dtype=dtype, default_origin=default_origin)
+    c_val = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[...] = a + b
 
     compare_arrays(c, c_val)

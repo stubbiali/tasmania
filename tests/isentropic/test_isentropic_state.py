@@ -41,7 +41,7 @@ from tasmania.python.isentropic.state import (
 
 from tests.conf import (
     backend as conf_backend,
-datatype as conf_dtype,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -78,8 +78,13 @@ def test_brunt_vaisala(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(2, 10), nb=nb,
-            gt_powered=gt_powered, backend=backend, dtype=dtype
+            xaxis_length=(1, 20),
+            yaxis_length=(1, 20),
+            zaxis_length=(2, 10),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )

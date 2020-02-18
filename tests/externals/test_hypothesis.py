@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -62,13 +62,22 @@ if __name__ == "__main__":
             g, "isentropic_prognostic", "air_isentropic_density", (g.nx, g.ny, g.nz)
         )
         utils.st_isentropic_field(
-            g, "isentropic_prognostic", "x_velocity_at_u_locations", (g.nx + 1, g.ny, g.nz)
+            g,
+            "isentropic_prognostic",
+            "x_velocity_at_u_locations",
+            (g.nx + 1, g.ny, g.nz),
         )
         utils.st_isentropic_field(
-            g, "isentropic_prognostic", "y_velocity_at_v_locations", (g.nx, g.ny + 1, g.nz)
+            g,
+            "isentropic_prognostic",
+            "y_velocity_at_v_locations",
+            (g.nx, g.ny + 1, g.nz),
         )
         utils.st_isentropic_field(
-            g, "isentropic_prognostic", "mass_fraction_of_water_vapor_in_air", (g.nx, g.ny, g.nz)
+            g,
+            "isentropic_prognostic",
+            "mass_fraction_of_water_vapor_in_air",
+            (g.nx, g.ny, g.nz),
         )
         utils.st_isentropic_field(
             g,
@@ -82,7 +91,9 @@ if __name__ == "__main__":
             "mass_fraction_of_precipitation_water_in_air",
             (g.nx, g.ny, g.nz),
         )
-        utils.st_isentropic_field(g, "isentropic_prognostic", "precipitation", (g.nx, g.ny, 1))
+        utils.st_isentropic_field(
+            g, "isentropic_prognostic", "precipitation", (g.nx, g.ny, 1)
+        )
         utils.st_isentropic_field(
             g, "isentropic_prognostic", "accumulated_precipitation", (g.nx, g.ny, 1)
         )

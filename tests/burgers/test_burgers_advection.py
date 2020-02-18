@@ -126,7 +126,7 @@ def test_first_order_numpy(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -174,7 +174,7 @@ def test_first_order_gt(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -262,7 +262,7 @@ def test_second_order_numpy(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -309,7 +309,7 @@ def test_second_order_gt(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -410,7 +410,7 @@ def test_third_order_numpy(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -457,7 +457,7 @@ def test_third_order_gt(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -554,7 +554,7 @@ def test_fourth_order_numpy(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -601,7 +601,7 @@ def test_fourth_order_gt(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -708,7 +708,7 @@ def test_fifth_order_numpy(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )
@@ -755,7 +755,7 @@ def test_fifth_order_gt(data):
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
-            dtype=dtype
+            dtype=dtype,
         ),
         label="grid",
     )

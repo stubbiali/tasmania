@@ -33,17 +33,11 @@ import pytest
 import gt4py as gt
 
 from tasmania.python.framework.fakes import FakeTendencyComponent
-from tasmania.python.framework.tendency_steppers import (
-    TendencyStepper,
-    register,
-)
+from tasmania.python.framework.tendency_steppers import TendencyStepper, register
 from tasmania.python.framework.tendency_steppers_implicit import Implicit
 from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
 
-from tests.utilities import (
-    st_domain,
-    st_one_of,
-)
+from tests.utilities import st_domain, st_one_of
 
 
 def test_register():
@@ -66,9 +60,9 @@ def test_register():
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )

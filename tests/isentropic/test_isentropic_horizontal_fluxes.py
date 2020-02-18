@@ -989,9 +989,9 @@ def test_third_order_upwind_gt(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -1005,8 +1005,12 @@ def test_fifth_order_upwind_numpy(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(1, 20), nb=nb,
-            gt_powered=False, dtype=dtype
+            xaxis_length=(1, 20),
+            yaxis_length=(1, 20),
+            zaxis_length=(1, 20),
+            nb=nb,
+            gt_powered=False,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -1014,13 +1018,7 @@ def test_fifth_order_upwind_numpy(data):
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
-        st_raw_field(
-            (nx + 2, ny + 2, nz + 1),
-            -1e4,
-            1e4,
-            gt_powered=False,
-            dtype=dtype,
-        ),
+        st_raw_field((nx + 2, ny + 2, nz + 1), -1e4, 1e4, gt_powered=False, dtype=dtype),
         label="field",
     )
 
@@ -1029,13 +1027,7 @@ def test_fifth_order_upwind_numpy(data):
     # ========================================
     # test bed
     # ========================================
-    validation_numpy(
-        "fifth_order_upwind",
-        domain,
-        field,
-        timestep,
-        dtype,
-    )
+    validation_numpy("fifth_order_upwind", domain, field, timestep, dtype)
 
 
 @settings(
@@ -1058,8 +1050,13 @@ def test_fifth_order_upwind_gt(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(1, 20), nb=nb,
-            gt_powered=True, backend=backend, dtype=dtype
+            xaxis_length=(1, 20),
+            yaxis_length=(1, 20),
+            zaxis_length=(1, 20),
+            nb=nb,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )

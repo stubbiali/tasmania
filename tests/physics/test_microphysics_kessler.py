@@ -77,8 +77,7 @@ def kessler_validation(
     exn = exn if exn.shape[2] == rho.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
 
     ar = k1 * (qc - a) * (qc > a)
-    cr = k2 * qc * qr ** 0.875
-    cr[qr < 0] = 0
+    cr = k2 * qc * np.where(qr > 0, qr ** 0.875, 0)
 
     tnd_qc = -ar - cr
     tnd_qr = ar + cr
@@ -86,8 +85,8 @@ def kessler_validation(
     if rain_evaporation:
         ps = svpf(t)
         qvs = beta * ps / p
-        er = 0.0484794 * (qvs - qv) * (rho * qr) ** (13.0 / 20.0)
-        er[qr < 0] = 0.0
+        er = np.where(qr > 0.0, 0.0484794 * (qvs - qv) * (rho * qr) ** (13.0 / 20.0), 0.0)
+        # er[qr < 0] = 0.0
         tnd_qv = er
         tnd_qr -= er
         tnd_theta = -lhvw * er / exn
@@ -938,4 +937,5 @@ def test_kessler_sedimentation(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_kessler_microphysics()

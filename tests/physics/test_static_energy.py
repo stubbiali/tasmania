@@ -224,8 +224,14 @@ def test_moist(data):
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 20),
-                  gt_powered=gt_powered, backend=backend, dtype=dtype),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 20),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")

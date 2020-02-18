@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,7 +31,7 @@ from tasmania.python.utils.storage_utils import zeros
 
 def test_xarray_gt4py_compatibility_gtmc():
     x = zeros((5, 5, 2), gt_powered=True, backend="gtmc", dtype=np.float64)
-    x_da = xr.DataArray(x, dims=['x', 'y', 'z'], attrs={"units": "kg"})
+    x_da = xr.DataArray(x, dims=["x", "y", "z"], attrs={"units": "kg"})
 
     assert isinstance(x_da.data, CPUStorage)
 

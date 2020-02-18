@@ -44,6 +44,7 @@ def _stage_laplacian_y(dy, phi):
 @gtscript.function
 def _stage_laplacian(dx, dy, phi):
     from __externals__ import stage_laplacian_x, stage_laplacian_y
+
     lap_x = stage_laplacian_x(dx=dx, phi=phi)
     lap_y = stage_laplacian_y(dy=dy, phi=phi)
     lap = lap_x + lap_y
@@ -92,5 +93,5 @@ if __name__ == "__main__":
         dx=1.0,
         dy=1.0,
         origin=(2, 2, 0),
-        domain=(26, 26, 10)
+        domain=(26, 26, 10),
     )

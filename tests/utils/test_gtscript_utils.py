@@ -148,6 +148,10 @@ def test_absolute(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -156,15 +160,12 @@ def test_absolute(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -183,7 +184,13 @@ def test_absolute(data):
         with computation(PARALLEL), interval(...):
             out_field = absolute(in_field)
 
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_absolute = gtscript.stencil(
         backend=backend,
@@ -195,7 +202,13 @@ def test_absolute(data):
 
     stencil_absolute(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[...] = np.abs(src.data)
 
     compare_arrays(out, out_val)
@@ -216,6 +229,10 @@ def test_positive(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -224,15 +241,12 @@ def test_positive(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -251,7 +265,13 @@ def test_positive(data):
         with computation(PARALLEL), interval(...):
             out_field = positive(in_field)
 
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_positive = gtscript.stencil(
         backend=backend,
@@ -263,7 +283,13 @@ def test_positive(data):
 
     stencil_positive(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[src > 0] = src[src > 0]
 
     compare_arrays(out, out_val)
@@ -284,6 +310,10 @@ def test_negative(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -292,15 +322,12 @@ def test_negative(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -319,7 +346,13 @@ def test_negative(data):
         with computation(PARALLEL), interval(...):
             out_field = negative(in_field)
 
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_negative = gtscript.stencil(
         backend=backend,
@@ -331,7 +364,13 @@ def test_negative(data):
 
     stencil_negative(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[src < 0] = -src[src < 0]
 
     compare_arrays(out, out_val)
@@ -352,6 +391,10 @@ def test_copy(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -360,15 +403,12 @@ def test_copy(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -379,7 +419,13 @@ def test_copy(data):
     # ========================================
     # test bed
     # ========================================
-    dst = zeros((nx, ny, nz), backend, dtype, default_origin)
+    dst = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_copy = gtscript.stencil(
         backend=backend,
@@ -408,6 +454,10 @@ def test_copychange(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -416,15 +466,12 @@ def test_copychange(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -435,7 +482,13 @@ def test_copychange(data):
     # ========================================
     # test bed
     # ========================================
-    dst = zeros((nx, ny, nz), backend, dtype, default_origin)
+    dst = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_copychange = gtscript.stencil(
         backend=backend,
@@ -464,6 +517,10 @@ def test_abs(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -472,15 +529,12 @@ def test_abs(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -491,7 +545,13 @@ def test_abs(data):
     # ========================================
     # test bed
     # ========================================
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     set_annotations(stencil_abs_defs, dtype)
     stencil_abs = gtscript.stencil(
@@ -503,7 +563,13 @@ def test_abs(data):
 
     stencil_abs(in_field=src, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[...] = np.abs(src.data)
 
     compare_arrays(out, out_val)
@@ -524,6 +590,10 @@ def test_iabs(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -532,15 +602,12 @@ def test_iabs(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     src = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -563,7 +630,13 @@ def test_iabs(data):
 
     stencil_iabs(inout_field=src, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[...] = np.abs(src_dc.data)
 
     compare_arrays(src, out_val)
@@ -584,6 +657,10 @@ def test_add(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -592,15 +669,12 @@ def test_add(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -612,6 +686,7 @@ def test_add(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -622,7 +697,13 @@ def test_add(data):
     # ========================================
     # test bed
     # ========================================
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     set_annotations(stencil_add_defs, dtype)
     stencil_add = gtscript.stencil(
@@ -634,7 +715,13 @@ def test_add(data):
 
     stencil_add(in_a=a, in_b=b, out_c=c, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    c_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[...] = a[...] + b[...]
 
     compare_arrays(c, c_val)
@@ -655,6 +742,10 @@ def test_iadd(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -663,15 +754,12 @@ def test_iadd(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -683,6 +771,7 @@ def test_iadd(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -724,6 +813,10 @@ def test_sub(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -732,15 +825,12 @@ def test_sub(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -752,6 +842,7 @@ def test_sub(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -762,7 +853,13 @@ def test_sub(data):
     # ========================================
     # test bed
     # ========================================
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_sub = gtscript.stencil(
         backend=backend,
@@ -773,7 +870,13 @@ def test_sub(data):
 
     stencil_sub(in_a=a, in_b=b, out_c=c, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    c_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[...] = a[...] - b[...]
 
     compare_arrays(c, c_val)
@@ -794,6 +897,10 @@ def test_isub(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -802,15 +909,12 @@ def test_isub(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -822,6 +926,7 @@ def test_isub(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -863,6 +968,10 @@ def test_mul(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -871,15 +980,12 @@ def test_mul(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -891,6 +997,7 @@ def test_mul(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -901,7 +1008,13 @@ def test_mul(data):
     # ========================================
     # test bed
     # ========================================
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_mul = gtscript.stencil(
         backend=backend,
@@ -912,7 +1025,13 @@ def test_mul(data):
 
     stencil_mul(in_a=a, in_b=b, out_c=c, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    c_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[...] = a[...] * b[...]
 
     compare_arrays(c, c_val)
@@ -933,6 +1052,10 @@ def test_imul(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -941,15 +1064,12 @@ def test_imul(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -961,6 +1081,7 @@ def test_imul(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1002,6 +1123,10 @@ def test_scale(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1010,15 +1135,12 @@ def test_scale(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1030,7 +1152,13 @@ def test_scale(data):
     # ========================================
     # test bed
     # ========================================
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_scale = gtscript.stencil(
         backend=backend,
@@ -1041,7 +1169,13 @@ def test_scale(data):
 
     stencil_scale(in_a=a, out_a=c, f=f, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    c_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[...] = f * a[...]
 
     compare_arrays(c, c_val)
@@ -1062,6 +1196,10 @@ def test_iscale(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1070,15 +1208,12 @@ def test_iscale(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1121,6 +1256,10 @@ def test_addsub(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1129,15 +1268,12 @@ def test_addsub(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1149,6 +1285,7 @@ def test_addsub(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1160,6 +1297,7 @@ def test_addsub(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1170,7 +1308,13 @@ def test_addsub(data):
     # ========================================
     # test bed
     # ========================================
-    d = zeros((nx, ny, nz), backend, dtype, default_origin)
+    d = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_addsub = gtscript.stencil(
         backend=backend,
@@ -1181,7 +1325,13 @@ def test_addsub(data):
 
     stencil_addsub(in_a=a, in_b=b, in_c=c, out_d=d, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    d_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    d_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     d_val[...] = a[...] + b[...] - c[...]
 
     compare_arrays(d, d_val)
@@ -1202,6 +1352,10 @@ def test_iaddsub(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1210,15 +1364,12 @@ def test_iaddsub(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1230,6 +1381,7 @@ def test_iaddsub(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1241,6 +1393,7 @@ def test_iaddsub(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1282,6 +1435,10 @@ def test_fma(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1290,15 +1447,12 @@ def test_fma(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1310,6 +1464,7 @@ def test_fma(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1321,7 +1476,13 @@ def test_fma(data):
     # ========================================
     # test bed
     # ========================================
-    c = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_fma = gtscript.stencil(
         backend=backend,
@@ -1332,7 +1493,13 @@ def test_fma(data):
 
     stencil_fma(in_a=a, in_b=b, out_c=c, f=f, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    c_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    c_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     c_val[...] = a[...] + f * b[...]
 
     compare_arrays(c, c_val)
@@ -1353,6 +1520,10 @@ def test_sts_rk2_0(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1361,15 +1532,12 @@ def test_sts_rk2_0(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     field = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1381,6 +1549,7 @@ def test_sts_rk2_0(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1392,6 +1561,7 @@ def test_sts_rk2_0(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1403,7 +1573,13 @@ def test_sts_rk2_0(data):
     # ========================================
     # test bed
     # ========================================
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_sts_rk2_0 = gtscript.stencil(
         backend=backend,
@@ -1422,7 +1598,13 @@ def test_sts_rk2_0(data):
         domain=(nx, ny, nz),
     )
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[...] = 0.5 * (field[...] + field_prv[...] + dt * tnd[...])
 
     compare_arrays(out, out_val)
@@ -1443,6 +1625,10 @@ def test_sts_rk3ws_0(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1451,15 +1637,12 @@ def test_sts_rk3ws_0(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     field = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1471,6 +1654,7 @@ def test_sts_rk3ws_0(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1482,6 +1666,7 @@ def test_sts_rk3ws_0(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1493,7 +1678,13 @@ def test_sts_rk3ws_0(data):
     # ========================================
     # test bed
     # ========================================
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_sts_rk3ws_0 = gtscript.stencil(
         backend=backend,
@@ -1512,7 +1703,13 @@ def test_sts_rk3ws_0(data):
         domain=(nx, ny, nz),
     )
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[...] = (2.0 * field[...] + field_prv[...] + dt * tnd[...]) / 3.0
 
     compare_arrays(out, out_val)
@@ -1533,6 +1730,10 @@ def test_clip(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1541,15 +1742,12 @@ def test_clip(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     field = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1560,7 +1758,13 @@ def test_clip(data):
     # ========================================
     # test bed
     # ========================================
-    out = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_clip = gtscript.stencil(
         backend=backend,
@@ -1571,7 +1775,13 @@ def test_clip(data):
 
     stencil_clip(in_field=field, out_field=out, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[field > 0] = field[field > 0]
 
     compare_arrays(out, out_val)
@@ -1592,6 +1802,10 @@ def test_iclip(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)
@@ -1600,15 +1814,12 @@ def test_iclip(data):
     )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     field = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1630,7 +1841,13 @@ def test_iclip(data):
 
     stencil_iclip(inout_field=field, origin=(0, 0, 0), domain=(nx, ny, nz))
 
-    out_val = zeros((nx, ny, nz), backend, dtype, default_origin)
+    out_val = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     out_val[field_dc > 0] = field_dc[field_dc > 0]
 
     compare_arrays(field, out_val)
@@ -1687,19 +1904,20 @@ def test_thomas_gt(data):
     # ========================================
     # random data generation
     # ========================================
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="dorigin")
+
     nx = data.draw(hyp_st.integers(min_value=1, max_value=30), label="nx")
     ny = data.draw(hyp_st.integers(min_value=1, max_value=30), label="ny")
     nz = data.draw(hyp_st.integers(min_value=2, max_value=30), label="nz")
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     a = data.draw(
         st_raw_field(
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1711,6 +1929,7 @@ def test_thomas_gt(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1723,6 +1942,7 @@ def test_thomas_gt(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1734,6 +1954,7 @@ def test_thomas_gt(data):
             shape=(nx, ny, nz),
             min_value=-1e4,
             max_value=1e4,
+            gt_powered=True,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -1744,7 +1965,13 @@ def test_thomas_gt(data):
     # ========================================
     # test bed
     # ========================================
-    x = zeros((nx, ny, nz), backend, dtype, default_origin=default_origin)
+    x = zeros(
+        (nx, ny, nz),
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     stencil_thomas = gtscript.stencil(
         backend=backend,
@@ -1763,7 +1990,13 @@ def test_thomas_gt(data):
         i = data.draw(hyp_st.integers(min_value=0, max_value=nx - 1))
         j = data.draw(hyp_st.integers(min_value=0, max_value=ny - 1))
         m = np.diag(a[i, j, 1:], -1) + np.diag(b[i, j, :]) + np.diag(c[i, j, :-1], 1)
-        d_val = zeros((1, 1, nz), backend, dtype, default_origin=default_origin)
+        d_val = zeros(
+            (1, 1, nz),
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         for k in range(nz):
             for p in range(nz):
                 d_val[0, 0, k] += m[k, p] * x_val[i, j, p]

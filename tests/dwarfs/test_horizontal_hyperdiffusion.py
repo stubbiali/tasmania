@@ -216,10 +216,18 @@ def second_order_diffusion_yz(dy, phi):
     return lap1
 
 
-def second_order_validation(phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin):
+def second_order_validation(
+    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), gt_powered=gt_powered, backend=backend, dtype=dtype, default_origin=default_origin)
+    phi_tnd = zeros(
+        (ni, nj, nk),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -337,10 +345,18 @@ def third_order_diffusion_yz(dy, phi):
     return lap2
 
 
-def third_order_validation(phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin):
+def third_order_validation(
+    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), gt_powered=gt_powered, backend=backend, dtype=dtype, default_origin=default_origin)
+    phi_tnd = zeros(
+        (ni, nj, nk),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()

@@ -46,7 +46,7 @@ from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import (
     backend as conf_backend,
-datatype as conf_dtype,
+    datatype as conf_dtype,
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
@@ -96,12 +96,48 @@ class WrappingStencil:
             "v": v,
             "su": su,
             "sv": sv,
-            "flux_s_x": zeros((mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin),
-            "flux_s_y": zeros((mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin),
-            "flux_su_x": zeros((mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin),
-            "flux_su_y": zeros((mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin),
-            "flux_sv_x": zeros((mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin),
-            "flux_sv_y": zeros((mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin),
+            "flux_s_x": zeros(
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
+            ),
+            "flux_s_y": zeros(
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
+            ),
+            "flux_su_x": zeros(
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
+            ),
+            "flux_su_y": zeros(
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
+            ),
+            "flux_sv_x": zeros(
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
+            ),
+            "flux_sv_y": zeros(
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
+            ),
         }
 
         s_tnd_on = s_tnd is not None
@@ -118,24 +154,48 @@ class WrappingStencil:
         if moist:
             stencil_args["sqv"] = sqv
             stencil_args["flux_sqv_x"] = zeros(
-                (mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
             )
             stencil_args["flux_sqv_y"] = zeros(
-                (mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
             )
             stencil_args["sqc"] = sqc
             stencil_args["flux_sqc_x"] = zeros(
-                (mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
             )
             stencil_args["flux_sqc_y"] = zeros(
-                (mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
             )
             stencil_args["sqr"] = sqr
             stencil_args["flux_sqr_x"] = zeros(
-                (mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
             )
             stencil_args["flux_sqr_y"] = zeros(
-                (mi, mj, mk), True, backend=self.backend, dtype=s.dtype, default_origin=self.default_origin
+                (mi, mj, mk),
+                True,
+                backend=self.backend,
+                dtype=s.dtype,
+                default_origin=self.default_origin,
             )
 
             if moist:
@@ -369,7 +429,7 @@ def validation_numpy(flux_scheme, domain, field, timestep, dtype):
 
 
 def validation_gt(
-        flux_scheme, domain, field, timestep, backend, dtype, default_origin, rebuild
+    flux_scheme, domain, field, timestep, backend, dtype, default_origin, rebuild
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -503,9 +563,9 @@ def validation_gt(
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -546,9 +606,9 @@ def test_upwind_numpy(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -602,9 +662,9 @@ def test_upwind_gt(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -645,9 +705,9 @@ def test_centered_numpy(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -706,9 +766,9 @@ def _test_maccormack():
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -749,9 +809,9 @@ def test_third_order_upwind_numpy(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -812,9 +872,9 @@ def test_third_order_upwind_gt(data):
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -828,8 +888,12 @@ def test_fifth_order_upwind_numpy(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(1, 20), nb=nb,
-            gt_powered=False, dtype=dtype
+            xaxis_length=(1, 20),
+            yaxis_length=(1, 20),
+            zaxis_length=(1, 20),
+            nb=nb,
+            gt_powered=False,
+            dtype=dtype,
         ),
         label="domain",
     )
@@ -837,13 +901,7 @@ def test_fifth_order_upwind_numpy(data):
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     field = data.draw(
-        st_raw_field(
-            (nx + 2, ny + 2, nz + 1),
-            -1e4,
-            1e4,
-            gt_powered=False,
-            dtype=dtype,
-        ),
+        st_raw_field((nx + 2, ny + 2, nz + 1), -1e4, 1e4, gt_powered=False, dtype=dtype),
         label="field",
     )
 
@@ -852,20 +910,14 @@ def test_fifth_order_upwind_numpy(data):
     # ========================================
     # test bed
     # ========================================
-    validation_numpy(
-        "fifth_order_upwind",
-        domain,
-        field,
-        timestep,
-        dtype,
-    )
+    validation_numpy("fifth_order_upwind", domain, field, timestep, dtype)
 
 
 @settings(
     suppress_health_check=(
-            HealthCheck.too_slow,
-            HealthCheck.data_too_large,
-            HealthCheck.filter_too_much,
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
     ),
     deadline=None,
 )
@@ -881,8 +933,13 @@ def test_fifth_order_upwind_gt(data):
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 20), yaxis_length=(1, 20), zaxis_length=(1, 20), nb=nb,
-            gt_powered=True, backend=backend, dtype=dtype
+            xaxis_length=(1, 20),
+            yaxis_length=(1, 20),
+            zaxis_length=(1, 20),
+            nb=nb,
+            gt_powered=True,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )

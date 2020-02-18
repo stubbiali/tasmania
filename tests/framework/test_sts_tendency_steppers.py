@@ -35,8 +35,12 @@ import gt4py as gt
 from tasmania.python.framework.fakes import FakeTendencyComponent
 from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper, register
 from tasmania.python.framework.sts_tendency_steppers_rk import ForwardEuler, RK2, RK3WS
-from tasmania.python.isentropic.physics.implicit_vertical_advection import IsentropicImplicitVerticalAdvectionDiagnostic
-from tasmania.python.isentropic.physics.sts_tendency_steppers import IsentropicVerticalAdvection
+from tasmania.python.isentropic.physics.implicit_vertical_advection import (
+    IsentropicImplicitVerticalAdvectionDiagnostic,
+)
+from tasmania.python.isentropic.physics.sts_tendency_steppers import (
+    IsentropicVerticalAdvection,
+)
 
 from tests.utilities import st_domain, st_one_of
 
