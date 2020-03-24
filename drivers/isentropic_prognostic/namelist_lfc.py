@@ -29,9 +29,9 @@ from sympl import DataArray
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 41
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
-nz = 60
+ny = 1
+domain_z = DataArray([380, 280], dims="potential_temperature", attrs={"units": "K"})
+nz = 45
 
 # horizontal boundary
 hb_type = "relaxed"
@@ -41,7 +41,7 @@ hb_kwargs = {"nr": 6}
 # gt4py settings
 gt_powered = True
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -57,7 +57,7 @@ gt_kwargs["backend_opts"] = (
 topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
-    "max_height": DataArray(1.0, attrs={"units": "km"}),
+    "max_height": DataArray(0.5, attrs={"units": "km"}),
     "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
@@ -65,10 +65,10 @@ topo_kwargs = {
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(22.5, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
-brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
-relative_humidity = 0.8
+brunt_vaisala = DataArray(0.015, attrs={"units": "s^-1"})
+relative_humidity = 0.95
 
 # time stepping
 time_integration_scheme = "rk3ws_si"
@@ -122,13 +122,13 @@ turbulence = True
 smagorinsky_constant = 0.18
 
 # coriolis
-coriolis = True
+coriolis = False
 coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # microphysics
 sedimentation = True
 sedimentation_flux_scheme = "second_order_upwind"
-rain_evaporation = True
+rain_evaporation = False
 autoconversion_threshold = DataArray(0.1, attrs={"units": "g kg^-1"})
 autoconversion_rate = DataArray(0.001, attrs={"units": "s^-1"})
 collection_rate = DataArray(2.2, attrs={"units": "s^-1"})
@@ -138,7 +138,7 @@ update_frequency = 0
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(1 * 60 * 60 / timestep.total_seconds())
+niter = int(2 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False

@@ -30,7 +30,7 @@ domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
 nx = 41
 domain_y = DataArray([-200, 200], dims="y", attrs={"units": "km"}).to_units("m")
 ny = 1
-domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+domain_z = DataArray([400, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
 # horizontal boundary
@@ -39,6 +39,7 @@ nb = 3
 hb_kwargs = {"nr": 6}
 
 # gt4py settings
+gt_powered = True
 gt_kwargs = {
     "backend": "gtx86",
     "build_info": None,
@@ -64,10 +65,10 @@ topo_kwargs = {
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(22.5, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
 isothermal = False
-brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
+brunt_vaisala = DataArray(0.015, attrs={"units": "s^-1"})
 temperature = DataArray(250.0, attrs={"units": "K"})
 
 # time stepping
@@ -85,11 +86,8 @@ horizontal_flux_scheme = "fifth_order_upwind"
 damp = True
 damp_type = "rayleigh"
 damp_depth = 15
-damp_max = 0.0002
+damp_max = 0.0005
 damp_at_every_stage = False
-
-# dict operator
-gt_powered = True
 
 # horizontal diffusion
 diff = False
@@ -116,14 +114,14 @@ coriolis_parameter = None  # DataArray(1e-3, attrs={'units': 'rad s^-1'})
 
 # simulation length
 timestep = timedelta(seconds=40)
-niter = int(1 * 60 * 60 / timestep.total_seconds())
+niter = int(12 * 60 * 60 / timestep.total_seconds())
 
 # output
-save = False
-save_frequency = -1
+save = True
+save_frequency = 90
 filename = (
-    "/scratch/snx3000tds/subbiali/data/prognostic-saturation-2d/isentropic_dry_{}_{}_nx{}_nz{}_dt{}_nt{}_"
-    "{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
+    "/scratch/snx3000tds/subbiali/data/pdc_paper/isentropic_dry/isentropic_dry_"
+    "{}_{}_nx{}_nz{}_dt{}_nt{}_{}_L{}_H{}_u{}_{}{}{}{}_fc_{}.nc".format(
         time_integration_scheme,
         horizontal_flux_scheme,
         nx,

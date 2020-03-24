@@ -40,7 +40,7 @@ parser.add_argument(
     "-n",
     metavar="NAMELIST",
     type=str,
-    default="namelist_lfc.py",
+    default="namelist_lfc_0.py",
     help="The namelist file.",
     dest="namelist",
 )

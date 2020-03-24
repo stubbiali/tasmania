@@ -21,33 +21,33 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-#NITER=1
-#
-#for i in $(seq 1 $NITER); do
-#  echo "python driver_namelist_fc.py"
-#  python driver_namelist_fc.py 2> /dev/null
-#  echo ""
-#
-#  echo "python driver_namelist_lfc.py"
-#  python driver_namelist_lfc.py 2> /dev/null
-#  echo ""
-#
+NITER=3
+
+for i in $(seq 1 $NITER); do
+  echo "python driver_namelist_fc.py"
+  python driver_namelist_fc.py
+  echo ""
+
+  echo "python driver_namelist_lfc.py"
+  python driver_namelist_lfc.py
+  echo ""
+
 #  echo "python driver_namelist_ps.py"
-#  python driver_namelist_ps.py 2> /dev/null
+#  python driver_namelist_ps.py
 #  echo ""
-#
+
 #  echo "python driver_namelist_sts.py"
-#  python driver_namelist_sts.py 2> /dev/null
+#  python driver_namelist_sts.py
 #  echo ""
-#
-#  echo "python driver_namelist_sus.py"
-#  python driver_namelist_sus.py 2> /dev/null
-#  echo ""
-#
-#  echo "python driver_namelist_fc.py"
-#  python driver_namelist_fc.py 2> /dev/null
-#  echo ""
-#done
+
+  echo "python driver_namelist_sus.py"
+  python driver_namelist_sus.py
+  echo ""
+
+  echo "python driver_namelist_ssus.py"
+  python driver_namelist_ssus.py
+  echo ""
+done
 
 #printf "namelist_fc_0 \n"
 #python driver_namelist_fc.py -n namelists_vertical/namelist.py
@@ -89,16 +89,16 @@
 #printf "namelist_sus_2 \n"
 #python driver_namelist_sus.py -n namelists_vertical/namelist_sus_2.py
 
-printf "\n namelist_fc_0 \n"
-python driver_namelist_fc.py -n namelists2d/namelist.py
-printf "\n namelist_fc_1 \n"
-python driver_namelist_fc.py -n namelists2d/namelist_fc_1.py
-printf "\n namelist_fc_2 \n"
-python driver_namelist_fc.py -n namelists2d/namelist_fc_2.py
-printf "\n namelist_fc_3 \n"
-python driver_namelist_fc.py -n namelists2d/namelist_fc_3.py
-printf "\n namelist_fc_4 \n"
-python driver_namelist_fc.py -n namelists2d/namelist_fc_4.py
+#printf "\n namelist_fc_0 \n"
+#python driver_namelist_fc.py -n namelists2d/namelist.py
+#printf "\n namelist_fc_1 \n"
+#python driver_namelist_fc.py -n namelists2d/namelist_fc_1.py
+#printf "\n namelist_fc_2 \n"
+#python driver_namelist_fc.py -n namelists2d/namelist_fc_2.py
+#printf "\n namelist_fc_3 \n"
+#python driver_namelist_fc.py -n namelists2d/namelist_fc_3.py
+#printf "\n namelist_fc_4 \n"
+#python driver_namelist_fc.py -n namelists2d/namelist_fc_4.py
 #printf "namelist_fc_0 \n"
 #python driver_namelist_fc.py -n namelists_vertical/namelist.py
 #printf "namelist_fc_1 \n"

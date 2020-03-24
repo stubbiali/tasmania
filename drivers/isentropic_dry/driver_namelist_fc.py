@@ -40,7 +40,7 @@ parser.add_argument(
     "-n",
     metavar="NAMELIST",
     type=str,
-    default="namelist_fc.py",
+    default="namelist_fc_0.py",
     help="The namelist file.",
     dest="namelist",
 )
@@ -66,6 +66,7 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
+    gt_powered=nl.gt_powered,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
 )
@@ -85,6 +86,7 @@ if nl.isothermal:
         nl.y_velocity,
         nl.temperature,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -99,6 +101,7 @@ else:
         nl.y_velocity,
         nl.brunt_vaisala,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -118,6 +121,7 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(cf)
@@ -131,13 +135,16 @@ if nl.diff:
         nl.diff_coeff_max,
         nl.diff_damp_depth,
         moist=False,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(diff)
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
-    turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
+    turb = taz.IsentropicSmagorinsky(
+        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append(turb)
 
 # wrap the components in a ConcurrentCoupling object
@@ -151,7 +158,12 @@ inter_tends = taz.ConcurrentCoupling(
 # component retrieving the diagnostic variables
 pt = state["air_pressure_on_interface_levels"][0, 0, 0]
 dv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
+    domain,
+    grid_type="numerical",
+    moist=False,
+    pt=pt,
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 
 # ============================================================
@@ -167,12 +179,15 @@ if nl.smooth:
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(hs)
 
     # component calculating the velocity components
-    vc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
+    vc = taz.IsentropicVelocityComponents(
+        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append(vc)
 
 if len(args) > 0:

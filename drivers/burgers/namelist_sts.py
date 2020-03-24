@@ -47,8 +47,9 @@ nb = 3
 hb_kwargs = {"core": zsof}
 
 # gt4py settings
+gt_powered = True
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtx86",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -62,9 +63,6 @@ gt_kwargs["backend_opts"] = {"verbose": True} if gt_kwargs["backend"] != "numpy"
 time_integration_scheme = "rk3ws"
 flux_scheme = "fifth_order"
 physics_time_integration_scheme = "rk2"
-
-# dict operator
-gt_powered = True
 
 # simulation time
 cfl = 1.0

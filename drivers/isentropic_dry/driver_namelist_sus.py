@@ -66,6 +66,7 @@ domain = taz.Domain(
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type=nl.topo_type,
     topography_kwargs=nl.topo_kwargs,
+    gt_powered=nl.gt_powered,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
 )
@@ -85,6 +86,7 @@ if nl.isothermal:
         nl.y_velocity,
         nl.temperature,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -99,6 +101,7 @@ else:
         nl.y_velocity,
         nl.brunt_vaisala,
         moist=False,
+        gt_powered=nl.gt_powered,
         backend=nl.gt_kwargs["backend"],
         dtype=nl.gt_kwargs["dtype"],
         default_origin=nl.gt_kwargs["default_origin"],
@@ -152,7 +155,12 @@ ptis = nl.physics_time_integration_scheme
 
 # component retrieving the diagnostic variables
 dv = taz.IsentropicDiagnostics(
-    domain, grid_type="numerical", moist=False, pt=pt, **nl.gt_kwargs
+    domain,
+    grid_type="numerical",
+    moist=False,
+    pt=pt,
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 args.append({"component": dv})
 
@@ -162,6 +170,7 @@ if nl.coriolis:
         domain,
         grid_type="numerical",
         coriolis_parameter=nl.coriolis_parameter,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(
@@ -182,10 +191,8 @@ if nl.smooth:
         nl.smooth_coeff,
         nl.smooth_coeff_max,
         nl.smooth_damp_depth,
-        moist=nl.smooth_moist,
-        smooth_moist_coeff=nl.smooth_moist_coeff,
-        smooth_moist_coeff_max=nl.smooth_moist_coeff_max,
-        smooth_moist_damp_depth=nl.smooth_moist_damp_depth,
+        moist=False,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append({"component": hs})
@@ -198,10 +205,8 @@ if nl.diff:
         nl.diff_coeff,
         nl.diff_coeff_max,
         nl.diff_damp_depth,
-        moist=nl.diff_moist,
-        diffusion_moist_coeff=nl.diff_moist_coeff,
-        diffusion_moist_coeff_max=nl.diff_moist_coeff_max,
-        diffusion_moist_damp_depth=nl.diff_moist_damp_depth,
+        moist=False,
+        gt_powered=nl.gt_powered,
         **nl.gt_kwargs
     )
     args.append(
@@ -216,7 +221,9 @@ if nl.diff:
 
 if nl.turbulence:
     # component implementing the Smagorinsky turbulence model
-    turb = taz.IsentropicSmagorinsky(domain, nl.smagorinsky_constant, **nl.gt_kwargs)
+    turb = taz.IsentropicSmagorinsky(
+        domain, nl.smagorinsky_constant, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append(
         {
             "component": turb,
@@ -229,7 +236,9 @@ if nl.turbulence:
 
 if nl.coriolis or nl.smooth or nl.diff or nl.turbulence:
     # component retrieving the velocity components
-    ivc = taz.IsentropicVelocityComponents(domain, **nl.gt_kwargs)
+    ivc = taz.IsentropicVelocityComponents(
+        domain, gt_powered=nl.gt_powered, **nl.gt_kwargs
+    )
     args.append({"component": ivc})
 
 # wrap the components in a SequentialUpdateSplitting object

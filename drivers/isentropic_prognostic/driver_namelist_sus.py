@@ -40,7 +40,7 @@ parser.add_argument(
     "-n",
     metavar="NAMELIST",
     type=str,
-    default="namelist_sus.py",
+    default="namelist_sus_1.py",
     help="The namelist file.",
     dest="namelist",
 )
@@ -502,5 +502,5 @@ if nl.save and nl.filename is not None:
 wall_time = time.time() - wall_time_start
 
 # print logs
-print("Total wall time: {}.".format(taz.get_time_string(wall_time)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time)))
+print("Total wall time: {}.".format(taz.get_time_string(wall_time, False)))
+print("Compute time: {}.".format(taz.get_time_string(compute_time, True)))

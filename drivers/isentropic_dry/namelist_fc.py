@@ -26,12 +26,12 @@ from sympl import DataArray
 
 
 # computational domain
-domain_x = DataArray([-220, 220], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 51
-domain_y = DataArray([-200, 200], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 1
-domain_z = DataArray([765, 300], dims="potential_temperature", attrs={"units": "K"})
-nz = 300
+domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
+nx = 41
+domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
+ny = 41
+domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
+nz = 60
 
 # horizontal boundary
 hb_type = "relaxed"
@@ -39,8 +39,9 @@ nb = 3
 hb_kwargs = {"nr": 6}
 
 # gt4py settings
+gt_powered = False
 gt_kwargs = {
-    "backend": "numpy",
+    "backend": "gtcuda",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,
@@ -57,15 +58,17 @@ topo_type = "gaussian"
 topo_kwargs = {
     "time": timedelta(seconds=1800),
     "max_height": DataArray(1.0, attrs={"units": "m"}),
-    "width_x": DataArray(10.0, attrs={"units": "km"}),
+    "width_x": DataArray(50.0, attrs={"units": "km"}),
     "width_y": DataArray(50.0, attrs={"units": "km"}),
     "smooth": False,
 }
 
 # initial conditions
 init_time = datetime(year=1992, month=2, day=20, hour=0)
-x_velocity = DataArray(10.0, attrs={"units": "m s^-1"})
+x_velocity = DataArray(15.0, attrs={"units": "m s^-1"})
 y_velocity = DataArray(0.0, attrs={"units": "m s^-1"})
+isothermal = False
+brunt_vaisala = DataArray(0.01, attrs={"units": "s^-1"})
 temperature = DataArray(250.0, attrs={"units": "K"})
 
 # time stepping
@@ -80,14 +83,11 @@ c = 0.25
 horizontal_flux_scheme = "fifth_order_upwind"
 
 # damping
-damp = True
+damp = False
 damp_type = "rayleigh"
-damp_depth = 150
-damp_max = 0.05
+damp_depth = 15
+damp_max = 0.0002
 damp_at_every_stage = False
-
-# dict operator
-gt_powered = True
 
 # horizontal diffusion
 diff = False
@@ -102,26 +102,24 @@ diff_moist_coeff_max = DataArray(0.12, attrs={"units": "s^-1"})
 diff_moist_damp_depth = 0
 
 # horizontal smoothing
-smooth = False
+smooth = True
 smooth_type = "second_order"
 smooth_coeff = 1.0
 smooth_coeff_max = 1.0
 smooth_damp_depth = 0
 smooth_at_every_stage = False
-smooth_moist = False
-smooth_moist_type = "second_order"
-smooth_moist_coeff = 0.12
-smooth_moist_coeff_max = 0.12
-smooth_moist_damp_depth = 0
-smooth_moist_at_every_stage = False
 
 # turbulence
 turbulence = True
 smagorinsky_constant = 0.18
 
+# coriolis
+coriolis = True
+coriolis_parameter = None
+
 # simulation length
-timestep = timedelta(seconds=16)
-niter = int(6 * 10 ** 4 / timestep.total_seconds())
+timestep = timedelta(seconds=40)
+niter = int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False

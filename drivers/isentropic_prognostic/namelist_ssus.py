@@ -27,9 +27,9 @@ from sympl import DataArray
 
 # computational domain
 domain_x = DataArray([-176, 176], dims="x", attrs={"units": "km"}).to_units("m")
-nx = 41
+nx = 161
 domain_y = DataArray([-176, 176], dims="y", attrs={"units": "km"}).to_units("m")
-ny = 41
+ny = 161
 domain_z = DataArray([340, 280], dims="potential_temperature", attrs={"units": "K"})
 nz = 60
 
@@ -39,7 +39,7 @@ nb = 3
 hb_kwargs = {"nr": 6}
 
 # gt4py settings
-gt_powered = False
+gt_powered = True
 gt_kwargs = {
     "backend": "gtx86",
     "build_info": None,
@@ -138,8 +138,8 @@ saturation_rate = DataArray(0.025, attrs={"units": "s^-1"})
 update_frequency = 0
 
 # simulation length
-timestep = timedelta(seconds=40)
-niter = int(0.5 * 60 * 60 / timestep.total_seconds())
+timestep = timedelta(seconds=10)
+niter = 10  # int(1 * 60 * 60 / timestep.total_seconds())
 
 # output
 save = False
@@ -188,5 +188,5 @@ store_names = (
     "y_momentum_isentropic",
     "y_velocity_at_v_locations",
 )
-print_dry_frequency = 1
-print_moist_frequency = 1
+print_dry_frequency = -1
+print_moist_frequency = -1
