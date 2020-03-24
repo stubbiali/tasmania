@@ -16,7 +16,7 @@ IMAGE_TAG=master  # options: develop
 VENV=py36  # options: py35, py36, py37
 TASMANIA_ROOT=/project/s299/subbiali/tasmania  # options: tasmania, tasmania-develop, tasmania-restyling
 SCRIPT_DIR=drivers/isentropic_moist_si  # options: any directory under TASMANIA_ROOT
-SCRIPT_NAME=run_ssus.sh  # options: any bash script under TASMANIA_ROOT/SCRIPT_DIR
+SCRIPT_NAME=run_ssus_0.sh  # options: any bash script under TASMANIA_ROOT/SCRIPT_DIR
 
 #==================================================
 # Code
