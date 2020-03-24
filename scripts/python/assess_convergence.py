@@ -2,7 +2,7 @@
 #
 # Tasmania
 #
-# Copyright (c) 2018-2019, ETH Zurich
+# Copyright (c) 2012-2019, ETH Zurich
 # All rights reserved.
 #
 # This file is part of the Tasmania project. Tasmania is free software:
@@ -29,83 +29,83 @@ import tasmania as taz
 field_name = "precipitation"
 field_units = "mm hr^-1"
 
-prefix = "../../data/pdc-paper/"
+prefix = "../../data/pdc_paper/isentropic_prognostic/"
 
 reference_dataset = {
     "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx2561_ny1_nz60_"
-    "dt0_nt28800_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+    "dt0_nt28800_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
     "xslice": slice(960, 1601),
     "yslice": slice(0, 1),
     "zslice": slice(0, 1),
-    "tlevel": -2,
+    "tlevel": 13,
 }
 
 datasets = (
     {
         "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx41_ny1_nz60_"
-        "dt40_nt450_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "dt40_nt450_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
         "xslice": slice(15, 26),
         "yslice": slice(0, 1),
         "zslice": slice(0, 1),
         "xsampling": 64,
         "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -2,
+        "tlevel": 13,
     },
     {
         "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx81_ny1_nz60_"
-        "dt20_nt900_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "dt20_nt900_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
         "xslice": slice(30, 51),
         "yslice": slice(0, 1),
         "zslice": slice(0, 1),
         "xsampling": 32,
         "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -2,
+        "tlevel": 13,
     },
     {
         "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx161_ny1_nz60_"
-        "dt10_nt1800_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "dt10_nt1800_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
         "xslice": slice(60, 101),
         "yslice": slice(0, 1),
         "zslice": slice(0, 1),
         "xsampling": 16,
         "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -2,
+        "tlevel": 13,
     },
     {
         "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx321_ny1_nz60_"
-        "dt5_nt3600_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "dt5_nt3600_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
         "xslice": slice(120, 201),
         "yslice": slice(0, 1),
         "zslice": slice(0, 1),
         "xsampling": 8,
         "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -2,
+        "tlevel": 13,
     },
     {
         "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx641_ny1_nz60_"
-        "dt2_nt7200_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "dt2_nt7200_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
         "xslice": slice(240, 401),
         "yslice": slice(0, 1),
         "zslice": slice(0, 1),
         "xsampling": 4,
         "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -2,
+        "tlevel": 13,
     },
     {
         "filename": "isentropic_moist_rk3ws_si_fifth_order_upwind_rk2_nx1281_ny1_nz60_"
-        "dt1_nt14400_gaussian_L50000_H1000_u15_rh80_lh_smooth_turb_sed_ssus_gtx86.nc",
+        "dt1_nt14400_gaussian_L50000_H500_u22_rh95_lh_smooth_turb_sed_ssus_gtx86.nc",
         "xslice": slice(480, 801),
         "yslice": slice(0, 1),
         "zslice": slice(0, 1),
         "xsampling": 2,
         "ysampling": 1,
         "zsampling": 1,
-        "tlevel": -2,
+        "tlevel": 13,
     },
 )
 

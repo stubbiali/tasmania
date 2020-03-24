@@ -1,0 +1,37 @@
+{
+	"plots": [
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/burgers/convergence/plot_0.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/burgers/convergence/plot_1.json"
+		}
+	],
+	"tlevels": [-1, -1],
+	"nrows": 1,
+	"ncols": 2,
+	"print_time": null,
+	"init_time": {
+		"year": 1992,
+		"month": 2,
+		"day": 20,
+		"hour": 0
+	},
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [10.5, 6.25],
+		"tight_layout": true,
+		"tight_layout_rect": [0, 0.06, 1, 1],
+		"suptitle": null,
+		"figlegend_on": true,
+		"figlegend_ax": 0,
+		"figlegend_loc": [0.135, 0.01],
+		"figlegend_framealpha": 1.0,
+		"figlegend_ncol": 6
+	},
+	"save_dest": null
+}

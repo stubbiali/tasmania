@@ -1,0 +1,21 @@
+{
+	"field_name": "rmsd_of_x_velocity",
+	"field_units": "m s^-1",
+  	"x": 0,
+	"y": 0,
+	"z": 0,
+	"xdata": [1.0, 2.0, 3.0, 4.0],
+	"ydata": null,
+	"drawer_properties": {
+		"fontsize": 16,
+		"linestyle": "-",
+		"linewidth": 1.5,
+		"linecolor": "cyan",
+		"marker": "<",
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markerfacecolor": "cyan",
+		"markeredgecolor": "cyan",
+		"legend_label": "SUS"
+	}
+}

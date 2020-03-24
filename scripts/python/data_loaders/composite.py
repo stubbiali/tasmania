@@ -24,9 +24,10 @@ import json
 import numpy as np
 from sympl import DataArray
 from tasmania import Grid, taz_types
-from typing import List
+from typing import List, Tuple
 
 from scripts.python.data_loaders.base import BaseLoader
+from scripts.python.data_loaders.diff import RMSDLoader
 
 
 class CompositeLoader(BaseLoader):
@@ -140,3 +141,37 @@ class PolynomialInterpolationLoader(BaseLoader):
         )
 
         return return_state
+
+
+class EOCLoader(BaseLoader):
+    def __init__(self, json_filename: str) -> None:
+        with open(json_filename, "r") as json_file:
+            data = json.load(json_file)
+
+            self.loader_c = RMSDLoader(data["config_coarse"])
+            self.loader_f = RMSDLoader(data["config_fine"])
+
+    def get_grid(self) -> Grid:
+        return self.loader_f.get_grid()
+
+    def get_nt(self) -> int:
+        return self.loader_f.get_nt()
+
+    def get_initial_time(self) -> taz_types.datetime_t:
+        return self.loader_f.get_initial_time()
+
+    def get_state(self, tlevel) -> taz_types.dataarray_dict_t:
+        state_c = self.loader_c.get_state(tlevel)
+        state_f = self.loader_f.get_state(tlevel)
+
+        fname = self.loader_f.fname
+        funits = self.loader_f.funits
+
+        eoc = np.log2(
+            state_c["rmsd_of_" + fname].to_units(funits).values[0, 0, 0]
+            / state_f["rmsd_of_" + fname].values[0, 0, 0])
+        state_f["eoc_of_" + fname] = DataArray(
+            np.array(eoc)[np.newaxis, np.newaxis, np.newaxis], attrs={"units": "1"}
+        )
+
+        return state_f

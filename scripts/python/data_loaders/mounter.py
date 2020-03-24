@@ -25,22 +25,38 @@ from tasmania import Grid, load_netcdf_dataset, taz_types
 
 class DatasetMounter:
     ledger = {}
+    order = {}
 
     def __new__(cls, filename: str) -> "DatasetMounter":
         if filename not in DatasetMounter.ledger:
             DatasetMounter.ledger[filename] = super().__new__(cls)
-            print("New instance of DatasetMounter created.")
+            DatasetMounter.order[filename] = len(DatasetMounter.ledger)
+            print(
+                "Instance #{:03d} of DatasetMounter: created.".format(
+                    DatasetMounter.order[filename]
+                )
+            )
         return DatasetMounter.ledger[filename]
 
     def __init__(self, filename: str) -> None:
         if not hasattr(self, "mounted"):
             self.fname = filename
             domain, grid_type, self.states = load_netcdf_dataset(filename)
-            print("  Dataset mounted.")
+            print(
+                "Instance #{:03d} of DatasetMounter: dataset mounted.".format(
+                    DatasetMounter.order[filename]
+                )
+            )
             self.grid = (
                 domain.physical_grid if grid_type == "physical" else domain.numerical_grid
             )
             self.mounted = True  # tag
+        else:
+            print(
+                "Instance #{:03d} of DatasetMounter: dataset already mounted.".format(
+                    DatasetMounter.order[filename]
+                )
+            )
 
     def get_grid(self) -> Grid:
         return self.grid

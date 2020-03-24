@@ -1,0 +1,38 @@
+{
+	"field_name": "diff_of_precipitation",
+	"field_units": "mm hr^-1",
+	"x": null,
+	"y": 0,
+	"z": 0,
+	"axis_name": "x",
+	"axis_units": "km",
+	"axis_x": null,
+	"axis_y": null,
+	"axis_z": null,
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "minutes",
+	"drawer_properties": {
+		"fontsize": 14,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"field_bias": 0.0,
+		"field_factor": 1.0,
+		"cmap_name": "RdBu_r",
+		"cbar_on": true,
+		"cbar_levels": 22,
+		"cbar_ticks_step": 10,
+		"cbar_ticks_pos": "center",
+		"cbar_center": 0.0,
+		"cbar_half_width": 0.105,
+		"cbar_x_label": "SSUS$-$SUS precipitation [mm hr$^{-1}$]",
+		"cbar_y_level": "",
+		"cbar_title": "",
+		"cbar_orientation": "horizontal",
+		"cbar_ax": 1,
+		"cbar_extend": true,
+		"draw_vertical_levels": false
+	}
+}

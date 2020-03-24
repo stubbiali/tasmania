@@ -1,0 +1,18 @@
+{
+	"filename": "../../data/pdc_paper/burgers/burgers_sts_gtcuda_0.nc",
+	"field_name": "x_velocity",
+	"field_units": "m s^-1",
+  	"diffusion_coefficient_value": 0.1,
+	"diffusion_coefficient_units": "m^2 s^-1",
+	"time": {
+		"year": 1992,
+		"month": 2,
+		"day": 20,
+		"hour": 0,
+		"minute": 0,
+		"second": 0,
+		"microsecond": 768000
+	},
+	"x": [0, 11, null],
+	"y": [0, 11, null]
+}

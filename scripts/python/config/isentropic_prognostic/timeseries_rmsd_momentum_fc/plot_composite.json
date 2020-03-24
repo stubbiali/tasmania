@@ -1,0 +1,37 @@
+{
+	"plots": [
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_prognostic/timeseries_rmsd_momentum_fc/plot_1.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_prognostic/timeseries_rmsd_momentum_fc/plot_3.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_prognostic/timeseries_rmsd_momentum_fc/plot_5.json"
+		}
+	],
+	"tlevels": 18,
+	"nrows": 1,
+	"ncols": 3,
+	"print_time": null,
+	"init_time": {
+		"year": 1992,
+		"month": 2,
+		"day": 20,
+		"hour": 0
+	},
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [12.5, 5.75],
+		"tight_layout": true,
+		"tight_layout_rect": null,
+		"suptitle": null
+	},
+	"save_dest": null
+}

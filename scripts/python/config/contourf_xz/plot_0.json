@@ -17,10 +17,10 @@
 			"loader_config": "config/contourf_xz/loader_0.json"
 		}
 	],
-	"tlevels": 18,
+	"tlevels": -1,
 	"figure_properties": {
 		"fontsize": 16,
-		"figsize": [6, 6.5],
+		"figsize": [6, 7],
 		"tight_layout": true,
 		"tight_layout_rect": null
 	},
@@ -41,10 +41,10 @@
 		"xaxis_visible": true,
 		"y_label": "$z$ [km]",
 		"y_labelcolor": "",
-		"y_lim": [0, 15],
+		"y_lim": [0, 8],
 		"invert_yaxis": false,
 		"y_scale": null,
-		"y_ticks": [0, 3, 6, 9, 12, 15],
+		"y_ticks": [0, 2, 4, 6, 8],
 		"y_ticklabels": null,
 		"y_tickcolor": "",
 		"yaxis_minor_ticks_visible": false,

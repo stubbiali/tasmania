@@ -1,0 +1,82 @@
+{
+	"plots": [
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_00.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_01.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_02.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_03.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_10.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_11.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_12.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_13.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_20.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_21.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_22.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_dry/contourf/plot_23.json"
+		}
+	],
+	"tlevels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+	"nrows": 3,
+	"ncols": 4,
+	"print_time": null,
+	"init_time": {
+		"year": 1992,
+		"month": 2,
+		"day": 20,
+		"hour": 0
+	},
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [12.5, 9],
+		"tight_layout": true,
+		"tight_layout_rect": null,
+		"suptitle": null
+	},
+	"save_dest": "/Users/subbiali/Desktop/phd/manuscripts/pdc_paper/img/isentropic_dry/bv15/contourf.eps"
+}

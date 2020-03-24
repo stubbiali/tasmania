@@ -27,23 +27,32 @@ import matplotlib.pyplot as plt
 # ==================================================
 # User inputs
 # ==================================================
-values = [
-    [1377, 1020, 1235, 1275, 1230, 1620, 1360],
-    [122, 68, 101, 96, 96, 153, 115],
-    [111, 60, 96, 91, 93, 153, 115],
-]
+values = np.array(
+    [
+        [664.38, 541.38, 616.82, 752.5],
+        [843.86, 713.04, 793.45, 931.89],
+        [24.73, 19.45, 25.36, 35.33],
+        [19.25, 16.91, 21.20, 28.36],
+        [6.19, 5.33, 7.97, 11.3],
+    ]
+)
+values = values[2:, :]
+group_dim = 0  # values belonging to the same group of bars
+color_dim = 1  # values represented with the same color
 
-colors = ["darkviolet", "royalblue", "gold"]
+colors = ["orange", "red", "blue", "cyan", "green"]
+colors = colors[2:]
 
-edgecolors = ["black"] * 3
+edgecolors = ["black"] * 5
 
-labels = ["numpy", "gtx86", "gtmc"]
+labels = ["numpy", "gt-numpy", "gt-x86", "gt-mc", "gt-cuda"]
+labels = labels[2:]
 
 bar_width = 0.2
 
 figure_properties = {
     "fontsize": 15,
-    "figsize": (7, 7),
+    "figsize": (7, 6),
     "tight_layout": True,
     "tight_layout_rect": None,
 }
@@ -52,12 +61,12 @@ axes_properties = {
     "fontsize": 15,
     "x_label": "",
     "x_labelcolor": "black",
-    "x_lim": [-0.3, 6.9],
+    "x_lim": [-0.3, 4.7],
     "invert_xaxis": False,
     "x_scale": None,
     # "x_ticks": [0.25, 1.25, 2.25, 3.25, 4.25, 5.25, 6.25],
-    "x_ticks": [0.3, 1.3, 2.3, 3.3, 4.3, 5.3, 6.3],
-    "x_ticklabels": ["FC", "LFC", "PS", "STS", "SUS", "SSUS", "SSUS-FE"],
+    "x_ticks": [0.4, 1.6, 2.8, 4.0],
+    "x_ticklabels": ["FC", "LFC", "SUS", "SSUS"],
     "x_ticklabels_rotation": 25,
     "x_tickcolor": "black",
     "xaxis_minor_ticks_visible": False,
@@ -65,11 +74,11 @@ axes_properties = {
     # y-axis
     "y_label": "Run time [s]",
     "y_labelcolor": "black",
-    "y_lim": [0, 1800],
+    "y_lim": [0, 40],
     "invert_yaxis": False,
     "y_scale": None,
-    "y_ticks": [150, 450, 750, 1050, 1350, 1650],
-    "y_ticklabels": [150, 450, 750, 1050, 1350, 1650],
+    "y_ticks": None,
+    "y_ticklabels": None,
     "y_ticklabels_color": "black",
     "yaxis_minor_ticks_visible": False,
     "yaxis_visible": True,
@@ -101,20 +110,31 @@ axes_properties = {
 # ==================================================
 # Code
 # ==================================================
-x = range(len(values[0]))
+bars_per_group = values.shape[group_dim]
+bars_per_color = values.shape[color_dim]
+
+ticks_distance = bar_width * (bars_per_group + 1)
+ticks = np.linspace(0, (bars_per_color - 1) * ticks_distance, bars_per_color)
 
 fig, ax = taz.get_figure_and_axes(**figure_properties)
 
-for i in range(len(values)):
+for i in range(bars_per_group):
     ax.bar(
-        [elx + i * bar_width for elx in x],
-        values[i],
+        [elx + i * bar_width for elx in ticks],
+        values[i, :] if color_dim == 1 else values[:, i],
         bar_width,
         color=colors[i],
         edgecolor=edgecolors[i],
         label=labels[i],
     )
 
+axes_properties["x_lim"] = (
+    ticks[0] - 1.5 * bar_width,
+    ticks[-1] + (bars_per_group + 0.5) * bar_width,
+)
+axes_properties["x_ticks"] = tuple(
+    tick + (bars_per_group / 2.0 - 0.5) * bar_width for tick in ticks
+)
 taz.set_axes_properties(ax, **axes_properties)
 taz.set_figure_properties(fig, **figure_properties)
 

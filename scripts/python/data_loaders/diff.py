@@ -20,10 +20,11 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from datetime import datetime
 import json
 import numpy as np
 from sympl import DataArray
-from tasmania import Grid, get_dataarray_3d, taz_types
+from tasmania import Grid, ZhaoSolutionFactory, get_dataarray_3d, taz_types
 
 from scripts.python.data_loaders.base import BaseLoader
 from scripts.python.data_loaders.mounter import DatasetMounter
@@ -246,61 +247,45 @@ class RMSDVelocityLoader(RMSDLoader):
                 state1["x_momentum"].to_units("kg m^-2 s^-1").values
                 / state1["air_density"].to_units("kg m^-3").values
             )
-            state1["x_velocity"] = get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state1["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state1["y_momentum"].to_units("kg m^-2 s^-1").values
                 / state1["air_density"].to_units("kg m^-3").values
             )
-            state1["y_velocity"] = get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state1["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
 
             u = (
                 state2["x_momentum"].to_units("kg m^-2 s^-1").values
                 / state2["air_density"].to_units("kg m^-3").values
             )
-            state2["x_velocity"] = get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state2["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state2["y_momentum"].to_units("kg m^-2 s^-1").values
                 / state2["air_density"].to_units("kg m^-3").values
             )
-            state2["y_velocity"] = get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state2["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
         except KeyError:
             u = (
                 state1["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state1["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state1["x_velocity"] = get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state1["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state1["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state1["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state1["y_velocity"] = get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state1["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
 
             u = (
                 state2["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state2["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state2["x_velocity"] = get_dataarray_3d(
-                u, self.get_grid(), "m s^-1"
-            )
+            state2["x_velocity"] = get_dataarray_3d(u, self.get_grid(), "m s^-1")
             v = (
                 state2["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
                 / state2["air_isentropic_density"].to_units("kg m^-2 K^-1").values
             )
-            state2["y_velocity"] = get_dataarray_3d(
-                v, self.get_grid(), "m s^-1"
-            )
+            state2["y_velocity"] = get_dataarray_3d(v, self.get_grid(), "m s^-1")
 
         field1 = state1[fname].to_units(funits).values[x1, y1, z1]
         field2 = state2[fname].to_units(funits).values[x2, y2, z2]
@@ -310,6 +295,70 @@ class RMSDVelocityLoader(RMSDLoader):
         )
 
         return state1
+
+
+class RMSDBurgersLoader(BaseLoader):
+    def __init__(self, json_filename: str) -> None:
+        with open(json_filename, "r") as json_file:
+            data = json.load(json_file)
+
+            filename = "".join(data["filename"])
+            self.dsmounter = DatasetMounter(filename)
+
+            self.fname = data["field_name"]
+            self.funits = data["field_units"]
+            self.eps = DataArray(
+                data["diffusion_coefficient_value"],
+                attrs={"units": data["diffusion_coefficient_units"]},
+            )
+
+            assert self.fname in ("x_velocity", "y_velocity")
+
+            self.time = datetime(
+                year=data["time"]["year"],
+                month=data["time"]["month"],
+                day=data["time"]["day"],
+                minute=data["time"].get("minute", 0),
+                second=data["time"].get("second", 0),
+                microsecond=data["time"].get("microsecond", 0),
+            )
+
+            start, stop, step = data["x"]
+            self.x = None if start == stop == step is None else slice(start, stop, step)
+            start, stop, step = data["y"]
+            self.y = None if start == stop == step is None else slice(start, stop, step)
+
+    def get_grid(self) -> Grid:
+        return self.dsmounter.get_grid()
+
+    def get_nt(self) -> int:
+        return self.dsmounter.get_nt()
+
+    def get_initial_time(self) -> taz_types.datetime_t:
+        return self.dsmounter.get_state(0)["time"]
+
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+        tlevel = self.dsmounter.get_nt() + tlevel if tlevel < 0 else tlevel
+        state = self.dsmounter.get_state(tlevel)
+        field = state[self.fname].to_units(self.funits).values[self.x, self.y]
+
+        zsf = ZhaoSolutionFactory(self.get_initial_time(), self.eps)
+        rfield = zsf(
+            self.time,
+            self.get_grid(),
+            slice_x=self.x,
+            slice_y=self.y,
+            field_name=self.fname,
+            field_units=self.funits,
+        )
+
+        raw_rmsd = np.linalg.norm(field[:, :, 0] - rfield[:, :, 0]) / np.sqrt(field.size)
+        state["rmsd_of_" + self.fname] = DataArray(
+            np.array(raw_rmsd)[np.newaxis, np.newaxis, np.newaxis],
+            attrs={"units": self.funits},
+        )
+
+        return state
 
 
 class RRMSDLoader(BaseLoader):

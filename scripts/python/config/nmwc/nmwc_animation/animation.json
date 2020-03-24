@@ -1,0 +1,14 @@
+{
+	"artist": {
+		"wrapper_module": "make_plot",
+		"wrapper_classname": "PlotWrapper",
+		"wrapper_config": "config/nmwc_animation/plot.json"
+	},
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"tlevels": [0, 433, 1],
+	"print_time": "elapsed",
+	"fps": 15,
+	"save_dest": "/Users/subbiali/Desktop/phd/teaching/2020SS/nmwc/animation/animation.mp4"
+}
