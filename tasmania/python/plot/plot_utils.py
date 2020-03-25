@@ -25,6 +25,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 from typing import Optional, Sequence, Tuple
 
@@ -234,19 +235,74 @@ def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
         fit into. Defaults to (0, 0, 1, 1).
     suptitle : str
         The figure title. Defaults to an empty string.
+    xlabel : str
+        TODO
+    ylabel : str
+        TODO
+    figlegend_on : bool
+        TODO
+    figlegend_ax : int
+        TODO
+    figlegend_loc : `str` or `Tuple[float, float]`
+        TODO
+    figlegend_framealpha : float
+        TODO
+    figlegend_ncol : int
+        TODO
+    subplots_adjust_hspace : float
+        TODO
+    subplots_adjust_vspace : float
+        TODO
     """
     fontsize = kwargs.get("fontsize", 12)
     tight_layout = kwargs.get("tight_layout", True)
     tight_layout_rect = kwargs.get("tight_layout_rect", (0, 0, 1, 1))
     suptitle = kwargs.get("suptitle", "")
+    x_label = kwargs.get("x_label", "")
+    x_labelpad = kwargs.get("x_labelpad", 20)
+    y_label = kwargs.get("y_label", "")
+    y_labelpad = kwargs.get("y_labelpad", 20)
+    figlegend_on = kwargs.get("figlegend_on", False)
+    figlegend_ax = kwargs.get("figlegend_ax", 0)
+    figlegend_loc = kwargs.get("figlegend_loc", "lower center")
+    figlegend_framealpha = kwargs.get("figlegend_framealpha", 1.0)
+    figlegend_ncol = kwargs.get("figlegend_ncol", 1)
+    wspace = kwargs.get("subplots_adjust_wspace", None)
+    hspace = kwargs.get("subplots_adjust_hspace", None)
 
     rcParams["font.size"] = fontsize
+
+    if suptitle is not None and suptitle != "":
+        fig.suptitle(suptitle, fontsize=fontsize + 1)
+
+    if x_label != "" or y_label != "":
+        ax = fig.add_subplot(111)
+        ax.set_frame_on(False)
+        ax.set_xticks([])
+        ax.set_xticklabels([], visible=False)
+        ax.set_yticks([])
+        ax.set_yticklabels([], visible=False)
+
+        if x_label != "":
+            ax.set_xlabel(x_label, labelpad=x_labelpad)
+        if y_label != "":
+            ax.set_ylabel(y_label, labelpad=y_labelpad)
 
     if tight_layout:
         fig.tight_layout(rect=tight_layout_rect)
 
-    if suptitle is not None and suptitle != "":
-        fig.suptitle(suptitle, fontsize=fontsize + 1)
+    if figlegend_on:
+        handles, labels = fig.get_axes()[figlegend_ax].get_legend_handles_labels()
+        fig.legend(
+            handles,
+            labels,
+            loc=figlegend_loc,
+            framealpha=figlegend_framealpha,
+            ncol=figlegend_ncol,
+        )
+
+    # fig.subplots_adjust(wspace=wspace, hspace=hspace)
+    # fig.subplots_adjust(wspace=0.1)
 
 
 def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
@@ -386,6 +442,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     x_ticklabels = kwargs.get("x_ticklabels", None)
     x_ticklabels_color = kwargs.get("x_ticklabels_color", "black")
     x_ticklabels_rotation = kwargs.get("x_ticklabels_rotation", 0)
+    x_tickformat = kwargs.get("x_tickformat", None)
     xaxis_minor_ticks_visible = kwargs.get("xaxis_minor_ticks_visible", False)
     xaxis_visible = kwargs.get("xaxis_visible", True)
     # y-axis
@@ -398,6 +455,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     y_ticklabels = kwargs.get("y_ticklabels", None)
     y_ticklabels_color = kwargs.get("y_ticklabels_color", "black")
     y_ticklabels_rotation = kwargs.get("y_ticklabels_rotation", 0)
+    y_tickformat = kwargs.get("y_tickformat", None)
     yaxis_minor_ticks_visible = kwargs.get("yaxis_minor_ticks_visible", False)
     yaxis_visible = kwargs.get("yaxis_visible", True)
     # z-axis
@@ -410,6 +468,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     z_ticklabels = kwargs.get("z_ticklabels", None)
     z_ticklabels_color = kwargs.get("z_ticklabels_color", "black")
     z_ticklabels_rotation = kwargs.get("z_ticklabels_rotation", None)
+    z_tickformat = kwargs.get("z_tickformat", None)
     zaxis_minor_ticks_visible = kwargs.get("zaxis_minor_ticks_visible", False)
     zaxis_visible = kwargs.get("zaxis_visible", True)
     # legend
@@ -418,6 +477,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     legend_bbox_to_anchor = kwargs.get("legend_bbox_to_anchor", None)
     legend_framealpha = kwargs.get("legend_framealpha", 0.5)
     legend_ncol = kwargs.get("legend_ncol", 1)
+    legend_fontsize = kwargs.get("legend_fontsize", fontsize)
     # textbox
     text = kwargs.get("text", None)
     text_loc = kwargs.get("text_loc", "")
@@ -605,20 +665,15 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
             RuntimeWarning,
         )
 
+    # axes tick format
+    if x_tickformat is not None:
+        ax.xaxis.set_major_formatter(FormatStrFormatter(x_tickformat))
+    if y_tickformat is not None:
+        ax.yaxis.set_major_formatter(FormatStrFormatter(y_tickformat))
+
     # axes tick labels rotation
-    # ax.set_xticklabels(ax.get_xticklabels(), rotation=x_ticklabels_rotation)
-    # ax.set_yticklabels(ax.get_yticklabels(), rotation=y_ticklabels_rotation)
-    # try:
-    #     if z_ticklabels_rotation is not None:
-    #         ax.set_zticklabels(ax.get_zticklabels(), rotation=z_ticklabels_rotation)
-    # except AttributeError:
-    #     import warnings
-    #
-    #     warnings.warn(
-    #         "The plot is not three-dimensional, therefore the "
-    #         "argument ''z_ticklabels_rotation'' is disregarded.",
-    #         RuntimeWarning,
-    #     )
+    plt.xticks(rotation=x_ticklabels_rotation)
+    plt.yticks(rotation=y_ticklabels_rotation)
 
     # unlabelled axes ticks
     if not xaxis_minor_ticks_visible:
@@ -660,12 +715,18 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     # legend
     if legend_on:
         if legend_bbox_to_anchor is None:
-            ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
+            ax.legend(
+                loc=legend_loc,
+                framealpha=legend_framealpha,
+                ncol=legend_ncol,
+                fontsize=legend_fontsize,
+            )
         else:
             ax.legend(
                 loc=legend_loc,
                 framealpha=legend_framealpha,
                 ncol=legend_ncol,
+                fontsize=legend_fontsize,
                 bbox_to_anchor=legend_bbox_to_anchor,
             )
 
@@ -702,6 +763,7 @@ def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
             ax2.get_xaxis().set_tick_params(which="minor", width=0)
         if not x2axis_visible:
             ax2.get_xaxis().set_visible(False)
+        # plt.ticklabel_format(axis="x", style="sci", scilimits=(-5, -5))
 
         # y2-axis
         if y2_label != "":
@@ -830,22 +892,24 @@ def set_colorbar(
         Format for colorbar tick labels.
     """
     if cbar_ax is None:
-        cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+        cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
     else:
         try:
             axes = fig.get_axes()
-            cb = plt.colorbar(
+            cb = fig.colorbar(
                 mappable,
                 orientation=cbar_orientation,
                 format=cbar_format,
-                ax=[axes[i] for i in cbar_ax],
+                ax=axes[cbar_ax]
+                if isinstance(cbar_ax, int)
+                else [axes[i] for i in cbar_ax],
             )
         except TypeError:
             # cbar_ax is not iterable
-            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+            cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
         except IndexError:
             # cbar_ax contains an index which exceeds the number of axes in the figure
-            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+            cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 
     cb.ax.set_title(cbar_title)
     cb.ax.set_xlabel(cbar_x_label)
@@ -1170,6 +1234,8 @@ def make_contourf(
         cm = reverse_colormap(plt.get_cmap("RdYlBu"), "BuYlRd")
     elif cmap_name == "CMRmap_r":
         cm = reverse_colormap(plt.get_cmap("CMRmap"), "CMRmap_r")
+    elif cmap_name == "Spectral_r":
+        cm = reverse_colormap(plt.get_cmap("Spectral"), "Spectral_r")
     else:
         cm = plt.get_cmap(cmap_name)
 

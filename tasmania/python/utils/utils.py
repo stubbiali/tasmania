@@ -266,7 +266,7 @@ def feed_module(target, source, exclude_paths=None):
 
     for symbol_name in missing_symbol_names:
         symbol_value = get_symbol(symbol_name, source_symbols)
-        assert symbol_value is not None
+        # assert symbol_value is not None
 
         print(
             "Symbol '{symbol_name}' added to the module '{module_name}'.".format(
