@@ -79,8 +79,8 @@ def get_grid_shape(name, nx, ny, nz):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_copy(data):
+@given(data=hyp_st.data())
+def test_copy(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -134,7 +134,8 @@ def test_copy(data):
     dst_dc = deepcopy_dataarray_dict(dst)
     op.copy(dst, src, unshared_variables_in_output=False)
     for key in shared_keys:
-        compare_dataarrays(dst[key], src[key].to_units(dst[key].attrs["units"]))
+        with subtests.test(key=key):
+            compare_dataarrays(dst[key], src[key].to_units(dst[key].attrs["units"]))
     assert len(dst) == len(dst_dc)
 
     #
@@ -143,9 +144,11 @@ def test_copy(data):
     dst_dcdc = deepcopy_dataarray_dict(dst_dc)
     op.copy(dst_dc, src, unshared_variables_in_output=True)
     for key in shared_keys:
-        compare_dataarrays(dst_dc[key], src[key].to_units(dst[key].attrs["units"]))
+        with subtests.test(key=key):
+            compare_dataarrays(dst_dc[key], src[key].to_units(dst[key].attrs["units"]))
     for key in unshared_keys:
-        compare_dataarrays(dst_dc[key], src[key])
+        with subtests.test(key=key):
+            compare_dataarrays(dst_dc[key], src[key])
     assert len(dst_dc) == len(dst_dcdc) + len(unshared_keys)
 
 
@@ -157,8 +160,8 @@ def test_copy(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_add(data):
+@given(data=hyp_st.data())
+def test_add(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -231,11 +234,14 @@ def test_add(data):
         unshared_variables_in_output=False,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
     # out=None, unshared_variables_in_output=True
@@ -247,16 +253,20 @@ def test_add(data):
         unshared_variables_in_output=True,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
-        units = field_properties[key]["units"]
-        _dict = dict1 if key in dict1 else dict2
-        out_val = _dict[key].to_units(units)
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            _dict = dict1 if key in dict1 else dict2
+            out_val = _dict[key].to_units(units)
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
     # out=out_a, unshared_variables_in_output=False
@@ -269,11 +279,14 @@ def test_add(data):
         unshared_variables_in_output=False,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
     #
     # out=out_b, unshared_variables_in_output=True
@@ -286,16 +299,20 @@ def test_add(data):
         unshared_variables_in_output=True,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
-        units = field_properties[key]["units"]
-        _dict = dict1 if key in dict1 else dict2
-        out_val = _dict[key].to_units(units)
-        compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            _dict = dict1 if key in dict1 else dict2
+            out_val = _dict[key].to_units(units)
+            compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -306,8 +323,8 @@ def test_add(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_iadd(data):
+@given(data=hyp_st.data())
+def test_iadd(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -380,11 +397,14 @@ def test_iadd(data):
         unshared_variables_in_output=False,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1_a[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
-        compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1_a[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
     #
     # unshared_variables_in_output=True
@@ -396,16 +416,20 @@ def test_iadd(data):
         unshared_variables_in_output=True,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1_b[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 + field2, grid, units, set_coordinates=False)
-        compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1_b[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
-        units = field_properties[key]["units"]
-        _dict = dict1_b if key in dict1_b else dict2
-        out_val = _dict[key].to_units(units)
-        compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            _dict = dict1_b if key in dict1_b else dict2
+            out_val = _dict[key].to_units(units)
+            compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -416,8 +440,8 @@ def test_iadd(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_sub(data):
+@given(data=hyp_st.data())
+def test_sub(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -490,11 +514,14 @@ def test_sub(data):
         unshared_variables_in_output=False,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 - field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
     # out=None, unshared_variables_in_output=True
@@ -506,20 +533,24 @@ def test_sub(data):
         unshared_variables_in_output=True,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 - field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
-        units = field_properties[key]["units"]
-        if key in dict1:
-            out_val = dict1[key].to_units(units)
-            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
-        else:
-            out_val = dict2[key].to_units(units)
-            out_val.values *= -1
-            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            if key in dict1:
+                out_val = dict1[key].to_units(units)
+                compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+            else:
+                out_val = dict2[key].to_units(units)
+                out_val.values *= -1
+                compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
     # out=out_a, unshared_variables_in_output=False
@@ -532,11 +563,14 @@ def test_sub(data):
         unshared_variables_in_output=False,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 - field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
     #
     # out=out_b, unshared_variables_in_output=True
@@ -549,20 +583,24 @@ def test_sub(data):
         unshared_variables_in_output=True,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
-        compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 - field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
-        units = field_properties[key]["units"]
-        if key in dict1:
-            out_val = dict1[key].to_units(units)
-            compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
-        else:
-            out_val = dict2[key].to_units(units)
-            out_val.values *= -1
-            compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            if key in dict1:
+                out_val = dict1[key].to_units(units)
+                compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
+            else:
+                out_val = dict2[key].to_units(units)
+                out_val.values *= -1
+                compare_dataarrays(out_b[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -573,8 +611,8 @@ def test_sub(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_isub(data):
+@given(data=hyp_st.data())
+def test_isub(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -647,11 +685,14 @@ def test_isub(data):
         unshared_variables_in_output=False,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1_a[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
-        compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1_a[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 - field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
     #
     # unshared_variables_in_output=True
@@ -663,20 +704,24 @@ def test_isub(data):
         unshared_variables_in_output=True,
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1_b[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(field1 - field2, grid, units, set_coordinates=False)
-        compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1_b[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 - field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
     for key in unshared_keys:
-        units = field_properties[key]["units"]
-        if key in dict1_b:
-            out_val = dict1_b[key].to_units(units)
-            compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
-        else:
-            out_val = dict2[key].to_units(units)
-            out_val.values *= -1
-            compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            if key in dict1_b:
+                out_val = dict1_b[key].to_units(units)
+                compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+            else:
+                out_val = dict2[key].to_units(units)
+                out_val.values *= -1
+                compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -687,8 +732,8 @@ def test_isub(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_scale(data):
+@given(data=hyp_st.data())
+def test_scale(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -738,22 +783,24 @@ def test_scale(data):
     #
     out = op.scale(dict1, f, field_properties=field_properties_passed)
     for key in dict1.keys():
-        if key != "time":
-            units = field_properties[key]["units"]
-            field = dict1[key].to_units(units).values
-            out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
-            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            if key != "time":
+                units = field_properties[key]["units"]
+                field = dict1[key].to_units(units).values
+                out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
+                compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
 
     #
     # out=out_a
     #
     op.scale(dict1, f, out=out_a, field_properties=field_properties_passed)
     for key in dict1.keys():
-        if key != "time":
-            units = field_properties[key]["units"]
-            field = dict1[key].to_units(units).values
-            out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
-            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            if key != "time":
+                units = field_properties[key]["units"]
+                field = dict1[key].to_units(units).values
+                out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
+                compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -764,8 +811,8 @@ def test_scale(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_iscale(data):
+@given(data=hyp_st.data())
+def test_iscale(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -813,11 +860,12 @@ def test_iscale(data):
     op.iscale(dict1, f, field_properties=field_properties_passed)
 
     for key in dict1.keys():
-        if key != "time":
-            units = field_properties[key]["units"]
-            field = dict1_dc[key].to_units(units).values
-            out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
-            compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            if key != "time":
+                units = field_properties[key]["units"]
+                field = dict1_dc[key].to_units(units).values
+                out_val = get_dataarray_3d(f * field, grid, units, set_coordinates=False)
+                compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -828,8 +876,8 @@ def test_iscale(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_addsub(data):
+@given(data=hyp_st.data())
+def test_addsub(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -902,14 +950,15 @@ def test_addsub(data):
     #
     out = op.addsub(dict1, dict2, dict3, field_properties=field_properties_passed)
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            field1 + field2 - field3, grid, units, set_coordinates=False
-        )
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2 - field3, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
 
     #
@@ -917,14 +966,15 @@ def test_addsub(data):
     #
     op.addsub(dict1, dict2, dict3, out=out_a, field_properties=field_properties_passed)
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            field1 + field2 - field3, grid, units, set_coordinates=False
-        )
-        compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2 - field3, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -935,8 +985,8 @@ def test_addsub(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_iaddsub(data):
+@given(data=hyp_st.data())
+def test_iaddsub(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -1006,14 +1056,15 @@ def test_iaddsub(data):
 
     op.iaddsub(dict1, dict2, dict3, field_properties=field_properties_passed)
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1_a[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            field1 + field2 - field3, grid, units, set_coordinates=False
-        )
-        compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1_a[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + field2 - field3, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(dict1[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -1024,8 +1075,8 @@ def test_iaddsub(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_fma(data):
+@given(data=hyp_st.data())
+def test_fma(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -1091,13 +1142,14 @@ def test_fma(data):
     #
     out = op.fma(dict1, dict2, f, field_properties=field_properties_passed)
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            field1 + f * field2, grid, units, set_coordinates=False
-        )
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + f * field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
 
     #
@@ -1105,13 +1157,14 @@ def test_fma(data):
     #
     op.fma(dict1, dict2, f, out=out_a, field_properties=field_properties_passed)
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            field1 + f * field2, grid, units, set_coordinates=False
-        )
-        compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                field1 + f * field2, grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -1122,8 +1175,8 @@ def test_fma(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_sts_rk2_0(data):
+@given(data=hyp_st.data())
+def test_sts_rk2_0(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -1200,14 +1253,15 @@ def test_sts_rk2_0(data):
     #
     out = op.sts_rk2_0(dt, dict1, dict2, dict3, field_properties=field_properties_passed)
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            0.5 * (field1 + field2 + dt * field3), grid, units, set_coordinates=False
-        )
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                0.5 * (field1 + field2 + dt * field3), grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
 
     #
@@ -1217,14 +1271,15 @@ def test_sts_rk2_0(data):
         dt, dict1, dict2, dict3, out=out_a, field_properties=field_properties_passed
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            0.5 * (field1 + field2 + dt * field3), grid, units, set_coordinates=False
-        )
-        compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                0.5 * (field1 + field2 + dt * field3), grid, units, set_coordinates=False
+            )
+            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
 
 @settings(
@@ -1235,8 +1290,8 @@ def test_sts_rk2_0(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_sts_rk3ws_0(data):
+@given(data=hyp_st.data())
+def test_sts_rk3ws_0(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -1315,17 +1370,18 @@ def test_sts_rk3ws_0(data):
         dt, dict1, dict2, dict3, field_properties=field_properties_passed
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            (2.0 * field1 + field2 + dt * field3) / 3.0,
-            grid,
-            units,
-            set_coordinates=False,
-        )
-        compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                (2.0 * field1 + field2 + dt * field3) / 3.0,
+                grid,
+                units,
+                set_coordinates=False,
+            )
+            compare_dataarrays(out[key], out_val, compare_coordinate_values=False)
     assert len(out) == len(shared_keys) + 1
 
     #
@@ -1335,19 +1391,19 @@ def test_sts_rk3ws_0(data):
         dt, dict1, dict2, dict3, out=out_a, field_properties=field_properties_passed
     )
     for key in shared_keys:
-        units = field_properties[key]["units"]
-        field1 = dict1[key].to_units(units).values
-        field2 = dict2[key].to_units(units).values
-        field3 = dict3[key].to_units(units).values
-        out_val = get_dataarray_3d(
-            (2.0 * field1 + field2 + dt * field3) / 3.0,
-            grid,
-            units,
-            set_coordinates=False,
-        )
-        compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
+        with subtests.test(key=key):
+            units = field_properties[key]["units"]
+            field1 = dict1[key].to_units(units).values
+            field2 = dict2[key].to_units(units).values
+            field3 = dict3[key].to_units(units).values
+            out_val = get_dataarray_3d(
+                (2.0 * field1 + field2 + dt * field3) / 3.0,
+                grid,
+                units,
+                set_coordinates=False,
+            )
+            compare_dataarrays(out_a[key], out_val, compare_coordinate_values=False)
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_copy()
+    pytest.main([__file__])

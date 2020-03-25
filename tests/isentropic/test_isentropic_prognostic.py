@@ -241,8 +241,8 @@ def test_factory(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_forward_euler_si(data):
+@given(data=hyp_st.data())
+def test_forward_euler_si(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -422,11 +422,12 @@ def test_forward_euler_si(data):
                 sq_tnd,
                 sq_new,
             )
-            assert name in raw_state_new
-            compare_arrays(
-                sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
-                raw_state_new[name][nb : -nb - 1, nb : -nb - 1, :-1],
-            )
+            with subtests.test(name=name):
+                assert name in raw_state_new
+                compare_arrays(
+                    sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
+                    raw_state_new[name][nb : -nb - 1, nb : -nb - 1, :-1],
+                )
 
     # montgomery potential
     ids = IsentropicDiagnostics(
@@ -508,8 +509,8 @@ def test_forward_euler_si(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_rk3ws_si(data):
+@given(data=hyp_st.data())
+def test_rk3ws_si(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -697,11 +698,12 @@ def test_rk3ws_si(data):
                 sq_tnd,
                 sq_new,
             )
-            assert name in raw_state_1
-            compare_arrays(
-                sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
-                raw_state_1[name][nb : -nb - 1, nb : -nb - 1, :-1],
-            )
+            with subtests.test(name=name):
+                assert name in raw_state_1
+                compare_arrays(
+                    sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
+                    raw_state_1[name][nb : -nb - 1, nb : -nb - 1, :-1],
+                )
 
     # montgomery potential
     ids = IsentropicDiagnostics(
@@ -848,11 +850,12 @@ def test_rk3ws_si(data):
                 sq_tnd,
                 sq_new,
             )
-            assert name in raw_state_2
-            compare_arrays(
-                sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
-                raw_state_2[name][nb : -nb - 1, nb : -nb - 1, :-1],
-            )
+            with subtests.test(name=name):
+                assert name in raw_state_2
+                compare_arrays(
+                    sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
+                    raw_state_2[name][nb : -nb - 1, nb : -nb - 1, :-1],
+                )
 
     # montgomery potential
     mtg2 = zeros(
@@ -987,11 +990,12 @@ def test_rk3ws_si(data):
                 sq_tnd,
                 sq_new,
             )
-            assert name in raw_state_3
-            compare_arrays(
-                sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
-                raw_state_3[name][nb : -nb - 1, nb : -nb - 1, :-1],
-            )
+            with subtests.test(name=name):
+                assert name in raw_state_3
+                compare_arrays(
+                    sq_new[nb : -nb - 1, nb : -nb - 1, :-1],
+                    raw_state_3[name][nb : -nb - 1, nb : -nb - 1, :-1],
+                )
 
     # montgomery potential
     mtg3 = zeros(

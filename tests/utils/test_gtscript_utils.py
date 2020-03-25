@@ -80,7 +80,7 @@ from tests.utilities import (
 )
 
 
-def assert_annotations(func_handle, dtype):
+def assert_annotations(func_handle, dtype, *, subtests):
     args = {
         "s_now",
         "s_int",
@@ -106,19 +106,20 @@ def assert_annotations(func_handle, dtype):
     }
     annotations = getattr(func_handle, "__annotations__", {})
     for arg in args:
-        assert arg in annotations
-        assert isinstance(annotations[arg], gtscript._FieldDescriptor)
-        assert annotations[arg].dtype == dtype
+        with subtests.test(arg=arg):
+            assert arg in annotations
+            assert isinstance(annotations[arg], gtscript._FieldDescriptor)
+            assert annotations[arg].dtype == dtype
 
 
-def test_set_annotations():
+def test_set_annotations(subtests):
     # int
     set_annotations(step_forward_euler_gt, int)
-    assert_annotations(step_forward_euler_gt, int)
+    assert_annotations(step_forward_euler_gt, int, subtests=subtests)
 
     # float
     set_annotations(step_forward_euler_gt, float)
-    assert_annotations(step_forward_euler_gt, float)
+    assert_annotations(step_forward_euler_gt, float, subtests=subtests)
 
     # # np.float16
     # set_annotations(step_forward_euler_gt, np.float16)
@@ -126,11 +127,11 @@ def test_set_annotations():
 
     # np.float32
     set_annotations(step_forward_euler_gt, np.float32)
-    assert_annotations(step_forward_euler_gt, np.float32)
+    assert_annotations(step_forward_euler_gt, np.float32, subtests=subtests)
 
     # np.float64
     set_annotations(step_forward_euler_gt, np.float64)
-    assert_annotations(step_forward_euler_gt, np.float64)
+    assert_annotations(step_forward_euler_gt, np.float64, subtests=subtests)
 
 
 @settings(

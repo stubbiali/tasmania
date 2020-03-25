@@ -607,8 +607,8 @@ def rk3ws_step(
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test1(data):
+@given(data=hyp_st.data())
+def test1(data, subtests):
     """
     - Slow tendencies: no
     - Intermediate tendencies: no
@@ -793,10 +793,11 @@ def test1(data):
     state_new = dycore(state, {}, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_arrays(state[key].values, state_dc[key].values)
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_arrays(state[key].values, state_dc[key].values)
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -837,12 +838,13 @@ def test1(data):
     )
 
     for name in state_new:
-        if name != "time":
-            compare_arrays(
-                state_new[name].values[:-1, :-1, :-1],
-                raw_state_new_val[name][:-1, :-1, :-1],
-                # atol=1e-6,
-            )
+        with subtests.test(name=name):
+            if name != "time":
+                compare_arrays(
+                    state_new[name].values[:-1, :-1, :-1],
+                    raw_state_new_val[name][:-1, :-1, :-1],
+                    # atol=1e-6,
+                )
 
 
 @settings(
@@ -853,8 +855,8 @@ def test1(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test2(data):
+@given(data=hyp_st.data())
+def test2(data, subtests):
     """
     - Slow tendencies: yes
     - Intermediate tendencies: no
@@ -1066,10 +1068,11 @@ def test2(data):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_arrays(state[key].values, state_dc[key].values)
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_arrays(state[key].values, state_dc[key].values)
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -1115,12 +1118,13 @@ def test2(data):
     )
 
     for name in state_new:
-        if name != "time":
-            compare_arrays(
-                state_new[name].values[:-1, :-1, :-1],
-                raw_state_new_val[name][:-1, :-1, :-1],
-                # atol=1e-6,
-            )
+        with subtests.test(name=name):
+            if name != "time":
+                compare_arrays(
+                    state_new[name].values[:-1, :-1, :-1],
+                    raw_state_new_val[name][:-1, :-1, :-1],
+                    # atol=1e-6,
+                )
 
 
 @settings(
@@ -1131,8 +1135,8 @@ def test2(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test3(data):
+@given(data=hyp_st.data())
+def test3(data, subtests):
     """
     - Slow tendencies: yes
     - Intermediate tendencies: yes
@@ -1355,10 +1359,11 @@ def test3(data):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_arrays(state[key], state_dc[key])
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -1561,12 +1566,13 @@ def test3(data):
     )
 
     for name in state_new:
-        if name != "time":
-            compare_arrays(
-                state_new[name].values[:-1, :-1, :-1],
-                raw_state_3[name][:-1, :-1, :-1],
-                # atol=1e-6,
-            )
+        with subtests.test(name=name):
+            if name != "time":
+                compare_arrays(
+                    state_new[name].values[:-1, :-1, :-1],
+                    raw_state_3[name][:-1, :-1, :-1],
+                    # atol=1e-6,
+                )
 
 
 @settings(
@@ -1577,8 +1583,8 @@ def test3(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test4(data):
+@given(data=hyp_st.data())
+def test4(data, subtests):
     """
     - Slow tendencies: yes
     - Intermediate tendencies: yes
@@ -1827,10 +1833,11 @@ def test4(data):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_arrays(state[key], state_dc[key])
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -2087,12 +2094,13 @@ def test4(data):
         )
 
     for name in state_new:
-        if name != "time":
-            compare_arrays(
-                state_new[name].values[:-1, :-1, :-1],
-                raw_state_3[name][:-1, :-1, :-1],
-                # atol=1e-6,
-            )
+        with subtests.test(name=name):
+            if name != "time":
+                compare_arrays(
+                    state_new[name].values[:-1, :-1, :-1],
+                    raw_state_3[name][:-1, :-1, :-1],
+                    # atol=1e-6,
+                )
 
 
 class FooTendencyComponent(TendencyComponent):
@@ -2141,8 +2149,8 @@ class FooTendencyComponent(TendencyComponent):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test5(data):
+@given(data=hyp_st.data())
+def test5(data, subtests):
     """
     - Slow tendencies: yes
     - Intermediate tendencies: yes
@@ -2367,10 +2375,11 @@ def test5(data):
     state_new = dycore(state, tendencies, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_arrays(state[key], state_dc[key])
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     # compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -2577,22 +2586,24 @@ def test5(data):
     )
 
     for name in state_new:
-        if name != "time":
-            compare_arrays(
-                state_new[name].values[:-1, :-1, :-1],
-                raw_state_3[name][:-1, :-1, :-1],
-                # atol=1e-6,
-            )
+        with subtests.test(name=name):
+            if name != "time":
+                compare_arrays(
+                    state_new[name].values[:-1, :-1, :-1],
+                    raw_state_3[name][:-1, :-1, :-1],
+                    # atol=1e-6,
+                )
 
     gt.storage.prepare_numpy()
 
     state_new = dycore(state, tendencies_dc, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_arrays(state[key], state_dc[key])
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_arrays(state[key], state_dc[key])
 
     assert "time" in state_new
     # compare_datetimes(state_new["time"], state["time"] + timestep)
@@ -2708,12 +2719,13 @@ def test5(data):
     )
 
     for name in state_new:
-        if name != "time":
-            compare_arrays(
-                state_new[name].values[:-1, :-1, :-1],
-                raw_state_6[name][:-1, :-1, :-1],
-                # atol=1e-6,
-            )
+        with subtests.test(name=name):
+            if name != "time":
+                compare_arrays(
+                    state_new[name].values[:-1, :-1, :-1],
+                    raw_state_6[name][:-1, :-1, :-1],
+                    # atol=1e-6,
+                )
 
 
 if __name__ == "__main__":

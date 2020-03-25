@@ -37,6 +37,7 @@ from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 
 from tests.conf import datatype as conf_dtype
 from tests.utilities import (
+    compare_arrays,
     compare_dataarrays,
     get_xaxis,
     get_yaxis,
@@ -57,8 +58,8 @@ from tests.utilities import (
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_domain(data):
+@given(data=hyp_st.data())
+def test_domain(data, subtests):
     # ========================================
     # random data generation
     # ========================================
@@ -161,8 +162,9 @@ def test_domain(data):
             field_units=state_dmn["air_isentropic_density"].attrs["units"],
             time=state_dmn["time"],
         )
-        assert np.allclose(
-            state["air_isentropic_density"], state_dmn["air_isentropic_density"]
+        compare_dataarrays(
+            state["air_isentropic_density"], state_dmn["air_isentropic_density"],
+            compare_coordinate_values=False
         )
 
         # enforce_raw
@@ -182,15 +184,19 @@ def test_domain(data):
         hb.enforce_raw(raw_state, field_properties=field_properties, grid=grid)
         dmn_hb.enforce_raw(raw_state_dmn, field_properties=field_properties)
         for name in raw_state:
-            if name != "time":
-                assert np.allclose(raw_state[name], raw_state_dmn[name])
+            with subtests.test(name=name):
+                if name != "time":
+                    compare_arrays(raw_state[name], raw_state_dmn[name])
 
         # enforce
         hb.enforce(state, grid=grid)
         dmn_hb.enforce(state_dmn)
         for name in state:
-            if name != "time":
-                assert np.allclose(state[name], state_dmn[name])
+            with subtests.test(name=name):
+                if name != "time":
+                    compare_dataarrays(
+                        state[name], state_dmn[name], compare_coordinate_values=False
+                    )
 
 
 if __name__ == "__main__":

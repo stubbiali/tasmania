@@ -32,6 +32,8 @@ from hypothesis import (
 )
 import pytest
 
+import gt4py
+
 from tasmania.python.isentropic.physics.implicit_vertical_advection import (
     IsentropicImplicitVerticalAdvectionDiagnostic,
 )
@@ -104,6 +106,8 @@ def validation(
     state,
     state_prv,
     timestep,
+        *,
+    subtests
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -161,17 +165,20 @@ def validation(
         output_names.append(mfpw)
 
     for name in input_names:
-        assert name in stepper.input_properties
+        with subtests.test(name=name):
+            assert name in stepper.input_properties
     assert len(stepper.input_properties) == len(input_names)
 
     for name in prv_input_names:
-        assert name in stepper.provisional_input_properties
+        with subtests.test(name=name):
+            assert name in stepper.provisional_input_properties
     assert len(stepper.provisional_input_properties) == len(prv_input_names)
 
     assert stepper.diagnostic_properties == {}
 
     for name in output_names:
-        assert name in stepper.output_properties
+        with subtests.test(name=name):
+            assert name in stepper.output_properties
     assert len(stepper.output_properties) == len(output_names)
 
     if toaptoil:
@@ -321,7 +328,9 @@ def validation(
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_isentropic_vertical_advection_dry(data):
+def test_isentropic_vertical_advection_dry(data, subtests):
+    gt4py.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -400,6 +409,7 @@ def test_isentropic_vertical_advection_dry(data):
         state,
         state_prv,
         timestep,
+        subtests=subtests
     )
     validation(
         domain,
@@ -412,6 +422,7 @@ def test_isentropic_vertical_advection_dry(data):
         state,
         state_prv,
         timestep,
+        subtests=subtests
     )
 
 
@@ -424,7 +435,9 @@ def test_isentropic_vertical_advection_dry(data):
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_isentropic_vertical_advection_moist(data):
+def test_isentropic_vertical_advection_moist(data, subtests):
+    gt4py.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
@@ -503,6 +516,7 @@ def test_isentropic_vertical_advection_moist(data):
         state,
         state_prv,
         timestep,
+        subtests=subtests
     )
     validation(
         domain,
@@ -515,6 +529,7 @@ def test_isentropic_vertical_advection_moist(data):
         state,
         state_prv,
         timestep,
+        subtests=subtests
     )
 
 

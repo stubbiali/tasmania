@@ -94,7 +94,17 @@ def setup_tridiagonal_system(gamma, w, phi, a=None, b=None, c=None, d=None):
 
 
 def validation_diagnostic(
-    domain, moist, toaptoil, gt_powered, backend, default_origin, rebuild, state, timestep
+    domain,
+    moist,
+    toaptoil,
+    gt_powered,
+    backend,
+    default_origin,
+    rebuild,
+    state,
+    timestep,
+    *,
+    subtests
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -139,13 +149,15 @@ def validation_diagnostic(
         output_names.append(mfpw)
 
     for name in input_names:
-        assert name in fluxer.input_properties
+        with subtests.test(name=name):
+            assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     assert fluxer.tendency_properties == {}
 
     for name in output_names:
-        assert name in fluxer.diagnostic_properties
+        with subtests.test(name=name):
+            assert name in fluxer.diagnostic_properties
     assert len(fluxer.diagnostic_properties) == len(output_names)
 
     if toaptoil:
@@ -268,8 +280,8 @@ def validation_diagnostic(
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_diagnostic_dry(data):
+@given(data=hyp_st.data())
+def test_diagnostic_dry(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -330,10 +342,28 @@ def test_diagnostic_dry(data):
     # test bed
     # ========================================
     validation_diagnostic(
-        domain, False, False, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
     validation_diagnostic(
-        domain, False, True, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
 
 
@@ -345,8 +375,8 @@ def test_diagnostic_dry(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_diagnostic_moist(data):
+@given(data=hyp_st.data())
+def test_diagnostic_moist(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -407,10 +437,28 @@ def test_diagnostic_moist(data):
     # test bed
     # ========================================
     validation_diagnostic(
-        domain, True, False, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
     validation_diagnostic(
-        domain, True, True, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
 
 
@@ -566,7 +614,17 @@ def test_diagnostic_consistency(data):
 
 
 def validation_prognostic(
-    domain, moist, toaptoil, gt_powered, backend, default_origin, rebuild, state, timestep
+    domain,
+    moist,
+    toaptoil,
+    gt_powered,
+    backend,
+    default_origin,
+    rebuild,
+    state,
+    timestep,
+    *,
+    subtests
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -611,11 +669,13 @@ def validation_prognostic(
         output_names.append(mfpw)
 
     for name in input_names:
-        assert name in fluxer.input_properties
+        with subtests.test(name=name):
+            assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     for name in output_names:
-        assert name in fluxer.tendency_properties
+        with subtests.test(name=name):
+            assert name in fluxer.tendency_properties
     assert len(fluxer.tendency_properties) == len(output_names)
 
     assert fluxer.diagnostic_properties == {}
@@ -743,8 +803,8 @@ def validation_prognostic(
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_prognostic_dry(data):
+@given(data=hyp_st.data())
+def test_prognostic_dry(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -805,10 +865,28 @@ def test_prognostic_dry(data):
     # test bed
     # ========================================
     validation_prognostic(
-        domain, False, False, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
     validation_prognostic(
-        domain, False, True, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
 
 
@@ -820,8 +898,8 @@ def test_prognostic_dry(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_prognostic_moist(data):
+@given(data=hyp_st.data())
+def test_prognostic_moist(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -882,10 +960,28 @@ def test_prognostic_moist(data):
     # test bed
     # ========================================
     validation_prognostic(
-        domain, True, False, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
     validation_prognostic(
-        domain, True, True, gt_powered, backend, default_origin, False, state, timestep
+        domain,
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        timestep,
+        subtests=subtests,
     )
 
 

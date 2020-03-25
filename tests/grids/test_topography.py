@@ -41,6 +41,7 @@ from tasmania.python.grids.topography import (
 )
 
 from tests.utilities import (
+compare_arrays,
     compare_dataarrays,
     st_floats,
     st_horizontal_boundary,
@@ -181,8 +182,8 @@ def test_numerical_topography(data):
 
     assert ctopo.type == topo_type
 
-    assert np.allclose(ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values))
-    assert np.allclose(
+    compare_arrays(ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values))
+    compare_arrays(
         ctopo.steady_profile.values, hb.get_numerical_field(ptopo.steady_profile.values)
     )
 

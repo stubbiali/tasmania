@@ -36,7 +36,7 @@ import tasmania.python.utils.storage_utils
 from tasmania.python.utils import data_utils as du
 from tasmania.python.utils.exceptions import ConstantNotFoundError
 
-from tests.utilities import st_physical_grid, st_physical_horizontal_grid, st_raw_field
+from tests.utilities import compare_arrays, st_physical_grid, st_physical_horizontal_grid, st_raw_field
 
 
 def test_get_constant():
@@ -110,7 +110,7 @@ def test_make_dataarray_2d(data):
     assert array.dims == (grid.x.dims[0], grid.y.dims[0])
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -130,7 +130,7 @@ def test_make_dataarray_2d(data):
     assert array.dims == (grid.x_at_u_locations.dims[0], grid.y.dims[0])
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -150,7 +150,7 @@ def test_make_dataarray_2d(data):
     assert array.dims == (grid.x.dims[0], grid.y_at_v_locations.dims[0])
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -170,7 +170,7 @@ def test_make_dataarray_2d(data):
     assert array.dims == (grid.x_at_u_locations.dims[0], grid.y_at_v_locations.dims[0])
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
 
@@ -206,7 +206,7 @@ def test_make_dataarray_3d(data):
     assert array.dims == (grid.grid_xy.x.dims[0], grid.grid_xy.y.dims[0], grid.z.dims[0])
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -225,7 +225,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -244,7 +244,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -263,7 +263,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -282,7 +282,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -301,7 +301,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -320,7 +320,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -339,7 +339,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -358,7 +358,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -377,7 +377,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -396,7 +396,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
     #
@@ -415,7 +415,7 @@ def test_make_dataarray_3d(data):
     )
     assert array.attrs["units"] == units
     assert array.name == name
-    assert np.allclose(raw_array, array.values)
+    compare_arrays(raw_array, array.values)
     assert id(raw_array) == id(array.values)
 
 

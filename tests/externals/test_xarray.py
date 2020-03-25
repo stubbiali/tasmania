@@ -37,5 +37,4 @@ def test_xarray_gt4py_compatibility_gtmc():
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_xarray_gt4py_compatibility_gtmc()
+    pytest.main([__file__])

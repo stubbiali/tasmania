@@ -91,8 +91,8 @@ def precipitation_validation(state, timestep, maxcfl, rhow):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_clipping(data):
+@given(data=hyp_st.data())
+def test_clipping(data, subtests):
     gt_storage.prepare_numpy()
 
     # ========================================
@@ -153,22 +153,23 @@ def test_clipping(data):
 
     diagnostics = clip(state)
 
-    for name in names:
-        assert name in clip.input_properties
-        assert name in clip.diagnostic_properties
     assert len(clip.input_properties) == len(names)
     assert len(clip.diagnostic_properties) == len(names)
 
     for name in names:
-        q = state[name].to_units("g g^-1").values
-        q[q < 0] = 0
+        with subtests.test(name=name):
+            assert name in clip.input_properties
+            assert name in clip.diagnostic_properties
 
-        assert name in diagnostics
-        compare_dataarrays(
-            get_dataarray_3d(q[:nx, :ny, :nz], grid, "g g^-1"),
-            diagnostics[name][:nx, :ny, :nz],
-            compare_coordinate_values=False,
-        )
+            q = state[name].to_units("g g^-1").values
+            q[q < 0] = 0
+
+            assert name in diagnostics
+            compare_dataarrays(
+                get_dataarray_3d(q[:nx, :ny, :nz], grid, "g g^-1"),
+                diagnostics[name][:nx, :ny, :nz],
+                compare_coordinate_values=False,
+            )
 
     assert len(diagnostics) == len(names)
 

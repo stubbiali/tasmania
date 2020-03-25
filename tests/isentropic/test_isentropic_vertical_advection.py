@@ -57,6 +57,7 @@ from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
 )
 from tests.utilities import (
     compare_arrays,
+compare_dataarrays,
     st_domain,
     st_floats,
     st_isentropic_state_f,
@@ -133,6 +134,8 @@ def validation(
     rebuild,
     state,
     cls=IsentropicVerticalAdvection,
+    *,
+    subtests
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -183,11 +186,13 @@ def validation(
         output_names.append(mfpw)
 
     for name in input_names:
-        assert name in fluxer.input_properties
+        with subtests.test(name=name):
+            assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     for name in output_names:
-        assert name in fluxer.tendency_properties
+        with subtests.test(name=name):
+            assert name in fluxer.tendency_properties
     assert len(fluxer.tendency_properties) == len(output_names)
 
     assert fluxer.diagnostic_properties == {}
@@ -290,8 +295,8 @@ def validation(
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_upwind(data):
+@given(data=hyp_st.data())
+def test_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -347,16 +352,52 @@ def test_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "upwind", False, False, gt_powered, backend, default_origin, False, state
+        domain,
+        "upwind",
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "upwind", False, True, gt_powered, backend, default_origin, False, state
+        domain,
+        "upwind",
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "upwind", True, False, gt_powered, backend, default_origin, False, state
+        domain,
+        "upwind",
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "upwind", True, True, gt_powered, backend, default_origin, False, state
+        domain,
+        "upwind",
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
 
 
@@ -368,8 +409,8 @@ def test_upwind(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_centered(data):
+@given(data=hyp_st.data())
+def test_centered(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -434,15 +475,43 @@ def test_centered(data):
         default_origin,
         False,
         state,
+        subtests=subtests,
     )
     validation(
-        domain, "centered", False, True, gt_powered, backend, default_origin, False, state
+        domain,
+        "centered",
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "centered", True, False, gt_powered, backend, default_origin, False, state
+        domain,
+        "centered",
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "centered", True, True, gt_powered, backend, default_origin, False, state
+        domain,
+        "centered",
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
 
 
@@ -454,8 +523,8 @@ def test_centered(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_third_order_upwind(data):
+@given(data=hyp_st.data())
+def test_third_order_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -520,6 +589,7 @@ def test_third_order_upwind(data):
         default_origin,
         False,
         state,
+        subtests=subtests,
     )
     validation(
         domain,
@@ -531,6 +601,7 @@ def test_third_order_upwind(data):
         default_origin,
         False,
         state,
+        subtests=subtests,
     )
     validation(
         domain,
@@ -542,6 +613,7 @@ def test_third_order_upwind(data):
         default_origin,
         False,
         state,
+        subtests=subtests,
     )
     validation(
         domain,
@@ -553,6 +625,7 @@ def test_third_order_upwind(data):
         default_origin,
         False,
         state,
+        subtests=subtests,
     )
 
 
@@ -564,8 +637,8 @@ def test_third_order_upwind(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def _test_fifth_order_upwind(data):
+@given(data=hyp_st.data())
+def _test_fifth_order_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -612,16 +685,48 @@ def _test_fifth_order_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "fifth_order_upwind", False, False, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        False,
+        False,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "fifth_order_upwind", False, True, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        False,
+        True,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "fifth_order_upwind", True, False, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        True,
+        False,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "fifth_order_upwind", True, True, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        True,
+        True,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
 
 
@@ -755,7 +860,7 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    assert np.allclose(out, tendencies["air_potential_temperature"], equal_nan=True)
+    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -782,8 +887,8 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
-    assert np.allclose(
-        out, diagnostics["tendency_of_air_potential_temperature"], equal_nan=True
+    compare_dataarrays(
+        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
     )
 
     #
@@ -813,7 +918,7 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    assert np.allclose(out, tendencies["air_potential_temperature"], equal_nan=True)
+    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -840,8 +945,8 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
-    assert np.allclose(
-        out, diagnostics["tendency_of_air_potential_temperature"], equal_nan=True
+    compare_dataarrays(
+        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
     )
 
     #
@@ -895,7 +1000,7 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    assert np.allclose(out, tendencies["air_potential_temperature"], equal_nan=True)
+    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -922,8 +1027,8 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
-    assert np.allclose(
-        out, diagnostics["tendency_of_air_potential_temperature"], equal_nan=True
+    compare_dataarrays(
+        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
     )
 
     #
@@ -971,8 +1076,8 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature_on_interface_levels" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature_on_interface_levels" in tendencies
-    assert np.allclose(
-        out, tendencies["air_potential_temperature_on_interface_levels"], equal_nan=True
+    compare_dataarrays(
+        out, tendencies["air_potential_temperature_on_interface_levels"], compare_coordinate_values=False
     )
     assert diagnostics == {}
 
@@ -1003,10 +1108,10 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature_on_interface_levels" in diagnostics
-    assert np.allclose(
+    compare_dataarrays(
         out,
         diagnostics["tendency_of_air_potential_temperature_on_interface_levels"],
-        equal_nan=True,
+        compare_coordinate_values=False,
     )
 
 

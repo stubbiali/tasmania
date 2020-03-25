@@ -38,7 +38,7 @@ import tempfile
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.io_utils import NetCDFMonitor, load_netcdf_dataset
 
-from tests.utilities import compare_dataarrays, st_domain, st_isentropic_state
+from tests.utilities import compare_arrays, compare_dataarrays, st_domain, st_isentropic_state
 
 
 @settings(
@@ -177,19 +177,20 @@ def assert_grids(g1, g2):
     # topography
     topo1, topo2 = g1.topography, g2.topography
     assert topo1.type == topo2.type
-    assert np.allclose(topo1.steady_profile, topo2.steady_profile)
+    compare_arrays(topo1.steady_profile, topo2.steady_profile)
 
 
-def assert_isentropic_states(state, state_ref):
+def assert_isentropic_states(state, state_ref, *, subtests):
     assert len(state) == len(state_ref)
 
     for name in state_ref:
-        assert name in state
+        with subtests.test(name=name):
+            assert name in state
 
-        if name == "time":
-            assert state["time"] == state_ref["time"]
-        else:
-            assert np.allclose(state[name], state_ref[name])
+            if name == "time":
+                assert state["time"] == state_ref["time"]
+            else:
+                compare_dataarrays(state[name], state_ref[name], compare_coordinate_values=False)
 
 
 @settings(
@@ -200,8 +201,8 @@ def assert_isentropic_states(state, state_ref):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_write_and_load(data):
+@given(data=hyp_st.data())
+def test_write_and_load(data, subtests):
     # ========================================
     # random data generation
     # ========================================
@@ -267,9 +268,10 @@ def test_write_and_load(data):
 
     # states
     assert len(load_states) == 3
-    for state in load_states:
-        assert_isentropic_states(state, pstate)
-        pstate["time"] += timedelta(hours=1)
+    for idx, state in enumerate(load_states):
+        with subtests.test(idx=idx):
+            assert_isentropic_states(state, pstate, subtests=subtests)
+            pstate["time"] += timedelta(hours=1)
 
     # clean temporary directory
     os.remove(filename)

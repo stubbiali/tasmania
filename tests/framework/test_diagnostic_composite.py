@@ -126,8 +126,8 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_serial(data):
+@given(data=hyp_st.data())
+def test_serial(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -230,10 +230,11 @@ def test_serial(data):
     diagnostics = dcc(state, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
 
     assert len(state) == len(state_dc)
 
@@ -331,8 +332,8 @@ def test_serial(data):
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_asparallel(data):
+@given(data=hyp_st.data())
+def test_asparallel(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -438,10 +439,11 @@ def test_asparallel(data):
     diagnostics = dcc(state, timestep)
 
     for key in state:
-        if key == "time":
-            compare_datetimes(state["time"], state_dc["time"])
-        else:
-            compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
 
     assert len(state) == len(state_dc)
 

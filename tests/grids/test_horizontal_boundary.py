@@ -52,6 +52,7 @@ from tasmania.python.utils.storage_utils import get_numerical_state
 from tasmania.python.utils.utils import equal_to as eq
 
 from tests.utilities import (
+    compare_arrays,
     compare_dataarrays,
     st_burgers_state,
     st_horizontal_boundary_kwargs,
@@ -65,8 +66,8 @@ from tests.utilities import (
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_relaxed(data):
+@given(data=hyp_st.data())
+def test_relaxed(data, subtests):
     # ========================================
     # random data generation
     # ========================================
@@ -248,41 +249,41 @@ def test_relaxed(data):
     field_stgy = state["y_velocity_at_v_locations"].values
 
     if ny == 1:
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field), np.repeat(field, 2 * nb + 1, axis=1)
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgx), np.repeat(field_stgx, 2 * nb + 1, axis=1)
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgy)[:, : nb + 1, :],
             np.repeat(field_stgy[:, 0:1, :], nb + 1, axis=1),
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgy)[:, nb + 1 :, :],
             np.repeat(field_stgy[:, -1:, :], nb + 1, axis=1),
         )
     elif nx == 1:
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field), np.repeat(field, 2 * nb + 1, axis=0)
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgx)[: nb + 1, :, :],
             np.repeat(field_stgx[0:1, :, :], nb + 1, axis=0),
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgx)[nb + 1 :, :, :],
             np.repeat(field_stgx[-1:, :, :], nb + 1, axis=0),
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgy), np.repeat(field_stgy, 2 * nb + 1, axis=0)
         )
     else:
-        assert np.allclose(hb.get_numerical_field(field), field)
-        assert np.allclose(hb.get_numerical_field(field_stgx), field_stgx)
-        assert np.allclose(hb.get_numerical_field(field_stgy), field_stgy)
+        compare_arrays(hb.get_numerical_field(field), field)
+        compare_arrays(hb.get_numerical_field(field_stgx), field_stgx)
+        compare_arrays(hb.get_numerical_field(field_stgy), field_stgy)
 
-    assert np.allclose(hb.get_physical_field(hb.get_numerical_field(field)), field)
+    compare_arrays(hb.get_physical_field(hb.get_numerical_field(field)), field)
 
     #
     # reference state
@@ -290,8 +291,11 @@ def test_relaxed(data):
     hb.reference_state = cstate
 
     for key in cstate:
-        if key != "time":
-            assert np.allclose(cstate[key], hb.reference_state[key])
+        with subtests.test(key=key):
+            if key != "time":
+                compare_dataarrays(
+                    cstate[key], hb.reference_state[key], compare_coordinate_values=False
+                )
 
     #
     # enforce_field
@@ -332,11 +336,11 @@ def test_relaxed(data):
         field_name="x_velocity_at_u_locations",
         field_units=units,
     )
-    assert np.allclose(
+    compare_arrays(
         cstate["x_velocity_at_u_locations"].values[0, :],
         hb.reference_state["x_velocity_at_u_locations"].to_units(units).values[0, :],
     )
-    assert np.allclose(
+    compare_arrays(
         cstate["x_velocity_at_u_locations"].values[-1, :],
         hb.reference_state["x_velocity_at_u_locations"].to_units(units).values[-1, :],
     )
@@ -350,11 +354,11 @@ def test_relaxed(data):
         field_name="y_velocity_at_v_locations",
         field_units=units,
     )
-    assert np.allclose(
+    compare_arrays(
         cstate["y_velocity_at_v_locations"].values[:, 0],
         hb.reference_state["y_velocity_at_v_locations"].to_units(units).values[:, 0],
     )
-    assert np.allclose(
+    compare_arrays(
         cstate["y_velocity_at_v_locations"].values[:, -1],
         hb.reference_state["y_velocity_at_v_locations"].to_units(units).values[:, -1],
     )
@@ -608,17 +612,17 @@ def test_periodic(data):
         if nb > 1
         else 0.5 * (cfield[nb - 1 : -nb - 1, :] + cfield[nb + 1 :, :])
     )
-    assert np.allclose(avgx[0, :], avgx[-1, :])
+    compare_arrays(avgx[0, :], avgx[-1, :])
     if nx == 1:
-        assert np.allclose(avgx, cfield[nb:nb, :])
+        compare_arrays(avgx, cfield[nb:nb, :])
     avgy = (
         0.5 * (cfield[:, nb - 1 : -nb - 1] + cfield[:, nb + 1 : -nb + 1])
         if nb > 1
         else 0.5 * (cfield[:, nb - 1 : -nb - 1] + cfield[:, nb + 1 :])
     )
-    assert np.allclose(avgy[:, 0], avgy[:, -1])
+    compare_arrays(avgy[:, 0], avgy[:, -1])
     if ny == 1:
-        assert np.allclose(avgy, cfield[:, nb:nb])
+        compare_arrays(avgy, cfield[:, nb:nb])
 
     if nb > 1:
         avgx = (
@@ -626,17 +630,17 @@ def test_periodic(data):
             if nb > 2
             else 0.5 * (cfield[nb - 2 : -nb - 2, :] + cfield[nb + 2 :, :])
         )
-        assert np.allclose(avgx[0, :], avgx[-1, :])
+        compare_arrays(avgx[0, :], avgx[-1, :])
         if nx == 1:
-            assert np.allclose(avgx, cfield[nb:nb, :])
+            compare_arrays(avgx, cfield[nb:nb, :])
         avgy = (
             0.5 * (cfield[:, nb - 2 : -nb - 2] + cfield[:, nb + 2 : -nb + 2])
             if nb > 2
             else 0.5 * (cfield[:, nb - 2 : -nb - 2] + cfield[:, nb + 2 :])
         )
-        assert np.allclose(avgy[:, 0], avgy[:, -1])
+        compare_arrays(avgy[:, 0], avgy[:, -1])
         if ny == 1:
-            assert np.allclose(avgy, cfield[:, nb:nb])
+            compare_arrays(avgy, cfield[:, nb:nb])
 
     if nb > 2:
         avgx = (
@@ -644,17 +648,17 @@ def test_periodic(data):
             if nb > 3
             else 0.5 * (cfield[nb - 3 : -nb - 3, :] + cfield[nb + 3 :, :])
         )
-        assert np.allclose(avgx[0, :], avgx[-1, :])
+        compare_arrays(avgx[0, :], avgx[-1, :])
         if nx == 1:
-            assert np.allclose(avgx, cfield[nb:nb, :])
+            compare_arrays(avgx, cfield[nb:nb, :])
         avgy = (
             0.5 * (cfield[:, nb - 3 : -nb - 3] + cfield[:, nb + 3 : -nb + 3])
             if nb > 3
             else 0.5 * (cfield[:, nb - 3 : -nb - 3] + cfield[:, nb + 3 :])
         )
-        assert np.allclose(avgy[:, 0], avgy[:, -1])
+        compare_arrays(avgy[:, 0], avgy[:, -1])
         if ny == 1:
-            assert np.allclose(avgy, cfield[:, nb:nb])
+            compare_arrays(avgy, cfield[:, nb:nb])
 
     #
     # numerical and physical x-staggered field
@@ -673,16 +677,16 @@ def test_periodic(data):
         if nb > 1
         else 0.5 * (cfield[nb - 1 : -nb - 1, :] + cfield[nb + 1 :, :])
     )
-    assert np.allclose(avgx[0, :], avgx[-2, :])
-    assert np.allclose(avgx[1, :], avgx[-1, :])
+    compare_arrays(avgx[0, :], avgx[-2, :])
+    compare_arrays(avgx[1, :], avgx[-1, :])
     avgy = (
         0.5 * (cfield[:, nb - 1 : -nb - 1] + cfield[:, nb + 1 : -nb + 1])
         if nb > 1
         else 0.5 * (cfield[:, nb - 1 : -nb - 1] + cfield[:, nb + 1 :])
     )
-    assert np.allclose(avgy[:, 0], avgy[:, -1])
+    compare_arrays(avgy[:, 0], avgy[:, -1])
     if ny == 1:
-        assert np.allclose(avgy, cfield[:, nb:nb])
+        compare_arrays(avgy, cfield[:, nb:nb])
 
     if nb > 1:
         avgx = (
@@ -690,16 +694,16 @@ def test_periodic(data):
             if nb > 2
             else 0.5 * (cfield[nb - 2 : -nb - 2, :] + cfield[nb + 2 :, :])
         )
-        assert np.allclose(avgx[0, :], avgx[-2, :])
-        assert np.allclose(avgx[1, :], avgx[-1, :])
+        compare_arrays(avgx[0, :], avgx[-2, :])
+        compare_arrays(avgx[1, :], avgx[-1, :])
         avgy = (
             0.5 * (cfield[:, nb - 2 : -nb - 2] + cfield[:, nb + 2 : -nb + 2])
             if nb > 2
             else 0.5 * (cfield[:, nb - 2 : -nb - 2] + cfield[:, nb + 2 :])
         )
-        assert np.allclose(avgy[:, 0], avgy[:, -1])
+        compare_arrays(avgy[:, 0], avgy[:, -1])
         if ny == 1:
-            assert np.allclose(avgy, cfield[:, nb:nb])
+            compare_arrays(avgy, cfield[:, nb:nb])
 
     if nb > 2:
         avgx = (
@@ -707,16 +711,16 @@ def test_periodic(data):
             if nb > 3
             else 0.5 * (cfield[nb - 3 : -nb - 3, :] + cfield[nb + 3 :, :])
         )
-        assert np.allclose(avgx[0, :], avgx[-2, :])
-        assert np.allclose(avgx[1, :], avgx[-1, :])
+        compare_arrays(avgx[0, :], avgx[-2, :])
+        compare_arrays(avgx[1, :], avgx[-1, :])
         avgy = (
             0.5 * (cfield[:, nb - 3 : -nb - 3] + cfield[:, nb + 3 : -nb + 3])
             if nb > 3
             else 0.5 * (cfield[:, nb - 3 : -nb - 3] + cfield[:, nb + 3 :])
         )
-        assert np.allclose(avgy[:, 0], avgy[:, -1])
+        compare_arrays(avgy[:, 0], avgy[:, -1])
         if ny == 1:
-            assert np.allclose(avgy, cfield[:, nb:nb])
+            compare_arrays(avgy, cfield[:, nb:nb])
 
     #
     # numerical and physical y-staggered field
@@ -735,16 +739,16 @@ def test_periodic(data):
         if nb > 1
         else 0.5 * (cfield[nb - 1 : -nb - 1, :] + cfield[nb + 1 :, :])
     )
-    assert np.allclose(avgx[0, :], avgx[-1, :])
+    compare_arrays(avgx[0, :], avgx[-1, :])
     if nx == 1:
-        assert np.allclose(avgx, cfield[nb:nb, :])
+        compare_arrays(avgx, cfield[nb:nb, :])
     avgy = (
         0.5 * (cfield[:, nb - 1 : -nb - 1] + cfield[:, nb + 1 : -nb + 1])
         if nb > 1
         else 0.5 * (cfield[:, nb - 1 : -nb - 1] + cfield[:, nb + 1 :])
     )
-    assert np.allclose(avgy[:, 0], avgy[:, -2])
-    assert np.allclose(avgy[:, 1], avgy[:, -1])
+    compare_arrays(avgy[:, 0], avgy[:, -2])
+    compare_arrays(avgy[:, 1], avgy[:, -1])
 
     if nb > 1:
         avgx = (
@@ -752,16 +756,16 @@ def test_periodic(data):
             if nb > 2
             else 0.5 * (cfield[nb - 2 : -nb - 2, :] + cfield[nb + 2 :, :])
         )
-        assert np.allclose(avgx[0, :], avgx[-1, :])
+        compare_arrays(avgx[0, :], avgx[-1, :])
         if nx == 1:
-            assert np.allclose(avgx, cfield[nb:nb, :])
+            compare_arrays(avgx, cfield[nb:nb, :])
         avgy = (
             0.5 * (cfield[:, nb - 2 : -nb - 2] + cfield[:, nb + 2 : -nb + 2])
             if nb > 2
             else 0.5 * (cfield[:, nb - 2 : -nb - 2] + cfield[:, nb + 2 :])
         )
-        assert np.allclose(avgy[:, 0], avgy[:, -2])
-        assert np.allclose(avgy[:, 1], avgy[:, -1])
+        compare_arrays(avgy[:, 0], avgy[:, -2])
+        compare_arrays(avgy[:, 1], avgy[:, -1])
 
     if nb > 2:
         avgx = (
@@ -769,16 +773,16 @@ def test_periodic(data):
             if nb > 3
             else 0.5 * (cfield[nb - 3 : -nb - 3, :] + cfield[nb + 3 :, :])
         )
-        assert np.allclose(avgx[0, :], avgx[-1, :])
+        compare_arrays(avgx[0, :], avgx[-1, :])
         if nx == 1:
-            assert np.allclose(avgx, cfield[nb:nb, :])
+            compare_arrays(avgx, cfield[nb:nb, :])
         avgy = (
             0.5 * (cfield[:, nb - 3 : -nb - 3] + cfield[:, nb + 3 : -nb + 3])
             if nb > 3
             else 0.5 * (cfield[:, nb - 3 : -nb - 3] + cfield[:, nb + 3 :])
         )
-        assert np.allclose(avgy[:, 0], avgy[:, -2])
-        assert np.allclose(avgy[:, 1], avgy[:, -1])
+        compare_arrays(avgy[:, 0], avgy[:, -2])
+        compare_arrays(avgy[:, 1], avgy[:, -1])
 
     #
     # enforce_field
@@ -787,19 +791,19 @@ def test_periodic(data):
     cfield = hb.get_numerical_field(field)
     vfield = deepcopy(cfield)
     hb.enforce_field(cfield)
-    assert np.allclose(cfield, vfield)
+    compare_arrays(cfield, vfield)
 
     field = state["x_velocity_at_u_locations"].values
     cfield = hb.get_numerical_field(field)
     vfield = deepcopy(cfield)
     hb.enforce_field(cfield)
-    assert np.allclose(cfield, vfield)
+    compare_arrays(cfield, vfield)
 
     field = state["y_velocity_at_v_locations"].values
     cfield = hb.get_numerical_field(field)
     vfield = deepcopy(cfield)
     hb.enforce_field(cfield)
-    assert np.allclose(cfield, vfield)
+    compare_arrays(cfield, vfield)
 
     #
     # enforce_raw
@@ -817,8 +821,8 @@ def test_periodic(data):
     pfield = state["x_velocity_at_u_locations"].values
     cfield = hb.get_numerical_field(pfield, "x_velocity_at_u_locations")
     hb.set_outermost_layers_x(cfield)
-    assert np.allclose(cfield[0, :], cfield[-2, :])
-    assert np.allclose(cfield[-1, :], cfield[1, :])
+    compare_arrays(cfield[0, :], cfield[-2, :])
+    compare_arrays(cfield[-1, :], cfield[1, :])
 
     #
     # set_outermost_layers_y
@@ -826,16 +830,16 @@ def test_periodic(data):
     pfield = state["y_velocity_at_v_locations"].values
     cfield = hb.get_numerical_field(pfield, "y_velocity_at_v_locations")
     hb.set_outermost_layers_y(cfield)
-    assert np.allclose(cfield[:, 0], cfield[:, -2])
-    assert np.allclose(cfield[:, -1], cfield[:, 1])
+    compare_arrays(cfield[:, 0], cfield[:, -2])
+    compare_arrays(cfield[:, -1], cfield[:, 1])
 
 
 @settings(
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_dirichlet_burgers(data):
+@given(data, hyp_st.data())
+def test_dirichlet_burgers(data, subtests):
     # ========================================
     # random data generation
     # ========================================
@@ -1011,16 +1015,16 @@ def test_dirichlet_burgers(data):
     field = state["x_velocity"].values
 
     if ny == 1:
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field), np.repeat(field, 2 * nb + 1, axis=1)
         )
     elif nx == 1:
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field), np.repeat(field, 2 * nb + 1, axis=0)
         )
-        assert np.allclose(hb.get_numerical_field(field), field)
+        compare_arrays(hb.get_numerical_field(field), field)
 
-    assert np.allclose(hb.get_physical_field(hb.get_numerical_field(field)), field)
+    compare_arrays(hb.get_physical_field(hb.get_numerical_field(field)), field)
 
     #
     # reference state
@@ -1028,8 +1032,11 @@ def test_dirichlet_burgers(data):
     hb.reference_state = cstate
 
     for key in cstate:
-        if key != "time":
-            assert np.allclose(cstate[key], hb.reference_state[key])
+        with subtests.test(key=key):
+            if key != "time":
+                compare_dataarrays(
+                    cstate[key], hb.reference_state[key], compare_coordinate_values=False
+                )
 
     #
     # enforce_field
@@ -1039,7 +1046,7 @@ def test_dirichlet_burgers(data):
     units = cstate["x_velocity"].attrs["units"]
     hb.enforce_field(field, "x_velocity", units, cstate["time"], cgrid)
 
-    assert np.allclose(field[nb:-nb, nb:-nb], field_dc[nb:-nb, nb:-nb])
+    compare_arrays(field[nb:-nb, nb:-nb], field_dc[nb:-nb, nb:-nb])
 
     #
     # enforce_raw
@@ -1061,8 +1068,8 @@ def test_dirichlet_burgers(data):
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_identity(data):
+@given(data=hyp_st.data())
+def test_identity(data, subtests):
     # ========================================
     # random data generation
     # ========================================
@@ -1240,41 +1247,41 @@ def test_identity(data):
     field_stgy = state0["y_velocity_at_v_locations"].values
 
     if ny == 1:
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field), np.repeat(field, 2 * nb + 1, axis=1)
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgx), np.repeat(field_stgx, 2 * nb + 1, axis=1)
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgy)[:, : nb + 1, :],
             np.repeat(field_stgy[:, 0:1, :], nb + 1, axis=1),
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgy)[:, nb + 1 :, :],
             np.repeat(field_stgy[:, -1:, :], nb + 1, axis=1),
         )
     elif nx == 1:
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field), np.repeat(field, 2 * nb + 1, axis=0)
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgx)[: nb + 1, :, :],
             np.repeat(field_stgx[0:1, :, :], nb + 1, axis=0),
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgx)[nb + 1 :, :, :],
             np.repeat(field_stgx[-1:, :, :], nb + 1, axis=0),
         )
-        assert np.allclose(
+        compare_arrays(
             hb.get_numerical_field(field_stgy), np.repeat(field_stgy, 2 * nb + 1, axis=0)
         )
     else:
-        assert np.allclose(hb.get_numerical_field(field), field)
-        assert np.allclose(hb.get_numerical_field(field_stgx), field_stgx)
-        assert np.allclose(hb.get_numerical_field(field_stgy), field_stgy)
+        compare_arrays(hb.get_numerical_field(field), field)
+        compare_arrays(hb.get_numerical_field(field_stgx), field_stgx)
+        compare_arrays(hb.get_numerical_field(field_stgy), field_stgy)
 
-    assert np.allclose(hb.get_physical_field(hb.get_numerical_field(field)), field)
+    compare_arrays(hb.get_physical_field(hb.get_numerical_field(field)), field)
 
     #
     # reference state
@@ -1288,8 +1295,11 @@ def test_identity(data):
     hb.reference_state = cstate0
 
     for key in cstate0:
-        if key != "time":
-            assert np.allclose(cstate0[key], hb.reference_state[key])
+        with subtests.test(key=key):
+            if key != "time":
+                compare_dataarrays(
+                    cstate0[key], hb.reference_state[key], compare_coordinate_values=False
+                )
 
     #
     # enforce_field
@@ -1305,24 +1315,25 @@ def test_identity(data):
     cstate1 = get_numerical_state(fake_domain, state1, store_names=field_names)
 
     for name in field_names:
-        field = cstate1[name].values
-        field_dc = deepcopy(field)
-        units = cstate1[name].attrs["units"]
+        with subtests.test(name=name):
+            field = cstate1[name].values
+            field_dc = deepcopy(field)
+            units = cstate1[name].attrs["units"]
 
-        hb.enforce_field(field, name, units, cstate1["time"])
+            hb.enforce_field(field, name, units, cstate1["time"])
 
-        if ny == 1:
-            assert np.allclose(field[:, nb:-nb], field_dc[:, nb:-nb])
-            for i in range(nb):
-                assert np.allclose(field[:, i], field[:, nb])
-                assert np.allclose(field[:, -i - 1], field[:, -nb - 1])
-        elif nx == 1:
-            assert np.allclose(field[nb:-nb, :], field_dc[nb:-nb, :])
-            for i in range(nb):
-                assert np.allclose(field[i, :], field[nb, :])
-                assert np.allclose(field[-i - 1, :], field[-nb - 1, :])
-        else:
-            assert np.allclose(field, field_dc)
+            if ny == 1:
+                compare_arrays(field[:, nb:-nb], field_dc[:, nb:-nb])
+                for i in range(nb):
+                    compare_arrays(field[:, i], field[:, nb])
+                    compare_arrays(field[:, -i - 1], field[:, -nb - 1])
+            elif nx == 1:
+                compare_arrays(field[nb:-nb, :], field_dc[nb:-nb, :])
+                for i in range(nb):
+                    compare_arrays(field[i, :], field[nb, :])
+                    compare_arrays(field[-i - 1, :], field[-nb - 1, :])
+            else:
+                compare_arrays(field, field_dc)
 
 
 if __name__ == "__main__":

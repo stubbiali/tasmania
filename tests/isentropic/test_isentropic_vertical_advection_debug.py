@@ -140,8 +140,8 @@ class DebugIsentropicVerticalAdvection(IsentropicVerticalAdvection):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_upwind(data):
+@given(data=hyp_st.data())
+def test_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -204,6 +204,7 @@ def test_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -216,6 +217,7 @@ def test_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -228,6 +230,7 @@ def test_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -240,6 +243,7 @@ def test_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
 
 
@@ -251,8 +255,8 @@ def test_upwind(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_centered(data):
+@given(data=hyp_st.data())
+def test_centered(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -317,6 +321,7 @@ def test_centered(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -329,6 +334,7 @@ def test_centered(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -341,6 +347,7 @@ def test_centered(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -353,6 +360,7 @@ def test_centered(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
 
 
@@ -364,8 +372,8 @@ def test_centered(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_third_order_upwind(data):
+@given(data=hyp_st.data())
+def test_third_order_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -430,6 +438,7 @@ def test_third_order_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -442,6 +451,7 @@ def test_third_order_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -454,6 +464,7 @@ def test_third_order_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
     validation(
         domain,
@@ -466,6 +477,7 @@ def test_third_order_upwind(data):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
+        subtests=subtests
     )
 
 
