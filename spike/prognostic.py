@@ -52,7 +52,7 @@ class IsentropicPrognostic:
 	"""
 	Abstract base class whose derived classes implement different
 	schemes to carry out the prognostic steps of the three-dimensional
-	moist isentropic dynamical core. The conservative form of the
+	moist isentropic_prognostic dynamical core. The conservative form of the
 	governing equations is used.
 	"""
 	# Make the class abstract

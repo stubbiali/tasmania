@@ -1,0 +1,26 @@
+{
+	"field_name": "precipitation",
+	"field_units": "mm hr^-1",
+	"x": null,
+	"y": 0,
+	"z": -1,
+	"axis_name": "x",
+	"axis_units": "km",
+	"axis_x": null,
+	"axis_y": null,
+	"axis_z": null,
+	"drawer_properties": {
+		"fontsize": 16,
+		"x_factor": 1.0,
+		"y_factor": 1.0,
+		"linestyle": "-",
+		"linewidth": 1.75,
+		"linecolor": "cyan",
+		"marker": null,
+		"markersize": 8,
+		"markeredgewidth": 1.5,
+		"markeredgecolor": "blue",
+		"markerfacecolor": "white",
+		"legend_label": "SUS"
+	}
+}

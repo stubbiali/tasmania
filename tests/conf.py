@@ -25,8 +25,8 @@ import numpy as np
 
 
 # backend settings
-backend = ("numpy",)
-datatype = (np.float64,)  # TODO: datatype = (np.float32, np.float64)
+backend = ("numpy", "gtx86")
+datatype = (float, np.float64)  # TODO: datatype = (np.float32, np.float64)
 default_origin = ((0, 0, 0), (1, 1, 0), (3, 3, 0), (2, 0, 1))
 
 # x-axis
@@ -67,7 +67,7 @@ topography = {
 nb = 4
 horizontal_boundary_types = ("relaxed",)  # "periodic", "dirichlet", "identity"
 
-# isentropic model
+# isentropic_prognostic model
 isentropic_state = {
     "air_isentropic_density": {"kg m^-2 K^-1": (10, 1000)},
     "x_velocity_at_u_locations": {"m s^-1": (-50, 50), "km hr^-1": (-150, 150)},

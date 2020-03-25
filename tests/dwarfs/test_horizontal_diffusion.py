@@ -30,7 +30,6 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 
 import gt4py as gt
@@ -38,20 +37,13 @@ import gt4py as gt
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion as HD
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import compare_arrays, st_domain, st_one_of, st_raw_field
 
 
 def assert_xyz(phi_tnd, phi_tnd_assert, nb):
@@ -90,10 +82,18 @@ def second_order_diffusion_yz(dy, phi):
     return second_order_laplacian_y(dy, phi)
 
 
-def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_origin):
+def second_order_validation(
+    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), backend, dtype, default_origin)
+    phi_tnd = zeros(
+        (ni, nj, nk),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -107,6 +107,7 @@ def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
         1.0,
         diffusion_depth,
         nb=nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -137,24 +138,30 @@ def second_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
 )
 @given(hyp_st.data())
 def test_second_order(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)))
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="grid",
     )
     grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -166,6 +173,7 @@ def test_second_order(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -178,7 +186,7 @@ def test_second_order(data):
     # ========================================
     # test
     # ========================================
-    second_order_validation(phi, grid, depth, nb, backend, default_origin)
+    second_order_validation(phi, grid, depth, nb, gt_powered, backend, default_origin)
 
 
 def fourth_order_laplacian_x(dx, phi):
@@ -217,10 +225,18 @@ def fourth_order_diffusion_yz(dy, phi):
     return fourth_order_laplacian_y(dy, phi)
 
 
-def fourth_order_validation(phi, grid, diffusion_depth, nb, backend, default_origin):
+def fourth_order_validation(
+    phi, grid, diffusion_depth, nb, gt_powered, backend, default_origin
+):
     ni, nj, nk = phi.shape
     dtype = phi.dtype
-    phi_tnd = zeros((ni, nj, nk), backend, dtype, default_origin)
+    phi_tnd = zeros(
+        (ni, nj, nk),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     dx = grid.dx.values.item()
     dy = grid.dy.values.item()
@@ -234,6 +250,7 @@ def fourth_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
         1.0,
         diffusion_depth,
         nb=nb,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=phi.dtype,
         default_origin=default_origin,
@@ -262,24 +279,30 @@ def fourth_order_validation(phi, grid, diffusion_depth, nb, backend, default_ori
 )
 @given(hyp_st.data())
 def test_fourth_order(data):
-    # comment the following line to prevent segfault
-    # gt.storage.prepare_numpy()
+    gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="grid",
     )
     grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
@@ -291,6 +314,7 @@ def test_fourth_order(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -303,7 +327,7 @@ def test_fourth_order(data):
     # ========================================
     # test
     # ========================================
-    fourth_order_validation(phi, grid, depth, nb, backend, default_origin)
+    fourth_order_validation(phi, grid, depth, nb, gt_powered, backend, default_origin)
 
 
 if __name__ == "__main__":

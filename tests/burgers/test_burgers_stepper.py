@@ -40,46 +40,26 @@ from tasmania.python.burgers.dynamics.stepper import (
 )
 from tasmania.python.utils.storage_utils import deepcopy_array_dict
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_burgers_advection import (
-        first_order_advection,
-        third_order_advection,
-        fifth_order_advection,
-    )
-    from .utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_burgers_state,
-        st_burgers_tendency,
-        st_domain,
-        st_one_of,
-        st_timedeltas,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_burgers_advection import (
-        first_order_advection,
-        third_order_advection,
-        fifth_order_advection,
-    )
-    from utils import (
-        compare_arrays,
-        compare_datetimes,
-        st_burgers_state,
-        st_burgers_tendency,
-        st_domain,
-        st_one_of,
-        st_timedeltas,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.burgers.test_burgers_advection import (
+    first_order_advection,
+    third_order_advection,
+    fifth_order_advection,
+)
+from tests.utilities import (
+    compare_arrays,
+    compare_datetimes,
+    st_burgers_state,
+    st_burgers_tendency,
+    st_domain,
+    st_one_of,
+    st_timedeltas,
+)
 
 
 @settings(
@@ -93,48 +73,67 @@ def test_forward_euler(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
         label="state",
     )
+
     if_tendency = data.draw(hyp_st.booleans(), label="if_tendency")
     tendency = (
         {}
         if not if_tendency
         else data.draw(
             st_burgers_tendency(
-                grid, time=state["time"], backend=backend, default_origin=default_origin
+                grid,
+                time=state["time"],
+                gt_powered=gt_powered,
+                backend=backend,
+                default_origin=default_origin,
             ),
             label="tendency",
         )
     )
+
     timestep = data.draw(
         st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
         label="timestep",
     )
+
     # ========================================
     # test
     # ========================================
-    dtype = grid.grid_xy.x.dtype
-
     bs = BurgersStepper.factory(
         "forward_euler",
         grid.grid_xy,
         nb,
         "first_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -193,34 +192,53 @@ def test_rk2(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
         label="state",
     )
+
     if_tendency = data.draw(hyp_st.booleans(), label="if_tendency")
     tendency = (
         {}
         if not if_tendency
         else data.draw(
             st_burgers_tendency(
-                grid, time=state["time"], backend=backend, default_origin=default_origin
+                grid,
+                time=state["time"],
+                gt_powered=gt_powered,
+                backend=backend,
+                default_origin=default_origin,
             ),
             label="tendency",
         )
     )
+
     timestep = data.draw(
         st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
         label="timestep",
@@ -229,13 +247,12 @@ def test_rk2(data):
     # ========================================
     # test
     # ========================================
-    dtype = grid.grid_xy.x.dtype
-
     bs = BurgersStepper.factory(
         "rk2",
         grid.grid_xy,
         nb,
         "third_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -321,34 +338,53 @@ def test_rk3ws(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     grid = domain.numerical_grid
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
         label="state",
     )
+
     if_tendency = data.draw(hyp_st.booleans(), label="if_tendency")
     tendency = (
         {}
         if not if_tendency
         else data.draw(
             st_burgers_tendency(
-                grid, time=state["time"], backend=backend, default_origin=default_origin
+                grid,
+                time=state["time"],
+                gt_powered=gt_powered,
+                backend=backend,
+                default_origin=default_origin,
             ),
             label="tendency",
         )
     )
+
     timestep = data.draw(
         st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(seconds=120)),
         label="timestep",
@@ -357,13 +393,12 @@ def test_rk3ws(data):
     # ========================================
     # test
     # ========================================
-    dtype = grid.grid_xy.x.dtype
-
     bs = BurgersStepper.factory(
         "rk3ws",
         grid.grid_xy,
         nb,
         "fifth_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

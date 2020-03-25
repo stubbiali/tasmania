@@ -50,12 +50,15 @@ from tasmania.python.framework.offline_diagnostics import (
     RRMSD,
 )
 from tasmania.python.framework.parallel_splitting import ParallelSplitting
+from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
 from tasmania.python.framework.sequential_tendency_splitting import (
     SequentialTendencySplitting,
 )
 from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
+from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
+from tasmania.python.framework.tendency_steppers import TendencyStepper
 
 # grids
 from tasmania.python.grids.domain import Domain
@@ -74,7 +77,6 @@ from tasmania.python.grids.topography import (
 
 # isentropic
 from tasmania.python.isentropic.dynamics.dycore import IsentropicDynamicalCore
-
 from tasmania.python.isentropic.physics.coriolis import IsentropicConservativeCoriolis
 from tasmania.python.isentropic.physics.diagnostics import (
     IsentropicDiagnostics,
@@ -86,6 +88,10 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
 from tasmania.python.isentropic.physics.horizontal_smoothing import (
     IsentropicHorizontalSmoothing,
 )
+from tasmania.python.isentropic.physics.implicit_vertical_advection import (
+    IsentropicImplicitVerticalAdvectionDiagnostic,
+    IsentropicImplicitVerticalAdvectionPrognostic,
+)
 from tasmania.python.isentropic.physics.turbulence import IsentropicSmagorinsky
 from tasmania.python.isentropic.physics.vertical_advection import (
     IsentropicVerticalAdvection,
@@ -95,13 +101,22 @@ from tasmania.python.isentropic.state import (
     get_isentropic_state_from_brunt_vaisala_frequency,
     get_isentropic_state_from_temperature,
 )
+from tasmania.python.isentropic.utils import (
+    AirPotentialTemperature2Diagnostic,
+    AirPotentialTemperature2Tendency,
+)
 
 # physics
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
     KesslerMicrophysics,
-    KesslerSaturationAdjustment,
+    KesslerSaturationAdjustmentDiagnostic,
+    KesslerSaturationAdjustmentPrognostic,
     KesslerSedimentation,
+)
+from tasmania.python.physics.microphysics.old_kessler import (
+    KesslerMicrophysics as OldKesslerMicrophysics,
+    KesslerSaturationAdjustment as OldKesslerSaturationAdjustment,
 )
 from tasmania.python.physics.microphysics.utils import Clipping, Precipitation
 from tasmania.python.physics.turbulence import Smagorinsky2d
@@ -112,7 +127,7 @@ from tasmania.python.plot.contour import Contour
 from tasmania.python.plot.contourf import Contourf
 from tasmania.python.plot.monitors import Plot, PlotComposite
 from tasmania.python.plot.offline import Line
-from tasmania.python.plot.patches import Circle, Rectangle
+from tasmania.python.plot.patches import Annotation, Circle, Rectangle, Segment
 from tasmania.python.plot.plot_utils import (
     get_figure_and_axes,
     set_axes_properties,
@@ -124,6 +139,13 @@ from tasmania.python.plot.spectrals import CDF
 from tasmania.python.plot.trackers import TimeSeries, HovmollerDiagram
 
 # utilities
+from tasmania.python.utils import taz_types
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
+from tasmania.python.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
+from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
+from tasmania.python.utils.meteo_utils import (
+    get_isothermal_isentropic_analytical_solution,
+)
 from tasmania.python.utils.storage_utils import (
     deepcopy_array_dict,
     deepcopy_dataarray,
@@ -134,28 +156,20 @@ from tasmania.python.utils.storage_utils import (
     get_dataarray_2d,
     zeros,
 )
-from tasmania.python.utils.dict_utils import (
-    add as dict_add,
-    add_inplace as dict_add_inplace,
-    copy as dict_copy,
-    multiply as dict_scale,
-    multiply_inplace as dict_scale_inplace,
-    subtract as dict_subtract,
-    subtract_inplace as dict_subtract_inplace,
-)
-from tasmania.python.utils.meteo_utils import (
-    get_isothermal_isentropic_analytical_solution,
-)
-from tasmania.python.utils.exceptions import ConstantNotFoundError, TimeInconsistencyError
-from tasmania.python.utils.io_utils import load_netcdf_dataset, NetCDFMonitor
-from tasmania.python.utils.utils import get_time_string
+from tasmania.python.utils.utils import feed_module, get_time_string
 
 
 __version__ = "0.6.1"
 
 
 __all__ = (
+    RMSD,
+    RRMSD,
+    STSTendencyStepper,
+    AirPotentialTemperature2Diagnostic,
+    AirPotentialTemperature2Tendency,
     Animation,
+    Annotation,
     BurgersAdvection,
     BurgersDynamicalCore,
     BurgersHorizontalDiffusion,
@@ -167,29 +181,12 @@ __all__ = (
     ConstantNotFoundError,
     Contour,
     Contourf,
+    DataArrayDictOperator,
+    Diagnostic2Tendency,
     DiagnosticComponent,
     DiagnosticComponentComposite,
     Domain,
-    deepcopy_array_dict,
-    deepcopy_dataarray,
-    deepcopy_dataarray_dict,
-    dict_add,
-    dict_add_inplace,
-    dict_copy,
-    dict_scale,
-    dict_scale_inplace,
-    dict_subtract,
-    dict_subtract_inplace,
     DynamicalCore,
-    get_array_dict,
-    get_dataarray_2d,
-    get_dataarray_3d,
-    get_dataarray_dict,
-    get_figure_and_axes,
-    get_isentropic_state_from_brunt_vaisala_frequency,
-    get_isentropic_state_from_temperature,
-    get_isothermal_isentropic_analytical_solution,
-    get_time_string,
     Grid,
     HorizontalBoundary,
     HorizontalDiffusion,
@@ -204,21 +201,25 @@ __all__ = (
     IsentropicDynamicalCore,
     IsentropicHorizontalDiffusion,
     IsentropicHorizontalSmoothing,
+    IsentropicImplicitVerticalAdvectionDiagnostic,
+    IsentropicImplicitVerticalAdvectionPrognostic,
     IsentropicSmagorinsky,
     IsentropicVelocityComponents,
     IsentropicVerticalAdvection,
     KesslerFallVelocity,
     KesslerMicrophysics,
-    KesslerSaturationAdjustment,
+    KesslerSaturationAdjustmentDiagnostic,
+    KesslerSaturationAdjustmentPrognostic,
     KesslerSedimentation,
     Line,
     LineProfile,
-    load_netcdf_dataset,
     NetCDFMonitor,
     NumericalGrid,
     NumericalHorizontalGrid,
     NumericalTopography,
     OfflineDiagnosticComponent,
+    OldKesslerMicrophysics,
+    OldKesslerSaturationAdjustment,
     ParallelSplitting,
     PhysicalGrid,
     PhysicalHorizontalGrid,
@@ -229,21 +230,37 @@ __all__ = (
     PrescribedSurfaceHeating,
     Quiver,
     Rectangle,
-    RMSD,
-    RRMSD,
+    Segment,
     SequentialTendencySplitting,
     SequentialUpdateSplitting,
-    set_axes_properties,
-    set_figure_properties,
     Smagorinsky2d,
     Stepper,
+    Tendency2Diagnostic,
     TendencyComponent,
+    TendencyStepper,
     TimeInconsistencyError,
     TimeSeries,
     Topography,
     VerticalDamping,
     WaterConstituent,
-    zeros,
     ZhaoSolutionFactory,
     ZhaoStateFactory,
+    deepcopy_array_dict,
+    deepcopy_dataarray,
+    deepcopy_dataarray_dict,
+    feed_module,
+    get_array_dict,
+    get_dataarray_2d,
+    get_dataarray_3d,
+    get_dataarray_dict,
+    get_figure_and_axes,
+    get_isentropic_state_from_brunt_vaisala_frequency,
+    get_isentropic_state_from_temperature,
+    get_isothermal_isentropic_analytical_solution,
+    get_time_string,
+    load_netcdf_dataset,
+    set_axes_properties,
+    set_figure_properties,
+    taz_types,
+    zeros,
 )

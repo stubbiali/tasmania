@@ -40,32 +40,19 @@ from tasmania.python.isentropic.physics.horizontal_diffusion import (
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_default_origin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_default_origin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_default_origin,
+    nb as conf_nb,
+)
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -81,32 +68,40 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test(data):
+@given(data=hyp_st.data())
+def test(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_default_origin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
-            xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(2, 20), nb=nb
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 20),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
         ),
         label="domain",
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_default_origin), label="default_origin")
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -130,8 +125,20 @@ def test(data):
 
     diff_types = ("second_order", "fourth_order")
 
-    in_st = zeros(storage_shape, backend, dtype, default_origin)
-    out_st = zeros(storage_shape, backend, dtype, default_origin)
+    in_st = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    out_st = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     for diff_type in diff_types:
         #
@@ -146,6 +153,7 @@ def test(data):
             diff_coeff_max,
             diff_damp_depth,
             nb,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -160,6 +168,7 @@ def test(data):
             diff_moist_coeff_max,
             diff_moist_damp_depth,
             nb,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -195,6 +204,7 @@ def test(data):
             diffusion_coeff=DataArray(diff_coeff, attrs={"units": "s^-1"}),
             diffusion_coeff_max=DataArray(diff_coeff_max, attrs={"units": "s^-1"}),
             diffusion_damp_depth=diff_damp_depth,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -209,16 +219,17 @@ def test(data):
         )
         units = ("kg m^-2 K^-1 s^-1", "kg m^-1 K^-1 s^-2", "kg m^-1 K^-1 s^-2")
         for i in range(len(names)):
-            assert names[i] in tendencies
-            field_val = get_dataarray_3d(
-                val[names[i]],
-                grid,
-                units[i],
-                name=names[i],
-                grid_shape=(nx, ny, nz),
-                set_coordinates=False,
-            )
-            compare_dataarrays(tendencies[names[i]], field_val)
+            with subtests.test(diff_type=diff_type, name=names[i]):
+                assert names[i] in tendencies
+                field_val = get_dataarray_3d(
+                    val[names[i]],
+                    grid,
+                    units[i],
+                    name=names[i],
+                    grid_shape=(nx, ny, nz),
+                    set_coordinates=False,
+                )
+                compare_dataarrays(tendencies[names[i]], field_val)
 
         assert len(tendencies) == len(names)
 
@@ -239,6 +250,7 @@ def test(data):
                 diff_moist_coeff_max, attrs={"units": "s^-1"}
             ),
             diffusion_moist_damp_depth=diff_moist_damp_depth,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -263,16 +275,17 @@ def test(data):
             "g g^-1 s^-1",
         )
         for i in range(len(names)):
-            assert names[i] in tendencies
-            field_val = get_dataarray_3d(
-                val[names[i]],
-                grid,
-                units[i],
-                name=names[i],
-                grid_shape=(nx, ny, nz),
-                set_coordinates=False,
-            )
-            compare_dataarrays(tendencies[names[i]], field_val)
+            with subtests.test(diff_type=diff_type, name=names[i]):
+                assert names[i] in tendencies
+                field_val = get_dataarray_3d(
+                    val[names[i]],
+                    grid,
+                    units[i],
+                    name=names[i],
+                    grid_shape=(nx, ny, nz),
+                    set_coordinates=False,
+                )
+                compare_dataarrays(tendencies[names[i]], field_val)
 
         assert len(tendencies) == len(names)
 

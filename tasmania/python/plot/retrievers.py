@@ -22,17 +22,25 @@
 #
 import numpy as np
 from sympl import DataArray
+from typing import List, Optional, Sequence, Union
 
-from tasmania.python.grids.grid import Grid as GridType
+from tasmania.python.grids.grid import Grid
 from tasmania.python.plot.utils import to_units
+from tasmania.python.utils import taz_types
 
 
 class DataRetriever:
-    """
-    Functor retrieving a raw scalar field from a state dictionary.
-    """
+    """ Functor retrieving a raw scalar field from a state dictionary. """
 
-    def __init__(self, grid, field_name, field_units=None, x=None, y=None, z=None):
+    def __init__(
+        self,
+        grid: Grid,
+        field_name: str,
+        field_units: Optional[str] = None,
+        x: Optional[slice] = None,
+        y: Optional[slice] = None,
+        z: Optional[slice] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -64,7 +72,7 @@ class DataRetriever:
         self.y = y if y is not None else slice(0, None)
         self.z = z if z is not None else slice(0, None)
 
-    def __call__(self, state):
+    def __call__(self, state: taz_types.dataarray_dict_t) -> taz_types.array_t:
         """
         Retrieve the field.
 
@@ -278,7 +286,15 @@ class DataRetrieverComposite:
     Functor retrieving multiple raw fields from multiple states.
     """
 
-    def __init__(self, grid, field_name, field_units=None, x=None, y=None, z=None):
+    def __init__(
+        self,
+        grid: Union[Grid, Sequence[Grid]],
+        field_name: Union[str, Sequence[str], Sequence[Sequence[str]]],
+        field_units: Optional[Union[str, Sequence[str], Sequence[Sequence[str]]]] = None,
+        x: Optional[Union[slice, Sequence[slice], Sequence[Sequence[slice]]]] = None,
+        y: Optional[Union[slice, Sequence[slice], Sequence[Sequence[slice]]]] = None,
+        z: Optional[Union[slice, Sequence[slice], Sequence[Sequence[slice]]]] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -319,16 +335,14 @@ class DataRetrieverComposite:
                 "sequence[sequence[str]], got {}.".format(type(field_name))
             )
 
-        if isinstance(grid, GridType):
+        if isinstance(grid, Grid):
             grids = (grid,) * len(fnames)
-        elif isinstance(grid, SequenceType) and all(
-            isinstance(g, GridType) for g in grid
-        ):
+        elif isinstance(grid, SequenceType) and all(isinstance(g, Grid) for g in grid):
             grids = grid
         else:
             raise TypeError(
                 "grid''s type: expected {0}, or sequence[{0}], got {1}.".format(
-                    GridType.__class__, type(grid)
+                    Grid.__class__, type(grid)
                 )
             )
 
@@ -453,7 +467,10 @@ class DataRetrieverComposite:
                 )
             self._retrievers.append(iretrievers)
 
-    def __call__(self, *args):
+    def __call__(
+        self,
+        *args: Union[taz_types.dataarray_dict_t, Sequence[taz_types.dataarray_dict_t]]
+    ) -> List[taz_types.array_t]:
         """
         Retrieve the field(s).
 

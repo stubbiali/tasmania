@@ -4,9 +4,8 @@ MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
 
 # add essential files to the container's filesystem
 COPY tasmania $HOME/tasmania
-RUN mkdir tasmania/docker && mkdir tasmania/docker/external
+RUN mkdir $HOME/tasmania/docker && mkdir $HOME/tasmania/docker/external
 COPY configs $HOME/tasmania/docker/configs
-COPY external/gridtools4py $HOME/tasmania/docker/external/gridtools4py
 
 # personalize bashrc configuration file
 RUN cat $HOME/tasmania/docker/configs/bashrc >> ~/.bashrc
@@ -23,11 +22,23 @@ RUN chown -hR tasmania-user $HOME
 # switch to tasmania-user
 USER tasmania-user
 
-# create a virtual environment around python3.4
-# note: this is not going to work because sip (required by pyqt5) is not supported by python3.4
+# clone gt4py
+ARG gt4py_branch=master
+RUN cd $HOME/tasmania/docker/external && \
+    rm -rf gt4py/ && \
+    git clone -b $gt4py_branch https://github.com/GridTools/gt4py.git
+
+# clone sympl
+ARG sympl_branch=master
+RUN cd $HOME/tasmania/docker/external && \
+    rm -rf sympl/ && \
+    git clone -b $sympl_branch https://github.com/stubbiali/sympl.git
+
+# # create a virtual environment around python3.4
+# # note: this is not going to work because sip (required by pyqt5) is not supported by python3.4
 # RUN virtualenv --python=python3.4 py34
 # RUN . py34/bin/activate && \
-#	pip install -e $HOME/tasmania/docker/gridtools4py --no-cache-dir && \
+#	pip install -e $HOME/tasmania/docker/gt4py --no-cache-dir && \
 #	pip install -e $HOME/tasmania --no-cache-dir && \
 #	cat py34/lib/python3.4/site-packages/matplotlib/mpl-data/matplotlibrc | \
 #	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
@@ -35,44 +46,52 @@ USER tasmania-user
 #	rm /tmp/.matplotlibrc && \
 #	deactivate
 
-# create a virtual environment around python3.5
-RUN virtualenv --python=python3.5 py35
-RUN . py35/bin/activate && \
-	pip install -e $HOME/tasmania/docker/external/gridtools4py --no-cache-dir && \
-	pip install -e $HOME/tasmania --no-cache-dir && \
-	cat py35/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc | \
-	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
-	cp /tmp/.matplotlibrc py35/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc && \
-	rm /tmp/.matplotlibrc && \
-	deactivate
+# # create a virtual environment around python3.5
+# # note: this is not going to work because gt4py requires python >= 3.6
+# RUN virtualenv --python=python3.5 py35
+# RUN . py35/bin/activate && \
+#	pip install -e $HOME/tasmania --no-cache-dir && \
+#	cat py35/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc | \
+#	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+#	cp /tmp/.matplotlibrc py35/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc && \
+#	rm /tmp/.matplotlibrc && \
+#	pip install -e $HOME/tasmania/docker/external/gt4py --no-cache-dir && \
+#	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
+#	deactivate
 
-# create a virtual environment around python3.6
-RUN virtualenv --python=python3.6 py36
-RUN . py36/bin/activate && \
-	pip install -e $HOME/tasmania/docker/external/gridtools4py --no-cache-dir && \
-	pip install -e $HOME/tasmania --no-cache-dir && \
-	cat py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | \
-	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
-	cp /tmp/.matplotlibrc py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc && \
-	rm /tmp/.matplotlibrc && \
-	deactivate
+# # create a virtual environment around python3.6
+# RUN virtualenv --python=python3.6 py36
+# RUN . py36/bin/activate && \
+#	pip install -e $HOME/tasmania/docker/external/gt4py --no-cache-dir && \
+#   python $HOME/tasmania/docker/external/gt4py/setup.py install_gt_sources && \
+#	pip install -e $HOME/tasmania --no-cache-dir && \
+#   # cat py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | \
+#   #   sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+#	# cp /tmp/.matplotlibrc py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc && \
+#	# rm /tmp/.matplotlibrc && \
+#	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
+#	deactivate
 
 # create a virtual environment around python3.7
 RUN virtualenv --python=python3.7 py37
 RUN . py37/bin/activate && \
-	pip install -e $HOME/tasmania/docker/external/gridtools4py --no-cache-dir && \
 	pip install -e $HOME/tasmania --no-cache-dir && \
-	cat py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc | \
-	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
-	cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
-	rm /tmp/.matplotlibrc && \
+	# cat py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	#   sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	# cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	# rm /tmp/.matplotlibrc && \
+	pip install -e $HOME/tasmania/docker/external/gt4py --no-cache-dir && \
+    python $HOME/tasmania/docker/external/gt4py/setup.py install_gt_sources && \
+	pip install -e $HOME/tasmania/docker/external/sympl --no-cache-dir && \
 	deactivate
 
 # set firefox as default browser for jupyter
-RUN . py35/bin/activate && \
+RUN . py37/bin/activate && \
+    pip install --upgrade jupyter_client && \
 	jupyter notebook --generate-config && \
 	cat $HOME/.jupyter/jupyter_notebook_config.py | \
-	sed -e "s@\#c.NotebookApp.browser = ''@c.NotebookApp.browser = '/usr/bin/firefox'@g" > /tmp/jupyter_notebook_config.py && \
+	    sed -e "s@\#c.NotebookApp.browser = ''@c.NotebookApp.browser = '/usr/bin/firefox'@g" > \
+	        /tmp/jupyter_notebook_config.py && \
 	cp /tmp/jupyter_notebook_config.py $HOME/.jupyter/jupyter_notebook_config.py && \
 	rm /tmp/jupyter_notebook_config.py && \
 	deactivate

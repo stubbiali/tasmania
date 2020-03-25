@@ -8,11 +8,11 @@ This is the repository for Tasmania, a Python framework/toolkit to ease the comp
 
 ## Background and motivation
 
-Weather and climate models are complex systems comprising several subsystems (atmosphere, ocean, land, glacier, sea ice, and marine biogeochemistry) which interact at their interfaces through the exchange of mass, momentum and energy. Each domain hosts a plethora of interlinked physical and chemical processes which can be characterized on a wide spectrum of spatio-temporal scales. Due to the limited available computer resources, creating a discrete model covering the entire range of scales, even for a single subsystem, is challenging, if not an impossible task. Rather, the grid resolution discriminates between fully resolved fluid-dynamics features (e.g., horizontal and vertical advection, pressure gradient, and Coriolis acceleration), and subgrid-scale aspects (e.g., radiative transfer, macro- and micro-physics, shallow and deep convection, turbulent mixing in the planetary boundary layer, and orographic drag) which do not emerge naturally on the mesh. The former are traditionally referred to as the *dynamics*, while the latter form the so-called *physics* of the model.
+Weather and climate models are complex systems comprising several subsystems (atmosphere, ocean, land, glacier, sea ice, and marine biogeochemistry) which interact at their interfaces through the exchange of mass, momentum and energy. Each domain hosts a plethora of interlinked physical and chemical processes which can be characterized on a wide spectrum of spatio-temporal scales. Due to the limited available computer resources, creating a discrete model covering the entire range of scales, even for a single subsystem, is a challenging, if not an impossible, task. Rather, the grid resolution discriminates between fully resolved fluid-dynamics features (e.g., horizontal and vertical advection, pressure gradient, and Coriolis acceleration), and subgrid-scale aspects (e.g., radiative transfer, macro- and micro-physics, shallow and deep convection, turbulent mixing in the planetary boundary layer, and orographic drag) which do not emerge naturally on the mesh. The former are traditionally referred to as the *dynamics*, while the latter form the so-called *physics* of the model.
 
 In all models, the *dynamical core* solves for the fluid-dynamics equations while *physical parameterizations* express the bulk effect of the subgrid-scale phenomena upon the large-scale flow. The procedure which molds all the dynamics and physics components to yield a coherent and comprehensive model is referred to as the *physics-dynamics coupling*. 
 
-The continual growth in model resolution demands for increasing specialization to address the physical processes which emerge on smaller and smaller scales. This has resulted in a high compartmentalization of the model development, with dynamical cores and physics packages mostly developed in isolation. Besides easing the proliferation of software components with incompatible structure, such approach is in direct contrast with the need of improving the time stepping in the current apparatus of atmospheric models. Indeed, the time stepping is often merely accurate to the first order. However, as the error associated with the discretization of individual processes decreases, the error injected by the coupling will eventually dominate. 
+The continual growth in model resolution demands an increasing specialization to address the physical processes which emerge on smaller and smaller scales. This has resulted in a high compartmentalization of the model development, with dynamical cores and physics packages mostly developed in isolation. Besides easing the proliferation of software components with incompatible structure, such an approach is in direct contrast with the need of improving the time stepping in the current apparatus of atmospheric models. Indeed, the time stepping is often merely accurate to the first order. However, as the error associated with the discretization of individual processes decreases, the error injected by the coupling will eventually dominate. 
 
 ## Goal
 
@@ -54,7 +54,7 @@ To clone this repository (with submodules) on your machine and place yourself on
 	
 ## Running Tasmania
 
-### Using a virtual environment
+### Using a virtual environment (recommended)
 
 The `bootstrap_venv.sh` bash script automates the creation of an isolated Python environment for Tasmania. The [virtualenv](https://virtualenv.pypa.io/en/latest/) package is used. The procedure can be customized by means of the bash variables defined in the preamble of the script. 
 
@@ -75,7 +75,7 @@ or
 
 to run a container in the background and get shell access to it. You login the container's shell as `tasmania-user` - a non-root user having the same `UID` of the host user who spun up the container. The container's working directory is `/home/tasmania-user`.
 
-**Disclaimer:** the container is given extended privileges to be able to run graphical applications, like generating a plot via [Matplotlib](https://matplotlib.org/) or running a [Jupyter](http://jupyter.org/) notebook. We are conscious of the fact that this is consider bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.
+**Disclaimer:** the container is given extended privileges to be able to run graphical applications, like generating a plot via [Matplotlib](https://matplotlib.org/) or running a [Jupyter](http://jupyter.org/) notebook. We are conscious of the fact that this is considered bad practice. Yet, it is the easiest way (to our knowledge) to allow containerized applications access the host desktop environment.
 
 **Remark:** ax explained [here](https://cntnr.io/running-guis-with-docker-on-mac-os-x-a14df6a76efc), running a graphical application inside a Docker container on a Mac OS X requires *socat* and *Xquartz* to let the container harness the X window system on the host operating system. Both socat and Xquartz can be installed from the command line through, e.g., *homebrew*:
 

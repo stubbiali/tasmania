@@ -32,31 +32,25 @@ from sympl import (
     combine_component_properties,
 )
 from sympl._core.units import clean_units
+from typing import Optional, Tuple, Union
 
-from gt4py import gtscript
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
-
-from tasmania.python.framework.composite import (
-    DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
+from tasmania.python.framework._base import (
+    BaseConcurrentCoupling,
+    BaseDiagnosticComponentComposite,
 )
-from tasmania.python.utils.dict_utils import add_inplace
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.framework.promoters import Diagnostic2Tendency, Tendency2Diagnostic
+from tasmania.python.utils import taz_types
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
+    check_t2d,
     check_properties_compatibility,
     get_input_properties,
+    get_tendency_properties,
 )
 from tasmania.python.utils.utils import assert_sequence
 
 
-def stencil_sum_defs(
-    inout_a: gtscript.Field[np.float64], in_b: gtscript.Field[np.float64]
-):
-    with computation(PARALLEL), interval(...):
-        inout_a = inout_a + in_b
-
-
-class ConcurrentCoupling:
+class ConcurrentCoupling(BaseConcurrentCoupling):
     """
     Callable class which automates the execution of a bundle of physical
     parameterizations pursuing the *explicit* concurrent coupling strategy.
@@ -88,29 +82,36 @@ class ConcurrentCoupling:
     allowed_diagnostic_type = (
         DiagnosticComponent,
         SymplDiagnosticComponentComposite,
-        TasmaniaDiagnosticComponentComposite,
+        BaseDiagnosticComponentComposite,
     )
     allowed_tendency_type = (
         TendencyComponent,
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        BaseConcurrentCoupling,
     )
-    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type + (__name__,)
+    allowed_promoter_type = (Diagnostic2Tendency, Tendency2Diagnostic)
+    allowed_component_type = (
+        allowed_diagnostic_type + allowed_tendency_type + allowed_promoter_type
+    )
 
     def __init__(
         self,
-        *args,
-        execution_policy="serial",
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-            dtype=np.float32,
-        exec_info=None,
-        rebuild=False,
+        *args: Union[
+            taz_types.diagnostic_component_t,
+            taz_types.tendency_component_t,
+            taz_types.promoter_component_t,
+        ],
+        execution_policy: str = "serial",
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -123,8 +124,9 @@ class ConcurrentCoupling:
                 * :class:`sympl.TendencyComponent`,
                 * :class:`sympl.TendencyComponentComposite`,
                 * :class:`sympl.ImplicitTendencyComponent`,
-                * :class:`sympl.ImplicitTendencyComponentComposite`, or
-                * :class:`tasmania.ConcurrentCoupling`
+                * :class:`sympl.ImplicitTendencyComponentComposite`,
+                * :class:`tasmania.ConcurrentCoupling`, or
+                * :class:`tasmania.TendencyPromoter`
 
             representing the components to wrap.
         execution_policy : `str`, optional
@@ -152,8 +154,6 @@ class ConcurrentCoupling:
             Dictionary of building options.
         dtype : `data-type`, optional
             Data type of the storages passed to the stencil.
-        exec_info : `dict`, optional
-            Dictionary which will store statistics and diagnostics gathered at run time.
         rebuild : `bool`, optional
             `True` to trigger the stencils compilation at any class instantiation,
             `False` to rely on the caching mechanism implemented by GT4Py.
@@ -164,10 +164,13 @@ class ConcurrentCoupling:
         self._component_list = args
 
         self._policy = execution_policy
-        if execution_policy == "serial":
-            self._call = self._call_serial_gt if gt_powered else self._call_serial
-        else:
-            self._call = self._call_asparallel_gt if gt_powered else self._call_asparallel
+        self._call = (
+            self._call_serial if execution_policy == "serial" else self._call_asparallel
+        )
+
+        # ensure that a tendency is actually computed before it gets moved around
+        # by a Tendency2Diagnostic
+        check_t2d(args, Tendency2Diagnostic)
 
         # set properties
         self.input_properties = self._init_input_properties()
@@ -189,39 +192,47 @@ class ConcurrentCoupling:
             properties2_name="output_properties",
         )
 
-        if gt_powered:
-            # update annotations for the field arguments of the definition function
-            set_annotations(stencil_sum_defs, dtype)
-
-            # compile the underlying stencil
-            self._stencil_sum = gtscript.stencil(
-                definition=stencil_sum_defs,
-                backend=backend,
-                build_info=build_info,
-                rebuild=rebuild,
-                **(backend_opts or {})
-            )
-
-            # store parameters needed at run-time
-            self._exec_info = exec_info
-
-    def _init_input_properties(self):
-        flag = self._policy == "serial"
-        return get_input_properties(self._component_list, consider_diagnostics=flag)
-
-    def _init_tendency_properties(self):
-        tendency_list = tuple(
-            c
-            for c in self._component_list
-            if isinstance(c, self.__class__.allowed_tendency_type + (self.__class__,))
+        self._dict_op = DataArrayDictOperator(
+            gt_powered,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=dtype,
+            rebuild=rebuild,
         )
-        return combine_component_properties(tendency_list, "tendency_properties")
 
-    def _init_diagnostic_properties(self):
-        return combine_component_properties(self._component_list, "diagnostic_properties")
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
+        t2d_type = Tendency2Diagnostic
+        components_list = []
+        for component in self.component_list:
+            components_list.append(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties"
+                    if not isinstance(component, t2d_type)
+                    else None,
+                    "consider_diagnostics": self._policy == "serial",
+                }
+            )
+        return get_input_properties(components_list)
+
+    def _init_tendency_properties(self) -> taz_types.properties_dict_t:
+        t2d_type = Tendency2Diagnostic
+        return get_tendency_properties(self.component_list, t2d_type)
+
+    def _init_diagnostic_properties(self) -> taz_types.properties_dict_t:
+        return combine_component_properties(self.component_list, "diagnostic_properties")
 
     @property
-    def component_list(self):
+    def component_list(
+        self
+    ) -> Tuple[
+        Union[
+            taz_types.diagnostic_component_t,
+            taz_types.tendency_component_t,
+            taz_types.promoter_component_t,
+        ]
+    ]:
         """
         Return
         ------
@@ -230,7 +241,9 @@ class ConcurrentCoupling:
         """
         return self._component_list
 
-    def __call__(self, state, timestep):
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """
         Execute the wrapped components to calculate tendencies and retrieve
         diagnostics with the help of the input state.
@@ -261,17 +274,14 @@ class ConcurrentCoupling:
 
         return tendencies, diagnostics
 
-    def _call_serial(self, state, timestep):
+    def _call_serial(
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """ Process the components in 'serial' runtime mode. """
         aux_state = {}
         aux_state.update(state)
 
         out_tendencies = {}
-        tendency_units = {
-            tendency: properties["units"]
-            for tendency, properties in self.tendency_properties.items()
-        }
-
         out_diagnostics = {}
 
         for component in self._component_list:
@@ -279,125 +289,69 @@ class ConcurrentCoupling:
                 diagnostics = component(aux_state)
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
-            else:
+            elif isinstance(component, self.__class__.allowed_tendency_type):
                 try:
                     tendencies, diagnostics = component(aux_state)
                 except TypeError:
                     tendencies, diagnostics = component(aux_state, timestep)
 
-                add_inplace(
+                self._dict_op.iadd(
                     out_tendencies,
                     tendencies,
-                    units=tendency_units,
+                    field_properties=self.tendency_properties,
                     unshared_variables_in_output=True,
                 )
                 aux_state.update(diagnostics)
                 out_diagnostics.update(diagnostics)
+            elif isinstance(component, Tendency2Diagnostic):
+                diagnostics = component(out_tendencies)
+                aux_state.update(diagnostics)
+                out_diagnostics.update(diagnostics)
+            else:  # diagnostic to tendency
+                tendencies = component(aux_state)
+                self._dict_op.iadd(
+                    out_tendencies,
+                    tendencies,
+                    field_properties=self.tendency_properties,
+                    unshared_variables_in_output=True,
+                )
 
         return out_tendencies, out_diagnostics
 
-    def _call_serial_gt(self, state, timestep):
-        """ GT4Py-powered version of _call_serial. """
-        aux_state = {}
-        aux_state.update(state)
-
-        out_tendencies = {}
-        tendency_units = {
-            tendency: properties["units"]
-            for tendency, properties in self.tendency_properties.items()
-        }
-
-        out_diagnostics = {}
-
-        for component in self._component_list:
-            if isinstance(component, self.__class__.allowed_diagnostic_type):
-                diagnostics = component(aux_state)
-                aux_state.update(diagnostics)
-                out_diagnostics.update(diagnostics)
-            else:
-                try:
-                    tendencies, diagnostics = component(aux_state)
-                except TypeError:
-                    tendencies, diagnostics = component(aux_state, timestep)
-
-                for name in tendencies:
-                    if name != "time":
-                        if name not in out_tendencies:
-                            out_tendencies[name] = tendencies[name].to_units(
-                                tendency_units[name]
-                            )
-                        else:
-                            a = out_tendencies[name].values
-                            b = tendencies[name].to_units(tendency_units[name]).values
-                            self._stencil_sum(
-                                inout_a=a,
-                                in_b=b,
-                                origin=(0, 0, 0),
-                                domain=a.shape,
-                                exec_info=self._exec_info,
-                            )
-
-                aux_state.update(diagnostics)
-                out_diagnostics.update(diagnostics)
-
-        return out_tendencies, out_diagnostics
-
-    def _call_asparallel(self, state, timestep):
+    def _call_asparallel(
+        self, state: taz_types.dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> Tuple[taz_types.dataarray_dict_t, taz_types.dataarray_dict_t]:
         """ Process the components in 'as_parallel' runtime mode. """
         out_tendencies = {}
-        tendency_units = {
-            tendency: properties["units"]
-            for tendency, properties in self.tendency_properties.items()
-        }
-
         out_diagnostics = {}
 
         for component in self._component_list:
             if isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics = component(state)
                 out_diagnostics.update(diagnostics)
-            else:
+            elif isinstance(component, self.__class__.allowed_tendency_type):
                 try:
                     tendencies, diagnostics = component(state)
                 except TypeError:
                     tendencies, diagnostics = component(state, timestep)
 
-                add_inplace(
+                self._dict_op.iadd(
                     out_tendencies,
                     tendencies,
-                    units=tendency_units,
+                    field_properties=self.tendency_properties,
                     unshared_variables_in_output=True,
                 )
                 out_diagnostics.update(diagnostics)
-
-        return out_tendencies, out_diagnostics
-
-    def _call_asparallel_gt(self, state, timestep):
-        """ GT4Py-powered version of _call_asparallel. """
-        out_tendencies = {}
-        tendency_units = {
-            tendency: properties["units"]
-            for tendency, properties in self.tendency_properties.items()
-        }
-
-        out_diagnostics = {}
-
-        for component in self._component_list:
-            if isinstance(component, self.__class__.allowed_diagnostic_type):
-                diagnostics = component(state)
-                out_diagnostics.update(diagnostics)
-            else:
-                try:
-                    tendencies, diagnostics = component(state)
-                except TypeError:
-                    tendencies, diagnostics = component(state, timestep)
-
-                add_inplace(
+            elif isinstance(component, Tendency2Diagnostic):
+                # do nothing
+                pass
+            else:  # diagnostics to tendencies
+                tendencies = component(state)
+                self._dict_op.iadd(
                     out_tendencies,
                     tendencies,
-                    units=tendency_units,
+                    field_properties=self.tendency_properties,
                     unshared_variables_in_output=True,
                 )
-                out_diagnostics.update(diagnostics)
 
         return out_tendencies, out_diagnostics

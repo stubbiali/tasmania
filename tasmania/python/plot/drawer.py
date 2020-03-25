@@ -21,6 +21,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import abc
+from matplotlib import pyplot as plt
+from typing import Optional
+
+from tasmania.python.utils import taz_types
 
 
 class Drawer(abc.ABC):
@@ -30,15 +34,9 @@ class Drawer(abc.ABC):
     from an input state dictionary (or a time-series of state
     dictionaries) to generate a specific plot. The figure and
     the axes encapsulating the plot should be provided, as well.
-
-    Attributes
-    ----------
-    properties : dict
-        Dictionary whose keys are strings denoting plot-specific
-        settings, and whose values specify values for those settings.
     """
 
-    def __init__(self, properties=None):
+    def __init__(self, properties: Optional[taz_types.options_dict_t] = None) -> None:
         """
         Parameters
         ----------
@@ -49,9 +47,10 @@ class Drawer(abc.ABC):
         self.properties = {} if properties is None else properties
 
     @abc.abstractmethod
-    def __call__(self, state, fig, ax):
-        """
-        Call operator generating the plot.
+    def __call__(
+        self, state: taz_types.dataarray_dict_t, fig: plt.Figure, ax: plt.Axes
+    ) -> None:
+        """ Call operator generating the plot.
 
         Parameters
         ----------

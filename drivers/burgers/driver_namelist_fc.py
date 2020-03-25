@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import argparse
 import gt4py as gt
 import numpy as np
 import os
@@ -27,13 +28,29 @@ from sympl import DataArray
 import tasmania as taz
 import time
 
-try:
-    from . import namelist_fc as nl
-except (ImportError, ModuleNotFoundError):
-    import namelist_fc as nl
+from drivers.burgers import namelist_fc
 
 
 gt.storage.prepare_numpy()
+
+# ============================================================
+# The namelist
+# ============================================================
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-n",
+    metavar="NAMELIST",
+    type=str,
+    default="namelist_fc.py",
+    help="The namelist file.",
+    dest="namelist",
+)
+args = parser.parse_args()
+namelist = args.namelist.replace("/", ".")
+namelist = namelist[:-3] if namelist.endswith(".py") else namelist
+exec("import {} as namelist".format(namelist))
+nl = locals()["namelist"]
+taz.feed_module(target=nl, source=namelist_fc)
 
 # ============================================================
 # The underlying domain
@@ -49,6 +66,7 @@ domain = taz.Domain(
     nb=nl.nb,
     horizontal_boundary_kwargs=nl.hb_kwargs,
     topography_type="flat_terrain",
+    gt_powered=nl.gt_powered,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
 )
@@ -62,6 +80,7 @@ zsof = taz.ZhaoSolutionFactory(nl.init_time, nl.diffusion_coeff)
 zsf = taz.ZhaoStateFactory(
     nl.init_time,
     nl.diffusion_coeff,
+    gt_powered=nl.gt_powered,
     backend=nl.gt_kwargs["backend"],
     dtype=nl.gt_kwargs["dtype"],
     default_origin=nl.gt_kwargs["default_origin"],
@@ -78,7 +97,12 @@ domain.horizontal_boundary.reference_state = state
 # ============================================================
 # component calculating the Laplacian of the velocity
 diff = taz.BurgersHorizontalDiffusion(
-    domain, "numerical", nl.diffusion_type, nl.diffusion_coeff, **nl.gt_kwargs
+    domain,
+    "numerical",
+    nl.diffusion_type,
+    nl.diffusion_coeff,
+    gt_powered=nl.gt_powered,
+    **nl.gt_kwargs
 )
 
 # ============================================================
@@ -89,6 +113,7 @@ dycore = taz.BurgersDynamicalCore(
     intermediate_tendencies=diff,
     time_integration_scheme=nl.time_integration_scheme,
     flux_scheme=nl.flux_scheme,
+    gt_powered=nl.gt_powered,
     **nl.gt_kwargs
 )
 
@@ -112,11 +137,14 @@ nt = nl.niter
 wall_time_start = time.time()
 compute_time = 0.0
 
+# dict operator
+dict_op = taz.DataArrayDictOperator(nl.gt_powered, **nl.gt_kwargs)
+
 for i in range(nt):
     compute_time_start = time.time()
 
     # step the solution
-    taz.dict_copy(state, dycore(state, {}, dt))
+    dict_op.copy(state, dycore(state, {}, dt))
     state["time"] = nl.init_time + (i + 1) * dt
 
     compute_time += time.time() - compute_time_start
@@ -142,7 +170,7 @@ for i in range(nt):
     to_save = (
         nl.save
         and nl.filename is not None
-        and ((((i + 1) % nl.save_frequency == 0)) or i + 1 == nt)
+        and ((nl.save_frequency > 0 and (i + 1) % nl.save_frequency == 0) or i + 1 == nt)
     )
 
     if to_save:
@@ -161,6 +189,12 @@ if nl.save and nl.filename is not None:
 # stop the timer
 wall_time = time.time() - wall_time_start
 
+# compute the error
+gt.storage.restore_numpy()
+u = np.asarray(state["x_velocity"].values)
+uex = zsof(state["time"], cgrid, field_name="x_velocity", field_units="m s^-1")
+print("RMSE(u) = {:.5E} m/s".format(np.linalg.norm(u - uex) / np.sqrt(u.size)))
+
 # print logs
-print("Total wall time: {}.".format(taz.get_time_string(wall_time)))
-print("Compute time: {}.".format(taz.get_time_string(compute_time)))
+print("Total wall time: {}.".format(taz.get_time_string(wall_time, False)))
+print("Compute time: {}.".format(taz.get_time_string(compute_time, True)))

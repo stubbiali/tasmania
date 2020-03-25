@@ -29,33 +29,20 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
-from sympl._core.units import units_are_same
-
-from gt4py import gtscript
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
+from typing import Any, Mapping, Optional, Tuple, Union
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.tendency_steppers import tendencystepper_factory
-from tasmania.python.utils.dict_utils import add_inplace, subtract_inplace
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.utils import taz_types
+from tasmania.python.utils.dict_utils import DataArrayDictOperator
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
     get_output_properties,
 )
-
-
-def stencil_defs(
-    inout_a: gtscript.Field[np.float64],
-    in_b: gtscript.Field[np.float64],
-    in_c: gtscript.Field[np.float64],
-):
-    with computation(PARALLEL), interval(...):
-        inout_a = inout_a + in_b - in_c
 
 
 class ParallelSplitting:
@@ -105,25 +92,23 @@ class ParallelSplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        ConcurrentCoupling,
     )
-    allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
-    )
+    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
     def __init__(
         self,
-        *args,
-        execution_policy="serial",
-        retrieve_diagnostics_from_provisional_state=False,
-        gt_powered=False,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-            dtype=np.float32,
-        exec_info=None,
-        rebuild=False,
+        *args: Mapping[str, Any],
+        execution_policy: str = "serial",
+        retrieve_diagnostics_from_provisional_state: bool = False,
+        gt_powered: bool = False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        rebuild: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -159,8 +144,19 @@ class ParallelSplitting:
                         - 'rk2', for the two-stage second-order Runge-Kutta (RK) scheme;
                         - 'rk3ws', for the three-stage RK scheme as used in the
                             `COSMO model <http://www.cosmo-model.org>`_; this method is
-                            nominally second-order, and third-order for linear problems;
-                        - 'rk3', for the three-stages, third-order RK scheme.
+                            nominally second-order, and third-order for linear problems.
+
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'gt_powered' specifies if all the time-intensive math
+                    operations performed inside 'time_integrator' should harness
+                    GT4Py. Defaults to `gt_powered` (see later).
 
                 * if 'component' is a
 
@@ -207,6 +203,17 @@ class ParallelSplitting:
                     'substeps' represents the number of substeps to carry out
                     to integrate the process. Defaults to 1.
 
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'add_diagnostics_to_provisional_input' says whether the computed
+                    diagnostics should be added to the input or provisional state.
+
         execution_policy : `str`, optional
             String specifying the runtime mode in which parameterizations
             should be invoked. Either:
@@ -247,6 +254,7 @@ class ParallelSplitting:
         """
         self._component_list = []
         self._substeps = []
+
         for process in args:
             try:
                 bare_component = process["component"]
@@ -266,15 +274,19 @@ class ParallelSplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                kwargs = process.get(
+                integrator_gt_powered = process.get("gt_powered", gt_powered)
+                integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": None, "halo": None, "managed_memory": False},
+                    {"backend": "numpy", "dtype": np.float64, "rebuild": False},
                 )
 
-                TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(
-                    TendencyStepper(
-                        bare_component, enforce_horizontal_boundary=enforce_hb, **kwargs
+                    TendencyStepper.factory(
+                        integrator,
+                        bare_component,
+                        enforce_horizontal_boundary=enforce_hb,
+                        gt_powered=integrator_gt_powered,
+                        **integrator_kwargs
                     )
                 )
 
@@ -283,10 +295,9 @@ class ParallelSplitting:
                 self._substeps.append(substeps)
 
         self._policy = execution_policy
-        if execution_policy == "serial":
-            self._call = self._call_serial_gt if gt_powered else self._call_serial
-        else:
-            self._call = self._call_asparallel_gt if gt_powered else self._call_asparallel
+        self._call = (
+            self._call_serial if execution_policy == "serial" else self._call_asparallel
+        )
 
         if (
             execution_policy == "as_parallel"
@@ -296,9 +307,7 @@ class ParallelSplitting:
 
             warnings.warn(
                 "Argument retrieve_diagnostics_from_provisional_state "
-                "only effective when execution policy set on "
-                "serial"
-                "."
+                "only effective when execution policy set on 'serial'."
             )
             self._diagnostics_from_provisional = False
         else:
@@ -332,101 +341,121 @@ class ParallelSplitting:
             properties2_name="provisional_output_properties",
         )
 
-        if gt_powered:
-            # update annotations for the field arguments of the definition function
-            set_annotations(stencil_defs, dtype)
+        self._dict_op = DataArrayDictOperator(
+            gt_powered,
+            backend=backend,
+            backend_opts=backend_opts,
+            build_info=build_info,
+            dtype=dtype,
+            rebuild=rebuild,
+        )
 
-            # compile the underlying stencil
-            self._stencil = gtscript.stencil(
-                definition=stencil_defs,
-                backend=backend,
-                build_info=build_info,
-                rebuild=rebuild,
-                **(backend_opts or {})
-            )
-
-            # store parameters needed at run-time
-            self._exec_info = exec_info
-
-    def _init_input_properties(self):
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
         if not self._diagnostics_from_provisional:
-            flag = self._policy == "serial"
-            return get_input_properties(self._component_list, consider_diagnostics=flag)
-        else:
-            tendencystepper_components = tuple(
-                component
-                for component in self._component_list
-                if not isinstance(component, self.__class__.allowed_diagnostic_type)
-            )
             return get_input_properties(
-                tendencystepper_components, consider_diagnostics=True
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": self._policy == "serial",
+                    }
+                    for component in self.component_list
+                )
+            )
+        else:
+            return get_input_properties(
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": True,
+                    }
+                    for component in self.component_list
+                    if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                )
             )
 
-    def _init_provisional_input_properties(self):
+    def _init_provisional_input_properties(self) -> taz_types.properties_dict_t:
         # We require that all prognostic variables affected by the
         # parameterizations are included in the provisional state
-        tendencystepper_components = tuple(
-            component
-            for component in self._component_list
-            if not isinstance(component, self.__class__.allowed_diagnostic_type)
-        )
         return_dict = get_input_properties(
-            tendencystepper_components,
-            component_attribute_name="output_properties",
-            consider_diagnostics=False,
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "output_properties",
+                    "consider_diagnostics": False,
+                }
+                for component in self.component_list
+                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+            )
         )
 
         if self._diagnostics_from_provisional:
-            diagnostic_components = (
-                component
-                for component in self._component_list
-                if isinstance(component, self.__class__.allowed_diagnostic_type)
-            )
-
             return_dict.update(
                 get_input_properties(
-                    diagnostic_components,
-                    consider_diagnostics=True,
-                    return_dict=return_dict,
+                    tuple(
+                        {
+                            "component": component,
+                            "attribute_name": "input_properties",
+                            "consider_diagnostics": True,
+                        }
+                        for component in self.component_list
+                        if isinstance(component, self.__class__.allowed_diagnostic_type)
+                    )
                 )
             )
 
         return return_dict
 
-    def _init_output_properties(self):
+    def _init_output_properties(self) -> taz_types.properties_dict_t:
         if not self._diagnostics_from_provisional:
-            return get_output_properties(self._component_list)
-        else:
-            tendencystepper_components = tuple(
-                component
-                for component in self._component_list
-                if not isinstance(component, self.__class__.allowed_diagnostic_type)
+            return get_output_properties(
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": True,
+                    }
+                    for component in self.component_list
+                )
             )
-            return get_output_properties(tendencystepper_components)
+        else:
+            return get_output_properties(
+                tuple(
+                    {
+                        "component": component,
+                        "attribute_name": "input_properties",
+                        "consider_diagnostics": True,
+                    }
+                    for component in self.component_list
+                    if not isinstance(component, self.__class__.allowed_diagnostic_type)
+                )
+            )
 
-    def _init_provisional_output_properties(self):
+    def _init_provisional_output_properties(self) -> taz_types.properties_dict_t:
         return_dict = self.provisional_input_properties
 
         if self._diagnostics_from_provisional:
-            diagnostic_components = (
-                component
-                for component in self._component_list
-                if isinstance(component, self.__class__.allowed_diagnostic_type)
-            )
-
             return_dict.update(
                 get_output_properties(
-                    diagnostic_components,
-                    component_attribute_name="",
-                    consider_diagnostics=True,
-                    return_dict=return_dict,
+                    tuple(
+                        {
+                            "component": component,
+                            "attribute_name": None,
+                            "consider_diagnostics": True,
+                        }
+                        for component in self.component_list
+                        if isinstance(component, self.__class__.allowed_diagnostic_type)
+                    )
                 )
             )
 
         return return_dict
 
     @property
-    def component_list(self):
+    def component_list(
+        self
+    ) -> Tuple[Union[taz_types.diagnostic_component_t, TendencyStepper], ...]:
         """
         Return
         ------
@@ -435,7 +464,12 @@ class ParallelSplitting:
         """
         return tuple(self._component_list)
 
-    def __call__(self, state, state_prv, timestep):
+    def __call__(
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the parallel splitting method.
@@ -460,21 +494,19 @@ class ParallelSplitting:
         by each process. In other words, when this method returns, `state_prv`
         will represent the state at the next time level.
         """
-        # TODO: add safety checks on input parameters
-
         # step the solution
         self._call(state, state_prv, timestep)
 
         # Ensure the provisional state is now defined at the next time level
         state_prv["time"] = state["time"] + timestep
 
-    def _call_serial(self, state, state_prv, timestep):
+    def _call_serial(
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """ Process the components in 'serial' runtime mode. """
-        out_units = {
-            name: properties["units"]
-            for name, properties in self.provisional_output_properties.items()
-        }
-
         for component, substeps in zip(self._component_list, self._substeps):
             if not isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
@@ -492,86 +524,34 @@ class ParallelSplitting:
                         _, state_aux = component(state_tmp, timestep / substeps)
                         state_tmp.update(state_aux)
 
-                subtract_inplace(state_tmp, state, unshared_variables_in_output=False)
-                add_inplace(
+                self._dict_op.iaddsub(
                     state_prv,
                     state_tmp,
-                    units=out_units,
-                    unshared_variables_in_output=True,
+                    state,
+                    field_properties=self.provisional_output_properties,
                 )
 
                 state.update(diagnostics)
             else:
-                if self._diagnostics_from_provisional:
-                    diagnostics = component(state_prv)
-                    state_prv.update(diagnostics)
-                else:
-                    diagnostics = component(state)
-                    state.update(diagnostics)
+                arg = state_prv if self._diagnostics_from_provisional else state
 
-    def _call_serial_gt(self, state, state_prv, timestep):
-        """ GT4Py-powered version of _call_serial. """
-        out_units = {
-            name: properties["units"]
-            for name, properties in self.provisional_output_properties.items()
-        }
+                try:
+                    diagnostics = component(arg)
+                except TypeError:
+                    diagnostics = component(arg, timestep)
 
-        for component, substeps in zip(self._component_list, self._substeps):
-            if not isinstance(component, self.__class__.allowed_diagnostic_type):
-                diagnostics, state_tmp = component(state, timestep / substeps)
+                arg.update(diagnostics)
 
-                if substeps > 1:
-                    state_tmp.update(
-                        {
-                            key: value
-                            for key, value in state.items()
-                            if key not in state_tmp
-                        }
-                    )
-
-                    for _ in range(1, substeps):
-                        _, state_aux = component(state_tmp, timestep / substeps)
-                        state_tmp.update(state_aux)
-
-                for name in state_tmp:
-                    if name != "time":
-                        field = state[name].to_units(out_units[name]).values
-                        field_prv = state_prv[name].to_units(out_units[name]).values
-                        field_tmp = state_tmp[name].to_units(out_units[name]).values
-
-                        self._stencil(
-                            inout_a=field_prv,
-                            in_b=field_tmp,
-                            in_c=field,
-                            origin=(0, 0, 0),
-                            domain=field.shape,
-                            exec_info=self._exec_info,
-                        )
-
-                        if not units_are_same(
-                            state_prv[name].attrs["units"], out_units[name]
-                        ):
-                            state_prv[name].values[...] = field_prv
-                            state_prv[name].attrs["units"] = out_units[name]
-
-                state.update(diagnostics)
-            else:
-                if self._diagnostics_from_provisional:
-                    diagnostics = component(state_prv)
-                    state_prv.update(diagnostics)
-                else:
-                    diagnostics = component(state)
-                    state.update(diagnostics)
-
-    def _call_asparallel(self, state, state_prv, timestep):
+    def _call_asparallel(
+        self,
+        state: taz_types.mutable_dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """ Process the components in 'as_parallel' runtime mode. """
         agg_diagnostics = {}
-        out_units = {
-            name: properties["units"]
-            for name, properties in self.provisional_output_properties.items()
-        }
 
-        for component, substeps in zip(self._component_list, self._substeps):
+        for component, substeps in zip(self.component_list, self._substeps):
             if not isinstance(component, self.__class__.allowed_diagnostic_type):
                 diagnostics, state_tmp = component(state, timestep / substeps)
 
@@ -588,70 +568,19 @@ class ParallelSplitting:
                         _, state_aux = component(state_tmp, timestep / substeps)
                         state_tmp.update(state_aux)
 
-                subtract_inplace(state_tmp, state, unshared_variables_in_output=False)
-                add_inplace(
+                self._dict_op.iaddsub(
                     state_prv,
                     state_tmp,
-                    units=out_units,
-                    unshared_variables_in_output=True,
+                    state,
+                    field_properties=self.provisional_output_properties,
                 )
-
                 agg_diagnostics.update(diagnostics)
             else:
-                diagnostics = component(state)
-                agg_diagnostics.update(diagnostics)
+                try:
+                    diagnostics = component(state)
+                except TypeError:
+                    diagnostics = component(state, timestep)
 
-        state.update(agg_diagnostics)
-
-    def _call_asparallel_gt(self, state, state_prv, timestep):
-        """ GT4Py-powered version of _call_asparallel. """
-        agg_diagnostics = {}
-        out_units = {
-            name: properties["units"]
-            for name, properties in self.provisional_output_properties.items()
-        }
-
-        for component, substeps in zip(self._component_list, self._substeps):
-            if not isinstance(component, self.__class__.allowed_diagnostic_type):
-                diagnostics, state_tmp = component(state, timestep / substeps)
-
-                if substeps > 1:
-                    state_tmp.update(
-                        {
-                            key: value
-                            for key, value in state.items()
-                            if key not in state_tmp
-                        }
-                    )
-
-                    for _ in range(1, substeps):
-                        _, state_aux = component(state_tmp, timestep / substeps)
-                        state_tmp.update(state_aux)
-
-                for name in state_tmp:
-                    if name != "time":
-                        field = state[name].to_units(out_units[name]).values
-                        field_prv = state_prv[name].to_units(out_units[name]).values
-                        field_tmp = state_tmp[name].to_units(out_units[name]).values
-
-                        self._stencil(
-                            inout_a=field_prv,
-                            in_b=field_tmp,
-                            in_c=field,
-                            origin=(0, 0, 0),
-                            domain=field.shape,
-                            exec_info=self._exec_info,
-                        )
-
-                        if not units_are_same(
-                            state_prv[name].attrs["units"], out_units[name]
-                        ):
-                            state_prv[name].values[...] = field_prv
-                            state_prv[name].attrs["units"] = out_units[name]
-
-                agg_diagnostics.update(diagnostics)
-            else:
-                diagnostics = component(state)
                 agg_diagnostics.update(diagnostics)
 
         state.update(agg_diagnostics)

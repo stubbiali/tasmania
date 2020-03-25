@@ -1,0 +1,32 @@
+{
+	"plots": [
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_fc/plot_0.json"
+		},
+		{
+			"wrapper_module": "make_plot",
+			"wrapper_classname": "PlotWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_fc/plot_1.json"
+		}
+	],
+	"tlevels": [12, 18],
+	"nrows": 1,
+	"ncols": 2,
+	"print_time": null,
+	"init_time": {
+		"year": 1992,
+		"month": 2,
+		"day": 20,
+		"hour": 0
+	},
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [10.5, 5.75],
+		"tight_layout": true,
+		"tight_layout_rect": null,
+		"suptitle": null
+	},
+	"save_dest": null
+}

@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
 
 # c extensions
 *.so
@@ -11,12 +10,12 @@ __pycache__/
 docs/build/
 
 # ipython notebook
-.ipynb_checkpoints
 Interactive.ipynb
+.ipynb_checkpoints
 
 # temporary files
-*.swp
 *.pyc
+*.swp
 
 # pycharm
 projectFilesBackup/
@@ -24,17 +23,25 @@ projectFilesBackup/
 
 # tests
 result_images/
-.hypothesis/
 .coverage
+.hypothesis/
+.pytest_cache/
 
 # gt4py
 .gt_cache/
 
+# mypy
+.mypy_cache
+
 # packaging
-.eggs/
-tasmania.egg-info/
 build/
 dist/
+pip-wheel-metadata/
+tasmania.egg-info/
+.eggs/
+
+# venv
+venv*/
 
 # archives
 *.tar
@@ -44,9 +51,9 @@ dist/
 
 # varia
 buffer/
+docker/xz-0.5.4
 spike/
 todo.ods
-docker/xz-0.5.4
 
 # AUTOMATICALLY GENERATED TEXT
 # The text after this comment and up to the end of file
@@ -55,14 +62,8 @@ docker/xz-0.5.4
 # no modifications should be applied by non-expert users.
 
 # Files which exceed maximum size allowed by GitHub
-./docker/tasmania_master_ng.tar
-./tests/baseline_datasets/isentropic_data.tar.xz
-./tests/baseline_datasets/validation.nc
-./tests/baseline_datasets/isentropic_dry.nc
-./.git/objects/pack/pack-71cc58652e60360ebc607841c20e08cbc0b7fba7.pack
-./.git/lfs/objects/1f/74/1f74f47b8311efbfe8eda3daf611828607ae150df07204278101df35852aa5a0
-./.git/lfs/objects/3a/51/3a51ff33ddda1bc76fbbdc859543cfa772dc306497df99a28cd64822994327ee
-./.git/lfs/objects/15/ad/15ada08e0747a274bfe9e3aba61f6c0c63ad2cb82cecd2555f8564dc9a263f43
-./.git/modules/docker/gridtools4py/objects/pack/pack-cd18acc9f40496efb27f03cc805d7394360c7a83.pack
+./venv/lib/python3.7/site-packages/numpy/.dylibs/libopenblasp-r0.3.7.dylib
+./venv/lib/python3.7/site-packages/scipy/.dylibs/libopenblasp-r0.3.7.dylib
+./.git/objects/pack/pack-248f6041612231bc3138bd762695a21143a4a892.pack
 
 # END OF AUTOMATICALLY GENERATED TEXT

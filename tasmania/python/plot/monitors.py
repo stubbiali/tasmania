@@ -24,6 +24,7 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import os
 from sympl import Monitor
+from typing import Optional, Sequence, Tuple, Union
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.plot_utils import (
@@ -32,12 +33,18 @@ from tasmania.python.plot.plot_utils import (
     set_figure_properties,
 )
 from tasmania.python.plot.utils import assert_sequence
+from tasmania.python.utils import taz_types
 
 
 SequenceType = (tuple, list)
 
 
-def get_time(states):
+def get_time(
+    states: Union[
+        Sequence[taz_types.dataarray_dict_t],
+        Sequence[Sequence[taz_types.dataarray_dict_t]],
+    ]
+) -> taz_types.datetime_t:
     for level0 in states:
         if isinstance(level0, dict):  # level0 is a state dictionary
             if "time" in level0:
@@ -53,7 +60,7 @@ def get_time(states):
 class Plot(Monitor):
     """
     A :class:`sympl.Monitor` for visualization purposes, generating a
-    plot by nicely overlapping distinct plots drawn by one or multiple
+    panel by nicely overlapping distinct plots drawn by one or multiple
     :class:`tasmania.Drawer`\s.
 
     Warning
@@ -78,13 +85,13 @@ class Plot(Monitor):
 
     def __init__(
         self,
-        *drawers,
-        interactive=True,
-        print_time=None,
-        init_time=None,
-        figure_properties=None,
-        axes_properties=None
-    ):
+        *drawers: Drawer,
+        interactive: bool = True,
+        print_time: Optional[str] = None,
+        init_time: Optional[taz_types.datetime_t] = None,
+        figure_properties: Optional[taz_types.options_dict_t] = None,
+        axes_properties: Optional[taz_types.options_dict_t] = None
+    ) -> None:
         """
         Parameters
         ----------
@@ -131,7 +138,7 @@ class Plot(Monitor):
         self._figure = None
 
     @property
-    def artists(self):
+    def artists(self) -> Tuple[Drawer]:
         """
         Returns
         -------
@@ -141,7 +148,7 @@ class Plot(Monitor):
         return self._artists
 
     @property
-    def figure(self):
+    def figure(self) -> plt.Figure:
         """
         Returns
         -------
@@ -151,7 +158,14 @@ class Plot(Monitor):
         self._set_figure()
         return self._figure
 
-    def store(self, *states, fig=None, ax=None, save_dest=None, show=False):
+    def store(
+        self,
+        *states: taz_types.dataarray_dict_t,
+        fig: Optional[plt.Figure] = None,
+        ax: Optional[plt.Axes] = None,
+        save_dest: Optional[str] = None,
+        show: bool = False
+    ) -> Tuple[plt.Figure, plt.Axes]:
         """
         Use the input state(s) to update the plot.
 
@@ -248,7 +262,7 @@ class Plot(Monitor):
 
         return out_fig, out_ax
 
-    def _set_figure(self, fig=None):
+    def _set_figure(self, fig: Optional[plt.Figure] = None) -> None:
         """
         Set the private attribute representing the figure
         *owned* by this object.
@@ -289,14 +303,14 @@ class PlotComposite:
 
     def __init__(
         self,
-        *artists,
-        nrows=1,
-        ncols=1,
-        interactive=True,
-        print_time=None,
-        init_time=None,
-        figure_properties=None
-    ):
+        *artists: Plot,
+        nrows: int = 1,
+        ncols: int = 1,
+        interactive: bool = True,
+        print_time: Optional[str] = None,
+        init_time: Optional[taz_types.datetime_t] = None,
+        figure_properties: Optional[taz_types.options_dict_t] = None
+    ) -> None:
         """
         Parameters
         ----------
@@ -347,7 +361,7 @@ class PlotComposite:
         self._figure = None
 
     @property
-    def artists(self):
+    def artists(self) -> Tuple[Plot]:
         """
         Returns
         -------
@@ -357,7 +371,7 @@ class PlotComposite:
         return self._artists
 
     @property
-    def figure(self):
+    def figure(self) -> plt.Figure:
         """
         Returns
         -------
@@ -368,7 +382,7 @@ class PlotComposite:
         return self._figure
 
     @property
-    def interactive(self):
+    def interactive(self) -> bool:
         """
         Returns
         -------
@@ -378,7 +392,7 @@ class PlotComposite:
         return self._interactive
 
     @interactive.setter
-    def interactive(self, value):
+    def interactive(self, value: bool) -> None:
         """
         Switch interactive mode on/off.
 
@@ -391,9 +405,14 @@ class PlotComposite:
         for artist in self.artists:
             artist.interactive = value
 
-    def store(self, *states, fig=None, save_dest=None, show=False):
-        """
-        Use the input states to update the plot.
+    def store(
+        self,
+        *states: Union[taz_types.dataarray_dict_t, Sequence[taz_types.dataarray_dict_t]],
+        fig: Optional[plt.Figure] = None,
+        save_dest: Optional[str] = None,
+        show: bool = False
+    ) -> plt.Figure:
+        """ Use the input states to update the plot.
 
         Parameters
         ----------
@@ -494,7 +513,7 @@ class PlotComposite:
 
         return out_fig
 
-    def _set_figure(self, fig=None):
+    def _set_figure(self, fig: Optional[plt.Figure] = None) -> None:
         """
         Set the private attribute representing the figure
         *owned* by this object.

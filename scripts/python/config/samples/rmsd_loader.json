@@ -1,0 +1,20 @@
+{
+	"filename1": [
+		"../../data/prognostic-saturation-280",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_nx41_ny41_nz60_",
+        "dt40_nt90_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_fc_gtx86.nc"
+	],
+	"filename2": [
+		"../../data/prognostic-saturation-280",
+		"isentropic_moist_rk3ws_si_fifth_order_upwind_nx321_ny321_nz60_",
+        "dt5_nt720_gaussian_L50000_H1000_u15_rh90_turb_sed_evap_fc_gtx86.nc"
+	],
+	"field_name": "precipitation",
+	"field_units": "mm hr^-1",
+	"x1": [10, 31, null],
+	"x2": [80, 241, 8],
+	"y1": [10, 31, null],
+	"y2": [80, 241, 8],
+	"z1": [0, 1, null],
+	"z2": [0, 1, null]
+}

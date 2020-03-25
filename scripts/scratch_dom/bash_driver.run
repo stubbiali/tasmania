@@ -1,0 +1,45 @@
+#!/bin/bash -l
+#SBATCH --job-name=pdc_paper_dry22_fc_2
+#SBATCH --account=s299
+#SBATCH --time=10:00:00
+#SBATCH --nodes=1
+#SBATCH --partition=normal
+#SBATCH --constraint=gpu
+#SBATCH --output=output/pdc_paper_dry22_fc_2.out
+#SBATCH --error=error/pdc_paper_dry22_fc_2.err
+
+# ==================================================
+# User inputs
+# ==================================================
+DATA_DIR=data/pdc_paper/isentropic_dry
+PROJECT_ROOT=/project/s299/subbiali/tasmania-prognostic-saturation
+GT_ROOT=/scratch/snx3000tds/subbiali/gt_cache/tasmania-prognostic-saturation
+VENV=venv
+SCRIPT_DIR=drivers/isentropic_dry
+SCRIPT_NAME=run_fc_2.sh
+
+# ==================================================
+# Code
+# ==================================================
+# prepare cuda
+module load daint-gpu
+module load cudatoolkit/10.1.105_3.27-7.0.1.1_4.1__ga311ce7
+NVCC_PATH=$(which nvcc)
+CUDA_PATH=$(echo $NVCC_PATH | sed -e "s/\/bin\/nvcc//g")
+export CUDA_HOME=$CUDA_PATH
+export export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
+
+# prepare gt4py
+export GT_CACHE_ROOT=$GT_ROOT
+export GT_CACHE_DIR_NAME=.gt_cache
+
+# create folder for output files
+mkdir -p $DATA_DIR
+
+# activate virtual environment
+cd $PROJECT_ROOT
+source $VENV/bin/activate
+
+# run
+cd $SCRIPT_DIR
+srun --unbuffered ./$SCRIPT_NAME

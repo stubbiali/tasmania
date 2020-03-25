@@ -1,0 +1,23 @@
+{
+	"field_name": "rmsd_of_precipitation",
+	"field_units": "mm hr^-1",
+	"time_mode": "elapsed",
+	"init_time": {
+		"year": 1992, "month": 2, "day": 20, "hour": 0, "minute": 0, "second": 0
+	},
+	"time_units": "min",
+	"time_on_xaxis": true,
+	"drawer_properties": {
+		"fontsize": 16,
+		"y_factor": 1.0,
+		"linestyle": "-",
+		"linewidth": 2,
+		"linecolor": "orange",
+		"marker": null,
+		"markersize": 7,
+		"markeredgewidth": 1,
+		"markerfacecolor": "red",
+		"markeredgecolor": "red",
+		"legend_label": "LFC"
+	}
+}

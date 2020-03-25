@@ -38,7 +38,7 @@ import python.utils.utils_meteo as utils_meteo
 class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 	"""
 	This class inherits :class:`~tasmania.dycore.dycore.DynamicalCore` to implement the three-dimensional 
-	(moist) isentropic dynamical core relying upon GT4Py stencils. The class offers different numerical
+	(moist) isentropic_prognostic dynamical core relying upon GT4Py stencils. The class offers different numerical
 	schemes to carry out the prognostic step of the dynamical core, and supports different types of 
 	lateral boundary conditions. The nonconservative form of the governing equations is used.
 	"""
@@ -262,7 +262,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 
 			- :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
 			- the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
-				and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
+				and the isentropic_prognostic density are derived from the Brunt-Vaisala frequency :math:`N`;
 			- the mass fraction of water vapor is derived from the relative humidity, which is horizontally uniform \
 				and different from zero only in a band close to the surface;
 			- the mass fraction of cloud water and precipitation water is zero;
@@ -271,7 +271,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 
 			- :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
 			- the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
-				and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
+				and the isentropic_prognostic density are derived from the Brunt-Vaisala frequency :math:`N`;
 			- the mass fraction of water vapor is derived from the relative humidity, which is sinusoidal in the \
 				:math:`x`-direction and uniform in the :math:`y`-direction, and different from zero only in a band \
 				close to the surface;
@@ -357,7 +357,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			for k in range(0, nz):
 				h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
 
-			# The initial isentropic density
+			# The initial isentropic_prognostic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
 			# The initial water constituents
@@ -419,7 +419,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 			for k in range(0, nz):
 				h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
 
-			# The initial isentropic density
+			# The initial isentropic_prognostic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
 			# The initial water constituents
@@ -480,7 +480,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 				h[:, :, nz - k - 1] = h[:, :, nz - k] - (p[:, :, nz - k - 1] - p[:, :, nz - k]) * Rd / (cp * g) * \
 									  z_hl[nz - k] * exn[:, :, nz - k] / p[:, :, nz - k]
 
-			# The initial isentropic density
+			# The initial isentropic_prognostic density
 			s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
 			# The initial water constituents
@@ -514,7 +514,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 
 	def _step_dry(self, dt, state, diagnostics, tendencies):
 		"""
-		Method advancing the dry isentropic state by a single time step.
+		Method advancing the dry isentropic_prognostic state by a single time step.
 
 		Parameters
 		----------
@@ -610,7 +610,7 @@ class DynamicalCoreIsentropicNonconservative(DynamicalCore):
 
 	def _step_moist(self, dt, state, diagnostics, tendencies):
 		"""
-		Method advancing the moist isentropic state by a single time step.
+		Method advancing the moist isentropic_prognostic state by a single time step.
 
 		Parameters
 		----------

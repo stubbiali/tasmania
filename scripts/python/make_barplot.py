@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -27,108 +27,118 @@ import matplotlib.pyplot as plt
 # ==================================================
 # User inputs
 # ==================================================
-values = [
+values = np.array(
     [
-        93438.55499049266,
-        92546.30188995667,
-        92741.48574232402,
-        92522.62088689643,
-        95438.1293806084,
-    ],
-    [
-        88990.91027228518,
-        88584.96736412216,
-        88766.59838146689,
-        88573.9212174644,
-        90028.40318340881,
-    ],
-    [
-        87343.51949616159,
-        87151.06663923517,
-        87251.37040591387,
-        87144.49161664736,
-        87867.70894757634,
+        [664.38, 541.38, 616.82, 752.5],
+        [843.86, 713.04, 793.45, 931.89],
+        [24.73, 19.45, 25.36, 35.33],
+        [19.25, 16.91, 21.20, 28.36],
+        [6.19, 5.33, 7.97, 11.3],
     ]
-]
+)
+values = values[2:, :]
+group_dim = 0  # values belonging to the same group of bars
+color_dim = 1  # values represented with the same color
 
-colors = ['darkviolet', 'royalblue', 'gold']
+colors = ["orange", "red", "blue", "cyan", "green"]
+colors = colors[2:]
 
-edgecolors = ['black', ]*3
+edgecolors = ["black"] * 5
 
-labels = ['$\\Delta x = 8.8$ km', '$\\Delta x = 4.4$ km', '$\\Delta x = 2.2$ km']
+labels = ["numpy", "gt-numpy", "gt-x86", "gt-mc", "gt-cuda"]
+labels = labels[2:]
 
-bar_width = 0.25
+bar_width = 0.2
 
 figure_properties = {
-    'fontsize': 16,
-    'figsize': (6, 7),
-    'tight_layout': True,
-    'tight_layout_rect': None,
+    "fontsize": 15,
+    "figsize": (7, 6),
+    "tight_layout": True,
+    "tight_layout_rect": None,
 }
 
 axes_properties = {
-    'fontsize': 16,
-    'x_label': '',
-    'x_labelcolor': 'black',
-    'x_lim': None,
-    'invert_xaxis': False,
-    'x_scale': None,
-    'x_ticks': [0.25, 1.25, 2.25, 3.25, 4.25],
-    'x_ticklabels': ['CC', 'LCC', 'PS', 'SUS', 'SSUS'],
-    'x_tickcolor': 'black',
-    'xaxis_minor_ticks_visible': False,
-    'xaxis_visible': True,
+    "fontsize": 15,
+    "x_label": "",
+    "x_labelcolor": "black",
+    "x_lim": [-0.3, 4.7],
+    "invert_xaxis": False,
+    "x_scale": None,
+    # "x_ticks": [0.25, 1.25, 2.25, 3.25, 4.25, 5.25, 6.25],
+    "x_ticks": [0.4, 1.6, 2.8, 4.0],
+    "x_ticklabels": ["FC", "LFC", "SUS", "SSUS"],
+    "x_ticklabels_rotation": 25,
+    "x_tickcolor": "black",
+    "xaxis_minor_ticks_visible": False,
+    "xaxis_visible": True,
     # y-axis
-    'y_label': 'Accumulated precipitation [10$^9$ kg]',
-    'y_labelcolor': 'black',
-    'y_lim': [8e4, 10e4],
-    'invert_yaxis': False,
-    'y_scale': None,
-    'y_ticks': [8e4, 8.5e4, 9e4, 9.5e4, 10e4],
-    'y_ticklabels': [80, 85, 90, 95, 100],
-    'y_tickcolor': 'black',
-    'yaxis_minor_ticks_visible': False,
-    'yaxis_visible': True,
+    "y_label": "Run time [s]",
+    "y_labelcolor": "black",
+    "y_lim": [0, 40],
+    "invert_yaxis": False,
+    "y_scale": None,
+    "y_ticks": None,
+    "y_ticklabels": None,
+    "y_ticklabels_color": "black",
+    "yaxis_minor_ticks_visible": False,
+    "yaxis_visible": True,
     # z-axis
-    'z_label': '',
-    'z_labelcolor': '',
-    'z_lim': None,
-    'invert_zaxis': False,
-    'z_scale': None,
-    'z_ticks': None,
-    'z_ticklabels': None,
-    'z_tickcolor': 'white',
-    'zaxis_minor_ticks_visible': True,
-    'zaxis_visible': True,
+    "z_label": "",
+    "z_labelcolor": "",
+    "z_lim": None,
+    "invert_zaxis": False,
+    "z_scale": None,
+    "z_ticks": None,
+    "z_ticklabels": None,
+    "z_tickcolor": "white",
+    "zaxis_minor_ticks_visible": True,
+    "zaxis_visible": True,
     # legend
-    'legend_on': True,
-    'legend_loc': 'best', #'center left',
-    'legend_bbox_to_anchor': None, #(1.04, 0.5),
-    'legend_framealpha': 1.0,
-    'legend_ncol': 1,
+    "legend_on": True,
+    "legend_loc": "upper center",
+    "legend_bbox_to_anchor": (0.5, 1),
+    "legend_framealpha": 1.0,
+    "legend_ncol": 3,
     # textbox
-    'text': None, #'$w_{\\mathtt{FW}} = 0$',
-    'text_loc': 'upper left',
+    "text": None,  #'$w_{\\mathtt{FW}} = 0$',
+    "text_loc": "upper left",
     # grid
-    'grid_on': True,
-    'grid_properties': {'linestyle': ':'},
+    "grid_on": True,
+    "grid_properties": {"linestyle": ":"},
 }
 
 # ==================================================
 # Code
 # ==================================================
-x = range(len(values[0]))
+bars_per_group = values.shape[group_dim]
+bars_per_color = values.shape[color_dim]
+
+ticks_distance = bar_width * (bars_per_group + 1)
+ticks = np.linspace(0, (bars_per_color - 1) * ticks_distance, bars_per_color)
 
 fig, ax = taz.get_figure_and_axes(**figure_properties)
 
-for i in range(len(values)):
+for i in range(bars_per_group):
     ax.bar(
-        [elx + i*bar_width for elx in x], values[i], bar_width, 
-        color=colors[i], edgecolor=edgecolors[i], label=labels[i]
+        [elx + i * bar_width for elx in ticks],
+        values[i, :] if color_dim == 1 else values[:, i],
+        bar_width,
+        color=colors[i],
+        edgecolor=edgecolors[i],
+        label=labels[i],
     )
 
+axes_properties["x_lim"] = (
+    ticks[0] - 1.5 * bar_width,
+    ticks[-1] + (bars_per_group + 0.5) * bar_width,
+)
+axes_properties["x_ticks"] = tuple(
+    tick + (bars_per_group / 2.0 - 0.5) * bar_width for tick in ticks
+)
 taz.set_axes_properties(ax, **axes_properties)
 taz.set_figure_properties(fig, **figure_properties)
 
-plt.show()
+ax.xaxis.set_tick_params(length=0)
+ax.xaxis.grid(False)
 
+plt.show()

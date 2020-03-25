@@ -39,32 +39,19 @@ from tasmania.python.isentropic.physics.horizontal_smoothing import (
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_dataarrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import (
+    compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -80,13 +67,18 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test(data):
+@given(data=hyp_st.data())
+def test(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
         st_domain(
@@ -96,16 +88,13 @@ def test(data):
     )
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -127,8 +116,20 @@ def test(data):
     # ========================================
     smooth_types = ("first_order", "second_order", "third_order")
 
-    in_st = zeros(storage_shape, backend, dtype, default_origin)
-    out_st = zeros(storage_shape, backend, dtype, default_origin)
+    in_st = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    out_st = zeros(
+        storage_shape,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
     for smooth_type in smooth_types:
         #
@@ -141,6 +142,7 @@ def test(data):
             smooth_coeff_max,
             smooth_damp_depth,
             nb,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -153,6 +155,7 @@ def test(data):
             smooth_moist_coeff_max,
             smooth_moist_damp_depth,
             nb,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -188,6 +191,7 @@ def test(data):
             smooth_coeff=smooth_coeff,
             smooth_coeff_max=smooth_coeff_max,
             smooth_damp_depth=smooth_damp_depth,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -202,16 +206,17 @@ def test(data):
         )
         units = ("kg m^-2 K^-1", "kg m^-1 K^-1 s^-1", "kg m^-1 K^-1 s^-1")
         for i in range(len(names)):
-            assert names[i] in diagnostics
-            field_val = get_dataarray_3d(
-                val[names[i]],
-                grid,
-                units[i],
-                name=names[i],
-                grid_shape=(nx, ny, nz),
-                set_coordinates=False,
-            )
-            compare_dataarrays(diagnostics[names[i]], field_val)
+            with subtests.test(smooth_type=smooth_type, name=names[i]):
+                assert names[i] in diagnostics
+                field_val = get_dataarray_3d(
+                    val[names[i]],
+                    grid,
+                    units[i],
+                    name=names[i],
+                    grid_shape=(nx, ny, nz),
+                    set_coordinates=False,
+                )
+                compare_dataarrays(diagnostics[names[i]], field_val)
 
         assert len(diagnostics) == len(names)
 
@@ -228,6 +233,7 @@ def test(data):
             smooth_moist_coeff=smooth_moist_coeff,
             smooth_moist_coeff_max=smooth_moist_coeff_max,
             smooth_moist_damp_depth=smooth_moist_damp_depth,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -252,16 +258,17 @@ def test(data):
             "g g^-1",
         )
         for i in range(len(names)):
-            assert names[i] in diagnostics
-            field_val = get_dataarray_3d(
-                val[names[i]],
-                grid,
-                units[i],
-                name=names[i],
-                grid_shape=(nx, ny, nz),
-                set_coordinates=False,
-            )
-            compare_dataarrays(diagnostics[names[i]], field_val)
+            with subtests.test(smooth_type=smooth_type, name=names[i]):
+                assert names[i] in diagnostics
+                field_val = get_dataarray_3d(
+                    val[names[i]],
+                    grid,
+                    units[i],
+                    name=names[i],
+                    grid_shape=(nx, ny, nz),
+                    set_coordinates=False,
+                )
+                compare_dataarrays(diagnostics[names[i]], field_val)
 
         assert len(diagnostics) == len(names)
 

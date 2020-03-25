@@ -21,19 +21,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 class Smagorinsky2d(TendencyComponent):
@@ -51,20 +50,21 @@ class Smagorinsky2d(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        smagorinsky_constant=0.18,
+        domain: "Domain",
+        smagorinsky_constant: float = 0.18,
+        gt_powered: bool = True,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -72,6 +72,8 @@ class Smagorinsky2d(TendencyComponent):
             The underlying domain.
         smagorinsky_constant : `float`, optional
             The Smagorinsky constant. Defaults to 0.18.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -115,31 +117,35 @@ class Smagorinsky2d(TendencyComponent):
 
         self._out_u_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_v_tnd = zeros(
             storage_shape,
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
-        set_annotations(self._stencil_defs, dtype)
-
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                rebuild=rebuild,
+                dtypes={"dtype": dtype},
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_velocity": {"dims": dims, "units": "m s^-1"},
@@ -147,7 +153,7 @@ class Smagorinsky2d(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         dims = (self.grid.x.dims[0], self.grid.y.dims[0], self.grid.z.dims[0])
         return {
             "x_velocity": {"dims": dims, "units": "m s^-2"},
@@ -155,10 +161,12 @@ class Smagorinsky2d(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         nb = self._nb
         dx = self.grid.dx.to_units("m").values.item()
@@ -172,7 +180,7 @@ class Smagorinsky2d(TendencyComponent):
             dx=dx,
             dy=dy,
             cs=self._cs,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, nz),
             exec_info=self._exec_info,
         )
@@ -183,16 +191,62 @@ class Smagorinsky2d(TendencyComponent):
         return tendencies, diagnostics
 
     @staticmethod
-    def _stencil_defs(
-        in_u: gtscript.Field[np.float64],
-        in_v: gtscript.Field[np.float64],
-        out_u_tnd: gtscript.Field[np.float64],
-        out_v_tnd: gtscript.Field[np.float64],
+    def _stencil_numpy(
+        in_u: np.ndarray,
+        in_v: np.ndarray,
+        out_u_tnd: np.ndarray,
+        out_v_tnd: np.ndarray,
+        *,
+        dx: float,
+        dy: float,
+        cs: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        ib, ie = origin[0], origin[0] + domain[0]
+        jb, je = origin[1], origin[1] + domain[1]
+        k = slice(origin[2], origin[2] + domain[2])
+
+        s00 = (
+            in_u[ib : ie + 2, jb - 1 : je + 1, k] - in_u[ib - 2 : ie, jb - 1 : je + 1, k]
+        ) / (2.0 * dx)
+        s01 = 0.5 * (
+            (
+                in_u[ib - 1 : ie + 1, jb : je + 2, k]
+                - in_u[ib - 1 : ie + 1, jb - 2 : je, k]
+            )
+            / (2.0 * dy)
+            + (
+                in_v[ib : ie + 2, jb - 1 : je + 1, k]
+                - in_v[ib - 2 : ie, jb - 1 : je + 1, k]
+            )
+            / (2.0 * dx)
+        )
+        s11 = (
+            in_v[ib - 1 : ie + 1, jb : je + 2, k] - in_v[ib - 1 : ie + 1, jb - 2 : je, k]
+        ) / (2.0 * dy)
+        nu = cs ** 2 * dx * dy * (2.0 * (s00 ** 2 + 2.0 * s01 ** 2 + s11 ** 2)) ** 0.5
+        out_u_tnd[ib:ie, jb:je, k] = 2.0 * (
+            (nu[2:, 1:-1] * s00[2:, 1:-1] - nu[:-2, 1:-1] * s00[:-2, 1:-1]) / (2.0 * dx)
+            + (nu[1:-1, 2:] * s01[1:-1, 2:] - nu[1:-1, :-2] * s01[1:-1, :-2]) / (2.0 * dy)
+        )
+        out_v_tnd[ib:ie, jb:je, k] = 2.0 * (
+            (nu[2:, 1:-1] * s01[2:, 1:-1] - nu[:-2, 1:-1] * s01[:-2, 1:-1]) / (2.0 * dx)
+            + (nu[1:-1, 2:] * s11[1:-1, 2:] - nu[1:-1, :-2] * s11[1:-1, :-2]) / (2.0 * dy)
+        )
+
+    @staticmethod
+    def _stencil_gt_defs(
+        in_u: gtscript.Field["dtype"],
+        in_v: gtscript.Field["dtype"],
+        out_u_tnd: gtscript.Field["dtype"],
+        out_v_tnd: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float,
         cs: float
-    ):
+    ) -> None:
         with computation(PARALLEL), interval(...):
             s00 = (in_u[+1, 0, 0] - in_u[-1, 0, 0]) / (2.0 * dx)
             s01 = 0.5 * (

@@ -25,10 +25,12 @@ import netCDF4 as nc4
 import numpy as np
 from pandas import Timedelta
 import sympl
+from typing import Dict, List, Optional, Sequence, Tuple
 import xarray as xr
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
 from tasmania.python.grids.domain import Domain
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import (
     deepcopy_dataarray_dict,
     get_physical_state,
@@ -46,14 +48,14 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
     def __init__(
         self,
-        filename,
-        domain,
-        grid_type,
-        time_units="seconds",
-        store_names=None,
-        write_on_store=False,
-        aliases=None,
-    ):
+        filename: str,
+        domain: Domain,
+        grid_type: str,
+        time_units: str = "seconds",
+        store_names: Optional[Sequence[str]] = None,
+        write_on_store: bool = False,
+        aliases: Optional[Dict[str, str]] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -86,7 +88,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
         self._domain = domain
         self._gtype = grid_type
 
-    def store(self, state):
+    def store(self, state: taz_types.dataarray_dict_t) -> None:
         """
         If the state is defined over the numerical (respectively physical)
         grid but should be saved over the physical (resp. numerical) grid:
@@ -127,7 +129,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
         super().store(to_save_cp)
 
-    def write(self):
+    def write(self) -> None:
         """
         Write grid properties and all cached states to the NetCDF file,
         and clear the cache. This will append to any existing NetCDF file.
@@ -289,7 +291,9 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
             topo_kwargs[:] = np.array(keys, dtype="object")
 
 
-def load_netcdf_dataset(filename):
+def load_netcdf_dataset(
+    filename: str
+) -> Tuple[Domain, str, List[taz_types.dataarray_dict_t]]:
     """
     Load the sequence of states stored in a NetCDF dataset,
     and build the underlying domain.
@@ -313,7 +317,7 @@ def load_netcdf_dataset(filename):
         return load_domain(dataset), load_grid_type(dataset), load_states(dataset)
 
 
-def load_domain(dataset):
+def load_domain(dataset: xr.Dataset) -> Domain:
     # x-axis
     dims_x = dataset.data_vars["dim1_name"].values.item()
     x = dataset.coords[dims_x]
@@ -397,15 +401,15 @@ def load_domain(dataset):
         horizontal_boundary_kwargs=hb_kwargs,
         topography_type=topo_type,
         topography_kwargs=topo_kwargs,
-        dtype=domain_z.values.dtype,
+        dtype=domain_x.values.dtype,
     )
 
 
-def load_grid_type(dataset):
+def load_grid_type(dataset: xr.Dataset) -> str:
     return dataset.data_vars["grid_type"].values.item()
 
 
-def load_states(dataset):
+def load_states(dataset: xr.Dataset) -> List[taz_types.dataarray_dict_t]:
     names = dataset.data_vars["state_variable_names"].values
     nt = dataset.data_vars[names[0]].shape[0]
 

@@ -1,0 +1,24 @@
+{
+    "slaves": [
+        {
+            "module": "diff",
+            "classname": "RMSDBurgersLoader",
+            "config": "config/burgers/rmsd_v/sts_0.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDBurgersLoader",
+            "config": "config/burgers/rmsd_v/sts_1.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDBurgersLoader",
+            "config": "config/burgers/rmsd_v/sts_2.json"
+        },
+        {
+            "module": "diff",
+            "classname": "RMSDBurgersLoader",
+            "config": "config/burgers/rmsd_v/sts_3.json"
+        }
+    ]
+}

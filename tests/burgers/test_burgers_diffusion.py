@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,34 +36,24 @@ import gt4py as gt
 
 from tasmania.python.burgers.physics.diffusion import BurgersHorizontalDiffusion
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from .dwarfs.test_horizontal_diffusion import (
-        second_order_diffusion_xyz,
-        second_order_diffusion_xz,
-        second_order_diffusion_yz,
-        fourth_order_diffusion_xyz,
-        fourth_order_diffusion_xz,
-        fourth_order_diffusion_yz,
-        assert_xyz,
-        assert_xz,
-        assert_yz,
-    )
-    from .utils import st_burgers_state, st_domain, st_floats, st_one_of
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin, nb as conf_nb
-    from dwarfs.test_horizontal_diffusion import (
-        second_order_diffusion_xyz,
-        second_order_diffusion_xz,
-        second_order_diffusion_yz,
-        fourth_order_diffusion_xyz,
-        fourth_order_diffusion_xz,
-        fourth_order_diffusion_yz,
-        assert_xyz,
-        assert_xz,
-        assert_yz,
-    )
-    from utils import st_burgers_state, st_domain, st_floats, st_one_of
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.dwarfs.test_horizontal_diffusion import (
+    second_order_diffusion_xyz,
+    second_order_diffusion_xz,
+    second_order_diffusion_yz,
+    fourth_order_diffusion_xyz,
+    fourth_order_diffusion_xz,
+    fourth_order_diffusion_yz,
+    assert_xyz,
+    assert_xz,
+    assert_yz,
+)
+from tests.utilities import st_burgers_state, st_domain, st_floats, st_one_of
 
 
 def second_order_validation(grid, smooth_coeff, phi, phi_tnd, nb):
@@ -93,23 +83,38 @@ def test_second_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     pgrid = domain.physical_grid
     cgrid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = pgrid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, default_origin=default_origin), label="pstate"
+        st_burgers_state(
+            pgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
+        label="pstate",
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, default_origin=default_origin), label="cstate"
+        st_burgers_state(
+            cgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
+        label="cstate",
     )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
@@ -125,6 +130,7 @@ def test_second_order(data):
         "physical",
         "second_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -165,6 +171,7 @@ def test_second_order(data):
         "numerical",
         "second_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=cgrid.x.dtype,
         default_origin=default_origin,
@@ -225,23 +232,38 @@ def test_fourth_order(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)))
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     pgrid = domain.physical_grid
     cgrid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = pgrid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     pstate = data.draw(
-        st_burgers_state(pgrid, backend=backend, default_origin=default_origin), label="pstate"
+        st_burgers_state(
+            pgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
+        label="pstate",
     )
     cstate = data.draw(
-        st_burgers_state(cgrid, backend=backend, default_origin=default_origin), label="cstate"
+        st_burgers_state(
+            cgrid, gt_powered=gt_powered, backend=backend, default_origin=default_origin
+        ),
+        label="cstate",
     )
 
     smooth_coeff = data.draw(st_floats(min_value=0, max_value=1), label="smooth_coeff")
@@ -257,6 +279,7 @@ def test_fourth_order(data):
         "physical",
         "fourth_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -297,6 +320,7 @@ def test_fourth_order(data):
         "numerical",
         "fourth_order",
         DataArray(smooth_coeff, attrs={"units": "m^2 s^-1"}),
+        gt_powered=gt_powered,
         backend=backend,
         dtype=cgrid.x.dtype,
         default_origin=default_origin,
@@ -331,5 +355,4 @@ def test_fourth_order(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_second_order()
+    pytest.main([__file__])

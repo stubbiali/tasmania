@@ -22,40 +22,82 @@
 #
 import abc
 import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.gtscript_utils import set_annotations
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import nb as conf_nb
-except ImportError:
-    conf_nb = None
-
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    from numpy import float32 as datatype
+if TYPE_CHECKING:
+    from tasmania.python.grids.horizontal_grid import HorizontalGrid
 
 
-def forward_euler_step(
-    in_u: gtscript.Field[np.float64],
-    in_v: gtscript.Field[np.float64],
-    in_u_tmp: gtscript.Field[np.float64],
-    in_v_tmp: gtscript.Field[np.float64],
-    out_u: gtscript.Field[np.float64],
-    out_v: gtscript.Field[np.float64],
-    in_u_tnd: gtscript.Field[np.float64] = None,
-    in_v_tnd: gtscript.Field[np.float64] = None,
+class ForwardEulerStepNumpy:
+    def __init__(self, advection):
+        self.advection = advection
+
+    def __call__(
+            self,
+        in_u: np.ndarray,
+        in_v: np.ndarray,
+        in_u_tmp: np.ndarray,
+        in_v_tmp: np.ndarray,
+        out_u: np.ndarray,
+        out_v: np.ndarray,
+        in_u_tnd: np.ndarray = None,
+        in_v_tnd: np.ndarray = None,
+        *,
+        dt: float,
+        dx: float,
+        dy: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        nb = self.advection.extent
+
+        istart, istop = origin[0], origin[0] + domain[0]
+        i = slice(istart, istop)
+        iext = slice(istart - nb, istop + nb)
+        jstart, jstop = origin[1], origin[1] + domain[1]
+        j = slice(jstart, jstop)
+        jext = slice(jstart - nb, jstop + nb)
+        kstart, kstop = origin[2], origin[2] + domain[2]
+        k = slice(kstart, kstop)
+
+        adv_u_x, adv_u_y, adv_v_x, adv_v_y = self.advection.call_numpy(
+            dx=dx, dy=dy, u=in_u_tmp[iext, jext, k], v=in_v_tmp[iext, jext, k]
+        )
+
+        if in_u_tnd is not None:
+            out_u[i, j, k] = in_u[i, j, k] - dt * (adv_u_x + adv_u_y - in_u_tnd[i, j, k])
+        else:
+            out_u[i, j, k] = in_u[i, j, k] - dt * (adv_u_x + adv_u_y)
+
+        if in_v_tnd is not None:
+            out_v[i, j, k] = in_v[i, j, k] - dt * (adv_v_x + adv_v_y - in_v_tnd[i, j, k])
+        else:
+            out_v[i, j, k] = in_v[i, j, k] - dt * (adv_v_x + adv_v_y)
+
+
+def forward_euler_step_gt(
+    in_u: gtscript.Field["dtype"],
+    in_v: gtscript.Field["dtype"],
+    in_u_tmp: gtscript.Field["dtype"],
+    in_v_tmp: gtscript.Field["dtype"],
+    out_u: gtscript.Field["dtype"],
+    out_v: gtscript.Field["dtype"],
+    in_u_tnd: gtscript.Field["dtype"] = None,
+    in_v_tnd: gtscript.Field["dtype"] = None,
     *,
     dt: float,
     dx: float,
     dy: float
-):
+) -> None:
     from __externals__ import advection, tnd_u, tnd_v
 
     with computation(PARALLEL), interval(...):
@@ -86,18 +128,19 @@ class BurgersStepper(abc.ABC):
 
     def __init__(
         self,
-        grid_xy,
-        nb,
-        flux_scheme,
-        backend,
-        backend_opts,
-        build_info,
-        dtype,
-        exec_info,
-        default_origin,
-        rebuild,
-        managed_memory,
-    ):
+        grid_xy: "HorizontalGrid",
+        nb: int,
+        flux_scheme: str,
+            gt_powered: bool,
+        backend: str,
+        backend_opts: taz_types.options_dict_t,
+        build_info: taz_types.options_dict_t,
+        dtype: taz_types.dtype_t,
+        exec_info: taz_types.mutable_options_dict_t,
+        default_origin: taz_types.triplet_int_t,
+        rebuild: bool,
+        managed_memory: bool,
+    ) -> None:
         """
         Parameters
         ----------
@@ -108,6 +151,8 @@ class BurgersStepper(abc.ABC):
         flux_scheme : str
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : str
             The GT4Py backend.
         backend_opts : dict
@@ -127,6 +172,7 @@ class BurgersStepper(abc.ABC):
             `True` to allocate the storages as managed memory, `False` otherwise.
         """
         self._grid_xy = grid_xy
+        self._gt_powered = gt_powered
         self._backend = backend
         self._backend_opts = backend_opts
         self._build_info = build_info
@@ -136,7 +182,7 @@ class BurgersStepper(abc.ABC):
         self._rebuild = rebuild
         self._managed_memory = managed_memory
 
-        self._advection = BurgersAdvection.factory(flux_scheme)
+        self._advection = BurgersAdvection.factory(flux_scheme, gt_powered)
 
         assert nb >= self._advection.extent
         self._nb = nb
@@ -145,7 +191,7 @@ class BurgersStepper(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def stages(self):
+    def stages(self) -> int:
         """
         Returns
         -------
@@ -155,7 +201,13 @@ class BurgersStepper(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def __call__(self, stage, state, tendencies, timestep):
+    def __call__(
+        self,
+        stage: int,
+        state: taz_types.gtstorage_dict_t,
+        tendencies: taz_types.gtstorage_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> taz_types.gtstorage_dict_t:
         """
         Performing a stage of the time integrator.
 
@@ -185,20 +237,21 @@ class BurgersStepper(abc.ABC):
 
     @staticmethod
     def factory(
-        time_integration_scheme,
-        grid_xy,
-        nb,
-        flux_scheme,
+        time_integration_scheme: str,
+        grid_xy: "HorizontalGrid",
+        nb: int,
+        flux_scheme: str,
+            gt_powered: bool,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        managed_memory=False
-    ):
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        managed_memory: bool = False
+    ) -> "BurgersStepper":
         """
         Parameters
         ----------
@@ -218,6 +271,8 @@ class BurgersStepper(abc.ABC):
         flux_scheme : str
             String specifying the advective flux scheme to be used.
             See :class:`tasmania.BurgersAdvection` for all available options.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -245,6 +300,7 @@ class BurgersStepper(abc.ABC):
             grid_xy,
             nb,
             flux_scheme,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -272,6 +328,7 @@ class ForwardEuler(BurgersStepper):
         grid_xy,
         nb,
         flux_scheme,
+            gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -285,6 +342,7 @@ class ForwardEuler(BurgersStepper):
             grid_xy,
             nb,
             flux_scheme,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -310,7 +368,6 @@ class ForwardEuler(BurgersStepper):
         dx = self._grid_xy.dx.to_units("m").values.item()
         dy = self._grid_xy.dy.to_units("m").values.item()
 
-        stencil_args = {}
         self._stencil_args["in_u"] = state["x_velocity"]
         self._stencil_args["in_u_tmp"] = state["x_velocity"]
         self._stencil_args["in_v"] = state["y_velocity"]
@@ -325,7 +382,7 @@ class ForwardEuler(BurgersStepper):
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
             exec_info=self._exec_info
         )
@@ -337,6 +394,7 @@ class ForwardEuler(BurgersStepper):
         }
 
     def _stencil_initialize(self, tendencies):
+        gt_powered = self._gt_powered
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
         backend = self._backend
         dtype = self._dtype
@@ -346,35 +404,39 @@ class ForwardEuler(BurgersStepper):
         self._stencil_args = {
             "out_u": zeros(
                 storage_shape,
-                backend,
-                dtype,
+                gt_powered,
+                backend=backend,
+                dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             ),
             "out_v": zeros(
                 storage_shape,
-                backend,
-                dtype,
+                gt_powered,
+                backend=backend,
+                dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             ),
         }
 
-        set_annotations(forward_euler_step, dtype)
-
-        self._stencil = gtscript.stencil(
-            definition=forward_euler_step,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=self._build_info,
-            rebuild=self._rebuild,
-            externals={
-                "advection": self._advection.__call__,
-                "tnd_u": "x_velocity" in tendencies,
-                "tnd_v": "y_velocity" in tendencies,
-            },
-            **(self._backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=forward_euler_step_gt,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=self._build_info,
+                rebuild=self._rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "advection": self._advection.call_gt,
+                    "tnd_u": "x_velocity" in tendencies,
+                    "tnd_v": "y_velocity" in tendencies,
+                },
+                **(self._backend_opts or {})
+            )
+        else:
+            self._stencil = ForwardEulerStepNumpy(self._advection)
 
 
 class RK2(BurgersStepper):
@@ -385,6 +447,7 @@ class RK2(BurgersStepper):
         grid_xy,
         nb,
         flux_scheme,
+            gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -398,6 +461,7 @@ class RK2(BurgersStepper):
             grid_xy,
             nb,
             flux_scheme,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -441,7 +505,7 @@ class RK2(BurgersStepper):
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
             exec_info=self._exec_info
         )
@@ -453,6 +517,7 @@ class RK2(BurgersStepper):
         }
 
     def _stencil_initialize(self, tendencies):
+        gt_powered = self._gt_powered
         storage_shape = (self._grid_xy.nx, self._grid_xy.ny, 1)
         backend = self._backend
         dtype = self._dtype
@@ -462,35 +527,39 @@ class RK2(BurgersStepper):
         self._stencil_args = {
             "out_u": zeros(
                 storage_shape,
-                backend,
-                dtype,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             ),
             "out_v": zeros(
                 storage_shape,
-                backend,
-                dtype,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
                 default_origin=default_origin,
                 managed_memory=managed_memory,
             ),
         }
 
-        set_annotations(forward_euler_step, dtype)
-
-        self._stencil = gtscript.stencil(
-            definition=forward_euler_step,
-            name=self.__class__.__name__,
-            backend=backend,
-            build_info=self._build_info,
-            rebuild=self._rebuild,
-            externals={
-                "advection": self._advection.__call__,
-                "tnd_u": "x_velocity" in tendencies,
-                "tnd_v": "y_velocity" in tendencies,
-            },
-            **(self._backend_opts or {})
-        )
+        if gt_powered:
+            self._stencil = gtscript.stencil(
+                definition=forward_euler_step_gt,
+                name=self.__class__.__name__,
+                backend=backend,
+                build_info=self._build_info,
+                rebuild=self._rebuild,
+                dtypes={"dtype": dtype},
+                externals={
+                    "advection": self._advection.call_gt,
+                    "tnd_u": "x_velocity" in tendencies,
+                    "tnd_v": "y_velocity" in tendencies,
+                },
+                **(self._backend_opts or {})
+            )
+        else:
+            self._stencil = ForwardEulerStepNumpy(self._advection)
 
 
 class RK3WS(RK2):
@@ -501,6 +570,7 @@ class RK3WS(RK2):
         grid_xy,
         nb,
         flux_scheme,
+            gt_powered,
         backend,
         backend_opts,
         build_info,
@@ -514,6 +584,7 @@ class RK3WS(RK2):
             grid_xy,
             nb,
             flux_scheme,
+            gt_powered,
             backend,
             backend_opts,
             build_info,
@@ -562,7 +633,7 @@ class RK3WS(RK2):
             dt=dt,
             dx=dx,
             dy=dy,
-            origin={"_all_": (nb, nb, 0)},
+            origin=(nb, nb, 0),
             domain=(nx - 2 * nb, ny - 2 * nb, 1),
             exec_info=self._exec_info
         )

@@ -34,7 +34,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 	"""
 	This class inherits :class:`~tasmania.dycore.prognostic_isentropic_nonconservative.PrognosticIsentropicNonconservative` 
 	to implement a centered time-integration scheme to carry out the prognostic step of the three-dimensional 
-	moist isentropic dynamical core. The nonconservative form of the governing equations, expressed using isentropic
+	moist isentropic_prognostic dynamical core. The nonconservative form of the governing equations, expressed using isentropic_prognostic
 	coordinates, is used.
 
 	Attributes
@@ -114,7 +114,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
 			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
-			* montgomery_potential (isentropic);
+			* montgomery_potential (isentropic_prognostic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
@@ -169,7 +169,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		mi, mj = self._mi, self._mj
 
-		# Bring the updated isentropic density back to the original dimensions
+		# Bring the updated isentropic_prognostic density back to the original dimensions
 		s_new = self.boundary.from_computational_to_physical_domain(self._out_s[:mi, :mj, :], (nx, ny, nz))
 
 		# Bring the updated velocity components back to the original dimensions
@@ -366,7 +366,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		state_new.pop('air_isentropic_density')
 		state_new.pop('height_on_interface_levels')
 
-		# Diagnose the isentropic density of precipitation water
+		# Diagnose the isentropic_prognostic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
 		state_new.add_variables(time_now + dt, 
 								mass_fraction_of_precipitation_water_in_air = self._out_Qr[:nx, :ny, :])
@@ -396,7 +396,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		# Allocate the Numpy arrays which will store the output fields
 		self._stencils_stepping_by_neglecting_vertical_advection_allocate_outputs(mi, mj)
 
-		# Set inputs and outputs for the stencil stepping the isentropic density and, possibly, the water constituents
+		# Set inputs and outputs for the stencil stepping the isentropic_prognostic density and, possibly, the water constituents
 		_inputs = {'in_s': self._in_s, 'in_u': self._in_u, 'in_v': self._in_v, 'in_mtg': self._in_mtg, 'in_s_old': self._in_s_old} 
 		_outputs = {'out_s': self._out_s}
 		if self._moist_on:
@@ -405,7 +405,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 							'in_qr': self._in_qr, 'in_qr_old': self._in_qr_old})
 			_outputs.update({'out_qv': self._out_qv, 'out_qc': self._out_qc, 'out_qr': self._out_qr})
 
-		# Instantiate the stencil stepping the isentropic density and, possibly, the water constituents
+		# Instantiate the stencil stepping the isentropic_prognostic density and, possibly, the water constituents
 		nb = self.nb
 		ni, nj, nk = mi - 2 * nb, mj - 2 * nb, nz
 		self._stencil_stepping_by_neglecting_vertical_advection_unstaggered = gt.NGStencil( 
@@ -490,7 +490,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 			* air_isentropic_density (unstaggered);
 			* x_velocity (:math:`x`-staggered);
 			* y_velocity (:math:`y`-staggered);
-			* montgomery_potential (isentropic);
+			* montgomery_potential (isentropic_prognostic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
@@ -552,14 +552,14 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 																			in_qv = None, in_qc = None, in_qr = None, 
 																			in_qv_old = None, in_qc_old = None, in_qr_old = None):
 		"""
-		GT4Py stencil advancing the isentropic density and, possibly, the water constituents via a centered time-integration scheme.
+		GT4Py stencil advancing the isentropic_prognostic density and, possibly, the water constituents via a centered time-integration scheme.
 
 		Parameters
 		----------
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_s : obj
-			:class:`gridtools.Equation` representing the isentropic density at the current time level.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density at the current time level.
 		in_u : obj
 			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time level.
 		in_v : obj
@@ -567,7 +567,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		in_s : obj
 			:class:`gridtools.Equation` representing the Montgomery potential at the current time level.
 		in_s_old : obj
-			:class:`gridtools.Equation` representing the isentropic density at the previous time level.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density at the previous time level.
 		in_qv : `obj`, optional
 			:class:`gridtools.Equation` representing the mass fraction of water vapor at the current time level.
 		in_qc : `obj`, optional
@@ -584,7 +584,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		Returns
 		-------
 		out_s : obj
-			:class:`gridtools.Equation` representing the stepped isentropic density.
+			:class:`gridtools.Equation` representing the stepped isentropic_prognostic density.
 		out_qv : `obj`, optional
 			:class:`gridtools.Equation` representing the stepped mass fraction of water vapour.
 		out_qc : `obj`, optional
@@ -621,7 +621,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		tmp_u[i, j, k] = in_u[i, j, k] + in_u[i+1, j, k]
 		tmp_v[i, j, k] = in_v[i, j, k] + in_v[i, j+1, k]
 
-		# Step the isentropic density
+		# Step the isentropic_prognostic density
 		out_s[i, j, k] = in_s_old[i, j, k] - 2. * dt * ((flux_s_x[i+1, j, k] - flux_s_x[i, j, k]) / dx +
 						 					            (flux_s_y[i, j+1, k] - flux_s_y[i, j, k]) / dy)
 
@@ -652,7 +652,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_s : obj
-			:class:`gridtools.Equation` representing the isentropic density at the current time level.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density at the current time level.
 		in_u : obj
 			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time level.
 		in_v : obj
@@ -699,7 +699,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_s : obj
-			:class:`gridtools.Equation` representing the isentropic density at the current time level.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density at the current time level.
 		in_u : obj
 			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time level.
 		in_v : obj
@@ -756,9 +756,9 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		in_w : array_like
 			:class:`numpy.ndarray` representing the vertical velocity, i.e., the change over time in potential temperature.
 		in_s_now : obj
-			:class:`gridtools.Equation` representing the current isentropic density. 
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density.
 		in_s_prv : obj 
-			:class:`gridtools.Equation` representing the provisional isentropic density. 
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density.
 		in_u_now : obj 
 			:class:`gridtools.Equation` representing the current :math:`x`-velocity.
 		in_u_prv : obj 
@@ -783,7 +783,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		Returns
 		-------
 		out_s : obj
-			:class:`gridtools.Equation` representing the updated isentropic density. 
+			:class:`gridtools.Equation` representing the updated isentropic_prognostic density.
 		out_u : obj 
 			:class:`gridtools.Equation` representing the updated :math:`x`-velocity.
 		out_v : obj 
@@ -847,7 +847,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 			mode             = self._backend)
 
 		# Initialize the GT4Py stencil clipping the negative values for the mass fraction of precipitation water,
-		# and diagnosing the isentropic density of precipitation water
+		# and diagnosing the isentropic_prognostic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water = gt.NGStencil(
 			definitions_func = self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water_defs,
 			inputs           = {'in_s': self._out_s, 'in_qr': self._out_qr},
@@ -864,9 +864,9 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		dt : obj
 			:class:`gridtools.Global` representing the large timestep.
 		in_s_old : obj
-			:class:`gridtools.Equation` representing the old isentropic density.
+			:class:`gridtools.Equation` representing the old isentropic_prognostic density.
 		in_s_prv : obj
-			:class:`gridtools.Equation` representing the provisional isentropic density.
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density.
 		in_qr_old : obj
 			:class:`gridtools.Equation` representing the old mass fraction of precipitation water.
 		in_qr_prv : obj
@@ -875,7 +875,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		Return
 		------
 		out_s_tnd : obj :
-			:class:`gridtools.Equation` representing the slow tendency for the isentropic density.
+			:class:`gridtools.Equation` representing the slow tendency for the isentropic_prognostic density.
 		out_qr_tnd : obj :
 			:class:`gridtools.Equation` representing the slow tendency for the mass fraction of precipitation water.
 		"""
@@ -897,7 +897,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_s, in_h, in_qr, 
 														  		 in_vt, in_s_tnd, in_qr_tnd):
 		"""
-		GT4Py stencil stepping the isentropic density and the mass fraction of precipitation water 
+		GT4Py stencil stepping the isentropic_prognostic density and the mass fraction of precipitation water
 		by integrating the precipitation flux.
 
 		Parameters
@@ -907,7 +907,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		in_rho : obj
 			:class:`gridtools.Equation` representing the air density.
 		in_s : obj
-			:class:`gridtools.Equation` representing the air isentropic density.
+			:class:`gridtools.Equation` representing the air isentropic_prognostic density.
 		in_h : obj
 			:class:`gridtools.Equation` representing the geometric height of the model half-levels.
 		in_qr : obj
@@ -915,7 +915,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		in_vt : obj
 			:class:`gridtools.Equation` representing the raindrop fall velocity.
 		in_s_tnd : obj
-			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the isentropic density.
+			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the isentropic_prognostic density.
 		in_qr_tnd : obj
 			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the mass fraction of
 			precipitation water.
@@ -923,7 +923,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		Return
 		------
 		out_s : obj
-			:class:`gridtools.Equation` representing the output isentropic density.
+			:class:`gridtools.Equation` representing the output isentropic_prognostic density.
 		out_qr : obj
 			:class:`gridtools.Equation` representing the output mass fraction of precipitation water.
 		"""
@@ -938,7 +938,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		out_s     = gt.Equation()
 		out_qr    = gt.Equation()
 
-		# Update isentropic density
+		# Update isentropic_prognostic density
 		out_s[i, j, k] = in_s[i, j, k] + dts * in_s_tnd[i, j, k]
 
 		# Update mass fraction of precipitation water
@@ -952,12 +952,12 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 	def _stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water_defs(self, in_s, in_qr):
 		"""
 		GT4Py stencil clipping the negative values for the mass fraction of precipitation water, 
-		and diagnosing the isentropic density of precipitation water.
+		and diagnosing the isentropic_prognostic density of precipitation water.
 
 		Parameters
 		----------
 		in_s : obj
-			:class:`gridtools.Equation` representing the air isentropic density.
+			:class:`gridtools.Equation` representing the air isentropic_prognostic density.
 		in_qr : obj
 			:class:`gridtools.Equation` representing the mass fraction of precipitation water in air.
 
@@ -966,7 +966,7 @@ class PrognosticIsentropicNonconservativeCentered(PrognosticIsentropicNonconserv
 		out_qr : obj
 			:class:`gridtools.Equation` representing the clipped mass fraction of precipitation water.
 		out_Qr : obj
-			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density of precipitation water.
 		"""
 		# Indeces
 		i = gt.Index()

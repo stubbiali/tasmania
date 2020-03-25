@@ -28,7 +28,7 @@ def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 
         - :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
         - the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
-            and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
+            and the isentropic_prognostic density are derived from the Brunt-Vaisala frequency :math:`N`;
         - the mass fraction of water vapor is derived from the relative humidity, which is horizontally uniform \
             and different from zero only in a band close to the surface;
         - the mass fraction of cloud water and precipitation water is zero;
@@ -37,7 +37,7 @@ def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 
         - :math:`u(x, \, y, \, \\theta, \, 0) = u_0` and :math:`v(x, \, y, \, \\theta, \, 0) = v_0`;
         - the Exner function, the pressure, the Montgomery potential, the height of the isentropes, \
-            and the isentropic density are derived from the Brunt-Vaisala frequency :math:`N`;
+            and the isentropic_prognostic density are derived from the Brunt-Vaisala frequency :math:`N`;
         - the mass fraction of water vapor is derived from the relative humidity, which is sinusoidal in the \
             :math:`x`-direction and uniform in the :math:`y`-direction, and different from zero only in a band \
             close to the surface;
@@ -125,7 +125,7 @@ def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 		for k in range(0, nz):
 			h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
 
-		# The initial isentropic density
+		# The initial isentropic_prognostic density
 		s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
 		# The initial momentums
@@ -191,7 +191,7 @@ def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 		for k in range(0, nz):
 			h[:, :, nz - k - 1] = h[:, :, nz - k] + dz * g / (brunt_vaisala_initial**2 * z[nz - k - 1])
 
-		# The initial isentropic density
+		# The initial isentropic_prognostic density
 		s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
 		# The initial momentums
@@ -256,7 +256,7 @@ def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 			h[:, :, nz - k - 1] = h[:, :, nz - k] - (p[:, :, nz - k - 1] - p[:, :, nz - k]) * Rd / (cp * g) * \
 								  z_hl[nz - k] * exn[:, :, nz - k] / p[:, :, nz - k]
 
-		# The initial isentropic density
+		# The initial isentropic_prognostic density
 		s = - 1. / g * (p[:, :, :-1] - p[:, :, 1:]) / dz
 
 		# The initial momentums
@@ -298,7 +298,7 @@ def get_initial_state(self, initial_time, initial_state_type, **kwargs):
 class SUSHomogeneousIsentropicDynamicalCore(SequentialSplittingDynamicalCore):
 	"""
 	This class inherits :class:`~tasmania.dynamics.dycore.SequentialSplittingDynamicalCore`
-	to implement the three-dimensional (moist) isentropic homogeneous dynamical core.
+	to implement the three-dimensional (moist) isentropic_prognostic homogeneous dynamical core.
 	Here, _homogeneous_ means that the pressure gradient terms, i.e., the terms
 	involving the gradient of the Montgomery potential, are not included in the dynamics,
 	but rather parameterized.
@@ -428,7 +428,7 @@ class SUSHomogeneousIsentropicDynamicalCore(SequentialSplittingDynamicalCore):
 		self._velocity_components = HorizontalVelocity(grid, backend, dtype)
 
 		# Instantiate the class in charge of diagnosing the mass fraction and
-		# isentropic density of the water constituents
+		# isentropic_prognostic density of the water constituents
 		if moist:
 			self._water_constituent = WaterConstituent(grid, backend, dtype)
 
@@ -591,13 +591,13 @@ class SUSHomogeneousIsentropicDynamicalCore(SequentialSplittingDynamicalCore):
 		nx, ny, nz = self._grid.nx, self._grid.ny, self._grid.nz
 		dtype = self._dtype
 
-		# Allocate memory to store the isentropic density of all water constituents
+		# Allocate memory to store the isentropic_prognostic density of all water constituents
 		if not hasattr(self, '_sqv_now'):
 			self._sqv_now = np.zeros((nx, ny, nz), dtype=dtype)
 			self._sqc_now = np.zeros((nx, ny, nz), dtype=dtype)
 			self._sqr_now = np.zeros((nx, ny, nz), dtype=dtype)
 
-		# Diagnosed the isentropic density of all water constituents
+		# Diagnosed the isentropic_prognostic density of all water constituents
 		s_now  = raw_state['air_isentropic_density']
 		qv_now = raw_state['mass_fraction_of_water_vapor_in_air']
 		qc_now = raw_state['mass_fraction_of_cloud_liquid_water_in_air']
@@ -727,7 +727,7 @@ class SUSHomogeneousIsentropicDynamicalCore(SequentialSplittingDynamicalCore):
 		self._boundary.set_outermost_layers_x(u_out, raw_state['x_velocity_at_u_locations'])
 		self._boundary.set_outermost_layers_y(v_out, raw_state['y_velocity_at_v_locations'])
 
-		# Allocate memory to store the isentropic density of all water constituents
+		# Allocate memory to store the isentropic_prognostic density of all water constituents
 		if not hasattr(self, '_qv_out'):
 			self._qv_out = np.zeros((nx, ny, nz), dtype=dtype)
 			self._qc_out = np.zeros((nx, ny, nz), dtype=dtype)
@@ -804,7 +804,7 @@ class SSUSHomogeneousIsentropicDynamicalCore(SUSHomogeneousIsentropicDynamicalCo
 	"""
 	This class inherits
 	:class:`~tasmania.dynamics.homogeneous_isentropic_dycore.SUSHomogeneousIsentropicDynamicalCore`
-	to implement the three-dimensional (moist) isentropic homogeneous dynamical core.
+	to implement the three-dimensional (moist) isentropic_prognostic homogeneous dynamical core.
 	Here, _homogeneous_ means that the pressure gradient terms, i.e., the terms
 	involving the gradient of the Montgomery potential, are not included in the dynamics,
 	but rather parameterized.

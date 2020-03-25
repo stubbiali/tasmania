@@ -25,8 +25,10 @@ import numpy as np
 from sympl._core.base_components import InputChecker, DiagnosticChecker
 from sympl._core.get_np_arrays import get_numpy_arrays_with_properties
 from sympl._core.restore_dataarray import restore_data_arrays_with_properties
+from typing import Mapping, Optional, Sequence, Tuple, Union
 
-from tasmania.python.grids.grid import Grid as GridType
+from tasmania.python.grids.grid import Grid
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.utils import assert_sequence
 
 
@@ -34,7 +36,7 @@ SequenceType = (tuple, list)
 
 
 class FakeComponent:
-    def __init__(self, properties):
+    def __init__(self, properties: Mapping[str, taz_types.properties_dict_t]) -> None:
         for name, value in properties.items():
             if name == "input_properties":
                 self.input_properties = value
@@ -52,7 +54,7 @@ class OfflineDiagnosticComponent(abc.ABC):
     from multiple state dictionaries.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         assert isinstance(self.input_properties, SequenceType), (
             "input_properties attribute is of type {}, "
             "but should be a sequence of dict.".format(
@@ -84,7 +86,7 @@ class OfflineDiagnosticComponent(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def input_properties(self):
+    def input_properties(self) -> Sequence[taz_types.properties_dict_t]:
         """
         Returns
         -------
@@ -98,7 +100,7 @@ class OfflineDiagnosticComponent(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         """
         Returns
         -------
@@ -109,7 +111,7 @@ class OfflineDiagnosticComponent(abc.ABC):
         """
         pass
 
-    def __call__(self, *states):
+    def __call__(self, *states: taz_types.dataarray_dict_t) -> taz_types.dataarray_dict_t:
         """
         Call operator retrieving the diagnostics.
 
@@ -156,7 +158,7 @@ class OfflineDiagnosticComponent(abc.ABC):
         return diagnostics
 
     @abc.abstractmethod
-    def array_call(self, *states):
+    def array_call(self, *states: taz_types.array_dict_t) -> taz_types.array_dict_t:
         """
         Retrieve the diagnostics.
 
@@ -183,7 +185,14 @@ class RMSD(OfflineDiagnosticComponent):
     between model variables of two state dictionaries.
     """
 
-    def __init__(self, grid, fields, x=None, y=None, z=None):
+    def __init__(
+        self,
+        grid: Union[Grid, Sequence[Grid]],
+        fields: Mapping[str, taz_types.properties_dict_t],
+        x: Optional[slice] = None,
+        y: Optional[slice] = None,
+        z: Optional[slice] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -212,7 +221,7 @@ class RMSD(OfflineDiagnosticComponent):
             are considered. Different slices for different states are allowed.
         """
         self._grids = grid if isinstance(grid, SequenceType) else (grid, grid)
-        assert_sequence(self._grids, reflen=2, reftype=GridType)
+        assert_sequence(self._grids, reflen=2, reftype=Grid)
 
         self._fields = fields
 
@@ -231,7 +240,9 @@ class RMSD(OfflineDiagnosticComponent):
         assert_sequence(self._zs, reflen=2, reftype=slice)
 
     @property
-    def input_properties(self):
+    def input_properties(
+        self
+    ) -> Tuple[taz_types.properties_dict_t, taz_types.properties_dict_t]:
         g1, g2 = self._grids
 
         return_list = ({}, {})
@@ -258,13 +269,15 @@ class RMSD(OfflineDiagnosticComponent):
         return return_list
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {
             "rmsd_of_" + name: {"dims": ("scalar",) * 3, "units": units}
             for name, units in self._fields.items()
         }
 
-    def array_call(self, state1, state2):
+    def array_call(
+        self, state1: taz_types.array_dict_t, state2: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         x1, y1, z1 = self._xs[0], self._ys[0], self._zs[0]
         x2, y2, z2 = self._xs[1], self._ys[1], self._zs[1]
 
@@ -285,7 +298,14 @@ class RRMSD(OfflineDiagnosticComponent):
     deviation (RRMSD) between model variables of two state dictionaries.
     """
 
-    def __init__(self, grid, fields, x=None, y=None, z=None):
+    def __init__(
+        self,
+        grid: Union[Grid, Sequence[Grid]],
+        fields: Mapping[str, taz_types.properties_dict_t],
+        x: Optional[slice] = None,
+        y: Optional[slice] = None,
+        z: Optional[slice] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -314,7 +334,7 @@ class RRMSD(OfflineDiagnosticComponent):
             are considered. Different slices for different states are allowed.
         """
         self._grids = grid if isinstance(grid, SequenceType) else (grid, grid)
-        assert_sequence(self._grids, reflen=2, reftype=GridType)
+        assert_sequence(self._grids, reflen=2, reftype=Grid)
 
         self._fields = fields
 
@@ -333,7 +353,9 @@ class RRMSD(OfflineDiagnosticComponent):
         assert_sequence(self._zs, reflen=2, reftype=slice)
 
     @property
-    def input_properties(self):
+    def input_properties(
+        self
+    ) -> Tuple[taz_types.properties_dict_t, taz_types.properties_dict_t]:
         g1, g2 = self._grids
 
         return_list = ({}, {})
@@ -360,13 +382,15 @@ class RRMSD(OfflineDiagnosticComponent):
         return return_list
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {
             "rrmsd_of_" + name: {"dims": ("scalar",) * 3, "units": "1"}
             for name in self._fields.keys()
         }
 
-    def array_call(self, state1, state2):
+    def array_call(
+        self, state1: taz_types.array_dict_t, state2: taz_types.array_dict_t
+    ) -> taz_types.array_dict_t:
         x1, y1, z1 = self._xs[0], self._ys[0], self._zs[0]
         x2, y2, z2 = self._xs[1], self._ys[1], self._zs[1]
 
@@ -386,14 +410,14 @@ class ColumnSum(OfflineDiagnosticComponent):
     Sum the values of a field over each column.
     """
 
-    def __init__(self, grid, field_name, field_units):
+    def __init__(self, grid: Grid, field_name: str, field_units: str):
         self._grid = grid
         self._fname = field_name
         self._funits = field_units
         super().__init__()
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> Tuple[taz_types.properties_dict_t]:
         g = self._grid
         dimx = g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
         dimy = g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
@@ -403,13 +427,12 @@ class ColumnSum(OfflineDiagnosticComponent):
             else g.z.dims[0]
         )
 
-        return_list = list()
-        return_list.append({"dims": (dimx, dimy, dimz), "units": self._funits})
+        return_list = ({"dims": (dimx, dimy, dimz), "units": self._funits},)
 
         return return_list
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         g = self._grid
         dimx = g.x_at_u_locations.dims[0] if "u_locations" in self._fname else g.x.dims[0]
         dimy = g.y_at_v_locations.dims[0] if "v_locations" in self._fname else g.y.dims[0]
@@ -421,7 +444,7 @@ class ColumnSum(OfflineDiagnosticComponent):
         dimz += "_at_surface_level"
         return {"dims": (dimx, dimy, dimz), "units": self._funits}
 
-    def array_call(self, state):
+    def array_call(self, state: taz_types.array_dict_t) -> taz_types.array_dict_t:
         field = state[self._fname]
         out = np.zeros((field.shape[0], field.shape[1], 1), dtype=field.dtype)
         np.sum(field, axis=2, out=out)

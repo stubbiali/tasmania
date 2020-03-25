@@ -20,11 +20,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-
-CALL_DIR=$HOME/Desktop/phd/tasmania-develop-gt4py-v0.5.0/docker
-DOCKERFILE=$CALL_DIR/gpu/dockerfiles/dockerfile.base
+CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+TASMANIA_ROOT="$(dirname "$CDIR")"
+TASMANIA_ROOT="$(dirname "$TASMANIA_ROOT")"
+DOCKERFILE=$CDIR/dockerfiles/dockerfile.base
 IMAGE_NAME=tasmania:gpu-base
-IMAGE_SAVE=$CALL_DIR/images/tasmania_gpu_base.tar
+IMAGE_SAVE=$TASMANIA_ROOT/docker/images/tasmania_gpu_base.tar
 
 echo "About to remove the tar archive '$IMAGE_SAVE' (if existing)."
 read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to bypass this step." key
@@ -42,7 +43,7 @@ read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to
 echo ""
 
 if [[ $key = "" ]]; then
-	docker build --rm -f $DOCKERFILE -t $IMAGE_NAME .
+	docker build --rm --build-arg uid="$(id -u)" -f "$DOCKERFILE" -t $IMAGE_NAME .
 fi
 
 echo ""
@@ -51,5 +52,5 @@ read -n 1 -s -r -p "Press ENTER to continue, CTRL-C to exit, or any other key to
 echo ""
 
 if [[ $key = "" ]]; then
-	docker save --output $IMAGE_SAVE $IMAGE_NAME
+	docker save --output "$IMAGE_SAVE" $IMAGE_NAME
 fi

@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,14 +32,10 @@ import numpy as np
 import pytest
 from sympl import DataArray
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import utils
-
 from tasmania.python.plot.retrievers import DataRetriever, DataRetrieverComposite
 from tasmania import get_dataarray_3d
+
+from tests.utilities import st_domain, st_isentropic_state_f, st_one_of
 
 units = {
     "air_density": ("kg m^-3", "g cm^-3", None),
@@ -69,14 +65,14 @@ def _test_field(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
-    grid_type = data.draw(utils.st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(st_domain(), label="domain")
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
     state = data.draw(
-        utils.st_isentropic_state_f(grid, moist=True, precipitation=True), label="state"
+        st_isentropic_state_f(grid, moist=True, precipitation=True), label="state"
     )
-    field_name = data.draw(utils.st_one_of(units.keys()), label="field_name")
-    field_units = data.draw(utils.st_one_of(units[field_name]), label="field_units")
+    field_name = data.draw(st_one_of(units.keys()), label="field_name")
+    field_units = data.draw(st_one_of(units[field_name]), label="field_units")
     xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
     xmax = data.draw(hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax")
     ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
@@ -167,12 +163,12 @@ def _test_horizontal_velocity(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
-    grid_type = data.draw(utils.st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(st_domain(), label="domain")
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(utils.st_isentropic_state_f(grid), label="state")
+    state = data.draw(st_isentropic_state_f(grid), label="state")
     field_units = data.draw(
-        utils.st_one_of(units["x_velocity_at_u_locations"]), label="field_units"
+        st_one_of(units["x_velocity_at_u_locations"]), label="field_units"
     )
     xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
     xmax = data.draw(hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax")
@@ -220,12 +216,12 @@ def _test_height(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
-    grid_type = data.draw(utils.st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(st_domain(), label="domain")
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(utils.st_isentropic_state_f(grid), label="state")
+    state = data.draw(st_isentropic_state_f(grid), label="state")
     field_units = data.draw(
-        utils.st_one_of(units["height_on_interface_levels"]), label="field_units"
+        st_one_of(units["height_on_interface_levels"]), label="field_units"
     )
     xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
     xmax = data.draw(hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax")
@@ -268,13 +264,13 @@ def _test_height(data):
 )
 @given(hyp_st.data())
 def test_composite(data):
-    domain = data.draw(utils.st_domain(), label="domain")
-    grid_type = data.draw(utils.st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(st_domain(), label="domain")
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+    state = data.draw(st_isentropic_state_f(grid, moist=True), label="state")
 
-    field1_name = data.draw(utils.st_one_of(units.keys()), label="field1_name")
-    field1_units = data.draw(utils.st_one_of(units[field1_name]), label="field1_units")
+    field1_name = data.draw(st_one_of(units.keys()), label="field1_name")
+    field1_units = data.draw(st_one_of(units[field1_name]), label="field1_units")
     xmin1 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin1")
     xmax1 = data.draw(
         hyp_st.integers(min_value=xmin1 + 1, max_value=grid.nx), label="xmax1"
@@ -288,8 +284,8 @@ def test_composite(data):
         hyp_st.integers(min_value=zmin1 + 1, max_value=grid.nz), label="zmax1"
     )
 
-    field2_name = data.draw(utils.st_one_of(units.keys()), label="field2_name")
-    field2_units = data.draw(utils.st_one_of(units[field2_name]), label="field2_units")
+    field2_name = data.draw(st_one_of(units.keys()), label="field2_name")
+    field2_units = data.draw(st_one_of(units[field2_name]), label="field2_units")
     xmin2 = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin2")
     xmax2 = data.draw(
         hyp_st.integers(min_value=xmin2 + 1, max_value=grid.nx), label="xmax2"

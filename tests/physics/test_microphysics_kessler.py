@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
     assume,
@@ -38,45 +39,30 @@ import gt4py as gt
 from tasmania.python.physics.microphysics.kessler import (
     KesslerFallVelocity,
     KesslerMicrophysics,
-    KesslerSaturationAdjustment,
+    KesslerSaturationAdjustmentDiagnostic,
+    KesslerSaturationAdjustmentPrognostic,
     KesslerSedimentation,
 )
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.meteo_utils import goff_gratch_formula, tetens_formula
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_microphysics_utils import kessler_sedimentation_validation
-    from .utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_microphysics_utils import kessler_sedimentation_validation
-    from utils import (
-        compare_arrays,
-        compare_dataarrays,
-        compare_datetimes,
-        st_floats,
-        st_one_of,
-        st_domain,
-        st_isentropic_state_f,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.physics.test_microphysics_utils import kessler_sedimentation_validation
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    compare_datetimes,
+    st_floats,
+    st_one_of,
+    st_domain,
+    st_isentropic_state_f,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -85,38 +71,25 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 def kessler_validation(
-    rho, p, t, exn, qv, qc, qr, a, k1, k2, swvf, beta, lhvw, rain_evaporation
+    rho, p, t, exn, qv, qc, qr, a, k1, k2, svpf, beta, lhvw, rain_evaporation
 ):
     p = p if p.shape[2] == rho.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
     exn = exn if exn.shape[2] == rho.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
 
-    p_mbar = 0.01 * p
-    rho_gcm3 = 0.001 * rho
-
     ar = k1 * (qc - a) * (qc > a)
-    cr = k2 * qc * qr ** 0.875
+    cr = k2 * qc * np.where(qr > 0, qr ** 0.875, 0)
 
     tnd_qc = -ar - cr
-    # tnd_qc[np.isnan(tnd_qc)] = 0.0
     tnd_qr = ar + cr
-    # tnd_qr[np.isnan(tnd_qr)] = 0.0
 
     if rain_evaporation:
-        ps = swvf(t)
-        qvs = beta * ps / (p - ps)
-        c = 1.6 + 124.9 * (rho_gcm3 * qr) ** 0.2046
-        er = (
-            (1.0 - qv / qvs)
-            * c
-            * (rho_gcm3 * qr) ** 0.525
-            / (rho_gcm3 * (5.4e5 + 2.55e6 / (p_mbar * qvs)))
-        )
+        ps = svpf(t)
+        qvs = beta * ps / p
+        er = np.where(qr > 0.0, 0.0484794 * (qvs - qv) * (rho * qr) ** (13.0 / 20.0), 0.0)
+        # er[qr < 0] = 0.0
         tnd_qv = er
-        # tnd_qv[np.isnan(tnd_qv)] = 0.0
         tnd_qr -= er
-        # tnd_qr[np.isnan(tnd_qr)] = 0.0
         tnd_theta = -lhvw * er / exn
-        # tnd_theta[np.isnan(tnd_theta)] = 0.0
     else:
         tnd_qv = 0.0
         tnd_theta = 0.0
@@ -132,25 +105,31 @@ def kessler_validation(
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_kessler_microphysics(data):
+@given(data=hyp_st.data())
+def test_kessler_microphysics(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
+
     state = data.draw(
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -161,7 +140,7 @@ def test_kessler_microphysics(data):
     apoif = data.draw(hyp_st.booleans(), label="apoif")
     toaptid = data.draw(hyp_st.booleans(), label="toaptid")
     re = data.draw(hyp_st.booleans(), label="re")
-    swvf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="swvf_type")
+    svpf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="svpf_type")
 
     a = data.draw(hyp_st.floats(min_value=0, max_value=10), label="a")
     k1 = data.draw(hyp_st.floats(min_value=0, max_value=10), label="k1")
@@ -174,7 +153,13 @@ def test_kessler_microphysics(data):
 
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        p_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
@@ -186,7 +171,13 @@ def test_kessler_microphysics(data):
         )
 
         exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
-        exn_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        exn_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
         state["exner_function"] = get_dataarray_3d(
             exn_unstg,
@@ -214,7 +205,8 @@ def test_kessler_microphysics(data):
         autoconversion_threshold=DataArray(a, attrs={"units": "g g^-1"}),
         autoconversion_rate=DataArray(k1, attrs={"units": "s^-1"}),
         collection_rate=DataArray(k2, attrs={"units": "hr^-1"}),
-        saturation_water_vapor_formula=swvf_type,
+        saturation_vapor_pressure_formula=svpf_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -266,11 +258,13 @@ def test_kessler_microphysics(data):
     tendencies, diagnostics = kessler(state)
 
     for name in tendency_names:
-        assert name in tendencies
+        with subtests.test(name=name):
+            assert name in tendencies
     assert len(tendencies) == len(tendency_names)
 
     for name in diagnostic_names:
-        assert name in diagnostics
+        with subtests.test(name=name):
+            assert name in diagnostics
     assert len(diagnostics) == len(diagnostic_names)
 
     rho = state["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz]
@@ -297,15 +291,11 @@ def test_kessler_microphysics(data):
     # assert kessler._k1 == k1
     # assert np.isclose(kessler._k2, k2/3600.0)
 
-    swvf = goff_gratch_formula if swvf_type == "goff_gratch" else tetens_formula
+    svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
 
     tnd_qv, tnd_qc, tnd_qr, tnd_theta = kessler_validation(
-        rho, p, t, exn, qv, qc, qr, a, k1, k2 / 3600.0, swvf, beta, lhvw, re
+        rho, p, t, exn, qv, qc, qr, a, k1, k2 / 3600.0, svpf, beta, lhvw, re
     )
-    # tnd_qv, tnd_qc, tnd_qr, tnd_theta = kessler_validation_bis(
-    # 	rho, p, t, exn, qv, qc, qr, a, k1, k2/3600.0, swvf, beta, lhvw, re
-    # )
-
     compare_dataarrays(
         get_dataarray_3d(tnd_qc, grid, "g g^-1 s^-1"),
         tendencies[mfcw][:nx, :ny, :nz],
@@ -336,12 +326,21 @@ def test_kessler_microphysics(data):
         )
 
 
-def kessler_saturation_adjustment_validation(p, t, qv, qc, beta, lhvw, cp):
+def kessler_saturation_adjustment_diagnostic_validation(
+    timestep, p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv
+):
     p = p if p.shape[2] == t.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
-    pvs = tetens_formula(t)
-    qvs = beta * pvs / (p - pvs)
-    d = np.minimum((qvs - qv) / (1.0 + qvs * 4093 * lhvw / (cp * (t - 36) ** 2)), qc)
-    return qv + d, qc - d
+    exn = exn if exn.shape[2] == t.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
+
+    ps = svpf(t)
+    qvs = beta * ps / p
+    sat = (qvs - qv) / (1.0 + qvs * (lhvw ** 2) / (cp * rv * (t ** 2)))
+    dq = deepcopy(qc)
+    dq[sat <= qc] = sat[sat <= qc]
+    dt = -lhvw * dq / cp
+    cv = -dq / timestep
+
+    return qv + dq, qc - dq, t + dt, lhvw / exn * cv
 
 
 @settings(
@@ -353,19 +352,22 @@ def kessler_saturation_adjustment_validation(p, t, qv, qc, beta, lhvw, cp):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_kessler_saturation_adjustment(data):
+def test_kessler_saturation_adjustment_diagnostic(data):
     gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -373,6 +375,7 @@ def test_kessler_saturation_adjustment(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -381,19 +384,46 @@ def test_kessler_saturation_adjustment(data):
     )
 
     apoif = data.draw(hyp_st.booleans(), label="apoif")
+    svpf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="svpf_type")
+
+    timestep = data.draw(st_floats(min_value=1e-6, max_value=3600), label="timestep")
 
     # ========================================
     # test bed
     # ========================================
     if not apoif:
         p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-        p_unstg = zeros(storage_shape, backend, dtype, default_origin=default_origin)
+        p_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
         state["air_pressure"] = get_dataarray_3d(
             p_unstg,
             grid,
             "Pa",
             name="air_pressure",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        )
+
+        exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
+        exn_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+        exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
+        state["exner_function"] = get_dataarray_3d(
+            exn_unstg,
+            grid,
+            "J kg^-1 K^-1",
+            name="exner_function",
             grid_shape=(nx, ny, nz),
             set_coordinates=False,
         )
@@ -407,10 +437,12 @@ def test_kessler_saturation_adjustment(data):
     #
     # test properties
     #
-    sak = KesslerSaturationAdjustment(
+    sak = KesslerSaturationAdjustmentDiagnostic(
         domain,
         grid_type,
         air_pressure_on_interface_levels=apoif,
+        saturation_vapor_pressure_formula=svpf_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         rebuild=False,
@@ -422,22 +454,34 @@ def test_kessler_saturation_adjustment(data):
     assert mfcw in sak.input_properties
     if apoif:
         assert "air_pressure_on_interface_levels" in sak.input_properties
+        assert "exner_function_on_interface_levels" in sak.input_properties
     else:
         assert "air_pressure" in sak.input_properties
-    assert len(sak.input_properties) == 4
+        assert "exner_function" in sak.input_properties
+    assert len(sak.input_properties) == 5
+
+    assert "air_potential_temperature" in sak.tendency_properties
+    assert len(sak.tendency_properties) == 1
 
     assert mfwv in sak.diagnostic_properties
     assert mfcw in sak.diagnostic_properties
-    assert len(sak.diagnostic_properties) == 2
+    assert "air_temperature" in sak.diagnostic_properties
+    assert len(sak.diagnostic_properties) == 3
 
     #
     # test numerics
     #
-    diagnostics = sak(state)
+    dt = timedelta(seconds=timestep)
 
+    tendencies, diagnostics = sak(state, dt)
+
+    assert "air_potential_temperature" in tendencies
+    assert len(tendencies) == 1
+
+    assert "air_temperature" in diagnostics
     assert mfwv in diagnostics
     assert mfcw in diagnostics
-    assert len(diagnostics) == 2
+    assert len(diagnostics) == 3
 
     p = (
         state["air_pressure_on_interface_levels"]
@@ -447,13 +491,33 @@ def test_kessler_saturation_adjustment(data):
         else state["air_pressure"].to_units("Pa").values[:nx, :ny, :nz]
     )
     t = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
+    exn = (
+        state["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
+        if apoif
+        else state["exner_function"].to_units("J kg^-1 K^-1").values[:nx, :ny, :nz]
+    )
     qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
     qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
 
-    out_qv, out_qc = kessler_saturation_adjustment_validation(
-        p, t, qv, qc, beta, lhvw, cp
+    svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
+
+    out_qv, out_qc, out_t, out_theta_tnd = kessler_saturation_adjustment_diagnostic_validation(
+        dt.total_seconds(), p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv
     )
 
+    compare_dataarrays(
+        get_dataarray_3d(out_theta_tnd, grid, "K s^-1"),
+        tendencies["air_potential_temperature"][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
+
+    compare_dataarrays(
+        get_dataarray_3d(out_t, grid, "K"),
+        diagnostics["air_temperature"][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
     compare_dataarrays(
         get_dataarray_3d(out_qv, grid, "g g^-1"),
         diagnostics[mfwv][:nx, :ny, :nz],
@@ -462,6 +526,202 @@ def test_kessler_saturation_adjustment(data):
     compare_dataarrays(
         get_dataarray_3d(out_qc, grid, "g g^-1"),
         diagnostics[mfcw][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
+
+
+def kessler_saturation_adjustment_prognostic_validation(
+    timestep, p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv, sr
+):
+    p = p if p.shape[2] == t.shape[2] else 0.5 * (p[:, :, :-1] + p[:, :, 1:])
+    exn = exn if exn.shape[2] == t.shape[2] else 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
+
+    ps = svpf(t)
+    qvs = beta * ps / p
+    sat = (qvs - qv) / (1.0 + qvs * (lhvw ** 2) / (cp * rv * (t ** 2)))
+    dq = deepcopy(qc)
+    dq[sat <= qc] = sat[sat <= qc]
+
+    return sr * dq, -sr * dq, -sr * (lhvw / exn) * dq
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_kessler_saturation_adjustment_prognostic(data):
+    gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
+    grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            gt_powered=gt_powered,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+
+    apoif = data.draw(hyp_st.booleans(), label="apoif")
+    svpf_type = data.draw(st_one_of(("tetens", "goff_gratch")), label="svpf_type")
+    sr = data.draw(hyp_st.floats(min_value=0, max_value=1), label="sr")
+
+    timestep = data.draw(st_floats(min_value=1e-6, max_value=3600), label="timestep")
+
+    # ========================================
+    # test bed
+    # ========================================
+    if not apoif:
+        p = state["air_pressure_on_interface_levels"].to_units("Pa").values
+        p_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+        p_unstg[:, :, :-1] = 0.5 * (p[:, :, :-1] + p[:, :, 1:])
+        state["air_pressure"] = get_dataarray_3d(
+            p_unstg,
+            grid,
+            "Pa",
+            name="air_pressure",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        )
+
+        exn = state["exner_function_on_interface_levels"].to_units("J kg^-1 K^-1").values
+        exn_unstg = zeros(
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+        exn_unstg[:, :, :-1] = 0.5 * (exn[:, :, :-1] + exn[:, :, 1:])
+        state["exner_function"] = get_dataarray_3d(
+            exn_unstg,
+            grid,
+            "J kg^-1 K^-1",
+            name="exner_function",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        )
+
+    rd = 287.0
+    rv = 461.5
+    cp = 1004.0
+    lhvw = 2.5e6
+    beta = rd / rv
+
+    #
+    # test properties
+    #
+    sak = KesslerSaturationAdjustmentPrognostic(
+        domain,
+        grid_type,
+        air_pressure_on_interface_levels=apoif,
+        saturation_vapor_pressure_formula=svpf_type,
+        saturation_rate=DataArray(sr, attrs={"units": "s^-1"}),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        rebuild=False,
+        storage_shape=storage_shape,
+    )
+
+    assert "air_temperature" in sak.input_properties
+    assert mfwv in sak.input_properties
+    assert mfcw in sak.input_properties
+    if apoif:
+        assert "air_pressure_on_interface_levels" in sak.input_properties
+        assert "exner_function_on_interface_levels" in sak.input_properties
+    else:
+        assert "air_pressure" in sak.input_properties
+        assert "exner_function" in sak.input_properties
+    assert len(sak.input_properties) == 5
+
+    assert "air_potential_temperature" in sak.tendency_properties
+    assert mfwv in sak.tendency_properties
+    assert mfcw in sak.tendency_properties
+    assert len(sak.tendency_properties) == 3
+
+    assert len(sak.diagnostic_properties) == 0
+
+    #
+    # test numerics
+    #
+    dt = timedelta(seconds=timestep)
+
+    tendencies, diagnostics = sak(state)
+
+    assert "air_potential_temperature" in tendencies
+    assert mfwv in tendencies
+    assert mfcw in tendencies
+    assert len(tendencies) == 3
+
+    assert len(diagnostics) == 0
+
+    p = (
+        state["air_pressure_on_interface_levels"]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1]
+        if apoif
+        else state["air_pressure"].to_units("Pa").values[:nx, :ny, :nz]
+    )
+    t = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
+    exn = (
+        state["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
+        if apoif
+        else state["exner_function"].to_units("J kg^-1 K^-1").values[:nx, :ny, :nz]
+    )
+    qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
+    qc = state[mfcw].to_units("g g^-1").values[:nx, :ny, :nz]
+
+    svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
+
+    tnd_qv, tnd_qc, tnd_theta = kessler_saturation_adjustment_prognostic_validation(
+        dt.total_seconds(), p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv, sr
+    )
+
+    compare_dataarrays(
+        get_dataarray_3d(tnd_theta, grid, "K s^-1"),
+        tendencies["air_potential_temperature"][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
+    compare_dataarrays(
+        get_dataarray_3d(tnd_qv, grid, "g g^-1 s^-1"),
+        tendencies[mfwv][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
+    compare_dataarrays(
+        get_dataarray_3d(tnd_qc, grid, "g g^-1 s^-1"),
+        tendencies[mfcw][:nx, :ny, :nz],
         compare_coordinate_values=False,
     )
 
@@ -480,16 +740,21 @@ def kessler_fall_velocity_validation(rho, qr):
 )
 @given(hyp_st.data())
 def test_kessler_fall_velocity(data):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(gt_powered=gt_powered, backend=backend, dtype=dtype), label="domain"
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -497,6 +762,7 @@ def test_kessler_fall_velocity(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -513,6 +779,7 @@ def test_kessler_fall_velocity(data):
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -562,13 +829,19 @@ def test_kessler_sedimentation(data):
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -576,6 +849,7 @@ def test_kessler_sedimentation(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -601,6 +875,7 @@ def test_kessler_sedimentation(data):
     rfv = KesslerFallVelocity(
         domain,
         grid_type,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -614,6 +889,7 @@ def test_kessler_sedimentation(data):
         grid_type,
         flux_type,
         maxcfl,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -645,17 +921,17 @@ def test_kessler_sedimentation(data):
         nx, ny, nz, state, timestep, flux_type, maxcfl
     )
 
-    # compare_dataarrays(
-    #     get_dataarray_3d(
-    #         raw_mfpw_val,
-    #         grid,
-    #         "g g^-1 s^-1",
-    #         grid_shape=(nx, ny, nz),
-    #         set_coordinates=False,
-    #     ),
-    #     tendencies[mfpw][:nx, :ny, :nz],
-    #     compare_coordinate_values=False,
-    # )
+    compare_dataarrays(
+        get_dataarray_3d(
+            raw_mfpw_val,
+            grid,
+            "g g^-1 s^-1",
+            grid_shape=(nx, ny, nz),
+            set_coordinates=False,
+        ),
+        tendencies[mfpw][:nx, :ny, :nz],
+        compare_coordinate_values=False,
+    )
 
     assert len(tendencies) == 1
 
@@ -663,4 +939,5 @@ def test_kessler_sedimentation(data):
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    # pytest.main([__file__])
+    test_kessler_microphysics()

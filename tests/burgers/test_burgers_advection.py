@@ -35,42 +35,26 @@ import pytest
 from gt4py import gtscript, storage as gt_storage, __externals__
 
 from tasmania.python.burgers.dynamics.advection import BurgersAdvection
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .utils import (
-        compare_arrays,
-        st_burgers_state,
-        st_one_of,
-        st_physical_grid,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from utils import (
-        compare_arrays,
-        st_burgers_state,
-        st_one_of,
-        st_physical_grid,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.utilities import compare_arrays, st_burgers_state, st_one_of, st_physical_grid
 
 
 class WrappingStencil:
     def __init__(self, advection, nb, backend, dtype):
         assert nb >= advection.extent
         self.nb = nb
-        set_annotations(self.stencil_defs, dtype)
         decorator = gtscript.stencil(
-            backend, rebuild=False, externals={"call_func": advection.__call__}
+            backend,
+            rebuild=False,
+            dtypes={"dtype": dtype},
+            externals={"call_func": advection.call},
         )
         self.stencil = decorator(self.stencil_defs)
 
@@ -92,12 +76,12 @@ class WrappingStencil:
 
     @staticmethod
     def stencil_defs(
-        in_u: gtscript.Field[np.float64],
-        in_v: gtscript.Field[np.float64],
-        out_adv_u_x: gtscript.Field[np.float64],
-        out_adv_u_y: gtscript.Field[np.float64],
-        out_adv_v_x: gtscript.Field[np.float64],
-        out_adv_v_y: gtscript.Field[np.float64],
+        in_u: gtscript.Field["dtype"],
+        in_v: gtscript.Field["dtype"],
+        out_adv_u_x: gtscript.Field["dtype"],
+        out_adv_u_y: gtscript.Field["dtype"],
+        out_adv_v_x: gtscript.Field["dtype"],
+        out_adv_v_y: gtscript.Field["dtype"],
         *,
         dx: float,
         dy: float
@@ -131,25 +115,73 @@ def first_order_advection(dx, dy, u, v, phi):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_first_order(data):
-    gt_storage.prepare_numpy()
-
+def test_first_order_numpy(data):
     # ========================================
     # random data generation
     # ========================================
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
+            dtype=dtype,
         ),
         label="grid",
     )
+    state = data.draw(st_burgers_state(grid, gt_powered=False), label="state")
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    advection = BurgersAdvection.factory("first_order", gt_powered=False)
+
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
+
+    adv_u_x_val, adv_u_y_val = first_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = first_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x, adv_u_x_val[1:-1, 1:-1])
+    compare_arrays(adv_u_y, adv_u_y_val[1:-1, 1:-1])
+    compare_arrays(adv_v_x, adv_v_x_val[1:-1, 1:-1])
+    compare_arrays(adv_v_y, adv_v_y_val[1:-1, 1:-1])
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_first_order_gt(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
     state = data.draw(
-        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            grid, gt_powered=True, backend=backend, default_origin=default_origin
+        ),
         label="state",
     )
 
@@ -161,14 +193,37 @@ def test_first_order(data):
     u = state["x_velocity"].to_units("m s^-1").values
     v = state["y_velocity"].to_units("m s^-1").values
 
-    dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_u_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    advection = BurgersAdvection.factory("first_order")
+    advection = BurgersAdvection.factory("first_order", gt_powered=True)
 
     ws = WrappingStencil(advection, nb, backend, dtype)
 
@@ -196,25 +251,73 @@ def second_order_advection(dx, dy, u, v, phi):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_second_order(data):
-    gt_storage.prepare_numpy()
-
+def test_second_order_numpy(data):
     # ========================================
     # random data generation
     # ========================================
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
+            dtype=dtype,
         ),
         label="grid",
     )
+    state = data.draw(st_burgers_state(grid, gt_powered=False), label="state")
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    advection = BurgersAdvection.factory("second_order", gt_powered=False)
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
+
+    adv_u_x_val, adv_u_y_val = second_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = second_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x, adv_u_x_val[1:-1, 1:-1])
+    compare_arrays(adv_u_y, adv_u_y_val[1:-1, 1:-1])
+    compare_arrays(adv_v_x, adv_v_x_val[1:-1, 1:-1])
+    compare_arrays(adv_v_y, adv_v_y_val[1:-1, 1:-1])
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_second_order_gt(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
+
     state = data.draw(
-        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            grid, gt_powered=True, backend=backend, default_origin=default_origin
+        ),
         label="state",
     )
 
@@ -226,14 +329,37 @@ def test_second_order(data):
     u = state["x_velocity"].to_units("m s^-1").values
     v = state["y_velocity"].to_units("m s^-1").values
 
-    dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_u_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    advection = BurgersAdvection.factory("second_order")
+    advection = BurgersAdvection.factory("second_order", gt_powered=True)
 
     ws = WrappingStencil(advection, nb, backend, dtype)
 
@@ -273,25 +399,73 @@ def third_order_advection(dx, dy, u, v, phi):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_third_order(data):
-    gt_storage.prepare_numpy()
-
+def test_third_order_numpy(data):
     # ========================================
     # random data generation
     # ========================================
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
+            dtype=dtype,
         ),
         label="grid",
     )
+    state = data.draw(st_burgers_state(grid, gt_powered=False), label="state")
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    advection = BurgersAdvection.factory("third_order", gt_powered=False)
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
+
+    adv_u_x_val, adv_u_y_val = third_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = third_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x, adv_u_x_val[2:-2, 2:-2])
+    compare_arrays(adv_u_y, adv_u_y_val[2:-2, 2:-2])
+    compare_arrays(adv_v_x, adv_v_x_val[2:-2, 2:-2])
+    compare_arrays(adv_v_y, adv_v_y_val[2:-2, 2:-2])
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_third_order_gt(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
+
     state = data.draw(
-        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            grid, gt_powered=True, backend=backend, default_origin=default_origin
+        ),
         label="state",
     )
 
@@ -303,14 +477,37 @@ def test_third_order(data):
     u = state["x_velocity"].to_units("m s^-1").values
     v = state["y_velocity"].to_units("m s^-1").values
 
-    dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_u_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    advection = BurgersAdvection.factory("third_order")
+    advection = BurgersAdvection.factory("third_order", gt_powered=True)
 
     ws = WrappingStencil(advection, nb, backend, dtype)
 
@@ -346,25 +543,73 @@ def fourth_order_advection(dx, dy, u, v, phi):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_fourth_order(data):
-    gt_storage.prepare_numpy()
-
+def test_fourth_order_numpy(data):
     # ========================================
     # random data generation
     # ========================================
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
+            dtype=dtype,
         ),
         label="grid",
     )
+    state = data.draw(st_burgers_state(grid, gt_powered=False), label="state")
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    advection = BurgersAdvection.factory("fourth_order", gt_powered=False)
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
+
+    adv_u_x_val, adv_u_y_val = fourth_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = fourth_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x, adv_u_x_val[2:-2, 2:-2])
+    compare_arrays(adv_u_y, adv_u_y_val[2:-2, 2:-2])
+    compare_arrays(adv_v_x, adv_v_x_val[2:-2, 2:-2])
+    compare_arrays(adv_v_y, adv_v_y_val[2:-2, 2:-2])
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_fourth_order_gt(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
+
     state = data.draw(
-        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            grid, gt_powered=True, backend=backend, default_origin=default_origin
+        ),
         label="state",
     )
 
@@ -376,14 +621,37 @@ def test_fourth_order(data):
     u = state["x_velocity"].to_units("m s^-1").values
     v = state["y_velocity"].to_units("m s^-1").values
 
-    dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_u_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    advection = BurgersAdvection.factory("fourth_order")
+    advection = BurgersAdvection.factory("fourth_order", gt_powered=True)
 
     ws = WrappingStencil(advection, nb, backend, dtype)
 
@@ -429,25 +697,72 @@ def fifth_order_advection(dx, dy, u, v, phi):
     deadline=None,
 )
 @given(hyp_st.data())
-def test_fifth_order(data):
-    gt_storage.prepare_numpy()
-
+def test_fifth_order_numpy(data):
     # ========================================
     # random data generation
     # ========================================
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     grid = data.draw(
         st_physical_grid(
             xaxis_length=(2 * nb + 1, 40),
             yaxis_length=(2 * nb + 1, 40),
             zaxis_length=(1, 1),
+            dtype=dtype,
         ),
         label="grid",
     )
+    state = data.draw(st_burgers_state(grid, gt_powered=False), label="state")
+
+    # ========================================
+    # test test
+    # ========================================
+    dx = grid.grid_xy.dx.to_units("m").values.item()
+    dy = grid.grid_xy.dy.to_units("m").values.item()
+    u = state["x_velocity"].to_units("m s^-1").values
+    v = state["y_velocity"].to_units("m s^-1").values
+
+    advection = BurgersAdvection.factory("fifth_order", gt_powered=False)
+    adv_u_x, adv_u_y, adv_v_x, adv_v_y = advection.call(dx, dy, u, v)
+
+    adv_u_x_val, adv_u_y_val = fifth_order_advection(dx, dy, u, v, u)
+    adv_v_x_val, adv_v_y_val = fifth_order_advection(dx, dy, u, v, v)
+
+    compare_arrays(adv_u_x, adv_u_x_val[3:-3, 3:-3])
+    compare_arrays(adv_u_y, adv_u_y_val[3:-3, 3:-3])
+    compare_arrays(adv_v_x, adv_v_x_val[3:-3, 3:-3])
+    compare_arrays(adv_v_y, adv_v_y_val[3:-3, 3:-3])
+
+
+@settings(
+    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
+    deadline=None,
+)
+@given(hyp_st.data())
+def test_fifth_order_gt(data):
+    gt_storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
     backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
+    grid = data.draw(
+        st_physical_grid(
+            xaxis_length=(2 * nb + 1, 40),
+            yaxis_length=(2 * nb + 1, 40),
+            zaxis_length=(1, 1),
+            dtype=dtype,
+        ),
+        label="grid",
+    )
     state = data.draw(
-        st_burgers_state(grid, backend=backend, default_origin=default_origin),
+        st_burgers_state(
+            grid, gt_powered=True, backend=backend, default_origin=default_origin
+        ),
         label="state",
     )
 
@@ -459,14 +774,37 @@ def test_fifth_order(data):
     u = state["x_velocity"].to_units("m s^-1").values
     v = state["y_velocity"].to_units("m s^-1").values
 
-    dtype = u.dtype
     grid_shape = u.shape
-    adv_u_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_u_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_x = zeros(grid_shape, backend, dtype, default_origin=default_origin)
-    adv_v_y = zeros(grid_shape, backend, dtype, default_origin=default_origin)
+    adv_u_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_u_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_x = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
+    adv_v_y = zeros(
+        grid_shape,
+        gt_powered=True,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
 
-    advection = BurgersAdvection.factory("fifth_order")
+    advection = BurgersAdvection.factory("fifth_order", gt_powered=True)
 
     ws = WrappingStencil(advection, nb, backend, dtype)
 

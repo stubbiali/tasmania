@@ -43,46 +43,27 @@ from tasmania.python.isentropic.physics.vertical_advection import (
 )
 from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .isentropic.test_isentropic_minimal_vertical_fluxes import (
-        get_upwind_flux,
-        get_centered_flux,
-        get_third_order_upwind_flux,
-        get_fifth_order_upwind_flux,
-    )
-    from .utils import (
-        compare_arrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-        st_raw_field,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from isentropic.test_isentropic_minimal_vertical_fluxes import (
-        get_upwind_flux,
-        get_centered_flux,
-        get_third_order_upwind_flux,
-        get_fifth_order_upwind_flux,
-    )
-    from utils import (
-        compare_arrays,
-        st_domain,
-        st_floats,
-        st_isentropic_state_f,
-        st_one_of,
-        st_raw_field,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
+    get_upwind_flux,
+    get_centered_flux,
+    get_third_order_upwind_flux,
+    get_fifth_order_upwind_flux,
+)
+from tests.utilities import (
+    compare_arrays,
+compare_dataarrays,
+    st_domain,
+    st_floats,
+    st_isentropic_state_f,
+    st_one_of,
+    st_raw_field,
+)
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -107,10 +88,10 @@ def set_lower_layers_second_order(nb, dz, w, phi, out, staggering=False):
     wm = w if w.shape[2] == phi.shape[2] else 0.5 * (w[:, :, :-1] + w[:, :, 1:])
     wm = deepcopy(w)
     wm[:, :, :-1] = 0.5 * (w[:, :, :-1] + w[:, :, 1:]) if staggering else w[:, :, :-1]
-    out[:, :, -nb-1:-1] = (
+    out[:, :, -nb - 1 : -1] = (
         0.5
         * (
-            -3.0 * wm[:, :, -nb-1:-1] * phi[:, :, -nb-1:-1]
+            -3.0 * wm[:, :, -nb - 1 : -1] * phi[:, :, -nb - 1 : -1]
             + 4.0 * wm[:, :, -nb - 2 : -2] * phi[:, :, -nb - 2 : -2]
             - wm[:, :, -nb - 3 : -3] * phi[:, :, -nb - 3 : -3]
         )
@@ -143,7 +124,18 @@ flux_properties = {
 
 
 def validation(
-    domain, flux_scheme, moist, toaptoil, backend, default_origin, rebuild, state
+    domain,
+    flux_scheme,
+    moist,
+    toaptoil,
+    gt_powered,
+    backend,
+    default_origin,
+    rebuild,
+    state,
+    cls=IsentropicVerticalAdvection,
+    *,
+    subtests
 ):
     grid = domain.numerical_grid
     nx, ny, nz = grid.nx, grid.ny, grid.nz
@@ -152,15 +144,16 @@ def validation(
 
     nb = flux_properties[flux_scheme]["nb"]
     get_flux = flux_properties[flux_scheme]["get_flux"]
-    set_lower_layers = flux_properties[flux_scheme]["set_lower_layers"]
+    # set_lower_layers = flux_properties[flux_scheme]["set_lower_layers"]
 
     storage_shape = state["air_isentropic_density"].shape
 
-    fluxer = IsentropicVerticalAdvection(
+    fluxer = cls(
         domain,
         flux_scheme,
         moist,
         tendency_of_air_potential_temperature_on_interface_levels=toaptoil,
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -193,11 +186,13 @@ def validation(
         output_names.append(mfpw)
 
     for name in input_names:
-        assert name in fluxer.input_properties
+        with subtests.test(name=name):
+            assert name in fluxer.input_properties
     assert len(fluxer.input_properties) == len(input_names)
 
     for name in output_names:
-        assert name in fluxer.tendency_properties
+        with subtests.test(name=name):
+            assert name in fluxer.tendency_properties
     assert len(fluxer.tendency_properties) == len(output_names)
 
     assert fluxer.diagnostic_properties == {}
@@ -209,7 +204,13 @@ def validation(
     else:
         name = "tendency_of_air_potential_temperature"
         w = state[name].to_units("K s^-1").values
-        w_hl = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+        w_hl = zeros(
+            (nx + 1, ny + 1, nz + 1),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
         w_hl[:, :, 1:-1] = 0.5 * (w[:, :, :-2] + w[:, :, 1:-1])
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
@@ -225,13 +226,19 @@ def validation(
 
     tendencies, diagnostics = fluxer(state)
 
-    out = zeros((nx + 1, ny + 1, nz + 1), backend, dtype, default_origin)
+    out = zeros(
+        (nx + 1, ny + 1, nz + 1),
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
+    )
     up = slice(nb, nz - nb)
     down = slice(nb + 1, nz - nb + 1)
 
     flux = get_flux(w_hl, s)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
+    # set_lower_layers(nb, dz, w, s, out, staggering=toaptoil)
     assert "air_isentropic_density" in tendencies
     compare_arrays(
         out[:nx, :ny, :nz], tendencies["air_isentropic_density"].values[:nx, :ny, :nz]
@@ -239,7 +246,7 @@ def validation(
 
     flux = get_flux(w_hl, su)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
+    # set_lower_layers(nb, dz, w, su, out, staggering=toaptoil)
     assert "x_momentum_isentropic" in tendencies
     compare_arrays(
         out[:nx, :ny, :nz], tendencies["x_momentum_isentropic"].values[:nx, :ny, :nz]
@@ -247,7 +254,7 @@ def validation(
 
     flux = get_flux(w_hl, sv)
     out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-    set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
+    # set_lower_layers(nb, dz, w, sv, out, staggering=toaptoil)
     assert "y_momentum_isentropic" in tendencies
     compare_arrays(
         out[:nx, :ny, :nz], tendencies["y_momentum_isentropic"].values[:nx, :ny, :nz]
@@ -256,21 +263,21 @@ def validation(
     if moist:
         flux = get_flux(w_hl, sqv)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
+        # set_lower_layers(nb, dz, w, sqv, out, staggering=toaptoil)
         out /= s
         assert mfwv in tendencies
         compare_arrays(out[:nx, :ny, :nz], tendencies[mfwv].values[:nx, :ny, :nz])
 
         flux = get_flux(w_hl, sqc)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
+        # set_lower_layers(nb, dz, w, sqc, out, staggering=toaptoil)
         out /= s
         assert mfcw in tendencies
         compare_arrays(out[:nx, :ny, :nz], tendencies[mfcw].values[:nx, :ny, :nz])
 
         flux = get_flux(w_hl, sqr)
         out[:, :, up] = -(flux[:, :, up] - flux[:, :, down]) / dz
-        set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
+        # set_lower_layers(nb, dz, w, sqr, out, staggering=toaptoil)
         out /= s
         assert mfpw in tendencies
         compare_arrays(out[:nx, :ny, :nz], tendencies[mfpw].values[:nx, :ny, :nz])
@@ -288,19 +295,26 @@ def validation(
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def test_upwind(data):
+@given(data=hyp_st.data())
+def test_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     nx, ny, nz = grid.nx, grid.ny, grid.nz
     storage_shape = (nx + 1, ny + 1, nz + 1)
 
@@ -308,6 +322,7 @@ def test_upwind(data):
         st_isentropic_state_f(
             grid,
             moist=True,
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
             storage_shape=storage_shape,
@@ -319,128 +334,7 @@ def test_upwind(data):
             storage_shape,
             -1e4,
             1e4,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation(domain, "upwind", False, False, backend, default_origin, False, state)
-    validation(domain, "upwind", False, True, backend, default_origin, False, state)
-    validation(domain, "upwind", True, False, backend, default_origin, False, state)
-    validation(domain, "upwind", True, True, backend, default_origin, False, state)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_centered(data):
-    gt.storage.prepare_numpy()
-
-    # ========================================
-    # random data generation
-    # ========================================
-    domain = data.draw(st_domain(zaxis_length=(3, 20)), label="domain")
-    grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
-            backend=backend,
-            dtype=dtype,
-            default_origin=default_origin,
-        ),
-        label="field",
-    )
-    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
-    )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
-        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
-    )
-
-    # ========================================
-    # test bed
-    # ========================================
-    validation(domain, "centered", False, False, backend, default_origin, False, state)
-    validation(domain, "centered", False, True, backend, default_origin, False, state)
-    validation(domain, "centered", True, False, backend, default_origin, False, state)
-    validation(domain, "centered", True, True, backend, default_origin, False, state)
-
-
-@settings(
-    suppress_health_check=(
-        HealthCheck.too_slow,
-        HealthCheck.data_too_large,
-        HealthCheck.filter_too_much,
-    ),
-    deadline=None,
-)
-@given(hyp_st.data())
-def test_third_order_upwind(data):
-    gt.storage.prepare_numpy()
-
-    # ========================================
-    # random data generation
-    # ========================================
-    domain = data.draw(st_domain(zaxis_length=(5, 20)), label="domain")
-    grid = domain.numerical_grid
-
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-    nx, ny, nz = grid.nx, grid.ny, grid.nz
-    storage_shape = (nx + 1, ny + 1, nz + 1)
-
-    state = data.draw(
-        st_isentropic_state_f(
-            grid,
-            moist=True,
-            backend=backend,
-            default_origin=default_origin,
-            storage_shape=storage_shape,
-        ),
-        label="state",
-    )
-    field = data.draw(
-        st_raw_field(
-            storage_shape,
-            -1e4,
-            1e4,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -458,16 +352,52 @@ def test_third_order_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "third_order_upwind", False, False, backend, default_origin, False, state
+        domain,
+        "upwind",
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "third_order_upwind", False, True, backend, default_origin, False, state
+        domain,
+        "upwind",
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "third_order_upwind", True, False, backend, default_origin, False, state
+        domain,
+        "upwind",
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "third_order_upwind", True, True, backend, default_origin, False, state
+        domain,
+        "upwind",
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
 
 
@@ -479,8 +409,236 @@ def test_third_order_upwind(data):
     ),
     deadline=None,
 )
-@given(hyp_st.data())
-def _test_fifth_order_upwind(data):
+@given(data=hyp_st.data())
+def test_centered(data, subtests):
+    gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(3, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
+    grid = domain.numerical_grid
+
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            gt_powered=gt_powered,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+    field = data.draw(
+        st_raw_field(
+            storage_shape,
+            -1e4,
+            1e4,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="field",
+    )
+    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
+        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
+    )
+    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    validation(
+        domain,
+        "centered",
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+    validation(
+        domain,
+        "centered",
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+    validation(
+        domain,
+        "centered",
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+    validation(
+        domain,
+        "centered",
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(data=hyp_st.data())
+def test_third_order_upwind(data, subtests):
+    gt.storage.prepare_numpy()
+
+    # ========================================
+    # random data generation
+    # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
+    domain = data.draw(
+        st_domain(
+            zaxis_length=(5, 20), gt_powered=gt_powered, backend=backend, dtype=dtype
+        ),
+        label="domain",
+    )
+    grid = domain.numerical_grid
+
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    storage_shape = (nx + 1, ny + 1, nz + 1)
+
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            gt_powered=gt_powered,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+    field = data.draw(
+        st_raw_field(
+            storage_shape,
+            -1e4,
+            1e4,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        ),
+        label="field",
+    )
+    state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
+        field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
+    )
+    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+        field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+    )
+
+    # ========================================
+    # test bed
+    # ========================================
+    validation(
+        domain,
+        "third_order_upwind",
+        False,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+    validation(
+        domain,
+        "third_order_upwind",
+        False,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+    validation(
+        domain,
+        "third_order_upwind",
+        True,
+        False,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+    validation(
+        domain,
+        "third_order_upwind",
+        True,
+        True,
+        gt_powered,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
+    )
+
+
+@settings(
+    suppress_health_check=(
+        HealthCheck.too_slow,
+        HealthCheck.data_too_large,
+        HealthCheck.filter_too_much,
+    ),
+    deadline=None,
+)
+@given(data=hyp_st.data())
+def _test_fifth_order_upwind(data, subtests):
     gt.storage.prepare_numpy()
 
     # ========================================
@@ -527,16 +685,48 @@ def _test_fifth_order_upwind(data):
     # test bed
     # ========================================
     validation(
-        domain, "fifth_order_upwind", False, False, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        False,
+        False,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "fifth_order_upwind", False, True, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        False,
+        True,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "fifth_order_upwind", True, False, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        True,
+        False,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
     validation(
-        domain, "fifth_order_upwind", True, True, backend, default_origin, False, state
+        domain,
+        "fifth_order_upwind",
+        True,
+        True,
+        backend,
+        default_origin,
+        False,
+        state,
+        subtests=subtests,
     )
 
 
@@ -670,7 +860,7 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    assert np.allclose(out, tendencies["air_potential_temperature"], equal_nan=True)
+    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -697,8 +887,8 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
-    assert np.allclose(
-        out, diagnostics["tendency_of_air_potential_temperature"], equal_nan=True
+    compare_dataarrays(
+        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
     )
 
     #
@@ -728,7 +918,7 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    assert np.allclose(out, tendencies["air_potential_temperature"], equal_nan=True)
+    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -755,8 +945,8 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
-    assert np.allclose(
-        out, diagnostics["tendency_of_air_potential_temperature"], equal_nan=True
+    compare_dataarrays(
+        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
     )
 
     #
@@ -810,7 +1000,7 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    assert np.allclose(out, tendencies["air_potential_temperature"], equal_nan=True)
+    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -837,8 +1027,8 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
-    assert np.allclose(
-        out, diagnostics["tendency_of_air_potential_temperature"], equal_nan=True
+    compare_dataarrays(
+        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
     )
 
     #
@@ -886,8 +1076,8 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature_on_interface_levels" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature_on_interface_levels" in tendencies
-    assert np.allclose(
-        out, tendencies["air_potential_temperature_on_interface_levels"], equal_nan=True
+    compare_dataarrays(
+        out, tendencies["air_potential_temperature_on_interface_levels"], compare_coordinate_values=False
     )
     assert diagnostics == {}
 
@@ -918,13 +1108,12 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature_on_interface_levels" in diagnostics
-    assert np.allclose(
+    compare_dataarrays(
         out,
         diagnostics["tendency_of_air_potential_temperature_on_interface_levels"],
-        equal_nan=True,
+        compare_coordinate_values=False,
     )
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_centered()
+    pytest.main([__file__])

@@ -42,7 +42,7 @@ def make_plot_quiver_xz(grid, state, field_to_plot, y_level, fig = None, **kwarg
 	field_to_plot : str 
 		String specifying the field to plot. This might be:
 
-		* 'velocity', for the velocity field of a two-dimensional, isentropic, steady-state flow; \
+		* 'velocity', for the velocity field of a two-dimensional, isentropic_prognostic, steady-state flow; \
 			the current object must contain the following variables:
 
 			- `air_isentropic_density`;

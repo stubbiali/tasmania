@@ -20,3 +20,4 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from .sts_tendency_steppers import IsentropicVerticalAdvection

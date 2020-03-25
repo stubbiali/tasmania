@@ -1,9 +1,0 @@
-{
-	"filename": [
-		"../../data/",
-		"isentropic_moist_rk3ws_fifth_order_upwind_pg2_",
-		"nx41_ny41_nz60_dt32_nt900_gaussian_L25000_H1000_u15_turb_f_sed_lcc.nc"
-	],
-	"xslice": [10, 31, null],
-	"yslice": [10, 31, null]
-}

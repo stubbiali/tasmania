@@ -1,0 +1,122 @@
+{
+	"drawers": [
+		{
+			"wrapper_module": "drawer_wrappers.offline",
+			"wrapper_classname": "LineWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/line_drawer_ssus.json",
+			"loader_module": "data_loaders.composite",
+			"loader_classname": "CompositeLoader",
+			"loader_config": "config/isentropic_prognostic/convergence_precipitation_ssus/composite_loader_ssus.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.offline",
+			"wrapper_classname": "LineWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/line_drawer_ssus_ferk2.json",
+			"loader_module": "data_loaders.composite",
+			"loader_classname": "CompositeLoader",
+			"loader_config": "config/isentropic_prognostic/convergence_precipitation_ssus/composite_loader_ssus_ferk2.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.offline",
+			"wrapper_classname": "LineWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/line_drawer_ssus_fe.json",
+			"loader_module": "data_loaders.composite",
+			"loader_classname": "CompositeLoader",
+			"loader_config": "config/isentropic_prognostic/convergence_precipitation_ssus/composite_loader_ssus_fe.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.offline",
+			"wrapper_classname": "LineWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/line_drawer_sus.json",
+			"loader_module": "data_loaders.composite",
+			"loader_classname": "CompositeLoader",
+			"loader_config": "config/isentropic_prognostic/convergence_precipitation_ssus/composite_loader_sus.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.patches",
+			"wrapper_classname": "SegmentWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/segment_linear_0.json",
+			"loader_module": "data_loaders.diff",
+			"loader_classname": "RMSDLoader",
+			"loader_config": "config/isentropic_prognostic/rmsd_precipitation/ssus_0.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.patches",
+			"wrapper_classname": "SegmentWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/segment_quadratic_0.json",
+			"loader_module": "data_loaders.diff",
+			"loader_classname": "RMSDLoader",
+			"loader_config": "config/isentropic_prognostic/rmsd_precipitation/ssus_0.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.patches",
+			"wrapper_classname": "AnnotationWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/annotation_linear_0.json",
+			"loader_module": "data_loaders.diff",
+			"loader_classname": "RMSDLoader",
+			"loader_config": "config/isentropic_prognostic/rmsd_precipitation/ssus_0.json"
+		},
+		{
+			"wrapper_module": "drawer_wrappers.patches",
+			"wrapper_classname": "AnnotationWrapper",
+			"wrapper_config": "config/isentropic_prognostic/convergence_precipitation_ssus/annotation_quadratic_0.json",
+			"loader_module": "data_loaders.diff",
+			"loader_classname": "RMSDLoader",
+			"loader_config": "config/isentropic_prognostic/rmsd_precipitation/ssus_0.json"
+		}
+	],
+	"tlevels": 12,
+	"figure_properties": {
+		"fontsize": 16,
+		"figsize": [6, 6.5],
+		"tight_layout": true,
+		"tight_layout_rect": null
+	},
+	"axes_properties": {
+		"fontsize": 16,
+		"title_center": "$\\mathbf{(a)}$ Time: 00:40:00",
+		"title_left": "",
+		"title_right": "",
+		"x_label": "$\\Delta x$ [km]",
+		"x_labelcolor": "",
+		"x_lim": [0.75, 7.25],
+		"invert_xaxis": false,
+		"x_scale": null,
+		"x_ticks": [1, 2, 3, 4, 5, 6],
+		"x_ticklabels": [8.8, 4.4, 2.2, 1.1, 0.55, 0.275],
+		"x_tickcolor": "",
+		"xaxis_minor_ticks_visible": false,
+		"xaxis_visible": true,
+		"y_label": "RMSE precipitation [mm hr$^{-1}$]",
+		"y_labelcolor": "",
+		"y_lim": [1e-4, 1],
+		"invert_yaxis": false,
+		"y_scale": "log",
+		"y_ticks": null,
+		"y_ticklabels": null,
+		"y_ticklabels_color": "",
+		"yaxis_minor_ticks_visible": true,
+		"yaxis_visible": true,
+		"z_label": "",
+		"z_labelcolor": "",
+		"z_lim": null,
+		"invert_zaxis": false,
+		"z_scale": null,
+		"z_ticks": null,
+		"z_ticklabels": null,
+		"z_tickcolor": "",
+		"zaxis_minor_ticks_visible": true,
+		"zaxis_visible": true,
+		"legend_on": false,
+		"legend_loc": "best",
+		"legend_bbox_to_anchor": null,
+		"legend_framealpha": 1.0,
+		"legend_ncol": 2,
+		"text": null,
+		"text_loc": "upper right",
+		"grid_on": true,
+		"grid_properties": {"linestyle": ":"}
+	},
+	"print_time": null,
+	"save_dest": null
+}

@@ -21,15 +21,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from sympl import DataArray
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from tasmania.python.dwarfs.horizontal_diffusion import HorizontalDiffusion
 from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float64
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 class BurgersHorizontalDiffusion(TendencyComponent):
@@ -40,21 +41,22 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        grid_type,
-        diffusion_type,
-        diffusion_coeff,
+        domain: "Domain",
+        grid_type: str,
+        diffusion_type: str,
+        diffusion_coeff: DataArray,
+        gt_powered: bool = True,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -72,6 +74,8 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         diffusion_coeff : sympl.DataArray
             1-item :class:`sympl.DataArray` representing the diffusion
             coefficient. The units should be compatible with 'm^2 s^-1'.
+        gt_powered : `bool`, optional
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -107,6 +111,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
             diffusion_coeff_max=diffusion_coeff.to_units("m^2 s^-1").values.item(),
             diffusion_damp_depth=0,
             nb=self.horizontal_boundary.nb,
+            gt_powered=gt_powered,
             backend=backend,
             backend_opts=backend_opts,
             build_info=build_info,
@@ -119,21 +124,23 @@ class BurgersHorizontalDiffusion(TendencyComponent):
 
         self._out_u_tnd = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
         self._out_v_tnd = zeros(
             (nx, ny, 1),
-            backend,
-            dtype,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
             default_origin=default_origin,
             managed_memory=managed_memory,
         )
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -142,7 +149,7 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         g = self.grid
         dims = (g.grid_xy.x.dims[0], g.grid_xy.y.dims[0], g.z.dims[0])
         return {
@@ -151,10 +158,12 @@ class BurgersHorizontalDiffusion(TendencyComponent):
         }
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         self._diffuser(state["x_velocity"], self._out_u_tnd)
         self._diffuser(state["y_velocity"], self._out_v_tnd)
 

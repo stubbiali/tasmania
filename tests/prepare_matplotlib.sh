@@ -35,5 +35,5 @@ pytest --mpl-generate-path=baseline_images/$DIR/test_plot				    plot/test_plot.
 pytest --mpl-generate-path=baseline_images/$DIR/test_plot_composite	plot/test_plot_composite.py
 pytest --mpl-generate-path=baseline_images/$DIR/test_profile 			  plot/test_profile.py
 pytest --mpl-generate-path=baseline_images/$DIR/test_quiver 			  plot/test_quiver.py
-pytest --mpl-generate-path=baseline_images/$DIR/test_spectral 		  plot/test_spectral.py
+pytest --mpl-generate-path=baseline_images/$DIR/test_spectrals 		  plot/test_spectrals.py
 pytest --mpl-generate-path=baseline_images/$DIR/test_timeseries 		plot/test_timeseries.py

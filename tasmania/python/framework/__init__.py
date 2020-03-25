@@ -20,3 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from .sts_tendency_steppers_rk import ForwardEuler, RK2, RK3WS
+from .tendency_steppers_implicit import Implicit
+from .tendency_steppers_rk import ForwardEuler, RK2, RK3WS

@@ -21,14 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 import numpy as np
+from sympl import DataArray
+from typing import Any, Dict, Optional
 
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary as HB
+from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
 from tasmania.python.grids.grid import PhysicalGrid, NumericalGrid
-
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float32
+from tasmania.python.utils import taz_types
 
 
 class Domain:
@@ -43,21 +41,23 @@ class Domain:
 
     def __init__(
         self,
-        domain_x,
-        nx,
-        domain_y,
-        ny,
-        domain_z,
-        nz,
-        z_interface=None,
-        horizontal_boundary_type="periodic",
-        nb=3,
-        horizontal_boundary_kwargs=None,
-        topography_type="flat_terrain",
-        topography_kwargs=None,
-        backend="numpy",
-        dtype=datatype,
-    ):
+        domain_x: DataArray,
+        nx: int,
+        domain_y: DataArray,
+        ny: int,
+        domain_z: DataArray,
+        nz: int,
+        z_interface: Optional[DataArray] = None,
+        horizontal_boundary_type: str = "periodic",
+        nb: int = 3,
+        horizontal_boundary_kwargs: Optional[Dict[str, Any]] = None,
+        topography_type: str = "flat_terrain",
+        topography_kwargs: Optional[Dict[str, Any]] = None,
+        gt_powered: bool = True,
+        *,
+        backend: str = "numpy",
+        dtype: taz_types.dtype_t = np.float64
+    ) -> None:
         """ 
         Parameters
         ----------
@@ -101,6 +101,8 @@ class Domain:
         topography_kwargs : `dict`, optional
             Keyword arguments to be forwarded to the constructor of
             :class:`tasmania.Topography`.
+        gt_powered : bool
+            `True` to harness GT4Py, `False` for a vanilla Numpy implementation.
         backend : `str`, optional
             The GT4Py backend.
         dtype : `data-type`, optional
@@ -134,15 +136,22 @@ class Domain:
             )
             else horizontal_boundary_kwargs
         )
-        self._hb = HB.factory(
-            horizontal_boundary_type, nx, ny, nb, backend, dtype, **kwargs
+        self._hb = HorizontalBoundary.factory(
+            horizontal_boundary_type,
+            nx,
+            ny,
+            nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            **kwargs
         )
 
         # the numerical grid
         self._cgrid = NumericalGrid(self._pgrid, self._hb)
 
     @property
-    def physical_grid(self):
+    def physical_grid(self) -> PhysicalGrid:
         """
         Return
         ------
@@ -152,7 +161,7 @@ class Domain:
         return self._pgrid
 
     @property
-    def numerical_grid(self):
+    def numerical_grid(self) -> NumericalGrid:
         """
         Return
         ------
@@ -162,7 +171,7 @@ class Domain:
         return self._cgrid
 
     @property
-    def horizontal_boundary(self):
+    def horizontal_boundary(self) -> HorizontalBoundary:
         """
         Get the object handling the horizontal boundary conditions,
         enriched with three new methods:
@@ -210,7 +219,7 @@ class Domain:
 
         return self._hb
 
-    def update_topography(self, time):
+    def update_topography(self, time: taz_types.datetime_t) -> None:
         """
         Update the (time-dependent) topography.
 

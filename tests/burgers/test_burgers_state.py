@@ -36,12 +36,8 @@ import gt4py as gt
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory, ZhaoStateFactory
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin
-    from .utils import st_floats, st_one_of, st_physical_grid
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin
-    from utils import st_floats, st_one_of, st_physical_grid
+from tests.conf import backend as conf_backend, default_origin as conf_dorigin
+from tests.utilities import compare_arrays, st_floats, st_one_of, st_physical_grid
 
 
 @settings(
@@ -131,6 +127,7 @@ def test_zhao_state_factory(data):
     init_time = data.draw(hyp_st.datetimes())
     time = data.draw(hyp_st.datetimes(min_value=init_time))
 
+    gt_powered = data.draw(hyp_st.booleans())
     backend = data.draw(st_one_of(conf_backend))
     dtype = grid.x.dtype
     default_origin = data.draw(st_one_of(conf_dorigin))
@@ -139,7 +136,12 @@ def test_zhao_state_factory(data):
     # test
     # ========================================
     zsf = ZhaoStateFactory(
-        init_time, eps, backend=backend, dtype=dtype, default_origin=default_origin
+        init_time,
+        eps,
+        gt_powered=gt_powered,
+        backend=backend,
+        dtype=dtype,
+        default_origin=default_origin,
     )
 
     state = zsf(init_time, grid)
@@ -166,7 +168,7 @@ def test_zhao_state_factory(data):
         * np.sin(np.pi * y)
         / (2.0 + np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
     )
-    assert np.allclose(u, state["x_velocity"])
+    compare_arrays(u, state["x_velocity"].values)
 
     v = (
         -2.0
@@ -176,7 +178,7 @@ def test_zhao_state_factory(data):
         * np.cos(np.pi * y)
         / (2.0 + np.sin(2.0 * np.pi * x) * np.sin(np.pi * y))
     )
-    assert np.allclose(v, state["y_velocity"])
+    compare_arrays(v, state["y_velocity"].values)
 
 
 if __name__ == "__main__":

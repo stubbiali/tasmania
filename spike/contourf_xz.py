@@ -37,7 +37,7 @@ def make_animation_contourf_xz(grid, states_list, field_to_plot, y_level, save_d
 		String specifying the field to plot. This might be:
 
 		* the name of a variable stored in the input model state;
-		* 'vertical_velocity', for the vertical velocity in a two-dimensional, steady-state, isentropic flow; \
+		* 'vertical_velocity', for the vertical velocity in a two-dimensional, steady-state, isentropic_prognostic flow; \
 			the model state should contain the following variables:
 
 			- `air_isentropic_density`;

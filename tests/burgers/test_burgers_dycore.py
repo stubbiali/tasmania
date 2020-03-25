@@ -36,30 +36,24 @@ import gt4py as gt
 
 from tasmania.python.burgers.dynamics.dycore import BurgersDynamicalCore
 
-try:
-    from .conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from .test_burgers_advection import (
-        first_order_advection,
-        third_order_advection,
-        fifth_order_advection,
-    )
-    from .utils import compare_arrays, st_burgers_state, st_domain, st_one_of, st_timedeltas
-except (ImportError, ModuleNotFoundError):
-    from conf import (
-        backend as conf_backend,
-        default_origin as conf_dorigin,
-        nb as conf_nb,
-    )
-    from test_burgers_advection import (
-        first_order_advection,
-        third_order_advection,
-        fifth_order_advection,
-    )
-    from utils import compare_arrays, st_burgers_state, st_domain, st_one_of, st_timedeltas
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.burgers.test_burgers_advection import (
+    first_order_advection,
+    third_order_advection,
+    fifth_order_advection,
+)
+from tests.utilities import (
+    compare_arrays,
+    st_burgers_state,
+    st_domain,
+    st_one_of,
+    st_timedeltas,
+)
 
 
 @settings(
@@ -73,22 +67,32 @@ def test_forward_euler(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=1, max_value=max(1, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -108,6 +112,7 @@ def test_forward_euler(data):
         intermediate_tendencies=None,
         time_integration_scheme="forward_euler",
         flux_scheme="first_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -171,22 +176,32 @@ def test_rk2(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=2, max_value=max(2, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -206,6 +221,7 @@ def test_rk2(data):
         intermediate_tendencies=None,
         time_integration_scheme="rk2",
         flux_scheme="third_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -290,22 +306,32 @@ def test_rk3ws(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb)), label="nb")
     domain = data.draw(
-        st_domain(xaxis_length=(1, 40), yaxis_length=(1, 40), zaxis_length=(1, 1), nb=nb),
+        st_domain(
+            xaxis_length=(1, 40),
+            yaxis_length=(1, 40),
+            zaxis_length=(1, 1),
+            nb=nb,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="domain",
     )
     assume(domain.horizontal_boundary.type != "identity")
     grid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = grid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
-
     state = data.draw(
         st_burgers_state(
             grid,
             time=datetime(year=1992, month=2, day=20),
+            gt_powered=gt_powered,
             backend=backend,
             default_origin=default_origin,
         ),
@@ -325,6 +351,7 @@ def test_rk3ws(data):
         intermediate_tendencies=None,
         time_integration_scheme="rk3ws",
         flux_scheme="fifth_order",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,

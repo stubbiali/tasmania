@@ -20,25 +20,28 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from copy import deepcopy
 import numpy as np
 from sympl import DataArray
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from gt4py import gtscript, __externals__
 
 # from gt4py.__gtscript__ import computation, interval, PARALLEL
 
-from tasmania.python.framework.base_components import TendencyComponent
+from tasmania.python.framework.base_components import (
+    ImplicitTendencyComponent,
+    TendencyComponent,
+)
 from tasmania.python.isentropic.dynamics.vertical_fluxes import (
     IsentropicMinimalVerticalFlux,
 )
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.data_utils import get_physical_constants
-from tasmania.python.utils.gtscript_utils import set_annotations
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from tasmania.conf import datatype
-except ImportError:
-    datatype = np.float32
+if TYPE_CHECKING:
+    from tasmania.python.grids.domain import Domain
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -47,13 +50,17 @@ mfpw = "mass_fraction_of_precipitation_water_in_air"
 
 
 @gtscript.function
-def first_order_boundary(dz, w, phi):
+def first_order_boundary(
+    dz: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     out = (w[0, 0, -1] * phi[0, 0, -1] - w[0, 0, 0] * phi[0, 0, 0]) / dz
     return out
 
 
 @gtscript.function
-def second_order_boundary(dz, w, phi):
+def second_order_boundary(
+    dz: float, w: taz_types.gtfield_t, phi: taz_types.gtfield_t
+) -> taz_types.gtfield_t:
     out = (
         0.5
         * (
@@ -77,22 +84,23 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
     def __init__(
         self,
-        domain,
-        flux_scheme="upwind",
-        moist=False,
-        tendency_of_air_potential_temperature_on_interface_levels=False,
+        domain: "Domain",
+        flux_scheme: str = "upwind",
+        moist: bool = False,
+        tendency_of_air_potential_temperature_on_interface_levels: bool = False,
+        gt_powered: bool = True,
         *,
-        backend="numpy",
-        backend_opts=None,
-        build_info=None,
-        dtype=datatype,
-        exec_info=None,
-        default_origin=None,
-        rebuild=False,
-        storage_shape=None,
-        managed_memory=False,
+        backend: str = "numpy",
+        backend_opts: Optional[taz_types.options_dict_t] = None,
+        build_info: Optional[taz_types.options_dict_t] = None,
+        dtype: taz_types.dtype_t = np.float64,
+        exec_info: Optional[taz_types.mutable_options_dict_t] = None,
+        default_origin: Optional[taz_types.triplet_int_t] = None,
+        rebuild: bool = False,
+        storage_shape: Optional[taz_types.triplet_int_t] = None,
+        managed_memory: bool = False,
         **kwargs
-    ):
+    ) -> None:
         """
         Parameters
         ----------
@@ -109,6 +117,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
             `True` if the input tendency of air potential temperature
             is defined at the interface levels, `False` otherwise.
             Defaults to `False`.
+        gt_powered : `bool`, optional
+            TODO
         backend : `str`, optional
             The GT4Py backend.
         backend_opts : `dict`, optional
@@ -140,7 +150,9 @@ class IsentropicVerticalAdvection(TendencyComponent):
         super().__init__(domain, "numerical", **kwargs)
 
         # instantiate the object calculating the flux
-        self._vflux = IsentropicMinimalVerticalFlux.factory(flux_scheme)
+        self._vflux = IsentropicMinimalVerticalFlux.factory(
+            flux_scheme, moist, gt_powered
+        )
 
         # set the storage shape
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
@@ -154,60 +166,81 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
         # allocate the gt4py storages collecting the stencil outputs
         self._out_s = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_su = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         self._out_sv = zeros(
-            storage_shape, backend, dtype, default_origin, managed_memory=managed_memory
+            storage_shape,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+            managed_memory=managed_memory,
         )
         if moist:
             self._out_qv = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._out_qc = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
             self._out_qr = zeros(
                 storage_shape,
-                backend,
-                dtype,
-                default_origin,
+                gt_powered=gt_powered,
+                backend=backend,
+                dtype=dtype,
+                default_origin=default_origin,
                 managed_memory=managed_memory,
             )
 
         # instantiate the underlying stencil object
-        externals = {
-            "compute_boundary": first_order_boundary
-            if self._vflux.order == 1
-            else second_order_boundary,
-            "moist": moist,
-            "vflux": self._vflux.__call__,
-            "vflux_end": -self._vflux.extent + 1 if self._vflux.extent > 1 else None,
-            "vflux_extent": self._vflux.extent,
-            "vstaggering": self._stgz,
-        }
-        set_annotations(self._stencil_defs, dtype)
-        self._stencil = gtscript.stencil(
-            definition=self._stencil_defs,
-            backend=backend,
-            build_info=build_info,
-            externals=externals,
-            rebuild=rebuild,
-            **(backend_opts or {})
-        )
+        if gt_powered:
+            externals = {
+                "compute_boundary": first_order_boundary
+                if self._vflux.order == 1
+                else second_order_boundary,
+                "moist": moist,
+                "vflux": self._vflux.call,
+                "vflux_end": -self._vflux.extent + 1 if self._vflux.extent > 1 else None,
+                "vflux_extent": self._vflux.extent,
+                "vstaggering": self._stgz,
+            }
+            self._stencil = gtscript.stencil(
+                definition=self._stencil_gt_defs,
+                backend=backend,
+                build_info=build_info,
+                dtypes={"dtype": dtype},
+                externals=externals,
+                rebuild=rebuild,
+                **(backend_opts or {})
+            )
+        else:
+            self._stencil = self._stencil_numpy
 
     @property
-    def input_properties(self):
+    def input_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -250,7 +283,7 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def tendency_properties(self):
+    def tendency_properties(self) -> taz_types.properties_dict_t:
         grid = self.grid
         dims = (grid.x.dims[0], grid.y.dims[0], grid.z.dims[0])
 
@@ -276,10 +309,12 @@ class IsentropicVerticalAdvection(TendencyComponent):
         return return_dict
 
     @property
-    def diagnostic_properties(self):
+    def diagnostic_properties(self) -> taz_types.properties_dict_t:
         return {}
 
-    def array_call(self, state):
+    def array_call(
+        self, state: taz_types.array_dict_t
+    ) -> Tuple[taz_types.array_dict_t, taz_types.array_dict_t]:
         nx, ny, nz = self.grid.nx, self.grid.ny, self.grid.nz
         dz = self.grid.dz.to_units("K").values.item()
         nb = self._vflux.extent
@@ -321,10 +356,12 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 }
             )
 
+        # print("{} {}".format(in_w[:-1, :-1, :-1].min(), in_w[:-1, :-1, :-1].max()))
+
         # run the stencil
         self._stencil(
             **stencil_args,
-            origin={"_all_": (0, 0, 0)},
+            origin=(0, 0, 0),
             domain=(nx, ny, nz),
             exec_info=self._exec_info
         )
@@ -342,25 +379,121 @@ class IsentropicVerticalAdvection(TendencyComponent):
 
         return tendencies, {}
 
+    def _stencil_numpy(
+        self,
+        in_w: np.ndarray,
+        in_s: np.ndarray,
+        in_su: np.ndarray,
+        in_sv: np.ndarray,
+        out_s: np.ndarray,
+        out_su: np.ndarray,
+        out_sv: np.ndarray,
+        in_qv: Optional[np.ndarray] = None,
+        in_qc: Optional[np.ndarray] = None,
+        in_qr: Optional[np.ndarray] = None,
+        out_qv: Optional[np.ndarray] = None,
+        out_qc: Optional[np.ndarray] = None,
+        out_qr: Optional[np.ndarray] = None,
+        *,
+        dt: float = 0.0,
+        dz: float,
+        origin: taz_types.triplet_int_t,
+        domain: taz_types.triplet_int_t,
+        **kwargs  # catch-all
+    ) -> None:
+        i = slice(origin[0], origin[0] + domain[0])
+        j = slice(origin[1], origin[1] + domain[1])
+        kstart, kstop = origin[2], origin[2] + domain[2]
+
+        nb = self._vflux.extent
+
+        # interpolate the velocity on the interface levels
+        if self._stgz:
+            w = in_w
+        else:
+            w = np.zeros_like(in_w)
+            w[i, j, kstart + 1 : kstop] = 0.5 * (
+                in_w[i, j, kstart + 1 : kstop] + in_w[i, j, kstart : kstop - 1]
+            )
+
+        # compute the isentropic density of the water species
+        if self._moist:
+            sqv = np.zeros_like(in_qv)
+            sqv[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qv[i, j, kstart:kstop]
+            sqc = np.zeros_like(in_qc)
+            sqc[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qc[i, j, kstart:kstop]
+            sqr = np.zeros_like(in_qr)
+            sqr[i, j, kstart:kstop] = in_s[i, j, kstart:kstop] * in_qr[i, j, kstart:kstop]
+        else:
+            sqv = sqc = sqr = None
+
+        # compute the fluxes
+        fluxes = self._vflux.call(
+            dt=dt, dz=dz, w=w, s=in_s, su=in_su, sv=in_sv, sqv=sqv, sqc=sqc, sqr=sqr
+        )
+
+        # calculate the tendency for the air isentropic density
+        out_s[i, j, kstart : kstart + nb] = 0.0
+        f = fluxes[0]
+        out_s[i, j, kstart + nb : kstop - nb] = (f[i, j, 1:] - f[i, j, :-1]) / dz
+        out_s[i, j, kstop - nb : kstop] = 0.0
+
+        # calculate the tendency for the x-momentum
+        out_su[i, j, kstart : kstart + nb] = 0.0
+        f = fluxes[1]
+        out_su[i, j, kstart + nb : kstop - nb] = (f[i, j, 1:] - f[i, j, :-1]) / dz
+        out_su[i, j, kstop - nb : kstop] = 0.0
+
+        # calculate the tendency for the y-momentum
+        out_sv[i, j, kstart : kstart + nb] = 0.0
+        f = fluxes[2]
+        out_sv[i, j, kstart + nb : kstop - nb] = (f[i, j, 1:] - f[i, j, :-1]) / dz
+        out_sv[i, j, kstop - nb : kstop] = 0.0
+
+        if self._moist:
+            # calculate the tendency for the water vapor
+            out_qv[i, j, kstart : kstart + nb] = 0.0
+            f = fluxes[3]
+            out_qv[i, j, kstart + nb : kstop - nb] = (f[i, j, 1:] - f[i, j, :-1]) / (
+                in_s[i, j, kstart + nb : kstop - nb] * dz
+            )
+            out_qv[i, j, kstop - nb : kstop] = 0.0
+
+            # calculate the tendency for the cloud liquid water
+            out_qc[i, j, kstart : kstart + nb] = 0.0
+            f = fluxes[4]
+            out_qc[i, j, kstart + nb : kstop - nb] = (f[i, j, 1:] - f[i, j, :-1]) / (
+                in_s[i, j, kstart + nb : kstop - nb] * dz
+            )
+            out_qc[i, j, kstop - nb : kstop] = 0.0
+
+            # calculate the tendency for the precipitation water
+            out_qr[i, j, kstart : kstart + nb] = 0.0
+            f = fluxes[5]
+            out_qr[i, j, kstart + nb : kstop - nb] = (f[i, j, 1:] - f[i, j, :-1]) / (
+                in_s[i, j, kstart + nb : kstop - nb] * dz
+            )
+            out_qr[i, j, kstop - nb : kstop] = 0.0
+
     @staticmethod
-    def _stencil_defs(
-        in_w: gtscript.Field[np.float64],
-        in_s: gtscript.Field[np.float64],
-        in_su: gtscript.Field[np.float64],
-        in_sv: gtscript.Field[np.float64],
-        out_s: gtscript.Field[np.float64],
-        out_su: gtscript.Field[np.float64],
-        out_sv: gtscript.Field[np.float64],
-        in_qv: gtscript.Field[np.float64] = None,
-        in_qc: gtscript.Field[np.float64] = None,
-        in_qr: gtscript.Field[np.float64] = None,
-        out_qv: gtscript.Field[np.float64] = None,
-        out_qc: gtscript.Field[np.float64] = None,
-        out_qr: gtscript.Field[np.float64] = None,
+    def _stencil_gt_defs(
+        in_w: gtscript.Field["dtype"],
+        in_s: gtscript.Field["dtype"],
+        in_su: gtscript.Field["dtype"],
+        in_sv: gtscript.Field["dtype"],
+        out_s: gtscript.Field["dtype"],
+        out_su: gtscript.Field["dtype"],
+        out_sv: gtscript.Field["dtype"],
+        in_qv: gtscript.Field["dtype"] = None,
+        in_qc: gtscript.Field["dtype"] = None,
+        in_qr: gtscript.Field["dtype"] = None,
+        out_qv: gtscript.Field["dtype"] = None,
+        out_qc: gtscript.Field["dtype"] = None,
+        out_qr: gtscript.Field["dtype"] = None,
         *,
         dt: float = 0.0,
         dz: float
-    ):
+    ) -> None:
         from __externals__ import (
             compute_boundary,
             moist,
@@ -371,8 +504,8 @@ class IsentropicVerticalAdvection(TendencyComponent):
         )
 
         # interpolate the velocity on the interface levels
-        with computation(PARALLEL), interval(0, 1):
-                w = 0.0
+        with computation(FORWARD), interval(0, 1):
+            w = 0.0
         with computation(PARALLEL), interval(1, None):
             if __INLINED(vstaggering):  # compile-time if
                 w = in_w
@@ -387,13 +520,11 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 wc = in_w
 
         # compute the isentropic density of the water species
-        with computation(PARALLEL), interval(0, None):
-            if __INLINED(moist):  # compile-time if
+        if __INLINED(moist):  # compile-time if
+            with computation(PARALLEL), interval(0, None):
                 sqv = in_s * in_qv
                 sqc = in_s * in_qc
                 sqr = in_s * in_qr
-            else:
-                sqv = 0.0  # dummy computation
 
         # compute the fluxes
         with computation(PARALLEL), interval(vflux_extent, vflux_end):
@@ -432,16 +563,16 @@ class IsentropicVerticalAdvection(TendencyComponent):
                 out_qc = (flux_sqc[0, 0, 1] - flux_sqc[0, 0, 0]) / (in_s[0, 0, 0] * dz)
                 out_qr = (flux_sqr[0, 0, 1] - flux_sqr[0, 0, 0]) / (in_s[0, 0, 0] * dz)
         with computation(PARALLEL), interval(-vflux_extent, None):
-            out_s = compute_boundary(dz=dz, w=wc, phi=in_s)
-            out_su = compute_boundary(dz=dz, w=wc, phi=in_su)
-            out_sv = compute_boundary(dz=dz, w=wc, phi=in_sv)
+            out_s = 0.0  # compute_boundary(dz=dz, w=wc, phi=in_s)
+            out_su = 0.0  # compute_boundary(dz=dz, w=wc, phi=in_su)
+            out_sv = 0.0  # compute_boundary(dz=dz, w=wc, phi=in_sv)
             if __INLINED(moist):  # compile-time if
-                tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
-                out_qv = tmp_qv / in_s
-                tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)
-                out_qc = tmp_qc / in_s
-                tmp_qr = compute_boundary(dz=dz, w=wc, phi=sqr)
-                out_qr = tmp_qr / in_s
+                # tmp_qv = compute_boundary(dz=dz, w=wc, phi=sqv)
+                out_qv = 0.0  # tmp_qv / in_s
+                # tmp_qc = compute_boundary(dz=dz, w=wc, phi=sqc)
+                out_qc = 0.0  # tmp_qc / in_s
+                # tmp_qr = compute_boundary(dz=dz, w=wc, phi=sqr)
+                out_qr = 0.0  # tmp_qr / in_s
 
 
 class PrescribedSurfaceHeating(TendencyComponent):

@@ -23,12 +23,16 @@
 from datetime import datetime
 import math
 import numpy as np
+from sympl import DataArray
+from typing import Any, Optional, Sequence, Type, Union
 
 
 d_tol = 1e-10
 
 
-def equal_to(a, b, tol=d_tol):
+def equal_to(
+    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
     properly accounting for round-off errors.
@@ -51,7 +55,9 @@ def equal_to(a, b, tol=d_tol):
     return math.fabs(a - b) <= tol
 
 
-def smaller_than(a, b, tol=d_tol):
+def smaller_than(
+    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
     properly accounting for round-off errors.
@@ -74,7 +80,9 @@ def smaller_than(a, b, tol=d_tol):
     return a < (b - tol)
 
 
-def smaller_or_equal_than(a, b, tol=d_tol):
+def smaller_or_equal_than(
+    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+) -> bool:
     """
     Compare floating point numbers or arrays of floating point numbers,
     properly accounting for round-off errors.
@@ -97,7 +105,9 @@ def smaller_or_equal_than(a, b, tol=d_tol):
     return a <= (b + tol)
 
 
-def greater_than(a, b, tol=d_tol):
+def greater_than(
+    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
     properly accounting for round-off errors.
@@ -120,7 +130,9 @@ def greater_than(a, b, tol=d_tol):
     return a > (b + tol)
 
 
-def greater_or_equal_than(a, b, tol=d_tol):
+def greater_or_equal_than(
+    a: Union[float, np.ndarray], b: Union[float, np.ndarray], tol: float = d_tol
+) -> bool:
     """
     Compare floating point numbers, or arrays of floating point numbers,
     properly accounting for round-off errors.
@@ -143,7 +155,9 @@ def greater_or_equal_than(a, b, tol=d_tol):
     return a >= (b - tol)
 
 
-def assert_sequence(seq, reflen=None, reftype=None):
+def assert_sequence(
+    seq: Sequence[Any], reflen: Optional[int] = None, reftype: Optional[Type] = None
+):
     """
     Assert if a sequence has appropriate length and contains objects
     of appropriate type.
@@ -180,7 +194,7 @@ def assert_sequence(seq, reflen=None, reftype=None):
             assert isinstance(item, reftype), error_msg
 
 
-def convert_datetime64_to_datetime(time):
+def convert_datetime64_to_datetime(time: np.datetime64) -> datetime:
     """
     Convert :class:`numpy.datetime64` to :class:`datetime.datetime`.
 
@@ -207,7 +221,7 @@ def convert_datetime64_to_datetime(time):
     return datetime.utcfromtimestamp(ts)
 
 
-def get_time_string(seconds):
+def get_time_string(seconds: float) -> str:
     """
     Convert seconds into a string of the form hours:minutes:seconds.
 
@@ -235,7 +249,7 @@ def get_time_string(seconds):
     return s
 
 
-def to_units(field, units=None):
+def to_units(field: DataArray, units: Optional[str] = None) -> DataArray:
     """
     Convert units of a field.
 

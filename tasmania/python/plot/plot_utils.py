@@ -25,7 +25,9 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.offsetbox import AnchoredText
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
+from typing import Optional, Sequence, Tuple
 
 from tasmania.python.plot.utils import smaller_than as lt, equal_to as eq
 
@@ -67,8 +69,14 @@ linestyle_dict = {
 
 
 def get_figure_and_axes(
-    fig=None, ax=None, default_fig=None, nrows=1, ncols=1, index=1, **kwargs
-):
+    fig: Optional[plt.Figure] = None,
+    ax: Optional[plt.Axes] = None,
+    default_fig: Optional[plt.Figure] = None,
+    nrows: int = 1,
+    ncols: int = 1,
+    index: int = 1,
+    **kwargs
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Get a :class:`matplotlib.figure.Figure` object and a :class:`matplotlib.axes.Axes`
     object, with the latter embedded in the former. The returned values are determined
@@ -163,8 +171,7 @@ def get_figure_and_axes(
             )
 
             out_fig, out_ax = ax.get_figure(), ax
-
-    if (fig is not None) and (ax is None):
+    elif (fig is not None) and (ax is None):
         try:
             out_fig = fig
             out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
@@ -179,11 +186,9 @@ def get_figure_and_axes(
 
             out_fig = plt.figure(figsize=figsize)
             out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
-
-    if (fig is None) and (ax is not None):
+    elif (fig is None) and (ax is not None):
         out_fig, out_ax = ax.get_figure(), ax
-
-    if (fig is None) and (ax is None):
+    else:  # (fig is None) and (ax is None)
         if default_fig is None:
             out_fig = plt.figure(figsize=figsize)
             out_ax = out_fig.add_subplot(nrows, ncols, index, projection=projection)
@@ -207,7 +212,7 @@ def get_figure_and_axes(
     return out_fig, out_ax
 
 
-def set_figure_properties(fig, **kwargs):
+def set_figure_properties(fig: plt.Figure, **kwargs) -> None:
     """
     Ease the configuration of a :class:`matplotlib.figure.Figure`.
 
@@ -230,22 +235,77 @@ def set_figure_properties(fig, **kwargs):
         fit into. Defaults to (0, 0, 1, 1).
     suptitle : str
         The figure title. Defaults to an empty string.
+    xlabel : str
+        TODO
+    ylabel : str
+        TODO
+    figlegend_on : bool
+        TODO
+    figlegend_ax : int
+        TODO
+    figlegend_loc : `str` or `Tuple[float, float]`
+        TODO
+    figlegend_framealpha : float
+        TODO
+    figlegend_ncol : int
+        TODO
+    subplots_adjust_hspace : float
+        TODO
+    subplots_adjust_vspace : float
+        TODO
     """
     fontsize = kwargs.get("fontsize", 12)
     tight_layout = kwargs.get("tight_layout", True)
     tight_layout_rect = kwargs.get("tight_layout_rect", (0, 0, 1, 1))
     suptitle = kwargs.get("suptitle", "")
+    x_label = kwargs.get("x_label", "")
+    x_labelpad = kwargs.get("x_labelpad", 20)
+    y_label = kwargs.get("y_label", "")
+    y_labelpad = kwargs.get("y_labelpad", 20)
+    figlegend_on = kwargs.get("figlegend_on", False)
+    figlegend_ax = kwargs.get("figlegend_ax", 0)
+    figlegend_loc = kwargs.get("figlegend_loc", "lower center")
+    figlegend_framealpha = kwargs.get("figlegend_framealpha", 1.0)
+    figlegend_ncol = kwargs.get("figlegend_ncol", 1)
+    wspace = kwargs.get("subplots_adjust_wspace", None)
+    hspace = kwargs.get("subplots_adjust_hspace", None)
 
     rcParams["font.size"] = fontsize
-
-    if tight_layout:
-        fig.tight_layout(rect=tight_layout_rect)
 
     if suptitle is not None and suptitle != "":
         fig.suptitle(suptitle, fontsize=fontsize + 1)
 
+    if x_label != "" or y_label != "":
+        ax = fig.add_subplot(111)
+        ax.set_frame_on(False)
+        ax.set_xticks([])
+        ax.set_xticklabels([], visible=False)
+        ax.set_yticks([])
+        ax.set_yticklabels([], visible=False)
 
-def set_axes_properties(ax, **kwargs):
+        if x_label != "":
+            ax.set_xlabel(x_label, labelpad=x_labelpad)
+        if y_label != "":
+            ax.set_ylabel(y_label, labelpad=y_labelpad)
+
+    if tight_layout:
+        fig.tight_layout(rect=tight_layout_rect)
+
+    if figlegend_on:
+        handles, labels = fig.get_axes()[figlegend_ax].get_legend_handles_labels()
+        fig.legend(
+            handles,
+            labels,
+            loc=figlegend_loc,
+            framealpha=figlegend_framealpha,
+            ncol=figlegend_ncol,
+        )
+
+    # fig.subplots_adjust(wspace=wspace, hspace=hspace)
+    # fig.subplots_adjust(wspace=0.1)
+
+
+def set_axes_properties(ax: plt.Axes, **kwargs) -> None:
     """
     Ease the configuration of a :class:`matplotlib.axes.Axes` object.
 
@@ -281,8 +341,10 @@ def set_axes_properties(ax, **kwargs):
         Sequence of x-axis ticks location. Defaults to `None`.
     x_ticklabels : sequence[str]
         Sequence of x-axis ticks labels. Defaults to `None`.
-    x_ticklabelcolor : str
+    x_ticklabels_color : str
         Color for the x-axis ticks labels. Defaults to 'black'.
+    x_ticklabels_rotation : float
+        Rotation angle of the x-axis ticks labels. Defaults to 0.
     xaxis_minor_ticks_visible : bool
         `True` to show all ticks, either labelled or unlabelled,
         `False` to show only the labelled ticks. Defaults to `False`.
@@ -304,8 +366,10 @@ def set_axes_properties(ax, **kwargs):
         Sequence of y-axis ticks location. Defaults to `None`.
     y_ticklabels : sequence[str]
         Sequence of y-axis ticks labels. Defaults to `None`.
-    y_ticklabelcolor : str
+    y_ticklabels_color : str
         Color for the y-axis ticks labels. Defaults to 'black'.
+    y_ticklabels_rotation : float
+        Rotation angle of the y-axis ticks labels. Defaults to 0.
     yaxis_minor_ticks_visible : bool
         `True` to show all ticks, either labelled or unlabelled,
         `False` to show only the labelled ticks. Defaults to :obj:`False`.
@@ -327,7 +391,9 @@ def set_axes_properties(ax, **kwargs):
         Sequence of z-axis ticks location. Defaults to :obj:`None`.
     z_ticklabels : sequence[str]
         Sequence of z-axis ticks labels. Defaults to :obj:`None`.
-    z_ticklabelcolor : str
+    z_ticklabels_color : str
+        Rotation angle of the z-axis ticks labels. Defaults to 0.
+    z_ticklabels_rotation : float
         Color for the z-axis ticks labels. Defaults to 'black'.
     zaxis_minor_ticks_visible : bool
         :obj:`True` to show all ticks, either labelled or unlabelled,
@@ -374,7 +440,9 @@ def set_axes_properties(ax, **kwargs):
     x_scale = kwargs.get("x_scale", "linear")
     x_ticks = kwargs.get("x_ticks", None)
     x_ticklabels = kwargs.get("x_ticklabels", None)
-    x_ticklabelcolor = kwargs.get("x_ticklabelcolor", "black")
+    x_ticklabels_color = kwargs.get("x_ticklabels_color", "black")
+    x_ticklabels_rotation = kwargs.get("x_ticklabels_rotation", 0)
+    x_tickformat = kwargs.get("x_tickformat", None)
     xaxis_minor_ticks_visible = kwargs.get("xaxis_minor_ticks_visible", False)
     xaxis_visible = kwargs.get("xaxis_visible", True)
     # y-axis
@@ -385,7 +453,9 @@ def set_axes_properties(ax, **kwargs):
     y_scale = kwargs.get("y_scale", "linear")
     y_ticks = kwargs.get("y_ticks", None)
     y_ticklabels = kwargs.get("y_ticklabels", None)
-    y_ticklabelcolor = kwargs.get("y_ticklabelcolor", "black")
+    y_ticklabels_color = kwargs.get("y_ticklabels_color", "black")
+    y_ticklabels_rotation = kwargs.get("y_ticklabels_rotation", 0)
+    y_tickformat = kwargs.get("y_tickformat", None)
     yaxis_minor_ticks_visible = kwargs.get("yaxis_minor_ticks_visible", False)
     yaxis_visible = kwargs.get("yaxis_visible", True)
     # z-axis
@@ -396,7 +466,9 @@ def set_axes_properties(ax, **kwargs):
     z_scale = kwargs.get("z_scale", "linear")
     z_ticks = kwargs.get("z_ticks", None)
     z_ticklabels = kwargs.get("z_ticklabels", None)
-    z_ticklabelcolor = kwargs.get("z_ticklabelcolor", "black")
+    z_ticklabels_color = kwargs.get("z_ticklabels_color", "black")
+    z_ticklabels_rotation = kwargs.get("z_ticklabels_rotation", None)
+    z_tickformat = kwargs.get("z_tickformat", None)
     zaxis_minor_ticks_visible = kwargs.get("zaxis_minor_ticks_visible", False)
     zaxis_visible = kwargs.get("zaxis_visible", True)
     # legend
@@ -405,6 +477,7 @@ def set_axes_properties(ax, **kwargs):
     legend_bbox_to_anchor = kwargs.get("legend_bbox_to_anchor", None)
     legend_framealpha = kwargs.get("legend_framealpha", 0.5)
     legend_ncol = kwargs.get("legend_ncol", 1)
+    legend_fontsize = kwargs.get("legend_fontsize", fontsize)
     # textbox
     text = kwargs.get("text", None)
     text_loc = kwargs.get("text_loc", "")
@@ -576,21 +649,31 @@ def set_axes_properties(ax, **kwargs):
         )
 
     # axes tick labels color
-    if x_ticklabelcolor != "":
-        ax.tick_params(axis="x", colors=x_ticklabelcolor)
-    if y_ticklabelcolor != "":
-        ax.tick_params(axis="y", colors=y_ticklabelcolor)
+    if x_ticklabels_color != "":
+        ax.tick_params(axis="x", colors=x_ticklabels_color)
+    if y_ticklabels_color != "":
+        ax.tick_params(axis="y", colors=y_ticklabels_color)
     try:
-        if z_ticklabelcolor != "":
-            ax.tick_params(axis="z", colors=z_ticklabelcolor)
+        if z_ticklabels_color != "":
+            ax.tick_params(axis="z", colors=z_ticklabels_color)
     except AttributeError:
         import warnings
 
         warnings.warn(
             "The plot is not three-dimensional, therefore the "
-            "argument ''z_ticklabelcolor'' is disregarded.",
+            "argument ''z_ticklabels_color'' is disregarded.",
             RuntimeWarning,
         )
+
+    # axes tick format
+    if x_tickformat is not None:
+        ax.xaxis.set_major_formatter(FormatStrFormatter(x_tickformat))
+    if y_tickformat is not None:
+        ax.yaxis.set_major_formatter(FormatStrFormatter(y_tickformat))
+
+    # axes tick labels rotation
+    plt.xticks(rotation=x_ticklabels_rotation)
+    plt.yticks(rotation=y_ticklabels_rotation)
 
     # unlabelled axes ticks
     if not xaxis_minor_ticks_visible:
@@ -632,12 +715,18 @@ def set_axes_properties(ax, **kwargs):
     # legend
     if legend_on:
         if legend_bbox_to_anchor is None:
-            ax.legend(loc=legend_loc, framealpha=legend_framealpha, ncol=legend_ncol)
+            ax.legend(
+                loc=legend_loc,
+                framealpha=legend_framealpha,
+                ncol=legend_ncol,
+                fontsize=legend_fontsize,
+            )
         else:
             ax.legend(
                 loc=legend_loc,
                 framealpha=legend_framealpha,
                 ncol=legend_ncol,
+                fontsize=legend_fontsize,
                 bbox_to_anchor=legend_bbox_to_anchor,
             )
 
@@ -674,6 +763,7 @@ def set_axes_properties(ax, **kwargs):
             ax2.get_xaxis().set_tick_params(which="minor", width=0)
         if not x2axis_visible:
             ax2.get_xaxis().set_visible(False)
+        # plt.ticklabel_format(axis="x", style="sci", scilimits=(-5, -5))
 
         # y2-axis
         if y2_label != "":
@@ -710,7 +800,9 @@ def set_axes_properties(ax, **kwargs):
             )
 
 
-def reverse_colormap(cmap, name=None):
+def reverse_colormap(
+    cmap: LinearSegmentedColormap, name: Optional[str] = None
+) -> LinearSegmentedColormap:
     """
     Reverse a Matplotlib colormap.
 
@@ -753,19 +845,19 @@ def reverse_colormap(cmap, name=None):
 
 
 def set_colorbar(
-    fig,
-    mappable,
-    color_levels,
+    fig: plt.Figure,
+    mappable: plt.cm.ScalarMappable,
+    color_levels: np.ndarray,
     *,
-    cbar_ticks_step=1,
-    cbar_ticks_pos="center",
-    cbar_title="",
-    cbar_x_label="",
-    cbar_y_label="",
-    cbar_orientation="vertical",
-    cbar_ax=None,
-    cbar_format=None
-):
+    cbar_ticks_step: int = 1,
+    cbar_ticks_pos: str = "center",
+    cbar_title: str = "",
+    cbar_x_label: str = "",
+    cbar_y_label: str = "",
+    cbar_orientation: str = "vertical",
+    cbar_ax: Optional[Sequence[int]] = None,
+    cbar_format: Optional[str] = None
+) -> None:
     """
     Ease the configuration of the colorbar in Matplotlib plots.
 
@@ -800,22 +892,24 @@ def set_colorbar(
         Format for colorbar tick labels.
     """
     if cbar_ax is None:
-        cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+        cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
     else:
         try:
             axes = fig.get_axes()
-            cb = plt.colorbar(
+            cb = fig.colorbar(
                 mappable,
                 orientation=cbar_orientation,
                 format=cbar_format,
-                ax=[axes[i] for i in cbar_ax],
+                ax=axes[cbar_ax]
+                if isinstance(cbar_ax, int)
+                else [axes[i] for i in cbar_ax],
             )
         except TypeError:
             # cbar_ax is not iterable
-            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+            cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
         except IndexError:
             # cbar_ax contains an index which exceeds the number of axes in the figure
-            cb = plt.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
+            cb = fig.colorbar(mappable, orientation=cbar_orientation, format=cbar_format)
 
     cb.ax.set_title(cbar_title)
     cb.ax.set_xlabel(cbar_x_label)
@@ -827,15 +921,14 @@ def set_colorbar(
         cb.set_ticks(color_levels[::cbar_ticks_step])
 
 
-def make_lineplot(x, y, ax, **kwargs):
-    """
-    Plot a line.
+def make_lineplot(x: np.ndarray, y: np.ndarray, ax: plt.Axes, **kwargs) -> None:
+    """ Plot a line.
 
     Parameters
     ----------
-    x : gt4py.storage.storage.Storage
+    x : numpy.ndarray
         1-D array gathering the x-coordinates of the points to plot.
-    y : gt4py.storage.storage.Storage
+    y : numpy.ndarray
         1-D array gathering the y-coordinates of the points to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -925,17 +1018,19 @@ def make_lineplot(x, y, ax, **kwargs):
     y /= y_factor
 
 
-def make_contour(x, y, field, ax, **kwargs):
+def make_contour(
+    x: np.ndarray, y: np.ndarray, field: np.ndarray, ax: plt.Axes, **kwargs
+) -> None:
     """
     Generate a contour plot.
 
     Parameters
     ----------
-    x : gt4py.storage.storage.Storage
+    x : numpy.ndarray
         2-D array gathering the x-coordinates of the grid points.
-    y : gt4py.storage.storage.Storage
+    y : numpy.ndarray
         2-D array gathering the y-coordinates of the grid points.
-    field : gt4py.storage.storage.Storage
+    field : numpy.ndarray
         2-D array representing the field to plot.
     ax : matplotlib.axes.Axes
         The axes embodying the plot.
@@ -1002,7 +1097,14 @@ def make_contour(x, y, field, ax, **kwargs):
     field += field_bias
 
 
-def make_contourf(x, y, field, fig, ax, **kwargs):
+def make_contourf(
+    x: np.ndarray,
+    y: np.ndarray,
+    field: np.ndarray,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     """
     Generate a contourf plot.
 
@@ -1132,6 +1234,8 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
         cm = reverse_colormap(plt.get_cmap("RdYlBu"), "BuYlRd")
     elif cmap_name == "CMRmap_r":
         cm = reverse_colormap(plt.get_cmap("CMRmap"), "CMRmap_r")
+    elif cmap_name == "Spectral_r":
+        cm = reverse_colormap(plt.get_cmap("Spectral"), "Spectral_r")
     else:
         cm = plt.get_cmap(cmap_name)
 
@@ -1169,7 +1273,16 @@ def make_contourf(x, y, field, fig, ax, **kwargs):
     field += field_bias
 
 
-def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
+def make_quiver(
+    x: np.ndarray,
+    y: np.ndarray,
+    vx: np.ndarray,
+    vy: np.ndarray,
+    scalar: np.ndarray,
+    fig: plt.Figure,
+    ax: plt.Axes,
+    **kwargs
+) -> None:
     """
     Generate the quiver plot of a gridded vector field at a cross-section
     parallel to a coordinate plane.
@@ -1425,7 +1538,7 @@ def make_quiver(x, y, vx, vy, scalar, fig, ax, **kwargs):
         scalar += scalar_bias
 
 
-def make_circle(ax, **kwargs):
+def make_circle(ax: plt.Axes, **kwargs) -> None:
     """
     Draw a circle.
 
@@ -1460,7 +1573,7 @@ def make_circle(ax, **kwargs):
     ax.add_patch(circ)
 
 
-def make_rectangle(ax, **kwargs):
+def make_rectangle(ax: plt.Axes, **kwargs) -> None:
     """
     Draw a rectangle.
 
@@ -1507,7 +1620,7 @@ def make_rectangle(ax, **kwargs):
     ax.add_patch(rect)
 
 
-def make_cdf(data, ax, **kwargs):
+def make_cdf(data: np.ndarray, ax: plt.Axes, **kwargs) -> None:
     """
     Plot the cumulative distribution function (CDF) for an array of points.
 
@@ -1565,7 +1678,7 @@ def make_cdf(data, ax, **kwargs):
         make_lineplot(cdf, values, ax, **kwargs)
 
 
-def add_annotation(ax, **kwargs):
+def add_annotation(ax: plt.Axes, **kwargs) -> None:
     """ Add a text annotation to a plot. """
     # get keyword arguments
     fontsize = kwargs.get("fontsize", 16)

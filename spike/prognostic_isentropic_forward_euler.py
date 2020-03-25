@@ -33,7 +33,7 @@ import python.utils.utils as utils
 class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	"""
 	This class inherits :class:`~tasmania.dycore.prognostic_isentropic.PrognosticIsentropic` to implement
-	the forward Euler scheme carrying out the prognostic step of the three-dimensional moist isentropic dynamical core.
+	the forward Euler scheme carrying out the prognostic step of the three-dimensional moist isentropic_prognostic dynamical core.
 
 	Attributes
 	----------
@@ -123,7 +123,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			* x_momentum_isentropic (unstaggered);
 			* y_momentum_isentropic (unstaggered);
 			* air_pressure or air_pressure_on_interface_levels (:math:`z`-staggered);
-			* montgomery_potential (isentropic);
+			* montgomery_potential (isentropic_prognostic);
 			* mass_fraction_of_water_vapor_in_air (unstaggered, optional);
 			* mass_fraction_of_cloud_liquid_water_in_air (unstaggered, optional);
 			* mass_fraction_of_precipitation_water_in_air (unstaggered, optional).
@@ -160,7 +160,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		# Update the attributes which serve as inputs to the first GT4Py stencil
 		self._stencils_stepping_by_neglecting_vertical_advection_set_inputs(dt, state, tendencies)
 		
-		# Run the compute function of the stencil stepping the isentropic density and the water constituents,
+		# Run the compute function of the stencil stepping the isentropic_prognostic density and the water constituents,
 		# and providing provisional values for the momentums
 		self._stencil_stepping_by_neglecting_vertical_advection_first.compute()
 
@@ -177,26 +177,26 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		out_Qr = None if not self._moist_on else \
 				 self.boundary.from_computational_to_physical_domain(self._out_Qr[:mi, :mj, :], (nx, ny, nz))
 
-		# Apply the boundary conditions on the updated isentropic density and water constituents
+		# Apply the boundary conditions on the updated isentropic_prognostic density and water constituents
 		self.boundary.apply(out_s, state['air_isentropic_density'].values[:,:,:,0])
 		if self._moist_on:
 			self.boundary.apply(out_Qv, state['water_vapor_isentropic_density'].values[:,:,:,0])
 			self.boundary.apply(out_Qc, state['cloud_liquid_water_isentropic_density'].values[:,:,:,0])
 			self.boundary.apply(out_Qr, state['precipitation_water_isentropic_density'].values[:,:,:,0])
 
-		# Compute the provisional isentropic density; this may be scheme-dependent
+		# Compute the provisional isentropic_prognostic density; this may be scheme-dependent
 		if self._flux_scheme in ['upwind', 'centered']:
 			s_prov = out_s
 		elif self._flux_scheme in ['maccormack']:
 			s_prov = .5 * (state['air_isentropic_density'].values[:,:,:,0] + out_s)
 
-		# Diagnose the Montgomery potential from the provisional isentropic density
+		# Diagnose the Montgomery potential from the provisional isentropic_prognostic density
 		time = utils.convert_datetime64_to_datetime(state['air_isentropic_density'].coords['time'].values[0])
 		state_prov = StateIsentropic(time + .5 * dt, self._grid, air_isentropic_density = s_prov) 
 		p_ = state['air_pressure'] if state['air_pressure'] is not None else state['air_pressure_on_interface_levels']
 		gd = self.diagnostic.get_diagnostic_variables(state_prov, p_.values[0,0,0,0])
 
-		# Extend the update isentropic density and Montgomery potential to accomodate the horizontal boundary conditions
+		# Extend the update isentropic_prognostic density and Montgomery potential to accomodate the horizontal boundary conditions
 		self._in_s_prv[:mi, :mj, :]   = self.boundary.from_physical_to_computational_domain(s_prov)
 		self._in_mtg_prv[:mi, :mj, :] = self.boundary.from_physical_to_computational_domain(
 											gd['montgomery_potential'].values[:,:,:,0])
@@ -361,7 +361,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			self._in_s[:,:,:]  = self._out_s[:,:,:]
 			self._in_qr[:,:,:] = self._out_qr[:,:,:]
 
-		# Diagnose the isentropic density of precipitation water
+		# Diagnose the isentropic_prognostic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water.compute()
 		state_new.add_variables(time_now + dt,
 								precipitation_water_isentropic_density = self._out_Qr[:nx,:ny,:])
@@ -466,7 +466,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 					  											   	  in_Qv = None, in_Qc = None, in_Qr = None,
 																	  in_qv_tnd = None, in_qc_tnd = None, in_qr_tnd = None):
 		"""
-		GT4Py stencil stepping the isentropic density and the water constituents via the forward Euler scheme.
+		GT4Py stencil stepping the isentropic_prognostic density and the water constituents via the forward Euler scheme.
 		Further, it computes provisional values for the momentums, i.e., it updates the momentums disregarding
 		the forcing terms involving the Montgomery potential.
 		
@@ -475,7 +475,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_s : obj
-			:class:`gridtools.Equation` representing the isentropic density at the current time.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density at the current time.
 		in_u : obj
 			:class:`gridtools.Equation` representing the :math:`x`-velocity at the current time.
 		in_v : obj
@@ -502,7 +502,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		Returns
 		-------
 		out_s : obj
-			:class:`gridtools.Equation` representing the stepped isentropic density.
+			:class:`gridtools.Equation` representing the stepped isentropic_prognostic density.
 		out_U : obj
 			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum.
 		out_V : obj
@@ -544,7 +544,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 				self._flux.get_horizontal_fluxes(i, j, k, dt, in_s, in_u, in_v, in_mtg, in_U, in_V, 
 												 in_Qv, in_Qc, in_Qr, in_qv_tnd, in_qc_tnd, in_qr_tnd)
 
-		# Advance the isentropic density
+		# Advance the isentropic_prognostic density
 		out_s[i, j, k] = in_s[i, j, k] - dt * ((flux_s_x[i, j, k] - flux_s_x[i-1, j, k]) / self._grid.dx +
 						 					   (flux_s_y[i, j, k] - flux_s_y[i, j-1, k]) / self._grid.dy)
 
@@ -556,7 +556,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		out_V[i, j, k] = in_V[i, j, k] - dt * ((flux_V_x[i, j, k] - flux_V_x[i-1, j, k]) / self._grid.dx +
 						 					   (flux_V_y[i, j, k] - flux_V_y[i, j-1, k]) / self._grid.dy)
 		if self._moist_on:
-			# Advance the isentropic density of water vapor
+			# Advance the isentropic_prognostic density of water vapor
 			if in_qv_tnd is None:
 				out_Qv[i, j, k] = in_Qv[i, j, k] - \
 								  dt * ((flux_Qv_x[i, j, k] - flux_Qv_x[i-1, j, k]) / self._grid.dx +
@@ -567,7 +567,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 						 				(flux_Qv_y[i, j, k] - flux_Qv_y[i, j-1, k]) / self._grid.dy -
 										in_s[i, j, k] * in_qv_tnd[i, j, k])
 
-			# Advance the isentropic density of cloud liquid water
+			# Advance the isentropic_prognostic density of cloud liquid water
 			if in_qc_tnd is None:
 				out_Qc[i, j, k] = in_Qc[i, j, k] - \
 								  dt * ((flux_Qc_x[i, j, k] - flux_Qc_x[i-1, j, k]) / self._grid.dx +
@@ -578,7 +578,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 						 				(flux_Qc_y[i, j, k] - flux_Qc_y[i, j-1, k]) / self._grid.dy -
 										in_s[i, j, k] * in_qc_tnd[i, j, k])
 
-			# Advance the isentropic density of precipitation water
+			# Advance the isentropic_prognostic density of precipitation water
 			if in_qr_tnd is None:
 				out_Qr[i, j, k] = in_Qr[i, j, k] - \
 								  dt * ((flux_Qr_x[i, j, k] - flux_Qr_x[i-1, j, k]) / self._grid.dx +
@@ -603,9 +603,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		dt : obj
 			:class:`gridtools.Global` representing the time step.
 		in_s : obj
-			:class:`gridtools.Equation` representing the stepped isentropic density.
+			:class:`gridtools.Equation` representing the stepped isentropic_prognostic density.
 		in_mtg : obj
-			:class:`gridtools.Equation` representing the Montgomery potential diagnosed from the stepped isentropic density.
+			:class:`gridtools.Equation` representing the Montgomery potential diagnosed from the stepped isentropic_prognostic density.
 		in_U : obj
 			:class:`gridtools.Equation` representing the provisional :math:`x`-momentum.
 		in_V : obj
@@ -652,9 +652,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			:class:`gridtools.Equation` representing the vertical velocity, i.e., the change over time in
 			potential temperature. 
 		in_s : obj
-			:class:`gridtools.Equation` representing the current isentropic density. 
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density.
 		in_s_prv : obj 
-			:class:`gridtools.Equation` representing the provisional isentropic density. 
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density.
 		in_U : obj 
 			:class:`gridtools.Equation` representing the current :math:`x`-momentum.
 		in_U_prv : obj 
@@ -664,32 +664,32 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		in_V_prv : obj
 			:class:`gridtools.Equation` representing the provisional :math:`y`-momentum.
 		in_Qv : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of water vapor.
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density of water vapor.
 		in_Qv_prv : `obj`, optional
-			:class:`gridtools.Equation` representing the provisional isentropic density of water vapor.
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density of water vapor.
 		in_Qc : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of cloud liquid water.
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density of cloud liquid water.
 		in_Qc_prv : `obj`, optional
-			:class:`gridtools.Equation` representing the provisional isentropic density of cloud liquid water.
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density of cloud liquid water.
 		in_Qr : `obj`, optional 
-			:class:`gridtools.Equation` representing the current isentropic density of precipitation water.
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density of precipitation water.
 		in_Qr_prv : `obj`, optional
-			:class:`gridtools.Equation` representing the provisional isentropic density of precipitation water.
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density of precipitation water.
 
 		Returns
 		-------
 		out_s : obj
-			:class:`gridtools.Equation` representing the updated isentropic density. 
+			:class:`gridtools.Equation` representing the updated isentropic_prognostic density.
 		out_U : obj 
 			:class:`gridtools.Equation` representing the updated :math:`x`-momentum.
 		out_V : obj 
 			:class:`gridtools.Equation` representing the updated :math:`y`-momentum.
 		out_Qv : `obj`, optional 
-			:class:`gridtools.Equation` representing the updated isentropic density of water vapor.
+			:class:`gridtools.Equation` representing the updated isentropic_prognostic density of water vapor.
 		out_Qc : `obj`, optional 
-			:class:`gridtools.Equation` representing the updated isentropic density of cloud liquid water.
+			:class:`gridtools.Equation` representing the updated isentropic_prognostic density of cloud liquid water.
 		out_Qr : `obj`, optional 
-			:class:`gridtools.Equation` representing the updated isentropic density of precipitation water.
+			:class:`gridtools.Equation` representing the updated isentropic_prognostic density of precipitation water.
 		"""
 		# Indeces
 		i = gt.Index()
@@ -786,7 +786,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 			mode             = self._backend)
 
 		# Initialize the GT4Py stencil clipping the negative values for the mass fraction of precipitation water,
-		# and diagnosing the isentropic density of precipitation water
+		# and diagnosing the isentropic_prognostic density of precipitation water
 		self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water = gt.NGStencil(
 			definitions_func = self._stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water_defs,
 			inputs           = {'in_s': self._out_s, 'in_qr': self._out_qr},
@@ -803,9 +803,9 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		dt : obj
 			:class:`gridtools.Global` representing the large timestep.
 		in_s : obj
-			:class:`gridtools.Equation` representing the current isentropic density.
+			:class:`gridtools.Equation` representing the current isentropic_prognostic density.
 		in_s_prv : obj
-			:class:`gridtools.Equation` representing the provisional isentropic density.
+			:class:`gridtools.Equation` representing the provisional isentropic_prognostic density.
 		in_qr : obj
 			:class:`gridtools.Equation` representing the current mass fraction of precipitation water.
 		in_qr_prv : obj
@@ -814,7 +814,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		Return
 		------
 		out_s_tnd : obj :
-			:class:`gridtools.Equation` representing the slow tendency for the isentropic density.
+			:class:`gridtools.Equation` representing the slow tendency for the isentropic_prognostic density.
 		out_qr_tnd : obj :
 			:class:`gridtools.Equation` representing the slow tendency for the mass fraction of precipitation water.
 		"""
@@ -872,7 +872,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	def _stencil_stepping_by_integrating_sedimentation_flux_defs(self, dts, in_rho, in_s, in_h, in_qr, 
 				  											  	 in_vt, in_s_tnd, in_qr_tnd):
 		"""
-		GT4Py stencil stepping the isentropic density and the mass fraction of precipitation water 
+		GT4Py stencil stepping the isentropic_prognostic density and the mass fraction of precipitation water
 		by integrating the precipitation flux.
 
 		Parameters
@@ -882,7 +882,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		in_rho : obj
 			:class:`gridtools.Equation` representing the air density.
 		in_s : obj
-			:class:`gridtools.Equation` representing the air isentropic density.
+			:class:`gridtools.Equation` representing the air isentropic_prognostic density.
 		in_h : obj
 			:class:`gridtools.Equation` representing the geometric height of the model half-levels.
 		in_qr : obj
@@ -890,7 +890,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		in_vt : obj
 			:class:`gridtools.Equation` representing the raindrop fall velocity.
 		in_s_tnd : obj
-			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the isentropic density.
+			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the isentropic_prognostic density.
 		in_qr_tnd : obj
 			:class:`gridtools.Equation` representing the contribution from the slow tendencies for the mass fraction of
 			precipitation water.
@@ -898,7 +898,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		Return
 		------
 		out_s : obj
-			:class:`gridtools.Equation` representing the output isentropic density.
+			:class:`gridtools.Equation` representing the output isentropic_prognostic density.
 		out_qr : obj
 			:class:`gridtools.Equation` representing the output mass fraction of precipitation water.
 		"""
@@ -913,7 +913,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		out_s     = gt.Equation()
 		out_qr    = gt.Equation()
 
-		# Update isentropic density
+		# Update isentropic_prognostic density
 		out_s[i, j, k] = in_s[i, j, k] + dts * in_s_tnd[i, j, k]
 
 		# Update mass fraction of precipitation water
@@ -927,12 +927,12 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 	def _stencil_clipping_mass_fraction_and_diagnosing_isentropic_density_of_precipitation_water_defs(self, in_s, in_qr):
 		"""
 		GT4Py stencil clipping the negative values for the mass fraction of precipitation water, 
-		and diagnosing the isentropic density of precipitation water.
+		and diagnosing the isentropic_prognostic density of precipitation water.
 
 		Parameters
 		----------
 		in_s : obj
-			:class:`gridtools.Equation` representing the air isentropic density.
+			:class:`gridtools.Equation` representing the air isentropic_prognostic density.
 		in_qr : obj
 			:class:`gridtools.Equation` representing the mass fraction of precipitation water in air.
 
@@ -941,7 +941,7 @@ class PrognosticIsentropicForwardEuler(PrognosticIsentropic):
 		out_qr : obj
 			:class:`gridtools.Equation` representing the clipped mass fraction of precipitation water.
 		out_Qr : obj
-			:class:`gridtools.Equation` representing the isentropic density of precipitation water.
+			:class:`gridtools.Equation` representing the isentropic_prognostic density of precipitation water.
 		"""
 		# Indeces
 		i = gt.Index()

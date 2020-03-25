@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,32 +20,51 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import tasmania as taz
+from tasmania import Grid, load_netcdf_dataset, taz_types
 
 
 class DatasetMounter:
-	_ledger = {}
+    ledger = {}
+    order = {}
 
-	def __new__(cls, filename):
-		if filename not in DatasetMounter._ledger:
-			DatasetMounter._ledger[filename] = super().__new__(cls)
-			print('New instance of DatasetMounter created.')
-		return DatasetMounter._ledger[filename]
+    def __new__(cls, filename: str) -> "DatasetMounter":
+        if filename not in DatasetMounter.ledger:
+            DatasetMounter.ledger[filename] = super().__new__(cls)
+            DatasetMounter.order[filename] = len(DatasetMounter.ledger)
+            print(
+                "Instance #{:03d} of DatasetMounter: created.".format(
+                    DatasetMounter.order[filename]
+                )
+            )
+        return DatasetMounter.ledger[filename]
 
-	def __init__(self, filename):
-		self._fname = filename
-		domain, grid_type, self._states = taz.load_netcdf_dataset(filename)
-		self._grid = domain.physical_grid if grid_type == 'physical' \
-			else domain.numerical_grid
+    def __init__(self, filename: str) -> None:
+        if not hasattr(self, "mounted"):
+            self.fname = filename
+            domain, grid_type, self.states = load_netcdf_dataset(filename)
+            print(
+                "Instance #{:03d} of DatasetMounter: dataset mounted.".format(
+                    DatasetMounter.order[filename]
+                )
+            )
+            self.grid = (
+                domain.physical_grid if grid_type == "physical" else domain.numerical_grid
+            )
+            self.mounted = True  # tag
+        else:
+            print(
+                "Instance #{:03d} of DatasetMounter: dataset already mounted.".format(
+                    DatasetMounter.order[filename]
+                )
+            )
 
-	def get_grid(self):
-		return self._grid
+    def get_grid(self) -> Grid:
+        return self.grid
 
-	def get_nt(self):
-		return len(self._states)
+    def get_nt(self) -> int:
+        return len(self.states)
 
-	def get_state(self, tlevel):
-		state = self._states[tlevel]
-		self._grid.update_topography(state['time'] - self._states[0]['time'])
-		return state
-
+    def get_state(self, tlevel: int) -> taz_types.dataarray_dict_t:
+        state = self.states[tlevel]
+        self.grid.update_topography(state["time"] - self.states[0]["time"])
+        return state

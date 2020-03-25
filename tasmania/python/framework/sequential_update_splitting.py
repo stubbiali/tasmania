@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -28,12 +29,14 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
+from typing import Any, Mapping
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.tendency_steppers import tendencystepper_factory
+from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import (
     check_properties_compatibility,
     get_input_properties,
@@ -76,12 +79,11 @@ class SequentialUpdateSplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        ConcurrentCoupling,
     )
-    allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
-    )
+    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
-    def __init__(self, *args):
+    def __init__(self, *args: Mapping[str, Any]) -> None:
         """
         Parameters
         ----------
@@ -119,6 +121,18 @@ class SequentialUpdateSplitting:
                         - 'rk3ws', for the three-stage RK scheme as used in the
                             `COSMO model <http://www.cosmo-model.org>`_; this method is
                             nominally second-order, and third-order for linear problems.
+
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'gt_powered' specifies if all the time-intensive math
+                    operations performed inside 'time_integrator' should harness
+                    GT4Py. Defaults to `False`.
 
                 * if 'component' is a
 
@@ -186,29 +200,31 @@ class SequentialUpdateSplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                kwargs = process.get(
+                gt_powered = process.get("gt_powered", False)
+                integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": None, "default_origin": None, "managed_memory": False},
+                    {"backend": None, "dtype": np.float32, "rebuild": False},
                 )
 
-                TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(
-                    TendencyStepper(
+                    TendencyStepper.factory(
+                        integrator,
                         bare_component,
                         execution_policy="serial",
                         enforce_horizontal_boundary=enforce_hb,
-                        **kwargs
+                        gt_powered=gt_powered,
+                        **integrator_kwargs
                     )
                 )
 
                 substeps = process.get("substeps", 1)
                 self._substeps.append(substeps)
 
-        # Set properties
+        # set properties
         self.input_properties = self._init_input_properties()
         self.output_properties = self._init_output_properties()
 
-        # Ensure that dimensions and units of the variables present
+        # ensure that dimensions and units of the variables present
         # in both input_properties and output_properties are compatible
         # across the two dictionaries
         check_properties_compatibility(
@@ -218,13 +234,33 @@ class SequentialUpdateSplitting:
             properties2_name="output_properties",
         )
 
-    def _init_input_properties(self):
-        return get_input_properties(self._component_list, consider_diagnostics=True)
+    def _init_input_properties(self) -> taz_types.properties_dict_t:
+        return get_input_properties(
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": True,
+                }
+                for component in self._component_list
+            )
+        )
 
-    def _init_output_properties(self):
-        return get_output_properties(self._component_list, consider_diagnostics=True)
+    def _init_output_properties(self) -> taz_types.properties_dict_t:
+        return get_output_properties(
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": True,
+                }
+                for component in self._component_list
+            )
+        )
 
-    def __call__(self, state, timestep):
+    def __call__(
+        self, state: taz_types.mutable_dataarray_dict_t, timestep: taz_types.timedelta_t
+    ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the parallel splitting method.
@@ -264,11 +300,15 @@ class SequentialUpdateSplitting:
                 state.update(state_tmp)
                 state.update(diagnostics)
             else:
-                diagnostics = component(state)
+                try:
+                    diagnostics = component(state)
+                except TypeError:
+                    diagnostics = component(state, timestep)
+
                 state.update(diagnostics)
 
-            # Ensure state is still defined at current time level
+            # ensure state is still defined at current time level
             state["time"] = current_time
 
-        # Ensure the state is defined at the next time level
+        # ensure the state is defined at the next time level
         state["time"] = current_time + timestep

@@ -17,7 +17,7 @@ VENV=py36  # options: py35, py36, py37
 TASMANIA_ROOT=/project/s299/subbiali/tasmania  # options: /project/s299/subbiali/tasmania
 DRIVER_DIR=isentropic_moist_si  # options: any directory under TASMANIA_ROOT/drivers
 DRIVER_NAME=driver_namelist_cc.py  # options: any driver under TASMANIA_ROOT/drivers/DRIVER_DIR
-NAMELIST=namelists/namelist_cc_3.py  # options: any namelist under DRIVER_DIR/
+NAMELIST=namelists2dx/namelist_cc_3.py  # options: any namelist under DRIVER_DIR/
 
 # ==================================================
 # Code

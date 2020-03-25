@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from copy import deepcopy
+from datetime import timedelta
 from hypothesis import (
     assume,
     given,
@@ -32,18 +33,43 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import conf
-import utils
-
 import gt4py as gt
 from tasmania.python.framework.composite import DiagnosticComponentComposite
 from tasmania.python.isentropic.physics.diagnostics import IsentropicDiagnostics
-from tasmania.python.physics.microphysics import SaturationAdjustmentKessler
-from test_microphysics import saturation_adjustment_kessler_validation
+from tasmania.python.physics.microphysics.kessler import (
+    KesslerSaturationAdjustmentDiagnostic,
+)
+from tasmania.python.utils.meteo_utils import tetens_formula
+from tasmania.python.utils.storage_utils import deepcopy_dataarray_dict
+
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+    nb as conf_nb,
+)
+from tests.physics.test_microphysics_kessler import (
+    kessler_saturation_adjustment_diagnostic_validation,
+)
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    compare_datetimes,
+    st_domain,
+    st_isentropic_state_f,
+    st_one_of,
+    st_timedeltas,
+)
+
+
+class KesslerSaturationAdjustment(KesslerSaturationAdjustmentDiagnostic):
+    @property
+    def tendency_properties(self):
+        return {}
+
+    def array_call(self, state, timestep):
+        _, diagnostics = super().array_call(state, timestep)
+        return {}, diagnostics
 
 
 def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
@@ -53,7 +79,7 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
     topo = grid.topography.profile.to_units("m").values
     dtype = grid.x.dtype
 
-    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values
+    s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
     pt = state["air_pressure_on_interface_levels"].to_units("Pa").values[0, 0, 0]
 
     # pressure
@@ -100,18 +126,53 @@ def isentropic_diagnostics_validation(grid, state, cp, p_ref, rd, g):
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def _test_serial(data):
+@given(data=hyp_st.data())
+def test_serial(data, subtests):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    grid_type = data.draw(utils.st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 30),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
+        label="domain",
+    )
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
-    backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            gt_powered=gt_powered,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+
+    timestep = data.draw(
+        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(hours=1)),
+        label="timestep",
+    )
 
     # ========================================
     # test bed
@@ -123,15 +184,22 @@ def _test_serial(data):
         grid_type,
         True,
         state["air_pressure_on_interface_levels"][0, 0, 0],
-        backend=gt.mode.NUMPY,
+        gt_powered=gt_powered,
+        backend=backend,
         dtype=dtype,
+        default_origin=default_origin,
+        storage_shape=storage_shape,
     )
-    sa = SaturationAdjustmentKessler(
+    sa = KesslerSaturationAdjustment(
         domain,
         grid_type,
         air_pressure_on_interface_levels=True,
+        saturation_vapor_pressure_formula="tetens",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
+        default_origin=default_origin,
+        storage_shape=storage_shape,
     )
 
     dcc = DiagnosticComponentComposite(dv, sa, execution_policy="serial")
@@ -157,15 +225,16 @@ def _test_serial(data):
     #
     # test numerics
     #
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
-    diagnostics = dcc(state)
+    diagnostics = dcc(state, timestep)
 
     for key in state:
-        if key == "time":
-            assert state["time"] == state_dc["time"]
-        else:
-            assert np.allclose(state[key], state_dc[key])
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
 
     assert len(state) == len(state_dc)
 
@@ -179,40 +248,83 @@ def _test_serial(data):
     assert "montgomery_potential" in diagnostics
     assert len(diagnostics) == 8
 
-    cp = dv._core._physical_constants["specific_heat_of_dry_air_at_constant_pressure"]
-    p_ref = dv._core._physical_constants["air_pressure_at_sea_level"]
-    rd = dv._core._physical_constants["gas_constant_of_dry_air"]
-    g = dv._core._physical_constants["gravitational_acceleration"]
+    cp = dv._core._pcs["specific_heat_of_dry_air_at_constant_pressure"]
+    p_ref = dv._core._pcs["air_pressure_at_sea_level"]
+    rd = dv._core._pcs["gas_constant_of_dry_air"]
+    g = dv._core._pcs["gravitational_acceleration"]
 
-    p_val, exn_val, mtg_val, h_val, r_val, temp_val = isentropic_diagnostics_validation(
+    p_val, exn_val, mtg_val, h_val, r_val, temp_tmp = isentropic_diagnostics_validation(
         grid, state, cp, p_ref, rd, g
     )
 
-    assert np.allclose(
-        diagnostics["air_pressure_on_interface_levels"], p_val, equal_nan=True
+    compare_arrays(
+        diagnostics["air_pressure_on_interface_levels"]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1],
+        p_val,
     )
-    assert np.allclose(
-        diagnostics["exner_function_on_interface_levels"], exn_val, equal_nan=True
+    compare_arrays(
+        diagnostics["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1],
+        exn_val,
     )
-    assert np.allclose(diagnostics["montgomery_potential"], mtg_val, equal_nan=True)
-    assert np.allclose(diagnostics["height_on_interface_levels"], h_val, equal_nan=True)
-    assert np.allclose(diagnostics["air_density"], r_val, equal_nan=True)
-    assert np.allclose(diagnostics["air_temperature"], temp_val, equal_nan=True)
+    compare_arrays(
+        diagnostics["montgomery_potential"].to_units("m^2 s^-2").values[:nx, :ny, :nz],
+        mtg_val,
+    )
+    compare_arrays(
+        diagnostics["height_on_interface_levels"]
+        .to_units("m")
+        .values[:nx, :ny, : nz + 1],
+        h_val,
+    )
+    compare_arrays(
+        diagnostics["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz], r_val
+    )
 
-    qv_in = state["mass_fraction_of_water_vapor_in_air"].to_units("g g^-1").values
-    qc_in = state["mass_fraction_of_cloud_liquid_water_in_air"].to_units("g g^-1").values
+    qv_in = (
+        state["mass_fraction_of_water_vapor_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz]
+    )
+    qc_in = (
+        state["mass_fraction_of_cloud_liquid_water_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz]
+    )
+    rv = sa._rv
     beta = sa._beta
-    lhvw = sa._physical_constants["latent_heat_of_vaporization_of_water"]
+    lhvw = sa._lhvw
 
-    qv_out, qc_out = saturation_adjustment_kessler_validation(
-        p_val, temp_val, qv_in, qc_in, beta, lhvw, cp
+    qv_val, qc_val, temp_val, _ = kessler_saturation_adjustment_diagnostic_validation(
+        timestep.total_seconds(),
+        p_val,
+        temp_tmp,
+        exn_val,
+        qv_in,
+        qc_in,
+        tetens_formula,
+        beta,
+        lhvw,
+        cp,
+        rv,
     )
 
-    assert np.allclose(
-        diagnostics["mass_fraction_of_water_vapor_in_air"], qv_out, equal_nan=True
+    compare_arrays(
+        diagnostics["mass_fraction_of_water_vapor_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz],
+        qv_val,
     )
-    assert np.allclose(
-        diagnostics["mass_fraction_of_cloud_liquid_water_in_air"], qc_out, equal_nan=True
+    compare_arrays(
+        diagnostics["mass_fraction_of_cloud_liquid_water_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz],
+        qc_val,
+    )
+    compare_arrays(
+        diagnostics["air_temperature"].to_units("K").values[:nx, :ny, :nz], temp_val
     )
 
 
@@ -220,18 +332,53 @@ def _test_serial(data):
     suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
     deadline=None,
 )
-@given(hyp_st.data())
-def _test_asparallel(data):
+@given(data=hyp_st.data())
+def test_asparallel(data, subtests):
+    gt.storage.prepare_numpy()
+
     # ========================================
     # random data generation
     # ========================================
-    domain = data.draw(utils.st_domain(), label="domain")
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    grid_type = data.draw(utils.st_one_of(("physical", "numerical")), label="grid_type")
+    domain = data.draw(
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(2, 30),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
+        label="domain",
+    )
+    grid_type = data.draw(st_one_of(("physical", "numerical")), label="grid_type")
     grid = domain.physical_grid if grid_type == "physical" else domain.numerical_grid
-    state = data.draw(utils.st_isentropic_state_f(grid, moist=True), label="state")
+    nx, ny, nz = grid.nx, grid.ny, grid.nz
+    dnx = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnx")
+    dny = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dny")
+    dnz = data.draw(hyp_st.integers(min_value=1, max_value=3), label="dnz")
+    storage_shape = (nx + dnx, ny + dny, nz + dnz)
 
-    backend = data.draw(utils.st_one_of(conf.backend), label="backend")
+    state = data.draw(
+        st_isentropic_state_f(
+            grid,
+            moist=True,
+            gt_powered=gt_powered,
+            backend=backend,
+            default_origin=default_origin,
+            storage_shape=storage_shape,
+        ),
+        label="state",
+    )
+
+    timestep = data.draw(
+        st_timedeltas(min_value=timedelta(seconds=0), max_value=timedelta(hours=1)),
+        label="timestep",
+    )
 
     # ========================================
     # test bed
@@ -243,15 +390,22 @@ def _test_asparallel(data):
         grid_type,
         True,
         state["air_pressure_on_interface_levels"][0, 0, 0],
-        backend=gt.mode.NUMPY,
+        gt_powered=gt_powered,
+        backend=backend,
         dtype=dtype,
+        default_origin=default_origin,
+        storage_shape=storage_shape,
     )
-    sa = SaturationAdjustmentKessler(
+    sa = KesslerSaturationAdjustment(
         domain,
         grid_type,
         air_pressure_on_interface_levels=True,
+        saturation_vapor_pressure_formula="tetens",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
+        default_origin=default_origin,
+        storage_shape=storage_shape,
     )
 
     dcc = DiagnosticComponentComposite(dv, sa, execution_policy="as_parallel")
@@ -262,9 +416,10 @@ def _test_asparallel(data):
     assert "air_isentropic_density" in dcc.input_properties
     assert "air_pressure_on_interface_levels" in dcc.input_properties
     assert "air_temperature" in dcc.input_properties
+    assert "exner_function_on_interface_levels" in dcc.input_properties
     assert "mass_fraction_of_water_vapor_in_air" in dcc.input_properties
     assert "mass_fraction_of_cloud_liquid_water_in_air" in dcc.input_properties
-    assert len(dcc.input_properties) == 5
+    assert len(dcc.input_properties) == 6
 
     assert "air_density" in dcc.diagnostic_properties
     assert "air_pressure_on_interface_levels" in dcc.diagnostic_properties
@@ -279,15 +434,16 @@ def _test_asparallel(data):
     #
     # test numerics
     #
-    state_dc = deepcopy(state)
+    state_dc = deepcopy_dataarray_dict(state)
 
-    diagnostics = dcc(state)
+    diagnostics = dcc(state, timestep)
 
     for key in state:
-        if key == "time":
-            assert state["time"] == state_dc["time"]
-        else:
-            assert np.allclose(state[key], state_dc[key])
+        with subtests.test(key=key):
+            if key == "time":
+                compare_datetimes(state["time"], state_dc["time"])
+            else:
+                compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
 
     assert len(state) == len(state_dc)
 
@@ -301,42 +457,84 @@ def _test_asparallel(data):
     assert "montgomery_potential" in diagnostics
     assert len(diagnostics) == 8
 
-    cp = dv._core._physical_constants["specific_heat_of_dry_air_at_constant_pressure"]
-    p_ref = dv._core._physical_constants["air_pressure_at_sea_level"]
-    rd = dv._core._physical_constants["gas_constant_of_dry_air"]
-    g = dv._core._physical_constants["gravitational_acceleration"]
+    cp = dv._core._pcs["specific_heat_of_dry_air_at_constant_pressure"]
+    p_ref = dv._core._pcs["air_pressure_at_sea_level"]
+    rd = dv._core._pcs["gas_constant_of_dry_air"]
+    g = dv._core._pcs["gravitational_acceleration"]
 
     p_val, exn_val, mtg_val, h_val, r_val, temp_val = isentropic_diagnostics_validation(
         grid, state, cp, p_ref, rd, g
     )
 
-    assert np.allclose(
-        diagnostics["air_pressure_on_interface_levels"], p_val, equal_nan=True
+    compare_arrays(
+        diagnostics["air_pressure_on_interface_levels"]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1],
+        p_val,
     )
-    assert np.allclose(
-        diagnostics["exner_function_on_interface_levels"], exn_val, equal_nan=True
+    compare_arrays(
+        diagnostics["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1],
+        exn_val,
     )
-    assert np.allclose(diagnostics["montgomery_potential"], mtg_val, equal_nan=True)
-    assert np.allclose(diagnostics["height_on_interface_levels"], h_val, equal_nan=True)
-    assert np.allclose(diagnostics["air_density"], r_val, equal_nan=True)
-    assert np.allclose(diagnostics["air_temperature"], temp_val, equal_nan=True)
+    compare_arrays(
+        diagnostics["montgomery_potential"].to_units("m^2 s^-2").values[:nx, :ny, :nz],
+        mtg_val,
+    )
+    compare_arrays(
+        diagnostics["height_on_interface_levels"]
+        .to_units("m")
+        .values[:nx, :ny, : nz + 1],
+        h_val,
+    )
+    compare_arrays(
+        diagnostics["air_density"].to_units("kg m^-3").values[:nx, :ny, :nz], r_val
+    )
 
-    p = state["air_pressure_on_interface_levels"].to_units("Pa").values
-    temp = state["air_temperature"].to_units("K").values
-    qv_in = state["mass_fraction_of_water_vapor_in_air"].to_units("g g^-1").values
-    qc_in = state["mass_fraction_of_cloud_liquid_water_in_air"].to_units("g g^-1").values
+    p = (
+        state["air_pressure_on_interface_levels"]
+        .to_units("Pa")
+        .values[:nx, :ny, : nz + 1]
+    )
+    temp = state["air_temperature"].to_units("K").values[:nx, :ny, :nz]
+    exn = (
+        state["exner_function_on_interface_levels"]
+        .to_units("J kg^-1 K^-1")
+        .values[:nx, :ny, : nz + 1]
+    )
+    qv = (
+        state["mass_fraction_of_water_vapor_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz]
+    )
+    qc = (
+        state["mass_fraction_of_cloud_liquid_water_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz]
+    )
+    rv = sa._rv
     beta = sa._beta
-    lhvw = sa._physical_constants["latent_heat_of_vaporization_of_water"]
+    lhvw = sa._lhvw
 
-    qv_out, qc_out = saturation_adjustment_kessler_validation(
-        p, temp, qv_in, qc_in, beta, lhvw, cp
+    qv_val, qc_val, temp_val, _ = kessler_saturation_adjustment_diagnostic_validation(
+        timestep.total_seconds(), p, temp, exn, qv, qc, tetens_formula, beta, lhvw, cp, rv
     )
 
-    assert np.allclose(
-        diagnostics["mass_fraction_of_water_vapor_in_air"], qv_out, equal_nan=True
+    compare_arrays(
+        diagnostics["mass_fraction_of_water_vapor_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz],
+        qv_val,
     )
-    assert np.allclose(
-        diagnostics["mass_fraction_of_cloud_liquid_water_in_air"], qc_out, equal_nan=True
+    compare_arrays(
+        diagnostics["mass_fraction_of_cloud_liquid_water_in_air"]
+        .to_units("g g^-1")
+        .values[:nx, :ny, :nz],
+        qc_val,
+    )
+    compare_arrays(
+        diagnostics["air_temperature"].to_units("K").values[:nx, :ny, :nz], temp_val
     )
 
 

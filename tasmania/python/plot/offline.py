@@ -20,12 +20,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+from matplotlib import pyplot as plt
 import numpy as np
-from sympl import DataArray
+from typing import Optional, Sequence, TYPE_CHECKING, Union
 
 from tasmania.python.plot.drawer import Drawer
 from tasmania.python.plot.retrievers import DataRetriever
 from tasmania.python.plot.plot_utils import make_lineplot
+from tasmania.python.utils import taz_types
+
+if TYPE_CHECKING:
+    from tasmania.python.grids.grid import Grid
 
 
 class Line(Drawer):
@@ -36,16 +41,16 @@ class Line(Drawer):
 
     def __init__(
         self,
-        grids,
-        field_name,
-        field_units,
-        x,
-        y,
-        z,
-        xdata=None,
-        ydata=None,
-        properties=None,
-    ):
+        grids: "Sequence[Grid]",
+        field_name: str,
+        field_units: str,
+        x: Union[int, Sequence[int]],
+        y: Union[int, Sequence[int]],
+        z: Union[int, Sequence[int]],
+        xdata: Optional[np.ndarray] = None,
+        ydata: Optional[np.ndarray] = None,
+        properties: Optional[taz_types.options_dict_t] = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -110,13 +115,18 @@ class Line(Drawer):
             self._ydata = ydata
             self._data_on_yaxis = False
 
-    def reset(self):
+    def reset(self) -> None:
         if self._data_on_yaxis:
             self._ydata = []
         else:
             self._xdata = []
 
-    def __call__(self, state, fig=None, ax=None):
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        fig: Optional[plt.Figure] = None,
+        ax: Optional[plt.Axes] = None,
+    ) -> None:
         if self._data_on_yaxis:
             k = len(self._ydata)
             if k >= len(self._retrievers):

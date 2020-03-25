@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import numpy as np
 from sympl import (
     DiagnosticComponent,
     DiagnosticComponentComposite as SymplDiagnosticComponentComposite,
@@ -28,15 +29,14 @@ from sympl import (
     ImplicitTendencyComponent,
     ImplicitTendencyComponentComposite,
 )
+from typing import Any, Mapping
 
 from tasmania.python.framework.composite import (
     DiagnosticComponentComposite as TasmaniaDiagnosticComponentComposite,
 )
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
-from tasmania.python.framework.sts_tendency_steppers import (
-    STSTendencyStepper,
-    tendencystepper_factory,
-)
+from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
+from tasmania.python.utils import taz_types
 from tasmania.python.utils.framework_utils import (
     check_property_compatibility,
     get_input_properties,
@@ -91,12 +91,11 @@ class SequentialTendencySplitting:
         TendencyComponentComposite,
         ImplicitTendencyComponent,
         ImplicitTendencyComponentComposite,
+        ConcurrentCoupling,
     )
-    allowed_component_type = (
-        allowed_diagnostic_type + allowed_tendency_type + (ConcurrentCoupling,)
-    )
+    allowed_component_type = allowed_diagnostic_type + allowed_tendency_type
 
-    def __init__(self, *args):
+    def __init__(self, *args: Mapping[str, Any]) -> None:
         """
         Parameters
         ----------
@@ -133,6 +132,18 @@ class SequentialTendencySplitting:
                         - 'rk3ws', for the three-stage RK scheme as used in the
                             `COSMO model <http://www.cosmo-model.org>`_; this method is
                             nominally second-order, and third-order for linear problems.
+
+                * if 'component' is a
+
+                        - :class:`sympl.TendencyComponent`,
+                        - :class:`sympl.TendencyComponentComposite`,
+                        - :class:`sympl.ImplicitTendencyComponent`,
+                        - :class:`sympl.ImplicitTendencyComponentComposite`, or
+                        - :class:`tasmania.ConcurrentCoupling`,
+
+                    'gt_powered' specifies if all the time-intensive math
+                    operations performed inside 'time_integrator' should harness
+                    GT4Py. Defaults to `False`.
 
                 * if 'component' is a
 
@@ -200,18 +211,20 @@ class SequentialTendencySplitting:
             else:
                 integrator = process.get("time_integrator", "forward_euler")
                 enforce_hb = process.get("enforce_horizontal_boundary", False)
-                kwargs = process.get(
+                gt_powered = process.get("gt_powered", False)
+                integrator_kwargs = process.get(
                     "time_integrator_kwargs",
-                    {"backend": None, "default_origin": None, "managed_memory": False},
+                    {"backend": None, "dtype": np.float32, "rebuild": False},
                 )
 
-                TendencyStepper = tendencystepper_factory(integrator)
                 self._component_list.append(
-                    TendencyStepper(
+                    STSTendencyStepper.factory(
+                        integrator,
                         bare_component,
                         execution_policy="serial",
                         enforce_horizontal_boundary=enforce_hb,
-                        **kwargs
+                        gt_powered=gt_powered,
+                        **integrator_kwargs
                     )
                 )
 
@@ -224,15 +237,20 @@ class SequentialTendencySplitting:
         self.output_properties = self._get_output_properties()
         self.provisional_output_properties = self._get_provisional_output_properties()
 
-    def _get_input_properties(self):
-        sts_list = tuple(
-            component
-            for component in self._component_list
-            if isinstance(component, STSTendencyStepper)
+    def _get_input_properties(self) -> taz_types.properties_dict_t:
+        return get_input_properties(
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "input_properties",
+                    "consider_diagnostics": True,
+                }
+                for component in self._component_list
+                if isinstance(component, STSTendencyStepper)
+            )
         )
-        return get_input_properties(sts_list, consider_diagnostics=True)
 
-    def _get_provisional_input_properties(self):
+    def _get_provisional_input_properties(self) -> taz_types.properties_dict_t:
         at_disposal = {}
         return_dict = {}
 
@@ -259,22 +277,23 @@ class SequentialTendencySplitting:
 
         return return_dict
 
-    def _get_output_properties(self):
+    def _get_output_properties(self) -> taz_types.properties_dict_t:
         return_dict = self._get_input_properties()
-        sts_list = tuple(
-            component
-            for component in self._component_list
-            if isinstance(component, STSTendencyStepper)
-        )
         get_output_properties(
-            sts_list,
-            component_attribute_name="diagnostic_properties",
+            tuple(
+                {
+                    "component": component,
+                    "attribute_name": "diagnostic_properties",
+                    "consider_diagnostics": False,
+                }
+                for component in self._component_list
+                if isinstance(component, STSTendencyStepper)
+            ),
             return_dict=return_dict,
-            consider_diagnostics=False,
         )
         return return_dict
 
-    def _get_provisional_output_properties(self):
+    def _get_provisional_output_properties(self) -> taz_types.properties_dict_t:
         return_dict = self._get_provisional_input_properties()
 
         for component in self._component_list:
@@ -291,7 +310,12 @@ class SequentialTendencySplitting:
 
         return return_dict
 
-    def __call__(self, state, state_prv, timestep):
+    def __call__(
+        self,
+        state: taz_types.dataarray_dict_t,
+        state_prv: taz_types.mutable_dataarray_dict_t,
+        timestep: taz_types.timedelta_t,
+    ) -> None:
         """
         Advance the model state one timestep forward in time by pursuing
         the sequential-tendency splitting method.
@@ -333,7 +357,11 @@ class SequentialTendencySplitting:
                 state_prv.update(state_tmp)
                 state.update(diagnostics)
             else:
-                diagnostics = component(state_prv)
+                try:
+                    diagnostics = component(state_prv)
+                except TypeError:
+                    diagnostics = component(state_prv, timestep)
+
                 state_prv.update(diagnostics)
 
             # ensure state is still defined at current time level

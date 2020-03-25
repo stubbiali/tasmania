@@ -20,7 +20,13 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-def get_constant(name, units, default_value=None):
+from sympl import DataArray
+from typing import Dict, Mapping, Optional
+
+
+def get_constant(
+    name: str, units: str, default_value: Optional[DataArray] = None
+) -> float:
     """
     Get the value of a physical constant in the desired units.
     The function first looks for the constant in :mod:`tasmania.namelist`.
@@ -71,7 +77,10 @@ def get_constant(name, units, default_value=None):
                 raise ConstantNotFoundError("{} not found".format(name))
 
 
-def get_physical_constants(default_physical_constants, physical_constants=None):
+def get_physical_constants(
+    default_physical_constants: Mapping[str, DataArray],
+    physical_constants: Mapping[str, DataArray] = None,
+) -> Dict[str, float]:
     """
     Parameters
     ----------

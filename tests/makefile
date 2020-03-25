@@ -29,6 +29,7 @@ TMP_FOLDERS += $(shell find $(shell pwd) -name '.cache')
 TMP_FOLDERS += $(shell find $(shell pwd) -name '.hypothesis')
 GTCACHE := $(shell find $(shell pwd) -name '.gt_cache')
 MPL_FOLDERS := baseline_images result_images
+ENABLE_MPL_TESTS := 0
 
 all: clean prepare run
 
@@ -37,11 +38,18 @@ clean:
 	@$(RM) -r $(TMP_FOLDERS)
 
 prepare:
-	. prepare_tests.sh
-	. prepare_matplotlib.sh
+ifeq ($(ENABLE_MPL_TESTS), 1)
+	@./prepare_matplotlib.sh
+endif
 
 run: prepare
-	pytest --mpl --cov=../tasmania/python .
+ifeq ($(ENABLE_MPL_TESTS), 1)
+	@pytest --mpl --cov=../tasmania/python \
+        burgers/ dwarfs/ framework/ gt4py/ isentropic/ physics/ plot/ utils/
+else
+	@pytest --mpl --cov=../tasmania/python \
+        burgers/ dwarfs/ framework/ gt4py/ isentropic/ physics/ utils/
+endif
 
 gtclean: clean
 	@$(RM) -r $(GTCACHE)

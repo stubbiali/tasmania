@@ -8,7 +8,7 @@
 # This file is part of the Tasmania project. Tasmania is free software:
 # you can redistribute it and/or modify it under the terms of the
 # GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or any later version. 
+# either version 3 of the License, or any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,30 +34,32 @@ import pytest
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping as VD
 from tasmania.python.utils.storage_utils import zeros
 
-try:
-    from .conf import backend as conf_backend, default_origin as conf_dorigin
-    from .utils import (
-        compare_arrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_raw_field,
-        st_timedeltas,
-    )
-except (ImportError, ModuleNotFoundError):
-    from conf import backend as conf_backend, default_origin as conf_dorigin
-    from utils import (
-        compare_arrays,
-        st_domain,
-        st_floats,
-        st_one_of,
-        st_raw_field,
-        st_timedeltas,
-    )
+from tests.conf import (
+    backend as conf_backend,
+    datatype as conf_dtype,
+    default_origin as conf_dorigin,
+)
+from tests.utilities import (
+    compare_arrays,
+    st_domain,
+    st_floats,
+    st_one_of,
+    st_raw_field,
+    st_timedeltas,
+)
 
 
 def assert_rayleigh(
-    grid, depth, backend, default_origin, dt, phi_now, phi_new, phi_ref, phi_out
+    grid,
+    depth,
+    gt_powered,
+    backend,
+    default_origin,
+    dt,
+    phi_now,
+    phi_new,
+    phi_ref,
+    phi_out,
 ):
     dtype = phi_now.dtype
     ni, nj, nk = phi_now.shape
@@ -68,6 +70,7 @@ def assert_rayleigh(
         depth,
         0.01,
         time_units="s",
+        gt_powered=gt_powered,
         backend=backend,
         dtype=dtype,
         default_origin=default_origin,
@@ -99,15 +102,24 @@ def test_rayleigh(data):
     # ========================================
     # random data generation
     # ========================================
+    gt_powered = data.draw(hyp_st.booleans(), label="gt_powered")
+    backend = data.draw(st_one_of(conf_backend), label="backend")
+    dtype = data.draw(st_one_of(conf_dtype), label="dtype")
+    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
+
     domain = data.draw(
-        st_domain(xaxis_length=(1, 30), yaxis_length=(1, 30), zaxis_length=(1, 30)),
+        st_domain(
+            xaxis_length=(1, 30),
+            yaxis_length=(1, 30),
+            zaxis_length=(1, 30),
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+        ),
         label="grid",
     )
     cgrid = domain.numerical_grid
 
-    backend = data.draw(st_one_of(conf_backend), label="backend")
-    dtype = cgrid.x.dtype
-    default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
     dny = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dny")
     dnz = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnz")
@@ -118,6 +130,7 @@ def test_rayleigh(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -129,6 +142,7 @@ def test_rayleigh(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -140,6 +154,7 @@ def test_rayleigh(data):
             shape,
             min_value=-1e10,
             max_value=1e10,
+            gt_powered=gt_powered,
             backend=backend,
             dtype=dtype,
             default_origin=default_origin,
@@ -157,9 +172,20 @@ def test_rayleigh(data):
     # ========================================
     # test
     # ========================================
-    phi_out = zeros(shape, backend, dtype, default_origin=default_origin)
+    phi_out = zeros(
+        shape, gt_powered, backend=backend, dtype=dtype, default_origin=default_origin
+    )
     assert_rayleigh(
-        cgrid, depth, backend, default_origin, dt, phi_now, phi_new, phi_ref, phi_out
+        cgrid,
+        depth,
+        gt_powered,
+        backend,
+        default_origin,
+        dt,
+        phi_now,
+        phi_new,
+        phi_ref,
+        phi_out,
     )
 
 

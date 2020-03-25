@@ -112,7 +112,7 @@ class FluxIsentropicCentered(FluxIsentropic):
 		v_unstg = gt.Equation()
 		v_unstg[i, j, k] = 0.5 * (v[i, j, k] + v[i, j+1, k]) 
 
-		# Compute flux for the isentropic density and the momentums
+		# Compute flux for the isentropic_prognostic density and the momentums
 		self._flux_s_x = self._get_centered_flux_x(i, j, k, u_unstg, s)
 		self._flux_s_y = self._get_centered_flux_y(i, j, k, v_unstg, s)
 		self._flux_U_x = self._get_centered_flux_x(i, j, k, u_unstg, U)
