@@ -159,9 +159,6 @@ from tasmania.python.utils.storage_utils import (
 from tasmania.python.utils.utils import feed_module, get_time_string
 
 
-__version__ = "0.6.1"
-
-
 __all__ = (
     RMSD,
     RRMSD,
@@ -264,3 +261,14 @@ __all__ = (
     taz_types,
     zeros,
 )
+
+
+from pkg_resources import get_distribution, DistributionNotFound
+
+
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    __version__ = "unknown"
+finally:
+    del get_distribution, DistributionNotFound

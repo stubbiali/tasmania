@@ -76,16 +76,16 @@ if not os.environ.get("DISABLE_TASMANIA_CEXT"):
 
 setup(
     name="tasmania",
-    version="0.6.1",
-    author="Stefano Ubbiali",
+    author="ETH Zurich",
     author_email="subbiali@phys.ethz.ch",
     description="A Python library to ease the composition, configuration, "
     "and execution of Earth system models.",
     long_description=read_file("README.md"),
     long_description_content_type="text/markdown",
-    keywords="framework coupling",
+    # keywords="framework coupling",
     url="https://github.com/eth-cscs/tasmania",
-    license="",
+    license="gpl3",
+    license_files="LICENSE.txt",
     # package_dir={'': 'tasmania'},
     packages=find_packages(),
     install_requires=read_file("requirements.txt").split("\n"),
@@ -106,5 +106,6 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Physics",
     ),
+    use_scm_version=True,
     **setup_kwargs
 )
