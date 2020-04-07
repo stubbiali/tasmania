@@ -47,6 +47,33 @@ def read_file(fname):
     return open(os.path.join(os.path.dirname(__file__), fname), encoding="utf8").read()
 
 
+setup_kwargs = {}
+
+
+if not os.environ.get("DISABLE_TASMANIA_CEXT"):
+    setup_kwargs["ext_package"] = "tasmania.cpp.parser"
+    setup_kwargs["ext_modules"] = [
+        Extension(
+            "parser_1d",
+            sources=[
+                "tasmania/cpp/parser/parser_1d_cpp.cpp",
+                "tasmania/cpp/parser/parser_1d.cpp",
+            ],
+            include_dirs=["tasmania/cpp/parser"],
+            optional=True,
+        ),
+        Extension(
+            "parser_2d",
+            sources=[
+                "tasmania/cpp/parser/parser_2d_cpp.cpp",
+                "tasmania/cpp/parser/parser_2d.cpp",
+            ],
+            include_dirs=["tasmania/cpp/parser"],
+            optional=True,
+        ),
+    ]
+
+
 setup(
     name="tasmania",
     version="0.6.1",
@@ -65,25 +92,6 @@ setup(
     # package_data={'': ['tests/*', '*.pickle']},
     setup_requires=["setuptools_scm", "pytest-runner"],
     tests_require=["pytest"],
-    ext_package="tasmania.cpp.parser",
-    ext_modules=[
-        Extension(
-            "parser_1d",
-            sources=[
-                "tasmania/cpp/parser/parser_1d_cpp.cpp",
-                "tasmania/cpp/parser/parser_1d.cpp",
-            ],
-            include_dirs=["tasmania/cpp/parser"],
-        ),
-        Extension(
-            "parser_2d",
-            sources=[
-                "tasmania/cpp/parser/parser_2d_cpp.cpp",
-                "tasmania/cpp/parser/parser_2d.cpp",
-            ],
-            include_dirs=["tasmania/cpp/parser"],
-        ),
-    ],
     classifiers=(
         "Development Status :: 3 - Alpha",
         "Intended Audience:: Science / Research",
@@ -98,4 +106,5 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Scientific/Engineering :: Physics",
     ),
+    **setup_kwargs
 )

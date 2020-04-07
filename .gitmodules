@@ -9,4 +9,3 @@
 [submodule "docker/external/xarray"]
 	path = docker/external/xarray
 	url = https://github.com/pydata/xarray.git
-	branch = master

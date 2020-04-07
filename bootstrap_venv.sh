@@ -2,7 +2,8 @@
 
 MODULES=( )
 # MODULES=( daint-gpu cray-python/3.6.5.7 cudatoolkit )
-PYTHON=python3.7   # use 'python3.7' when possible
+PYTHON=python3.6
+DISABLE_CEXT=1
 CUDA=
 VENV=venv
 FRESH_INSTALL=1
@@ -11,7 +12,7 @@ function install()
 {
   source $VENV/bin/activate && \
     pip install --upgrade pip && \
-    pip install -e . && \
+    export DISABLE_TASMANIA_CEXT=$DISABLE_CEXT; pip install -e . && \
     pip install -e docker/external/gt4py[$CUDA] || \
       pip install -e docker/external/gt4py && \
 	python -m gt4py.gt_src_manager install && \
