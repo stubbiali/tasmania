@@ -1,0 +1,6 @@
+include *.md
+include *.rst
+include *.toml
+include *.txt
+include bootstrap_venv.sh
+include makefile

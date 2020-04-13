@@ -13,12 +13,13 @@ function install()
   source $VENV/bin/activate && \
     pip install --upgrade pip && \
     export DISABLE_TASMANIA_CEXT=$DISABLE_CEXT; pip install -e . && \
+    pip install -r requirements_dev.txt && \
+	  pip install -e docker/external/xarray && \
+    pip install -e docker/external/sympl && \
     pip install -e docker/external/gt4py[$CUDA] || \
       pip install -e docker/external/gt4py && \
-	python -m gt4py.gt_src_manager install && \
-    pip install -e docker/external/sympl && \
-	pip install -e docker/external/xarray && \
-	deactivate
+	  python -m gt4py.gt_src_manager install && \
+	  deactivate
 
   # On OSX only:
   # change matplotlib backend from macosx to TkAgg
