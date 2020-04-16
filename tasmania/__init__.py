@@ -57,19 +57,19 @@ from tasmania.python.framework.sequential_tendency_splitting import (
 from tasmania.python.framework.sequential_update_splitting import (
     SequentialUpdateSplitting,
 )
-from tasmania.python.framework.sts_tendency_steppers import STSTendencyStepper
-from tasmania.python.framework.tendency_steppers import TendencyStepper
+from tasmania.python.framework.sts_tendency_stepper import STSTendencyStepper
+from tasmania.python.framework.tendency_stepper import TendencyStepper
 
-# grids
-from tasmania.python.grids.domain import Domain
-from tasmania.python.grids.grid import Grid, PhysicalGrid, NumericalGrid
-from tasmania.python.grids.horizontal_boundary import HorizontalBoundary
-from tasmania.python.grids.horizontal_grid import (
+# domain
+from tasmania.python.domain.domain import Domain
+from tasmania.python.domain.grid import Grid, PhysicalGrid, NumericalGrid
+from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
+from tasmania.python.domain.horizontal_grid import (
     HorizontalGrid,
     PhysicalHorizontalGrid,
     NumericalHorizontalGrid,
 )
-from tasmania.python.grids.topography import (
+from tasmania.python.domain.topography import (
     Topography,
     PhysicalTopography,
     NumericalTopography,
@@ -274,5 +274,6 @@ finally:
     del get_distribution, DistributionNotFound
 
 
+__author__ = "ETH Zurich"
 __copyright__ = "ETH Zurich"
-__license__ = "gpl3"
+__license__ = "GPLv3"

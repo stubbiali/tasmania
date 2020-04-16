@@ -139,7 +139,11 @@ class WrappingStencil:
         stencil = decorator(self.stencil_defs)
 
         stencil(
-            **stencil_args, dt=dt, dz=dz, origin={"_all_": (0, 0, 0)}, domain=(mi, mj, mk)
+            **stencil_args,
+            dt=dt,
+            dz=dz,
+            origin={"_all_": (0, 0, 0)},
+            domain=(mi, mj, mk)
         )
 
         names = ["flux_s", "flux_su", "flux_sv"]
@@ -217,7 +221,9 @@ def get_centered_flux(w, phi):
 
     kstop = w.shape[2] - 1
 
-    f[:, :, 1:kstop] = w[:, :, 1:-1] * 0.5 * (phi[:, :, : kstop - 1] + phi[:, :, 1:kstop])
+    f[:, :, 1:kstop] = (
+        w[:, :, 1:-1] * 0.5 * (phi[:, :, : kstop - 1] + phi[:, :, 1:kstop])
+    )
 
     return f
 
@@ -602,7 +608,14 @@ def test_centered_gt(data):
     # test bed
     # ========================================
     validation_gt(
-        "centered", domain, field, timestep, backend, dtype, default_origin, rebuild=False
+        "centered",
+        domain,
+        field,
+        timestep,
+        backend,
+        dtype,
+        default_origin,
+        rebuild=False,
     )
 
 

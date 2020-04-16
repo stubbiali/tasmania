@@ -65,7 +65,10 @@ topography = {
 
 # horizontal boundary
 nb = 4
-horizontal_boundary_types = ("relaxed",)  # "periodic", "dirichlet", "identity"
+horizontal_boundary_types = (
+    "relaxed",
+    "periodic",
+)  # "dirichlet", "identity", "periodic", "relaxed"
 
 # isentropic_prognostic model
 isentropic_state = {

@@ -61,13 +61,17 @@ def assert_yz(phi_tnd, phi_tnd_assert, nb):
 
 def laplacian_x(dx, phi):
     out = deepcopy(phi)
-    out[1:-1, :, :] = (phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]) / (dx * dx)
+    out[1:-1, :, :] = (phi[2:, :, :] - 2.0 * phi[1:-1, :, :] + phi[:-2, :, :]) / (
+        dx * dx
+    )
     return out
 
 
 def laplacian_y(dy, phi):
     out = deepcopy(phi)
-    out[:, 1:-1, :] = (phi[:, 2:, :] - 2.0 * phi[:, 1:-1, :] + phi[:, :-2, :]) / (dy * dy)
+    out[:, 1:-1, :] = (phi[:, 2:, :] - 2.0 * phi[:, 1:-1, :] + phi[:, :-2, :]) / (
+        dy * dy
+    )
     return out
 
 

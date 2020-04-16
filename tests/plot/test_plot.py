@@ -124,7 +124,7 @@ def test_profile_x(isentropic_data):
         ),
         "title_right": str(state["time"] - states[0]["time"]),
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "Velocity [m/s]",
         "y_lim": [-20, 100],
         "legend_on": True,
@@ -346,9 +346,9 @@ def test_plot_2d(isentropic_data, drawer_topography_2d):
         "title_left": "Horizontal velocity [m s$^{-1}$] at the surface",
         "title_right": str(state["time"] - states[0]["time"]),
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$y$ [km]",
-        #'y_lim': [-250, 250],
+        # 'y_lim': [-250, 250],
     }
 
     # instantiate the monitor

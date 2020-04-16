@@ -37,7 +37,7 @@ from tasmania.python.utils.data_utils import get_physical_constants
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
+    from tasmania.python.domain.grid import Grid
 
 
 _d_physical_constants = {
@@ -67,7 +67,7 @@ def get_isothermal_isentropic_analytical_solution(
     Parameters
     ----------
     grid : obj
-        :class:`~tasmania.grids.grid_xyz.GridXYZ` representing the underlying grid.
+        :class:`~tasmania.domain.grid_xyz.GridXYZ` representing the underlying grid.
         It must consist of only one points in the :math:`y`-direction.
     x_velocity_initial : sympl.DataArray
         One-item :class:`sympl.DataArray` representing the initial :math:`x`-velocity.

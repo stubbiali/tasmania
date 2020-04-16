@@ -85,7 +85,9 @@ def kessler_validation(
     if rain_evaporation:
         ps = svpf(t)
         qvs = beta * ps / p
-        er = np.where(qr > 0.0, 0.0484794 * (qvs - qv) * (rho * qr) ** (13.0 / 20.0), 0.0)
+        er = np.where(
+            qr > 0.0, 0.0484794 * (qvs - qv) * (rho * qr) ** (13.0 / 20.0), 0.0
+        )
         # er[qr < 0] = 0.0
         tnd_qv = er
         tnd_qr -= er
@@ -503,7 +505,12 @@ def test_kessler_saturation_adjustment_diagnostic(data):
 
     svpf = goff_gratch_formula if svpf_type == "goff_gratch" else tetens_formula
 
-    out_qv, out_qc, out_t, out_theta_tnd = kessler_saturation_adjustment_diagnostic_validation(
+    (
+        out_qv,
+        out_qc,
+        out_t,
+        out_theta_tnd,
+    ) = kessler_saturation_adjustment_diagnostic_validation(
         dt.total_seconds(), p, t, exn, qv, qc, svpf, beta, lhvw, cp, rv
     )
 

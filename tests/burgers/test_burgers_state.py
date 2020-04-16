@@ -121,7 +121,8 @@ def test_zhao_state_factory(data):
     grid = data.draw(st_physical_grid(zaxis_length=(1, 1)))
 
     eps = DataArray(
-        data.draw(st_floats(min_value=-1e10, max_value=1e10)), attrs={"units": "m^2 s^-1"}
+        data.draw(st_floats(min_value=-1e10, max_value=1e10)),
+        attrs={"units": "m^2 s^-1"},
     )
 
     init_time = data.draw(hyp_st.datetimes())

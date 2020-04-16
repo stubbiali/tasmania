@@ -39,7 +39,7 @@ import gt4py as gt
 
 from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
-from tasmania.python.grids.domain import Domain
+from tasmania.python.domain.domain import Domain
 from tasmania.python.framework.base_components import TendencyComponent
 from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.isentropic.dynamics.diagnostics import (
@@ -162,7 +162,10 @@ def apply_second_order_smoothing(hs, phi, phi_out):
         phi_out[i, j, k] = (1 - 0.375 * g[i, j, k]) * phi[i, j, k] + 0.0625 * g[
             i, j, k
         ] * (
-            -phi[i, jm2, k] + 4.0 * phi[i, jm1, k] - phi[i, jp2, k] + 4.0 * phi[i, jp1, k]
+            -phi[i, jm2, k]
+            + 4.0 * phi[i, jm1, k]
+            - phi[i, jp2, k]
+            + 4.0 * phi[i, jp1, k]
         )
     elif nj < 5:
         i, j, k = slice(2, ni - 2), slice(0, nj), slice(0, nk)
@@ -172,7 +175,10 @@ def apply_second_order_smoothing(hs, phi, phi_out):
         phi_out[i, j, k] = (1 - 0.375 * g[i, j, k]) * phi[i, j, k] + 0.0625 * g[
             i, j, k
         ] * (
-            -phi[im2, j, k] + 4.0 * phi[im1, j, k] - phi[ip2, j, k] + 4.0 * phi[ip1, j, k]
+            -phi[im2, j, k]
+            + 4.0 * phi[im1, j, k]
+            - phi[ip2, j, k]
+            + 4.0 * phi[ip1, j, k]
         )
     else:
         i, j, k = slice(2, ni - 2), slice(2, nj - 2), slice(0, nk)

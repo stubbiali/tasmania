@@ -234,7 +234,9 @@ def test_serial(data, subtests):
             if key == "time":
                 compare_datetimes(state["time"], state_dc["time"])
             else:
-                compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
+                compare_dataarrays(
+                    state[key], state_dc[key], compare_coordinate_values=False
+                )
 
     assert len(state) == len(state_dc)
 
@@ -443,7 +445,9 @@ def test_asparallel(data, subtests):
             if key == "time":
                 compare_datetimes(state["time"], state_dc["time"])
             else:
-                compare_dataarrays(state[key], state_dc[key], compare_coordinate_values=False)
+                compare_dataarrays(
+                    state[key], state_dc[key], compare_coordinate_values=False
+                )
 
     assert len(state) == len(state_dc)
 
@@ -518,7 +522,17 @@ def test_asparallel(data, subtests):
     lhvw = sa._lhvw
 
     qv_val, qc_val, temp_val, _ = kessler_saturation_adjustment_diagnostic_validation(
-        timestep.total_seconds(), p, temp, exn, qv, qc, tetens_formula, beta, lhvw, cp, rv
+        timestep.total_seconds(),
+        p,
+        temp,
+        exn,
+        qv,
+        qc,
+        tetens_formula,
+        beta,
+        lhvw,
+        cp,
+        rv,
     )
 
     compare_arrays(

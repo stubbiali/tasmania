@@ -39,9 +39,9 @@ nb = 3
 hb_kwargs = {"nr": 6}
 
 # gt4py settings
-gt_powered = False
+gt_powered = True
 gt_kwargs = {
-    "backend": "gtcuda",
+    "backend": "gtmc",
     "build_info": None,
     "dtype": np.float64,
     "exec_info": None,

@@ -36,7 +36,12 @@ import tasmania.python.utils.storage_utils
 from tasmania.python.utils import data_utils as du
 from tasmania.python.utils.exceptions import ConstantNotFoundError
 
-from tests.utilities import compare_arrays, st_physical_grid, st_physical_horizontal_grid, st_raw_field
+from tests.utilities import (
+    compare_arrays,
+    st_physical_grid,
+    st_physical_horizontal_grid,
+    st_raw_field,
+)
 
 
 def test_get_constant():
@@ -46,7 +51,9 @@ def test_get_constant():
     v = du.get_constant("foo", "m", default_value=DataArray(10.0, attrs={"units": "km"}))
     assert v == 10000.0
 
-    w = du.get_constant("pippo", "1", default_value=DataArray(10.0, attrs={"units": "1"}))
+    w = du.get_constant(
+        "pippo", "1", default_value=DataArray(10.0, attrs={"units": "1"})
+    )
     assert w == 10.0
 
     try:
@@ -64,7 +71,9 @@ def test_get_physical_constants():
     d_physical_constants = {
         "gravitational_acceleration": DataArray(9.80665e-3, attrs={"units": "km s^-2"}),
         "gas_constant_of_dry_air": DataArray(287.05, attrs={"units": "J K^-1 kg^-1"}),
-        "gas_constant_of_water_vapor": DataArray(461.52, attrs={"units": "hJ K^-1 g^-1"}),
+        "gas_constant_of_water_vapor": DataArray(
+            461.52, attrs={"units": "hJ K^-1 g^-1"}
+        ),
         "latent_heat_of_vaporization_of_water": DataArray(
             2.5e6, attrs={"units": "J kg^-1"}
         ),

@@ -52,7 +52,9 @@ from tests.utilities import compare_arrays, st_domain, st_isentropic_state_f, st
     deadline=None,
 )
 @given(data=hyp_st.data())
-def test_properties(data, make_fake_tendency_component_1, make_fake_tendency_component_2):
+def test_properties(
+    data, make_fake_tendency_component_1, make_fake_tendency_component_2
+):
     # ========================================
     # random data generation
     # ========================================

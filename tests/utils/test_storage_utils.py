@@ -38,7 +38,12 @@ import tempfile
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.io_utils import NetCDFMonitor, load_netcdf_dataset
 
-from tests.utilities import compare_arrays, compare_dataarrays, st_domain, st_isentropic_state
+from tests.utilities import (
+    compare_arrays,
+    compare_dataarrays,
+    st_domain,
+    st_isentropic_state,
+)
 
 
 @settings(
@@ -190,7 +195,9 @@ def assert_isentropic_states(state, state_ref, *, subtests):
             if name == "time":
                 assert state["time"] == state_ref["time"]
             else:
-                compare_dataarrays(state[name], state_ref[name], compare_coordinate_values=False)
+                compare_dataarrays(
+                    state[name], state_ref[name], compare_coordinate_values=False
+                )
 
 
 @settings(

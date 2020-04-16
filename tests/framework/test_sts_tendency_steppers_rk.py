@@ -127,7 +127,8 @@ def test_forward_euler(data, make_fake_tendency_component_1):
 
     assert "air_isentropic_density" in fe.provisional_input_properties
     assert units_are_same(
-        fe.provisional_input_properties["air_isentropic_density"]["units"], "kg m^-2 K^-1"
+        fe.provisional_input_properties["air_isentropic_density"]["units"],
+        "kg m^-2 K^-1",
     )
     assert "x_momentum_isentropic" in fe.provisional_input_properties
     assert units_are_same(

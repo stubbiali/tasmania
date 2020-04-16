@@ -356,7 +356,8 @@ def st_topography_kwargs(
     else:
         _time = draw(
             st_timedeltas(
-                min_value=conf.topography["time"][0], max_value=conf.topography["time"][1]
+                min_value=conf.topography["time"][0],
+                max_value=conf.topography["time"][1],
             )
         )
 
@@ -458,7 +459,7 @@ def st_physical_grid(
     yaxis_length=None,
     zaxis_name="z",
     zaxis_length=None,
-    dtype=np.float64,
+    dtype=np.float64
 ):
     """ Strategy drawing a :class:`tasmania.PhysicalGrid` object. """
     nx = draw(
@@ -758,6 +759,131 @@ def st_field(
     )
 
     return da
+
+
+@hyp_st.composite
+def st_state(
+    draw,
+    grid,
+    time=None,
+    gt_powered=True,
+    *,
+    backend="numpy",
+    default_origin=None,
+    storage_shape=None
+):
+    nx, ny, nz = grid.grid_xy.nx, grid.grid_xy.ny, grid.nz
+    dtype = grid.x.dtype
+
+    if storage_shape is not None:
+        storage_shape = (
+            max(nx + 1, storage_shape[0]),
+            max(ny + 1, storage_shape[1]),
+            max(nz + 1, storage_shape[2]),
+        )
+
+    return_dict = {}
+
+    # time
+    return_dict["time"] = time or draw(hyp_st.datetimes())
+
+    # (nx, ny, nz)
+    field = draw(
+        st_raw_field(
+            storage_shape or (nx, ny, nz),
+            -1e6,
+            1e6,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    return_dict["afield"] = get_dataarray_3d(
+        field, grid, "m", grid_shape=(nx, ny, nz), set_coordinates=False
+    )
+
+    # (nx+1, ny, nz)
+    field = draw(
+        st_raw_field(
+            storage_shape or (nx + 1, ny, nz),
+            -1e6,
+            1e6,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    return_dict["afield_at_u_locations"] = get_dataarray_3d(
+        field, grid, "kg", grid_shape=(nx + 1, ny, nz), set_coordinates=False
+    )
+
+    # (nx, ny+1, nz)
+    field = draw(
+        st_raw_field(
+            storage_shape or (nx, ny + 1, nz),
+            -1e6,
+            1e6,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    return_dict["afield_at_v_locations"] = get_dataarray_3d(
+        field, grid, "hr", grid_shape=(nx, ny + 1, nz), set_coordinates=False
+    )
+
+    # (nx+1, ny+1, nz)
+    field = draw(
+        st_raw_field(
+            storage_shape or (nx + 1, ny + 1, nz),
+            -1e6,
+            1e6,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    return_dict["afield_at_uv_locations"] = get_dataarray_3d(
+        field, grid, "J K^-1", grid_shape=(nx + 1, ny + 1, nz), set_coordinates=False
+    )
+
+    # (nx, ny, nz+1)
+    field = draw(
+        st_raw_field(
+            storage_shape or (nx, ny, nz + 1),
+            -1e6,
+            1e6,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    return_dict["afield_on_interface_levels"] = get_dataarray_3d(
+        field, grid, "kg m s^-2", grid_shape=(nx, ny, nz + 1), set_coordinates=False
+    )
+
+    # (nx+1, ny, nz+1)
+    field = draw(
+        st_raw_field(
+            storage_shape or (nx + 1, ny, nz + 1),
+            -1e6,
+            1e6,
+            gt_powered=gt_powered,
+            backend=backend,
+            dtype=dtype,
+            default_origin=default_origin,
+        )
+    )
+    return_dict["afield_at_u_locations_on_interface_levels"] = get_dataarray_3d(
+        field, grid, "kg m s^-2", grid_shape=(nx + 1, ny, nz + 1), set_coordinates=False
+    )
+
+    return return_dict
 
 
 @hyp_st.composite

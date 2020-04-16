@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import xarray as xr
 
 from tasmania.python.burgers.state import ZhaoSolutionFactory
-from tasmania.python.grids.domain import Domain
+from tasmania.python.domain.domain import Domain
 from tasmania.python.utils import taz_types
 from tasmania.python.utils.storage_utils import (
     deepcopy_dataarray_dict,
@@ -292,7 +292,7 @@ class NetCDFMonitor(sympl.NetCDFMonitor):
 
 
 def load_netcdf_dataset(
-    filename: str
+    filename: str,
 ) -> Tuple[Domain, str, List[taz_types.dataarray_dict_t]]:
     """
     Load the sequence of states stored in a NetCDF dataset,

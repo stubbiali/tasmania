@@ -717,11 +717,15 @@ def test_isub(data, subtests):
             units = field_properties[key]["units"]
             if key in dict1_b:
                 out_val = dict1_b[key].to_units(units)
-                compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+                compare_dataarrays(
+                    dict1_a[key], out_val, compare_coordinate_values=False
+                )
             else:
                 out_val = dict2[key].to_units(units)
                 out_val.values *= -1
-                compare_dataarrays(dict1_a[key], out_val, compare_coordinate_values=False)
+                compare_dataarrays(
+                    dict1_a[key], out_val, compare_coordinate_values=False
+                )
 
 
 @settings(

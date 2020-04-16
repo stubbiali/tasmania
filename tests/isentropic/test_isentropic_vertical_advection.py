@@ -57,7 +57,7 @@ from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
 )
 from tests.utilities import (
     compare_arrays,
-compare_dataarrays,
+    compare_dataarrays,
     st_domain,
     st_floats,
     st_isentropic_state_f,
@@ -344,7 +344,9 @@ def test_upwind(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -458,7 +460,9 @@ def test_centered(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -572,7 +576,9 @@ def test_third_order_upwind(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -677,7 +683,9 @@ def _test_fifth_order_upwind(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -747,7 +755,9 @@ def _test_prescribed_surface_heating(data):
     grid = domain.numerical_grid
 
     time = data.draw(
-        hyp_st.datetimes(min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21))
+        hyp_st.datetimes(
+            min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21)
+        )
     )
     field = data.draw(
         st_arrays(
@@ -774,7 +784,9 @@ def _test_prescribed_surface_heating(data):
     an = data.draw(st_floats(min_value=0, max_value=100))
     cl = data.draw(st_floats(min_value=0, max_value=100))
     t0 = data.draw(
-        hyp_st.datetimes(min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21))
+        hyp_st.datetimes(
+            min_value=datetime(1992, 2, 20), max_value=datetime(2010, 7, 21)
+        )
     )
 
     backend = data.draw(st_one_of(conf_backend), label="backend")
@@ -860,7 +872,9 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
+    compare_dataarrays(
+        out, tendencies["air_potential_temperature"], compare_coordinate_values=False
+    )
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -888,7 +902,9 @@ def _test_prescribed_surface_heating(data):
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
     compare_dataarrays(
-        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
+        out,
+        diagnostics["tendency_of_air_potential_temperature"],
+        compare_coordinate_values=False,
     )
 
     #
@@ -918,7 +934,9 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
+    compare_dataarrays(
+        out, tendencies["air_potential_temperature"], compare_coordinate_values=False
+    )
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -946,7 +964,9 @@ def _test_prescribed_surface_heating(data):
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
     compare_dataarrays(
-        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
+        out,
+        diagnostics["tendency_of_air_potential_temperature"],
+        compare_coordinate_values=False,
     )
 
     #
@@ -1000,7 +1020,9 @@ def _test_prescribed_surface_heating(data):
     assert "air_potential_temperature" in psf.tendency_properties
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature" in tendencies
-    compare_dataarrays(out, tendencies["air_potential_temperature"], compare_coordinate_values=False)
+    compare_dataarrays(
+        out, tendencies["air_potential_temperature"], compare_coordinate_values=False
+    )
     assert diagnostics == {}
 
     # tendency_of_air_potential_temperature_in_diagnostics=True
@@ -1028,7 +1050,9 @@ def _test_prescribed_surface_heating(data):
     assert tendencies == {}
     assert "tendency_of_air_potential_temperature" in diagnostics
     compare_dataarrays(
-        out, diagnostics["tendency_of_air_potential_temperature"], compare_coordinate_values=False
+        out,
+        diagnostics["tendency_of_air_potential_temperature"],
+        compare_coordinate_values=False,
     )
 
     #
@@ -1036,7 +1060,9 @@ def _test_prescribed_surface_heating(data):
     # air_pressure_on_interface_levels=True
     #
     if state["time"] > t0:
-        theta = grid.z_on_interface_levels.to_units("K").values[np.newaxis, np.newaxis, :]
+        theta = grid.z_on_interface_levels.to_units("K").values[
+            np.newaxis, np.newaxis, :
+        ]
         p = state["air_pressure_on_interface_levels"].values
         z = state["height_on_interface_levels"].values
         h = state["height_on_interface_levels"].values[:, :, -1:]
@@ -1077,7 +1103,9 @@ def _test_prescribed_surface_heating(data):
     tendencies, diagnostics = psf(state)
     assert "air_potential_temperature_on_interface_levels" in tendencies
     compare_dataarrays(
-        out, tendencies["air_potential_temperature_on_interface_levels"], compare_coordinate_values=False
+        out,
+        tendencies["air_potential_temperature_on_interface_levels"],
+        compare_coordinate_values=False,
     )
     assert diagnostics == {}
 

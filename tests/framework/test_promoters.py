@@ -314,7 +314,9 @@ def test_diagnostic_to_tendency(data):
     )
 
     assert "y_velocity" in out
-    assert all(src == trg for src, trg in zip(out["y_velocity"].dims, (dim1, dim0, dim2)))
+    assert all(
+        src == trg for src, trg in zip(out["y_velocity"].dims, (dim1, dim0, dim2))
+    )
     assert units_are_same(out["y_velocity"].attrs["units"], "km s^-1 hr^-1")
     assert all(
         src == trg

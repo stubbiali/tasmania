@@ -177,10 +177,14 @@ def validation_diagnostic(
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
     su = (
-        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[:nx, :ny, :nz]
+        state["x_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values[:nx, :ny, :nz]
     )
     sv = (
-        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[:nx, :ny, :nz]
+        state["y_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values[:nx, :ny, :nz]
     )
     if moist:
         qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
@@ -329,7 +333,9 @@ def test_diagnostic_dry(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -424,7 +430,9 @@ def test_diagnostic_moist(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -697,10 +705,14 @@ def validation_prognostic(
 
     s = state["air_isentropic_density"].to_units("kg m^-2 K^-1").values[:nx, :ny, :nz]
     su = (
-        state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[:nx, :ny, :nz]
+        state["x_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values[:nx, :ny, :nz]
     )
     sv = (
-        state["y_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values[:nx, :ny, :nz]
+        state["y_momentum_isentropic"]
+        .to_units("kg m^-1 K^-1 s^-1")
+        .values[:nx, :ny, :nz]
     )
     if moist:
         qv = state[mfwv].to_units("g g^-1").values[:nx, :ny, :nz]
@@ -852,7 +864,9 @@ def test_prognostic_dry(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -947,7 +961,9 @@ def test_prognostic_moist(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 

@@ -1324,7 +1324,9 @@ def test_addsub(data):
         rebuild=False,
     )
 
-    stencil_addsub(in_a=a, in_b=b, in_c=c, out_d=d, origin=(0, 0, 0), domain=(nx, ny, nz))
+    stencil_addsub(
+        in_a=a, in_b=b, in_c=c, out_d=d, origin=(0, 0, 0), domain=(nx, ny, nz)
+    )
 
     d_val = zeros(
         (nx, ny, nz),

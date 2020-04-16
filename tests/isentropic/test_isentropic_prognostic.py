@@ -48,7 +48,11 @@ from tasmania.python.isentropic.dynamics.implementations.prognostic import (
     RK3WSSI,
     SIL3,
 )
-from tasmania.python.utils.storage_utils import deepcopy_array_dict, get_array_dict, zeros
+from tasmania.python.utils.storage_utils import (
+    deepcopy_array_dict,
+    get_array_dict,
+    zeros,
+)
 
 from tests.conf import (
     backend as conf_backend,
@@ -1078,7 +1082,8 @@ def _test_sil3(data):
     # ========================================
     # random data generation
     # ========================================
-    nb = 3  # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
+    # TODO: nb = data.draw(hyp_st.integers(min_value=3, max_value=max(3, conf_nb))
+    nb = 3
     domain = data.draw(
         st_domain(xaxis_length=(7, 50), yaxis_length=(7, 50), nb=nb), label="domain"
     )
@@ -1192,8 +1197,13 @@ def _test_sil3(data):
         sqv1 = np.zeros((nx, ny, nz), dtype=dtype)
         sqv1[nb:-nb, nb:-nb] = sqv0[nb:-nb, nb:-nb] - dts / 3.0 * (
             (flux_sqv_x_0[nb:-nb, nb:-nb] - flux_sqv_x_0[nb - 1 : -nb - 1, nb:-nb]) / dx
-            + (flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb - 1 : -nb - 1]) / dy
-            - (s0[nb:-nb, nb:-nb] * qv_tnd[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
+            + (flux_sqv_y_0[nb:-nb, nb:-nb] - flux_sqv_y_0[nb:-nb, nb - 1 : -nb - 1])
+            / dy
+            - (
+                s0[nb:-nb, nb:-nb] * qv_tnd[nb:-nb, nb:-nb]
+                if qv_tnd is not None
+                else 0.0
+            )
         )
         assert "isentropic_density_of_water_vapor" in raw_state_1
         compare_arrays(sqv1, raw_state_1["isentropic_density_of_water_vapor"])
@@ -1205,8 +1215,13 @@ def _test_sil3(data):
         sqc1 = np.zeros((nx, ny, nz), dtype=dtype)
         sqc1[nb:-nb, nb:-nb] = sqc0[nb:-nb, nb:-nb] - dts / 3.0 * (
             (flux_sqc_x_0[nb:-nb, nb:-nb] - flux_sqc_x_0[nb - 1 : -nb - 1, nb:-nb]) / dx
-            + (flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb - 1 : -nb - 1]) / dy
-            - (s0[nb:-nb, nb:-nb] * qc_tnd[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
+            + (flux_sqc_y_0[nb:-nb, nb:-nb] - flux_sqc_y_0[nb:-nb, nb - 1 : -nb - 1])
+            / dy
+            - (
+                s0[nb:-nb, nb:-nb] * qc_tnd[nb:-nb, nb:-nb]
+                if qc_tnd is not None
+                else 0.0
+            )
         )
         assert "isentropic_density_of_cloud_liquid_water" in raw_state_1
         compare_arrays(sqc1, raw_state_1["isentropic_density_of_cloud_liquid_water"])
@@ -1218,8 +1233,13 @@ def _test_sil3(data):
         sqr1 = np.zeros((nx, ny, nz), dtype=dtype)
         sqr1[nb:-nb, nb:-nb] = sqr0[nb:-nb, nb:-nb] - dts / 3.0 * (
             (flux_sqr_x_0[nb:-nb, nb:-nb] - flux_sqr_x_0[nb - 1 : -nb - 1, nb:-nb]) / dx
-            + (flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb - 1 : -nb - 1]) / dy
-            - (s0[nb:-nb, nb:-nb] * qr_tnd[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
+            + (flux_sqr_y_0[nb:-nb, nb:-nb] - flux_sqr_y_0[nb:-nb, nb - 1 : -nb - 1])
+            / dy
+            - (
+                s0[nb:-nb, nb:-nb] * qr_tnd[nb:-nb, nb:-nb]
+                if qr_tnd is not None
+                else 0.0
+            )
         )
         assert "isentropic_density_of_precipitation_water" in raw_state_1
         compare_arrays(sqr1, raw_state_1["isentropic_density_of_precipitation_water"])
@@ -1512,8 +1532,10 @@ def _test_sil3(data):
             * (flux_sqv_y_1[nb:-nb, nb:-nb] - flux_sqv_y_1[nb:-nb, nb - 1 : -nb - 1])
             / dy
             + 0.5 * ((s1 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
-            + (flux_sqv_x_2[nb:-nb, nb:-nb] - flux_sqv_x_2[nb - 1 : -nb - 1, nb:-nb]) / dx
-            + (flux_sqv_y_2[nb:-nb, nb:-nb] - flux_sqv_y_2[nb:-nb, nb - 1 : -nb - 1]) / dy
+            + (flux_sqv_x_2[nb:-nb, nb:-nb] - flux_sqv_x_2[nb - 1 : -nb - 1, nb:-nb])
+            / dx
+            + (flux_sqv_y_2[nb:-nb, nb:-nb] - flux_sqv_y_2[nb:-nb, nb - 1 : -nb - 1])
+            / dy
             - ((s2 * qv_tnd)[nb:-nb, nb:-nb] if qv_tnd is not None else 0.0)
         )
         assert "isentropic_density_of_water_vapor" in raw_state_3
@@ -1537,8 +1559,10 @@ def _test_sil3(data):
             * (flux_sqc_y_1[nb:-nb, nb:-nb] - flux_sqc_y_1[nb:-nb, nb - 1 : -nb - 1])
             / dy
             + 0.5 * ((s1 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
-            + (flux_sqc_x_2[nb:-nb, nb:-nb] - flux_sqc_x_2[nb - 1 : -nb - 1, nb:-nb]) / dx
-            + (flux_sqc_y_2[nb:-nb, nb:-nb] - flux_sqc_y_2[nb:-nb, nb - 1 : -nb - 1]) / dy
+            + (flux_sqc_x_2[nb:-nb, nb:-nb] - flux_sqc_x_2[nb - 1 : -nb - 1, nb:-nb])
+            / dx
+            + (flux_sqc_y_2[nb:-nb, nb:-nb] - flux_sqc_y_2[nb:-nb, nb - 1 : -nb - 1])
+            / dy
             - ((s2 * qc_tnd)[nb:-nb, nb:-nb] if qc_tnd is not None else 0.0)
         )
         assert "isentropic_density_of_cloud_liquid_water" in raw_state_3
@@ -1562,8 +1586,10 @@ def _test_sil3(data):
             * (flux_sqr_y_1[nb:-nb, nb:-nb] - flux_sqr_y_1[nb:-nb, nb - 1 : -nb - 1])
             / dy
             + 0.5 * ((s1 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
-            + (flux_sqr_x_2[nb:-nb, nb:-nb] - flux_sqr_x_2[nb - 1 : -nb - 1, nb:-nb]) / dx
-            + (flux_sqr_y_2[nb:-nb, nb:-nb] - flux_sqr_y_2[nb:-nb, nb - 1 : -nb - 1]) / dy
+            + (flux_sqr_x_2[nb:-nb, nb:-nb] - flux_sqr_x_2[nb - 1 : -nb - 1, nb:-nb])
+            / dx
+            + (flux_sqr_y_2[nb:-nb, nb:-nb] - flux_sqr_y_2[nb:-nb, nb - 1 : -nb - 1])
+            / dy
             - ((s2 * qr_tnd)[nb:-nb, nb:-nb] if qr_tnd is not None else 0.0)
         )
         assert "isentropic_density_of_precipitation_water" in raw_state_3

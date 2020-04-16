@@ -312,7 +312,20 @@ class WrappingStencil:
                     sv_tnd=sv_tnd,
                 )
             else:
-                flux_s_x, flux_s_y, flux_su_x, flux_su_y, flux_sv_x, flux_sv_y, flux_sqv_x, flux_sqv_y, flux_sqc_x, flux_sqc_y, flux_sqr_x, flux_sqr_y = core(
+                (
+                    flux_s_x,
+                    flux_s_y,
+                    flux_su_x,
+                    flux_su_y,
+                    flux_sv_x,
+                    flux_sv_y,
+                    flux_sqv_x,
+                    flux_sqv_y,
+                    flux_sqc_x,
+                    flux_sqc_y,
+                    flux_sqr_x,
+                    flux_sqr_y,
+                ) = core(
                     dt=dt,
                     dx=dx,
                     dy=dy,
@@ -402,9 +415,20 @@ def validation_numpy(flux_scheme, domain, field, timestep, dtype):
     core = IsentropicMinimalHorizontalFlux.factory(flux_scheme, True, False)
     assert isinstance(core, flux_type)
 
-    fsx, fsy, fsux, fsuy, fsvx, fsvy, fsqvx, fsqvy, fsqcx, fsqcy, fsqrx, fsqry = core.call(
-        timestep, dx, dy, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr
-    )
+    (
+        fsx,
+        fsy,
+        fsux,
+        fsuy,
+        fsvx,
+        fsvy,
+        fsqvx,
+        fsqvy,
+        fsqcx,
+        fsqcy,
+        fsqrx,
+        fsqry,
+    ) = core.call(timestep, dx, dy, s, u, v, su, sv, sqv=sqv, sqc=sqc, sqr=sqr)
 
     compare_arrays(fsx[:, y], flux_s_x[x, y])
     compare_arrays(fsy[x, :], flux_s_y[x, y])
@@ -755,7 +779,14 @@ def test_centered_gt(data):
     # test bed
     # ========================================
     validation_gt(
-        "centered", domain, field, timestep, backend, dtype, default_origin, rebuild=False
+        "centered",
+        domain,
+        field,
+        timestep,
+        backend,
+        dtype,
+        default_origin,
+        rebuild=False,
     )
 
 

@@ -30,9 +30,9 @@ import gt4py as gt
 from tasmania.python.utils import taz_types
 
 if TYPE_CHECKING:
-    from tasmania.python.grids.grid import Grid
-    from tasmania.python.grids.horizontal_grid import HorizontalGrid
-    from tasmania.python.grids.domain import Domain
+    from tasmania.python.domain.grid import Grid
+    from tasmania.python.domain.horizontal_grid import HorizontalGrid
+    from tasmania.python.domain.domain import Domain
 
 
 def get_dataarray_2d(
@@ -601,7 +601,7 @@ def deepcopy_dataarray(src: DataArray) -> DataArray:
 
 
 def deepcopy_dataarray_dict(
-    src: taz_types.dataarray_dict_t
+    src: taz_types.dataarray_dict_t,
 ) -> taz_types.dataarray_dict_t:
     dst = {"time": src["time"]} if "time" in src else {}
     for name in src:

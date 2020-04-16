@@ -186,7 +186,9 @@ def test_upwind(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -204,7 +206,7 @@ def test_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -217,7 +219,7 @@ def test_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -230,7 +232,7 @@ def test_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -243,7 +245,7 @@ def test_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
 
 
@@ -303,7 +305,9 @@ def test_centered(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -321,7 +325,7 @@ def test_centered(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -334,7 +338,7 @@ def test_centered(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -347,7 +351,7 @@ def test_centered(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -360,7 +364,7 @@ def test_centered(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
 
 
@@ -420,7 +424,9 @@ def test_third_order_upwind(data, subtests):
     state["tendency_of_air_potential_temperature"] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz), set_coordinates=False
     )
-    state["tendency_of_air_potential_temperature_on_interface_levels"] = get_dataarray_3d(
+    state[
+        "tendency_of_air_potential_temperature_on_interface_levels"
+    ] = get_dataarray_3d(
         field, grid, "K s^-1", grid_shape=(nx, ny, nz + 1), set_coordinates=False
     )
 
@@ -438,7 +444,7 @@ def test_third_order_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -451,7 +457,7 @@ def test_third_order_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -464,7 +470,7 @@ def test_third_order_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
     validation(
         domain,
@@ -477,7 +483,7 @@ def test_third_order_upwind(data, subtests):
         False,
         state,
         cls=DebugIsentropicVerticalAdvection,
-        subtests=subtests
+        subtests=subtests,
     )
 
 

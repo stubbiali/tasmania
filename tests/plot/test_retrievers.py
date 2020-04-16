@@ -74,11 +74,17 @@ def _test_field(data):
     field_name = data.draw(st_one_of(units.keys()), label="field_name")
     field_units = data.draw(st_one_of(units[field_name]), label="field_units")
     xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
-    xmax = data.draw(hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax")
+    xmax = data.draw(
+        hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax"
+    )
     ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
-    ymax = data.draw(hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax")
+    ymax = data.draw(
+        hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax"
+    )
     zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin")
-    zmax = data.draw(hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax")
+    zmax = data.draw(
+        hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax"
+    )
 
     # ========================================
     # test bed
@@ -171,11 +177,17 @@ def _test_horizontal_velocity(data):
         st_one_of(units["x_velocity_at_u_locations"]), label="field_units"
     )
     xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
-    xmax = data.draw(hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax")
+    xmax = data.draw(
+        hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax"
+    )
     ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
-    ymax = data.draw(hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax")
+    ymax = data.draw(
+        hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax"
+    )
     zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin")
-    zmax = data.draw(hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax")
+    zmax = data.draw(
+        hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax"
+    )
 
     # ========================================
     # test bed
@@ -224,11 +236,17 @@ def _test_height(data):
         st_one_of(units["height_on_interface_levels"]), label="field_units"
     )
     xmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nx - 1), label="xmin")
-    xmax = data.draw(hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax")
+    xmax = data.draw(
+        hyp_st.integers(min_value=xmin + 1, max_value=grid.nx), label="xmax"
+    )
     ymin = data.draw(hyp_st.integers(min_value=0, max_value=grid.ny - 1), label="ymin")
-    ymax = data.draw(hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax")
+    ymax = data.draw(
+        hyp_st.integers(min_value=ymin + 1, max_value=grid.ny), label="ymax"
+    )
     zmin = data.draw(hyp_st.integers(min_value=0, max_value=grid.nz - 1), label="zmin")
-    zmax = data.draw(hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax")
+    zmax = data.draw(
+        hyp_st.integers(min_value=zmin + 1, max_value=grid.nz), label="zmax"
+    )
 
     # ========================================
     # test bed

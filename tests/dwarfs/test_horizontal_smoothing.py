@@ -213,7 +213,9 @@ def second_order_smoothing_xyz(phi, g):
     jm2, jp2 = slice(0, nj - 4), slice(4, nj)
 
     phi_smooth = deepcopy(phi)
-    phi_smooth[i, j, k] = (1 - 0.75 * g[i, j, k]) * phi[i, j, k] + 0.0625 * g[i, j, k] * (
+    phi_smooth[i, j, k] = (1 - 0.75 * g[i, j, k]) * phi[i, j, k] + 0.0625 * g[
+        i, j, k
+    ] * (
         -phi[im2, j, k]
         + 4.0 * phi[im1, j, k]
         - phi[ip2, j, k]

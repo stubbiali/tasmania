@@ -209,7 +209,8 @@ def test_serial(data, make_fake_tendency_component_1, make_fake_tendency_compone
     assert "x_momentum_isentropic" in tendencies
     su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
     compare_arrays(
-        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values, 300 * su
+        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+        300 * su,
     )
 
     assert "y_momentum_isentropic" in tendencies
@@ -357,7 +358,8 @@ def test_tendency_to_diagnostic(
     assert "x_momentum_isentropic" in tendencies
     su = state["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-1").values
     compare_arrays(
-        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values, 300 * su
+        tendencies["x_momentum_isentropic"].to_units("kg m^-1 K^-1 s^-2").values,
+        300 * su,
     )
 
     assert "y_momentum_isentropic" in tendencies

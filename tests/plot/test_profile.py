@@ -82,9 +82,9 @@ def test_profile_x(isentropic_data):
             grid.y.to_units("km").values[y], grid.z.to_units("K").values[z]
         ),
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$x$-velocity [km hr$^{-1}$]",
-        #'y_lim': [0, 2.0],
+        # 'y_lim': [0, 2.0],
         "grid_on": True,
     }
 
@@ -218,7 +218,7 @@ def test_profile_z(isentropic_data):
             grid.x.to_units("km").values[x], grid.y.to_units("km").values[y]
         ),
         "x_label": "Air pressure [atm]",
-        #'x_lim': [0, 0.2],
+        # 'x_lim': [0, 0.2],
         "y_label": "$\\theta$ [K]",
         "y_lim": None,
         "grid_on": True,
@@ -292,7 +292,7 @@ def test_profile_h(isentropic_data):
             grid.x.to_units("km").values[x], grid.y.to_units("km").values[y]
         ),
         "x_label": "Air pressure [kPa]",
-        #'x_lim': [0, 0.2],
+        # 'x_lim': [0, 0.2],
         "y_label": "$z$ [km]",
         "y_lim": None,
         "grid_on": True,

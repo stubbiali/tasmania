@@ -86,9 +86,9 @@ def test_profile(isentropic_data):
         "fontsize": 16,
         "title_left": "Left subplot",
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$x$-velocity [km/hr]",
-        #'y_lim': [0, 2.0],
+        # 'y_lim': [0, 2.0],
         "grid_on": True,
     }
 
@@ -121,9 +121,9 @@ def test_profile(isentropic_data):
         "fontsize": 16,
         "title_left": "Right subplot",
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$y$-velocity [km/hr]",
-        #'y_lim': [0, 2.0],
+        # 'y_lim': [0, 2.0],
         "grid_on": True,
     }
 
@@ -201,7 +201,7 @@ def test_profile_share_yaxis(isentropic_data):
         "fontsize": 16,
         "title_left": "$y$ = {} km".format(grid.y.to_units("km").values[y]),
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "Surface $x$-velocity [m s$^{-1}$]",
         "y_lim": [-30, 30],
         "grid_on": True,
@@ -236,7 +236,7 @@ def test_profile_share_yaxis(isentropic_data):
         "fontsize": 16,
         "title_left": "$y$ = {} km".format(grid.y.to_units("km").values[y]),
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_lim": [-30, 30],
         "y_ticklabels": (),
         "grid_on": True,
@@ -319,10 +319,10 @@ def test_profile_share_xaxis(isentropic_data):
         "title_center": "$y$ = {} km, $\\theta$ = {} K".format(
             grid.y.to_units("km").values[y], grid.z.to_units("K").values[z]
         ),
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "x_ticklabels": (),
         "y_label": "$x$-velocity [m/s]",
-        #'y_lim': [0, 3.0],
+        # 'y_lim': [0, 3.0],
         "grid_on": True,
     }
 
@@ -351,9 +351,9 @@ def test_profile_share_xaxis(isentropic_data):
     axes_properties = {
         "fontsize": 16,
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$y$-velocity [m/s]",
-        #'y_lim': [0, 2.0],
+        # 'y_lim': [0, 2.0],
         "grid_on": True,
     }
 
@@ -438,14 +438,16 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer1 = drawer_topography_1d(grid, topography_units="km", x=x, axis_units="km")
+    topo_drawer1 = drawer_topography_1d(
+        grid, topography_units="km", x=x, axis_units="km"
+    )
 
     # axes properties
     axes_properties = {
         "fontsize": 14,
-        #'title_left': '$x$-velocity [m s$^{-1}$]',
+        # 'title_left': '$x$-velocity [m s$^{-1}$]',
         "x_label": "$y$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$z$ [km]",
         "y_lim": [0, 14],
         "text": "$x$-velocity",
@@ -453,7 +455,9 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
     }
 
     # instantiate the left collaborator
-    plot1 = Plot(drawer, topo_drawer1, interactive=False, axes_properties=axes_properties)
+    plot1 = Plot(
+        drawer, topo_drawer1, interactive=False, axes_properties=axes_properties
+    )
 
     #
     # Plot#2
@@ -485,13 +489,15 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer2 = drawer_topography_1d(grid, topography_units="km", x=x, axis_units="km")
+    topo_drawer2 = drawer_topography_1d(
+        grid, topography_units="km", x=x, axis_units="km"
+    )
 
     # axes properties
     axes_properties = {
         "fontsize": 14,
         "x_label": "$y$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_lim": [0, 14],
         "y_ticklabels": [],
         "text": "$y$-velocity",
@@ -499,7 +505,9 @@ def test_plot2d_r1c2(isentropic_data, drawer_topography_1d):
     }
 
     # instantiate the right collaborator
-    plot2 = Plot(drawer, topo_drawer2, interactive=False, axes_properties=axes_properties)
+    plot2 = Plot(
+        drawer, topo_drawer2, interactive=False, axes_properties=axes_properties
+    )
 
     #
     # PlotComposite
@@ -579,14 +587,16 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer1 = drawer_topography_1d(grid, topography_units="km", x=x, axis_units="km")
+    topo_drawer1 = drawer_topography_1d(
+        grid, topography_units="km", x=x, axis_units="km"
+    )
 
     # axes properties
     axes_properties = {
         "fontsize": 14,
-        #'title_left': '$x$-velocity [m s$^{-1}$]',
+        # 'title_left': '$x$-velocity [m s$^{-1}$]',
         "x_ticklabels": [],
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$z$ [km]",
         "y_lim": [0, 14],
         "text": "$x$-velocity",
@@ -594,7 +604,9 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     }
 
     # instantiate the left collaborator
-    plot1 = Plot(drawer, topo_drawer1, interactive=False, axes_properties=axes_properties)
+    plot1 = Plot(
+        drawer, topo_drawer1, interactive=False, axes_properties=axes_properties
+    )
 
     #
     # Plot#2
@@ -626,7 +638,9 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer2 = drawer_topography_1d(grid, topography_units="km", x=x, axis_units="km")
+    topo_drawer2 = drawer_topography_1d(
+        grid, topography_units="km", x=x, axis_units="km"
+    )
 
     # axes properties
     axes_properties = {
@@ -639,7 +653,9 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     }
 
     # instantiate the right collaborator
-    plot2 = Plot(drawer, topo_drawer2, interactive=False, axes_properties=axes_properties)
+    plot2 = Plot(
+        drawer, topo_drawer2, interactive=False, axes_properties=axes_properties
+    )
 
     #
     # Plot#3
@@ -669,14 +685,16 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer3 = drawer_topography_1d(grid, topography_units="km", x=x, axis_units="km")
+    topo_drawer3 = drawer_topography_1d(
+        grid, topography_units="km", x=x, axis_units="km"
+    )
 
     # axes properties
     axes_properties = {
         "fontsize": 14,
-        #'title_left': '$x$-velocity [m s$^{-1}$]',
+        # 'title_left': '$x$-velocity [m s$^{-1}$]',
         "x_label": "$y$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_label": "$z$ [km]",
         "y_lim": [0, 14],
         "text": "$x$-velocity",
@@ -684,7 +702,9 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     }
 
     # instantiate the left collaborator
-    plot3 = Plot(drawer, topo_drawer3, interactive=False, axes_properties=axes_properties)
+    plot3 = Plot(
+        drawer, topo_drawer3, interactive=False, axes_properties=axes_properties
+    )
 
     #
     # Plot#4
@@ -716,13 +736,15 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     )
 
     # instantiate the drawer plotting the topography
-    topo_drawer4 = drawer_topography_1d(grid, topography_units="km", x=x, axis_units="km")
+    topo_drawer4 = drawer_topography_1d(
+        grid, topography_units="km", x=x, axis_units="km"
+    )
 
     # axes properties
     axes_properties = {
         "fontsize": 14,
         "x_label": "$y$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_lim": [0, 14],
         "y_ticklabels": [],
         "text": "$y$-velocity",
@@ -730,7 +752,9 @@ def test_plot2d_r2c2(isentropic_data, drawer_topography_1d):
     }
 
     # instantiate the right collaborator
-    plot4 = Plot(drawer, topo_drawer4, interactive=False, axes_properties=axes_properties)
+    plot4 = Plot(
+        drawer, topo_drawer4, interactive=False, axes_properties=axes_properties
+    )
 
     #
     # PlotComposite

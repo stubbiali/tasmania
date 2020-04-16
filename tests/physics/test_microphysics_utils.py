@@ -552,7 +552,13 @@ def _test_kessler_sedimentation(data):
 
     tracer = {mfpw: {"units": "g g^-1", "velocity": "raindrop_fall_velocity"}}
     sed = Sedimentation(
-        domain, grid_type, tracer, flux_scheme, maxcfl, backend=gt.mode.NUMPY, dtype=dtype
+        domain,
+        grid_type,
+        tracer,
+        flux_scheme,
+        maxcfl,
+        backend=gt.mode.NUMPY,
+        dtype=dtype,
     )
 
     #

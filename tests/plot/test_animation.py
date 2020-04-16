@@ -90,7 +90,7 @@ def test(isentropic_data):
         "fontsize": 16,
         "title_left": "$x$-velocity [km hr$^{-1}$]",
         "x_label": "$x$ [km]",
-        #'x_lim': [0, 500],
+        # 'x_lim': [0, 500],
         "y_lim": [0, 100],
         "grid_on": True,
     }

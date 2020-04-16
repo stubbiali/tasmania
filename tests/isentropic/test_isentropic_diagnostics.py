@@ -383,7 +383,9 @@ def test_density_and_temperature(data):
     dtype = data.draw(st_one_of(conf_dtype), label="dtype")
     default_origin = data.draw(st_one_of(conf_dorigin), label="default_origin")
 
-    grid = data.draw(st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid")
+    grid = data.draw(
+        st_physical_grid(zaxis_name="z", zaxis_length=(2, 20)), label="grid"
+    )
     nx, ny, nz = grid.nx, grid.ny, grid.nz
 
     dnx = data.draw(hyp_st.integers(min_value=0, max_value=1), label="dnx")
