@@ -484,11 +484,13 @@ class HorizontalBoundary(abc.ABC):
         dtype: taz_types.dtype_t = np.float64,
         **kwargs
     ) -> "HorizontalBoundary":
-        """
+        """ Get an instance of a derived class.
+
         Parameters
         ----------
         boundary_type : str
-            The boundary type, identifying the child class to instantiate.
+            The boundary type, i.e. the string used to register the subclass
+            which should be instantiated.
         nx : int
             Number of points featured by the physical grid
             along the first horizontal dimension.

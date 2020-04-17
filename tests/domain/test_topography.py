@@ -34,6 +34,9 @@ from pandas import Timedelta
 import pytest
 
 from tasmania.python.domain.horizontal_grid import NumericalHorizontalGrid
+from tasmania.python.domain.topographies.flat import Flat
+from tasmania.python.domain.topographies.gaussian import Gaussian
+from tasmania.python.domain.topographies.schaer import Schaer
 from tasmania.python.domain.topography import (
     Topography,
     PhysicalTopography,
@@ -43,6 +46,7 @@ from tasmania.python.domain.topography import (
 from tests.utilities import (
     compare_arrays,
     compare_dataarrays,
+    compare_datetimes,
     st_floats,
     st_horizontal_boundary,
     st_horizontal_field,
@@ -52,14 +56,15 @@ from tests.utilities import (
 
 
 @given(hyp_st.data())
-def test_topography(data):
+def test_topography_properties(data):
     # ========================================
     # random data generation
     # ========================================
     pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof", gt_powered=False),
+        label="sprof",
     )
 
     kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
@@ -67,17 +72,17 @@ def test_topography(data):
     # ========================================
     # test bed
     # ========================================
-    topo_type = kwargs.pop("type")
-    topo = Topography(topo_type, steady_profile, **kwargs)
+    topo = Topography(steady_profile, time=kwargs["time"])
 
-    assert topo.type == topo_type
+    # steady_profile
     compare_dataarrays(steady_profile, topo.steady_profile)
 
-    topo_time = kwargs.get("time", Timedelta(seconds=0.0))
+    # time
+    topo_time = kwargs["time"] or Timedelta(seconds=0.0)
+    compare_datetimes(topo.time, topo_time)
 
+    # profile
     if topo_time.total_seconds() == 0.0:
-        kwargs["time"] = topo_time
-        assert kwargs == topo.kwargs
         compare_dataarrays(steady_profile, topo.profile)
     else:
         profile = deepcopy(steady_profile)
@@ -86,14 +91,15 @@ def test_topography(data):
 
 
 @given(hyp_st.data())
-def test_update_topography(data):
+def test_topography_update(data):
     # ========================================
     # random data generation
     # ========================================
     pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
 
     steady_profile = data.draw(
-        st_horizontal_field(pgrid, 0, 3000, "m", "sprof"), label="sprof"
+        st_horizontal_field(pgrid, 0, 10000, "m", "sprof", gt_powered=False),
+        label="sprof",
     )
 
     kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
@@ -104,10 +110,9 @@ def test_update_topography(data):
     # ========================================
     # test bed
     # ========================================
-    topo_type = kwargs.pop("type")
-    topo = Topography(topo_type, steady_profile, **kwargs)
+    topo = Topography(steady_profile, time=kwargs["time"])
 
-    topo_time = kwargs.get("time", Timedelta(seconds=0.0))
+    topo_time = kwargs["time"] or Timedelta(seconds=0.0)
 
     if topo_time.total_seconds() == 0.0:
         compare_dataarrays(steady_profile, topo.profile)
@@ -129,34 +134,41 @@ def test_update_topography(data):
         compare_dataarrays(steady_profile, topo.steady_profile)
 
 
-@settings(
-    suppress_health_check=(HealthCheck.too_slow, HealthCheck.data_too_large),
-    deadline=None,
-)
+def test_physical_topography_registry():
+    # flat
+    assert "flat" in PhysicalTopography.register
+    assert PhysicalTopography.register["flat"] == Flat
+
+    # gaussian
+    assert "gaussian" in PhysicalTopography.register
+    assert PhysicalTopography.register["gaussian"] == Gaussian
+
+    # schaer
+    assert "schaer" in PhysicalTopography.register
+    assert PhysicalTopography.register["schaer"] == Schaer
+
+
 @given(hyp_st.data())
-def test_physical_topography(data):
+def test_physical_topography_factory(data):
     # ========================================
     # random data generation
     # ========================================
     pgrid = data.draw(st_physical_horizontal_grid(), label="pgrid")
-    kwargs = data.draw(st_topography_kwargs(pgrid.x, pgrid.y), label="kwargs")
 
     # ========================================
     # test bed
     # ========================================
-    topo_type = kwargs.pop("type")
-    topo = PhysicalTopography(pgrid, topo_type, **kwargs)
+    # flat
+    obj = PhysicalTopography.factory("flat", pgrid)
+    assert isinstance(obj, Flat)
 
-    assert topo.type == topo_type
+    # gaussian
+    obj = PhysicalTopography.factory("gaussian", pgrid)
+    assert isinstance(obj, Gaussian)
 
-    topo_time = kwargs.get("time", Timedelta(seconds=0.0))
-
-    if topo_time.total_seconds() == 0.0:
-        compare_dataarrays(topo.steady_profile, topo.profile)
-    else:
-        profile = deepcopy(topo.steady_profile)
-        profile.values[...] = 0.0
-        compare_dataarrays(profile, topo.profile)
+    # schaer
+    obj = PhysicalTopography.factory("schaer", pgrid)
+    assert isinstance(obj, Schaer)
 
 
 @settings(
@@ -176,22 +188,24 @@ def test_numerical_topography(data):
     # ========================================
     # test bed
     # ========================================
-    topo_type = kwargs.pop("type")
-    ptopo = PhysicalTopography(pgrid, topo_type, **kwargs)
+    keys = ("time", "smooth", "max_height", "center_x", "center_y", "width_x", "width_y")
+    ptopo = PhysicalTopography.factory(
+        "gaussian", pgrid, **{key: kwargs[key] for key in keys}
+    )
     ctopo = NumericalTopography(cgrid, ptopo, hb)
 
-    assert ctopo.type == topo_type
+    assert ctopo.type == "gaussian"
 
+    # profile
     compare_arrays(ctopo.profile.values, hb.get_numerical_field(ptopo.profile.values))
+
+    # steady_profile
     compare_arrays(
         ctopo.steady_profile.values, hb.get_numerical_field(ptopo.steady_profile.values)
     )
 
-    from tasmania.python.domain._horizontal_boundary import Relaxed
-
-    if isinstance(hb, Relaxed):
-        assert id(ptopo.profile.values) == id(ctopo.profile.values)
-        assert id(ptopo.steady_profile.values) == id(ctopo.steady_profile.values)
+    # time
+    compare_datetimes(ptopo.time, ctopo.time)
 
 
 if __name__ == "__main__":

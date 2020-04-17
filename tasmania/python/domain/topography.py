@@ -20,6 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+import abc
 from copy import deepcopy
 import numpy as np
 from pandas import Timedelta
@@ -32,173 +33,70 @@ from tasmania.python.utils.utils import smaller_than as lt
 
 if TYPE_CHECKING:
     from tasmania.python.domain.horizontal_boundary import HorizontalBoundary
-    from tasmania.python.domain.horizontal_grid import HorizontalGrid
+    from tasmania.python.domain.horizontal_grid import (
+        PhysicalHorizontalGrid,
+        NumericalHorizontalGrid,
+    )
 
 
 class Topography:
     """ A time-dependent topography.
 
-    Although clearly not physical, a terrain surface (slowly) growing in the early
-    stages of a simulation may help to retain numerical stability, as it
+    Although clearly not physical, a terrain surface (slowly) growing in the
+    early stages of a simulation may help to retain numerical stability, as it
     prevents steep gradients in the first few iterations.
-
-    Letting :math:`h_s = h_s(x,y)` be a two-dimensional topography,
-    with :math:`x \in [a_x,b_x]` and :math:`y \in [a_y,b_y]`, the user may
-    choose among:
-
-        * a flat terrain, i.e., :math:`h_s(x,y) \equiv 0`;
-        * a Gaussian shaped-mountain, i.e.
-
-            .. math::
-                h_s(x,y) = h_{max} \exp{\left[ - \left( \\frac{x - c_x}{\sigma_x}
-                \\right)^2 - \left( \\frac{y - c_y}{\sigma_y} \\right)^2 \\right]} ;
-
-        * a modified Gaussian-shaped mountain proposed by Schaer and Durran (1997),
-
-            .. math::
-                h_s(x,y) = \\frac{h_{max}}{\left[ 1 + \left( \\frac{x - c_x}{\sigma_x}
-                \\right)^2 + \left( \\frac{y - c_y}{\sigma_y} \\right)^2 \\right]^{3/2}}.
-
-    Further, user-defined profiles are supported as well, provided that they
-    admit an analytical expression. This is passed to the class as a string,
-    which is then parsed in C++ via `Cython <http://cython.org>`_
-    (see :class:`~tasmania.domain.parser.parser_2d`). Therefore, the string
-    must be fully C++-compliant.
-
-    Reference
-    ---------
-    Schaer, C., and D. R. Durran. (1997). Vortex formation and vortex shedding \
-    in continuously stratified flows past isolated topography. \
-    *Journal of Atmospheric Sciences*, *54*:534-554.
     """
 
     def __init__(
         self,
-        topography_type: str,
         steady_profile: DataArray,
         profile: Optional[DataArray] = None,
-        **kwargs
+        time: Optional[taz_types.timedelta_t] = None,
     ) -> None:
         """
         Parameters
         ----------
-        topography_type : str
-            Topography type. Either:
-
-                * 'flat_terrain' (default);
-                * 'gaussian';
-                * 'schaer';
-                * 'user_defined'.
-
         steady_profile : sympl.DataArray
             2-D :class:`~sympl.DataArray` representing the steady-state height profile.
-        profile : sympl.DataArray
+        profile : `sympl.DataArray`, optional
             2-D :class:`~sympl.DataArray` representing the current height profile.
-
-        Keyword arguments
-        -----------------
-        time : datetime.timedelta
+        time : `datetime.timedelta`
             The elapsed simulation time after which the topography should stop increasing.
             If not specified, a time-invariant terrain surface-height is assumed.
-        max_height : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the maximum mountain height.
-            Effective when `topography_type` is either 'gaussian' or 'schaer'.
-        center_x : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the :math:`x`-coordinate
-            of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when `topography_type` is either
-            'gaussian' or 'schaer'.
-        center_y : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the :math:`y`-coordinate
-            of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when `topography_type` is either
-            'gaussian' or 'schaer'.
-        width_x : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the mountain half-width
-            in the :math:`x`-direction. Defaults to 1, in the same units of the
-            `x`-axis. Effective when `topography_type` is either 'gaussian'
-            or 'schaer'.
-        width_y : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the mountain half-width
-            in the :math:`y`-direction. Defaults to 1, in the same units of the
-            `y`-axis. Effective when `topography_type` is either 'gaussian'
-            or 'schaer'.
-        expression : str
-            Terrain profile expression in the independent variables :math:`x` and
-            :math:`y`. Must be fully C++-compliant. Effective only when
-            `topography_type` is 'user_defined'.
-        smooth : bool
-            `True` to smooth the topography out, `False` otherwise.
-            Defaults to `False`.
-
-        Raises
-        ------
-        ValueError :
-            If the argument `topography_type` is neither 'flat_terrain',
-            'gaussian', 'schaer', nor 'user_defined'.
         """
-        if topography_type not in ["flat_terrain", "gaussian", "schaer", "user_defined"]:
-            raise ValueError(
-                "Unknown topography type. Supported types are: "
-                "''flat_terrain'', ''gaussian'', ''schaer'', ''user_defined''."
-            )
+        self._steady_profile = steady_profile.to_units("m")
 
-        self._type = topography_type
-        self._steady_profile = steady_profile
-        self._kwargs = deepcopy(kwargs)
-
-        time = kwargs.get("time", Timedelta(seconds=0))
-        self._fact = float(time.total_seconds() == 0.0)
-        self._kwargs["time"] = time
+        self._time = time or Timedelta(seconds=0)
+        self._fact = float(self._time.total_seconds() == 0.0)
 
         self._profile = profile if profile is not None else deepcopy(steady_profile)
-        self._profile.values[...] = self._fact * steady_profile.values[...]
-
-    @property
-    def type(self) -> str:
-        """
-        Returns
-        -------
-        str :
-            The topography type.
-        """
-        return self._type
+        self._profile.attrs["units"] = "m"
+        self._profile.values[...] = self._fact * self._steady_profile.values[...]
 
     @property
     def profile(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            2-D :class:`~sympl.DataArray` representing the current
-            topography profile.
+        2-D :class:`~sympl.DataArray` storing the current topography profile.
         """
         return self._profile
 
     @property
     def steady_profile(self) -> DataArray:
         """
-        Returns
-        -------
-        sympl.DataArray :
-            2-D :class:`~sympl.DataArray` representing the steady-state
-            topography profile.
+        2-D :class:`~sympl.DataArray` storing the steady-state topography profile.
         """
         return self._steady_profile
 
     @property
-    def kwargs(self) -> Dict[str, Any]:
+    def time(self) -> taz_types.datetime_t:
         """
-        Returns
-        -------
-        dict :
-            The keyword arguments passed to the constructor.
+        The elapsed simulation time after which the topography stops increasing.
         """
-        return self._kwargs
+        return self._time
 
     def update(self, time: taz_types.datetime_t) -> None:
         """
-        Update topography at current simulation time.
+        Update the topography at current simulation time.
 
         Parameters
         ----------
@@ -206,213 +104,43 @@ class Topography:
             The elapsed simulation time.
         """
         if lt(self._fact, 1.0):
-            self._fact = min(time / self._kwargs["time"], 1.0)
-            self._profile.values[...] = self._fact * self._steady_profile[...]
+            self._fact = min(time / self.time, 1.0)
+            self._profile.values[...] = self._fact * self._steady_profile.values
 
 
-class PhysicalTopography(Topography):
-    """ A time-dependent topography defined over a *physical* grid. """
+class PhysicalTopography(abc.ABC, Topography):
+    """ A time-dependent topography defined over a physical grid. """
 
-    def __init__(self, grid: "HorizontalGrid", topography_type: str, **kwargs) -> None:
+    register = {}
+
+    def __init__(
+        self,
+        grid: "PhysicalHorizontalGrid",
+        time: taz_types.timedelta_t,
+        smooth: bool,
+        **kwargs
+    ) -> None:
         """
         Parameters
         ----------
-        grid : `tasmania.HorizontalGrid`
-            The underlying :class:`tasmania.HorizontalGrid`.
-        topography_type : str
-            Topography type. Either:
-
-                * 'flat_terrain' (default);
-                * 'gaussian';
-                * 'schaer';
-                * 'user_defined'.
-
-        Keyword arguments
-        -----------------
+        grid : tasmania.PhysicalHorizontalGrid
+            The underlying :class:`tasmania.PhysicalHorizontalGrid`.
         time : datetime.timedelta
-            The elapsed simulation time after which the topography should stop increasing.
-            If not specified, a time-invariant terrain surface-height is assumed.
-        max_height : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the maximum mountain height.
-            Effective when `topography_type` is either 'gaussian' or 'schaer'.
-        center_x : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the :math:`x`-coordinate
-            of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when `topography_type` is either
-            'gaussian' or 'schaer'.
-        center_y : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the :math:`y`-coordinate
-            of the mountain center. By default, the mountain center is placed in
-            the center of the domain. Effective when `topography_type` is either
-            'gaussian' or 'schaer'.
-        width_x : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the mountain half-width
-            in the :math:`x`-direction. Defaults to 1, in the same units of the
-            `x`-axis. Effective when `topography_type` is either 'gaussian'
-            or 'schaer'.
-        width_y : sympl.DataArray
-            1-item :class:`~sympl.DataArray` representing the mountain half-width
-            in the :math:`y`-direction. Defaults to 1, in the same units of the
-            `y`-axis. Effective when `topography_type` is either 'gaussian'
-            or 'schaer'.
-        expression : str
-            Terrain profile expression in the independent variables :math:`x` and
-            :math:`y`. Must be fully C++-compliant. Effective only when
-            `topography_type` is 'user_defined'.
+            The elapsed simulation time after which the topography should stop
+            increasing. If not specified, a time-invariant terrain surface-height
+            is assumed.
         smooth : bool
-            `True` to smooth the topography out, `False` otherwise.
-            Defaults to `False`.
-
-        Raises
-        ------
-        ValueError :
-            If the argument `topography_type` is neither 'flat_terrain',
-            'gaussian', 'schaer', nor 'user_defined'.
-        ImportError :
-            If :class:`tasmania.cpp.parser.parser_2d.Parser2d` cannot be
-            imported (likely because it has not been compiled).
+            ``True`` to smooth the topography out, ``False`` otherwise.
+        **kwargs :
+            Keyword arguments for the exclusive use of the subclass.
         """
-        if topography_type not in ["flat_terrain", "gaussian", "schaer", "user_defined"]:
-            raise ValueError(
-                "Unknown topography type. Supported types are: "
-                "''flat_terrain'', ''gaussian'', ''schaer'', ''user_defined''."
-            )
+        self._type = None
 
-        topo_kwargs = deepcopy(kwargs)
-
-        x, y = grid.x, grid.y
-        xv, yv = grid.x.values, grid.y.values
-
-        dtype = xv.dtype
-
-        if topography_type == "flat_terrain":
-            topo_steady = np.zeros((grid.nx, grid.ny), dtype=dtype)
-        elif topography_type == "gaussian":
-            max_height_ = kwargs.get(
-                "max_height", DataArray(500.0, attrs={"units": "m"})
-            )
-            max_height = max_height_.to_units("m").values.item()
-
-            width_x_ = kwargs.get(
-                "width_x", DataArray(1.0, attrs={"units": x.attrs["units"]})
-            )
-            width_x = width_x_.to_units(x.attrs["units"]).values.item()
-
-            width_y_ = kwargs.get(
-                "width_y", DataArray(1.0, attrs={"units": y.attrs["units"]})
-            )
-            width_y = width_y_.to_units(y.attrs["units"]).values.item()
-
-            cx = 0.5 * (xv[0] + xv[-1])
-            center_x = (
-                cx
-                if kwargs.get("center_x") is None
-                else kwargs["center_x"].to_units(x.attrs["units"]).values.item()
-            )
-
-            cy = 0.5 * (yv[0] + yv[-1])
-            center_y = (
-                cy
-                if kwargs.get("center_y") is None
-                else kwargs["center_y"].to_units(y.attrs["units"]).values.item()
-            )
-
-            topo_kwargs["max_height"] = DataArray(max_height, attrs={"units": "m"})
-            topo_kwargs["width_x"] = DataArray(
-                width_x, attrs={"units": x.attrs["units"]}
-            )
-            topo_kwargs["width_y"] = DataArray(
-                width_y, attrs={"units": y.attrs["units"]}
-            )
-            topo_kwargs["center_x"] = DataArray(
-                center_x, attrs={"units": x.attrs["units"]}
-            )
-            topo_kwargs["center_y"] = DataArray(
-                center_y, attrs={"units": y.attrs["units"]}
-            )
-
-            xv_, yv_ = np.meshgrid(xv, yv, indexing="ij")
-            topo_steady = max_height * np.exp(
-                -(((xv_ - center_x) / width_x) ** 2) - ((yv_ - center_y) / width_y) ** 2
-            )
-        elif topography_type == "schaer":
-            max_height_ = kwargs.get(
-                "max_height", DataArray(500.0, attrs={"units": "m"})
-            )
-            max_height = max_height_.to_units("m").values.item()
-
-            width_x_ = kwargs.get(
-                "width_x", DataArray(1.0, attrs={"units": x.attrs["units"]})
-            )
-            width_x = width_x_.to_units(x.attrs["units"]).values.item()
-
-            width_y_ = kwargs.get(
-                "width_y", DataArray(1.0, attrs={"units": y.attrs["units"]})
-            )
-            width_y = width_y_.to_units(y.attrs["units"]).values.item()
-
-            cx = 0.5 * (xv[0] + xv[-1])
-            center_x = (
-                cx
-                if kwargs.get("center_x") is None
-                else kwargs["center_x"].to_units(x.attrs["units"]).values.item()
-            )
-
-            cy = 0.5 * (yv[0] + yv[-1])
-            center_y = (
-                cy
-                if kwargs.get("center_y") is None
-                else kwargs["center_y"].to_units(y.attrs["units"]).values.item()
-            )
-
-            topo_kwargs["max_height"] = DataArray(max_height, attrs={"units": "m"})
-            topo_kwargs["width_x"] = DataArray(
-                width_x, attrs={"units": x.attrs["units"]}
-            )
-            topo_kwargs["width_y"] = DataArray(
-                width_y, attrs={"units": y.attrs["units"]}
-            )
-            topo_kwargs["center_x"] = DataArray(
-                center_x, attrs={"units": x.attrs["units"]}
-            )
-            topo_kwargs["center_y"] = DataArray(
-                center_y, attrs={"units": y.attrs["units"]}
-            )
-
-            xv_, yv_ = np.meshgrid(xv, yv, indexing="ij")
-            topo_steady = max_height / (
-                (
-                    1
-                    + ((xv_ - center_x) / width_x) ** 2
-                    + ((yv_ - center_y) / width_y) ** 2
-                )
-                ** 1.5
-            )
-        else:
-            expression = (
-                "x + y" if kwargs.get("expression") is None else kwargs["expression"]
-            )
-
-            topo_kwargs["expression"] = expression
-
-            # import the parser
-            try:
-                from tasmania.cpp.parser.parser_2d import Parser2d
-            except ImportError:
-                print("Hint: did you compile the parser?")
-                raise
-
-            # parse
-            parser = Parser2d(
-                expression.encode("UTF-8"),
-                grid.x.to_units("m").values,
-                grid.y.to_units("m").values,
-            )
-            topo_steady = parser.evaluate()
+        # get the steady profile
+        topo_steady = self.compute_steady_profile(grid, **kwargs)
 
         # smooth the topography out
-        topo_kwargs["smooth"] = kwargs.get("smooth", False)
-        if topo_kwargs["smooth"]:
+        if smooth:
             topo_steady[1:-1, 1:-1] += 0.125 * (
                 topo_steady[:-2, 1:-1]
                 + topo_steady[2:, 1:-1]
@@ -421,59 +149,129 @@ class PhysicalTopography(Topography):
                 - 4.0 * topo_steady[1:-1, 1:-1]
             )
 
+        # wrap the steady topography profile in a DataArray
         topo_steady = DataArray(
             topo_steady,
-            coords=[xv, yv],
-            dims=[x.dims[0], y.dims[0]],
+            coords=[grid.x.values, grid.y.values],
+            dims=[grid.x.dims[0], grid.y.dims[0]],
             attrs={"units": "m"},
         )
 
-        super().__init__(topography_type, topo_steady, **topo_kwargs)
+        super().__init__(topo_steady, time=time)
 
+    @property
+    def type(self) -> str:
+        """ String used to register the subclass. """
+        assert self._type is not None
+        return self._type
 
-register = {}
+    @type.setter
+    def type(self, topography_type) -> None:
+        self._type = topography_type
+
+    @abc.abstractmethod
+    def compute_steady_profile(
+        self, grid: "PhysicalHorizontalGrid", **kwargs
+    ) -> np.ndarray:
+        """ Compute the steady topography profile.
+
+        Parameters
+        ----------
+        grid : tasmania.PhysicalHorizontalGrid
+            The underlying :class:`~tasmania.PhysicalHorizontalGrid`.
+        **kwargs :
+            The keyword arguments passed to the constructor.
+
+        Returns
+        -------
+        np.ndarray :
+            The steady topography profile in [m].
+        """
+        pass
+
+    @staticmethod
+    def factory(
+        topography_type: str,
+        grid: "PhysicalHorizontalGrid",
+        time: Optional[taz_types.timedelta_t] = None,
+        smooth: bool = False,
+        **kwargs
+    ):
+        """ Get an instance of a derived class.
+
+        Parameters
+        ----------
+        topography_type : str
+            The topography type, i.e. the string used to register the subclass
+            which should be instantiated.
+        time : `datetime.timedelta`, optional
+            The elapsed simulation time after which the topography should stop
+            increasing. If not specified, a time-invariant terrain surface-height
+            is assumed.
+        smooth : `bool`, optional
+            ``True`` to smooth the topography out, ``False`` otherwise.
+        **kwargs :
+            Keyword arguments for the exclusive use of the subclass.
+
+        Returns
+        -------
+        obj :
+            An instance of the derived class registered as ``topography_type``.
+        """
+        if topography_type in PhysicalTopography.register:
+            obj = PhysicalTopography.register[topography_type](
+                grid, time, smooth, **kwargs
+            )
+            obj.type = topography_type
+            return obj
+        else:
+            raise RuntimeError(
+                f"Unknown topography type '{topography_type}'. "
+                f"Supported types are: "
+                f"{', '.join(key for key in PhysicalTopography.register.keys())}."
+            )
 
 
 def registry(name):
     def core(cls):
-        if name in register and register[name] != cls:
+        if (
+            name in PhysicalTopography.register
+            and PhysicalTopography.register[name] != cls
+        ):
             import warnings
 
             warnings.warn(
-                f"Cannot register '{name}' as already present in the register."
+                f"Cannot register '{name}' as already present in PhysicalTopography.register."
             )
         else:
-            register[name] = cls
+            PhysicalTopography.register[name] = cls
         return cls
 
     return core
 
 
 class NumericalTopography(Topography):
-    """
-    Class which represents a possibly time-dependent topography defined
-    over a *numerical* grid.
-    """
+    """ A time-dependent topography defined over a numerical grid. """
 
     def __init__(
         self,
-        grid: "HorizontalGrid",
-        phys_topography: Topography,
+        grid: "NumericalHorizontalGrid",
+        phys_topography: PhysicalTopography,
         boundary: "HorizontalBoundary",
     ) -> None:
         """
         Parameters
         ----------
         grid : tasmania.NumericalHorizontalGrid
-            The underlying numerical grid.
+            The underlying :class:`~tasmania.NumericalHorizontalGrid`.
         phys_topography : tasmania.Topography
-            The topography defined over the associated *physical* grid.
+            The topography defined over the associated physical grid.
         boundary : tasmania.HorizontalBoundary
-            The :class:`tasmania.HorizontalBoundary` handling the horizontal
+            The :class:`~tasmania.HorizontalBoundary` handling the horizontal
             boundary conditions.
         """
-        topo_type = phys_topography.type
-        topo_kwargs = phys_topography.kwargs
+        self._type = phys_topography.type
+        topo_time = phys_topography.time
 
         ptopo = phys_topography.profile.values
         ptopo_steady = phys_topography.steady_profile.values
@@ -484,4 +282,9 @@ class NumericalTopography(Topography):
             boundary.get_numerical_field(ptopo_steady), grid, units
         )
 
-        super().__init__(topo_type, ctopo_steady, ctopo, **topo_kwargs)
+        super().__init__(ctopo_steady, ctopo, topo_time)
+
+    @property
+    def type(self) -> str:
+        """ The topography type. """
+        return self._type

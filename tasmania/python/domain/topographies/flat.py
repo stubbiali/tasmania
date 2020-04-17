@@ -20,5 +20,16 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.domain import horizontal_boundaries
-from tasmania.python.domain import topographies
+import numpy as np
+
+from tasmania.python.domain.topography import PhysicalTopography, registry
+
+
+@registry(name="flat")
+class Flat(PhysicalTopography):
+    """ Flat terrain. """
+
+    def compute_steady_profile(self, grid, **kwargs):
+        nx, ny = grid.nx, grid.ny
+        dtype = grid.x.dtype
+        return np.zeros((nx, ny), dtype=dtype)

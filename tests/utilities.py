@@ -353,13 +353,17 @@ def st_topography_kwargs(
 
     if time is not None and isinstance(time, Timedelta):
         _time = time
-    else:
-        _time = draw(
-            st_timedeltas(
-                min_value=conf.topography["time"][0],
-                max_value=conf.topography["time"][1],
+    elif draw(hyp_st.booleans()):
+        _time = (
+            draw(
+                st_timedeltas(
+                    min_value=conf.topography["time"][0],
+                    max_value=conf.topography["time"][1],
+                )
             )
         )
+    else:
+        _time = None
 
     if (
         max_height is not None
@@ -367,7 +371,7 @@ def st_topography_kwargs(
         and max_height.shape == ()
     ):
         _max_height = max_height
-    else:
+    elif draw(hyp_st.booleans()):
         units = draw(st_one_of(conf.topography["units_to_max_height"].keys()))
         val = draw(
             st_floats(
@@ -376,18 +380,24 @@ def st_topography_kwargs(
             )
         )
         _max_height = DataArray(val, attrs={"units": units})
+    else:
+        _max_height = None
 
     if center_x is not None and isinstance(center_x, DataArray) and center_x.shape == ():
         _center_x = center_x
-    else:
+    elif draw(hyp_st.booleans()):
         val = draw(st_floats(min_value=np.min(x.values), max_value=np.max(x.values)))
         _center_x = DataArray(val, attrs={"units": x.attrs["units"]})
+    else:
+        _center_x = None
 
     if center_y is not None and isinstance(center_y, DataArray) and center_y.shape == ():
         _center_y = center_y
-    else:
+    elif draw(hyp_st.booleans()):
         val = draw(st_floats(min_value=np.min(y.values), max_value=np.max(y.values)))
         _center_y = DataArray(val, attrs={"units": y.attrs["units"]})
+    else:
+        _center_y = None
 
     if (
         topo_half_width_x is not None
@@ -395,7 +405,7 @@ def st_topography_kwargs(
         and topo_half_width_x.shape == ()
     ):
         _topo_half_width_x = topo_half_width_x
-    else:
+    elif draw(hyp_st.booleans()):
         units = draw(st_one_of(conf.topography["units_to_half_width_x"].keys()))
         val = draw(
             st_floats(
@@ -404,6 +414,8 @@ def st_topography_kwargs(
             )
         )
         _topo_half_width_x = DataArray(val, attrs={"units": units})
+    else:
+        _topo_half_width_x = None
 
     if (
         topo_half_width_y is not None
@@ -411,7 +423,7 @@ def st_topography_kwargs(
         and topo_half_width_y.shape == ()
     ):
         _topo_half_width_y = topo_half_width_y
-    else:
+    elif draw(hyp_st.booleans()):
         units = draw(st_one_of(conf.topography["units_to_half_width_y"].keys()))
         val = draw(
             st_floats(
@@ -420,11 +432,15 @@ def st_topography_kwargs(
             )
         )
         _topo_half_width_y = DataArray(val, attrs={"units": units})
+    else:
+        _topo_half_width_y = None
 
     if expression is not None and isinstance(expression, str):
         _expression = expression
-    else:
+    elif draw(hyp_st.booleans()):
         _expression = draw(st_one_of(conf.topography["str"]))
+    else:
+        _expression = None
 
     if smooth is not None and isinstance(smooth, bool):
         _smooth = smooth
@@ -433,6 +449,7 @@ def st_topography_kwargs(
 
     kwargs = {
         "type": _type,
+        "time": _time,
         "max_height": _max_height,
         "center_x": _center_x,
         "center_y": _center_y,
@@ -441,10 +458,6 @@ def st_topography_kwargs(
         "expression": _expression,
         "smooth": _smooth,
     }
-
-    if_time = draw(hyp_st.booleans())
-    if if_time:
-        kwargs["time"] = _time
 
     return kwargs
 

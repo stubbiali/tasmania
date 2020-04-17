@@ -20,5 +20,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from tasmania.python.domain import horizontal_boundaries
-from tasmania.python.domain import topographies
+from .flat import Flat
+from .gaussian import Gaussian
+from .schaer import Schaer
+from .user_defined import UserDefined
