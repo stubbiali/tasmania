@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -42,13 +41,8 @@ from tests.conf import (
     nb as conf_nb,
 )
 from tests.physics.test_turbulence import smagorinsky2d_validation
-from tests.utilities import (
-    compare_dataarrays,
-    st_domain,
-    st_floats,
-    st_one_of,
-    st_isentropic_state_f,
-)
+from tests.strategies import st_domain, st_one_of, st_isentropic_state_f
+from tests.utilities import compare_dataarrays
 
 
 @settings(

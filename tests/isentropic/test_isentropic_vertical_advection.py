@@ -23,7 +23,6 @@
 from copy import deepcopy
 from datetime import datetime
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -47,7 +46,6 @@ from tests.conf import (
     backend as conf_backend,
     datatype as conf_dtype,
     default_origin as conf_dorigin,
-    nb as conf_nb,
 )
 from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
     get_upwind_flux,
@@ -55,15 +53,14 @@ from tests.isentropic.test_isentropic_minimal_vertical_fluxes import (
     get_third_order_upwind_flux,
     get_fifth_order_upwind_flux,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
+from tests.strategies import (
     st_domain,
     st_floats,
     st_isentropic_state_f,
     st_one_of,
     st_raw_field,
 )
+from tests.utilities import compare_arrays, compare_dataarrays
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

@@ -23,7 +23,6 @@
 from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -51,18 +50,10 @@ from tests.conf import (
     backend as conf_backend,
     datatype as conf_dtype,
     default_origin as conf_dorigin,
-    nb as conf_nb,
 )
 from tests.physics.test_microphysics_utils import kessler_sedimentation_validation
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    compare_datetimes,
-    st_floats,
-    st_one_of,
-    st_domain,
-    st_isentropic_state_f,
-)
+from tests.strategies import st_floats, st_one_of, st_domain, st_isentropic_state_f
+from tests.utilities import compare_dataarrays
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
@@ -946,5 +937,4 @@ def test_kessler_sedimentation(data):
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__])
-    test_kessler_microphysics()
+    pytest.main([__file__])

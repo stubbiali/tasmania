@@ -22,13 +22,11 @@
 #
 from datetime import datetime
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
     settings,
     strategies as hyp_st,
-    Verbosity,
 )
 import pytest
 from sympl import DataArray
@@ -45,14 +43,7 @@ from tests.conf import (
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_datetimes,
-    st_floats,
-    st_one_of,
-    st_domain,
-    st_isentropic_state_f,
-)
+from tests.strategies import st_one_of, st_domain
 
 
 @settings(

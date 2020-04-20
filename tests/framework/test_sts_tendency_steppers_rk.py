@@ -42,13 +42,8 @@ from tests.conf import (
     datatype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.utilities import (
-    compare_arrays,
-    st_domain,
-    st_isentropic_state_f,
-    st_one_of,
-    st_timedeltas,
-)
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
+from tests.utilities import compare_arrays
 
 
 @settings(

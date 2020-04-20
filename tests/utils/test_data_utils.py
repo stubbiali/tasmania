@@ -21,14 +21,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 from sympl import DataArray
 
@@ -36,12 +34,8 @@ import tasmania.python.utils.storage_utils
 from tasmania.python.utils import data_utils as du
 from tasmania.python.utils.exceptions import ConstantNotFoundError
 
-from tests.utilities import (
-    compare_arrays,
-    st_physical_grid,
-    st_physical_horizontal_grid,
-    st_raw_field,
-)
+from tests.strategies import st_physical_grid, st_physical_horizontal_grid, st_raw_field
+from tests.utilities import compare_arrays
 
 
 def test_get_constant():

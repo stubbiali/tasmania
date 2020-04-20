@@ -31,9 +31,8 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gt4py import gtscript, __externals__
-
-# from gt4py.__gtscript__ import computation, interval, PARALLEL
+from gt4py import gtscript
+from gt4py.gtscript import PARALLEL, __INLINED, computation, interval
 
 from tasmania.python.isentropic.dynamics.horizontal_fluxes import (
     IsentropicHorizontalFlux,
@@ -52,7 +51,8 @@ from tests.conf import (
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import st_domain, st_floats, st_one_of, st_raw_field, compare_arrays
+from tests.strategies import st_domain, st_floats, st_one_of, st_raw_field
+from tests.utilities import compare_arrays
 
 
 class WrappingStencil:

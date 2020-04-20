@@ -38,7 +38,7 @@ from tasmania.python.utils.storage_utils import get_dataarray_3d, zeros
 
 from tests.conf import default_origin as conf_dorigin, datatype as conf_dtype
 from tests.isentropic.test_isentropic_vertical_advection import validation
-from tests.utilities import st_domain, st_isentropic_state_f, st_one_of, st_raw_field
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_raw_field
 
 
 class DebugIsentropicVerticalAdvection(IsentropicVerticalAdvection):

@@ -26,11 +26,9 @@ from hypothesis import (
     given,
     HealthCheck,
     reproduce_failure,
-    seed,
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import os
 import pytest
 import tempfile
@@ -38,12 +36,8 @@ import tempfile
 from tasmania import get_dataarray_3d
 from tasmania.python.utils.io_utils import NetCDFMonitor, load_netcdf_dataset
 
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    st_domain,
-    st_isentropic_state,
-)
+from tests.strategies import st_domain, st_isentropic_state
+from tests.utilities import compare_arrays, compare_dataarrays
 
 
 @settings(

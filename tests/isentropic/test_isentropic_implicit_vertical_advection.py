@@ -23,7 +23,6 @@
 from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -44,17 +43,16 @@ from tests.conf import (
     backend as conf_backend,
     datatype as conf_dtype,
     default_origin as conf_dorigin,
-    nb as conf_nb,
 )
 from tests.utils.test_gtscript_utils import thomas_validation
-from tests.utilities import (
-    compare_arrays,
+from tests.strategies import (
     st_domain,
     st_isentropic_state_f,
     st_one_of,
     st_raw_field,
     st_timedeltas,
 )
+from tests.utilities import compare_arrays
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

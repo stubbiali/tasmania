@@ -51,16 +51,8 @@ from tests.conf import (
     datatype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    compare_datetimes,
-    st_floats,
-    st_one_of,
-    st_domain,
-    st_isentropic_state_f,
-    st_raw_field,
-)
+from tests.strategies import st_one_of, st_domain, st_isentropic_state_f, st_raw_field
+from tests.utilities import compare_arrays, compare_dataarrays
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

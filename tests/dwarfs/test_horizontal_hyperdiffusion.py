@@ -44,7 +44,8 @@ from tests.conf import (
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import compare_arrays, st_domain, st_floats, st_one_of, st_raw_field
+from tests.strategies import st_domain, st_one_of, st_raw_field
+from tests.utilities import compare_arrays
 
 
 def assert_xyz(phi_tnd, phi_tnd_assert, nb):

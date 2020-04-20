@@ -37,7 +37,7 @@ from tasmania.python.framework.tendency_stepper import TendencyStepper, register
 from tasmania.python.framework.tendency_steppers_implicit import Implicit
 from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
 
-from tests.utilities import st_domain, st_one_of
+from tests.strategies import st_domain, st_one_of
 
 
 def test_register():

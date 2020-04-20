@@ -20,7 +20,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from hypothesis import (
     assume,
     given,
@@ -32,7 +31,8 @@ from hypothesis import (
 import numpy as np
 import pytest
 
-from gt4py import gtscript, storage as gt_storage
+from gt4py import gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
 
 from tasmania.python.utils.storage_utils import zeros
 

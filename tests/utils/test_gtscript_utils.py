@@ -22,7 +22,6 @@
 #
 from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -68,16 +67,10 @@ from tasmania.python.utils.storage_utils import zeros
 from tests.conf import (
     backend as conf_backend,
     default_origin as conf_dorigin,
-    nb as conf_nb,
     datatype as conf_dtype,
 )
-from tests.utilities import (
-    compare_arrays,
-    st_floats,
-    st_one_of,
-    st_physical_grid,
-    st_raw_field,
-)
+from tests.strategies import st_floats, st_one_of, st_physical_grid, st_raw_field
+from tests.utilities import compare_arrays
 
 
 def assert_annotations(func_handle, dtype, *, subtests):

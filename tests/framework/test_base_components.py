@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     settings,
@@ -36,7 +35,7 @@ from tasmania.python.framework.base_components import (
     TendencyComponent,
 )
 
-from tests.utilities import compare_arrays, st_domain, st_one_of, st_raw_field
+from tests.strategies import st_domain
 
 
 class FakeDiagnosticComponent(DiagnosticComponent):

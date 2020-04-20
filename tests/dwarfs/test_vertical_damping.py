@@ -39,14 +39,8 @@ from tests.conf import (
     datatype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.utilities import (
-    compare_arrays,
-    st_domain,
-    st_floats,
-    st_one_of,
-    st_raw_field,
-    st_timedeltas,
-)
+from tests.strategies import st_domain, st_one_of, st_raw_field, st_timedeltas
+from tests.utilities import compare_arrays
 
 
 def assert_rayleigh(

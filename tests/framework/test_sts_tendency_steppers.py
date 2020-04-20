@@ -42,7 +42,7 @@ from tasmania.python.isentropic.physics.sts_tendency_steppers import (
     IsentropicVerticalAdvection,
 )
 
-from tests.utilities import st_domain, st_one_of
+from tests.strategies import st_domain, st_one_of
 
 
 def test_register():

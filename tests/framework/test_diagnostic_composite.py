@@ -20,10 +20,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -46,20 +44,12 @@ from tests.conf import (
     backend as conf_backend,
     datatype as conf_dtype,
     default_origin as conf_dorigin,
-    nb as conf_nb,
 )
 from tests.physics.test_microphysics_kessler import (
     kessler_saturation_adjustment_diagnostic_validation,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    compare_datetimes,
-    st_domain,
-    st_isentropic_state_f,
-    st_one_of,
-    st_timedeltas,
-)
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
+from tests.utilities import compare_arrays, compare_dataarrays, compare_datetimes
 
 
 class KesslerSaturationAdjustment(KesslerSaturationAdjustmentDiagnostic):

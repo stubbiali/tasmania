@@ -33,11 +33,13 @@ import numpy as np
 import pytest
 
 from gt4py import gtscript, storage as gt_storage
+from gt4py.gtscript import PARALLEL, computation, interval
 
 from tasmania.python.utils.storage_utils import zeros
 
 from tests.conf import default_origin as conf_dorigin
-from tests.utilities import compare_arrays, st_one_of, st_raw_field
+from tests.strategies import st_one_of, st_raw_field
+from tests.utilities import compare_arrays
 
 
 def stencil_sum_defs(inout_a: gtscript.Field["dtype"], in_b: gtscript.Field["dtype"]):

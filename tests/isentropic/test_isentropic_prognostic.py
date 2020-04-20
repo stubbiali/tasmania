@@ -66,14 +66,8 @@ from tests.isentropic.test_isentropic_horizontal_fluxes import (
     get_third_order_upwind_fluxes,
     get_fifth_order_upwind_fluxes,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_datetimes,
-    st_domain,
-    st_floats,
-    st_one_of,
-    st_isentropic_state_f,
-)
+from tests.strategies import st_domain, st_floats, st_one_of, st_isentropic_state_f
+from tests.utilities import compare_arrays, compare_datetimes
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

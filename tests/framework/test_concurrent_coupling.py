@@ -23,14 +23,12 @@
 from copy import deepcopy
 from datetime import timedelta
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     settings,
     strategies as hyp_st,
     reproduce_failure,
 )
-import numpy as np
 import pytest
 from sympl._core.exceptions import InvalidStateError
 
@@ -45,13 +43,8 @@ from tests.conf import (
     datatype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.utilities import (
-    compare_arrays,
-    st_domain,
-    st_isentropic_state_f,
-    st_one_of,
-    st_timedeltas,
-)
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
+from tests.utilities import compare_arrays
 
 
 @settings(

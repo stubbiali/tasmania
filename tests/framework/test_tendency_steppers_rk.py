@@ -35,22 +35,15 @@ from sympl import units_are_same
 import gt4py as gt
 
 from tasmania.python.framework.tendency_steppers_rk import ForwardEuler, RK2, RK3WS
-from tasmania.python.utils.storage_utils import get_dataarray_3d, get_dataarray_dict
+from tasmania.python.utils.storage_utils import get_dataarray_dict
 
 from tests.conf import (
     backend as conf_backend,
     datatype as conf_dtype,
     default_origin as conf_dorigin,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_dataarrays,
-    st_domain,
-    st_isentropic_state_f,
-    st_one_of,
-    st_raw_field,
-    st_timedeltas,
-)
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of, st_timedeltas
+from tests.utilities import compare_arrays
 
 
 @settings(

@@ -29,7 +29,6 @@ from hypothesis import (
     reproduce_failure,
     settings,
     strategies as hyp_st,
-    Verbosity,
 )
 import numpy as np
 import pytest
@@ -41,7 +40,6 @@ from tasmania.python.dwarfs.horizontal_smoothing import HorizontalSmoothing
 from tasmania.python.dwarfs.vertical_damping import VerticalDamping
 from tasmania.python.domain.domain import Domain
 from tasmania.python.framework.base_components import TendencyComponent
-from tasmania.python.framework.concurrent_coupling import ConcurrentCoupling
 from tasmania.python.isentropic.dynamics.diagnostics import (
     IsentropicDiagnostics as RawIsentropicDiagnostics,
 )
@@ -70,14 +68,8 @@ from tests.isentropic.test_isentropic_prognostic import (
     forward_euler_step_momentum_x,
     forward_euler_step_momentum_y,
 )
-from tests.utilities import (
-    compare_arrays,
-    compare_datetimes,
-    st_floats,
-    st_one_of,
-    st_domain,
-    st_isentropic_state_f,
-)
+from tests.strategies import st_floats, st_one_of, st_domain, st_isentropic_state_f
+from tests.utilities import compare_arrays, compare_datetimes
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"

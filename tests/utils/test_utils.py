@@ -21,7 +21,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -35,7 +34,8 @@ from tasmania.python.utils.storage_utils import zeros
 from tasmania.python.utils.utils import feed_module, thomas_numpy
 
 from tests.conf import datatype as conf_dtype
-from tests.utilities import compare_arrays, st_one_of, st_raw_field
+from tests.strategies import st_one_of, st_raw_field
+from tests.utilities import compare_arrays
 from tests.utils.test_gtscript_utils import thomas_validation
 
 

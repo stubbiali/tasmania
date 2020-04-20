@@ -29,7 +29,6 @@ from hypothesis import (
     settings,
     strategies as hyp_st,
 )
-import numpy as np
 import pytest
 
 import gt4py as gt
@@ -45,7 +44,8 @@ from tests.conf import (
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import compare_arrays, st_domain, st_isentropic_state_f, st_one_of
+from tests.strategies import st_domain, st_isentropic_state_f, st_one_of
+from tests.utilities import compare_arrays
 
 
 @settings(

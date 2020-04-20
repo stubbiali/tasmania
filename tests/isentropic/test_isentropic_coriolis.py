@@ -42,13 +42,8 @@ from tests.conf import (
     default_origin as conf_default_origin,
     nb as conf_nb,
 )
-from tests.utilities import (
-    compare_dataarrays,
-    st_domain,
-    st_floats,
-    st_isentropic_state_f,
-    st_one_of,
-)
+from tests.strategies import st_domain, st_floats, st_isentropic_state_f, st_one_of
+from tests.utilities import compare_dataarrays
 
 
 @settings(

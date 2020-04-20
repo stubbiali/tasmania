@@ -37,7 +37,7 @@ from tasmania.python.framework.promoters import Tendency2Diagnostic, Diagnostic2
 from tasmania.python.utils.storage_utils import get_dataarray_3d
 
 from tests.conf import backend as conf_backend, datatype as conf_dtype
-from tests.utilities import compare_arrays, st_domain, st_one_of, st_raw_field
+from tests.strategies import st_domain, st_one_of, st_raw_field
 
 
 class FakeTendency2Diagnostic(Tendency2Diagnostic):

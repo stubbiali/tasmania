@@ -22,7 +22,6 @@
 #
 from copy import deepcopy
 from hypothesis import (
-    assume,
     given,
     HealthCheck,
     reproduce_failure,
@@ -45,13 +44,8 @@ from tests.conf import (
     default_origin as conf_dorigin,
     nb as conf_nb,
 )
-from tests.utilities import (
-    compare_dataarrays,
-    st_domain,
-    st_floats,
-    st_one_of,
-    st_isentropic_state_f,
-)
+from tests.strategies import st_domain, st_floats, st_one_of, st_isentropic_state_f
+from tests.utilities import compare_dataarrays
 
 
 mfwv = "mass_fraction_of_water_vapor_in_air"
