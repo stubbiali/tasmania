@@ -183,15 +183,15 @@ def assert_isentropic_states(state, state_ref, *, subtests):
     assert len(state) == len(state_ref)
 
     for name in state_ref:
-        with subtests.test(name=name):
-            assert name in state
+        # with subtests.test(name=name):
+        assert name in state
 
-            if name == "time":
-                assert state["time"] == state_ref["time"]
-            else:
-                compare_dataarrays(
-                    state[name], state_ref[name], compare_coordinate_values=False
-                )
+        if name == "time":
+            assert state["time"] == state_ref["time"]
+        else:
+            compare_dataarrays(
+                state[name], state_ref[name], compare_coordinate_values=False
+            )
 
 
 @settings(
@@ -270,9 +270,9 @@ def test_write_and_load(data, subtests):
     # states
     assert len(load_states) == 3
     for idx, state in enumerate(load_states):
-        with subtests.test(idx=idx):
-            assert_isentropic_states(state, pstate, subtests=subtests)
-            pstate["time"] += timedelta(hours=1)
+        # with subtests.test(idx=idx):
+        assert_isentropic_states(state, pstate, subtests=subtests)
+        pstate["time"] += timedelta(hours=1)
 
     # clean temporary directory
     os.remove(filename)

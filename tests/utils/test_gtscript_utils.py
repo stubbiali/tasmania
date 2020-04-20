@@ -99,10 +99,10 @@ def assert_annotations(func_handle, dtype, *, subtests):
     }
     annotations = getattr(func_handle, "__annotations__", {})
     for arg in args:
-        with subtests.test(arg=arg):
-            assert arg in annotations
-            assert isinstance(annotations[arg], gtscript._FieldDescriptor)
-            assert annotations[arg].dtype == dtype
+        # with subtests.test(arg=arg):
+        assert arg in annotations
+        assert isinstance(annotations[arg], gtscript._FieldDescriptor)
+        assert annotations[arg].dtype == dtype
 
 
 def test_set_annotations(subtests):

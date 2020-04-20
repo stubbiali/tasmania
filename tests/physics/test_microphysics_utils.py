@@ -150,19 +150,19 @@ def test_clipping(data, subtests):
     assert len(clip.diagnostic_properties) == len(names)
 
     for name in names:
-        with subtests.test(name=name):
-            assert name in clip.input_properties
-            assert name in clip.diagnostic_properties
+        # with subtests.test(name=name):
+        assert name in clip.input_properties
+        assert name in clip.diagnostic_properties
 
-            q = state[name].to_units("g g^-1").values
-            q[q < 0] = 0
+        q = state[name].to_units("g g^-1").values
+        q[q < 0] = 0
 
-            assert name in diagnostics
-            compare_dataarrays(
-                get_dataarray_3d(q[:nx, :ny, :nz], grid, "g g^-1"),
-                diagnostics[name][:nx, :ny, :nz],
-                compare_coordinate_values=False,
-            )
+        assert name in diagnostics
+        compare_dataarrays(
+            get_dataarray_3d(q[:nx, :ny, :nz], grid, "g g^-1"),
+            diagnostics[name][:nx, :ny, :nz],
+            compare_coordinate_values=False,
+        )
 
     assert len(diagnostics) == len(names)
 
